@@ -17,11 +17,11 @@ use crate::{
         ApAddress, ApInformation, ArmChipInfo, DapAccess, DpAddress, Pins, SwoAccess, SwoConfig,
         SwoMode,
     },
-    DebugProbeSelector, Error as ProbeRsError, Probe,
+    DebugProbeSelector, Error as ProbeRsError, Probe, SubArray,
 };
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use scroll::{Pread, Pwrite, BE, LE};
-use std::{cmp::Ordering, convert::TryInto, sync::Arc, time::Duration};
+use std::{cmp::Ordering, sync::Arc, time::Duration};
 use usb_interface::TIMEOUT;
 
 /// Maximum length of 32 bit reads in bytes.
@@ -1378,7 +1378,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
                 self.current_ap.ap_address().ap,
             )?;
 
-            *d = u64::from_le_bytes(buff.try_into().unwrap());
+            *d = u64::from_le_bytes(*buff.subarray());
         }
 
         Ok(())
@@ -1398,7 +1398,7 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
             )?;
 
             for (index, word) in buff.chunks_exact(4).enumerate() {
-                chunk[index] = u32::from_le_bytes(word.try_into().unwrap());
+                chunk[index] = u32::from_le_bytes(*word.subarray());
             }
         }
 

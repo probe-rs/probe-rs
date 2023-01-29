@@ -31,7 +31,7 @@ pub use self::{
     debug_info::*, debug_step::SteppingMode, registers::*, stack_frame::StackFrame, variable::*,
     variable_cache::VariableCache,
 };
-use crate::{core::Core, MemoryInterface};
+use crate::{core::Core, MemoryInterface, SubArray};
 use gimli::DebuggingInformationEntry;
 
 use std::{
@@ -260,16 +260,13 @@ pub(crate) fn _print_all_attributes(
                                     .resume_with_memory(gimli::Value::U8(buff[0]))
                                     .unwrap(),
                                 2 => {
-                                    let val = u16::from(buff[0]) << 8 | u16::from(buff[1]);
+                                    let val = u16::from_le_bytes(*buff.subarray());
                                     evaluation
                                         .resume_with_memory(gimli::Value::U16(val))
                                         .unwrap()
                                 }
                                 4 => {
-                                    let val = u32::from(buff[0]) << 24
-                                        | u32::from(buff[1]) << 16
-                                        | u32::from(buff[2]) << 8
-                                        | u32::from(buff[3]);
+                                    let val = u32::from_le_bytes(*buff.subarray());
                                     evaluation
                                         .resume_with_memory(gimli::Value::U32(val))
                                         .unwrap()

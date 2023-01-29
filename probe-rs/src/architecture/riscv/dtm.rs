@@ -1,14 +1,11 @@
-use std::{
-    convert::TryInto,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 use bitfield::bitfield;
 
 use super::communication_interface::RiscvError;
 use crate::{
     probe::{CommandResult, DeferredResultIndex, JTAGAccess, JtagWriteCommand},
-    DebugProbeError,
+    DebugProbeError, SubArray,
 };
 
 ///! Debug Transport Module (DTM) handling
@@ -38,7 +35,7 @@ impl Dtm {
             Err(e) => return Err((probe, e.into())),
         };
 
-        let raw_dtmcs = u32::from_le_bytes((&dtmcs_raw[..]).try_into().unwrap());
+        let raw_dtmcs = u32::from_le_bytes(*dtmcs_raw.subarray());
 
         if raw_dtmcs == 0 {
             return Err((probe, RiscvError::NoRiscvTarget));
@@ -75,7 +72,7 @@ impl Dtm {
     pub fn read_idcode(&mut self) -> Result<u32, DebugProbeError> {
         let value = self.probe.read_register(0x1, 32)?;
 
-        Ok(u32::from_le_bytes((&value[..]).try_into().unwrap()))
+        Ok(u32::from_le_bytes(*value.subarray()))
     }
 
     /// Clear the sticky error state (field *op* in the DMI register)

@@ -1,7 +1,6 @@
 mod protocol;
 
 use std::{
-    convert::TryInto,
     iter,
     time::{Duration, Instant},
 };
@@ -15,7 +14,7 @@ use crate::{
         riscv::communication_interface::{RiscvCommunicationInterface, RiscvError},
     },
     probe::jlink::bits_to_byte,
-    DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
+    DebugProbe, DebugProbeError, DebugProbeSelector, SubArray, WireProtocol,
 };
 
 use self::protocol::ProtocolHandler;
@@ -389,7 +388,7 @@ impl DebugProbe for EspUsbJtag {
             if idcode_bytes.iter().any(|&x| x != 0)
                 || Instant::now().duration_since(start) > Duration::from_secs(1)
             {
-                break u32::from_le_bytes((&idcode_bytes[..]).try_into().unwrap());
+                break u32::from_le_bytes(*idcode_bytes.subarray());
             }
         };
 

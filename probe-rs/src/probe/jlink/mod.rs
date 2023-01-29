@@ -2,12 +2,13 @@
 
 use jaylink::{Capability, Interface, JayLink, SpeedConfig, SwoMode};
 
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryFrom;
 use std::iter;
 use std::time::{Duration, Instant};
 
 use crate::architecture::arm::{ArmError, RawDapAccess};
 use crate::architecture::riscv::communication_interface::RiscvError;
+use crate::SubArray;
 use crate::{
     architecture::{
         arm::{
@@ -529,7 +530,7 @@ impl DebugProbe for JLink {
                     if idcode_bytes.iter().any(|&x| x != 0)
                         || Instant::now().duration_since(start) > Duration::from_secs(1)
                     {
-                        break u32::from_le_bytes((&idcode_bytes[..]).try_into().unwrap());
+                        break u32::from_le_bytes(*idcode_bytes.subarray());
                     }
                 };
 

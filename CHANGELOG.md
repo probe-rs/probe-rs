@@ -5,6 +5,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- subarray experiment
+
 ## [0.15.0]
 
 Released 2023-01-28

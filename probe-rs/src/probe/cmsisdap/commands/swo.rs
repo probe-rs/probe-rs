@@ -1,7 +1,8 @@
 use scroll::{Pread, LE};
 
+use crate::SubArray;
+
 use super::{CommandId, Request, SendError, Status};
-use std::convert::TryInto;
 
 #[repr(u8)]
 #[allow(unused)]
@@ -127,9 +128,9 @@ impl Request for StatusRequest {
     fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         let status = TraceStatus::from(buffer[0]);
         let count = u32::from_le_bytes(
-            buffer[1..5]
-                .try_into()
-                .map_err(|_| SendError::NotEnoughData)?,
+            *buffer[1..5]
+                .get_subarray()
+                .ok_or_else(|| SendError::NotEnoughData)?,
         );
         Ok(StatusResponse {
             _status: status,
@@ -188,19 +189,19 @@ impl Request for ExtendedStatusRequest {
 
         let status = TraceStatus::from(buffer[0]);
         let count = u32::from_le_bytes(
-            buffer[1..5]
-                .try_into()
-                .map_err(|_| SendError::NotEnoughData)?,
+            *buffer[1..5]
+                .get_subarray()
+                .ok_or_else(|| SendError::NotEnoughData)?,
         );
         let index = u32::from_le_bytes(
-            buffer[5..9]
-                .try_into()
-                .map_err(|_| SendError::NotEnoughData)?,
+            *buffer[5..9]
+                .get_subarray()
+                .ok_or_else(|| SendError::NotEnoughData)?,
         );
         let timestamp = u32::from_le_bytes(
-            buffer[9..13]
-                .try_into()
-                .map_err(|_| SendError::NotEnoughData)?,
+            *buffer[9..13]
+                .get_subarray()
+                .ok_or_else(|| SendError::NotEnoughData)?,
         );
         Ok(ExtendedStatusResponse {
             _status: status,
@@ -241,9 +242,9 @@ impl Request for DataRequest {
     fn parse_response(&self, buffer: &[u8]) -> Result<Self::Response, SendError> {
         let status = TraceStatus::from(buffer[0]);
         let count = u16::from_le_bytes(
-            buffer[1..3]
-                .try_into()
-                .map_err(|_| SendError::NotEnoughData)?,
+            *buffer[1..3]
+                .get_subarray()
+                .ok_or_else(|| SendError::NotEnoughData)?,
         );
         let start = 3;
         let end = start + count as usize;

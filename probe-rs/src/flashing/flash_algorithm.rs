@@ -2,8 +2,8 @@ use probe_rs_target::{FlashProperties, PageInfo, RamRegion, RawFlashAlgorithm, S
 
 use super::FlashError;
 use crate::core::Architecture;
+use crate::SubArray;
 use crate::{architecture::riscv, Target};
-use std::convert::TryInto;
 
 /// A flash algorithm, which has been assembled for a specific
 /// chip.
@@ -211,9 +211,7 @@ impl FlashAlgorithm {
         let instructions: Vec<u32> = header
             .iter()
             .copied()
-            .chain(
-                assembled_instructions.map(|bytes| u32::from_le_bytes(bytes.try_into().unwrap())),
-            )
+            .chain(assembled_instructions.map(|bytes| u32::from_le_bytes(*bytes.subarray())))
             .collect();
 
         let mut offset = 0;

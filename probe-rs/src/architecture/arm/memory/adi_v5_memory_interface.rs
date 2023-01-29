@@ -8,6 +8,7 @@ use crate::architecture::arm::{
 };
 use crate::architecture::arm::{ArmCommunicationInterface, ArmError};
 use crate::DebugProbeError;
+use crate::SubArray;
 use std::convert::TryInto;
 use std::ops::Range;
 
@@ -116,7 +117,7 @@ pub trait ArmProbe: SwdSequence {
 
         let mut buffer = vec![0u32; inbetween_count / 4];
         for (bytes, value) in data.chunks_exact(4).zip(buffer.iter_mut()) {
-            *value = u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]);
+            *value = u32::from_le_bytes(*bytes.subarray());
         }
         self.write_32(address, &buffer)?;
 

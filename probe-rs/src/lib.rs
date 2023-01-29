@@ -103,3 +103,18 @@ pub use crate::session::{Permissions, Session};
 
 // TODO: Hide behind feature
 pub use crate::probe::fake_probe::FakeProbe;
+
+trait SubArray<T> {
+    fn get_subarray<const N: usize>(&self) -> Option<&[T; N]>;
+    #[inline]
+    fn subarray<const N: usize>(&self) -> &[T; N] {
+        self.get_subarray().unwrap()
+    }
+}
+
+impl<T> SubArray<T> for [T] {
+    #[inline]
+    fn get_subarray<const N: usize>(&self) -> Option<&[T; N]> {
+        (self.len() >= N).then(|| unsafe { &*(self.as_ptr()).cast::<[T; N]>() })
+    }
+}

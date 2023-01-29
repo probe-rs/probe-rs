@@ -5,11 +5,11 @@ use crate::architecture::{
 };
 use crate::probe::{JTAGAccess, ProbeCreationError};
 use crate::{
-    DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, WireProtocol,
+    DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, SubArray,
+    WireProtocol,
 };
 use bitvec::{order::Lsb0, slice::BitSlice, vec::BitVec};
 use rusb::UsbContext;
-use std::convert::TryInto;
 use std::io::{self, Read, Write};
 use std::time::Duration;
 
@@ -253,7 +253,7 @@ impl JtagAdapter {
         let r = self.transfer_dr(&cmd, cmd.len() * 8)?;
         let mut targets = vec![];
         for i in 0..max_device_count {
-            let idcode = u32::from_le_bytes(r[i * 4..(i + 1) * 4].try_into().unwrap());
+            let idcode = u32::from_le_bytes(*r[i * 4..].subarray());
             if idcode != 0xffffffff {
                 tracing::debug!("tap found: {:08x}", idcode);
                 let target = JtagChainItem { idcode, irlen: 0 };

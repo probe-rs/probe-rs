@@ -6,6 +6,7 @@ use super::{
 };
 use crate::config::NvmRegion;
 use crate::memory::MemoryInterface;
+use crate::SubArray;
 use crate::{core::RegisterFile, session::Session, Core, InstructionSet};
 use std::time::Instant;
 use std::{fmt::Debug, time::Duration};
@@ -906,7 +907,7 @@ impl<'p> ActiveFlasher<'p, Program> {
         // Transfer the buffer bytes to RAM.
         let words: Vec<u32> = bytes
             .chunks_exact(core::mem::size_of::<u32>())
-            .map(|a| u32::from_le_bytes([a[0], a[1], a[2], a[3]]))
+            .map(|a| u32::from_le_bytes(*a.subarray()))
             .collect();
 
         let t1 = std::time::Instant::now();

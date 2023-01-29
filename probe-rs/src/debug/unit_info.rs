@@ -3,7 +3,7 @@ use super::{
     function_die::FunctionDie, registers, variable::*, DebugError, DebugRegisters, SourceLocation,
     VariableCache,
 };
-use crate::{core::Core, MemoryInterface, RegisterValue};
+use crate::{core::Core, MemoryInterface, RegisterValue, SubArray};
 use ::gimli::{Location, UnitOffset};
 use num_traits::Zero;
 
@@ -1604,14 +1604,11 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         match size {
                             1 => evaluation.resume_with_memory(gimli::Value::U8(buff[0]))?,
                             2 => {
-                                let val = (u16::from(buff[0]) << 8) | (u16::from(buff[1]));
+                                let val = u16::from_le_bytes(*buff.subarray());
                                 evaluation.resume_with_memory(gimli::Value::U16(val))?
                             }
                             4 => {
-                                let val = (u32::from(buff[0]) << 24)
-                                    | (u32::from(buff[1]) << 16)
-                                    | (u32::from(buff[2]) << 8)
-                                    | u32::from(buff[3]);
+                                let val = u32::from_le_bytes(*buff.subarray());
                                 evaluation.resume_with_memory(gimli::Value::U32(val))?
                             }
                             x => {

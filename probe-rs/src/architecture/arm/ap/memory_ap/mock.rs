@@ -6,7 +6,7 @@ use crate::architecture::arm::{
     dp::{DpAccess, DpRegister},
     ArmError, DpAddress,
 };
-use crate::DebugProbeError;
+use crate::{DebugProbeError, SubArray};
 use std::collections::HashMap;
 use std::convert::TryInto;
 
@@ -74,7 +74,7 @@ impl ApAccess for MockMemoryAp {
                         let bytes: [u8; 4] = self
                             .memory
                             .get(offset..offset + 4)
-                            .map(|v| v.try_into().unwrap())
+                            .map(|v| *v.subarray())
                             .unwrap_or([0u8; 4]);
 
                         (u32::from_le_bytes(bytes), 4)
@@ -83,7 +83,7 @@ impl ApAccess for MockMemoryAp {
                         let bytes = self
                             .memory
                             .get(offset..offset + 2)
-                            .map(|v| v.try_into().unwrap())
+                            .map(|v| *v.subarray())
                             .unwrap_or([0u8; 2]);
                         let value = u16::from_le_bytes(bytes);
                         (
