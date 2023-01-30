@@ -2175,6 +2175,7 @@ dependencies = [
  "git-version",
  "goblin",
  "indicatif",
+ "is-terminal",
  "log",
  "num-traits",
  "once_cell",

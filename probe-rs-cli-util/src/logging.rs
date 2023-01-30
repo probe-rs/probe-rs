@@ -1,6 +1,7 @@
 use colored::*;
 use env_logger::{Builder, Logger};
 use indicatif::ProgressBar;
+use is_terminal::IsTerminal;
 use log::{Level, LevelFilter, Log, Record};
 use once_cell::sync::Lazy;
 #[cfg(feature = "sentry")]
@@ -13,7 +14,7 @@ use simplelog::{CombinedLogger, SharedLogger};
 #[cfg(feature = "sentry")]
 use std::{borrow::Cow, error::Error, panic::PanicInfo, str::FromStr};
 use std::{
-    fmt,
+    fmt::{self},
     io::Write,
     sync::{
         atomic::{AtomicUsize, Ordering},
@@ -65,27 +66,54 @@ fn colored_level(level: Level) -> ColoredString {
     }
 }
 
-struct ShareableLogger(Logger);
+struct ShareableLogger {
+    env_logger: Logger,
+    output_is_terminal: bool,
+}
 
 impl Log for ShareableLogger {
     fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
-        metadata.level() <= self.0.filter()
+        metadata.level() <= self.env_logger.filter()
     }
 
     fn log(&self, record: &Record<'_>) {
         if self.enabled(record.metadata()) {
-            self.0.log(record);
+            // If the output is not an interactive terminal,
+            // indicatif will not display anything, so messages
+            // forwared to it would be swallowed.
+            if !self.output_is_terminal {
+                self.env_logger.log(record);
+            } else {
+                let guard = PROGRESS_BAR.write().unwrap();
+
+                // Print the log message above the progress bar, if one is present.
+                if let Some(pb) = &*guard {
+                    let target = record.target();
+                    let max_width = max_target_width(target);
+
+                    let level = colored_level(record.level());
+
+                    let target = Padded {
+                        value: target.bold(),
+                        width: max_width,
+                    };
+
+                    pb.println(format!("       {} {} > {}", level, target, record.args()));
+                } else {
+                    self.env_logger.log(record);
+                }
+            }
         }
     }
 
     fn flush(&self) {
-        self.0.flush();
+        self.env_logger.flush();
     }
 }
 
 impl SharedLogger for ShareableLogger {
     fn level(&self) -> LevelFilter {
-        self.0.filter()
+        self.env_logger.filter()
     }
 
     fn config(&self) -> Option<&simplelog::Config> {
@@ -137,14 +165,7 @@ pub fn init(level: Option<Level>) {
             width: max_width,
         });
 
-        let guard = PROGRESS_BAR.write().unwrap();
-        if let Some(pb) = &*guard {
-            pb.println(format!("       {} {} > {}", level, target, record.args()));
-        } else {
-            println!("       {} {} > {}", level, target, record.args());
-        }
-
-        Ok(())
+        writeln!(f, "       {} {} > {}", level, target, record.args())
     });
 
     // Sentry logging (all log levels except tracing (to not clog the server disk & internet sink)).
@@ -178,10 +199,18 @@ pub fn init(level: Option<Level>) {
         sentry
     };
 
+    let output_is_terminal = std::io::stderr().is_terminal();
+
     CombinedLogger::init(vec![
-        Box::new(ShareableLogger(log_builder.build())),
+        Box::new(ShareableLogger {
+            env_logger: log_builder.build(),
+            output_is_terminal,
+        }),
         #[cfg(feature = "sentry")]
-        Box::new(ShareableLogger(sentry.build())),
+        Box::new(ShareableLogger {
+            env_logger: sentry.build(),
+            output_is_terminal,
+        }),
     ])
     .unwrap();
 }

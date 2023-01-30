@@ -5,6 +5,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Log messages are printed to stderr, not stdout.
+
+### Fixed
+
+- If the output was redirect into a file, some log messages were not printed.
+
 ## [0.16.0]
 
 Released 2023-01-29
