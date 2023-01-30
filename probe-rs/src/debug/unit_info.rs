@@ -319,7 +319,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             gimli::AttributeValue::UnitRef(unit_ref) => {
                                 // Reference to a type, or an entry to another type or a type modifier which will point to another type.
                                 // Before we resolve that type tree, we need to resolve the current node's memory location.
-                                // This is because the memory location of the child variable depends on the type of the parent variable.
+                                // This is because the memory location of the type nodes and child variables often inherit this value.
                                 self.process_memory_location(
                                     &attributes_entry,
                                     parent_variable,
@@ -644,8 +644,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 if let VariantRole::Variant(discriminant) = child_variable.role {
                                     // Only process the discriminant variants or when we eventually   encounter the default 
                                     if parent_variable.role == VariantRole::VariantPart(discriminant) || discriminant == u64::MAX {
-                                        // Pass some key values through intermediate nodes to valid desccendants.
-                                        child_variable.memory_location = parent_variable.memory_location.clone();
+                                        self.process_memory_location(child_node.entry(), &parent_variable, &mut child_variable, Some(core), stack_frame_registers, frame_base)?;
                                         // Recursively process each relevant child node.
                                         child_variable = self.process_tree(child_node, child_variable, core, stack_frame_registers, frame_base, cache)?;
                                         if child_variable.is_valid() {
@@ -1404,16 +1403,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 child_variable.memory_location = location_from_expression;
                             }
 
-                            VariableLocation::Unknown => {
-                                if let Some(core) = core {
-                                    self.handle_memory_location_special_cases(
-                                        node_die.offset(),
-                                        child_variable,
-                                        parent_variable,
-                                        core,
-                                    );
-                                }
-                            }
+                            VariableLocation::Unknown => {}
                         }
                     }
                 },
@@ -1423,7 +1413,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     return Err(debug_error);
                 }
             }
-        } else if let Some(core) = core {
+        }
+        if let Some(core) = core {
             self.handle_memory_location_special_cases(
                 node_die.offset(),
                 child_variable,
@@ -1851,59 +1842,50 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             && parent_variable.memory_location.valid()
         {
             // Non-array members can inherit their memory location from their parent, but only if the parent has a valid memory location.
-            if let VariableType::Pointer(optional_pointer_name) = &parent_variable.type_name {
-                // If the parent is a pointer, then we need to check the conditions below, in case the parent memory location
-                //  is a pointer to a the referenced variable's value, or a pointer to the referenced variable's address.
-                let pointer_name = optional_pointer_name
-                    .clone()
-                    .unwrap_or_else(|| "Unnamed Pointer Type".to_string());
-                // if matches!(self.name.clone(), VariableName::Named(var_name) if var_name.starts_with('*'))
 
-                // Address Pointer Conditions:
-                // Pointer names that start with '*' (e.g. '*const u8')
-                // Overriding clippy, to defer the processing of `self.has_address_pointer()` until after the `||` conditions.
-                #[allow(clippy::blocks_in_if_conditions)]
-                if pointer_name.starts_with('*')
-                    || // Pointers to base types (includes &str types) 
-                        (matches!(child_variable.type_name, VariableType::Base(_))
-                        || matches!(child_variable.type_name.clone(), VariableType::Struct(type_name) if type_name.starts_with("&str")))
-                    || // Pointers to types with refrenced memory addresses (e.g. variants, generics, arrays, etc.)
-                        self.has_address_pointer(unit_ref).unwrap_or_else(|error| {
-                            child_variable.set_value(VariableValue::Error(
-                            format!("Failed to determine if a struct has variant or generic type fields: {}", error),
-                        ));
-                        false
-                        })
-                {
-                    match &parent_variable.memory_location {
-                        VariableLocation::Address(address) => {
-                            // Now, retrieve the location by reading the adddress pointed to by the parent variable.
-                            child_variable.memory_location = match core.read_word_32(*address) {
-                                Ok(memory_location) => {
-                                    VariableLocation::Address(memory_location as u64)
-                                }
-                                Err(error) => {
-                                    tracing::error!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location , error);
-                                    VariableLocation::Error(format!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location, error))
-                                }
-                            };
-                        }
-                        other => {
-                            child_variable.memory_location =
-                                VariableLocation::Unsupported(format!(
-                                    "Location {:?} not supported for referenced variables.",
-                                    other
-                                ));
-                        }
+            // Overriding clippy, to defer the processing of `self.has_address_pointer()` until after the `||` conditions.
+            #[allow(clippy::blocks_in_if_conditions)]
+            // Address Pointer Conditions (any of):
+            // 1. Variable names that start with '*' (e.g '*__0), AND the variable is a variant of the parent.
+            // 2. Pointer names that start with '*' (e.g. '*const u8')
+            // 3. Pointers to base types (includes &str types)
+            // 4. Pointers to variable names that start with `*` 
+            // 5. Pointers to types with refrenced memory addresses (e.g. variants, generics, arrays, etc.)
+            if (matches!(child_variable.name.clone(), VariableName::Named(var_name) if var_name.starts_with('*'))
+                    && matches!(parent_variable.role, VariantRole::VariantPart(_)))
+                || matches!(&parent_variable.type_name, VariableType::Pointer(Some(pointer_name)) if pointer_name.starts_with('*'))
+                || (matches!(&parent_variable.type_name, VariableType::Pointer(_))
+                    && (matches!(child_variable.type_name, VariableType::Base(_))
+                        || matches!(child_variable.type_name.clone(), VariableType::Struct(type_name) if type_name.starts_with("&str"))
+                        || matches!(child_variable.name.clone(), VariableName::Named(var_name) if var_name.starts_with('*'))
+                        || self.has_address_pointer(unit_ref).unwrap_or_else(|error| {
+                            child_variable.set_value(VariableValue::Error(format!("Failed to determine if a struct has variant or generic type fields: {}", error)));
+                            false
+                        })))
+            {
+                match &parent_variable.memory_location {
+                    VariableLocation::Address(address) => {
+                        // Now, retrieve the location by reading the adddress pointed to by the parent variable.
+                        child_variable.memory_location = match core.read_word_32(*address) {
+                            Ok(memory_location) => {
+                                VariableLocation::Address(memory_location as u64)
+                            }
+                            Err(error) => {
+                                tracing::debug!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location , error);
+                                VariableLocation::Error(format!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location, error))
+                            }
+                        };
                     }
-                } else {
-                    // If the parent variable is a pointer, but the child variable is not the dereferenced value,
-                    //  i.e. It is an intermediate node before the dereferenced pointer,
-                    //  then it can inherit it's memory location from it's parent.
-                    child_variable.memory_location = parent_variable.memory_location.clone();
+                    other => {
+                        child_variable.memory_location = VariableLocation::Unsupported(format!(
+                            "Location {:?} not supported for referenced variables.",
+                            other
+                        ));
+                    }
                 }
             } else {
-                // If the parent variable is not a pointer, then it can inherit it's memory location from it's parent.
+                // If the parent variable is not a pointer, or it is a pointer to the actual data location 
+                // (not the address of the data location) then it can inherit it's memory location from it's parent.
                 child_variable.memory_location = parent_variable.memory_location.clone();
             }
         }
@@ -1922,6 +1904,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         ) {
             return Ok(true);
         }
+        // If the child node has a variant_part, then the variant will be a pointer to the address of the referenced variable.
         let mut child_nodes = entry_node.children();
         while let Some(child_node) = child_nodes.next()? {
             if child_node.entry().tag() == gimli::DW_TAG_variant_part {
