@@ -487,9 +487,9 @@ dependencies = [
 
 [[package]]
 name = "cmsis-pack"
-version = "0.6.1"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a95e2d13a25984277fb60441b26e56793e372a949ae19f4c4d489cb47e4d8682"
+checksum = "cacb9e006b34fae90b17594aef8fcf03e1fe909c00ce021ff0900d98c5cd5bc4"
 dependencies = [
  "anyhow",
  "bytes",
