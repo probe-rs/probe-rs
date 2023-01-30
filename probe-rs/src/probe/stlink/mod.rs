@@ -297,7 +297,7 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
                     Ok(Some(2. * (a1 as f32) * 1.2 / (a0 as f32)))
                 } else {
                     // Should never happen
-                    Err(StlinkError::VoltageDivisionByZero.into())
+                    Err(StlinkError::VoltageDivisionByZero)
                 }
             })
             .map_err(|e| e.into())
@@ -860,7 +860,7 @@ impl<D: StLinkUsb> StLink<D> {
 
         let addbytes = address.to_le_bytes();
 
-        let value = retry_on_wait(|| {
+        retry_on_wait(|| {
             self.device.write(
                 &[
                     commands::JTAG_COMMAND,
@@ -883,7 +883,7 @@ impl<D: StLinkUsb> StLink<D> {
 
         tracing::debug!("Read ok");
 
-        Ok(value)
+        Ok(())
     }
 
     fn read_mem_8bit(

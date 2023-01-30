@@ -235,8 +235,7 @@ impl StLinkUsb for StLinkUsbDevice {
             return Err(StlinkError::NotEnoughBytesWritten {
                 is: written_bytes,
                 should: CMD_LEN,
-            }
-            .into());
+            });
         }
 
         // Optional data out phase.
