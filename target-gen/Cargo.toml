@@ -36,7 +36,7 @@ anyhow = "1.0.57"
 reqwest = { version = "0.11.10", features = ["json", "blocking"] }
 serde = { version = "1", features = ["derive"] }
 futures = "0.3.21"
-tokio = { version = "1.18.0", features = ["macros", "rt", "rt-multi-thread"] }
+tokio = { version = "1.25.0", features = ["macros", "rt", "rt-multi-thread"] }
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 xshell = { version = "0.2", default-features = false }
 cargo_metadata = { version = "0.15", default-features = false }
