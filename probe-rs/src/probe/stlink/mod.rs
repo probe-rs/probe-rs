@@ -802,7 +802,8 @@ impl<D: StLinkUsb> StLink<D> {
 
     /// Writes a value to the DAP register on the specified port and address.
     fn write_register(&mut self, port: u16, addr: u8, value: u32) -> Result<(), DebugProbeError> {
-        if port == DP_PORT && addr & 0xf0 != 0 {
+        if port == DP_PORT && addr & 0xf0 != 0 && !self.supports_dp_bank_selection() {
+            tracing::warn!("Trying to access DP register at address {addr:#x}, which is not supported on ST-Links.");
             return Err(StlinkError::BanksNotAllowedOnDPRegister.into());
         }
 
@@ -1120,9 +1121,12 @@ impl<D: StLinkUsb> SwoAccess for StLink<D> {
 pub(crate) enum StlinkError {
     #[error("Invalid voltage values returned by probe.")]
     VoltageDivisionByZero,
-    #[error("Probe is an unknown mode.")]
+    #[error("Probe is in an unknown mode.")]
     UnknownMode,
-    #[error("STLink does not support accessing banked DP registers.")]
+    #[error(
+        "Current version of the STLink firmware does not support accessing banked DP registers. \
+         Upgrading the firmware to the newest version might fix this."
+    )]
     BanksNotAllowedOnDPRegister,
     #[error("Not enough bytes written.")]
     NotEnoughBytesWritten { is: usize, should: usize },
@@ -1249,6 +1253,7 @@ impl DapAccess for StlinkArmDebug {
         Ok(result)
     }
 
+    #[tracing::instrument(skip(self))]
     fn write_raw_dp_register(
         &mut self,
         dp: DpAddress,

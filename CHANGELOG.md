@@ -5,6 +5,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- st-link: Support reading banked DP registers if firmware is new enough to support it.
+
 ## [0.16.0]
 
 Released 2023-01-29
