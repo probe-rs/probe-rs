@@ -54,7 +54,7 @@ impl ApAccess for MockMemoryAp {
     /// Mocks the read_register method of a AP.
     ///
     /// Returns an Error if any bad instructions or values are chosen.
-    fn read_ap_register<PORT, R>(&mut self, _port: impl Into<PORT>) -> Result<R, ArmError>
+    fn read_ap_register<PORT, R>(&mut self, _port: PORT) -> Result<R, ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
@@ -227,6 +227,8 @@ impl ApAccess for MockMemoryAp {
         PORT: AccessPort,
         R: ApRegister<PORT>,
     {
+        let port = port.into();
+
         for value in values {
             let register_value: R = self.read_ap_register(port.clone())?;
             *value = register_value.into()

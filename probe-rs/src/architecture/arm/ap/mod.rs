@@ -87,7 +87,7 @@ pub trait ApRegister<PORT: AccessPort>: Register + Sized {}
 /// A trait to be implemented on access port types.
 ///
 /// Use the [`define_ap!`] macro to implement this.
-pub trait AccessPort {
+pub trait AccessPort: Clone {
     /// Returns the address of the access port.
     fn ap_address(&self) -> ApAddress;
 }
@@ -95,7 +95,7 @@ pub trait AccessPort {
 /// A trait to be implemented by access port drivers to implement access port operations.
 pub trait ApAccess {
     /// Read a register of the access port.
-    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, ArmError>
+    fn read_ap_register<PORT, R>(&mut self, port: PORT) -> Result<R, ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>;
@@ -136,15 +136,17 @@ pub trait ApAccess {
 }
 
 impl<T: DapAccess> ApAccess for T {
-    fn read_ap_register<PORT, R>(&mut self, port: impl Into<PORT>) -> Result<R, ArmError>
+    #[tracing::instrument(skip(self, port), fields(ap = port.ap_address().ap, register = R::NAME, value))]
+    fn read_ap_register<PORT, R>(&mut self, port: PORT) -> Result<R, ArmError>
     where
         PORT: AccessPort,
         R: ApRegister<PORT>,
     {
-        tracing::debug!("Reading register {}", R::NAME);
-        let raw_value = self.read_raw_ap_register(port.into().ap_address(), R::ADDRESS)?;
+        let raw_value = self.read_raw_ap_register(port.ap_address(), R::ADDRESS)?;
 
-        tracing::debug!("Read register    {}, value=0x{:x?}", R::NAME, raw_value);
+        tracing::Span::current().record("value", raw_value);
+
+        tracing::debug!("Register read succesful");
 
         Ok(raw_value.try_into()?)
     }
@@ -216,6 +218,7 @@ where
 
 /// Return a Vec of all valid access ports found that the target connected to the debug_probe.
 /// Can fail silently under the hood testing an ap that doesnt exist and would require cleanup.
+#[tracing::instrument(skip(debug_port))]
 pub(crate) fn valid_access_ports<AP>(debug_port: &mut AP, dp: DpAddress) -> Vec<GenericAp>
 where
     AP: ApAccess,
