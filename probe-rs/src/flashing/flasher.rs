@@ -194,14 +194,29 @@ impl<'session> Flasher<'session> {
 
     pub(super) fn run_erase_all(&mut self) -> Result<(), FlashError> {
         if self.session.has_sequence_erase_all() {
-            self.session
-                .sequence_erase_all()
-                .map_err(|e| FlashError::ChipEraseFailed {
-                    source: Box::new(e),
-                })?;
-            // We need to reload the flasher, since the debug sequence erase
-            // may have invalidated any previously invalid state
-            self.load()
+            self.progress.started_erasing();
+
+            fn run(flasher: &mut Flasher) -> Result<(), FlashError> {
+                flasher
+                    .session
+                    .sequence_erase_all()
+                    .map_err(|e| FlashError::ChipEraseFailed {
+                        source: Box::new(e),
+                    })?;
+                // We need to reload the flasher, since the debug sequence erase
+                // may have invalidated any previously invalid state
+                flasher.load()
+            }
+
+            let result = run(self);
+
+            if result.is_ok() {
+                self.progress.finished_erasing();
+            } else {
+                self.progress.failed_erasing();
+            }
+
+            result
         } else {
             self.run_erase(|active| active.erase_all())
         }

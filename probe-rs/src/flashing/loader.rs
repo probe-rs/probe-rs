@@ -315,10 +315,6 @@ impl FlashLoader {
             if do_chip_erase {
                 tracing::debug!("    Doing chip erase...");
                 flasher.run_erase_all()?;
-
-                if let Some(progress) = &options.progress {
-                    progress.finished_erasing();
-                }
             }
 
             let mut do_use_double_buffering = flasher.double_buffering_supported();
