@@ -194,6 +194,8 @@ impl<'session> Flasher<'session> {
 
     pub(super) fn run_erase_all(&mut self) -> Result<(), FlashError> {
         if self.session.has_sequence_erase_all() {
+            self.progress.started_erasing();
+
             self.session
                 .sequence_erase_all()
                 .map_err(|e| FlashError::ChipEraseFailed {
