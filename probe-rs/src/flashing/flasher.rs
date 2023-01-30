@@ -201,7 +201,15 @@ impl<'session> Flasher<'session> {
                 })?;
             // We need to reload the flasher, since the debug sequence erase
             // may have invalidated any previously invalid state
-            self.load()
+            let result = self.load();
+
+            if result.is_ok() {
+                self.progress.finished_erasing();
+            } else {
+                self.progress.failed_erasing();
+            }
+
+            result
         } else {
             self.run_erase(|active| active.erase_all())
         }
