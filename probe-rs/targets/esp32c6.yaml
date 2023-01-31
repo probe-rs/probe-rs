@@ -1,0 +1,59 @@
+---
+name: esp32c6
+manufacturer: null
+variants:
+  - name: esp32c6
+    part: null
+    cores:
+      - name: main
+        type: riscv
+        core_access_options: !Riscv {}
+    memory_map:
+      - !Nvm
+        range: #16 Mb Max addressable Flash size
+          start: 0x0
+          end: 0x01000000
+        is_boot_memory: true
+        cores:
+          - main
+      - !Nvm
+        range: # External Flash on Instruction/Data Bus
+          start: 0x42000000
+          end: 0x42FFFFFF
+        is_boot_memory: false
+        cores:
+          - main
+      - !Ram
+        range:
+          start: 0x40800000
+          end: 0x4087FFFF
+        is_boot_memory: false
+        cores:
+          - main
+    flash_algorithms:
+      - esp32c6-flashloader
+flash_algorithms:
+  - name: esp32c6-flashloader
+    description: A flasher loader for the esp32c6.
+    default: true
+    cores:
+      - main
+    instructions: QREGxjcFgUCDRUUGAUWF4QFFlwB//+eAoByXAH//54CgExHltwWBQAVGI4LFBrJAQQGCgDGBFwN//2cA4xAXA3//ZwBjDhN3NgABxxMFoAqCgK6GsoU2hhcDf/9nAEMPAUWCgAAAAAA=
+    load_address: 0x40810000
+    pc_init: 0x0
+    pc_uninit: 0x60
+    pc_program_page: 0x46
+    pc_erase_sector: 0x34
+    pc_erase_all: 0x3e
+    data_section_offset: 0x40810068
+    flash_properties:
+      address_range:
+        start: 0x0
+        end: 0x4000000
+      page_size: 0x800
+      erased_byte_value: 0xff
+      program_page_timeout: 1000
+      erase_sector_timeout: 2000
+      sectors:
+        - size: 0x1000
+          address: 0x0
