@@ -32,7 +32,7 @@ probe-rs-rtt = { path = "rtt", version = "0.14.2" }
 probe-rs-target = { path = "probe-rs-target", version = "0.16.0" }
 gdb-server = { path = "gdb-server", version = "0.16.0" }
 
-log = "0.4.6"
+log = "0.4.17"
 pretty_env_logger = "0.4.0"
 thiserror = "1.0"
-anyhow = "1.0.34"
+anyhow = "1.0.68"
