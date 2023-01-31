@@ -200,7 +200,9 @@ impl Session {
 
                 {
                     // For each core, setup debugging
-                    for core in &target.cores {
+                    for (id, core) in target.cores.iter().enumerate() {
+                        let core_span = tracing::debug_span!("debug_setup", core_id = id).entered();
+
                         let arm_core_access_options = match &core.core_access_options {
                             probe_rs_target::CoreAccessOptions::Arm(opt) => opt,
                             probe_rs_target::CoreAccessOptions::Riscv(_) => {
@@ -230,6 +232,8 @@ impl Session {
                             arm_core_access_options.cti_base,
                         )?;
                         drop(core_start_sequence);
+
+                        drop(core_span);
                     }
                 }
 

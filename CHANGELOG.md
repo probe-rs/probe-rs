@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- st-link: Support reading banked DP registers if firmware is new enough to support it.
+probe-rs: Emit chip erase finished/failed event (#1470)
+
+The finished/failed event would only be emitted when a sectorwise erase would be performed.
+Now the events are correctly emitted.
+probe-rs: Emit chip erase started and finished/failed events correctly (#1470)
+
+- Add flashing and debugging support for the ESP32C6 (#1476)
+
+## [0.16.0]
+
+Released 2023-01-29
+
+probe-rs library is unchanged, version number is increased to keep in sync with other
+probe-rs packages.
+
+## [0.15.0]
+
+Released 2023-01-28
+
+### Added
+
 - target-gen: Add new `--fixed-load-address` flag to the `target-gen elf` subcommand. (#1419)
 
   This can be used when the flash algorithm needs to be loaded at a specific address.
@@ -16,15 +38,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   Check if the flash algorithm supports RTT, and if it does, store the RTT control block
   address in the target YAML file.
-  
+
+- probe-rs: Read RTT during flashing procedures if the algorithm supports RTT.
+
+  This enables better debugging for flash-algorithms and should encourage development of said algorithms.
+
+- Add support for FT4232HL probe.
+
+- probe-rs-cli: Add `--log-file` option to specify where the log file should be placed.
+
+- target-gen: Add a command which enables the easy development and debugging of a flash algorithm.
+
+  `target-gen test` is a new command to automatically upload, run, print RTT messages and test
+  a flash algorithm. Have a look at the [template](https://github.com/probe-rs/flash-algorithm-template)
+  to create a new flash algorithm.
+
 ### Changed
 
 - cmsisdap: Increased read timeout from 100ms to 1000ms.
+- rtt: Moved RTT to the probe-rs library instead of having it in its own library. (#1411)
 
 ### Fixed
 
 - probe-rs: Avoid nested calls to tracing macros, otherwise filtering doesn't work properly. (#1415)
 
+- probe-rs-cli: Reduce RTT polling frequency in run command to avoid USB instability issues.
 
 ## [0.14.2]
 
@@ -714,10 +752,12 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.14.2...master
-[v0.14.2]: https://github.com/probe-rs/probe-rs/compare/v0.14.1...v0.14.2
-[v0.14.1]: https://github.com/probe-rs/probe-rs/compare/v0.14.0...v0.14.1
-[v0.14.0]: https://github.com/probe-rs/probe-rs/compare/v0.13.0...v0.14.0
+[unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.16.0...master
+[0.16.0]: https://github.com/probe-rs/probe-rs/compare/v0.15.0...v0.16.0
+[0.15.0]: https://github.com/probe-rs/probe-rs/compare/v0.14.2...v0.15.0
+[0.14.2]: https://github.com/probe-rs/probe-rs/compare/v0.14.1...v0.14.2
+[0.14.1]: https://github.com/probe-rs/probe-rs/compare/v0.14.0...v0.14.1
+[0.14.0]: https://github.com/probe-rs/probe-rs/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/probe-rs/probe-rs/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/probe-rs/probe-rs/compare/v0.11.0...v0.12.0
 [0.11.0]: https://github.com/probe-rs/probe-rs/compare/v0.10.1...v0.11.0

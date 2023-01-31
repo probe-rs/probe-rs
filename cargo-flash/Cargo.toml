@@ -22,7 +22,6 @@ sentry = ["probe-rs-cli-util/sentry"]
 
 [dependencies]
 env_logger = "0.10"
-lazy_static = "1"
 colored = "2"
 probe-rs = { workspace = true }
 probe-rs-cli-util = { workspace = true, default-features = false, features = [
@@ -52,4 +51,4 @@ replace = "## [Unreleased]\n\n## [{{version}}]\n\nReleased {{date}}"
 [[package.metadata.release.pre-release-replacements]]
 file = "CHANGELOG.md"
 search = "\\[unreleased\\]: https://github.com/probe-rs/cargo-flash/compare/v([a-z0-9.-]+)\\.\\.\\.master"
-replace = "[unreleased]: https://github.com/probe-rs/cargo-flash/compare/v{{version}}...master\n[v{{version}}]: https://github.com/probe-rs/cargo-flash/compare/v$1...v{{version}}"
+replace = "[unreleased]: https://github.com/probe-rs/cargo-flash/compare/v{{version}}...master\n[{{version}}]: https://github.com/probe-rs/cargo-flash/compare/v$1...v{{version}}"

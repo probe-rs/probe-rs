@@ -26,8 +26,8 @@ ftdi = ["probe-rs/ftdi"]
 probe-rs = { workspace = true }
 log = { workspace = true }
 anyhow = { workspace = true }
-itertools = "0.10.3"
-gdbstub = "0.6.2"
+itertools = "0.10.5"
+gdbstub = "0.6.3"
 
 [dev-dependencies]
-insta = "1.10.0"
+insta = "1.26.0"

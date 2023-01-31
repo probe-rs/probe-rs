@@ -7,6 +7,7 @@ use super::{
 use crate::config::NvmRegion;
 use crate::memory::MemoryInterface;
 use crate::{core::RegisterFile, session::Session, Core, InstructionSet};
+use std::time::Instant;
 use std::{fmt::Debug, time::Duration};
 
 pub(super) trait Operation {
@@ -52,6 +53,7 @@ pub(super) struct Flasher<'session> {
     session: &'session mut Session,
     core_index: usize,
     flash_algorithm: FlashAlgorithm,
+    progress: FlashProgress,
 }
 
 impl<'session> Flasher<'session> {
@@ -59,6 +61,7 @@ impl<'session> Flasher<'session> {
         session: &'session mut Session,
         core_index: usize,
         raw_flash_algorithm: &RawFlashAlgorithm,
+        progress: Option<FlashProgress>,
     ) -> Result<Self, FlashError> {
         let target = session.target();
 
@@ -87,6 +90,7 @@ impl<'session> Flasher<'session> {
             session,
             core_index,
             flash_algorithm,
+            progress: progress.unwrap_or(FlashProgress::new(|_| {})),
         };
 
         this.load()?;
@@ -163,6 +167,8 @@ impl<'session> Flasher<'session> {
         &mut self,
         clock: Option<u32>,
     ) -> Result<ActiveFlasher<'_, O>, FlashError> {
+        #[cfg(feature = "rtt")]
+        let memory_map = self.session.target().memory_map.clone();
         // Attach to memory and core.
         let core = self
             .session
@@ -172,6 +178,11 @@ impl<'session> Flasher<'session> {
         tracing::debug!("Preparing Flasher for operation {}", O::operation_name());
         let mut flasher = ActiveFlasher::<O> {
             core,
+            #[cfg(feature = "rtt")]
+            rtt: None,
+            #[cfg(feature = "rtt")]
+            memory_map,
+            progress: self.progress.clone(),
             flash_algorithm: self.flash_algorithm.clone(),
             _operation: core::marker::PhantomData,
         };
@@ -183,14 +194,29 @@ impl<'session> Flasher<'session> {
 
     pub(super) fn run_erase_all(&mut self) -> Result<(), FlashError> {
         if self.session.has_sequence_erase_all() {
-            self.session
-                .sequence_erase_all()
-                .map_err(|e| FlashError::ChipEraseFailed {
-                    source: Box::new(e),
-                })?;
-            // We need to reload the flasher, since the debug sequence erase
-            // may have invalidated any previously invalid state
-            self.load()
+            self.progress.started_erasing();
+
+            fn run(flasher: &mut Flasher) -> Result<(), FlashError> {
+                flasher
+                    .session
+                    .sequence_erase_all()
+                    .map_err(|e| FlashError::ChipEraseFailed {
+                        source: Box::new(e),
+                    })?;
+                // We need to reload the flasher, since the debug sequence erase
+                // may have invalidated any previously invalid state
+                flasher.load()
+            }
+
+            let result = run(self);
+
+            if result.is_ok() {
+                self.progress.finished_erasing();
+            } else {
+                self.progress.failed_erasing();
+            }
+
+            result
         } else {
             self.run_erase(|active| active.erase_all())
         }
@@ -245,7 +271,6 @@ impl<'session> Flasher<'session> {
         restore_unwritten_bytes: bool,
         enable_double_buffering: bool,
         skip_erasing: bool,
-        progress: &FlashProgress,
     ) -> Result<(), FlashError> {
         tracing::debug!("Starting program procedure.");
         // Convert the list of flash operations into flash sectors and pages.
@@ -254,8 +279,7 @@ impl<'session> Flasher<'session> {
             &self.flash_algorithm,
             restore_unwritten_bytes,
         )?;
-
-        progress.initialized(flash_layout.clone());
+        self.progress.initialized(flash_layout.clone());
 
         tracing::debug!("Double Buffering enabled: {:?}", enable_double_buffering);
         tracing::debug!(
@@ -264,7 +288,7 @@ impl<'session> Flasher<'session> {
         );
 
         // Read all fill areas from the flash.
-        progress.started_filling();
+        self.progress.started_filling();
 
         if restore_unwritten_bytes {
             let fills = flash_layout.fills().to_vec();
@@ -275,28 +299,28 @@ impl<'session> Flasher<'session> {
 
                 // If we encounter an error, catch it, gracefully report the failure and return the error.
                 if result.is_err() {
-                    progress.failed_filling();
+                    self.progress.failed_filling();
                     return result;
                 } else {
-                    progress.page_filled(fill.size(), t.elapsed());
+                    self.progress.page_filled(fill.size(), t.elapsed());
                 }
             }
         }
 
         // We successfully finished filling.
-        progress.finished_filling();
+        self.progress.finished_filling();
 
         // Skip erase if necessary
         if !skip_erasing {
             // Erase all necessary sectors
-            self.sector_erase(&flash_layout, progress)?;
+            self.sector_erase(&flash_layout)?;
         }
 
         // Flash all necessary pages.
         if self.double_buffering_supported() && enable_double_buffering {
-            self.program_double_buffer(&flash_layout, progress)?;
+            self.program_double_buffer(&flash_layout)?;
         } else {
-            self.program_simple(&flash_layout, progress)?;
+            self.program_simple(&flash_layout)?;
         };
 
         Ok(())
@@ -323,12 +347,8 @@ impl<'session> Flasher<'session> {
     }
 
     /// Programs the pages given in `flash_layout` into the flash.
-    fn program_simple(
-        &mut self,
-        flash_layout: &FlashLayout,
-        progress: &FlashProgress,
-    ) -> Result<(), FlashError> {
-        progress.started_programming();
+    fn program_simple(&mut self, flash_layout: &FlashLayout) -> Result<(), FlashError> {
+        self.progress.started_programming();
 
         let mut t = std::time::Instant::now();
         let result = self.run_program(|active| {
@@ -339,28 +359,25 @@ impl<'session> Flasher<'session> {
                         page_address: page.address(),
                         source: Box::new(error),
                     })?;
-                progress.page_programmed(page.size(), t.elapsed());
+                active.progress.page_programmed(page.size(), t.elapsed());
+
                 t = std::time::Instant::now();
             }
             Ok(())
         });
 
         if result.is_ok() {
-            progress.finished_programming();
+            self.progress.finished_programming();
         } else {
-            progress.failed_programming();
+            self.progress.failed_programming();
         }
 
         result
     }
 
     /// Perform an erase of all sectors given in `flash_layout`.
-    fn sector_erase(
-        &mut self,
-        flash_layout: &FlashLayout,
-        progress: &FlashProgress,
-    ) -> Result<(), FlashError> {
-        progress.started_erasing();
+    fn sector_erase(&mut self, flash_layout: &FlashLayout) -> Result<(), FlashError> {
+        self.progress.started_erasing();
 
         let mut t = std::time::Instant::now();
         let result = self.run_erase(|active| {
@@ -371,17 +388,17 @@ impl<'session> Flasher<'session> {
                         sector_address: sector.address(),
                         source: Box::new(e),
                     })?;
+                active.progress.sector_erased(sector.size(), t.elapsed());
 
-                progress.sector_erased(sector.size(), t.elapsed());
                 t = std::time::Instant::now();
             }
             Ok(())
         });
 
         if result.is_ok() {
-            progress.finished_erasing();
+            self.progress.finished_erasing();
         } else {
-            progress.failed_erasing();
+            self.progress.failed_erasing();
         }
 
         result
@@ -396,14 +413,9 @@ impl<'session> Flasher<'session> {
     ///
     /// This is only possible if the RAM is large enough to
     /// fit at least two page buffers. See [Flasher::double_buffering_supported].
-    fn program_double_buffer(
-        &mut self,
-        flash_layout: &FlashLayout,
-        progress: &FlashProgress,
-    ) -> Result<(), FlashError> {
+    fn program_double_buffer(&mut self, flash_layout: &FlashLayout) -> Result<(), FlashError> {
         let mut current_buf = 0;
-
-        progress.started_programming();
+        self.progress.started_programming();
 
         let mut t = std::time::Instant::now();
         let result = self.run_program(|active| {
@@ -423,7 +435,8 @@ impl<'session> Flasher<'session> {
                         })?;
 
                 last_page_address = page.address();
-                progress.page_programmed(page.size(), t.elapsed());
+                active.progress.page_programmed(page.size(), t.elapsed());
+
                 t = std::time::Instant::now();
                 if result != 0 {
                     return Err(FlashError::RoutineCallFailed {
@@ -461,9 +474,10 @@ impl<'session> Flasher<'session> {
         });
 
         if result.is_ok() {
-            progress.finished_programming();
+            self.progress.finished_programming();
         } else {
-            progress.failed_programming();
+            self.progress.failed_programming();
+
             result?;
         }
 
@@ -499,6 +513,11 @@ fn into_reg(val: u64) -> Result<u32, FlashError> {
 
 pub(super) struct ActiveFlasher<'probe, O: Operation> {
     core: Core<'probe>,
+    #[cfg(feature = "rtt")]
+    rtt: Option<crate::rtt::Rtt>,
+    #[cfg(feature = "rtt")]
+    memory_map: Vec<MemoryRegion>,
+    progress: FlashProgress,
     flash_algorithm: FlashAlgorithm,
     _operation: core::marker::PhantomData<O>,
 }
@@ -644,6 +663,30 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         // Resume target operation.
         self.core.run()?;
 
+        #[cfg(feature = "rtt")]
+        if let Some(rtt_address) = self.flash_algorithm.rtt_control_block {
+            let now = std::time::Instant::now();
+            while self.rtt.is_none() {
+                std::thread::sleep(Duration::from_millis(1));
+                let rtt = match crate::rtt::Rtt::attach_region(
+                    &mut self.core,
+                    &self.memory_map,
+                    &crate::rtt::ScanRegion::Exact(rtt_address as u32),
+                ) {
+                    Ok(rtt) => Some(rtt),
+                    Err(error) => {
+                        tracing::error!("RTT could not be initialized: {error}");
+                        None
+                    }
+                };
+                self.rtt = rtt;
+
+                if self.rtt.is_some() || now.elapsed() > std::time::Duration::from_secs(1) {
+                    break;
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -652,10 +695,53 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         tracing::debug!("Waiting for routine call completion.");
         let regs = self.core.registers();
 
-        self.core.wait_for_core_halted(timeout)?;
+        // Wait until halted state is active again.
+        let start = Instant::now();
+
+        let mut timeout_ocurred = true;
+        while start.elapsed() < timeout {
+            if self.core.core_halted()? {
+                timeout_ocurred = false;
+                // Once the core is halted we know for sure all RTT data is written
+                // so we can read all of it.
+                #[cfg(feature = "rtt")]
+                self.read_rtt()?;
+                break;
+            }
+
+            // Periodically read RTT.
+            #[cfg(feature = "rtt")]
+            self.read_rtt()?;
+
+            std::thread::sleep(Duration::from_millis(1));
+        }
+
+        if timeout_ocurred {
+            return Err(FlashError::Core(crate::Error::Timeout));
+        }
 
         let r: u32 = self.core.read_core_reg(regs.result_register(0).id)?;
         Ok(r)
+    }
+
+    #[cfg(feature = "rtt")]
+    fn read_rtt(&mut self) -> Result<(), FlashError> {
+        if let Some(rtt) = &mut self.rtt {
+            for channel in rtt.up_channels().iter() {
+                let mut buffer = vec![0; channel.buffer_size()];
+                match channel.read(&mut self.core, &mut buffer) {
+                    Ok(read) if read > 0 => {
+                        let message = String::from_utf8_lossy(&buffer[..read]).to_string();
+                        let channel = channel.name().unwrap_or("unnamed");
+                        tracing::debug!("RTT({channel}): {message}");
+                        self.progress.message(message);
+                    }
+                    Ok(_) => (),
+                    Err(error) => tracing::debug!("Reading RTT failed: {error}"),
+                };
+            }
+        }
+        Ok(())
     }
 }
 

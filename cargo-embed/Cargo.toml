@@ -23,17 +23,15 @@ gdb-server = { workspace = true }
 probe-rs-cli-util = { workspace = true, default-features = false, features = [
     "anyhow",
 ] }
-probe-rs-rtt = { workspace = true }
 
 git-version = "0.3.5"
 env_logger = "0.10.0"
 log = { version = "0.4.17", features = ["serde"] }
-lazy_static = "1.4.0"
 colored = "2.0.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0.91" }
 figment = { version = "0.10", features = ["toml", "json", "yaml", "env"] }
-crossterm = "<= 0.25.1"
+crossterm = "<= 0.26.1"
 goblin = "0.6.0"
 tui = { version = "0.19.0", default-features = false, features = ["crossterm"] }
 anyhow = "1.0.68"
@@ -54,4 +52,4 @@ replace = "## [Unreleased]\n\n## [{{version}}]\n\nReleased {{date}}"
 [[package.metadata.release.pre-release-replacements]]
 file = "CHANGELOG.md"
 search = "\\[unreleased\\]: https://github.com/probe-rs/cargo-embed/compare/v([a-z0-9.-]+)\\.\\.\\.master"
-replace = "[unreleased]: https://github.com/probe-rs/cargo-embed/compare/v{{version}}...master\n[v{{version}}]: https://github.com/probe-rs/cargo-embed/compare/v$1...v{{version}}"
+replace = "[unreleased]: https://github.com/probe-rs/cargo-embed/compare/v{{version}}...master\n[{{version}}]: https://github.com/probe-rs/cargo-embed/compare/v$1...v{{version}}"

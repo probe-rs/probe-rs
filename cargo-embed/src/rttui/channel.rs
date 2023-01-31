@@ -1,7 +1,8 @@
 use std::fmt;
 
+use probe_rs::rtt::{ChannelMode, DownChannel, UpChannel};
 use probe_rs::Core;
-use probe_rs_rtt::{ChannelMode, DownChannel, UpChannel};
+use time::UtcOffset;
 use time::{macros::format_description, OffsetDateTime};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -128,7 +129,7 @@ impl ChannelState {
     ///
     /// # Errors
     /// This function can return a [`time::Error`] if getting the local time or formatting a timestamp fails.
-    pub fn poll_rtt(&mut self, core: &mut Core) -> Result<(), time::Error> {
+    pub fn poll_rtt(&mut self, core: &mut Core, offset: UtcOffset) -> Result<(), time::Error> {
         // TODO: Proper error handling.
         let count = if let Some(channel) = self.up_channel.as_mut() {
             match channel.read(core, self.rtt_buffer.0.as_mut()) {
@@ -148,7 +149,7 @@ impl ChannelState {
 
         match self.format {
             DataFormat::String => {
-                let now = OffsetDateTime::now_local()?;
+                let now = OffsetDateTime::now_utc().to_offset(offset);
 
                 // First, convert the incoming bytes to UTF8.
                 let mut incoming = String::from_utf8_lossy(&self.rtt_buffer.0[..count]).to_string();
@@ -170,7 +171,9 @@ impl ChannelState {
                 // matters.
                 for (i, line) in incoming.split_terminator('\n').enumerate() {
                     if self.show_timestamps && (last_line_done || i > 0) {
-                        let ts = now.format(format_description!("%H:%M:%S%.3f"))?;
+                        let ts = now.format(format_description!(
+                            "[hour repr:24]:[minute]:[second].[subsecond digits:3]"
+                        ))?;
                         self.messages.push(format!("{ts} {line}"));
                     } else {
                         self.messages.push(line.to_string());

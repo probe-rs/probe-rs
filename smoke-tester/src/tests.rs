@@ -163,7 +163,7 @@ pub fn test_flashing(
     });
 
     let mut options = DownloadOptions::default();
-    options.progress = Some(&progress);
+    options.progress = Some(progress);
 
     println_test_status!(tracker, blue, "Starting flashing test");
     println_test_status!(tracker, blue, "Binary: {}", test_binary.display());

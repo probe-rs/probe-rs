@@ -97,7 +97,7 @@ pub enum DebugProbeError {
     Usb(#[source] Option<Box<dyn std::error::Error + Send + Sync>>),
     /// The firmware of the probe is outdated. This error is especially prominent with ST-Links.
     /// You can use their official updater utility to update your probe firmware.
-    #[error("The firmware on the probe is outdated")]
+    #[error("The firmware on the probe is outdated, and not supported by probe-rs.")]
     ProbeFirmwareOutdated,
     /// An error which is specific to the debug probe in use occurred.
     #[error("An error specific to a probe type occurred")]

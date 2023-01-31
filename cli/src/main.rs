@@ -28,7 +28,7 @@ use probe_rs_cli_util::{
 use rustyline::Editor;
 
 use anyhow::{Context, Result};
-use time::OffsetDateTime;
+use time::{OffsetDateTime, UtcOffset};
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::{
     fmt::format::FmtSpan, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt,
@@ -47,7 +47,18 @@ use std::{num::ParseIntError, path::Path};
     version = meta::CARGO_VERSION,
     long_version = meta::LONG_VERSION
 )]
-enum Cli {
+struct Cli {
+    /// Location for log file
+    ///
+    /// If no location is specified, the log file will be stored in a default directory.
+    #[clap(long, global = true)]
+    log_file: Option<PathBuf>,
+    #[clap(subcommand)]
+    subcommand: Subcommand,
+}
+
+#[derive(clap::Subcommand)]
+enum Subcommand {
     /// List all connected debug probes
     List {},
     /// Gets infos about the selected debug probe and connected target
@@ -241,14 +252,18 @@ pub(crate) enum ItmSource {
     },
 }
 
-fn main() -> Result<()> {
+/// Determine the default location for the logfile
+///
+/// This has to be called as early as possible, and while the program
+/// is single-threaded. Otherwise, determining the local time might fail.
+fn default_logfile_location() -> Result<PathBuf> {
     let project_dirs = directories::ProjectDirs::from("rs", "probe-rs", "probe-rs")
         .context("the application storage directory could not be determined")?;
     let directory = project_dirs.data_dir();
     let logname = sanitize_filename::sanitize_with_options(
         format!(
             "{}.log",
-            OffsetDateTime::now_local().unwrap().unix_timestamp_nanos() / 1_000_000
+            OffsetDateTime::now_local()?.unix_timestamp_nanos() / 1_000_000
         ),
         sanitize_filename::Options {
             replacement: "_",
@@ -258,6 +273,23 @@ fn main() -> Result<()> {
     std::fs::create_dir_all(directory).context(format!("{directory:?} could not be created"))?;
 
     let log_path = directory.join(logname);
+
+    Ok(log_path)
+}
+
+fn main() -> Result<()> {
+    let utc_offset = UtcOffset::current_local_offset()
+        .context("Failed to determine local time for timestamps")?;
+
+    // Parse the commandline options with structopt.
+    let matches = Cli::parse();
+
+    let log_path = if let Some(location) = matches.log_file {
+        location
+    } else {
+        default_logfile_location().context("Unable to determine default log file location.")?
+    };
+
     let log_file = File::create(&log_path)?;
 
     let file_subscriber = tracing_subscriber::fmt::layer()
@@ -283,34 +315,31 @@ fn main() -> Result<()> {
 
     tracing::info!("Writing log to {:?}", log_path);
 
-    // Parse the commandline options with structopt.
-    let matches = Cli::parse();
-
-    let result = match matches {
-        Cli::List {} => list_connected_devices(),
-        Cli::Info { common } => crate::info::show_info_of_device(&common),
-        Cli::Gdb {
+    let result = match matches.subcommand {
+        Subcommand::List {} => list_connected_devices(),
+        Subcommand::Info { common } => crate::info::show_info_of_device(&common),
+        Subcommand::Gdb {
             gdb_connection_string,
             common,
             reset_halt,
         } => gdb::run_gdb_server(common, gdb_connection_string.as_deref(), reset_halt),
-        Cli::Reset {
+        Subcommand::Reset {
             shared,
             common,
             assert,
         } => reset_target_of_device(&shared, &common, assert),
-        Cli::Debug {
+        Subcommand::Debug {
             shared,
             common,
             exe,
         } => debug(&shared, &common, exe),
-        Cli::Dump {
+        Subcommand::Dump {
             shared,
             common,
             loc,
             words,
         } => dump_memory(&shared, &common, loc, words),
-        Cli::Download {
+        Subcommand::Download {
             common,
             format,
             base_address,
@@ -327,19 +356,25 @@ fn main() -> Result<()> {
             disable_progressbars,
             disable_double_buffering,
         ),
-        Cli::Run {
+        Subcommand::Run {
             common,
             path,
             chip_erase,
             disable_double_buffering,
-        } => run::run(common, &path, chip_erase, disable_double_buffering),
-        Cli::Erase { common } => erase(&common),
-        Cli::Trace {
+        } => run::run(
+            common,
+            &path,
+            chip_erase,
+            disable_double_buffering,
+            utc_offset,
+        ),
+        Subcommand::Erase { common } => erase(&common),
+        Subcommand::Trace {
             shared,
             common,
             loc,
         } => trace_u32_on_target(&shared, &common, loc),
-        Cli::Itm {
+        Subcommand::Itm {
             shared,
             common,
             duration_ms,
@@ -356,9 +391,9 @@ fn main() -> Result<()> {
                 std::time::Duration::from_millis(duration_ms),
             )
         }
-        Cli::Chip(Chip::List) => print_families(io::stdout()).map_err(Into::into),
-        Cli::Chip(Chip::Info { name }) => print_chip_info(name, io::stdout()),
-        Cli::Benchmark { common, options } => benchmark(common, options),
+        Subcommand::Chip(Chip::List) => print_families(io::stdout()).map_err(Into::into),
+        Subcommand::Chip(Chip::Info { name }) => print_chip_info(name, io::stdout()),
+        Subcommand::Benchmark { common, options } => benchmark(common, options),
     };
 
     tracing::info!("Wrote log to {:?}", log_path);
@@ -467,7 +502,7 @@ fn download_program_fast(
 fn erase(common: &ProbeOptions) -> Result<()> {
     let mut session = common.simple_attach()?;
 
-    erase_all(&mut session)?;
+    erase_all(&mut session, None)?;
 
     Ok(())
 }

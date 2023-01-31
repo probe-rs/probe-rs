@@ -8,8 +8,7 @@ use std::ops::Range;
 
 use super::builder::FlashBuilder;
 use super::{
-    extract_from_elf, BinOptions, DownloadOptions, FileDownloadError, FlashError, FlashProgress,
-    Flasher,
+    extract_from_elf, BinOptions, DownloadOptions, FileDownloadError, FlashError, Flasher,
 };
 use crate::memory::MemoryInterface;
 use crate::session::Session;
@@ -197,7 +196,7 @@ impl FlashLoader {
     pub fn commit(
         &self,
         session: &mut Session,
-        options: DownloadOptions<'_>,
+        options: DownloadOptions,
     ) -> Result<(), FlashError> {
         tracing::debug!("committing FlashLoader!");
 
@@ -302,7 +301,7 @@ impl FlashLoader {
                 .iter()
                 .position(|c| c.name == core_name)
                 .unwrap();
-            let mut flasher = Flasher::new(session, core, &algo)?;
+            let mut flasher = Flasher::new(session, core, &algo, options.progress.clone())?;
 
             let mut do_chip_erase = options.do_chip_erase;
 
@@ -316,10 +315,6 @@ impl FlashLoader {
             if do_chip_erase {
                 tracing::debug!("    Doing chip erase...");
                 flasher.run_erase_all()?;
-
-                if let Some(progress) = options.progress {
-                    progress.finished_erasing();
-                }
             }
 
             let mut do_use_double_buffering = flasher.double_buffering_supported();
@@ -343,7 +338,6 @@ impl FlashLoader {
                     options.keep_unwritten_bytes,
                     do_use_double_buffering,
                     options.skip_erase || do_chip_erase,
-                    options.progress.unwrap_or(&FlashProgress::new(|_| {})),
                 )?;
             }
         }

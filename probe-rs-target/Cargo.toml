@@ -12,6 +12,6 @@ keywords = ["embedded"]
 license.workspace = true
 
 [dependencies]
-jep106 = "0.2.6"
+jep106 = "0.2.8"
 serde = { version = "1", features = ["derive"] }
 base64 = "0.21.0"

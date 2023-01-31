@@ -6,12 +6,15 @@ use probe_rs_cli_util::rtt;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
+use std::time::Duration;
+use time::UtcOffset;
 
 pub fn run(
     common: ProbeOptions,
     path: &str,
     chip_erase: bool,
     disable_double_buffering: bool,
+    timestamp_offset: UtcOffset,
 ) -> Result<()> {
     let mut session = common.simple_attach()?;
 
@@ -51,7 +54,13 @@ pub fn run(
     let mut core = session.core(0)?;
     core.reset()?;
 
-    let mut rtta = match rtt::attach_to_rtt(&mut core, &memory_map, Path::new(path), &rtt_config) {
+    let mut rtta = match rtt::attach_to_rtt(
+        &mut core,
+        &memory_map,
+        Path::new(path),
+        &rtt_config,
+        timestamp_offset,
+    ) {
         Ok(target_rtt) => Some(target_rtt),
         Err(error) => {
             log::error!("{:?} Continuing without RTT... ", error);
@@ -63,8 +72,14 @@ pub fn run(
         let mut stdout = std::io::stdout();
         loop {
             for (_ch, data) in rtta.poll_rtt_fallible(&mut core)? {
-                stdout.write_all(data.as_bytes()).unwrap();
+                stdout.write_all(data.as_bytes())?;
             }
+
+            // Poll RTT with a frequency of 10 Hz
+            //
+            // If the polling frequency is too high,
+            // the USB connection to the probe can become unstable.
+            std::thread::sleep(Duration::from_millis(100));
         }
     }
 

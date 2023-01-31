@@ -5,17 +5,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Log messages are printed to stderr, not stdout.
+
+### Fixed
+
+- If the output was redirect into a file, some log messages were not printed.
+
+## [0.16.0]
+
+Released 2023-01-29
+
+### Fixed
+
+- Ensure offset between local time and UTC gets determined as early as possible.
+
+  Determining the local time fails in multi-threaded programs, so it needs to be
+  done as early as possible. Otherwise the program will quit with an error saying that the local time could not have been determined.
+  
+- Formatting of timestamps in TUI output. Was broken due to the move from the chrono crate to
+  the time crate.
+
+
+## [0.15.0]
+
+Released 2023-01-28
+### Changed
+
+- Updated probe-rs to 0.15.0.
+
 ## [0.14.2]
 
 Released 2023-01-18
+
+### Changed
+
+- Updated probe-rs to 0.14.2.
 
 ## [0.14.1]
 
 Released 2023-01-14
 
+### Changed
+
+- Updated probe-rs to 0.14.1.
+
 ## [0.14.0]
 
 Released 2023-01-13
+
+### Changed
+
+- Updated probe-rs to 0.14.0.
 
 ### Added
 
@@ -189,10 +231,12 @@ Released 2023-01-13
 
 - Initial release
 
-[unreleased]: https://github.com/probe-rs/cargo-embed/compare/v0.14.2...master
-[v0.14.2]: https://github.com/probe-rs/cargo-embed/compare/v0.14.1...v0.14.2
-[v0.14.1]: https://github.com/probe-rs/cargo-embed/compare/v0.14.0...v0.14.1
-[v0.14.0]: https://github.com/probe-rs/cargo-embed/compare/v0.13.0...v0.14.0
+[unreleased]: https://github.com/probe-rs/cargo-embed/compare/v0.16.0...master
+[0.16.0]: https://github.com/probe-rs/cargo-embed/compare/v0.15.0...v0.16.0
+[0.15.0]: https://github.com/probe-rs/cargo-embed/compare/v0.14.2...v0.15.0
+[0.14.2]: https://github.com/probe-rs/cargo-embed/compare/v0.14.1...v0.14.2
+[0.14.1]: https://github.com/probe-rs/cargo-embed/compare/v0.14.0...v0.14.1
+[0.14.0]: https://github.com/probe-rs/cargo-embed/compare/v0.13.0...v0.14.0
 [0.13.0]: https://github.com/probe-rs/cargo-embed/releases/tag/v0.12.0..v0.13.0
 [0.12.0]: https://github.com/probe-rs/cargo-embed/releases/tag/v0.11.0..v0.12.0
 [0.11.0]: https://github.com/probe-rs/cargo-embed/releases/tag/v0.10.1..v0.11.0

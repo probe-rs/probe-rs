@@ -5,6 +5,7 @@ on:
   pull_request:
     branches: [master]
     types: [closed]
+  workflow_dispatch:
 
 name: Release on crates.io
 
@@ -12,11 +13,14 @@ jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'release')
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'release'))
 
     steps:
+
       - name: Checkout sources
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # This is a workaround for cargo-release, see https://github.com/crate-ci/cargo-release/issues/625
 
       - name: Install libusb and libftdi (linux)
         run: |
@@ -47,27 +51,31 @@ jobs:
           git config --global gpg.format ssh
           git config --global user.signingkey "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGr8+OZiQ6EHlhZcsPbnbkiW0wBtgNYGR2J5SI+QOw9Q bot@probe.rs"
 
-      - name: release to crates.io
-        run: |
-          git checkout master
-          cargo login ${{ secrets.CARGO_REGISTRY_TOKEN }}
-          cargo release --no-confirm --execute --sign $( echo '${{ github.head_ref }}' | sed 's?release/??' )
-        env:
-          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
-
       - name: Generate Release Notes
-        id: notes
         run: |
-          NOTES=$(cargo xtask generate-release-changelog)
-          echo "notes=$NOTES" >> $GITHUB_OUTPUT
+          cargo xtask generate-release-changelog > /tmp/GENERATED_CHANGELOG.md
+
+      - name: Extract crate version
+        id: crate_version
+        run: |
+          VERSION=$(cargo pkgid -p probe-rs | cut -d# -f2 | cut -d: -f2)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Create a GitHub release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: $( echo '${{ github.head_ref }}' | sed 's?release/??' )
-          release_name: $( echo '${{ github.head_ref }}' | sed 's?release/??' )
-          body: ${{ steps.notes.outputs.notes }}
-          draft: false
+          tag_name: ${{ steps.crate_version.outputs.version }}
+          release_name: ${{ steps.crate_version.outputs.version }}
+          body_path: /tmp/GENERATED_CHANGELOG.md
+          draft: true
           prerelease: false
+
+      - name: release to crates.io
+        run: |
+          git checkout master
+          cargo login ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          cargo release --no-confirm --execute --sign ${{ steps.crate_version.outputs.version }}
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
