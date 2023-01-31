@@ -8,7 +8,7 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ap::{AccessPort, ApAccess, GenericAp, MemoryAp, DRW, IDR, TAR},
+        ap::{AccessPort, AccessPortError, ApAccess, GenericAp, MemoryAp, DRW, IDR, TAR},
         communication_interface::{FlushableArmAccess, Initialized},
         core::armv7m::{Aircr, Demcr, Dhcsr},
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
@@ -373,9 +373,33 @@ impl ArmDebugSequence for MIMXRT10xx {
         // Wait for the reset to finish...
         std::thread::sleep(Duration::from_millis(100));
 
-        // Clear the status bit. This read shouldn't fail.
-        interface.read_word_32(Dhcsr::ADDRESS)?;
-        Ok(())
+        let start = Instant::now();
+        while start.elapsed() < Duration::from_micros(50_0000) {
+            let dhcsr = match interface.read_word_32(Dhcsr::ADDRESS) {
+                Ok(val) => Dhcsr(val),
+                Err(ArmError::AccessPort {
+                    source:
+                        AccessPortError::RegisterRead { .. } | AccessPortError::RegisterWrite { .. },
+                    ..
+                }) => {
+                    // Some combinations of debug probe and target (in
+                    // particular, hs-probe and ATSAMD21) result in
+                    // register read errors while the target is
+                    // resetting.
+                    //
+                    // See here for more info: https://github.com/probe-rs/probe-rs/pull/1174#issuecomment-1275568493
+                    continue;
+                }
+                Err(err) => return Err(err),
+            };
+
+            // Wait until the S_RESET_ST bit is cleared on a read
+            if !dhcsr.s_reset_st() {
+                return Ok(());
+            }
+        }
+
+        Err(ArmError::Timeout)
     }
 }
 
