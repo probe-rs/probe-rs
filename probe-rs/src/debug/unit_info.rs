@@ -1719,21 +1719,20 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 RequiresMemory { address, size, .. } => {
                     let mut buff = vec![0u8; size as usize];
                     if let Some(core) = core.as_mut() {
-                        core.read(address, &mut buff).map_err(|_| {
-                        DebugError::UnwindIncompleteResults {message: "Unexpected error while reading debug expressions from target memory. Please report this as a bug.".to_string()}
+                        core.read(address, &mut buff).map_err(|error| {
+                        DebugError::UnwindIncompleteResults {message: format!("Unexpected error while reading debug expressions from target memory: {error:?}. Please report this as a bug.")}
                     })?;
                         match size {
                             1 => evaluation.resume_with_memory(gimli::Value::U8(buff[0]))?,
                             2 => {
-                                let val = (u16::from(buff[0]) << 8) | (u16::from(buff[1]));
-                                evaluation.resume_with_memory(gimli::Value::U16(val))?
+                                evaluation.resume_with_memory(gimli::Value::U16(u16::from_le_bytes(buff.try_into().map_err(|error| {
+                                    DebugError::UnwindIncompleteResults {message: format!("Unexpected error while dereferencing debug expressions from target memory: {error:?}. Please report this as a bug.")}
+                                })?)))?
                             }
                             4 => {
-                                let val = (u32::from(buff[0]) << 24)
-                                    | (u32::from(buff[1]) << 16)
-                                    | (u32::from(buff[2]) << 8)
-                                    | u32::from(buff[3]);
-                                evaluation.resume_with_memory(gimli::Value::U32(val))?
+                                evaluation.resume_with_memory(gimli::Value::U32(u32::from_le_bytes(buff.try_into().map_err(|error| {
+                                    DebugError::UnwindIncompleteResults {message: format!("Unexpected error while dereferencing debug expressions from target memory: {error:?}. Please report this as a bug.")}
+                                })?)))?
                             }
                             x => {
                                 return Err(DebugError::UnwindIncompleteResults {
