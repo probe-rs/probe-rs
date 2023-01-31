@@ -35,7 +35,7 @@ base64 = "0.21.0"
 anyhow = "1.0.57"
 reqwest = { version = "0.11.10", features = ["json", "blocking"] }
 serde = { version = "1", features = ["derive"] }
-futures = "0.3.21"
+futures = "0.3.26"
 tokio = { version = "1.25.0", features = ["macros", "rt", "rt-multi-thread"] }
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 xshell = { version = "0.2", default-features = false }
