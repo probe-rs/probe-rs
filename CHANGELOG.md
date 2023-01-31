@@ -14,6 +14,8 @@ The finished/failed event would only be emitted when a sectorwise erase would be
 Now the events are correctly emitted.
 probe-rs: Emit chip erase started and finished/failed events correctly (#1470)
 
+- Add flashing and debugging support for the ESP32C6 (#1476)
+
 ## [0.16.0]
 
 Released 2023-01-29
