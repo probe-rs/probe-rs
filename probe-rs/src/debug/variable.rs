@@ -866,7 +866,7 @@ impl Variable {
                                         }
                                     };
                                     if let Some(pre_fix) = &pre_fix {
-                                        compound_value = format!("{}{}", compound_value, pre_fix);
+                                        compound_value = format!("{compound_value}{pre_fix}");
                                     };
                                 }
 
@@ -896,7 +896,7 @@ impl Variable {
                                 }
                             }
                             if let Some(post_fix) = &post_fix {
-                                compound_value = format!("{}{}", compound_value, post_fix);
+                                compound_value = format!("{compound_value}{post_fix}");
                             };
                             compound_value
                         }

@@ -1302,7 +1302,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             )?;
             array_member_variable.member_index = Some(array_member_index);
             // Override the calculated member name with a more 'array-like' name.
-            array_member_variable.name = VariableName::Named(format!("__{}", array_member_index));
+            array_member_variable.name = VariableName::Named(format!("__{array_member_index}"));
             array_member_variable.source_location = child_variable.source_location.clone();
             self.process_memory_location(
                 array_member_type_node.entry(),
@@ -1625,7 +1625,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 *address,
                             )))
                         } else {
-                            Ok(ExpressionResult::Location(VariableLocation::Error(format!("The memory location for this variable value ({:#010X}) is invalid. Please report this as a bug.", address))))
+                            Ok(ExpressionResult::Location(VariableLocation::Error(format!("The memory location for this variable value ({address:#010X}) is invalid. Please report this as a bug."))))
                         }
                     } else {
                         Ok(ExpressionResult::Location(VariableLocation::Address(
@@ -1681,7 +1681,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                             location,
                                         )))
                                     } else {
-                                Ok(ExpressionResult::Location(VariableLocation::Error(format!("The memory location for this variable value ({:#010X}) is invalid. Please report this as a bug.", location))))
+                                Ok(ExpressionResult::Location(VariableLocation::Error(format!("The memory location for this variable value ({location:#010X}) is invalid. Please report this as a bug."))))
                                     }
                                 } else {
                                     Ok(ExpressionResult::Location(VariableLocation::Address(
@@ -1870,7 +1870,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         || matches!(child_variable.type_name.clone(), VariableType::Struct(type_name) if type_name.starts_with("&str"))
                         || matches!(child_variable.name.clone(), VariableName::Named(var_name) if var_name.starts_with('*'))
                         || self.has_address_pointer(unit_ref).unwrap_or_else(|error| {
-                            child_variable.set_value(VariableValue::Error(format!("Failed to determine if a struct has variant or generic type fields: {}", error)));
+                            child_variable.set_value(VariableValue::Error(format!("Failed to determine if a struct has variant or generic type fields: {error}")));
                             false
                         })))
             {
@@ -1882,16 +1882,14 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 VariableLocation::Address(memory_location as u64)
                             }
                             Err(error) => {
-                                tracing::debug!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location , error);
-                                VariableLocation::Error(format!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location, error))
+                                tracing::debug!("Failed to read referenced variable address from memory location {} : {error}.", parent_variable.memory_location);
+                                VariableLocation::Error(format!("Failed to read referenced variable address from memory location {} : {error}.", parent_variable.memory_location))
                             }
                         };
                     }
                     other => {
                         child_variable.memory_location = VariableLocation::Unsupported(format!(
-                            "Location {:?} not supported for referenced variables.",
-                            other
-                        ));
+                            "Location {other:?} not supported for referenced variables."));
                     }
                 }
             } else {
