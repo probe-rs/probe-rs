@@ -22,13 +22,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add flashing and debugging support for the ESP32C6 (#1476)
 
+- debug: Fixed a number of known issues, which included some code_refactoring to avoid code duplication ().
+  - Unwind of variables that are in inlined subroutines now resolve correctly under all known conditions.
+  - Unwind of nested arrays now resolve, irrespective of the levels of nesting (#1404).
+  - Gracefully handle the unwind of arrays that are empty.
+  - Correctly unwind pointers/references that are nested as references in several layers of structs.
+  - Correctly unwind pointers/references to variants and enums.
+  - Fix an error that terminated the debug when new architecture error variants were introduced by a previous PR.
+  - Fix an error where unwind memory locations decoded memory values as integer addresses without accounting for endianness.
+
 ## [0.16.0]
 
 Released 2023-01-29
 
 probe-rs library is unchanged, version number is increased to keep in sync with other
 probe-rs packages.
-
 
 ## [0.15.0]
 
