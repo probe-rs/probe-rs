@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fix an error that terminated the debug when new architecture error variants were introduced by a previous PR.
   - Fix an error where unwind memory locations decoded memory values as integer addresses without accounting for endianness.
 
+- VSCode: Avoid sending extraneous `StoppedEvent` from probe-rs-debugger (#1485).
+
 ## [0.16.0]
 
 Released 2023-01-29
