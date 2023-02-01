@@ -15,9 +15,9 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-probe-rs = { path = "../probe-rs", version = "0.15.0", default-features = false }
-probe-rs-target = { path = "../probe-rs-target", version = "0.15.0", default-features = false }
-cmsis-pack = { version = "0.6.1" }
+probe-rs = { path = "../probe-rs", version = "0.16.0", default-features = false }
+probe-rs-target = { path = "../probe-rs-target", version = "0.16.0", default-features = false }
+cmsis-pack = { version = "0.6.2" }
 goblin = { version = "0.6.0", default-features = false, features = [
     "elf32",
     "elf64",
@@ -27,22 +27,22 @@ goblin = { version = "0.6.0", default-features = false, features = [
 ] }
 scroll = "0.11.0"
 serde_yaml = "^0.9"
-log = "0.4.16"
-zip = "0.6.2"
+log = "0.4.17"
+zip = "0.6.3"
 clap = { version = "4.1", features = ["derive"] }
 colored = "2"
 base64 = "0.21.0"
-anyhow = "1.0.57"
-reqwest = { version = "0.11.10", features = ["json", "blocking"] }
+anyhow = "1.0.68"
+reqwest = { version = "0.11.14", features = ["json", "blocking"] }
 serde = { version = "1", features = ["derive"] }
-futures = "0.3.21"
-tokio = { version = "1.18.0", features = ["macros", "rt", "rt-multi-thread"] }
+futures = "0.3.26"
+tokio = { version = "1.25.0", features = ["macros", "rt", "rt-multi-thread"] }
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 xshell = { version = "0.2", default-features = false }
 cargo_metadata = { version = "0.15", default-features = false }
 indicatif = { version = "0.17", default-features = false }
 
 [dev-dependencies]
-assert_cmd = "2.0.4"
-predicates = "2.1.1"
-assert_fs = "1.0.7"
+assert_cmd = "2.0.8"
+predicates = "2.1.5"
+assert_fs = "1.0.10"

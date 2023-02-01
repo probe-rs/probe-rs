@@ -32,6 +32,8 @@ pub(crate) fn show_info_of_device(common: &ProbeOptions) -> Result<()> {
 
     for protocol in protocols {
         println!("Probing target via {protocol}");
+        println!();
+
         let (new_probe, result) = try_show_info(probe, protocol, common.connect_under_reset);
 
         probe = new_probe;
@@ -41,6 +43,8 @@ pub(crate) fn show_info_of_device(common: &ProbeOptions) -> Result<()> {
         if let Err(e) = result {
             println!("Error identifying target using protocol {protocol}: {e}");
         }
+
+        println!();
     }
 
     Ok(())
@@ -74,7 +78,8 @@ fn try_show_info(
                     Ok(mut interface) => {
                         if let Err(e) = show_arm_info(&mut *interface) {
                             // Log error?
-                            println!("Error showing ARM chip information: {e}");
+                            println!("Error showing ARM chip information:");
+                            println!("{e:?}")
                         }
 
                         probe = interface.close();
@@ -176,7 +181,7 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface) -> Result<()> {
     let mut tree = Tree::new(dp_node);
 
     let dp = DpAddress::Default;
-    let num_access_ports = interface.num_access_ports(dp).unwrap();
+    let num_access_ports = interface.num_access_ports(dp)?;
 
     for ap_index in 0..num_access_ports {
         let ap = ApAddress {
@@ -185,7 +190,7 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface) -> Result<()> {
         };
         let access_port = GenericAp::new(ap);
 
-        let ap_information = interface.ap_information(access_port).unwrap();
+        let ap_information = interface.ap_information(access_port)?;
 
         match ap_information {
             ApInformation::MemoryAp(MemoryApInformation {
@@ -235,6 +240,7 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface) -> Result<()> {
         }
     }
 
+    println!("ARM Chip:");
     println!("{tree}");
 
     Ok(())

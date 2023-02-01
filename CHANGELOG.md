@@ -5,11 +5,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- st-link: Support reading banked DP registers if firmware is new enough to support it.
+
 ### Fixed
+
+- probe-rs: Emit chip erase started and finished/failed events correctly (#1470)
+
+  The finished/failed event would only be emitted when a sectorwise erase would be performed.
+  Now the events are correctly emitted.
 
 - probe-rs: Fixed a race condition when reseting NXP chips under JTAG (#1482)
 
   As an example, this makes flashing the Teensy 4.1 (which has an i.MX RT1062) reliable.
+
+- Add flashing and debugging support for the ESP32C6 (#1476)
+
+## [0.16.0]
+
+Released 2023-01-29
+
+probe-rs library is unchanged, version number is increased to keep in sync with other
+probe-rs packages.
+
 
 ## [0.15.0]
 
@@ -740,7 +759,8 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.15.0...master
+[unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.16.0...master
+[0.16.0]: https://github.com/probe-rs/probe-rs/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/probe-rs/probe-rs/compare/v0.14.2...v0.15.0
 [0.14.2]: https://github.com/probe-rs/probe-rs/compare/v0.14.1...v0.14.2
 [0.14.1]: https://github.com/probe-rs/probe-rs/compare/v0.14.0...v0.14.1

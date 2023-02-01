@@ -1,5 +1,5 @@
 ---
-name: esp32
+name: esp32c3
 manufacturer: ~
 variants:
   - name: esp32c3
