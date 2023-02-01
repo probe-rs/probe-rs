@@ -83,7 +83,7 @@ impl<'p> CoreHandle<'p> {
                                 // HaltReason::Step is a special case, where we have to send a custome event to the client that the core halted.
                                 // In this case, we don't re-send the "stopped" event, but further down, we will
                                 // update the `last_known_status` to the actual HaltReason returned by the core.
-                                if !matches!(self.core_data.last_known_status, CoreStatus::Halted(halt_reason) if halt_reason == HaltReason::Step)
+                                if self.core_data.last_known_status != CoreStatus::Halted(HaltReason::Step)
                                 {
                                     let program_counter = self
                                         .core
