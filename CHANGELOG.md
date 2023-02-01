@@ -5,6 +5,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- probe-rs: Fixed a race condition when reseting NXP chips under JTAG (#1482)
+
+  As an example, this makes flashing the Teensy 4.1 (which has an i.MX RT1062) reliable.
+
 ## [0.15.0]
 
 Released 2023-01-28
