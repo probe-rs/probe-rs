@@ -204,14 +204,26 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             tree_node.entry().attr(gimli::DW_AT_abstract_origin)
         {
             match abstract_origin.value() {
-                gimli::AttributeValue::UnitRef(unit_ref) => Some(
-                    self.unit
-                        .header
-                        .entries_tree(&self.unit.abbreviations, Some(unit_ref))?
-                        .root()?
-                        .entry()
-                        .clone(),
-                ),
+                gimli::AttributeValue::UnitRef(unit_ref) => {
+                    // The abstract origin is a reference to another DIE, so we need to resolve that,
+                    // but first we need to process the (optional) memory location using the current DIE.
+                    self.process_memory_location(
+                        tree_node.entry(),
+                        parent_variable,
+                        &mut child_variable,
+                        Some(core),
+                        stack_frame_registers,
+                        frame_base,
+                    )?;
+                    Some(
+                        self.unit
+                            .header
+                            .entries_tree(&self.unit.abbreviations, Some(unit_ref))?
+                            .root()?
+                            .entry()
+                            .clone(),
+                    )
+                }
                 other_attribute_value => {
                     child_variable.set_value(VariableValue::Error(format!(
                         "Unimplemented: Attribute Value for DW_AT_abstract_origin {other_attribute_value:?}"
