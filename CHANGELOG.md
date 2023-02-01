@@ -22,13 +22,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add flashing and debugging support for the ESP32C6 (#1476)
 
+- VSCode: Avoid sending extraneous `StoppedEvent` from probe-rs-debugger (#1485).
+
 ## [0.16.0]
 
 Released 2023-01-29
 
 probe-rs library is unchanged, version number is increased to keep in sync with other
 probe-rs packages.
-
 
 ## [0.15.0]
 

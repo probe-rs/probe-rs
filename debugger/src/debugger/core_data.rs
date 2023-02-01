@@ -10,7 +10,7 @@ use crate::{
     DebuggerError,
 };
 use anyhow::{anyhow, Result};
-use probe_rs::{debug::debug_info::DebugInfo, Core, CoreStatus, Error};
+use probe_rs::{debug::debug_info::DebugInfo, Core, CoreStatus, Error, HaltReason};
 use probe_rs_cli_util::rtt::{self, ChannelMode, DataFormat};
 use time::UtcOffset;
 
@@ -80,24 +80,35 @@ impl<'p> CoreHandle<'p> {
                                 );
                             }
                             CoreStatus::Halted(_) => {
-                                let program_counter = self
-                                    .core
-                                    .read_core_reg(self.core.registers().program_counter())
-                                    .ok();
-                                let event_body = Some(StoppedEventBody {
-                                    reason: status.short_long_status(program_counter).0.to_owned(),
-                                    description: Some(status.short_long_status(program_counter).1),
-                                    thread_id: Some(self.core.id() as i64),
-                                    preserve_focus_hint: Some(false),
-                                    text: None,
-                                    all_threads_stopped: Some(debug_adapter.all_cores_halted),
-                                    hit_breakpoint_ids: None,
-                                });
-                                debug_adapter.send_event("stopped", event_body)?;
-                                tracing::trace!(
-                                    "Notified DAP client that the core halted: {:?}",
-                                    status
-                                );
+                                // HaltReason::Step is a special case, where we have to send a custome event to the client that the core halted.
+                                // In this case, we don't re-send the "stopped" event, but further down, we will
+                                // update the `last_known_status` to the actual HaltReason returned by the core.
+                                if !matches!(self.core_data.last_known_status, CoreStatus::Halted(halt_reason) if halt_reason == HaltReason::Step)
+                                {
+                                    let program_counter = self
+                                        .core
+                                        .read_core_reg(self.core.registers().program_counter())
+                                        .ok();
+                                    let event_body = Some(StoppedEventBody {
+                                        reason: status
+                                            .short_long_status(program_counter)
+                                            .0
+                                            .to_owned(),
+                                        description: Some(
+                                            status.short_long_status(program_counter).1,
+                                        ),
+                                        thread_id: Some(self.core.id() as i64),
+                                        preserve_focus_hint: Some(false),
+                                        text: None,
+                                        all_threads_stopped: Some(debug_adapter.all_cores_halted),
+                                        hit_breakpoint_ids: None,
+                                    });
+                                    debug_adapter.send_event("stopped", event_body)?;
+                                    tracing::trace!(
+                                        "Notified DAP client that the core halted: {:?}",
+                                        status
+                                    );
+                                }
                             }
                             CoreStatus::LockedUp => {
                                 debug_adapter.show_message(
