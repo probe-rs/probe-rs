@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add flashing and debugging support for the ESP32C6 (#1476)
 
-- debug: Fixed a number of known issues, which included some code_refactoring to avoid code duplication ().
+- Debug: Fixed a number of known issues, which included some code refactoring to avoid code duplication (#1484).
   - Unwind of variables that are in inlined subroutines now resolve correctly under all known conditions.
   - Unwind of nested arrays now resolve, irrespective of the levels of nesting (#1404).
   - Gracefully handle the unwind of arrays that are empty.
