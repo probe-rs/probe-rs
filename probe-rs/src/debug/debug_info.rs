@@ -11,7 +11,7 @@ use ::gimli::{FileEntry, LineProgramHeader, UnwindContext};
 use gimli::{BaseAddresses, ColumnType, DebugFrame, UnwindSection};
 use object::read::{Object, ObjectSection};
 use probe_rs_target::InstructionSet;
-use registers::RegisterGroup;
+use registers::{PreserveRule, RegisterGroup};
 use std::{
     borrow,
     cmp::Ordering,
@@ -717,6 +717,14 @@ impl DebugInfo {
         let mut stack_frames = Vec::<StackFrame>::new();
         let mut unwind_registers = registers::DebugRegisters::from_core(core);
 
+        // PART 0: The first step is to determine the exception context for the current PC.
+        match core.architecture() {
+            probe_rs_target::Architecture::Arm => {
+                // For ARM, we start by evaluating the LR value.
+            }
+            probe_rs_target::Architecture::Riscv => todo!(),
+        }
+
         if unwind_registers
             .get_program_counter()
             .map_or_else(|| true, |pc| pc.value != Some(RegisterValue::U64(address)))
@@ -862,18 +870,20 @@ impl DebugInfo {
                     }
                 }
                 Err(error) => {
-                    // We cannot do stack unwinding if we do not have debug info. However, there is one case where we can continue. When the following conditions are met:
+                    // We cannot do stack unwinding if we do not have debug info. However, there is one case where we can continue.
+                    // When the following conditions are met:
                     // 1. The current frame is the first frame in the stack, AND ...
-                    // 2. The frame registers have a valid return address/LR value.
+                    // 2. The frame registers have a valid return address/LR value (This includes the special case a frame that was called from a signal handler).
                     // If both these conditions are met, we can push the 'unknown function' to the list of stack frames, and use the LR value to calculate the PC for the calling frame.
                     // The current logic will then use that PC to get the next frame's unwind info, and if that exists, will be able to continue unwinding.
-                    // If the calling frame has no debug info, then the unwindindg will end with that frame.
+                    // If the calling frame has no debug info, then the unwinding will end with that frame.
                     if stack_frames.is_empty() {
                         let callee_frame_registers = unwind_registers.clone();
                         let mut unwound_return_address: Option<RegisterValue> =
-                            callee_frame_registers
-                                .get_return_address()
-                                .and_then(|lr| lr.value);
+                            callee_frame_registers.get_return_address().and_then(|lr| {
+                                // Check to see if the LR value has a special meaning.
+                                lr.value
+                            });
                         if let Some(calling_pc) = unwind_registers.get_program_counter_mut() {
                             if unwind_register(
                                 calling_pc,
@@ -1234,9 +1244,29 @@ fn unwind_register(
                         }
                     })
                 }
-                _ => {
-                    // This will result in the register value being cleared for the previous frame.
-                    None
+                other_register => {
+                    // If the the register rule was not specified, then we either carry the previous value forward,
+                    // or we clear the register value, depending on the architecture and register type.
+                    match other_register.preserve_rule {
+                        PreserveRule::Preserve => {
+                            register_rule_string = "Preserve (dwarf Undefined)".to_string();
+                            callee_frame_registers
+                                .get_register(other_register.id)
+                                .and_then(|reg| reg.value)
+                        }
+                        PreserveRule::Clear => {
+                            register_rule_string = "Clear (dwarf Undefined)".to_string();
+                            None
+                        }
+                        PreserveRule::RuleRequired => {
+                            // In theory, these should all be handled above, so error if we get here.
+                            tracing::error!(
+                                "Register rule required for register {:?}",
+                                other_register.name
+                            );
+                            None
+                        }
+                    }
                 }
             }
         }

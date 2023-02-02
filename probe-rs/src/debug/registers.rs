@@ -1,3 +1,5 @@
+use probe_rs_target::CoreType;
+
 use crate::{
     core::{Core, RegisterDataType, RegisterFile},
     Error, RegisterId, RegisterValue,
@@ -16,6 +18,22 @@ pub enum RegisterGroup {
     Singleton,
 }
 
+/// The rule used to preserve the value of a register between function calls duing unwinding,
+/// when DWARF unwind information is not available.
+/// (Applies to ARM and RISC-V). See `DebugRegister::from_core()` implementation for more details.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PreserveRule {
+    /// Callee-saved, a.k.a non-volatile registers, or call-preserved.
+    /// If there is DWARF unwind `RegisterRule` we will use apply it,
+    /// otherwise we assume it was untouched and preserve the current value.
+    Preserve,
+    /// Caller-saved, a.k.a. volatile registers, or call-clobbered.
+    /// If there is DWARF unwind `RegisterRule` we will use apply it,
+    /// otherwise we assume it was corrupted by the callee, and have a 'None' value for the register.
+    Clear,
+    /// Additional rules are required to determine the value of the register.
+    RuleRequired,
+}
 /// Stores the relevant information from [`RegisterDescription`](crate::core::RegisterDescription)
 /// as well as additional information required during debug.
 #[derive(Debug, Clone, PartialEq)]
@@ -27,8 +45,10 @@ pub struct DebugRegister {
     // TODO: Consider capturing reference to RegisterDescription, so we can delegate actions like size_in_bytes.
     /// The name of the register.
     pub name: &'static str,
-    /// If a special name exists for an existing register, e.g. Arm register 'r15' is also known as 'pc' (program counter)
+    /// If a special name (a.k.a. Assemble ) exists for an existing register, e.g. Arm register 'r15' is also known as 'pc' (program counter)
     pub special_name: Option<&'static str>,
+    /// For unwind purposes, we need to know how values are preserved between function calls. (Applies to ARM and RISC-V)
+    pub preserve_rule: PreserveRule,
     /// The location where the register is stored.
     pub id: RegisterId,
     /// [DWARF](https://dwarfstd.org) specification, section 2.6.1.1.3.1 "... operations encode the names of up to 32 registers, numbered from 0 through 31, inclusive ..."
@@ -82,27 +102,47 @@ impl DebugRegisters {
 
         let mut debug_registers = Vec::<DebugRegister>::new();
 
-        let all_registers = [
-            (RegisterGroup::Base, register_file.platform_registers),
-            (RegisterGroup::Argument, register_file.argument_registers),
-            (RegisterGroup::Result, register_file.result_registers),
+        let mut all_registers = vec![
             (
-                RegisterGroup::Singleton,
-                &[register_file.frame_pointer.to_owned()],
+                RegisterGroup::Base,
+                register_file.platform_registers.to_owned(),
+            ),
+            (
+                RegisterGroup::Argument,
+                register_file.argument_registers.to_owned(),
+            ),
+            (
+                RegisterGroup::Result,
+                register_file.result_registers.to_owned(),
             ),
             (
                 RegisterGroup::Singleton,
-                &[register_file.program_counter.to_owned()],
+                [register_file.frame_pointer.to_owned()].to_vec(),
             ),
             (
                 RegisterGroup::Singleton,
-                &[register_file.return_address.to_owned()],
+                [register_file.program_counter.to_owned()].to_vec(),
             ),
             (
                 RegisterGroup::Singleton,
-                &[register_file.stack_pointer.to_owned()],
+                [register_file.return_address.to_owned()].to_vec(),
+            ),
+            (
+                RegisterGroup::Singleton,
+                [register_file.stack_pointer.to_owned()].to_vec(),
             ),
         ];
+
+        // Add additional registers required to unwind beyond the most recent signal handler.
+        if let Some(psr_register) = register_file.psr {
+            all_registers.push((RegisterGroup::Singleton, [psr_register.to_owned()].to_vec()));
+        }
+        if let Some(psr_register) = register_file.psp {
+            all_registers.push((RegisterGroup::Singleton, [psr_register.to_owned()].to_vec()));
+        }
+        if let Some(psr_register) = register_file.msp {
+            all_registers.push((RegisterGroup::Singleton, [psr_register.to_owned()].to_vec()));
+        }
 
         for (register_group, register_group_members) in all_registers {
             for (dwarf_id, platform_register) in register_group_members.iter().enumerate() {
@@ -125,6 +165,27 @@ impl DebugRegisters {
                             group: register_group,
                             name: platform_register.name(),
                             special_name: None,
+                            preserve_rule: match core.core_type() {
+                                CoreType::Armv6m
+                                | CoreType::Armv7em
+                                | CoreType::Armv7m
+                                | CoreType::Armv8m => {
+                                    // See [AAPCS](https://github.com/ARM-software/abi-aa/blob/2982a9f3b512a5bfdc9e3fea5d3b298f9165c36b/aapcs32/aapcs32.rst#core-registers)
+                                    match platform_register.id.0 {
+                                        0..=3 => PreserveRule::Clear,
+                                        4..=6 => PreserveRule::Preserve,
+                                        8..=11 => PreserveRule::Preserve,
+                                        12 => PreserveRule::Clear,
+                                        16..=18 => PreserveRule::Preserve, //TODO:: These should be RuleRequired
+                                        _ => PreserveRule::RuleRequired,
+                                    }
+                                }
+                                _ => {
+                                    // TODO: This is a placeholder, that will allow all other core types to continue to work as before.
+                                    // See [RISC-V Volume 1, Unprivileged Spec, Chapter 25](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf)
+                                    PreserveRule::Clear
+                                }
+                            },
                             id: platform_register.id,
                             // TODO: Consider adding dwarf_id to RegisterDescription, to ensure we have the right values.
                             dwarf_id: if matches!(register_group, RegisterGroup::Base) {
