@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   As an example, this makes flashing the Teensy 4.1 (which has an i.MX RT1062) reliable.
 
+- probe-rs: jlink: fix WAIT retries on AP reads. Fixes flashing on nrf91. (#1489)
+
 - Add flashing and debugging support for the ESP32C6 (#1476)
 
 - VSCode: Avoid sending extraneous `StoppedEvent` from probe-rs-debugger (#1485).
