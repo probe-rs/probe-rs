@@ -203,6 +203,9 @@ impl<T: DapAccess> ApAccess for T {
 }
 
 /// Determine if an AP exists with the given AP number.
+///
+/// The test is performed by reading the IDR register, and checking if the register is non-zero.
+///
 /// Can fail silently under the hood testing an ap that doesnt exist and would require cleanup.
 pub fn access_port_is_valid<AP>(debug_port: &mut AP, access_port: GenericAp) -> bool
 where
@@ -212,7 +215,14 @@ where
 
     match idr_result {
         Ok(idr) => u32::from(idr) != 0,
-        Err(_e) => false,
+        Err(e) => {
+            tracing::debug!(
+                "Error reading IDR register from AP {}: {}",
+                access_port.ap_address().ap,
+                e
+            );
+            false
+        }
     }
 }
 
