@@ -415,7 +415,6 @@ fn run_to_address(
                 core.clear_hw_breakpoint(target_address)?;
                 if matches!(
                     error,
-                    crate::Error::Timeout
                         | crate::Error::Arm(ArmError::Timeout)
                         | crate::Error::Riscv(RiscvError::Timeout)
                 ) {
