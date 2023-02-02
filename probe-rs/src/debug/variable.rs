@@ -183,7 +183,7 @@ pub enum VariableType {
     /// A Rust array.
     Array {
         /// The type name of the variable.
-        entry_type: String,
+        item_type_name: String,
         /// The number of entries in the array.
         count: usize,
     },
@@ -233,7 +233,10 @@ impl std::fmt::Display for VariableType {
                 .clone()
                 .unwrap_or_else(|| "<referenced type>".to_string())
                 .fmt(f),
-            VariableType::Array { entry_type, count } => write!(f, "[{entry_type}; {count}]"),
+            VariableType::Array {
+                item_type_name: entry_type,
+                count,
+            } => write!(f, "[{entry_type}; {count}]"),
             VariableType::Unknown => "<unknown>".fmt(f),
             VariableType::Other(other) => other.fmt(f),
         }
@@ -521,7 +524,7 @@ impl Variable {
                         }
                     } else if self.type_name == VariableType::Struct("None".to_string()) {
                         "None".to_string()
-                    } else if matches!(self.type_name.clone(), VariableType::Array{entry_type: _,  count} if count == 0)
+                    } else if matches!(&self.type_name, VariableType::Array{item_type_name: _,  count} if *count == 0)
                     {
                         self.formatted_variable_value(variable_cache, 0_usize, false)
                     } else {
@@ -757,34 +760,26 @@ impl Variable {
                         let mut child_count: usize = 0;
                         for child in children.iter() {
                             child_count += 1;
-                            if child_count == children.len() {
-                                // Do not add a separator at the end of the list
-                                compound_value = format!(
-                                    "{}{}",
-                                    compound_value,
-                                    child.formatted_variable_value(
-                                        variable_cache,
-                                        indentation + 1,
-                                        false
-                                    )
-                                );
-                            } else {
-                                compound_value = format!(
-                                    "{}{}, ",
-                                    compound_value,
-                                    child.formatted_variable_value(
-                                        variable_cache,
-                                        indentation + 1,
-                                        false
-                                    )
-                                );
-                            }
+
+                            compound_value = format!(
+                                "{}{}{}",
+                                compound_value,
+                                child.formatted_variable_value(
+                                    variable_cache,
+                                    indentation + 1,
+                                    false
+                                ),
+                                if child_count == children.len() {
+                                    // Do not add a separator at the end of the list
+                                    ""
+                                } else {
+                                    ", "
+                                }
+                            );
                         }
                         format!("{}{}{:\t<indentation$}]", compound_value, line_feed, "")
                     }
-                    VariableType::Struct(name)
-                        if name.starts_with("Ok") || name.starts_with("Err") =>
-                    {
+                    VariableType::Struct(name) if name == "Ok" || name == "Err" => {
                         // Handle special structure types like the variant values of `Option<>` and `Result<>`
                         compound_value = format!(
                             "{}{:\t<indentation$}{}: {} = {}(",
@@ -872,28 +867,21 @@ impl Variable {
 
                                 let print_name = !is_tuple;
 
-                                if child_count == children.len() {
-                                    // Do not add a separator at the end of the list
-                                    compound_value = format!(
-                                        "{}{}",
-                                        compound_value,
-                                        child.formatted_variable_value(
-                                            variable_cache,
-                                            indentation + 1,
-                                            print_name
-                                        )
-                                    );
-                                } else {
-                                    compound_value = format!(
-                                        "{}{}, ",
-                                        compound_value,
-                                        child.formatted_variable_value(
-                                            variable_cache,
-                                            indentation + 1,
-                                            print_name
-                                        )
-                                    );
-                                }
+                                compound_value = format!(
+                                    "{}{}{}",
+                                    compound_value,
+                                    child.formatted_variable_value(
+                                        variable_cache,
+                                        indentation + 1,
+                                        print_name
+                                    ),
+                                    if child_count == children.len() {
+                                        // Do not add a separator at the end of the list
+                                        ""
+                                    } else {
+                                        ", "
+                                    }
+                                );
                             }
                             if let Some(post_fix) = &post_fix {
                                 compound_value = format!("{compound_value}{post_fix}");
