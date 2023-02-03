@@ -33,6 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - VSCode: Avoid sending extraneous `StoppedEvent` from probe-rs-debugger (#1485).
 
+- cmsis-dap: Avoid endless recursion when recovering from errors.
+
+  When an error occured, the cmsis-dap code tried to read the debug port CTRL register.
+  If that read failed, it would again try to read the same register, returning in an
+  endless recursion.
+
 ## [0.16.0]
 
 Released 2023-01-29
