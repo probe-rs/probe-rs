@@ -91,7 +91,7 @@ fn truncate_output(probe_run_output: String) -> String {
             // https://github.com/knurling-rs/probe-run/issues/217 is resolved
             && !line.starts_with("└─ ")
         })
-        .map(|line| format!("{}\n", line))
+        .map(|line| format!("{line}\n"))
         .collect()
 }
 

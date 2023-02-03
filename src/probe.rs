@@ -45,9 +45,9 @@ pub fn print(probes: &[DebugProbeInfo]) {
         probes
             .iter()
             .enumerate()
-            .for_each(|(num, link)| println!("[{}]: {:?}", num, link));
+            .for_each(|(num, link)| println!("[{num}]: {link:?}"));
     } else {
-        println!("Error: {}", NO_PROBE_FOUND_ERR);
+        println!("Error: {NO_PROBE_FOUND_ERR}");
     }
 }
 

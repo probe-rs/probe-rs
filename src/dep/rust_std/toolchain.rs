@@ -102,7 +102,7 @@ impl<'p> One52<'p> {
             Channel::Beta => "beta".into(),
             Channel::Nightly { date } => {
                 if let Some(date) = date {
-                    format!("nightly-{}", date).into()
+                    format!("nightly-{date}").into()
                 } else {
                     "nightly".into()
                 }

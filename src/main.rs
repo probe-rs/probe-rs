@@ -285,7 +285,7 @@ fn extract_and_print_logs(
             let num_bytes_read = match logging_channel.read(core, &mut read_buf) {
                 Ok(n) => n,
                 Err(e) => {
-                    eprintln!("RTT error: {}", e);
+                    eprintln!("RTT error: {e}");
                     break;
                 }
             };
