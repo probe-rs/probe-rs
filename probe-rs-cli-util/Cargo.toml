@@ -42,4 +42,4 @@ num-traits = "0.2.15"
 defmt-decoder = { version = "0.3.4", features = ["unstable"] }
 git-version = { version = "0.3" }
 time = "0.3"
-is-terminal = "0.4.2"
+is-terminal = "0.4.3"
