@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - st-link: Support reading banked DP registers if firmware is new enough to support it.
 
+- target-gen: Add support for STAR-MC1 by Arm China
+
 ### Fixed
 
 - probe-rs: Emit chip erase started and finished/failed events correctly (#1470)
