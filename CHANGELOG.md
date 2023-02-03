@@ -22,6 +22,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add flashing and debugging support for the ESP32C6 (#1476)
 
+- Debug: Fixed a number of known issues, which included some code refactoring to avoid code duplication (#1484).
+  - Unwind of variables that are in inlined subroutines now resolve correctly under all known conditions.
+  - Unwind of nested arrays now resolve, irrespective of the levels of nesting (#1404).
+  - Gracefully handle the unwind of arrays that are empty.
+  - Correctly unwind pointers/references that are nested as references in several layers of structs.
+  - Correctly unwind pointers/references to variants and enums.
+  - Fix an error that terminated the debug when new architecture error variants were introduced by a previous PR.
+  - Fix an error where unwind memory locations decoded memory values as integer addresses without accounting for endianness.
+
 - VSCode: Avoid sending extraneous `StoppedEvent` from probe-rs-debugger (#1485).
 
 ## [0.16.0]
