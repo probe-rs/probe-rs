@@ -83,6 +83,8 @@ Released 2023-01-28
 - cmsisdap: Increased read timeout from 100ms to 1000ms.
 - rtt: Moved RTT to the probe-rs library instead of having it in its own library. (#1411)
 
+- probe-rs: update probe-rs/targets/STM32F3_Series.yaml with `target-gen`
+
 ### Fixed
 
 - probe-rs: Avoid nested calls to tracing macros, otherwise filtering doesn't work properly. (#1415)
