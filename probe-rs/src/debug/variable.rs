@@ -178,13 +178,12 @@ pub enum VariableType {
     Enum(String),
     /// Namespace refers to the path that qualifies a variable. e.g. "std::string" is the namespace for the strucct "String"
     Namespace,
-    /// A Pointer is a variable that contains a reference to another variable
+    /// A Pointer is a variable that contains a reference to another variable, and the type of the referenced variable may not be known until the reference has been resolved.
     Pointer(Option<String>),
     /// A Rust array.
     Array {
-        // TODO: Use a proper type here, not variable name
-        /// The name of the variable.
-        entry_type: VariableName,
+        /// The type name of the variable.
+        item_type_name: String,
         /// The number of entries in the array.
         count: usize,
     },
@@ -232,9 +231,12 @@ impl std::fmt::Display for VariableType {
             VariableType::Namespace => "<namespace>".fmt(f),
             VariableType::Pointer(pointer_name) => pointer_name
                 .clone()
-                .unwrap_or_else(|| "<unnamed>".to_string())
+                .unwrap_or_else(|| "<referenced type>".to_string())
                 .fmt(f),
-            VariableType::Array { entry_type, count } => write!(f, "[{entry_type}; {count}]"),
+            VariableType::Array {
+                item_type_name: entry_type,
+                count,
+            } => write!(f, "[{entry_type}; {count}]"),
             VariableType::Unknown => "<unknown>".fmt(f),
             VariableType::Other(other) => other.fmt(f),
         }
@@ -330,7 +332,7 @@ pub struct Variable {
     /// The starting location/address in memory where this Variable's value is stored.
     pub memory_location: VariableLocation,
     /// The size of this variable in bytes.
-    pub byte_size: u64,
+    pub byte_size: Option<u64>,
     /// If  this is a subrange (array, vector, etc.), is the ordinal position of this variable in that range
     pub member_index: Option<i64>,
     /// If this is a subrange (array, vector, etc.), we need to temporarily store the lower bound.
@@ -368,6 +370,10 @@ impl Variable {
         } else {
             // Concatenate the error messages ...
             self.value = VariableValue::Error(format!("{} : {}", self.value, new_value));
+        }
+        if !self.value.is_valid() {
+            // If the value is invalid, then make sure we don't propogate invalid memory location values.
+            self.memory_location = VariableLocation::Unavailable;
         }
     }
 
@@ -518,11 +524,14 @@ impl Variable {
                         }
                     } else if self.type_name == VariableType::Struct("None".to_string()) {
                         "None".to_string()
+                    } else if matches!(&self.type_name, VariableType::Array{item_type_name: _,  count} if *count == 0)
+                    {
+                        self.formatted_variable_value(variable_cache, 0_usize, false)
                     } else {
                         format!(
-                            "Unimplemented: Evaluate type {:?} of ({} bytes) at location 0x{:08x?}",
+                            "Unimplemented: Evaluate type {:?} of ({:?} bytes) at location 0x{:08x?}",
                             self.type_name, self.byte_size, self.memory_location
-                        )
+                          )
                     }
                 }
                 Err(error) => format!(
@@ -745,54 +754,36 @@ impl Variable {
                     VariableType::Array { .. } => {
                         // Arrays
                         compound_value = format!(
-                            "{}{}{:\t<indentation$}{}: {} = [",
-                            compound_value,
-                            line_feed,
-                            "",
-                            self.name,
-                            self.type_name,
+                            "{}{}{:\t<indentation$}: {} = [",
+                            compound_value, line_feed, "", self.type_name,
                         );
                         let mut child_count: usize = 0;
                         for child in children.iter() {
                             child_count += 1;
-                            if child_count == children.len() {
-                                // Do not add a separator at the end of the list
-                                compound_value = format!(
-                                    "{}{}",
-                                    compound_value,
-                                    child.formatted_variable_value(
-                                        variable_cache,
-                                        indentation + 1,
-                                        false
-                                    )
-                                );
-                            } else {
-                                compound_value = format!(
-                                    "{}{}, ",
-                                    compound_value,
-                                    child.formatted_variable_value(
-                                        variable_cache,
-                                        indentation + 1,
-                                        false
-                                    )
-                                );
-                            }
+
+                            compound_value = format!(
+                                "{}{}{}",
+                                compound_value,
+                                child.formatted_variable_value(
+                                    variable_cache,
+                                    indentation + 1,
+                                    false
+                                ),
+                                if child_count == children.len() {
+                                    // Do not add a separator at the end of the list
+                                    ""
+                                } else {
+                                    ", "
+                                }
+                            );
                         }
                         format!("{}{}{:\t<indentation$}]", compound_value, line_feed, "")
                     }
-                    VariableType::Struct(name)
-                        if /* name.starts_with("Some")
-                            || */ name.starts_with("Ok") 
-                            || name.starts_with("Err") =>
-                    {
+                    VariableType::Struct(name) if name == "Ok" || name == "Err" => {
                         // Handle special structure types like the variant values of `Option<>` and `Result<>`
                         compound_value = format!(
                             "{}{:\t<indentation$}{}: {} = {}(",
-                            line_feed,
-                            "",
-                            self.name,
-                            self.type_name,
-                            compound_value
+                            line_feed, "", self.name, self.type_name, compound_value
                         );
                         for child in children {
                             compound_value = format!(
@@ -813,95 +804,89 @@ impl Variable {
                         // compound_value = format!("{} {}", compound_value, self.type_name);
 
                         if children.is_empty() {
-                                // Struct with no children -> just print type name
-                                // This is for example the None value of an Option.
+                            // Struct with no children -> just print type name
+                            // This is for example the None value of an Option.
 
-                                format!("{}{:\t<indentation$}{}", line_feed, "", self.name)
+                            format!("{}{:\t<indentation$}{}", line_feed, "", self.name)
                         } else {
+                            let (mut pre_fix, mut post_fix): (Option<String>, Option<String>) =
+                                (None, None);
 
-                        let (mut pre_fix, mut post_fix): (Option<String>, Option<String>) =
-                            (None, None);
+                            let mut child_count: usize = 0;
 
-                        let mut child_count: usize = 0;
+                            let mut is_tuple = false;
 
-                        let mut is_tuple = false;
-
-                        for child in children.iter() {
-                            child_count += 1;
-                            if pre_fix.is_none() && post_fix.is_none() {
-                                if let VariableName::Named(child_name) = &child.name {
-                                    if child_name.starts_with("__0") {
-                                        is_tuple = true;
-                                        // Treat this structure as a tuple
-                                        pre_fix = Some(format!(
-                                            "{}{:\t<indentation$}{}: {}({}) = {}(",
-                                            line_feed,
-                                            "",
-                                            self.name,
-                                            self.type_name,
-                                            child.type_name,
-                                            self.type_name,
-                                        ));
-                                        post_fix =
-                                            Some(format!("{}{:\t<indentation$})", line_feed, ""));
-                                    } else {
-                                        // Treat this structure as a `struct`
-
-                                        if show_name {
+                            for child in children.iter() {
+                                child_count += 1;
+                                if pre_fix.is_none() && post_fix.is_none() {
+                                    if let VariableName::Named(child_name) = &child.name {
+                                        if child_name.starts_with("__0") {
+                                            is_tuple = true;
+                                            // Treat this structure as a tuple
                                             pre_fix = Some(format!(
-                                                "{}{:\t<indentation$}{}: {} = {} {{",
+                                                "{}{:\t<indentation$}{}: {}({}) = {}(",
                                                 line_feed,
                                                 "",
                                                 self.name,
                                                 self.type_name,
+                                                child.type_name,
                                                 self.type_name,
+                                            ));
+                                            post_fix = Some(format!(
+                                                "{}{:\t<indentation$})",
+                                                line_feed, ""
                                             ));
                                         } else {
-                                            pre_fix = Some(format!(
-                                                "{}{:\t<indentation$}{} {{",
-                                                line_feed,
-                                                "",
-                                                self.type_name,
+                                            // Treat this structure as a `struct`
+
+                                            if show_name {
+                                                pre_fix = Some(format!(
+                                                    "{}{:\t<indentation$}{}: {} = {} {{",
+                                                    line_feed,
+                                                    "",
+                                                    self.name,
+                                                    self.type_name,
+                                                    self.type_name,
+                                                ));
+                                            } else {
+                                                pre_fix = Some(format!(
+                                                    "{}{:\t<indentation$}{} {{",
+                                                    line_feed, "", self.type_name,
+                                                ));
+                                            }
+                                            post_fix = Some(format!(
+                                                "{}{:\t<indentation$}}}",
+                                                line_feed, ""
                                             ));
                                         }
-                                        post_fix =
-                                            Some(format!("{}{:\t<indentation$}}}", line_feed, ""));
+                                    };
+                                    if let Some(pre_fix) = &pre_fix {
+                                        compound_value = format!("{compound_value}{pre_fix}");
+                                    };
+                                }
+
+                                let print_name = !is_tuple;
+
+                                compound_value = format!(
+                                    "{}{}{}",
+                                    compound_value,
+                                    child.formatted_variable_value(
+                                        variable_cache,
+                                        indentation + 1,
+                                        print_name
+                                    ),
+                                    if child_count == children.len() {
+                                        // Do not add a separator at the end of the list
+                                        ""
+                                    } else {
+                                        ", "
                                     }
-                                };
-                                if let Some(pre_fix) = &pre_fix {
-                                    compound_value = format!("{compound_value}{pre_fix}");
-                                };
-                            }
-
-                            let print_name = !is_tuple;
-
-                            if child_count == children.len() {
-                                // Do not add a separator at the end of the list
-                                compound_value = format!(
-                                    "{}{}",
-                                    compound_value,
-                                    child.formatted_variable_value(
-                                        variable_cache,
-                                        indentation + 1,
-                                        print_name
-                                    )
-                                );
-                            } else {
-                                compound_value = format!(
-                                    "{}{}, ",
-                                    compound_value,
-                                    child.formatted_variable_value(
-                                        variable_cache,
-                                        indentation + 1,
-                                        print_name
-                                    )
                                 );
                             }
-                        }
-                        if let Some(post_fix) = &post_fix {
-                            compound_value = format!("{compound_value}{post_fix}");
-                        };
-                        compound_value
+                            if let Some(post_fix) = &post_fix {
+                                compound_value = format!("{compound_value}{post_fix}");
+                            };
+                            compound_value
                         }
                     }
                 }

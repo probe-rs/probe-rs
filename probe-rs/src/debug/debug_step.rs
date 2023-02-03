@@ -3,7 +3,11 @@ use super::{
     source_statement::SourceStatements,
     {DebugError, SourceLocation},
 };
-use crate::{core::Core, CoreStatus, HaltReason};
+use crate::{
+    architecture::{arm::ArmError, riscv::communication_interface::RiscvError},
+    core::Core,
+    CoreStatus, HaltReason,
+};
 use std::{ops::RangeInclusive, time::Duration};
 
 /// Stepping granularity for stepping through a program during debug.
@@ -409,7 +413,10 @@ fn run_to_address(
             Err(error) => {
                 program_counter = core.halt(Duration::from_millis(500))?.pc;
                 core.clear_hw_breakpoint(target_address)?;
-                if matches!(error, crate::Error::Timeout) {
+                if matches!(
+                    error,
+                    crate::Error::Arm(ArmError::Timeout) | crate::Error::Riscv(RiscvError::Timeout)
+                ) {
                     // This is not a quick step and halt operation. Notify the user that we are not going to wait any longer, and then return the current program counter so that the debugger can show the user where the forced halt happened.
                     tracing::error!(
                         "The core did not halt after stepping to {:#010X}. Forced a halt at {:#010X}. Long running operations between debug steps are not currently supported.",

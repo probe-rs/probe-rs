@@ -39,7 +39,6 @@ impl VariableCache {
         core: &mut Core<'_>,
     ) -> Result<Variable, Error> {
         let mut variable_to_add = cache_variable.clone();
-
         // Validate that the parent_key exists ...
         if let Some(new_parent_key) = parent_key {
             if self.variable_hash_map.contains_key(&new_parent_key) {
