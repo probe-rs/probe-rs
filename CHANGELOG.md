@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - st-link: Support reading banked DP registers if firmware is new enough to support it.
 
+- Debug: For Cortex-M core types, extend stack unwind to beyond the most recent signal handler (#1495).
+
 ### Fixed
 
 - probe-rs: Emit chip erase started and finished/failed events correctly (#1470)

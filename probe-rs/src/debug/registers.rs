@@ -181,7 +181,7 @@ impl DebugRegisters {
                                     }
                                 }
                                 _ => {
-                                    // TODO: This is a placeholder, that will allow all other core types to continue to work as before.
+                                    // TODO: This is a placeholder, that will allow all other core types to continue to work as before the implementation in PR #1495.
                                     // See [RISC-V Volume 1, Unprivileged Spec, Chapter 25](https://github.com/riscv/riscv-isa-manual/releases/download/Ratified-IMAFDQC/riscv-spec-20191213.pdf)
                                     PreserveRule::Clear
                                 }
