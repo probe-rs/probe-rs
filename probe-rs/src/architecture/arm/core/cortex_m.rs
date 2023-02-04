@@ -2,7 +2,7 @@
 
 use crate::{
     architecture::arm::{memory::adi_v5_memory_interface::ArmProbe, ArmError},
-    Error, MemoryMappedRegister, RegisterId,
+    Error, MemoryMappedRegister, RegisterId, RegisterValue,
 };
 
 use bitfield::bitfield;
@@ -129,6 +129,42 @@ impl From<Cpacr> for u32 {
 impl MemoryMappedRegister for Cpacr {
     const ADDRESS: u64 = 0xE000_ED88;
     const NAME: &'static str = "CPACR";
+}
+
+bitfield! {
+    #[derive(Copy, Clone)]
+    /// IPSR - Interrupt Program Status Register (a variant of xPSR)
+    pub struct Ipsr(u32);
+    impl Debug;
+    pub exception, _: 8,0;
+}
+
+impl Ipsr {
+    /// Returns true if the current exception is one of the Coretex-M core exceptions.
+    pub fn is_core_exception(&self) -> bool {
+        (1..=15).any(|i| self.exception() == i)
+    }
+
+    /// Returns true if the current exception is a ISR.
+    pub fn is_isr(&self) -> bool {
+        self.exception() > 15
+    }
+
+    /// Subtracts the offset of the ISR vector table to get the index of the ISR.
+    pub fn isr_index(&self) -> u32 {
+        self.exception() - 16
+    }
+}
+
+impl TryFrom<RegisterValue> for Ipsr {
+    type Error = crate::Error;
+
+    fn try_from(value: RegisterValue) -> Result<Self, Self::Error> {
+        match value {
+            RegisterValue::U32(value) => Ok(Self(value)),
+            _ => Err(Error::Arm(ArmError::AddressOutOf32BitAddressSpace)),
+        }
+    }
 }
 
 bitfield! {

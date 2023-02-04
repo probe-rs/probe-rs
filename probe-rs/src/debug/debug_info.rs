@@ -3,6 +3,7 @@ use super::{
     variable::*, DebugError, DebugRegisters, SourceLocation, StackFrame, VariableCache,
 };
 use crate::{
+    architecture::arm::core::cortex_m::Ipsr,
     core::Core,
     debug::{registers, source_statement::SourceStatements},
     MemoryInterface, RegisterValue,
@@ -10,7 +11,7 @@ use crate::{
 use ::gimli::{FileEntry, LineProgramHeader, UnwindContext};
 use gimli::{BaseAddresses, ColumnType, DebugFrame, UnwindSection};
 use object::read::{Object, ObjectSection};
-use probe_rs_target::InstructionSet;
+use probe_rs_target::{CoreType, InstructionSet};
 use registers::{PreserveRule, RegisterGroup};
 use std::{
     borrow,
@@ -485,12 +486,14 @@ impl DebugInfo {
         &self,
         core: &mut Core<'_>,
         address: u64,
+        frame_name_override: Option<String>,
         unwind_registers: &registers::DebugRegisters,
     ) -> Result<Vec<StackFrame>, DebugError> {
         let mut units = self.get_units();
 
         let unknown_function = format!(
-            "<unknown function @ {:#0width$x}>",
+            "<{} @ {:#0width$x}>",
+            frame_name_override.unwrap_or("unnamed function".to_string()),
             address,
             width = (unwind_registers.get_address_size_bytes() * 2 + 2)
         );
@@ -680,7 +683,6 @@ impl DebugInfo {
     /// The unwind loop will continue until we meet one of the following conditions:
     /// - We can no longer unwind a valid PC value to be used for the next frame.
     /// - We encounter a LR register value of 0x0 or 0xFFFFFFFF(Arm 'Reset' value for that register).
-    /// - TODO: Catch the situation where the PC value indicates a hard-fault or other non-recoverable exception
     /// - We can not intelligently calculate a valid LR register value from the other registers, or the gimli::RegisterRule result is a value of 0x0. Note: [DWARF](https://dwarfstd.org) 6.4.4 - CIE defines the return register address used in the `gimli::RegisterRule` tables for unwind operations. Theoretically, if we encounter a function that has `Undefined` `gimli::RegisterRule` for the return register address, it means we have reached the bottom of the stack OR the function is a 'no return' type of function. I have found actual examples (e.g. local functions) where we get `Undefined` for register rule when we cannot apply this logic. Example 1: local functions in main.rs will have LR rule as `Undefined`. Example 2: main()-> ! that is called from a trampoline will have a valid LR rule.
     /// - Similarly, certain error conditions encountered in `StackFrameIterator` will also break out of the unwind loop.
     /// Note: In addition to populating the `StackFrame`s, this function will also populate the `DebugInfo::VariableCache` with `Variable`s for available Registers as well as static and function variables.
@@ -688,14 +690,6 @@ impl DebugInfo {
     pub fn unwind(&self, core: &mut Core, address: u64) -> Result<Vec<StackFrame>, crate::Error> {
         let mut stack_frames = Vec::<StackFrame>::new();
         let mut unwind_registers = registers::DebugRegisters::from_core(core);
-
-        // PART 0: The first step is to determine the exception context for the current PC.
-        match core.architecture() {
-            probe_rs_target::Architecture::Arm => {
-                // For ARM, we start by evaluating the LR value.
-            }
-            probe_rs_target::Architecture::Riscv => todo!(),
-        }
 
         if unwind_registers
             .get_program_counter()
@@ -712,6 +706,47 @@ impl DebugInfo {
             .get_program_counter()
             .and_then(|pc| pc.value)
         {
+            // PART 0: The first step is to determine the exception context for the current PC.
+            // - If we are at an exception hanlder frame, we need to overwrite the unwind registers with the exception context.
+            // - If for some reason we cannot determine the exception context, we silently continue with the rest of the unwind.
+            // At worst, the unwind will be able to unwind the stack to the frame of the most recent exception handler.
+            let frame_name_override = match core.core_type() {
+                CoreType::Armv6m | CoreType::Armv7em | CoreType::Armv7m | CoreType::Armv8m => {
+                    if let Some(Some(lr_register_value)) =
+                        unwind_registers.get_return_address().map(|r| r.value)
+                    {
+                        let lr_address: u32 = lr_register_value.try_into().map_err(|error| {
+                            crate::Error::Other(anyhow::anyhow!(
+                                "UNWIND: Failed to convert LR register value to address: {:?}. Please report this as a bug.",
+                                error
+                            ))
+                        })?;
+                        if lr_address == 0xFF_FF_FF_F9 {
+                            if let Some(Some(psr_register_value)) = unwind_registers
+                                .get_register_by_name("XPSR")
+                                .map(|r| r.value)
+                            {
+                                let ispr = Ipsr::try_from(psr_register_value)?;
+                                if ispr.is_core_exception() {
+                                    Some(format!("System Exception Handler #{}", ispr.exception()))
+                                } else if ispr.is_isr() {
+                                    Some(format!("ISR #{} Handler", ispr.isr_index()))
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            };
+
             // PART 1: Construct the `StackFrame` for the current pc.
             let frame_pc = frame_pc_register_value
                 .try_into()
@@ -723,7 +758,12 @@ impl DebugInfo {
 
             //
             // PART 1-a: Prepare the `StackFrame` that holds the current frame information.
-            let return_frame = match self.get_stackframe_info(core, frame_pc, &unwind_registers) {
+            let return_frame = match self.get_stackframe_info(
+                core,
+                frame_pc,
+                frame_name_override,
+                &unwind_registers,
+            ) {
                 Ok(mut cached_stack_frames) => {
                     while cached_stack_frames.len() > 1 {
                         // If we encountered INLINED functions (all `StackFrames`s in this Vec, except for the last one, which is the containing NON-INLINED function), these are simply added to the list of stack_frames we return.
@@ -755,7 +795,6 @@ impl DebugInfo {
             };
 
             // Part 1-b: Check LR values to determine if we can continue unwinding.
-            // TODO: ARM has special ranges of LR addresses to indicate fault conditions. We should check those also.
             if let Some(check_return_address) = unwind_registers.get_return_address() {
                 if check_return_address.is_max_value() || check_return_address.is_zero() {
                     // When we encounter the starting (after reset) return address, we've reached the bottom of the stack, so no more unwinding after this.
