@@ -162,6 +162,55 @@ impl CmsisDap {
             })
     }
 
+    /// Read the CTRL register from the currently selected debug port.
+    ///
+    /// According to the ARM specification, this *should* never fail.
+    /// In practice, it can unfortunately happen.
+    ///
+    /// To avoid an endeless recursion in this cases, this function is provided
+    /// as an alternative to [`Self::process_batch()`]. This function will return any errors,
+    /// and not retry any transfers.
+    fn read_ctrl_register(&mut self) -> Result<Ctrl, ArmError> {
+        let response = commands::send_command(
+            &mut self.device,
+            TransferRequest::new(&[InnerTransferRequest::new(
+                PortType::DebugPort,
+                RW::R,
+                Ctrl::ADDRESS,
+                None,
+            )]),
+        )
+        .map_err(CmsisDapError::from)
+        .map_err(DebugProbeError::from)?;
+
+        // We can assume that the single transfer is always executed,
+        // no need to check here.
+
+        if response.last_transfer_response.protocol_error {
+            // TODO: What does this protocol error mean exactly?
+            //       Should be verified in CMSIS-DAP spec
+            Err(DapError::SwdProtocol.into())
+        } else {
+            if response.last_transfer_response.ack != Ack::Ok {
+                tracing::debug!(
+                    "Error reading debug port CTRL register: {:?}. This should never fail!",
+                    response.last_transfer_response.ack
+                );
+            }
+
+            match response.last_transfer_response.ack {
+                Ack::Ok => {
+                    Ok(Ctrl(response.transfers[0].data.expect(
+                        "CMSIS-DAP probe should always return data for a read.",
+                    )))
+                }
+                Ack::Wait => Err(DapError::WaitResponse.into()),
+                Ack::Fault => Err(DapError::FaultResponse.into()),
+                Ack::NoAck => Err(DapError::NoAcknowledge.into()),
+            }
+        }
+    }
+
     /// Immediately send whatever is in our batch if it is not empty.
     ///
     /// If the last transfer was a read, result is Some with the read value.
@@ -169,6 +218,7 @@ impl CmsisDap {
     ///
     /// This will ensure any pending writes are processed and errors from them
     /// raised if necessary.
+    #[tracing::instrument(skip(self))]
     fn process_batch(&mut self) -> Result<Option<u32>, ArmError> {
         if self.batch.is_empty() {
             return Ok(None);
@@ -202,7 +252,7 @@ impl CmsisDap {
 
             let count = response.transfer_count as usize;
 
-            tracing::debug!("{:?} of batch of {} items suceeded", count, batch.len());
+            tracing::debug!("{:?} of batch of {} items executed", count, batch.len());
 
             if response.last_transfer_response.protocol_error {
                 return Err(DapError::SwdProtocol.into());
@@ -213,20 +263,26 @@ impl CmsisDap {
                         return Ok(response.transfers[response.transfers.len() - 1].data);
                     }
                     Ack::NoAck => {
-                        tracing::trace!("Transfer status: NACK");
+                        tracing::trace!(
+                            "Transfer status for batch item {}/{}: NACK",
+                            count,
+                            batch.len()
+                        );
                         // TODO: Try a reset?
                         return Err(DapError::NoAcknowledge.into());
                     }
                     Ack::Fault => {
-                        tracing::trace!("Transfer status: FAULT");
+                        tracing::trace!(
+                            "Transfer status for batch item {}/{}: FAULT",
+                            count,
+                            batch.len()
+                        );
 
-                        // Check the reason for the fault.
-                        let response = RawDapAccess::raw_read_register(
-                            self,
-                            PortType::DebugPort,
-                            Ctrl::ADDRESS,
-                        )?;
-                        let ctrl = Ctrl::try_from(response)?;
+                        // To avoid a potential endless recursion,
+                        // call a separate function to read the ctrl register,
+                        // which doesn't use the batch API.
+                        let ctrl = self.read_ctrl_register()?;
+
                         tracing::trace!("Ctrl/Stat register value is: {:?}", ctrl);
 
                         if ctrl.sticky_err() {

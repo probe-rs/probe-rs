@@ -164,29 +164,26 @@ fn extract_file(
     }
 }
 
-/// If a DW_AT_byte_size attribute exists, return the u64 value, otherwise (including errors) return 0
-fn extract_byte_size(
-    _debug_info: &DebugInfo,
-    di_entry: &DebuggingInformationEntry<GimliReader>,
-) -> u64 {
-    match di_entry.attr(gimli::DW_AT_byte_size) {
+/// If a DW_AT_byte_size attribute exists, return the u64 value, otherwise (including errors) return None
+fn extract_byte_size(node_die: &DebuggingInformationEntry<GimliReader>) -> Option<u64> {
+    match node_die.attr(gimli::DW_AT_byte_size) {
         Ok(optional_byte_size_attr) => match optional_byte_size_attr {
             Some(byte_size_attr) => match byte_size_attr.value() {
-                gimli::AttributeValue::Udata(byte_size) => byte_size,
+                gimli::AttributeValue::Udata(byte_size) => Some(byte_size),
                 other => {
                     tracing::warn!("Unimplemented: DW_AT_byte_size value: {:?} ", other);
-                    0
+                    None
                 }
             },
-            None => 0,
+            None => None,
         },
         Err(error) => {
             tracing::warn!(
                 "Failed to extract byte_size: {:?} for debug_entry {:?}",
                 error,
-                di_entry.tag().static_string()
+                node_die.tag().static_string()
             );
-            0
+            None
         }
     }
 }

@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Debug: For Cortex-M core types, extend stack unwind to beyond the most recent signal handler (#1495).
 
+- target-gen: Add support for STAR-MC1 by Arm China
+
 ### Fixed
 
 - probe-rs: Emit chip erase started and finished/failed events correctly (#1470)
@@ -22,9 +24,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   As an example, this makes flashing the Teensy 4.1 (which has an i.MX RT1062) reliable.
 
+- probe-rs: jlink: fix WAIT retries on AP reads. Fixes flashing on nrf91. (#1489)
+
 - Add flashing and debugging support for the ESP32C6 (#1476)
 
+- Debug: Fixed a number of known issues, which included some code refactoring to avoid code duplication (#1484).
+  - Unwind of variables that are in inlined subroutines now resolve correctly under all known conditions.
+  - Unwind of nested arrays now resolve, irrespective of the levels of nesting (#1404).
+  - Gracefully handle the unwind of arrays that are empty.
+  - Correctly unwind pointers/references that are nested as references in several layers of structs.
+  - Correctly unwind pointers/references to variants and enums.
+  - Fix an error that terminated the debug when new architecture error variants were introduced by a previous PR.
+  - Fix an error where unwind memory locations decoded memory values as integer addresses without accounting for endianness.
+
 - VSCode: Avoid sending extraneous `StoppedEvent` from probe-rs-debugger (#1485).
+
+- cmsis-dap: Avoid endless recursion when recovering from errors.
+
+  When an error occured, the cmsis-dap code tried to read the debug port CTRL register.
+  If that read failed, it would again try to read the same register, returning in an
+  endless recursion.
 
 ## [0.16.0]
 
@@ -67,6 +86,8 @@ Released 2023-01-28
 
 - cmsisdap: Increased read timeout from 100ms to 1000ms.
 - rtt: Moved RTT to the probe-rs library instead of having it in its own library. (#1411)
+
+- probe-rs: update probe-rs/targets/STM32F3_Series.yaml with `target-gen`
 
 ### Fixed
 

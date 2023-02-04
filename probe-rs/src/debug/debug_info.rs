@@ -332,9 +332,10 @@ impl DebugInfo {
             // Do nothing. The parent_variable.get_value() will already report back the debug_error value.
             return Ok(());
         }
+
         match parent_variable.variable_node_type {
             VariableNodeType::ReferenceOffset(reference_offset) => {
-                // Only attempt this part if the parent is a pointer and we have not yet resolved the referenced children.
+                // Only attempt this part if we have not yet resolved the referenced children.
                 if !cache.has_children(parent_variable)? {
                     if let Some(header_offset) = parent_variable.unit_header_offset {
                         let unit_header =
@@ -371,48 +372,19 @@ impl DebugInfo {
                                 other => referenced_variable.name = VariableName::Named(format!("Error: Unable to generate name, parent variable does not have a name but is special variable {other:?}")),
                             }
 
-                        match &parent_variable.memory_location {
-                            VariableLocation::Address(address) => {
-                                // Now, retrieve the location by reading the adddress pointed to by the parent variable.
-                                referenced_variable.memory_location = match core
-                                    .read_word_32(*address)
-                                {
-                                    Ok(memory_location) => {
-                                        VariableLocation::Address(memory_location as u64)
-                                    }
-                                    Err(error) => {
-                                        tracing::error!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location , error);
-                                        VariableLocation::Error(format!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location, error))
-                                    }
-                                };
-                            }
-                            other => {
-                                referenced_variable.memory_location =
-                                    VariableLocation::Unsupported(format!(
-                                        "Location {other:?} not supported for referenced variables."
-                                    ));
-                            }
-                        }
-
-                        referenced_variable = cache.cache_variable(
-                            referenced_variable.parent_key,
+                        referenced_variable = unit_info.extract_type(
+                            referenced_node,
+                            parent_variable,
                             referenced_variable,
                             core,
+                            stack_frame_registers,
+                            frame_base,
+                            cache,
                         )?;
 
                         if referenced_variable.type_name == VariableType::Base("()".to_owned()) {
                             // Only use this, if it is NOT a unit datatype.
                             cache.remove_cache_entry(referenced_variable.variable_key)?;
-                        } else {
-                            unit_info.extract_type(
-                                referenced_node,
-                                parent_variable,
-                                referenced_variable,
-                                core,
-                                stack_frame_registers,
-                                frame_base,
-                                cache,
-                            )?;
                         }
                     }
                 }
