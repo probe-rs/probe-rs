@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- probe-rs: Emit chip erase started and finished/failed events correctly (#1470)
+- probe-rs: Emit chip erase started and finished/failed events correctly (#1470, #1496)
 
   The finished/failed event would only be emitted when a sectorwise erase would be performed.
   Now the events are correctly emitted.
@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - probe-rs: Fixed a race condition when reseting NXP chips under JTAG (#1482)
 
   As an example, this makes flashing the Teensy 4.1 (which has an i.MX RT1062) reliable.
+
+- probe-rs: jlink: fix WAIT retries on AP reads. Fixes flashing on nrf91. (#1489)
 
 - Add flashing and debugging support for the ESP32C6 (#1476)
 
