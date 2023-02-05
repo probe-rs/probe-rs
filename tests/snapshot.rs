@@ -119,6 +119,6 @@ fn snapshot_test(#[case] args: &str, #[case] success: bool) {
 #[cfg(target_family = "unix")]
 fn ctrl_c_by_user_is_reported_as_such() {
     let run_result = run_and_terminate("silent-loop-rzcobs", 5);
-    assert_eq!(false, run_result.exit_status.success());
+    assert!(!run_result.exit_status.success());
     insta::assert_snapshot!(run_result.output);
 }
