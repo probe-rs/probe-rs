@@ -1,13 +1,11 @@
 use crate::common_options::{FlashOptions, OperationError};
-use crate::{
-    indicatif::{MultiProgress, ProgressBar, ProgressStyle},
-    logging,
-};
+use crate::logging;
 
 use std::time::Duration;
 use std::{path::Path, sync::Arc, time::Instant};
 
 use colored::Colorize;
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use probe_rs::{
     flashing::{DownloadOptions, FlashLoader, FlashProgress, ProgressEvent},
     Session,

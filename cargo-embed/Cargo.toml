@@ -23,7 +23,6 @@ gdb-server = { workspace = true }
 probe-rs-cli-util = { workspace = true, default-features = false, features = [
     "anyhow",
 ] }
-
 git-version = "0.3.5"
 env_logger = "0.10.0"
 log = { version = "0.4.17", features = ["serde"] }
@@ -41,9 +40,7 @@ sanitize-filename = "0.4"
 time = { version = "0.3.17", features = ["local-offset"] }
 
 [build-dependencies]
-probe-rs-cli-util = { workspace = true, default-features = false, features = [
-    "anyhow",
-] }
+git-version = "0.3.5"
 
 [[package.metadata.release.pre-release-replacements]]
 file = "CHANGELOG.md"
