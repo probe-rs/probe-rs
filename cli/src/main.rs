@@ -45,7 +45,7 @@ use std::{num::ParseIntError, path::Path};
     about = "A CLI for on top of the debug probe capabilities provided by probe-rs",
     author = "Noah Hüsser <yatekii@yatekii.ch> / Dominik Böhi <dominik.boehi@gmail.ch>",
     version = meta::CARGO_VERSION,
-    long_version = meta::LONG_VERSION 
+    long_version = meta::LONG_VERSION
 )]
 struct Cli {
     /// Location for log file

@@ -1,4 +1,3 @@
-
 /// Generates a `meta.rs` file in a crates `OUT_DIR`.
 ///
 /// This is intended to be used in the `build.rs` of a crate.
