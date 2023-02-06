@@ -162,7 +162,9 @@ impl TryFrom<RegisterValue> for Ipsr {
     fn try_from(value: RegisterValue) -> Result<Self, Self::Error> {
         match value {
             RegisterValue::U32(value) => Ok(Self(value)),
-            _ => Err(Error::Arm(ArmError::AddressOutOf32BitAddressSpace)),
+            _ => Err(Error::Other(anyhow::anyhow!(format!(
+                "Invalid register value: {value:?}."
+            )))),
         }
     }
 }
