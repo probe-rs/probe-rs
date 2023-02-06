@@ -714,15 +714,22 @@ pub enum DebugProbeSelectorParseError {
 
 /// A struct to describe the way a probe should be selected.
 ///
-/// Construct this from a set of info or from a string.
+/// Construct this from a set of info or from a string. The
+/// string has to be in the format "VID:PID:SERIALNUMBER",
+/// where the serialnumber is optional, and VID and PID are
+/// parsed as hexadecimal numbers.
 ///
-/// Example:
+/// ## Example:
+///
 /// ```
 /// use std::convert::TryInto;
-/// let selector: probe_rs::DebugProbeSelector = "1337:1337:SERIAL".try_into().unwrap();
+/// let selector: probe_rs::DebugProbeSelector = "1942:1337:SERIAL".try_into().unwrap();
+///
+/// assert_eq!(selector.vendor_id, 0x1942);
+/// assert_eq!(selector.product_id, 0x1337);
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
-// We need this so that serde will first convert from the string `PID:VID:<Serial>` to a struct before deserializing.
+// We need this so that serde will first convert from the string `VID:PID:<Serial>` to a struct before deserializing.
 #[serde(try_from = "String")]
 pub struct DebugProbeSelector {
     /// The the USB vendor id of the debug probe to be used.
