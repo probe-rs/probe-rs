@@ -193,9 +193,8 @@ impl<'session> Flasher<'session> {
     }
 
     pub(super) fn run_erase_all(&mut self) -> Result<(), FlashError> {
-        if self.session.has_sequence_erase_all() {
-            self.progress.started_erasing();
-
+        self.progress.started_erasing();
+        let result = if self.session.has_sequence_erase_all() {
             fn run(flasher: &mut Flasher) -> Result<(), FlashError> {
                 flasher
                     .session
@@ -208,18 +207,18 @@ impl<'session> Flasher<'session> {
                 flasher.load()
             }
 
-            let result = run(self);
-
-            if result.is_ok() {
-                self.progress.finished_erasing();
-            } else {
-                self.progress.failed_erasing();
-            }
-
-            result
+            run(self)
         } else {
             self.run_erase(|active| active.erase_all())
+        };
+
+        if result.is_ok() {
+            self.progress.finished_erasing();
+        } else {
+            self.progress.failed_erasing();
         }
+
+        result
     }
 
     pub(super) fn run_erase<T, F>(&mut self, f: F) -> Result<T, FlashError>

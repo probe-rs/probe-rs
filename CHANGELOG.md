@@ -5,6 +5,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0]
+
+Released 2023-02-06
+
 ### Added
 
 - st-link: Support reading banked DP registers if firmware is new enough to support it.
@@ -15,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- probe-rs: Emit chip erase started and finished/failed events correctly (#1470)
+- probe-rs: Emit chip erase started and finished/failed events correctly (#1470, #1496)
 
   The finished/failed event would only be emitted when a sectorwise erase would be performed.
   Now the events are correctly emitted.
@@ -783,7 +787,8 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.16.0...master
+[unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.17.0...master
+[0.17.0]: https://github.com/probe-rs/probe-rs/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/probe-rs/probe-rs/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/probe-rs/probe-rs/compare/v0.14.2...v0.15.0
 [0.14.2]: https://github.com/probe-rs/probe-rs/compare/v0.14.1...v0.14.2
