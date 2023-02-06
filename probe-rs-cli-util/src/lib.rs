@@ -1,7 +1,6 @@
 pub mod common_options;
 pub mod flash;
 pub mod logging;
-pub mod meta;
 pub mod rtt;
 
 use cargo_toml::Manifest;
@@ -43,16 +42,13 @@ pub enum ArtifactError {
     NoArtifacts,
 }
 
-pub struct Metadata {
-    pub chip: Option<String>,
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
 pub struct Meta {
     pub chip: Option<String>,
 }
 
-pub fn read_metadata(work_dir: &Path) -> Result<Metadata, ArtifactError> {
+/// Read chip information from Cargo.toml metadata
+pub fn read_metadata(work_dir: &Path) -> Result<Meta, ArtifactError> {
     let cargo_toml = work_dir.join("Cargo.toml");
 
     let cargo_toml_content = std::fs::read(&cargo_toml).map_err(|e| ArtifactError::CargoToml {
@@ -65,7 +61,7 @@ pub fn read_metadata(work_dir: &Path) -> Result<Metadata, ArtifactError> {
         Err(_e) => None,
     };
 
-    Ok(Metadata {
+    Ok(Meta {
         chip: meta.and_then(|m| m.chip),
     })
 }

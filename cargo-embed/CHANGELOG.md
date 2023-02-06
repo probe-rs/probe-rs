@@ -5,6 +5,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0]
+
+Released 2023-02-06
+
 ### Changed
 
 - Log messages are printed to stderr, not stdout.
@@ -231,7 +235,8 @@ Released 2023-01-13
 
 - Initial release
 
-[unreleased]: https://github.com/probe-rs/cargo-embed/compare/v0.16.0...master
+[unreleased]: https://github.com/probe-rs/cargo-embed/compare/v0.17.0...master
+[0.17.0]: https://github.com/probe-rs/cargo-embed/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/probe-rs/cargo-embed/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/probe-rs/cargo-embed/compare/v0.14.2...v0.15.0
 [0.14.2]: https://github.com/probe-rs/cargo-embed/compare/v0.14.1...v0.14.2

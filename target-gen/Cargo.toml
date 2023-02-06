@@ -15,8 +15,8 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-probe-rs = { path = "../probe-rs", version = "0.16.0", default-features = false }
-probe-rs-target = { path = "../probe-rs-target", version = "0.16.0", default-features = false }
+probe-rs = { path = "../probe-rs", version = "0.17.0", default-features = false }
+probe-rs-target = { path = "../probe-rs-target", version = "0.17.0", default-features = false }
 cmsis-pack = { version = "0.6.2" }
 goblin = { version = "0.6.0", default-features = false, features = [
     "elf32",
@@ -32,7 +32,7 @@ zip = "0.6.4"
 clap = { version = "4.1", features = ["derive"] }
 colored = "2"
 base64 = "0.21.0"
-anyhow = "1.0.68"
+anyhow = "1.0.69"
 reqwest = { version = "0.11.14", features = ["json", "blocking"] }
 serde = { version = "1", features = ["derive"] }
 futures = "0.3.26"
