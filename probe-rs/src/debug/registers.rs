@@ -45,8 +45,8 @@ pub struct DebugRegister {
     // TODO: Consider capturing reference to RegisterDescription, so we can delegate actions like size_in_bytes.
     /// The name of the register.
     pub name: &'static str,
-    /// If a special name (a.k.a. Assemble ) exists for an existing register, e.g. Arm register 'r15' is also known as 'pc' (program counter)
-    pub special_name: Option<&'static str>,
+    /// If a special name exists for an existing register, e.g. Arm register 'r15' is also known as 'pc' (program counter)
+    pub alias: Option<&'static str>,
     /// For unwind purposes, we need to know how values are preserved between function calls. (Applies to ARM and RISC-V)
     pub preserve_rule: PreserveRule,
     /// The location where the register is stored.
@@ -87,7 +87,7 @@ impl DebugRegister {
 
     /// Retrieve the special name if it exists, else the actual name using the [`RegisterId`] as an identifier.
     pub fn get_register_name(&self) -> String {
-        self.special_name.unwrap_or(self.name).to_string()
+        self.alias.unwrap_or(self.name).to_string()
     }
 }
 
@@ -135,13 +135,17 @@ impl DebugRegisters {
 
         // Add additional registers required to unwind beyond the most recent signal handler.
         if let Some(psr_register) = register_file.psr {
-            all_registers.push((RegisterGroup::Singleton, [psr_register.to_owned()].to_vec()));
+            let mut psr = psr_register.to_owned();
+            all_registers.push((RegisterGroup::Singleton, [psr.clone()].to_vec()));
+            psr.name = "PSR";
+            // Add it a second time, so that can add the 'alias' when we populate `debug_registers`.
+            all_registers.push((RegisterGroup::Singleton, [psr].to_vec()));
         }
-        if let Some(psr_register) = register_file.psp {
-            all_registers.push((RegisterGroup::Singleton, [psr_register.to_owned()].to_vec()));
+        if let Some(psp_register) = register_file.psp {
+            all_registers.push((RegisterGroup::Singleton, [psp_register.to_owned()].to_vec()));
         }
-        if let Some(psr_register) = register_file.msp {
-            all_registers.push((RegisterGroup::Singleton, [psr_register.to_owned()].to_vec()));
+        if let Some(msp_register) = register_file.msp {
+            all_registers.push((RegisterGroup::Singleton, [msp_register.to_owned()].to_vec()));
         }
 
         for (register_group, register_group_members) in all_registers {
@@ -157,14 +161,14 @@ impl DebugRegisters {
                         .find(|debug_register| debug_register.id == platform_register.id)
                     {
                         // Some register definitions are descriptive for registers defined with the same [`RegisterId`] elsewhere, so we treat them differently.
-                        special_register.special_name = Some(platform_register.name);
+                        special_register.alias = Some(platform_register.name);
                     } else {
                         // It is safe for us to push a new [`DebugRegister`]
                         debug_registers.push(DebugRegister {
                             register_file,
                             group: register_group,
                             name: platform_register.name(),
-                            special_name: None,
+                            alias: None,
                             preserve_rule: match core.core_type() {
                                 CoreType::Armv6m
                                 | CoreType::Armv7em
@@ -295,14 +299,28 @@ impl DebugRegisters {
             .unwrap_or_else(|| "unknown register".to_string())
     }
 
-    /// Retrieve a register by searching against either the name or the special_name.
-    pub fn get_register_by_name(&self, register_name: &str) -> Option<DebugRegister> {
-        self.0
-            .iter()
-            .find(|&debug_register| {
-                debug_register.name == register_name
-                    || debug_register.special_name == Some(register_name)
-            })
-            .cloned()
+    /// Retrieve a register by searching against either the name or the alias.
+    pub fn get_register_by_name(&self, register_name: &str) -> Option<&DebugRegister> {
+        self.0.iter().find(|&debug_register| {
+            debug_register.name == register_name || debug_register.alias == Some(register_name)
+        })
+    }
+
+    /// Update the `RegisterValue` of a register, identified by searching against either the name or the alias.
+    pub fn update_register_value_by_name(
+        &mut self,
+        register_name: &str,
+        new_value: RegisterValue,
+    ) -> Result<(), Error> {
+        if let Some(register) = self.0.iter_mut().find(|debug_register| {
+            debug_register.name == register_name || debug_register.alias == Some(register_name)
+        }) {
+            register.value = Some(new_value);
+            Ok(())
+        } else {
+            Err(Error::Other(anyhow::anyhow!(format!(
+                "Failed to update register {register_name}. Register not found."
+            ))))
+        }
     }
 }

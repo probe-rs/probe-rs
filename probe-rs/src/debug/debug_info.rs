@@ -486,17 +486,18 @@ impl DebugInfo {
         &self,
         core: &mut Core<'_>,
         address: u64,
-        frame_name_override: Option<String>,
+        exception_handler: &Option<String>,
         unwind_registers: &registers::DebugRegisters,
     ) -> Result<Vec<StackFrame>, DebugError> {
         let mut units = self.get_units();
 
-        let unknown_function = format!(
-            "<{} @ {:#0width$x}>",
-            frame_name_override.unwrap_or("unnamed function".to_string()),
-            address,
-            width = (unwind_registers.get_address_size_bytes() * 2 + 2)
-        );
+        let unknown_function = exception_handler.clone().unwrap_or_else(|| {
+            format!(
+                "<anonymous function @ {:#0width$x}>",
+                address,
+                width = (unwind_registers.get_address_size_bytes() * 2 + 2)
+            )
+        });
         let stack_frame_registers = unwind_registers.clone();
 
         let mut frames = Vec::new();
@@ -710,7 +711,7 @@ impl DebugInfo {
             // - If we are at an exception hanlder frame, we need to overwrite the unwind registers with the exception context.
             // - If for some reason we cannot determine the exception context, we silently continue with the rest of the unwind.
             // At worst, the unwind will be able to unwind the stack to the frame of the most recent exception handler.
-            let frame_name_override = match core.core_type() {
+            let exception_handler = match core.core_type() {
                 CoreType::Armv6m | CoreType::Armv7em | CoreType::Armv7m | CoreType::Armv8m => {
                     if let Some(Some(lr_register_value)) =
                         unwind_registers.get_return_address().map(|r| r.value)
@@ -721,16 +722,24 @@ impl DebugInfo {
                                 error
                             ))
                         })?;
+                        // TODO: Test for other patterns: 0xFFFFFFF9, 0xFFFFFFFD, 0xFFFFFFF1
                         if lr_address == 0xFF_FF_FF_F9 {
                             if let Some(Some(psr_register_value)) = unwind_registers
                                 .get_register_by_name("XPSR")
                                 .map(|r| r.value)
                             {
-                                let ispr = Ipsr::try_from(psr_register_value)?;
-                                if ispr.is_core_exception() {
-                                    Some(format!("System Exception Handler #{}", ispr.exception()))
-                                } else if ispr.is_isr() {
-                                    Some(format!("ISR #{} Handler", ispr.isr_index()))
+                                if let Ok(ispr) = Ipsr::try_from(psr_register_value) {
+                                    if ispr.is_core_exception() {
+                                        // TODO: Trap and report exception reason.
+                                        Some(format!(
+                                            "<Called System Exception Handler #{}>",
+                                            ispr.exception()
+                                        ))
+                                    } else if ispr.is_isr() {
+                                        Some(format!("<Called ISR #{}>", ispr.isr_index()))
+                                    } else {
+                                        None
+                                    }
                                 } else {
                                     None
                                 }
@@ -744,7 +753,10 @@ impl DebugInfo {
                         None
                     }
                 }
-                _ => None,
+                _ => {
+                    // TODO: Implement exception handling for other core types.
+                    None
+                }
             };
 
             // PART 1: Construct the `StackFrame` for the current pc.
@@ -761,7 +773,7 @@ impl DebugInfo {
             let return_frame = match self.get_stackframe_info(
                 core,
                 frame_pc,
-                frame_name_override,
+                &exception_handler,
                 &unwind_registers,
             ) {
                 Ok(mut cached_stack_frames) => {
@@ -801,15 +813,78 @@ impl DebugInfo {
                     stack_frames.push(return_frame);
                     tracing::trace!("UNWIND: Stack unwind complete - Reached the 'Reset' value of the LR register.");
                     break;
+                } else {
+                    // Part 1-c: If we just processed an exception handler,  we need to update the `unwind_registers` to match the frame that invoked the exception handler.
+                    if let Some(exception_handler) = exception_handler {
+                        tracing::trace!(
+                            "UNWIND: Stack unwind reached an exception handler {}.",
+                            exception_handler
+                        );
+                        match core.core_type() {
+                            CoreType::Armv6m
+                            | CoreType::Armv7em
+                            | CoreType::Armv7m
+                            | CoreType::Armv8m => {
+                                // TODO: Decode CONTROL register to determine PSP vs MSP as base for unwinding..
+                                if let Some(msp_register) =
+                                    unwind_registers.get_register_by_name("SP")
+                                {
+                                    if let Some(Ok(msp_value)) = unwind_registers
+                                        .get_register(msp_register.id)
+                                        .and_then(|msp| msp.value)
+                                        .map(|v| {
+                                            <RegisterValue as std::convert::TryInto<u64>>::try_into(
+                                                v,
+                                            )
+                                        })
+                                    {
+                                        let stored_stack_registers =
+                                            vec!["R0", "R1", "R2", "R3", "R12", "LR", "PC", "PSR"];
+                                        let mut calling_stack =
+                                            vec![0u32; stored_stack_registers.len()];
+                                        match core.read_32(msp_value, &mut calling_stack) {
+                                            Ok(_) => {
+                                                // We've read the stack frame that invoked the exception handler, so now we need to update the `unwind_registers` to match the values we just read.
+                                                for (i, register_name) in
+                                                    stored_stack_registers.iter().enumerate()
+                                                {
+                                                    unwind_registers
+                                                        .update_register_value_by_name(
+                                                            register_name,
+                                                            RegisterValue::U32(calling_stack[i]),
+                                                        )?;
+                                                }
+                                            }
+                                            Err(error) => {
+                                                tracing::error!("UNWIND: Unable to read the stack frame that invoked the exception handler: {}", error);
+                                            }
+                                        }
+                                    } else {
+                                        tracing::warn!("UNWIND: The MSP register value {:?} could not be used to determine the next frame base.", msp_register.value);
+                                    }
+                                }
+
+                                // Now that we've updated the `unwind_registers` we can continue.
+                                stack_frames.push(return_frame);
+                                tracing::trace!(
+                                    "UNWIND: Stack unwind will attempt to unwind the frame that invoked {exception_handler:?}."
+                                );
+                                continue;
+                            }
+                            _ => {
+                                //TODO: Implement for other core types. In the meantime, their unwind will continue to work as before.
+                            }
+                        }
+                    }
                 }
             } else {
                 // If the debug info rules result in a None return address, we cannot continue unwinding.
                 stack_frames.push(return_frame);
-                tracing::trace!("UNWIND: Stack unwind complete - LR register value is 'None.");
+                tracing::trace!("UNWIND: Stack unwind complete - LR register value is `None`.");
                 break;
             }
 
-            // PART 2: Setup the registers for the next iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack).
+            // PART 2: For regular unwind, setup the registers for the next iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack).
             tracing::trace!(
                 "UNWIND - Preparing `StackFrameIterator` to unwind NON-INLINED function {:?} at {:?}",
                 return_frame.function_name,
