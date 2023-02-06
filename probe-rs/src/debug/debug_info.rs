@@ -3,7 +3,7 @@ use super::{
     variable::*, DebugError, DebugRegisters, SourceLocation, StackFrame, VariableCache,
 };
 use crate::{
-    architecture::arm::core::cortex_m::Ipsr,
+    architecture::arm::core::cortex_m::{ExceptionReturnContext, Ipsr},
     core::Core,
     debug::{registers, source_statement::SourceStatements},
     MemoryInterface, RegisterValue,
@@ -486,18 +486,24 @@ impl DebugInfo {
         &self,
         core: &mut Core<'_>,
         address: u64,
-        exception_handler: &Option<String>,
+        exception_return_context: ExceptionReturnContext,
         unwind_registers: &registers::DebugRegisters,
     ) -> Result<Vec<StackFrame>, DebugError> {
         let mut units = self.get_units();
 
-        let unknown_function = exception_handler.clone().unwrap_or_else(|| {
+        let unknown_function = if matches!(
+            exception_return_context,
+            ExceptionReturnContext::NoException
+        ) {
             format!(
                 "<anonymous function @ {:#0width$x}>",
                 address,
                 width = (unwind_registers.get_address_size_bytes() * 2 + 2)
             )
-        });
+        } else {
+            format!("{exception_return_context}")
+        };
+
         let stack_frame_registers = unwind_registers.clone();
 
         let mut frames = Vec::new();
@@ -711,51 +717,30 @@ impl DebugInfo {
             // - If we are at an exception hanlder frame, we need to overwrite the unwind registers with the exception context.
             // - If for some reason we cannot determine the exception context, we silently continue with the rest of the unwind.
             // At worst, the unwind will be able to unwind the stack to the frame of the most recent exception handler.
-            let exception_handler = match core.core_type() {
+            let exception_return_context = match core.core_type() {
                 CoreType::Armv6m | CoreType::Armv7em | CoreType::Armv7m | CoreType::Armv8m => {
                     if let Some(Some(lr_register_value)) =
                         unwind_registers.get_return_address().map(|r| r.value)
                     {
-                        let lr_address: u32 = lr_register_value.try_into().map_err(|error| {
-                            crate::Error::Other(anyhow::anyhow!(
-                                "UNWIND: Failed to convert LR register value to address: {:?}. Please report this as a bug.",
-                                error
-                            ))
-                        })?;
-                        // TODO: Test for other patterns: 0xFFFFFFF9, 0xFFFFFFFD, 0xFFFFFFF1
-                        if lr_address == 0xFF_FF_FF_F9 {
-                            if let Some(Some(psr_register_value)) = unwind_registers
-                                .get_register_by_name("XPSR")
-                                .map(|r| r.value)
-                            {
-                                if let Ok(ispr) = Ipsr::try_from(psr_register_value) {
-                                    if ispr.is_core_exception() {
-                                        // TODO: Trap and report exception reason.
-                                        Some(format!(
-                                            "<Called System Exception Handler #{}>",
-                                            ispr.exception()
-                                        ))
-                                    } else if ispr.is_isr() {
-                                        Some(format!("<Called ISR #{}>", ispr.isr_index()))
-                                    } else {
-                                        None
-                                    }
-                                } else {
-                                    None
-                                }
+                        if let Some(Some(psr_register_value)) = unwind_registers
+                            .get_register_by_name("XPSR")
+                            .map(|r| r.value)
+                        {
+                            if let Ok(ipsr) = Ipsr::try_from(psr_register_value) {
+                                ipsr.exception_return_context(lr_register_value)?
                             } else {
-                                None
+                                ExceptionReturnContext::NoException
                             }
                         } else {
-                            None
+                            ExceptionReturnContext::NoException
                         }
                     } else {
-                        None
+                        ExceptionReturnContext::NoException
                     }
                 }
                 _ => {
                     // TODO: Implement exception handling for other core types.
-                    None
+                    ExceptionReturnContext::NoException
                 }
             };
 
@@ -773,7 +758,7 @@ impl DebugInfo {
             let return_frame = match self.get_stackframe_info(
                 core,
                 frame_pc,
-                &exception_handler,
+                exception_return_context,
                 &unwind_registers,
             ) {
                 Ok(mut cached_stack_frames) => {
@@ -815,17 +800,29 @@ impl DebugInfo {
                     break;
                 } else {
                     // Part 1-c: If we just processed an exception handler,  we need to update the `unwind_registers` to match the frame that invoked the exception handler.
-                    if let Some(exception_handler) = exception_handler {
+                    if exception_return_context != ExceptionReturnContext::NoException {
                         tracing::trace!(
-                            "UNWIND: Stack unwind reached an exception handler {}.",
-                            exception_handler
+                            "UNWIND: Stack unwind reached an exception handler {exception_return_context:?}",
                         );
                         match core.core_type() {
                             CoreType::Armv6m
                             | CoreType::Armv7em
                             | CoreType::Armv7m
                             | CoreType::Armv8m => {
-                                // TODO: Decode CONTROL register to determine PSP vs MSP as base for unwinding..
+                                // TODO: Currently, this is only tested for ExceptionReturnContext::ToThreadMainStack.
+                                // This appears to cover all my embassy-rs and RTIC usage scenarios, and I have been unable to trigger the other two cases in normal usage.
+                                // We need to create custome test cases and an appropriate implementation for the other two cases
+                                //   i.e., use PSP instead of SP where appropriate)
+                                if matches!(
+                                    exception_return_context,
+                                    ExceptionReturnContext::ToHandler(_)
+                                        | ExceptionReturnContext::ToThreadProcessStack(_)
+                                ) {
+                                    // Report the issue, but complete the unwind.
+                                    tracing::error!(
+                                        "UNWIND: Unwinding to an exception handler is not yet implemented for {exception_return_context:?}. This may result in incorrect stack frames."
+                                    );
+                                }
                                 if let Some(msp_register) =
                                     unwind_registers.get_register_by_name("SP")
                                 {
@@ -867,7 +864,7 @@ impl DebugInfo {
                                 // Now that we've updated the `unwind_registers` we can continue.
                                 stack_frames.push(return_frame);
                                 tracing::trace!(
-                                    "UNWIND: Stack unwind will attempt to unwind the frame that invoked {exception_handler:?}."
+                                    "UNWIND: Stack unwind will attempt to unwind the frame that invoked {exception_return_context:?}."
                                 );
                                 continue;
                             }

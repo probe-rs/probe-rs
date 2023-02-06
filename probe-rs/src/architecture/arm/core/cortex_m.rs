@@ -139,20 +139,115 @@ bitfield! {
     pub exception, _: 8,0;
 }
 
+/// When returning from an exception, the processor uses the EXC_RETURN value to determine which stack and mode to return to.
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum ExceptionReturnContext {
+    /// A nested exception was active, return to the handler mode of the nested exception.
+    ToHandler(ExceptionReason),
+    /// Return using the Process Stack Pointer.
+    ToThreadProcessStack(ExceptionReason),
+    /// Return using the Main Stack Pointer.
+    ToThreadMainStack(ExceptionReason),
+    /// No active exception.
+    NoException,
+}
+
+impl std::fmt::Display for ExceptionReturnContext {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ExceptionReturnContext::NoException => write!(f, "NoException"),
+            ExceptionReturnContext::ToHandler(reason) => {
+                write!(f, "{reason:?} (nexted exception)")
+            }
+            ExceptionReturnContext::ToThreadProcessStack(reason) => {
+                write!(f, "{reason:?} (from process stack)")
+            }
+            ExceptionReturnContext::ToThreadMainStack(reason) => {
+                write!(f, "{reason:?} (from main stack)")
+            }
+        }
+    }
+}
+
+/// Decode the exception number.
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum ExceptionReason {
+    /// No exception is active.
+    ThreadMode,
+    /// A reset has been triggered.
+    Reset,
+    /// A non-maskable interrupt has been triggered.
+    NonMaskableInterrupt,
+    /// A hard fault has been triggered.
+    HardFault,
+    /// A memory management fault has been triggered.
+    MemoryManagementFault,
+    /// A bus fault has been triggered.
+    BusFault,
+    /// A usage fault has been triggered.
+    UsageFault,
+    /// A SuperVisor call has been triggered.
+    SVCall,
+    /// A debug monitor fault has been triggered.
+    DebugMonitor,
+    /// A non-maskable interrupt has been triggered.
+    PendSV,
+    /// A non-maskable interrupt has been triggered.
+    SysTick,
+    /// A non-maskable interrupt has been triggered.
+    Interrupt(u32),
+    /// Reserved.
+    Reserved,
+}
+
+impl From<u32> for ExceptionReason {
+    fn from(exception: u32) -> Self {
+        match exception {
+            0 => ExceptionReason::ThreadMode,
+            1 => ExceptionReason::Reset,
+            7..=10 | 13 => ExceptionReason::Reserved,
+            2 => ExceptionReason::NonMaskableInterrupt,
+            3 => ExceptionReason::HardFault,
+            4 => ExceptionReason::MemoryManagementFault,
+            5 => ExceptionReason::BusFault,
+            6 => ExceptionReason::UsageFault,
+            11 => ExceptionReason::SVCall,
+            12 => ExceptionReason::DebugMonitor,
+            14 => ExceptionReason::PendSV,
+            15 => ExceptionReason::SysTick,
+            // TODO: Does it make sense to try to interpret the RHS boundary of valid ISR numbers?
+            16.. => ExceptionReason::Interrupt(exception - 16),
+        }
+    }
+}
+
+// TODO: Add interpretation of HardFault reasons.
+// TODO: Consider moving to  core interface when extending the implementation to other core types.
 impl Ipsr {
-    /// Returns true if the current exception is one of the Coretex-M core exceptions.
-    pub fn is_core_exception(&self) -> bool {
-        (1..=15).any(|i| self.exception() == i)
-    }
+    /// Returns the current exception context.
+    pub fn exception_return_context(
+        &self,
+        exc_return: RegisterValue,
+    ) -> Result<ExceptionReturnContext, Error> {
+        let exc_return_value: u32 = exc_return.try_into().map_err(|error| {
+            crate::Error::Other(anyhow::anyhow!(
+                "UNWIND: Failed to convert LR register value to address: {:?}. Please report this as a bug.",
+                error
+            ))
+        })?;
 
-    /// Returns true if the current exception is a ISR.
-    pub fn is_isr(&self) -> bool {
-        self.exception() > 15
-    }
-
-    /// Subtracts the offset of the ISR vector table to get the index of the ISR.
-    pub fn isr_index(&self) -> u32 {
-        self.exception() - 16
+        match exc_return_value {
+            0xFFFFFFF1 => Ok(ExceptionReturnContext::ToHandler(ExceptionReason::from(
+                self.exception(),
+            ))),
+            0xFFFFFFF9 => Ok(ExceptionReturnContext::ToThreadMainStack(
+                ExceptionReason::from(self.exception()),
+            )),
+            0xFFFFFFFD => Ok(ExceptionReturnContext::ToThreadProcessStack(
+                ExceptionReason::from(self.exception()),
+            )),
+            _ => Ok(ExceptionReturnContext::NoException),
+        }
     }
 }
 
