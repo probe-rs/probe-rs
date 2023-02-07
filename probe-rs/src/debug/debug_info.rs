@@ -718,7 +718,7 @@ impl DebugInfo {
             // - If for some reason we cannot determine the exception context, we silently continue with the rest of the unwind.
             // At worst, the unwind will be able to unwind the stack to the frame of the most recent exception handler.
             let exception_return_context = match core.core_type() {
-                CoreType::Armv6m | CoreType::Armv7em | CoreType::Armv7m | CoreType::Armv8m => {
+                CoreType::Armv6m | CoreType::Armv7em | CoreType::Armv7m => {
                     if let Some(Some(lr_register_value)) =
                         unwind_registers.get_return_address().map(|r| r.value)
                     {
@@ -804,10 +804,7 @@ impl DebugInfo {
                             "UNWIND: Stack unwind reached an exception handler {exception_return_context:?}",
                         );
                         match core.core_type() {
-                            CoreType::Armv6m
-                            | CoreType::Armv7em
-                            | CoreType::Armv7m
-                            | CoreType::Armv8m => {
+                            CoreType::Armv6m | CoreType::Armv7em | CoreType::Armv7m => {
                                 // TODO: Currently, this is only tested for ExceptionReturnContext::ToThreadMainStack.
                                 // This appears to cover all my embassy-rs and RTIC usage scenarios, and I have been unable to trigger the other two cases in normal usage.
                                 // We need to create custome test cases and an appropriate implementation for the other two cases

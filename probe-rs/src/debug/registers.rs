@@ -170,10 +170,7 @@ impl DebugRegisters {
                             name: platform_register.name(),
                             alias: None,
                             preserve_rule: match core.core_type() {
-                                CoreType::Armv6m
-                                | CoreType::Armv7em
-                                | CoreType::Armv7m
-                                | CoreType::Armv8m => {
+                                CoreType::Armv6m | CoreType::Armv7em | CoreType::Armv7m => {
                                     // See [AAPCS](https://github.com/ARM-software/abi-aa/blob/2982a9f3b512a5bfdc9e3fea5d3b298f9165c36b/aapcs32/aapcs32.rst#core-registers)
                                     match platform_register.id.0 {
                                         0..=3 => PreserveRule::Clear,
