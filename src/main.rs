@@ -62,10 +62,11 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
     let probe = probe::open(opts)?;
 
     let probe_target = target_info.probe_target.clone();
+    let permissions = Permissions::default().allow_erase_all();
     let mut sess = if opts.connect_under_reset {
-        probe.attach_under_reset(probe_target, Permissions::default())?
+        probe.attach_under_reset(probe_target, permissions)?
     } else {
-        let probe_attach = probe.attach(probe_target, Permissions::default());
+        let probe_attach = probe.attach(probe_target, permissions);
         if let Err(probe_rs::Error::Probe(ProbeSpecific(e))) = &probe_attach {
             // FIXME Using `to_string().contains(...)` is a workaround as the concrete type
             // of `e` is not public and therefore does not allow downcasting.
