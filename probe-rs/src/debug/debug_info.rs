@@ -491,10 +491,7 @@ impl DebugInfo {
     ) -> Result<Vec<StackFrame>, DebugError> {
         let mut units = self.get_units();
 
-        let unknown_function = if matches!(
-            exception_return_context,
-            ExceptionReturnContext::NoException
-        ) {
+        let unknown_function = if exception_return_context == ExceptionReturnContext::NoException {
             format!(
                 "<anonymous function @ {:#0width$x}>",
                 address,
