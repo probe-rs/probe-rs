@@ -25,8 +25,7 @@ gimli = { version = "0.27", default-features = false }
 git-version = "0.3"
 log = "0.4"
 object = { version = "0.30", default-features = false }
-probe-rs = "0.14.1"
-probe-rs-rtt = "0.14.1"
+probe-rs = "0.16"
 signal-hook = "0.3"
 
 [dev-dependencies]

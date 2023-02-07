@@ -162,10 +162,7 @@ fn print_version() {
     // Extract the "abbreviated object name"
     let hash = extract_git_hash(GIT_DESCRIBE);
 
-    println!(
-        "{} {}\nsupported defmt version: {}",
-        VERSION, hash, DEFMT_VERSION
-    );
+    println!("{VERSION} {hash}\nsupported defmt version: {DEFMT_VERSION}");
 }
 
 /// Extract git hash from a `git describe` statement

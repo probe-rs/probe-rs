@@ -496,6 +496,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "kmp"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "131bddab59a64213cc1e9f0c5be010d7eb485951358ab7e52017888dec482028"
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -694,9 +700,9 @@ dependencies = [
 
 [[package]]
 name = "probe-rs"
-version = "0.14.2"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "717926460dbc3ff7bc366fd0502433a064eea2a2aa189dbb4abd5396de3716a8"
+checksum = "af0cb90573126a62538ec927e644264d5d142a8cb517bff0bb2b6334cb76058f"
 dependencies = [
  "anyhow",
  "base64",
@@ -709,12 +715,13 @@ dependencies = [
  "ihex",
  "jaylink",
  "jep106",
+ "kmp",
  "num-traits",
  "object",
  "once_cell",
  "probe-rs-target",
  "rusb",
- "scroll 0.11.0",
+ "scroll",
  "serde",
  "serde_yaml 0.9.17",
  "static_assertions",
@@ -724,23 +731,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "probe-rs-rtt"
-version = "0.14.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6768fd3c3fdc2661e2542d443bfa2ed7f48d27159e36409e65b9db955c1c60fd"
-dependencies = [
- "probe-rs",
- "scroll 0.10.2",
- "serde",
- "thiserror",
- "tracing",
-]
-
-[[package]]
 name = "probe-rs-target"
-version = "0.14.2"
+version = "0.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f01903e24b4187015ab2c3214e009b67de6658b4fc86c8ab9876808060f7a953"
+checksum = "dc9506b54a53311ceff6bd66f72ceb766908cf62bb25933d71004929a5d348ee"
 dependencies = [
  "base64",
  "jep106",
@@ -766,7 +760,6 @@ dependencies = [
  "os_pipe",
  "pretty_assertions",
  "probe-rs",
- "probe-rs-rtt",
  "rstest",
  "serial_test",
  "signal-hook",
@@ -920,12 +913,6 @@ name = "scopeguard"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
-
-[[package]]
-name = "scroll"
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fda28d4b4830b807a8b43f7b0e6b5df875311b3e7621d84577188c175b6ec1ec"
 
 [[package]]
 name = "scroll"

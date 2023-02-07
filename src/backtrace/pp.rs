@@ -28,7 +28,7 @@ pub fn backtrace(frames: &[Frame], settings: &Settings) -> io::Result<()> {
                     .map(|location| location.path_is_relative)
                     .unwrap_or(false);
 
-                let mut line = format!("{:>4}:", frame_index);
+                let mut line = format!("{frame_index:>4}:");
                 if settings.include_addresses || subroutine.name.is_none() {
                     write!(line, " {:#010x} @", subroutine.pc).unwrap();
                 }
@@ -44,7 +44,7 @@ pub fn backtrace(frames: &[Frame], settings: &Settings) -> io::Result<()> {
                 } else {
                     line.normal()
                 };
-                writeln!(stderr, "{}", colorized_line)?;
+                writeln!(stderr, "{colorized_line}")?;
 
                 if let Some(location) = &subroutine.location {
                     let dep_path = dep::Path::from_std_path(&location.path);
@@ -58,10 +58,10 @@ pub fn backtrace(frames: &[Frame], settings: &Settings) -> io::Result<()> {
                     let line = location.line;
                     let column = location
                         .column
-                        .map(|column| Cow::Owned(format!(":{}", column)))
+                        .map(|column| Cow::Owned(format!(":{column}")))
                         .unwrap_or(Cow::Borrowed(""));
 
-                    writeln!(stderr, "        at {}:{}{}", path, line, column)?;
+                    writeln!(stderr, "        at {path}:{line}{column}")?;
                 }
 
                 frame_index += 1;

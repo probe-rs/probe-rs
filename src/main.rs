@@ -25,11 +25,11 @@ use defmt_decoder::{DecodeError, Frame, Locations, StreamDecoder};
 use probe_rs::{
     config::MemoryRegion,
     flashing::{self, Format},
+    rtt::{Rtt, ScanRegion, UpChannel},
     Core,
     DebugProbeError::ProbeSpecific,
     MemoryInterface as _, Permissions, Session,
 };
-use probe_rs_rtt::{Rtt, ScanRegion, UpChannel};
 use signal_hook::consts::signal;
 
 use crate::{backtrace::Outcome, canary::Canary, elf::Elf, target_info::TargetInfo};
@@ -125,7 +125,7 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
 
         let mut options = flashing::DownloadOptions::default();
         options.dry_run = false;
-        options.progress = Some(&fp);
+        options.progress = Some(fp);
         options.disable_double_buffering = opts.disable_double_buffering;
         options.verify = opts.verify;
 
@@ -285,7 +285,7 @@ fn extract_and_print_logs(
             let num_bytes_read = match logging_channel.read(core, &mut read_buf) {
                 Ok(n) => n,
                 Err(e) => {
-                    eprintln!("RTT error: {}", e);
+                    eprintln!("RTT error: {e}");
                     break;
                 }
             };
@@ -417,7 +417,7 @@ fn setup_logging_channel(
                 return Ok(channel);
             }
 
-            Err(probe_rs_rtt::Error::ControlBlockNotFound) => {
+            Err(probe_rs::rtt::Error::ControlBlockNotFound) => {
                 log::trace!("Could not attach because the target's RTT control block isn't initialized (yet). retrying");
             }
 
@@ -428,7 +428,7 @@ fn setup_logging_channel(
     }
 
     log::error!("Max number of RTT attach retries exceeded.");
-    Err(anyhow!(probe_rs_rtt::Error::ControlBlockNotFound))
+    Err(anyhow!(probe_rs::rtt::Error::ControlBlockNotFound))
 }
 
 /// Print a line to separate different execution stages.

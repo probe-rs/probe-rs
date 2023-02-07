@@ -38,8 +38,8 @@ jobs:
       - name: Install C libraries for tooling
         run: sudo apt-get update && sudo apt-get install libudev-dev libusb-1.0-0-dev
 
-      - run: cargo fmt -- --check
-      - run: cargo clippy -- -D warnings
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
 
   # Refs: https://github.com/rust-lang/crater/blob/9ab6f9697c901c4a44025cf0a39b73ad5b37d198/.github/workflows/bors.yml#L125-L149
   # bors.tech integration
