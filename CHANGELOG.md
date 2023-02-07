@@ -5,6 +5,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- VSCode and probe-rs-debugger is very slow if `rttEnabled: true` and target application has no RTT initialized (#1497).
+
 ## [0.17.0]
 
 Released 2023-02-06
@@ -31,6 +35,7 @@ Released 2023-02-06
 - Add flashing and debugging support for the ESP32C6 (#1476)
 
 - Debug: Fixed a number of known issues, which included some code refactoring to avoid code duplication (#1484).
+
   - Unwind of variables that are in inlined subroutines now resolve correctly under all known conditions.
   - Unwind of nested arrays now resolve, irrespective of the levels of nesting (#1404).
   - Gracefully handle the unwind of arrays that are empty.

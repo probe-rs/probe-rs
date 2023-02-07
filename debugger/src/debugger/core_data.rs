@@ -1,3 +1,5 @@
+use std::fs::File;
+
 use super::session_data;
 use crate::{
     debug_adapter::{
@@ -10,8 +12,12 @@ use crate::{
     DebuggerError,
 };
 use anyhow::{anyhow, Result};
-use probe_rs::{debug::debug_info::DebugInfo, Core, CoreStatus, Error, HaltReason};
-use probe_rs_cli_util::rtt::{self, ChannelMode, DataFormat};
+use probe_rs::{
+    debug::debug_info::DebugInfo,
+    rtt::{Rtt, ScanRegion},
+    Core, CoreStatus, Error, HaltReason,
+};
+use probe_rs_cli_util::rtt::{self, ChannelMode, DataFormat, RttActiveTarget};
 use time::UtcOffset;
 
 /// [CoreData] is used to cache data needed by the debugger, on a per-core basis.
@@ -170,13 +176,23 @@ impl<'p> CoreHandle<'p> {
         timestamp_offset: UtcOffset,
     ) -> Result<()> {
         let mut debugger_rtt_channels: Vec<debug_rtt::DebuggerRttChannel> = vec![];
-        match rtt::attach_to_rtt(
-            &mut self.core,
-            target_memory_map,
-            program_binary,
-            rtt_config,
-            timestamp_offset,
-        ) {
+        // Attach to RTT by using the RTT control block address from the ELF file. Do not scan the memory for the control block.
+        match File::open(program_binary)
+            .map_err(|error| anyhow!("Error attempting to attach to RTT: {}", error))
+            .and_then(|mut open_file| {
+                RttActiveTarget::get_rtt_symbol(&mut open_file).map_or_else(
+                    || Err(anyhow!("No RTT control block found in ELF file")),
+                    |rtt_header_address| Ok(ScanRegion::Exact(rtt_header_address as u32)),
+                )
+            })
+            .and_then(|scan_region| {
+                Rtt::attach_region(&mut self.core, target_memory_map, &scan_region)
+                    .map_err(|error| anyhow!("Error attempting to attach to RTT: {}", error))
+            })
+            .and_then(|rtt| {
+                tracing::info!("RTT initialized.");
+                RttActiveTarget::new(rtt, program_binary, rtt_config, timestamp_offset)
+            }) {
             Ok(target_rtt) => {
                 for any_channel in target_rtt.active_channels.iter() {
                     if let Some(up_channel) = &any_channel.up_channel {
