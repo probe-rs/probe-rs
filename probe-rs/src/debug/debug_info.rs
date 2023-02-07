@@ -753,7 +753,6 @@ impl DebugInfo {
                 frame_pc,
             );
 
-            //
             // PART 1-a: Prepare the `StackFrame` that holds the current frame information.
             let return_frame = match self.get_stackframe_info(
                 core,
@@ -1384,6 +1383,13 @@ fn unwind_register(
 
                 match result {
                     Ok(register_value) => {
+                        if debug_register.id == debug_register.register_file.frame_pointer.id
+                            && register_value.is_zero()
+                        {
+                            // A frame pointer of 0x0 is means we're trying to unwind deeper than the base of the stack (usually a non-return function)
+                            tracing::debug!("UNWIND: Unwind complete - Reached base of stack");
+                            return ControlFlow::Break(());
+                        }
                         if debug_register.id == debug_register.register_file.return_address.id {
                             // We need to store this value to be used by the calculation of the PC.
                             *unwound_return_address = Some(register_value);

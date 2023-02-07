@@ -178,7 +178,8 @@ impl DebugRegisters {
                                     match platform_register.id.0 {
                                         0..=3 => PreserveRule::Clear,
                                         4..=6 => PreserveRule::Preserve,
-                                        8..=12 => PreserveRule::Preserve,
+                                        8..=11 => PreserveRule::Preserve,
+                                        12 => PreserveRule::Clear,
                                         16..=18 => PreserveRule::Preserve,
                                         _ => PreserveRule::RuleRequired,
                                     }
