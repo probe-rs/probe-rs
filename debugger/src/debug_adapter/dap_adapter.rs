@@ -14,6 +14,7 @@ use capstone::{
     arch::riscv::ArchMode as riscvArchMode, prelude::*, Capstone, Endian,
 };
 use dap_types::*;
+use num_traits::Zero;
 use parse_int::parse;
 use probe_rs::{
     architecture::{arm::ArmError, riscv::communication_interface::RiscvError},
@@ -133,24 +134,46 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 );
             };
         let mut num_bytes_unread = arguments.count as usize;
-        let mut buff = vec![];
+        // The probe-rs API does not return partially read data.
+        // It either succeeds for the whole buffer or not. However, doing single byte reads is slow, so we will
+        // do reads in larger chunks, until we get an error, and then do single byte reads for the last few bytes, to make
+        // sure we get all the data we can.
+        let mut result_buffer = vec![];
+        let large_read_byte_count = 8usize;
+        let mut fast_buff = vec![0u8; large_read_byte_count];
+        // Read as many large chunks as possible.
+        while num_bytes_unread > 0 {
+            if let Ok(()) = target_core.core.read(address, &mut fast_buff) {
+                result_buffer.extend_from_slice(&fast_buff);
+                address += large_read_byte_count as u64;
+                num_bytes_unread -= large_read_byte_count;
+            } else {
+                break;
+            }
+        }
+        // Read the remaining bytes one by one.
         while num_bytes_unread > 0 {
             if let Ok(good_byte) = target_core.core.read_word_8(address) {
-                buff.push(good_byte);
+                result_buffer.push(good_byte);
                 address += 1;
                 num_bytes_unread -= 1;
             } else {
                 break;
             }
         }
-        if !buff.is_empty() || num_bytes_unread == 0 {
-            let response = base64_engine::STANDARD.encode(&buff);
+        if !result_buffer.is_empty() || arguments.count.is_zero() {
+            // Currently, VSCode sends a request with count=0 after the last successful one ... so let's ignore it.
+            let response = base64_engine::STANDARD.encode(&result_buffer);
             self.send_response(
                 request,
                 Ok(Some(ReadMemoryResponseBody {
                     address: format!("{address:#010x}"),
                     data: Some(response),
-                    unreadable_bytes: None,
+                    unreadable_bytes: if num_bytes_unread.is_zero() {
+                        None
+                    } else {
+                        Some(num_bytes_unread as i64)
+                    },
                 })),
             )
         } else {
