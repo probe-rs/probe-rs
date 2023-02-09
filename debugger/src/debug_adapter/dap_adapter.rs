@@ -129,12 +129,14 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         match target_core.core.halt(Duration::from_millis(500)) {
             Ok(_) => self.send_response::<TerminateResponse>(request, Ok(None)),
             // An error here is not fatal, we will just send a response and let the DAP client force a disconnect.
-            Err(error) => self.send_response::<TerminateResponse>(
-                request,
-                Err(DebuggerError::Other(anyhow!(
-                    "Failed to halt the target: {error:?}"
-                ))),
-            ),
+            Err(error) => {
+                let debug_error = format!("Failed to halt the target: {error:?}");
+                self.send_response::<TerminateResponse>(
+                    request,
+                    Err(DebuggerError::Other(anyhow!(debug_error.clone()))),
+                )?;
+                Err(anyhow!(debug_error))
+            }
         }
     }
 
@@ -153,16 +155,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             .restart
             .and_then(|is_part_of_restart| if is_part_of_restart { Some(()) } else { None })
             .is_some();
-        let is_launch_request = self
-            .target_session_type
-            .and_then(|is_launch_request| {
-                if is_launch_request == TargetSessionType::LaunchRequest {
-                    Some(())
-                } else {
-                    None
-                }
-            })
-            .is_some();
+
         // TODO: For now (until we do multicore), we will assume that both terminate and suspend translate to a halt of the core.
         let must_halt_debuggee = arguments
             .terminate_debuggee
@@ -173,9 +166,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 .and_then(|suspend_debuggee| if suspend_debuggee { Some(()) } else { None })
                 .is_some();
 
-        if is_part_of_restart || (is_launch_request && !must_halt_debuggee) {
-            // Do nothing
-        } else {
+        if !is_part_of_restart && must_halt_debuggee {
             let _ = target_core.core.halt(Duration::from_millis(100));
         }
 
