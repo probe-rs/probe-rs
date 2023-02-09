@@ -125,11 +125,16 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: Request,
     ) -> Result<()> {
-        // TODO: For now (until we do multicore), we will assume that both terminate request translates to a halt of the core.
+        // TODO: For now (until we do multicore), we will assume that terminate request translates to a halt of the core.
         match target_core.core.halt(Duration::from_millis(500)) {
             Ok(_) => self.send_response::<TerminateResponse>(request, Ok(None)),
             // An error here is not fatal, we will just send a response and let the DAP client force a disconnect.
-            Err(_) => self.send_response::<TerminateResponse>(request, Ok(None)),
+            Err(error) => self.send_response::<TerminateResponse>(
+                request,
+                Err(DebuggerError::Other(anyhow!(
+                    "Failed to halt the target: {error:?}"
+                ))),
+            ),
         }
     }
 

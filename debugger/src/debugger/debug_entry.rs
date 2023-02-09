@@ -17,11 +17,12 @@ use probe_rs::{
 use serde::Deserialize;
 use std::{
     cell::RefCell,
+    fs,
     net::{Ipv4Addr, TcpListener},
     ops::Mul,
     rc::Rc,
     thread,
-    time::Duration,
+    time::{Duration, UNIX_EPOCH},
 };
 use time::UtcOffset;
 
@@ -216,10 +217,16 @@ impl Debugger {
                         "disconnect" => debug_adapter
                             .disconnect(&mut target_core, request)
                             .and(Ok(DebugSessionStatus::Terminate)),
-                        // terminate request only affects the target application, and not the session.
-                        "terminate" => debug_adapter
-                            .terminate(&mut target_core, request)
-                            .and(Ok(DebugSessionStatus::Continue)),
+                        // terminate request only affects the target application, and conditionally, the session.
+                        "terminate" => {
+                            if debug_adapter.terminate(&mut target_core, request).is_ok() {
+                                // If the target terminated, the debug session can terminate also.
+                                Ok(DebugSessionStatus::Terminate)
+                            } else {
+                                // If the target didn't terminate, the debug session should continue, so that the client can force a disconnect.
+                                Ok(DebugSessionStatus::Continue)
+                            }
+                        }
                         "next" => debug_adapter
                             .next(&mut target_core, request)
                             .and(Ok(DebugSessionStatus::Continue)),
@@ -518,6 +525,7 @@ impl Debugger {
         // We maintain everything that happened up to the launch/attach request,
         // because DAP/VSCode doesn't repeat the those requests on a restart.
         let mut debug_session_status = DebugSessionStatus::New(launch_attach_request);
+        let mut saved_binary_timestamp: Option<Duration> = None;
 
         while let Some(session_request) = match debug_session_status.clone() {
             DebugSessionStatus::New(request) => Some(request),
@@ -536,8 +544,6 @@ impl Debugger {
                     )));
                 };
 
-            // Do the flashing.
-            // TODO: Multi-core ... needs to flash multiple binaries
             {
                 if self.config.flashing_config.flashing_enabled {
                     let path_to_elf = match &target_core_config.program_binary {
@@ -550,46 +556,79 @@ impl Debugger {
                             return Err(err);
                         }
                     };
-                    debug_adapter.log_to_console(format!(
-                        "FLASHING: Starting write of {:?} to device memory",
-                        &path_to_elf
-                    ));
 
-                    let progress_id = debug_adapter
-                        .start_progress("Flashing device", Some(session_request.seq))
-                        .ok();
-
-                    let mut download_options = DownloadOptions::default();
-                    download_options.keep_unwritten_bytes =
-                        self.config.flashing_config.restore_unwritten_bytes;
-                    download_options.do_chip_erase = self.config.flashing_config.full_chip_erase;
-                    let flash_result = {
-                        let rc_debug_adapter = Rc::new(RefCell::new(debug_adapter));
-                        let rc_debug_adapter_clone = rc_debug_adapter.clone();
-                        let flash_result = {
-                            struct ProgressState {
-                                total_page_size: usize,
-                                total_sector_size: usize,
-                                total_fill_size: usize,
-                                page_size_done: usize,
-                                sector_size_done: usize,
-                                fill_size_done: usize,
+                    if if let Some(check_current_binary_timestamp) = saved_binary_timestamp {
+                        // We have a timestamp for the binary that is currently on the device, so we need to compare it with the new binary.
+                        if let Ok(Some(new_binary_timestamp)) = fs::metadata(path_to_elf)
+                            .and_then(|metadata| metadata.modified())
+                            .map(|modified| modified.duration_since(UNIX_EPOCH).ok())
+                        {
+                            // If it is newer, we can flash it. Otherwise just skip flashing.
+                            if new_binary_timestamp > check_current_binary_timestamp {
+                                saved_binary_timestamp = Some(new_binary_timestamp);
+                                true
+                            } else {
+                                false
                             }
+                        } else {
+                            // For some reason we couldn't get a timestamp for the new binary. Warn and assume it is new.
+                            tracing::warn!(
+                                "Could not get timestamp for new binary. Assuming it is new."
+                            );
+                            true
+                        }
+                    } else {
+                        // We don't have a timestamp for the binary that is currently on the device, so we can flash the binary.
+                        saved_binary_timestamp = fs::metadata(path_to_elf)
+                            .and_then(|metadata| metadata.modified())
+                            .map(|modified| modified.duration_since(UNIX_EPOCH).ok())
+                            .ok()
+                            .flatten();
+                        true
+                    } {
+                        // Do the flashing.
+                        // TODO: Multi-core ... needs to flash multiple binaries
 
-                            let flash_progress = Rc::new(RefCell::new(ProgressState {
-                                total_page_size: 0,
-                                total_sector_size: 0,
-                                total_fill_size: 0,
-                                page_size_done: 0,
-                                sector_size_done: 0,
-                                fill_size_done: 0,
-                            }));
+                        debug_adapter.log_to_console(format!(
+                            "FLASHING: Starting write of {path_to_elf:?} to device memory"
+                        ));
 
-                            let flash_progress = if let Some(id) = progress_id {
-                                FlashProgress::new(move |event| {
-                                    let mut flash_progress = flash_progress.borrow_mut();
-                                    let mut debug_adapter = rc_debug_adapter_clone.borrow_mut();
-                                    match event {
+                        let progress_id = debug_adapter
+                            .start_progress("Flashing device", Some(session_request.seq))
+                            .ok();
+
+                        let mut download_options = DownloadOptions::default();
+                        download_options.keep_unwritten_bytes =
+                            self.config.flashing_config.restore_unwritten_bytes;
+                        download_options.do_chip_erase =
+                            self.config.flashing_config.full_chip_erase;
+                        let flash_result = {
+                            let rc_debug_adapter = Rc::new(RefCell::new(debug_adapter));
+                            let rc_debug_adapter_clone = rc_debug_adapter.clone();
+                            let flash_result = {
+                                struct ProgressState {
+                                    total_page_size: usize,
+                                    total_sector_size: usize,
+                                    total_fill_size: usize,
+                                    page_size_done: usize,
+                                    sector_size_done: usize,
+                                    fill_size_done: usize,
+                                }
+
+                                let flash_progress = Rc::new(RefCell::new(ProgressState {
+                                    total_page_size: 0,
+                                    total_sector_size: 0,
+                                    total_fill_size: 0,
+                                    page_size_done: 0,
+                                    sector_size_done: 0,
+                                    fill_size_done: 0,
+                                }));
+
+                                let flash_progress = if let Some(id) = progress_id {
+                                    FlashProgress::new(move |event| {
+                                        let mut flash_progress = flash_progress.borrow_mut();
+                                        let mut debug_adapter = rc_debug_adapter_clone.borrow_mut();
+                                        match event {
                                         probe_rs::flashing::ProgressEvent::Initialized {
                                             flash_layout,
                                         } => {
@@ -744,43 +783,44 @@ impl Debugger {
                                             ..
                                         } => (),
                                     }
-                                })
-                            } else {
-                                FlashProgress::new(|_event| {})
+                                    })
+                                } else {
+                                    FlashProgress::new(|_event| {})
+                                };
+                                download_options.progress = Some(flash_progress);
+                                download_file_with_options(
+                                    &mut session_data.session,
+                                    path_to_elf,
+                                    Format::Elf,
+                                    download_options,
+                                )
                             };
-                            download_options.progress = Some(flash_progress);
-                            download_file_with_options(
-                                &mut session_data.session,
-                                path_to_elf,
-                                Format::Elf,
-                                download_options,
-                            )
-                        };
-                        debug_adapter = match Rc::try_unwrap(rc_debug_adapter) {
-                            Ok(debug_adapter) => debug_adapter.into_inner(),
-                            Err(too_many_strong_references) => {
-                                let other_error = DebuggerError::Other(anyhow!("Unexpected error while dereferencing the `debug_adapter` (It has {} strong references). Please report this as a bug.", Rc::strong_count(&too_many_strong_references)));
-                                return Err(other_error);
+                            debug_adapter = match Rc::try_unwrap(rc_debug_adapter) {
+                                Ok(debug_adapter) => debug_adapter.into_inner(),
+                                Err(too_many_strong_references) => {
+                                    let other_error = DebuggerError::Other(anyhow!("Unexpected error while dereferencing the `debug_adapter` (It has {} strong references). Please report this as a bug.", Rc::strong_count(&too_many_strong_references)));
+                                    return Err(other_error);
+                                }
+                            };
+
+                            if let Some(id) = progress_id {
+                                let _ = debug_adapter.end_progress(id);
                             }
+                            flash_result
                         };
 
-                        if let Some(id) = progress_id {
-                            let _ = debug_adapter.end_progress(id);
-                        }
-                        flash_result
-                    };
-
-                    match flash_result {
-                        Ok(_) => {
-                            debug_adapter.log_to_console(format!(
-                                "FLASHING: Completed write of {:?} to device memory",
-                                &path_to_elf
-                            ));
-                        }
-                        Err(error) => {
-                            let error = DebuggerError::FileDownload(error);
-                            debug_adapter.send_error_response(&error)?;
-                            return Err(error);
+                        match flash_result {
+                            Ok(_) => {
+                                debug_adapter.log_to_console(format!(
+                                    "FLASHING: Completed write of {:?} to device memory",
+                                    &path_to_elf
+                                ));
+                            }
+                            Err(error) => {
+                                let error = DebuggerError::FileDownload(error);
+                                debug_adapter.send_error_response(&error)?;
+                                return Err(error);
+                            }
                         }
                     }
                 }
