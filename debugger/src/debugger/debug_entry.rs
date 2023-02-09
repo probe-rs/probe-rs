@@ -25,7 +25,7 @@ use std::{
 };
 use time::UtcOffset;
 
-#[derive(clap::Parser, Copy, Clone, Debug, Deserialize)]
+#[derive(clap::Parser, Copy, Clone, Debug, Deserialize, PartialEq)]
 pub(crate) enum TargetSessionType {
     AttachRequest,
     LaunchRequest,
@@ -210,12 +210,14 @@ impl Debugger {
                             }
                             Ok(DebuggerStatus::ContinueSession)
                         }
+                        // disconnect request affects the session.
                         "disconnect" => debug_adapter
-                            .send_response::<()>(request, Ok(None))
+                            .disconnect(&mut target_core, request)
                             .and(Ok(DebuggerStatus::TerminateSession)),
+                        // terminate request only affects the target application, and not the session.
                         "terminate" => debug_adapter
-                            .pause(&mut target_core, request)
-                            .and(Ok(DebuggerStatus::TerminateSession)),
+                            .terminate(&mut target_core, request)
+                            .and(Ok(DebuggerStatus::ContinueSession)),
                         "next" => debug_adapter
                             .next(&mut target_core, request)
                             .and(Ok(DebuggerStatus::ContinueSession)),
@@ -395,6 +397,8 @@ impl Debugger {
             supports_configuration_done_request: Some(true),
             supports_restart_request: Some(true),
             supports_terminate_request: Some(true),
+            support_terminate_debuggee: Some(true),
+            support_suspend_debuggee: Some(true),
             supports_delayed_stack_trace_loading: Some(true),
             supports_read_memory_request: Some(true),
             supports_write_memory_request: Some(true),
@@ -413,7 +417,6 @@ impl Debugger {
         debug_adapter.send_response(initialize_request, Ok(Some(capabilities)))?;
 
         // Process either the Launch or Attach request.
-        let requested_target_session_type: Option<TargetSessionType>;
         let launch_attach_request = loop {
             let current_request = if let Some(request) = debug_adapter.listen_for_request()? {
                 request
@@ -423,11 +426,11 @@ impl Debugger {
 
             match current_request.command.as_str() {
                 "attach" => {
-                    requested_target_session_type = Some(TargetSessionType::AttachRequest);
+                    debug_adapter.target_session_type = Some(TargetSessionType::AttachRequest);
                     break current_request;
                 }
                 "launch" => {
-                    requested_target_session_type = Some(TargetSessionType::LaunchRequest);
+                    debug_adapter.target_session_type = Some(TargetSessionType::LaunchRequest);
                     break current_request;
                 }
                 other => {
@@ -446,10 +449,10 @@ impl Debugger {
         // TODO: Multi-core: This currently only supports the first `SessionConfig::core_configs`
         match get_arguments(&launch_attach_request) {
             Ok(arguments) => {
-                if requested_target_session_type.is_some() {
+                if debug_adapter.target_session_type.is_some() {
                     self.config = configuration::SessionConfig { ..arguments };
                     if matches!(
-                        requested_target_session_type,
+                        debug_adapter.target_session_type,
                         Some(TargetSessionType::AttachRequest)
                     ) {
                         // Since VSCode doesn't do field validation checks for relationships in launch.json request types, check it here.

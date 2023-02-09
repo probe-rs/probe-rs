@@ -41,6 +41,7 @@ pub struct SessionConfig {
     pub(crate) allow_erase_all: bool,
 
     /// Flashing configuration
+    #[serde(default)]
     pub(crate) flashing_config: FlashingConfig,
 
     /// Every core on the target has certain configuration.

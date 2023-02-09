@@ -3,6 +3,7 @@ use crate::{
     debugger::{
         configuration::ConsoleLog,
         core_data::CoreHandle,
+        debug_entry::TargetSessionType,
         session_data::{ActiveBreakpoint, BreakpointType},
     },
     DebuggerError,
@@ -55,6 +56,8 @@ pub struct DebugAdapter<P: ProtocolAdapter> {
     pub(crate) lines_start_at_1: bool,
     /// DWARF spec at Sect 2.14 uses 1 based numbering, with a 0 indicating not-specified. We will follow that standard, and translate incoming requests depending on the DAP Client treatment of 0 or 1 based numbering.
     pub(crate) columns_start_at_1: bool,
+    /// The behaviour of the debug adapter sometimes depend on the TargetSessionType
+    pub(crate) target_session_type: Option<TargetSessionType>,
     adapter: P,
 }
 
@@ -68,6 +71,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             supports_progress_reporting: false,
             lines_start_at_1: true,
             columns_start_at_1: true,
+            target_session_type: None,
             adapter,
         }
     }
@@ -109,6 +113,65 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
             }
         }
+    }
+
+    /// Handles the `terminate` request, and very specifically only terminates the target appliction,
+    /// and does not impact the debug sessions status.
+    pub(crate) fn terminate(
+        &mut self,
+        target_core: &mut CoreHandle,
+        request: Request,
+    ) -> Result<()> {
+        // TODO: For now (until we do multicore), we will assume that both terminate request translates to a halt of the core.
+        match target_core.core.halt(Duration::from_millis(500)) {
+            Ok(_) => self.send_response::<TerminateResponse>(request, Ok(None)),
+            // An error here is not fatal, we will just send a response and let the DAP client force a disconnect.
+            Err(_) => self.send_response::<TerminateResponse>(request, Ok(None)),
+        }
+    }
+
+    pub(crate) fn disconnect(
+        &mut self,
+        target_core: &mut CoreHandle,
+        request: Request,
+    ) -> Result<()> {
+        let arguments: DisconnectArguments = match get_arguments(&request) {
+            Ok(arguments) => arguments,
+            Err(error) => return self.send_response::<()>(request, Err(error)),
+        };
+
+        // We have a couple of drivers to determine the behaviour for this request.
+        let is_part_of_restart = arguments
+            .restart
+            .and_then(|is_part_of_restart| if is_part_of_restart { Some(()) } else { None })
+            .is_some();
+        let is_launch_request = self
+            .target_session_type
+            .and_then(|is_launch_request| {
+                if is_launch_request == TargetSessionType::LaunchRequest {
+                    Some(())
+                } else {
+                    None
+                }
+            })
+            .is_some();
+        // TODO: For now (until we do multicore), we will assume that both terminate and suspend translate to a halt of the core.
+        let must_halt_debuggee = arguments
+            .terminate_debuggee
+            .and_then(|terminate_debuggee| if terminate_debuggee { Some(()) } else { None })
+            .is_some()
+            || arguments
+                .suspend_debuggee
+                .and_then(|suspend_debuggee| if suspend_debuggee { Some(()) } else { None })
+                .is_some();
+
+        if is_part_of_restart || (is_launch_request && !must_halt_debuggee) {
+            // Do nothing
+        } else {
+            let _ = target_core.core.halt(Duration::from_millis(100));
+        }
+
+        self.send_response::<DisconnectResponse>(request, Ok(None))
     }
 
     pub(crate) fn read_memory(
