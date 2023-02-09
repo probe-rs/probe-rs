@@ -11,11 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - prober-rs-debugger: Using the readMemory request on RISC-V (ESP32C3 board) is slow (#1275).
 
-- probe-rs-debugger: Improve handling of `disconnect` and `terminate` requests. With support in DAP Client/VSCode for:
+- probe-rs-debugger: Improve handling of `disconnect` and `terminate` requests. With support in DAP Client/VSCode for: (#1197)
+
   - `Disconnect` - will disconnect the debug session, without affecting the run status of the target application.
   - `Disconnect and Suspend` - will halt the target application, before disconnecting the debug session.
 
-## [0.17.0]
+- probe-rs-debugger: Improve handling of `restart` request. With support in DAP Client/VSCode for: (#1507)
+  - `Restart` will now restart the debug session.
+  - If a newer binary is available, and flashing enabled, then the new binary will be flashed before starting the new debug session.
+
+## [0.17.0]#
 
 Released 2023-02-06
 
