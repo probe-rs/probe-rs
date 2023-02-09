@@ -106,6 +106,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     all_threads_stopped: Some(self.all_cores_halted),
                     hit_breakpoint_ids: None,
                 });
+                // We override the halt reason to prevent duplicate stopped events.
+                target_core.core_data.last_known_status = CoreStatus::Halted(HaltReason::Request);
+
                 self.send_event("stopped", event_body)?;
                 Ok(())
             }
