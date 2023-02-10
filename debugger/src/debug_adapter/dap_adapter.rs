@@ -716,7 +716,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         // Always clear existing breakpoints for the specified `[crate::debug_adapter::dap_types::Source]` before setting new ones.
         // The DAP Specification doesn't make allowances for deleting and setting individual breakpoints for a specific `Source`.
-        match target_core.clear_breakpoints(BreakpointType::SourceBreakpoint(args.source.clone())) {
+        match target_core.clear_breakpoints(BreakpointType::SourceBreakpoint(
+            args.source.clone(),
+            SourceLocation::default(),
+        )) {
             Ok(_) => {}
             Err(error) => {
                 return self.send_response::<()>(
@@ -752,33 +755,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 ) =
                     source_path
                 {
-                    match target_core.core_data.debug_info.get_breakpoint_location(
+                    target_core.verify_and_set_breakpoint(
                         source_path,
                         requested_breakpoint_line,
                         requested_breakpoint_column,
-                    ) {
-                        Ok((Some(valid_breakpoint_location), breakpoint_source_location)) => {
-                                match target_core.set_breakpoint(
-                                    valid_breakpoint_location,
-                                    BreakpointType::SourceBreakpoint(args.source.clone()),
-                                ) {
-                                    Ok(_) => (
-                                        Some(valid_breakpoint_location),
-                                        breakpoint_source_location,
-                                        format!(
-                                            "Source breakpoint at memory address: {valid_breakpoint_location:#010X}"
-                                        ),
-                                    ),
-                                    Err(err) => {
-                                        (None, None, format!("Warning: Could not set breakpoint at memory address: {valid_breakpoint_location:#010x}: {err}"))
-                                    }
-                                }
-                            }
-                        Ok(_) => {
-                            (None, None, "Cannot set breakpoint here. Try reducing `opt-level` in `Cargo.toml`, or choose a different source location".to_string())
-                        }
-                        Err(error) => (None, None, format!("Cannot set breakpoint here. Try reducing `opt-level` in `Cargo.toml`, or choose a different source location: {error:?}")),
-                    }
+                        &args.source,
+                    )
                 } else {
                     (None, None, "No source path provided for set_breakpoints(). Please report this as a bug.".to_string())
                 };

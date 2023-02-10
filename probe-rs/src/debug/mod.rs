@@ -113,7 +113,7 @@ pub fn get_sequential_key() -> i64 {
 }
 
 /// A specific location in source code.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Default, Debug, PartialEq, Eq)]
 pub struct SourceLocation {
     /// The line number in the source file with zero based indexing.
     pub line: Option<u64>,
@@ -127,6 +127,18 @@ pub struct SourceLocation {
     pub low_pc: Option<u32>,
     /// The address of the first location past the last instruction associated with the source code
     pub high_pc: Option<u32>,
+}
+
+impl SourceLocation {
+    /// The full path of the source file, combinig the `directory` and `file` fields.
+    pub fn combined_path(&self) -> Option<PathBuf> {
+        self.directory.as_ref().and_then(|dir| {
+            self.file
+                .as_ref()
+                .map(|file| dir.join(file))
+                .filter(|path| path.exists())
+        })
+    }
 }
 
 /// If file information is available, it returns `Some(directory:PathBuf, file_name:String)`, otherwise `None`.

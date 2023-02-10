@@ -1,10 +1,10 @@
-use std::fs::File;
+use std::{fs::File, path::Path};
 
-use super::session_data;
+use super::session_data::{self, BreakpointType};
 use crate::{
     debug_adapter::{
         dap_adapter::{DapStatus, DebugAdapter},
-        dap_types::{ContinuedEventBody, MessageSeverity, StoppedEventBody},
+        dap_types::{ContinuedEventBody, MessageSeverity, Source, StoppedEventBody},
         protocol::ProtocolAdapter,
     },
     debugger::debug_rtt,
@@ -13,7 +13,7 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use probe_rs::{
-    debug::debug_info::DebugInfo,
+    debug::{debug_info::DebugInfo, ColumnType, SourceLocation},
     rtt::{Rtt, ScanRegion},
     Core, CoreStatus, Error, HaltReason,
 };
@@ -274,6 +274,81 @@ impl<'p> CoreHandle<'p> {
             .collect::<Vec<u64>>();
         for breakpoint in target_breakpoints {
             self.clear_breakpoint(breakpoint).ok();
+        }
+        Ok(())
+    }
+
+    /// Set a breakpoint at the requested address. If the address is not specific, or accurate,
+    /// the debugger will attempt to find the closest address to the requested address, and set a breakpoint there,
+    /// and return the "verified" `SourceLocation` of the breakpoint that was set.
+    pub(crate) fn verify_and_set_breakpoint(
+        &mut self,
+        source_path: &Path,
+        requested_breakpoint_line: u64,
+        requested_breakpoint_column: Option<u64>,
+        requested_source: &Source,
+    ) -> (Option<u64>, Option<SourceLocation>, String) {
+        match self.core_data.debug_info.get_breakpoint_location(
+        source_path,
+        requested_breakpoint_line,
+        requested_breakpoint_column,
+    ) {
+        Ok((Some(valid_breakpoint_location), Some(breakpoint_source_location))) => {
+                match self.set_breakpoint(
+                    valid_breakpoint_location,
+                    BreakpointType::SourceBreakpoint(requested_source.clone(), breakpoint_source_location.clone()),
+                ) {
+                    Ok(_) => (
+                        Some(valid_breakpoint_location),
+                        Some(breakpoint_source_location),
+                        format!(
+                            "Source breakpoint at memory address: {valid_breakpoint_location:#010X}"
+                        ),
+                    ),
+                    Err(err) => {
+                        (None, None, format!("Warning: Could not set breakpoint at memory address: {valid_breakpoint_location:#010x}: {err}"))
+                    }
+                }
+            }
+        Ok(_) => {
+            (None, None, "Cannot set breakpoint here. Try reducing `opt-level` in `Cargo.toml`, or choose a different source location".to_string())
+        }
+        Err(error) => (None, None, format!("Cannot set breakpoint here. Try reducing `opt-level` in `Cargo.toml`, or choose a different source location: {error:?}")),
+    }
+    }
+
+    /// In the case where a new binary is flashed as part of a restart, we need to recompute the breakpoint address,
+    /// for a specified source location, of any [`super::session_data::BreakpointType::SourceBreakpoint`].
+    /// This is because the address of the breakpoint may have changed based on changes in the source file that created the new binary.
+    pub(crate) fn recompute_breakpoints(&mut self) -> Result<()> {
+        let target_breakpoints = self.core_data.breakpoints.clone();
+        for breakpoint in target_breakpoints
+            .iter()
+            .cloned()
+            // If the breakpoint type is not a source breakpoint, we don't need to recompute anything.
+            .filter(|breakpoint| {
+                matches!(
+                    breakpoint.breakpoint_type,
+                    BreakpointType::SourceBreakpoint(..)
+                )
+            })
+        {
+            self.clear_breakpoint(breakpoint.breakpoint_address).ok();
+            if let BreakpointType::SourceBreakpoint(source, source_location) =
+                breakpoint.breakpoint_type
+            {
+                if let Some(requested_path) = &source_location.combined_path() {
+                    self.verify_and_set_breakpoint(
+                        requested_path,
+                        source_location.line.unwrap_or(0),
+                        source_location.column.map(|col| match col {
+                            ColumnType::LeftEdge => 0_u64,
+                            ColumnType::Column(c) => c,
+                        }),
+                        &source,
+                    );
+                }
+            }
         }
         Ok(())
     }

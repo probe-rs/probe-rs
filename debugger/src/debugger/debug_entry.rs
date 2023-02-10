@@ -586,6 +586,15 @@ impl Debugger {
                             .flatten();
                         true
                     } {
+                        // If there is a new binary aspart of a restart, there are some key things that
+                        // need to be 'reset' for things to work properly.
+                        if session_request.command == "restart" {
+                            session_data.load_debug_info_for_core(target_core_config)?;
+                            session_data
+                                .attach_core(target_core_config.core_index)
+                                .map(|mut target_core| target_core.recompute_breakpoints())??;
+                        }
+
                         // Do the flashing.
                         // TODO: Multi-core ... needs to flash multiple binaries
 
