@@ -7,6 +7,8 @@ on:
   push:
     branches: [master, staging, trying]
   pull_request:
+  merge_group:
+
 
 name: Run CI
 
