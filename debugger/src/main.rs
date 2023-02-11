@@ -81,7 +81,7 @@ enum CliCommands {
     Debug {
         /// IP port number to listen for incoming DAP connections, e.g. "50000"
         #[clap(long)]
-        port: Option<u16>,
+        port: u16,
 
         /// The debug adapter processed was launched by VSCode, and should terminate itself at the end of every debug session (when receiving `Disconnect` or `Terminate` Request from VSCode). The "false"(default) state of this option implies that the process was launched (and will be managed) by the user.
         #[clap(long, hide = true)]

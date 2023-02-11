@@ -25,7 +25,7 @@ use std::{
 };
 use time::UtcOffset;
 
-#[derive(clap::Parser, Copy, Clone, Debug, Deserialize)]
+#[derive(Copy, Clone, Debug, Deserialize, PartialEq)]
 pub(crate) enum TargetSessionType {
     AttachRequest,
     LaunchRequest,
@@ -68,12 +68,13 @@ pub struct Debugger {
 }
 
 impl Debugger {
-    pub fn new(port: Option<u16>, timestamp_offset: UtcOffset) -> Self {
+    /// Create a new debugger instance
+    ///
+    /// If `port` is `None`, the debugger will communicate over stdin and stdout,
+    /// otherwise it will listen for messages on the given port.
+    pub fn new(timestamp_offset: UtcOffset) -> Self {
         Self {
-            config: configuration::SessionConfig {
-                port,
-                ..Default::default()
-            },
+            config: configuration::SessionConfig::default(),
             timestamp_offset,
         }
     }
@@ -164,7 +165,7 @@ impl Debugger {
                                     }
                                     Err(error) => {
                                         debug_adapter.send_response::<()>(
-                                            request,
+                                            &request,
                                             Err(DebuggerError::Other(anyhow!("{}", error))),
                                         )?;
                                         return Err(error.into());
@@ -195,11 +196,11 @@ impl Debugger {
                                                     arguments.window_is_open;
                                                 arguments.window_is_open
                                             });
-                                        debug_adapter.send_response::<()>(request, Ok(None))?;
+                                        debug_adapter.send_response::<()>(&request, Ok(None))?;
                                     }
                                     Err(error) => {
                                         debug_adapter.send_response::<()>(
-                                            request,
+                                            &request,
                                             Err(DebuggerError::Other(anyhow!(
                                     "Could not deserialize arguments for RttWindowOpened : {:?}.",
                                     error
@@ -211,7 +212,7 @@ impl Debugger {
                             Ok(DebuggerStatus::ContinueSession)
                         }
                         "disconnect" => debug_adapter
-                            .send_response::<()>(request, Ok(None))
+                            .send_response::<()>(&request, Ok(None))
                             .and(Ok(DebuggerStatus::TerminateSession)),
                         "terminate" => debug_adapter
                             .pause(&mut target_core, request)
@@ -277,7 +278,7 @@ impl Debugger {
                         other_command => {
                             // Unimplemented command.
                             debug_adapter.send_response::<()>(
-                            request,
+                            &request,
                             Err(DebuggerError::Other(anyhow!("Received request '{}', which is not supported or not implemented yet", other_command))),)
                             .and(Ok(DebuggerStatus::ContinueSession))
                         }
@@ -319,7 +320,7 @@ impl Debugger {
     pub(crate) fn debug_session<P: ProtocolAdapter + 'static>(
         &mut self,
         mut debug_adapter: DebugAdapter<P>,
-        log_info_message: &String,
+        log_info_message: &str,
     ) -> Result<DebuggerStatus, DebuggerError> {
         debug_adapter.log_to_console("Starting debug session...");
         debug_adapter.log_to_console(log_info_message);
@@ -330,32 +331,7 @@ impl Debugger {
         // before entering the iterative loop that processes requests through the process_request method.
 
         // Initialize request.
-        let initialize_request = loop {
-            let current_request = if let Some(request) = debug_adapter.listen_for_request()? {
-                request
-            } else {
-                continue;
-            };
-
-            match current_request.command.as_str() {
-                "initialize" => break current_request, // We have lift off.
-                other => {
-                    let command = other.to_string();
-
-                    debug_adapter.send_response::<()>(
-                        current_request,
-                        Err(
-                            anyhow!("Initial command was '{}', expected 'initialize'", command)
-                                .into(),
-                        ),
-                    )?;
-                    return Err(DebuggerError::Other(anyhow!(
-                        "Initial command was '{}', expected 'initialize'",
-                        command
-                    )));
-                }
-            };
-        };
+        let initialize_request = expect_request(&mut debug_adapter, "initialize")?;
 
         let initialize_arguments: InitializeRequestArguments = match get_arguments::<
             InitializeRequestArguments,
@@ -365,13 +341,13 @@ impl Debugger {
                 if !(arguments.columns_start_at_1.unwrap_or(true)
                     && arguments.lines_start_at_1.unwrap_or(true))
                 {
-                    debug_adapter.send_response::<()>(initialize_request, Err(DebuggerError::Other(anyhow!("Unsupported Capability: Client requested column and row numbers start at 0."))))?;
+                    debug_adapter.send_response::<()>(&initialize_request, Err(DebuggerError::Other(anyhow!("Unsupported Capability: Client requested column and row numbers start at 0."))))?;
                     return Err(DebuggerError::Other(anyhow!("Unsupported Capability: Client requested column and row numbers start at 0.")));
                 }
                 arguments
             }
             Err(error) => {
-                debug_adapter.send_response::<()>(initialize_request, Err(error))?;
+                debug_adapter.send_response::<()>(&initialize_request, Err(error))?;
                 return Err(DebuggerError::Other(anyhow!(
                     "Failed to get initialize arguments"
                 )));
@@ -410,64 +386,50 @@ impl Debugger {
             // supports_exception_filter_options: Some (true),
             ..Default::default()
         };
-        debug_adapter.send_response(initialize_request, Ok(Some(capabilities)))?;
+        debug_adapter.send_response(&initialize_request, Ok(Some(capabilities)))?;
 
         // Process either the Launch or Attach request.
-        let requested_target_session_type: Option<TargetSessionType>;
         let launch_attach_request = loop {
-            let current_request = if let Some(request) = debug_adapter.listen_for_request()? {
-                request
-            } else {
-                continue;
-            };
+            if let Some(request) = debug_adapter.listen_for_request()? {
+                break request;
+            }
+        };
 
-            match current_request.command.as_str() {
-                "attach" => {
-                    requested_target_session_type = Some(TargetSessionType::AttachRequest);
-                    break current_request;
-                }
-                "launch" => {
-                    requested_target_session_type = Some(TargetSessionType::LaunchRequest);
-                    break current_request;
-                }
-                other => {
-                    let error_msg =
-                        format!("Expected request 'launch' or 'attach', but received' {other}'");
+        let requested_target_session_type = match launch_attach_request.command.as_str() {
+            "attach" => TargetSessionType::AttachRequest,
+            "launch" => TargetSessionType::LaunchRequest,
+            other => {
+                let error_msg =
+                    format!("Expected request 'launch' or 'attach', but received' {other}'");
 
-                    debug_adapter.send_response::<()>(
-                        current_request,
-                        Err(DebuggerError::Other(anyhow!(error_msg.clone()))),
-                    )?;
-                    return Err(DebuggerError::Other(anyhow!(error_msg)));
-                }
-            };
+                debug_adapter.send_response::<()>(
+                    &launch_attach_request,
+                    Err(DebuggerError::Other(anyhow!(error_msg.clone()))),
+                )?;
+                return Err(DebuggerError::Other(anyhow!(error_msg)));
+            }
         };
 
         // TODO: Multi-core: This currently only supports the first `SessionConfig::core_configs`
         match get_arguments(&launch_attach_request) {
             Ok(arguments) => {
-                if requested_target_session_type.is_some() {
-                    self.config = configuration::SessionConfig { ..arguments };
-                    if matches!(
-                        requested_target_session_type,
-                        Some(TargetSessionType::AttachRequest)
-                    ) {
-                        // Since VSCode doesn't do field validation checks for relationships in launch.json request types, check it here.
-                        if self.config.flashing_config.flashing_enabled
-                            || self.config.flashing_config.reset_after_flashing
-                            || self.config.flashing_config.halt_after_reset
-                            || self.config.flashing_config.full_chip_erase
-                            || self.config.flashing_config.restore_unwritten_bytes
-                        {
-                            debug_adapter.send_response::<()>(
-                                        launch_attach_request,
+                self.config = configuration::SessionConfig { ..arguments };
+                if requested_target_session_type == TargetSessionType::AttachRequest {
+                    // Since VSCode doesn't do field validation checks for relationships in launch.json request types, check it here.
+                    if self.config.flashing_config.flashing_enabled
+                        || self.config.flashing_config.reset_after_flashing
+                        || self.config.flashing_config.halt_after_reset
+                        || self.config.flashing_config.full_chip_erase
+                        || self.config.flashing_config.restore_unwritten_bytes
+                    {
+                        debug_adapter.send_response::<()>(
+                                        &launch_attach_request,
                                         Err(DebuggerError::Other(anyhow!(
                                             "Please do not use any of the `flashing_enabled`, `reset_after_flashing`, halt_after_reset`, `full_chip_erase`, or `restore_unwritten_bytes` options when using `attach` request type."))),
                                     )?;
 
-                            return Err(DebuggerError::Other(anyhow!(
+                        return Err(DebuggerError::Other(anyhow!(
                                             "Please do not use any of the `flashing_enabled`, `reset_after_flashing`, halt_after_reset`, `full_chip_erase`, or `restore_unwritten_bytes` options when using `attach` request type.")));
-                        }
                     }
                 }
                 debug_adapter.set_console_log_level(
@@ -480,7 +442,7 @@ impl Debugger {
                     launch_attach_request.command, launch_attach_request.arguments, error
                 );
                 debug_adapter.send_response::<()>(
-                    launch_attach_request,
+                    &launch_attach_request,
                     Err(DebuggerError::Other(anyhow!(error_message.clone()))),
                 )?;
 
@@ -489,12 +451,12 @@ impl Debugger {
         };
 
         // Validate file specifications in the config.
-        match self.config.validate_config_files() {
-            Ok(_) => {}
-            Err(error) => {
-                return Err(error);
-            }
-        };
+        if let Err(e) = self.config.validate_config_files() {
+            let err = anyhow!("{e:?}");
+
+            debug_adapter.send_response::<()>(&launch_attach_request, Err(e))?;
+            return Err(err.into());
+        }
 
         let mut session_data =
             match session_data::SessionData::new(&mut self.config, self.timestamp_offset) {
@@ -507,14 +469,11 @@ impl Debugger {
 
         // TODO: Currently the logic of processing MS DAP requests and executing them, is based on having a single core. It needs to be re-thought for multiple cores. Not all DAP requests require access to the core. One possible is to do the core attach inside each of the request implementations for those that need it, because the applicable core_index can be read from the request arguments.
         // TODO: Until we refactor this, we only support a single core (always the first one specified in `SessionConfig::core_configs`)
-        let target_core_config =
-            if let Some(target_core_config) = self.config.core_configs.first_mut() {
-                target_core_config
-            } else {
-                return Err(DebuggerError::Other(anyhow!(
-                    "Cannot continue unless one target core configuration is defined."
-                )));
-            };
+        let target_core_config = self.config.core_configs.first_mut().ok_or_else(|| {
+            DebuggerError::Other(anyhow!(
+                "Cannot continue unless one target core configuration is defined."
+            ))
+        })?;
 
         debug_adapter.halt_after_reset = self.config.flashing_config.halt_after_reset;
         // Do the flashing.
@@ -544,198 +503,185 @@ impl Debugger {
                 download_options.keep_unwritten_bytes =
                     self.config.flashing_config.restore_unwritten_bytes;
                 download_options.do_chip_erase = self.config.flashing_config.full_chip_erase;
+
+                let rc_debug_adapter = Rc::new(RefCell::new(debug_adapter));
+                let rc_debug_adapter_clone = rc_debug_adapter.clone();
                 let flash_result = {
-                    let rc_debug_adapter = Rc::new(RefCell::new(debug_adapter));
-                    let rc_debug_adapter_clone = rc_debug_adapter.clone();
-                    let flash_result = {
-                        struct ProgressState {
-                            total_page_size: usize,
-                            total_sector_size: usize,
-                            total_fill_size: usize,
-                            page_size_done: usize,
-                            sector_size_done: usize,
-                            fill_size_done: usize,
-                        }
+                    struct ProgressState {
+                        total_page_size: usize,
+                        total_sector_size: usize,
+                        total_fill_size: usize,
+                        page_size_done: usize,
+                        sector_size_done: usize,
+                        fill_size_done: usize,
+                    }
 
-                        let flash_progress = Rc::new(RefCell::new(ProgressState {
-                            total_page_size: 0,
-                            total_sector_size: 0,
-                            total_fill_size: 0,
-                            page_size_done: 0,
-                            sector_size_done: 0,
-                            fill_size_done: 0,
-                        }));
+                    let progress_state = Rc::new(RefCell::new(ProgressState {
+                        total_page_size: 0,
+                        total_sector_size: 0,
+                        total_fill_size: 0,
+                        page_size_done: 0,
+                        sector_size_done: 0,
+                        fill_size_done: 0,
+                    }));
 
-                        let flash_progress = if let Some(id) = progress_id {
-                            FlashProgress::new(move |event| {
-                                let mut flash_progress = flash_progress.borrow_mut();
-                                let mut debug_adapter = rc_debug_adapter_clone.borrow_mut();
-                                match event {
-                                    probe_rs::flashing::ProgressEvent::Initialized {
-                                        flash_layout,
-                                    } => {
-                                        flash_progress.total_page_size = flash_layout
-                                            .pages()
-                                            .iter()
-                                            .map(|s| s.size() as usize)
-                                            .sum();
+                    let flash_progress = progress_id.map(|id| {
+                        FlashProgress::new(move |event| {
+                            let mut flash_progress = progress_state.borrow_mut();
+                            let mut debug_adapter = rc_debug_adapter_clone.borrow_mut();
+                            match event {
+                                probe_rs::flashing::ProgressEvent::Initialized { flash_layout } => {
+                                    flash_progress.total_page_size = flash_layout
+                                        .pages()
+                                        .iter()
+                                        .map(|s| s.size() as usize)
+                                        .sum();
 
-                                        flash_progress.total_sector_size = flash_layout
-                                            .sectors()
-                                            .iter()
-                                            .map(|s| s.size() as usize)
-                                            .sum();
+                                    flash_progress.total_sector_size = flash_layout
+                                        .sectors()
+                                        .iter()
+                                        .map(|s| s.size() as usize)
+                                        .sum();
 
-                                        flash_progress.total_fill_size = flash_layout
-                                            .fills()
-                                            .iter()
-                                            .map(|s| s.size() as usize)
-                                            .sum();
-                                    }
-                                    probe_rs::flashing::ProgressEvent::StartedFilling => {
-                                        debug_adapter
-                                            .update_progress(
-                                                Some(0.0),
-                                                Some("Reading Old Pages ..."),
-                                                id,
-                                            )
-                                            .ok();
-                                    }
-                                    probe_rs::flashing::ProgressEvent::PageFilled {
-                                        size, ..
-                                    } => {
-                                        flash_progress.fill_size_done += size as usize;
-                                        let progress = flash_progress.fill_size_done as f64
-                                            / flash_progress.total_fill_size as f64;
-                                        debug_adapter
-                                            .update_progress(
-                                                Some(progress),
-                                                Some(format!("Reading Old Pages ({progress})")),
-                                                id,
-                                            )
-                                            .ok();
-                                    }
-                                    probe_rs::flashing::ProgressEvent::FailedFilling => {
-                                        debug_adapter
-                                            .update_progress(
-                                                Some(1.0),
-                                                Some("Reading Old Pages Failed!"),
-                                                id,
-                                            )
-                                            .ok();
-                                    }
-                                    probe_rs::flashing::ProgressEvent::FinishedFilling => {
-                                        debug_adapter
-                                            .update_progress(
-                                                Some(1.0),
-                                                Some("Reading Old Pages Complete!"),
-                                                id,
-                                            )
-                                            .ok();
-                                    }
-                                    probe_rs::flashing::ProgressEvent::StartedErasing => {
-                                        debug_adapter
-                                            .update_progress(
-                                                Some(0.0),
-                                                Some("Erasing Sectors ..."),
-                                                id,
-                                            )
-                                            .ok();
-                                    }
-                                    probe_rs::flashing::ProgressEvent::SectorErased {
-                                        size,
-                                        ..
-                                    } => {
-                                        flash_progress.sector_size_done += size as usize;
-                                        let progress = flash_progress.sector_size_done as f64
-                                            / flash_progress.total_sector_size as f64;
-                                        debug_adapter
-                                            .update_progress(
-                                                Some(progress),
-                                                Some(format!("Erasing Sectors ({progress})")),
-                                                id,
-                                            )
-                                            .ok();
-                                    }
-                                    probe_rs::flashing::ProgressEvent::FailedErasing => {
-                                        debug_adapter
-                                            .update_progress(
-                                                Some(1.0),
-                                                Some("Erasing Sectors Failed!"),
-                                                id,
-                                            )
-                                            .ok();
-                                    }
-                                    probe_rs::flashing::ProgressEvent::FinishedErasing => {
-                                        debug_adapter
-                                            .update_progress(
-                                                Some(1.0),
-                                                Some("Erasing Sectors Complete!"),
-                                                id,
-                                            )
-                                            .ok();
-                                    }
-                                    probe_rs::flashing::ProgressEvent::StartedProgramming => {
-                                        debug_adapter
-                                            .update_progress(
-                                                Some(0.0),
-                                                Some("Programming Pages ..."),
-                                                id,
-                                            )
-                                            .ok();
-                                    }
-                                    probe_rs::flashing::ProgressEvent::PageProgrammed {
-                                        size,
-                                        ..
-                                    } => {
-                                        flash_progress.page_size_done += size as usize;
-                                        let progress = flash_progress.page_size_done as f64
-                                            / flash_progress.total_page_size as f64;
-                                        debug_adapter
-                                            .update_progress(
-                                                Some(progress),
-                                                Some(format!(
-                                                    "Programming Pages ({:02.0}%)",
-                                                    progress.mul(100_f64)
-                                                )),
-                                                id,
-                                            )
-                                            .ok();
-                                    }
-                                    probe_rs::flashing::ProgressEvent::FailedProgramming => {
-                                        debug_adapter
-                                            .update_progress(
-                                                Some(1.0),
-                                                Some("Flashing Pages Failed!"),
-                                                id,
-                                            )
-                                            .ok();
-                                    }
-                                    probe_rs::flashing::ProgressEvent::FinishedProgramming => {
-                                        debug_adapter
-                                            .update_progress(
-                                                Some(1.0),
-                                                Some("Flashing Pages Complete!"),
-                                                id,
-                                            )
-                                            .ok();
-                                    }
-                                    probe_rs::flashing::ProgressEvent::DiagnosticMessage {
-                                        ..
-                                    } => (),
+                                    flash_progress.total_fill_size = flash_layout
+                                        .fills()
+                                        .iter()
+                                        .map(|s| s.size() as usize)
+                                        .sum();
                                 }
-                            })
-                        } else {
-                            FlashProgress::new(|_event| {})
-                        };
-                        download_options.progress = Some(flash_progress);
-                        download_file_with_options(
-                            &mut session_data.session,
-                            path_to_elf,
-                            Format::Elf,
-                            download_options,
-                        )
-                    };
+                                probe_rs::flashing::ProgressEvent::StartedFilling => {
+                                    debug_adapter
+                                        .update_progress(
+                                            Some(0.0),
+                                            Some("Reading Old Pages ..."),
+                                            id,
+                                        )
+                                        .ok();
+                                }
+                                probe_rs::flashing::ProgressEvent::PageFilled { size, .. } => {
+                                    flash_progress.fill_size_done += size as usize;
+                                    let progress = flash_progress.fill_size_done as f64
+                                        / flash_progress.total_fill_size as f64;
+                                    debug_adapter
+                                        .update_progress(
+                                            Some(progress),
+                                            Some(format!("Reading Old Pages ({progress})")),
+                                            id,
+                                        )
+                                        .ok();
+                                }
+                                probe_rs::flashing::ProgressEvent::FailedFilling => {
+                                    debug_adapter
+                                        .update_progress(
+                                            Some(1.0),
+                                            Some("Reading Old Pages Failed!"),
+                                            id,
+                                        )
+                                        .ok();
+                                }
+                                probe_rs::flashing::ProgressEvent::FinishedFilling => {
+                                    debug_adapter
+                                        .update_progress(
+                                            Some(1.0),
+                                            Some("Reading Old Pages Complete!"),
+                                            id,
+                                        )
+                                        .ok();
+                                }
+                                probe_rs::flashing::ProgressEvent::StartedErasing => {
+                                    debug_adapter
+                                        .update_progress(Some(0.0), Some("Erasing Sectors ..."), id)
+                                        .ok();
+                                }
+                                probe_rs::flashing::ProgressEvent::SectorErased {
+                                    size, ..
+                                } => {
+                                    flash_progress.sector_size_done += size as usize;
+                                    let progress = flash_progress.sector_size_done as f64
+                                        / flash_progress.total_sector_size as f64;
+                                    debug_adapter
+                                        .update_progress(
+                                            Some(progress),
+                                            Some(format!("Erasing Sectors ({progress})")),
+                                            id,
+                                        )
+                                        .ok();
+                                }
+                                probe_rs::flashing::ProgressEvent::FailedErasing => {
+                                    debug_adapter
+                                        .update_progress(
+                                            Some(1.0),
+                                            Some("Erasing Sectors Failed!"),
+                                            id,
+                                        )
+                                        .ok();
+                                }
+                                probe_rs::flashing::ProgressEvent::FinishedErasing => {
+                                    debug_adapter
+                                        .update_progress(
+                                            Some(1.0),
+                                            Some("Erasing Sectors Complete!"),
+                                            id,
+                                        )
+                                        .ok();
+                                }
+                                probe_rs::flashing::ProgressEvent::StartedProgramming => {
+                                    debug_adapter
+                                        .update_progress(
+                                            Some(0.0),
+                                            Some("Programming Pages ..."),
+                                            id,
+                                        )
+                                        .ok();
+                                }
+                                probe_rs::flashing::ProgressEvent::PageProgrammed {
+                                    size, ..
+                                } => {
+                                    flash_progress.page_size_done += size as usize;
+                                    let progress = flash_progress.page_size_done as f64
+                                        / flash_progress.total_page_size as f64;
+                                    debug_adapter
+                                        .update_progress(
+                                            Some(progress),
+                                            Some(format!(
+                                                "Programming Pages ({:02.0}%)",
+                                                progress.mul(100_f64)
+                                            )),
+                                            id,
+                                        )
+                                        .ok();
+                                }
+                                probe_rs::flashing::ProgressEvent::FailedProgramming => {
+                                    debug_adapter
+                                        .update_progress(
+                                            Some(1.0),
+                                            Some("Flashing Pages Failed!"),
+                                            id,
+                                        )
+                                        .ok();
+                                }
+                                probe_rs::flashing::ProgressEvent::FinishedProgramming => {
+                                    debug_adapter
+                                        .update_progress(
+                                            Some(1.0),
+                                            Some("Flashing Pages Complete!"),
+                                            id,
+                                        )
+                                        .ok();
+                                }
+                                probe_rs::flashing::ProgressEvent::DiagnosticMessage { .. } => (),
+                            }
+                        })
+                    });
+
+                    download_options.progress = flash_progress;
+                    let flash_result = download_file_with_options(
+                        &mut session_data.session,
+                        path_to_elf,
+                        Format::Elf,
+                        download_options,
+                    );
+
                     debug_adapter = match Rc::try_unwrap(rc_debug_adapter) {
                         Ok(debug_adapter) => debug_adapter.into_inner(),
                         Err(too_many_strong_references) => {
@@ -818,7 +764,7 @@ impl Debugger {
 
         // After flashing and forced setup, we can signal the client that are ready to receive incoming requests.
         // Send the `initalized` event to client.
-        debug_adapter.send_response::<()>(launch_attach_request, Ok(None))?;
+        debug_adapter.send_response::<()>(&launch_attach_request, Ok(None))?;
         if debug_adapter
             .send_event::<Event>("initialized", None)
             .is_err()
@@ -859,6 +805,41 @@ impl Debugger {
     }
 }
 
+/// Wait for the next request with the given command.
+///
+/// If the next request doesn *not* have the given command,
+/// the function returns an error.
+fn expect_request<P: ProtocolAdapter>(
+    debug_adapter: &mut DebugAdapter<P>,
+    expected_command: &str,
+) -> Result<Request, DebuggerError> {
+    let next_request = loop {
+        if let Some(current_request) = debug_adapter.listen_for_request()? {
+            break current_request;
+        };
+    };
+
+    if next_request.command == expected_command {
+        Ok(next_request)
+    } else {
+        debug_adapter.send_response::<()>(
+            &next_request,
+            Err(anyhow!(
+                "Initial command was '{}', expected '{}'",
+                next_request.command,
+                expected_command
+            )
+            .into()),
+        )?;
+
+        Err(DebuggerError::Other(anyhow!(
+            "Initial command was '{}', expected '{}'",
+            next_request.command,
+            expected_command
+        )))
+    }
+}
+
 pub fn list_connected_devices() -> Result<()> {
     let connected_devices = Probe::list_all();
 
@@ -890,88 +871,75 @@ pub fn list_supported_chips() -> Result<()> {
 }
 
 pub fn debug(
-    port: Option<u16>,
+    port: u16,
     vscode: bool,
-    log_info_message: &String,
+    log_info_message: &str,
     timestamp_offset: UtcOffset,
 ) -> Result<()> {
-    let mut debugger = Debugger::new(port, timestamp_offset);
+    let mut debugger = Debugger::new(timestamp_offset);
 
-    log_to_console_and_tracing("Starting as a DAP Protocol server".to_string());
+    log_to_console_and_tracing("Starting as a DAP Protocol server");
 
-    match &debugger.config.port.clone() {
-        Some(port) => {
-            let addr = std::net::SocketAddr::new(
-                std::net::IpAddr::V4(Ipv4Addr::LOCALHOST),
-                port.to_owned(),
-            );
+    let addr = std::net::SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::LOCALHOST), port);
 
-            // Tell the user if (and where) RUST_LOG messages are written.
-            log_to_console_and_tracing(log_info_message.to_string());
+    // Tell the user if (and where) RUST_LOG messages are written.
+    log_to_console_and_tracing(log_info_message);
 
-            loop {
-                let listener = TcpListener::bind(addr)?;
+    loop {
+        let listener = TcpListener::bind(addr)?;
 
-                log_to_console_and_tracing(format!(
-                    "Listening for requests on port {}",
-                    addr.port()
-                ));
+        log_to_console_and_tracing(&format!("Listening for requests on port {}", addr.port()));
 
-                listener.set_nonblocking(false).ok();
-                match listener.accept() {
-                    Ok((socket, addr)) => {
-                        socket.set_nonblocking(true).with_context(|| {
-                            format!(
-                                "Failed to negotiate non-blocking socket with request from :{addr}"
-                            )
-                        })?;
+        listener.set_nonblocking(false)?;
 
-                        log_to_console_and_tracing(format!("..Starting session from   :{addr}"));
+        match listener.accept() {
+            Ok((socket, addr)) => {
+                socket.set_nonblocking(true).with_context(|| {
+                    format!("Failed to negotiate non-blocking socket with request from :{addr}")
+                })?;
 
-                        let reader = socket
-                            .try_clone()
-                            .context("Failed to establish a bi-directional Tcp connection.")?;
-                        let writer = socket;
+                log_to_console_and_tracing(&format!("..Starting session from   :{addr}"));
 
-                        let dap_adapter = DapAdapter::new(reader, writer);
+                let reader = socket
+                    .try_clone()
+                    .context("Failed to establish a bi-directional Tcp connection.")?;
+                let writer = socket;
 
-                        let debug_adapter = DebugAdapter::new(dap_adapter);
+                let dap_adapter = DapAdapter::new(reader, writer);
 
-                        match debugger.debug_session(debug_adapter, log_info_message) {
-                            Err(error) => {
-                                tracing::error!("probe-rs-debugger session ended: {}", error);
-                            }
-                            Ok(DebuggerStatus::TerminateSession) => {
-                                log_to_console_and_tracing(format!(
-                                    "....Closing session from  :{addr}"
-                                ));
-                            }
-                            Ok(DebuggerStatus::ContinueSession) => {
-                                tracing::error!("probe-rs-debugger enountered unexpected `DebuggerStatus` in debug() execution. Please report this as a bug.");
-                            }
-                        }
-                        // Terminate this process if it was started by VSCode
-                        if vscode {
-                            break;
-                        }
-                    }
+                let debug_adapter = DebugAdapter::new(dap_adapter);
+
+                match debugger.debug_session(debug_adapter, log_info_message) {
                     Err(error) => {
-                        tracing::error!("probe-rs-debugger failed to establish a socket connection. Reason: {:?}", error);
+                        tracing::error!("probe-rs-debugger session ended: {}", error);
+                    }
+                    Ok(DebuggerStatus::TerminateSession) => {
+                        log_to_console_and_tracing(&format!("....Closing session from  :{addr}"));
+                    }
+                    Ok(DebuggerStatus::ContinueSession) => {
+                        tracing::error!("probe-rs-debugger enountered unexpected `DebuggerStatus` in debug() execution. Please report this as a bug.");
                     }
                 }
+                // Terminate this process if it was started by VSCode
+                if vscode {
+                    break;
+                }
             }
-            log_to_console_and_tracing("CONSOLE: DAP Protocol server exiting".to_string());
+            Err(error) => {
+                tracing::error!(
+                    "probe-rs-debugger failed to establish a socket connection. Reason: {:?}",
+                    error
+                );
+            }
         }
-        None => {
-            tracing::error!("Using probe-rs-debugger as a debug server, requires the use of the `--port` option. Please use the `--help` option for additional information");
-        }
-    };
+    }
+    log_to_console_and_tracing("CONSOLE: DAP Protocol server exiting");
 
     Ok(())
 }
 
 /// All eprintln! messages are picked up by the VSCode extension and displayed in the debug console. We send these to stderr, in addition to logging them, so that they will show up, irrespective of the RUST_LOG level filters.
-fn log_to_console_and_tracing(message: String) {
+fn log_to_console_and_tracing(message: &str) {
     eprintln!("probe-rs-debug: {}", &message);
     tracing::info!("{}", &message);
 }
