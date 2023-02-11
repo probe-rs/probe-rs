@@ -586,7 +586,7 @@ impl Debugger {
                             .flatten();
                         true
                     } {
-                        // If there is a new binary aspart of a restart, there are some key things that
+                        // If there is a new binary as part of a restart, there are some key things that
                         // need to be 'reset' for things to work properly.
                         if session_request.command == "restart" {
                             session_data.load_debug_info_for_core(target_core_config)?;
