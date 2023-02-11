@@ -118,7 +118,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    /// Handles the `terminate` request, and very specifically only terminates the target appliction,
+    /// Handles the `terminate` request, and very specifically only terminates the target application,
     /// and does not impact the debug sessions status.
     pub(crate) fn terminate(
         &mut self,
