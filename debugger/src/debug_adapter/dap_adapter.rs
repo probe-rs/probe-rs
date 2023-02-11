@@ -157,8 +157,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // TODO: For now (until we do multicore), we will assume that both terminate and suspend translate to a halt of the core.
         let must_halt_debuggee = arguments
             .terminate_debuggee
-            .and_then(|terminate_debuggee| if terminate_debuggee { Some(()) } else { None })
-            .is_some()
+            .unwrap_or(false)
             || arguments
                 .suspend_debuggee
                 .and_then(|suspend_debuggee| if suspend_debuggee { Some(()) } else { None })
