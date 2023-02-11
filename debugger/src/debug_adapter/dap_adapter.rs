@@ -160,8 +160,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             .unwrap_or(false)
             || arguments
                 .suspend_debuggee
-                .and_then(|suspend_debuggee| if suspend_debuggee { Some(()) } else { None })
-                .is_some();
+                .unwrap_or(false);
 
         if !is_part_of_restart && must_halt_debuggee {
             let _ = target_core.core.halt(Duration::from_millis(100));
