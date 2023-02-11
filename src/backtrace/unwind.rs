@@ -75,7 +75,7 @@ pub fn target(core: &mut Core, elf: &Elf, active_ram_region: &Option<RamRegion>)
             )
             .with_context(|| missing_debug_info(pc)));
 
-        log::trace!("uwt row for pc {:#010x}: {:?}", pc, uwt_row);
+        log::trace!("uwt row for pc {pc:#010x}: {uwt_row:?}");
 
         let cfa_changed = unwrap_or_return_output!(registers.update_cfa(uwt_row.cfa()));
 
@@ -85,7 +85,7 @@ pub fn target(core: &mut Core, elf: &Elf, active_ram_region: &Option<RamRegion>)
 
         let lr = unwrap_or_return_output!(registers.get(registers::LR));
 
-        log::debug!("LR={:#010X} PC={:#010X}", lr, pc);
+        log::debug!("LR={lr:#010X} PC={pc:#010X}");
 
         if lr == registers::LR_END {
             break;
@@ -137,8 +137,7 @@ pub fn target(core: &mut Core, elf: &Elf, active_ram_region: &Option<RamRegion>)
             pc = cortexm::clear_thumb_bit(lr);
         } else {
             output.processing_error = Some(anyhow!(
-                "bug? LR ({:#010x}) didn't have the Thumb bit set",
-                lr
+                "bug? LR ({lr:#010x}) didn't have the Thumb bit set",
             ));
             return output;
         }
@@ -229,8 +228,7 @@ fn find_fde<R: Reader>(
 
                 if fde.contains(addr.into()) {
                     log::trace!(
-                        "{:#010x}: found FDE for {:#010x} .. {:#010x} at offset {:?}",
-                        addr,
+                        "{addr:#010x}: found FDE for {:#010x} .. {:#010x} at offset {:?}",
                         fde.initial_address(),
                         fde.initial_address() + fde.len(),
                         fde.offset(),
@@ -246,10 +244,8 @@ fn find_fde<R: Reader>(
             .with_context(|| missing_debug_info(addr)),
         1 => Ok(fdes.pop().unwrap()),
         n => Err(anyhow!(
-            "found {} frame description entries for address {:#010x}, there should only be 1; \
+            "found {n} frame description entries for address {addr:#010x}, there should only be 1; \
              this is likely a bug in your compiler toolchain; unwinding will stop here",
-            n,
-            addr
         )),
     }
 }

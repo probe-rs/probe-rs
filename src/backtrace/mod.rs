@@ -76,9 +76,8 @@ pub fn print(
         }
         if let Some(err) = unwind.processing_error {
             log::error!(
-                "error occurred during backtrace creation: {:?}\n               \
+                "error occurred during backtrace creation: {err:?}\n               \
                          the backtrace may be incomplete.",
-                err
             );
         }
     }

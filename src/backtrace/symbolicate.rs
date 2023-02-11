@@ -105,10 +105,9 @@ impl Subroutine {
                 .and_then(|function| {
                     let demangled = function.demangle();
                     log::trace!(
-                        "demangle {:?} (language={:X?}) -> {:?}",
+                        "demangle {:?} (language={:X?}) -> {demangled:?}",
                         function.raw_name(),
                         function.language,
-                        demangled,
                     );
                     demangled.ok()
                 })
