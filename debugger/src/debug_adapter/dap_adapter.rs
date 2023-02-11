@@ -152,9 +152,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         // We have a couple of drivers to determine the behaviour for this request.
         let is_part_of_restart = arguments
-            .restart
-            .and_then(|is_part_of_restart| if is_part_of_restart { Some(()) } else { None })
-            .is_some();
+            .restart.unwrap_or(false);
 
         // TODO: For now (until we do multicore), we will assume that both terminate and suspend translate to a halt of the core.
         let must_halt_debuggee = arguments
