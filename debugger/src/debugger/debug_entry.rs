@@ -1,4 +1,4 @@
-use super::session_data;
+use super::session_data::SessionData;
 use crate::{
     debug_adapter::{
         dap_adapter::*,
@@ -19,6 +19,7 @@ use std::{
     cell::RefCell,
     net::{Ipv4Addr, TcpListener},
     ops::Mul,
+    path::Path,
     rc::Rc,
     thread,
     time::Duration,
@@ -88,7 +89,7 @@ impl Debugger {
     ///   - If the `new_status` is `Running`, then we have to poll on a regular basis, until the Probe stops for good reasons like breakpoints, or bad reasons like panics.
     pub(crate) fn process_next_request<P: ProtocolAdapter>(
         &mut self,
-        session_data: &mut session_data::SessionData,
+        session_data: &mut SessionData,
         debug_adapter: &mut DebugAdapter<P>,
     ) -> Result<DebuggerStatus, DebuggerError> {
         match debug_adapter.listen_for_request()? {
@@ -378,7 +379,7 @@ impl Debugger {
     fn handle_launch_attach<P: ProtocolAdapter + 'static>(
         &mut self,
         mut debug_adapter: DebugAdapter<P>,
-    ) -> Result<(DebugAdapter<P>, session_data::SessionData), DebuggerError> {
+    ) -> Result<(DebugAdapter<P>, SessionData), DebuggerError> {
         let launch_attach_request = loop {
             if let Some(request) = debug_adapter.listen_for_request()? {
                 break request;
@@ -400,44 +401,42 @@ impl Debugger {
             }
         };
 
-        match get_arguments(&launch_attach_request) {
-            Ok(arguments) => {
-                self.config = configuration::SessionConfig { ..arguments };
-                if requested_target_session_type == TargetSessionType::AttachRequest {
-                    // Since VSCode doesn't do field validation checks for relationships in launch.json request types, check it here.
-                    if self.config.flashing_config.flashing_enabled
-                        || self.config.flashing_config.reset_after_flashing
-                        || self.config.flashing_config.halt_after_reset
-                        || self.config.flashing_config.full_chip_erase
-                        || self.config.flashing_config.restore_unwritten_bytes
-                    {
-                        debug_adapter.send_response::<()>(
+        let arguments = get_arguments(&launch_attach_request).or_else(|error| {
+            let error_message = format!(
+                "Could not derive SessionConfig from request '{}', with arguments {:?}\n{:?} ",
+                launch_attach_request.command, launch_attach_request.arguments, error
+            );
+            debug_adapter.send_response::<()>(
+                &launch_attach_request,
+                Err(DebuggerError::Other(anyhow!(error_message.clone()))),
+            )?;
+
+            return Err(DebuggerError::Other(anyhow!(error_message)));
+        })?;
+
+        self.config = configuration::SessionConfig { ..arguments };
+
+        if requested_target_session_type == TargetSessionType::AttachRequest {
+            // Since VSCode doesn't do field validation checks for relationships in launch.json request types, check it here.
+            if self.config.flashing_config.flashing_enabled
+                || self.config.flashing_config.reset_after_flashing
+                || self.config.flashing_config.halt_after_reset
+                || self.config.flashing_config.full_chip_erase
+                || self.config.flashing_config.restore_unwritten_bytes
+            {
+                debug_adapter.send_response::<()>(
                                         &launch_attach_request,
                                         Err(DebuggerError::Other(anyhow!(
                                             "Please do not use any of the `flashing_enabled`, `reset_after_flashing`, halt_after_reset`, `full_chip_erase`, or `restore_unwritten_bytes` options when using `attach` request type."))),
                                     )?;
 
-                        return Err(DebuggerError::Other(anyhow!(
+                return Err(DebuggerError::Other(anyhow!(
                                             "Please do not use any of the `flashing_enabled`, `reset_after_flashing`, halt_after_reset`, `full_chip_erase`, or `restore_unwritten_bytes` options when using `attach` request type.")));
-                    }
-                }
-                debug_adapter.set_console_log_level(
-                    self.config.console_log_level.unwrap_or(ConsoleLog::Console),
-                );
             }
-            Err(error) => {
-                let error_message = format!(
-                    "Could not derive SessionConfig from request '{}', with arguments {:?}\n{:?} ",
-                    launch_attach_request.command, launch_attach_request.arguments, error
-                );
-                debug_adapter.send_response::<()>(
-                    &launch_attach_request,
-                    Err(DebuggerError::Other(anyhow!(error_message.clone()))),
-                )?;
+        }
 
-                return Err(DebuggerError::Other(anyhow!(error_message)));
-            }
-        };
+        debug_adapter
+            .set_console_log_level(self.config.console_log_level.unwrap_or(ConsoleLog::Console));
 
         if let Err(e) = self.config.validate_config_files() {
             let err = anyhow!("{e:?}");
@@ -447,255 +446,39 @@ impl Debugger {
         }
 
         let mut session_data =
-            match session_data::SessionData::new(&mut self.config, self.timestamp_offset) {
-                Ok(session_data) => session_data,
-                Err(error) => {
-                    debug_adapter.send_error_response(&error)?;
-                    return Err(error);
-                }
-            };
-        let target_core_config = self.config.core_configs.first_mut().ok_or_else(|| {
-            DebuggerError::Other(anyhow!(
-                "Cannot continue unless one target core configuration is defined."
-            ))
-        })?;
+            SessionData::new(&mut self.config, self.timestamp_offset).or_else(|error| {
+                debug_adapter.send_error_response(&error)?;
+                Err(error)
+            })?;
+
         debug_adapter.halt_after_reset = self.config.flashing_config.halt_after_reset;
 
         {
             if self.config.flashing_config.flashing_enabled {
-                let path_to_elf = match &target_core_config.program_binary {
-                    Some(program_binary) => program_binary,
-                    None => {
-                        let err = DebuggerError::Other(anyhow!(
-                            "Please use the --program-binary option to specify an executable"
-                        ));
-                        debug_adapter.send_error_response(&err)?;
-                        return Err(err);
-                    }
-                };
-                debug_adapter.log_to_console(format!(
-                    "FLASHING: Starting write of {:?} to device memory",
-                    &path_to_elf
-                ));
+                let target_core_config = self.config.core_configs.first_mut().ok_or_else(|| {
+                    DebuggerError::Other(anyhow!(
+                        "Cannot continue unless one target core configuration is defined."
+                    ))
+                })?;
 
-                let progress_id = debug_adapter
-                    .start_progress("Flashing device", Some(launch_attach_request.seq))
-                    .ok();
-
-                let mut download_options = DownloadOptions::default();
-                download_options.keep_unwritten_bytes =
-                    self.config.flashing_config.restore_unwritten_bytes;
-                download_options.do_chip_erase = self.config.flashing_config.full_chip_erase;
-
-                let rc_debug_adapter = Rc::new(RefCell::new(debug_adapter));
-                let rc_debug_adapter_clone = rc_debug_adapter.clone();
-
-                let flash_result = {
-                    struct ProgressState {
-                        total_page_size: usize,
-                        total_sector_size: usize,
-                        total_fill_size: usize,
-                        page_size_done: usize,
-                        sector_size_done: usize,
-                        fill_size_done: usize,
-                    }
-
-                    let progress_state = Rc::new(RefCell::new(ProgressState {
-                        total_page_size: 0,
-                        total_sector_size: 0,
-                        total_fill_size: 0,
-                        page_size_done: 0,
-                        sector_size_done: 0,
-                        fill_size_done: 0,
-                    }));
-
-                    let flash_progress = progress_id.map(|id| {
-                        FlashProgress::new(move |event| {
-                            let mut flash_progress = progress_state.borrow_mut();
-                            let mut debug_adapter = rc_debug_adapter_clone.borrow_mut();
-                            match event {
-                                probe_rs::flashing::ProgressEvent::Initialized { flash_layout } => {
-                                    flash_progress.total_page_size = flash_layout
-                                        .pages()
-                                        .iter()
-                                        .map(|s| s.size() as usize)
-                                        .sum();
-
-                                    flash_progress.total_sector_size = flash_layout
-                                        .sectors()
-                                        .iter()
-                                        .map(|s| s.size() as usize)
-                                        .sum();
-
-                                    flash_progress.total_fill_size = flash_layout
-                                        .fills()
-                                        .iter()
-                                        .map(|s| s.size() as usize)
-                                        .sum();
-                                }
-                                probe_rs::flashing::ProgressEvent::StartedFilling => {
-                                    debug_adapter
-                                        .update_progress(
-                                            Some(0.0),
-                                            Some("Reading Old Pages ..."),
-                                            id,
-                                        )
-                                        .ok();
-                                }
-                                probe_rs::flashing::ProgressEvent::PageFilled { size, .. } => {
-                                    flash_progress.fill_size_done += size as usize;
-                                    let progress = flash_progress.fill_size_done as f64
-                                        / flash_progress.total_fill_size as f64;
-                                    debug_adapter
-                                        .update_progress(
-                                            Some(progress),
-                                            Some(format!("Reading Old Pages ({progress})")),
-                                            id,
-                                        )
-                                        .ok();
-                                }
-                                probe_rs::flashing::ProgressEvent::FailedFilling => {
-                                    debug_adapter
-                                        .update_progress(
-                                            Some(1.0),
-                                            Some("Reading Old Pages Failed!"),
-                                            id,
-                                        )
-                                        .ok();
-                                }
-                                probe_rs::flashing::ProgressEvent::FinishedFilling => {
-                                    debug_adapter
-                                        .update_progress(
-                                            Some(1.0),
-                                            Some("Reading Old Pages Complete!"),
-                                            id,
-                                        )
-                                        .ok();
-                                }
-                                probe_rs::flashing::ProgressEvent::StartedErasing => {
-                                    debug_adapter
-                                        .update_progress(Some(0.0), Some("Erasing Sectors ..."), id)
-                                        .ok();
-                                }
-                                probe_rs::flashing::ProgressEvent::SectorErased {
-                                    size, ..
-                                } => {
-                                    flash_progress.sector_size_done += size as usize;
-                                    let progress = flash_progress.sector_size_done as f64
-                                        / flash_progress.total_sector_size as f64;
-                                    debug_adapter
-                                        .update_progress(
-                                            Some(progress),
-                                            Some(format!("Erasing Sectors ({progress})")),
-                                            id,
-                                        )
-                                        .ok();
-                                }
-                                probe_rs::flashing::ProgressEvent::FailedErasing => {
-                                    debug_adapter
-                                        .update_progress(
-                                            Some(1.0),
-                                            Some("Erasing Sectors Failed!"),
-                                            id,
-                                        )
-                                        .ok();
-                                }
-                                probe_rs::flashing::ProgressEvent::FinishedErasing => {
-                                    debug_adapter
-                                        .update_progress(
-                                            Some(1.0),
-                                            Some("Erasing Sectors Complete!"),
-                                            id,
-                                        )
-                                        .ok();
-                                }
-                                probe_rs::flashing::ProgressEvent::StartedProgramming => {
-                                    debug_adapter
-                                        .update_progress(
-                                            Some(0.0),
-                                            Some("Programming Pages ..."),
-                                            id,
-                                        )
-                                        .ok();
-                                }
-                                probe_rs::flashing::ProgressEvent::PageProgrammed {
-                                    size, ..
-                                } => {
-                                    flash_progress.page_size_done += size as usize;
-                                    let progress = flash_progress.page_size_done as f64
-                                        / flash_progress.total_page_size as f64;
-                                    debug_adapter
-                                        .update_progress(
-                                            Some(progress),
-                                            Some(format!(
-                                                "Programming Pages ({:02.0}%)",
-                                                progress.mul(100_f64)
-                                            )),
-                                            id,
-                                        )
-                                        .ok();
-                                }
-                                probe_rs::flashing::ProgressEvent::FailedProgramming => {
-                                    debug_adapter
-                                        .update_progress(
-                                            Some(1.0),
-                                            Some("Flashing Pages Failed!"),
-                                            id,
-                                        )
-                                        .ok();
-                                }
-                                probe_rs::flashing::ProgressEvent::FinishedProgramming => {
-                                    debug_adapter
-                                        .update_progress(
-                                            Some(1.0),
-                                            Some("Flashing Pages Complete!"),
-                                            id,
-                                        )
-                                        .ok();
-                                }
-                                probe_rs::flashing::ProgressEvent::DiagnosticMessage { .. } => (),
-                            }
-                        })
-                    });
-
-                    download_options.progress = flash_progress;
-                    let flash_result = download_file_with_options(
-                        &mut session_data.session,
-                        path_to_elf,
-                        Format::Elf,
-                        download_options,
-                    );
-
-                    debug_adapter = match Rc::try_unwrap(rc_debug_adapter) {
-                        Ok(debug_adapter) => debug_adapter.into_inner(),
-                        Err(too_many_strong_references) => {
-                            let other_error = DebuggerError::Other(anyhow!("Unexpected error while dereferencing the `debug_adapter` (It has {} strong references). Please report this as a bug.", Rc::strong_count(&too_many_strong_references)));
-                            return Err(other_error);
-                        }
-                    };
-
-                    if let Some(id) = progress_id {
-                        let _ = debug_adapter.end_progress(id);
-                    }
-                    flash_result
+                let Some(binary_path) = target_core_config.program_binary.clone() else {
+                    return Err(DebuggerError::Other(anyhow!("Missing binary for core 0")));
                 };
 
-                match flash_result {
-                    Ok(_) => {
-                        debug_adapter.log_to_console(format!(
-                            "FLASHING: Completed write of {:?} to device memory",
-                            &path_to_elf
-                        ));
-                    }
-                    Err(error) => {
-                        let error = DebuggerError::FileDownload(error);
-                        debug_adapter.send_error_response(&error)?;
-                        return Err(error);
-                    }
-                }
+                debug_adapter = self.flash(
+                    &binary_path,
+                    debug_adapter,
+                    launch_attach_request.seq,
+                    &mut session_data,
+                )?;
             }
         }
         {
+            let target_core_config = self.config.core_configs.first_mut().ok_or_else(|| {
+                DebuggerError::Other(anyhow!(
+                    "Cannot continue unless one target core configuration is defined."
+                ))
+            })?;
             // First, attach to the core
             let mut target_core = match session_data.attach_core(target_core_config.core_index) {
                 Ok(mut target_core) => {
@@ -745,6 +528,189 @@ impl Debugger {
         }
         debug_adapter.send_response::<()>(&launch_attach_request, Ok(None))?;
         Ok((debug_adapter, session_data))
+    }
+
+    fn flash<P: ProtocolAdapter + 'static>(
+        &mut self,
+        path_to_elf: &Path,
+        mut debug_adapter: DebugAdapter<P>,
+        request_id: i64,
+        session_data: &mut SessionData,
+    ) -> Result<DebugAdapter<P>, DebuggerError> {
+        debug_adapter.log_to_console(format!(
+            "FLASHING: Starting write of {:?} to device memory",
+            &path_to_elf
+        ));
+        let progress_id = debug_adapter
+            .start_progress("Flashing device", Some(request_id))
+            .ok();
+
+        let mut download_options = DownloadOptions::default();
+        download_options.keep_unwritten_bytes = self.config.flashing_config.restore_unwritten_bytes;
+        download_options.do_chip_erase = self.config.flashing_config.full_chip_erase;
+        let rc_debug_adapter = Rc::new(RefCell::new(debug_adapter));
+        let rc_debug_adapter_clone = rc_debug_adapter.clone();
+
+        struct ProgressState {
+            total_page_size: usize,
+            total_sector_size: usize,
+            total_fill_size: usize,
+            page_size_done: usize,
+            sector_size_done: usize,
+            fill_size_done: usize,
+        }
+
+        let progress_state = Rc::new(RefCell::new(ProgressState {
+            total_page_size: 0,
+            total_sector_size: 0,
+            total_fill_size: 0,
+            page_size_done: 0,
+            sector_size_done: 0,
+            fill_size_done: 0,
+        }));
+
+        let flash_progress = progress_id.map(|id| {
+            FlashProgress::new(move |event| {
+                let mut flash_progress = progress_state.borrow_mut();
+                let mut debug_adapter = rc_debug_adapter_clone.borrow_mut();
+                match event {
+                    probe_rs::flashing::ProgressEvent::Initialized { flash_layout } => {
+                        flash_progress.total_page_size =
+                            flash_layout.pages().iter().map(|s| s.size() as usize).sum();
+
+                        flash_progress.total_sector_size = flash_layout
+                            .sectors()
+                            .iter()
+                            .map(|s| s.size() as usize)
+                            .sum();
+
+                        flash_progress.total_fill_size =
+                            flash_layout.fills().iter().map(|s| s.size() as usize).sum();
+                    }
+                    probe_rs::flashing::ProgressEvent::StartedFilling => {
+                        debug_adapter
+                            .update_progress(Some(0.0), Some("Reading Old Pages ..."), id)
+                            .ok();
+                    }
+                    probe_rs::flashing::ProgressEvent::PageFilled { size, .. } => {
+                        flash_progress.fill_size_done += size as usize;
+                        let progress = flash_progress.fill_size_done as f64
+                            / flash_progress.total_fill_size as f64;
+                        debug_adapter
+                            .update_progress(
+                                Some(progress),
+                                Some(format!("Reading Old Pages ({progress})")),
+                                id,
+                            )
+                            .ok();
+                    }
+                    probe_rs::flashing::ProgressEvent::FailedFilling => {
+                        debug_adapter
+                            .update_progress(Some(1.0), Some("Reading Old Pages Failed!"), id)
+                            .ok();
+                    }
+                    probe_rs::flashing::ProgressEvent::FinishedFilling => {
+                        debug_adapter
+                            .update_progress(Some(1.0), Some("Reading Old Pages Complete!"), id)
+                            .ok();
+                    }
+                    probe_rs::flashing::ProgressEvent::StartedErasing => {
+                        debug_adapter
+                            .update_progress(Some(0.0), Some("Erasing Sectors ..."), id)
+                            .ok();
+                    }
+                    probe_rs::flashing::ProgressEvent::SectorErased { size, .. } => {
+                        flash_progress.sector_size_done += size as usize;
+                        let progress = flash_progress.sector_size_done as f64
+                            / flash_progress.total_sector_size as f64;
+                        debug_adapter
+                            .update_progress(
+                                Some(progress),
+                                Some(format!("Erasing Sectors ({progress})")),
+                                id,
+                            )
+                            .ok();
+                    }
+                    probe_rs::flashing::ProgressEvent::FailedErasing => {
+                        debug_adapter
+                            .update_progress(Some(1.0), Some("Erasing Sectors Failed!"), id)
+                            .ok();
+                    }
+                    probe_rs::flashing::ProgressEvent::FinishedErasing => {
+                        debug_adapter
+                            .update_progress(Some(1.0), Some("Erasing Sectors Complete!"), id)
+                            .ok();
+                    }
+                    probe_rs::flashing::ProgressEvent::StartedProgramming => {
+                        debug_adapter
+                            .update_progress(Some(0.0), Some("Programming Pages ..."), id)
+                            .ok();
+                    }
+                    probe_rs::flashing::ProgressEvent::PageProgrammed { size, .. } => {
+                        flash_progress.page_size_done += size as usize;
+                        let progress = flash_progress.page_size_done as f64
+                            / flash_progress.total_page_size as f64;
+                        debug_adapter
+                            .update_progress(
+                                Some(progress),
+                                Some(format!(
+                                    "Programming Pages ({:02.0}%)",
+                                    progress.mul(100_f64)
+                                )),
+                                id,
+                            )
+                            .ok();
+                    }
+                    probe_rs::flashing::ProgressEvent::FailedProgramming => {
+                        debug_adapter
+                            .update_progress(Some(1.0), Some("Flashing Pages Failed!"), id)
+                            .ok();
+                    }
+                    probe_rs::flashing::ProgressEvent::FinishedProgramming => {
+                        debug_adapter
+                            .update_progress(Some(1.0), Some("Flashing Pages Complete!"), id)
+                            .ok();
+                    }
+                    probe_rs::flashing::ProgressEvent::DiagnosticMessage { .. } => (),
+                }
+            })
+        });
+
+        download_options.progress = flash_progress;
+
+        let flash_result = download_file_with_options(
+            &mut session_data.session,
+            path_to_elf,
+            Format::Elf,
+            download_options,
+        );
+
+        debug_adapter = match Rc::try_unwrap(rc_debug_adapter) {
+            Ok(debug_adapter) => debug_adapter.into_inner(),
+            Err(too_many_strong_references) => {
+                let other_error = DebuggerError::Other(anyhow!("Unexpected error while dereferencing the `debug_adapter` (It has {} strong references). Please report this as a bug.", Rc::strong_count(&too_many_strong_references)));
+                return Err(other_error);
+            }
+        };
+
+        if let Some(id) = progress_id {
+            let _ = debug_adapter.end_progress(id);
+        }
+
+        match flash_result {
+            Ok(_) => {
+                debug_adapter.log_to_console(format!(
+                    "FLASHING: Completed write of {:?} to device memory",
+                    &path_to_elf
+                ));
+                Ok(debug_adapter)
+            }
+            Err(error) => {
+                let error = DebuggerError::FileDownload(error);
+                debug_adapter.send_error_response(&error)?;
+                Err(error)
+            }
+        }
     }
 
     fn handle_initialize<P: ProtocolAdapter>(
