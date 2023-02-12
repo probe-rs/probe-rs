@@ -330,65 +330,55 @@ impl Debugger {
         // Handling the initialize, and Attach/Launch requests here in this method,
         // before entering the iterative loop that processes requests through the process_request method.
 
-        // Initialize request.
-        let initialize_request = expect_request(&mut debug_adapter, "initialize")?;
-
-        let initialize_arguments: InitializeRequestArguments = match get_arguments::<
-            InitializeRequestArguments,
-        >(&initialize_request)
-        {
-            Ok(arguments) => {
-                if !(arguments.columns_start_at_1.unwrap_or(true)
-                    && arguments.lines_start_at_1.unwrap_or(true))
-                {
-                    debug_adapter.send_response::<()>(&initialize_request, Err(DebuggerError::Other(anyhow!("Unsupported Capability: Client requested column and row numbers start at 0."))))?;
-                    return Err(DebuggerError::Other(anyhow!("Unsupported Capability: Client requested column and row numbers start at 0.")));
-                }
-                arguments
-            }
-            Err(error) => {
-                debug_adapter.send_response::<()>(&initialize_request, Err(error))?;
-                return Err(DebuggerError::Other(anyhow!(
-                    "Failed to get initialize arguments"
-                )));
-            }
-        };
-
-        if let Some(progress_support) = initialize_arguments.supports_progress_reporting {
-            debug_adapter.supports_progress_reporting = progress_support;
-        }
-
-        if let Some(lines_start_at_1) = initialize_arguments.lines_start_at_1 {
-            debug_adapter.lines_start_at_1 = lines_start_at_1;
-        }
-
-        if let Some(columns_start_at_1) = initialize_arguments.columns_start_at_1 {
-            debug_adapter.columns_start_at_1 = columns_start_at_1;
-        }
-
-        // Reply to Initialize with `Capabilities`.
-        let capabilities = Capabilities {
-            supports_configuration_done_request: Some(true),
-            supports_restart_request: Some(true),
-            supports_terminate_request: Some(true),
-            supports_delayed_stack_trace_loading: Some(true),
-            supports_read_memory_request: Some(true),
-            supports_write_memory_request: Some(true),
-            supports_set_variable: Some(true),
-            supports_clipboard_context: Some(true),
-            supports_disassemble_request: Some(true),
-            supports_instruction_breakpoints: Some(true),
-            supports_stepping_granularity: Some(true),
-            // supports_value_formatting_options: Some(true),
-            // supports_function_breakpoints: Some(true),
-            // TODO: Use DEMCR register to implement exception breakpoints
-            // supports_exception_options: Some(true),
-            // supports_exception_filter_options: Some (true),
-            ..Default::default()
-        };
-        debug_adapter.send_response(&initialize_request, Ok(Some(capabilities)))?;
+        // Initialize request
+        self.handle_initialize(&mut debug_adapter)?;
 
         // Process either the Launch or Attach request.
+        let (mut debug_adapter, mut session_data) = self.handle_launch_attach(debug_adapter)?;
+
+        if debug_adapter
+            .send_event::<Event>("initialized", None)
+            .is_err()
+        {
+            let error =
+                DebuggerError::Other(anyhow!("Failed sending 'initialized' event to DAP Client"));
+
+            debug_adapter.send_error_response(&error)?;
+
+            return Err(error);
+        }
+
+        // Loop through remaining (user generated) requests and send to the [processs_request] method until either the client or some unexpected behaviour termintates the process.
+        loop {
+            match self.process_next_request(&mut session_data, &mut debug_adapter) {
+                Ok(DebuggerStatus::ContinueSession) => {
+                    // All is good. We can process the next request.
+                }
+                Ok(DebuggerStatus::TerminateSession) => {
+                    return Ok(DebuggerStatus::TerminateSession);
+                }
+                Err(e) => {
+                    debug_adapter.show_message(
+                        MessageSeverity::Error,
+                        format!("Debug Adapter terminated unexpectedly with an error: {e:?}"),
+                    );
+                    debug_adapter
+                        .send_event("terminated", Some(TerminatedEventBody { restart: None }))?;
+                    debug_adapter.send_event("exited", Some(ExitedEventBody { exit_code: 1 }))?;
+                    // Keep the process alive for a bit, so that VSCode doesn't complain about broken pipes.
+                    for _loop_count in 0..10 {
+                        thread::sleep(Duration::from_millis(50));
+                    }
+                    return Err(e);
+                }
+            }
+        }
+    }
+
+    fn handle_launch_attach<P: ProtocolAdapter + 'static>(
+        &mut self,
+        mut debug_adapter: DebugAdapter<P>,
+    ) -> Result<(DebugAdapter<P>, session_data::SessionData), DebuggerError> {
         let launch_attach_request = loop {
             if let Some(request) = debug_adapter.listen_for_request()? {
                 break request;
@@ -400,7 +390,7 @@ impl Debugger {
             "launch" => TargetSessionType::LaunchRequest,
             other => {
                 let error_msg =
-                    format!("Expected request 'launch' or 'attach', but received' {other}'");
+                    format!("Expected request 'launch' or 'attach', but received '{other}'");
 
                 debug_adapter.send_response::<()>(
                     &launch_attach_request,
@@ -410,7 +400,6 @@ impl Debugger {
             }
         };
 
-        // TODO: Multi-core: This currently only supports the first `SessionConfig::core_configs`
         match get_arguments(&launch_attach_request) {
             Ok(arguments) => {
                 self.config = configuration::SessionConfig { ..arguments };
@@ -450,7 +439,6 @@ impl Debugger {
             }
         };
 
-        // Validate file specifications in the config.
         if let Err(e) = self.config.validate_config_files() {
             let err = anyhow!("{e:?}");
 
@@ -466,18 +454,13 @@ impl Debugger {
                     return Err(error);
                 }
             };
-
-        // TODO: Currently the logic of processing MS DAP requests and executing them, is based on having a single core. It needs to be re-thought for multiple cores. Not all DAP requests require access to the core. One possible is to do the core attach inside each of the request implementations for those that need it, because the applicable core_index can be read from the request arguments.
-        // TODO: Until we refactor this, we only support a single core (always the first one specified in `SessionConfig::core_configs`)
         let target_core_config = self.config.core_configs.first_mut().ok_or_else(|| {
             DebuggerError::Other(anyhow!(
                 "Cannot continue unless one target core configuration is defined."
             ))
         })?;
-
         debug_adapter.halt_after_reset = self.config.flashing_config.halt_after_reset;
-        // Do the flashing.
-        // TODO: Multi-core ... needs to flash multiple binaries
+
         {
             if self.config.flashing_config.flashing_enabled {
                 let path_to_elf = match &target_core_config.program_binary {
@@ -506,6 +489,7 @@ impl Debugger {
 
                 let rc_debug_adapter = Rc::new(RefCell::new(debug_adapter));
                 let rc_debug_adapter_clone = rc_debug_adapter.clone();
+
                 let flash_result = {
                     struct ProgressState {
                         total_page_size: usize,
@@ -711,8 +695,6 @@ impl Debugger {
                 }
             }
         }
-
-        // This is the first attach to the requested core. If this one works, all subsequent ones will be no-op requests for a Core reference. Do NOT hold onto this reference for the duration of the session ... that is why this code is in a block of its own.
         {
             // First, attach to the core
             let mut target_core = match session_data.attach_core(target_core_config.core_index) {
@@ -761,47 +743,68 @@ impl Debugger {
                     .context("Failed to restart core")?;
             }
         }
-
-        // After flashing and forced setup, we can signal the client that are ready to receive incoming requests.
-        // Send the `initalized` event to client.
         debug_adapter.send_response::<()>(&launch_attach_request, Ok(None))?;
-        if debug_adapter
-            .send_event::<Event>("initialized", None)
-            .is_err()
+        Ok((debug_adapter, session_data))
+    }
+
+    fn handle_initialize<P: ProtocolAdapter>(
+        &mut self,
+        debug_adapter: &mut DebugAdapter<P>,
+    ) -> Result<(), DebuggerError> {
+        let initialize_request = expect_request(debug_adapter, "initialize")?;
+
+        let initialize_arguments =
+            get_arguments_v2::<InitializeRequestArguments, _>(debug_adapter, &initialize_request)?;
+
+        if !(initialize_arguments.columns_start_at_1.unwrap_or(true)
+            && initialize_arguments.lines_start_at_1.unwrap_or(true))
         {
-            let error =
-                DebuggerError::Other(anyhow!("Failed sending 'initialized' event to DAP Client"));
-
-            debug_adapter.send_error_response(&error)?;
-
-            return Err(error);
+            debug_adapter.send_response::<()>(
+                &initialize_request,
+                Err(DebuggerError::Other(anyhow!(
+                    "Unsupported Capability: Client requested column and row numbers start at 0."
+                ))),
+            )?;
+            return Err(DebuggerError::Other(anyhow!(
+                "Unsupported Capability: Client requested column and row numbers start at 0."
+            )));
         }
 
-        // Loop through remaining (user generated) requests and send to the [processs_request] method until either the client or some unexpected behaviour termintates the process.
-        loop {
-            match self.process_next_request(&mut session_data, &mut debug_adapter) {
-                Ok(DebuggerStatus::ContinueSession) => {
-                    // All is good. We can process the next request.
-                }
-                Ok(DebuggerStatus::TerminateSession) => {
-                    return Ok(DebuggerStatus::TerminateSession);
-                }
-                Err(e) => {
-                    debug_adapter.show_message(
-                        MessageSeverity::Error,
-                        format!("Debug Adapter terminated unexpectedly with an error: {e:?}"),
-                    );
-                    debug_adapter
-                        .send_event("terminated", Some(TerminatedEventBody { restart: None }))?;
-                    debug_adapter.send_event("exited", Some(ExitedEventBody { exit_code: 1 }))?;
-                    // Keep the process alive for a bit, so that VSCode doesn't complain about broken pipes.
-                    for _loop_count in 0..10 {
-                        thread::sleep(Duration::from_millis(50));
-                    }
-                    return Err(e);
-                }
-            }
+        if let Some(progress_support) = initialize_arguments.supports_progress_reporting {
+            debug_adapter.supports_progress_reporting = progress_support;
         }
+
+        if let Some(lines_start_at_1) = initialize_arguments.lines_start_at_1 {
+            debug_adapter.lines_start_at_1 = lines_start_at_1;
+        }
+
+        if let Some(columns_start_at_1) = initialize_arguments.columns_start_at_1 {
+            debug_adapter.columns_start_at_1 = columns_start_at_1;
+        }
+
+        // Reply to Initialize with `Capabilities`.
+        let capabilities = Capabilities {
+            supports_configuration_done_request: Some(true),
+            supports_restart_request: Some(true),
+            supports_terminate_request: Some(true),
+            supports_delayed_stack_trace_loading: Some(true),
+            supports_read_memory_request: Some(true),
+            supports_write_memory_request: Some(true),
+            supports_set_variable: Some(true),
+            supports_clipboard_context: Some(true),
+            supports_disassemble_request: Some(true),
+            supports_instruction_breakpoints: Some(true),
+            supports_stepping_granularity: Some(true),
+            // supports_value_formatting_options: Some(true),
+            // supports_function_breakpoints: Some(true),
+            // TODO: Use DEMCR register to implement exception breakpoints
+            // supports_exception_options: Some(true),
+            // supports_exception_filter_options: Some (true),
+            ..Default::default()
+        };
+        debug_adapter.send_response(&initialize_request, Ok(Some(capabilities)))?;
+
+        Ok(())
     }
 }
 

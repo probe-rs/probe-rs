@@ -2200,6 +2200,30 @@ pub fn get_arguments<T: DeserializeOwned>(req: &Request) -> Result<T, crate::Deb
     serde_json::from_value(value.to_owned()).map_err(|e| e.into())
 }
 
+pub fn get_arguments_v2<T: DeserializeOwned, P: ProtocolAdapter>(
+    debug_adapter: &mut DebugAdapter<P>,
+    req: &Request,
+) -> Result<T, crate::DebuggerError> {
+    let Some(raw_arguments) = &req.arguments else {
+        debug_adapter.send_response::<()>(req, Err(DebuggerError::InvalidRequest))?;
+        return Err(DebuggerError::Other(anyhow!(
+            "Failed to get {} arguments", req.command
+        )));
+
+    };
+
+    match serde_json::from_value(raw_arguments.to_owned()) {
+        Ok(value) => Ok(value),
+        Err(e) => {
+            debug_adapter.send_response::<()>(req, Err(e.into()))?;
+            Err(DebuggerError::Other(anyhow!(
+                "Failed to get {} arguments",
+                req.command
+            )))
+        }
+    }
+}
+
 pub(crate) trait DapStatus {
     fn short_long_status(&self, program_counter: Option<u64>) -> (&'static str, String);
 }
