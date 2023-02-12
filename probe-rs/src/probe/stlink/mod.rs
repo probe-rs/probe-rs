@@ -1843,16 +1843,16 @@ mod test {
     #[test]
     fn test_is_wait_error() {
         assert!(!is_wait_error(
-            &StlinkError::BanksNotAllowedOnDPRegister.into()
+            &StlinkError::BanksNotAllowedOnDPRegister
         ));
         assert!(!is_wait_error(
-            &StlinkError::CommandFailed(Status::JtagFreqNotSupported).into()
+            &StlinkError::CommandFailed(Status::JtagFreqNotSupported)
         ));
         assert!(is_wait_error(
-            &StlinkError::CommandFailed(Status::SwdDpWait).into()
+            &StlinkError::CommandFailed(Status::SwdDpWait)
         ));
         assert!(is_wait_error(
-            &StlinkError::CommandFailed(Status::SwdApWait).into()
+            &StlinkError::CommandFailed(Status::SwdApWait)
         ));
     }
 }

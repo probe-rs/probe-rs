@@ -70,9 +70,6 @@ pub struct Debugger {
 
 impl Debugger {
     /// Create a new debugger instance
-    ///
-    /// If `port` is `None`, the debugger will communicate over stdin and stdout,
-    /// otherwise it will listen for messages on the given port.
     pub fn new(timestamp_offset: UtcOffset) -> Self {
         Self {
             config: configuration::SessionConfig::default(),
@@ -414,7 +411,7 @@ impl Debugger {
                 Err(DebuggerError::Other(anyhow!(error_message.clone()))),
             )?;
 
-            return Err(DebuggerError::Other(anyhow!(error_message)));
+            Err(DebuggerError::Other(anyhow!(error_message)))
         })?;
 
         self.config = configuration::SessionConfig { ..arguments };
@@ -486,7 +483,7 @@ impl Debugger {
             .attach_core(target_core_config.core_index)
             .or_else(|error| {
                 debug_adapter.send_error_response(&error)?;
-                return Err(error);
+                Err(error)
             })?;
 
         // Immediately after attaching, halt the core, so that we can finish initalization without bumping into user code.
