@@ -151,14 +151,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
 
-        // We have a couple of drivers to determine the behaviour for this request.
-        let is_part_of_restart = arguments.restart.unwrap_or(false);
-
         // TODO: For now (until we do multicore), we will assume that both terminate and suspend translate to a halt of the core.
         let must_halt_debuggee = arguments.terminate_debuggee.unwrap_or(false)
             || arguments.suspend_debuggee.unwrap_or(false);
 
-        if !is_part_of_restart && must_halt_debuggee {
+        if must_halt_debuggee {
             let _ = target_core.core.halt(Duration::from_millis(100));
         }
 
