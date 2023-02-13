@@ -7,7 +7,7 @@ use crate::architecture::arm::sequences::{
     nrf52::Nrf52,
     nrf53::Nrf5340,
     nrf91::Nrf9160,
-    nxp::{MIMXRT10xx, MIMXRT11xx, LPC55S69},
+    nxp::{LPC55Sxx, MIMXRT10xx, MIMXRT11xx},
     stm32f_series::Stm32fSeries,
     stm32h7::Stm32h7,
     ArmDebugSequence,
@@ -101,9 +101,14 @@ impl Target {
         } else if chip.name.starts_with("MIMXRT11") {
             tracing::warn!("Using custom sequence for MIMXRT11xx");
             debug_sequence = DebugSequence::Arm(MIMXRT11xx::create());
-        } else if chip.name.starts_with("LPC55S16") || chip.name.starts_with("LPC55S69") {
-            tracing::warn!("Using custom sequence for LPC55S16/LPC55S69");
-            debug_sequence = DebugSequence::Arm(LPC55S69::create());
+        } else if chip.name.starts_with("LPC55S16")
+            || chip.name.starts_with("LPC55S26")
+            || chip.name.starts_with("LPC55S28")
+            || chip.name.starts_with("LPC55S66")
+            || chip.name.starts_with("LPC55S69")
+        {
+            tracing::warn!("Using custom sequence for LPC55S16/26/28/66/69");
+            debug_sequence = DebugSequence::Arm(LPC55Sxx::create());
         } else if chip.name.starts_with("esp32c3") {
             tracing::warn!("Using custom sequence for ESP32C3");
             debug_sequence = DebugSequence::Riscv(ESP32C3::create());
