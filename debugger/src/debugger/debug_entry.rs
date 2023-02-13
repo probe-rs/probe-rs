@@ -462,10 +462,7 @@ impl Debugger {
             Ok(arguments) => {
                 if debug_adapter.target_session_type.is_some() {
                     self.config = configuration::SessionConfig { ..arguments };
-                    if matches!(
-                        debug_adapter.target_session_type,
-                        Some(TargetSessionType::AttachRequest)
-                    ) {
+                    if debug_adapter.target_session_type == Some(TargetSessionType::AttachRequest) {
                         // Since VSCode doesn't do field validation checks for relationships in launch.json request types, check it here.
                         if self.config.flashing_config.flashing_enabled
                             || self.config.flashing_config.reset_after_flashing
