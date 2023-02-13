@@ -15,12 +15,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   - `Disconnect` - will disconnect the debug session, without affecting the run status of the target application.
   - `Disconnect and Suspend` - will halt the target application, before disconnecting the debug session.
+  - `Terminate` request is not supported, and DAP configuration is such that it won't be requested by the client.
 
 - probe-rs-debugger: Improve handling of `restart` request. With support in DAP Client/VSCode for: (#1507)
   - `Restart` will now restart the debug session.
   - If a newer binary is available, and flashing enabled, then the new binary will be flashed before starting the new debug session.
 
-## [0.17.0]#
+### Added
+
+- Added LPC55Sxx target #1513
+
+## [0.17.0]
 
 Released 2023-02-06
 
