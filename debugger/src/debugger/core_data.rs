@@ -280,7 +280,7 @@ impl<'p> CoreHandle<'p> {
             .map(|breakpoint| breakpoint.address)
             .collect::<Vec<u64>>();
         for breakpoint in target_breakpoints {
-            self.clear_breakpoint(breakpoint).ok();
+            self.clear_breakpoint(breakpoint)?;
         }
         Ok(())
     }
