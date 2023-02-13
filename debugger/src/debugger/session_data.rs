@@ -18,7 +18,11 @@ use time::UtcOffset;
 /// The supported breakpoint types
 #[derive(Clone, Debug, PartialEq)]
 pub enum BreakpointType {
+    /// A breakpoint was requested using an instruction address, and usually a result of a user requesting a
+    /// breakpoint while in a 'disassembly' view.
     InstructionBreakpoint,
+    /// A breakpoint was requested using a source location, and usually a result of a user requesting a
+    /// breakpoint while in a 'source' view.
     SourceBreakpoint(Source, SourceLocation),
 }
 
@@ -26,7 +30,7 @@ pub enum BreakpointType {
 #[derive(Clone, Debug)]
 pub struct ActiveBreakpoint {
     pub(crate) breakpoint_type: BreakpointType,
-    pub(crate) breakpoint_address: u64,
+    pub(crate) address: u64,
 }
 
 /// SessionData is designed to be similar to [probe_rs::Session], in as much that it provides handles to the [CoreHandle] instances for each of the available [probe_rs::Core] involved in the debug session.

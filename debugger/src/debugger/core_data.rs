@@ -13,7 +13,7 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use probe_rs::{
-    debug::{debug_info::DebugInfo, ColumnType, SourceLocation},
+    debug::{debug_info::DebugInfo, ColumnType, VerifiedBreakpoint},
     rtt::{Rtt, ScanRegion},
     Core, CoreStatus, Error, HaltReason,
 };
@@ -237,7 +237,7 @@ impl<'p> CoreHandle<'p> {
             .breakpoints
             .push(session_data::ActiveBreakpoint {
                 breakpoint_type,
-                breakpoint_address: address,
+                address,
             });
         Ok(())
     }
@@ -249,7 +249,7 @@ impl<'p> CoreHandle<'p> {
             .map_err(DebuggerError::ProbeRs)?;
         let mut breakpoint_position: Option<usize> = None;
         for (position, active_breakpoint) in self.core_data.breakpoints.iter().enumerate() {
-            if active_breakpoint.breakpoint_address == address {
+            if active_breakpoint.address == address {
                 breakpoint_position = Some(position);
                 break;
             }
@@ -270,7 +270,7 @@ impl<'p> CoreHandle<'p> {
             .breakpoints
             .iter()
             .filter(|breakpoint| breakpoint.breakpoint_type == breakpoint_type)
-            .map(|breakpoint| breakpoint.breakpoint_address)
+            .map(|breakpoint| breakpoint.address)
             .collect::<Vec<u64>>();
         for breakpoint in target_breakpoints {
             self.clear_breakpoint(breakpoint).ok();
@@ -278,49 +278,43 @@ impl<'p> CoreHandle<'p> {
         Ok(())
     }
 
-    /// Set a breakpoint at the requested address. If the address is not specific, or accurate,
-    /// the debugger will attempt to find the closest address to the requested address, and set a breakpoint there,
-    /// and return the "verified" `SourceLocation` of the breakpoint that was set.
+    /// Set a breakpoint at the requested address. If the requested source location is not specific, or
+    /// if the requested address is not a valid breakpoint location,
+    /// the debugger will attempt to find the closest location to the requested location, and set a breakpoint there.
+    /// The Result<> contains the "verified" `address` and `SourceLocation` where the breakpoint that was set.
     pub(crate) fn verify_and_set_breakpoint(
         &mut self,
         source_path: &Path,
         requested_breakpoint_line: u64,
         requested_breakpoint_column: Option<u64>,
         requested_source: &Source,
-    ) -> (Option<u64>, Option<SourceLocation>, String) {
-        match self.core_data.debug_info.get_breakpoint_location(
-        source_path,
-        requested_breakpoint_line,
-        requested_breakpoint_column,
-    ) {
-        Ok((Some(valid_breakpoint_location), Some(breakpoint_source_location))) => {
-                match self.set_breakpoint(
-                    valid_breakpoint_location,
-                    BreakpointType::SourceBreakpoint(requested_source.clone(), breakpoint_source_location.clone()),
-                ) {
-                    Ok(_) => (
-                        Some(valid_breakpoint_location),
-                        Some(breakpoint_source_location),
-                        format!(
-                            "Source breakpoint at memory address: {valid_breakpoint_location:#010X}"
-                        ),
-                    ),
-                    Err(err) => {
-                        (None, None, format!("Warning: Could not set breakpoint at memory address: {valid_breakpoint_location:#010x}: {err}"))
-                    }
-                }
-            }
-        Ok(_) => {
-            (None, None, "Cannot set breakpoint here. Try reducing `opt-level` in `Cargo.toml`, or choose a different source location".to_string())
-        }
-        Err(error) => (None, None, format!("Cannot set breakpoint here. Try reducing `opt-level` in `Cargo.toml`, or choose a different source location: {error:?}")),
-    }
+    ) -> Result<VerifiedBreakpoint, DebuggerError> {
+        let VerifiedBreakpoint {
+                 address,
+                 source_location,
+             } = self.core_data
+            .debug_info
+            .get_breakpoint_location(
+                source_path,
+                requested_breakpoint_line,
+                requested_breakpoint_column,
+            )
+            .map_err(|debug_error| 
+                DebuggerError::Other(anyhow!("Cannot set breakpoint here. Try reducing compile time-, and link time-, optimization in your build configuration, or choose a different source location: {debug_error}")))?;
+        self.set_breakpoint(
+            address,
+            BreakpointType::SourceBreakpoint(requested_source.clone(), source_location.clone()),
+        )?;
+        Ok(VerifiedBreakpoint {
+            address,
+            source_location,
+        })
     }
 
     /// In the case where a new binary is flashed as part of a restart, we need to recompute the breakpoint address,
     /// for a specified source location, of any [`super::session_data::BreakpointType::SourceBreakpoint`].
     /// This is because the address of the breakpoint may have changed based on changes in the source file that created the new binary.
-    pub(crate) fn recompute_breakpoints(&mut self) -> Result<()> {
+    pub(crate) fn recompute_breakpoints(&mut self) -> Result<(), DebuggerError> {
         let target_breakpoints = self.core_data.breakpoints.clone();
         for breakpoint in target_breakpoints
             .iter()
@@ -333,7 +327,7 @@ impl<'p> CoreHandle<'p> {
                 )
             })
         {
-            self.clear_breakpoint(breakpoint.breakpoint_address).ok();
+            self.clear_breakpoint(breakpoint.address)?;
             if let BreakpointType::SourceBreakpoint(source, source_location) =
                 breakpoint.breakpoint_type
             {
@@ -346,7 +340,7 @@ impl<'p> CoreHandle<'p> {
                             ColumnType::Column(c) => c,
                         }),
                         &source,
-                    );
+                    )?;
                 }
             }
         }

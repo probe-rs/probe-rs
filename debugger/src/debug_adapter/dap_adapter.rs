@@ -21,6 +21,7 @@ use probe_rs::{
     architecture::{arm::ArmError, riscv::communication_interface::RiscvError},
     debug::{
         ColumnType, DebugRegisters, SourceLocation, SteppingMode, VariableName, VariableNodeType,
+        VerifiedBreakpoint,
     },
     Architecture::Riscv,
     CoreStatus, CoreType, Error, HaltReason, InstructionSet, MemoryInterface, RegisterValue,
@@ -151,16 +152,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         };
 
         // We have a couple of drivers to determine the behaviour for this request.
-        let is_part_of_restart = arguments
-            .restart.unwrap_or(false);
+        let is_part_of_restart = arguments.restart.unwrap_or(false);
 
         // TODO: For now (until we do multicore), we will assume that both terminate and suspend translate to a halt of the core.
-        let must_halt_debuggee = arguments
-            .terminate_debuggee
-            .unwrap_or(false)
-            || arguments
-                .suspend_debuggee
-                .unwrap_or(false);
+        let must_halt_debuggee = arguments.terminate_debuggee.unwrap_or(false)
+            || arguments.suspend_debuggee.unwrap_or(false);
 
         if !is_part_of_restart && must_halt_debuggee {
             let _ = target_core.core.halt(Duration::from_millis(100));
@@ -584,7 +580,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             .collect::<Vec<ActiveBreakpoint>>();
                         for breakpoint in saved_breakpoints {
                             match target_core.set_breakpoint(
-                                breakpoint.breakpoint_address,
+                                breakpoint.address,
                                 breakpoint.breakpoint_type.clone(),
                             ) {
                                 Ok(_) => {}
@@ -708,102 +704,97 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         let mut created_breakpoints: Vec<Breakpoint> = Vec::new(); // For returning in the Response
 
-        let source_path = args.source.path.as_ref().map(Path::new);
-
-        // Always clear existing breakpoints for the specified `[crate::debug_adapter::dap_types::Source]` before setting new ones.
-        // The DAP Specification doesn't make allowances for deleting and setting individual breakpoints for a specific `Source`.
-        match target_core.clear_breakpoints(BreakpointType::SourceBreakpoint(
-            args.source.clone(),
-            SourceLocation::default(),
-        )) {
-            Ok(_) => {}
-            Err(error) => {
-                return self.send_response::<()>(
-                    request,
-                    Err(DebuggerError::Other(anyhow!(
-                        "Failed to clear existing breakpoints before setting new ones : {}",
-                        error
-                    ))),
-                )
+        if let Some(source_path) = args.source.path.as_ref().map(Path::new) {
+            // Always clear existing breakpoints for the specified `[crate::debug_adapter::dap_types::Source]` before setting new ones.
+            // The DAP Specification doesn't make allowances for deleting and setting individual breakpoints for a specific `Source`.
+            match target_core.clear_breakpoints(BreakpointType::SourceBreakpoint(
+                args.source.clone(),
+                SourceLocation::default(),
+            )) {
+                Ok(_) => {}
+                Err(error) => {
+                    return self.send_response::<()>(
+                        request,
+                        Err(DebuggerError::Other(anyhow!(
+                            "Failed to clear existing breakpoints before setting new ones : {}",
+                            error
+                        ))),
+                    )
+                }
             }
-        }
 
-        if let Some(requested_breakpoints) = args.breakpoints.as_ref() {
-            for bp in requested_breakpoints {
-                // Some overrides to improve breakpoint accuracy when `DebugInfo::get_breakpoint_location()` has to select the best from multiple options
-                let requested_breakpoint_line = if self.lines_start_at_1 {
-                    // If the debug client uses 1 based numbering, then we can use it as is.
-                    bp.line as u64
-                } else {
-                    // If the debug client uses 0 based numbering, then we bump the number by 1
-                    bp.line as u64 + 1
-                };
-                let requested_breakpoint_column = if self.columns_start_at_1 {
-                    // If the debug client uses 1 based numbering, then we can use it as is.
-                    Some(bp.column.unwrap_or(1) as u64)
-                } else {
-                    // If the debug client uses 0 based numbering, then we bump the number by 1
-                    Some(bp.column.unwrap_or(0) as u64 + 1)
-                };
+            if let Some(requested_breakpoints) = args.breakpoints.as_ref() {
+                for bp in requested_breakpoints {
+                    // Some overrides to improve breakpoint accuracy when `DebugInfo::get_breakpoint_location()` has to select the best from multiple options
+                    let requested_breakpoint_line = if self.lines_start_at_1 {
+                        // If the debug client uses 1 based numbering, then we can use it as is.
+                        bp.line as u64
+                    } else {
+                        // If the debug client uses 0 based numbering, then we bump the number by 1
+                        bp.line as u64 + 1
+                    };
+                    let requested_breakpoint_column = if self.columns_start_at_1 {
+                        // If the debug client uses 1 based numbering, then we can use it as is.
+                        Some(bp.column.unwrap_or(1) as u64)
+                    } else {
+                        // If the debug client uses 0 based numbering, then we bump the number by 1
+                        Some(bp.column.unwrap_or(0) as u64 + 1)
+                    };
 
-                let (verified_breakpoint, breakpoint_source_location, reason_msg) = if let Some(
-                    source_path,
-                ) =
-                    source_path
-                {
-                    target_core.verify_and_set_breakpoint(
+                    match target_core.verify_and_set_breakpoint(
                         source_path,
                         requested_breakpoint_line,
                         requested_breakpoint_column,
                         &args.source,
-                    )
-                } else {
-                    (None, None, "No source path provided for set_breakpoints(). Please report this as a bug.".to_string())
-                };
-
-                if let Some(verified_breakpoint) = verified_breakpoint {
-                    created_breakpoints.push(Breakpoint {
-                        column: breakpoint_source_location.as_ref().and_then(|sl| {
-                            sl.column.map(|col| match col {
+                    ) {
+                        Ok(VerifiedBreakpoint {
+                            address,
+                            source_location,
+                        }) => created_breakpoints.push(Breakpoint {
+                            column: source_location.column.map(|col| match col {
                                 ColumnType::LeftEdge => 0_i64,
                                 ColumnType::Column(c) => c as i64,
-                            })
+                            }),
+                            end_column: None,
+                            end_line: None,
+                            id: None,
+                            line: source_location.line.map(|line| line as i64),
+                            message: Some(format!(
+                                "Source breakpoint at memory address: {address:#010X}"
+                            )),
+                            source: None,
+                            instruction_reference: Some(format!("{address:#010X}")),
+                            offset: None,
+                            verified: true,
                         }),
-                        end_column: None,
-                        end_line: None,
-                        id: None,
-                        line: breakpoint_source_location
-                            .and_then(|sl| sl.line.map(|line| line as i64)),
-                        message: Some(reason_msg),
-                        source: None,
-                        instruction_reference: Some(format!("{verified_breakpoint:#010X}")),
-                        offset: None,
-                        verified: true,
-                    });
-                } else {
-                    // In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log.
-                    self.log_to_console(format!("WARNING: {reason_msg}"));
-                    self.show_message(MessageSeverity::Warning, reason_msg.clone());
-                    created_breakpoints.push(Breakpoint {
-                        column: bp.column,
-                        end_column: None,
-                        end_line: None,
-                        id: None,
-                        line: Some(bp.line),
-                        message: Some(reason_msg),
-                        source: None,
-                        instruction_reference: None,
-                        offset: None,
-                        verified: false,
-                    });
+                        Err(error) => created_breakpoints.push(Breakpoint {
+                            column: None,
+                            end_column: None,
+                            end_line: None,
+                            id: None,
+                            line: Some(bp.line),
+                            message: Some(error.to_string()),
+                            source: None,
+                            instruction_reference: None,
+                            offset: None,
+                            verified: true,
+                        }),
+                    };
                 }
             }
-        }
 
-        let breakpoint_body = SetBreakpointsResponseBody {
-            breakpoints: created_breakpoints,
-        };
-        self.send_response(request, Ok(Some(breakpoint_body)))
+            let breakpoint_body = SetBreakpointsResponseBody {
+                breakpoints: created_breakpoints,
+            };
+            self.send_response(request, Ok(Some(breakpoint_body)))
+        } else {
+            return self.send_response::<()>(
+                request,
+                Err(DebuggerError::Other(anyhow!(
+                    "Could not get a valid source path from arguments: {args:?}"
+                ))),
+            );
+        }
     }
 
     pub(crate) fn set_instruction_breakpoints(
