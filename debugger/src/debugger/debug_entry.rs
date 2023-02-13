@@ -503,6 +503,13 @@ impl Debugger {
         match self.config.validate_config_files() {
             Ok(_) => {}
             Err(error) => {
+                // Send the error response to the client before we return the error.
+                // It is not enough to just return the error, because the DAP client will not
+                // display log messages until after the session has been fully initialized.
+                debug_adapter.send_response::<()>(
+                    launch_attach_request,
+                    Err(DebuggerError::Other(anyhow!(error.to_string()))),
+                )?;
                 return Err(error);
             }
         };
@@ -835,6 +842,7 @@ impl Debugger {
                                 ) {
                                     Ok(core_peripherals) => Some(core_peripherals),
                                     Err(error) => {
+                                        debug_adapter.send_error_response(&error)?;
                                         tracing::error!("{:?}", error);
                                         None
                                     }
