@@ -547,7 +547,7 @@ impl Debugger {
                         Some(program_binary) => program_binary,
                         None => {
                             let err = DebuggerError::Other(anyhow!(
-                                "Please use the --program-binary option to specify an executable"
+                                "Please specify use the `program-binary` option in `launch.json` to specify an executable"
                             ));
                             debug_adapter.send_error_response(&err)?;
                             return Err(err);
