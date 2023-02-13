@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - prober-rs-debugger: Using the readMemory request on RISC-V (ESP32C3 board) is slow (#1275).
 
+### Added
+
+- Added LPC55Sxx target #1513
+
 ## [0.17.0]
 
 Released 2023-02-06
