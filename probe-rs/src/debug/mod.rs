@@ -113,7 +113,7 @@ pub fn get_sequential_key() -> i64 {
 }
 
 /// A specific location in source code.
-#[derive(Clone, Default, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SourceLocation {
     /// The line number in the source file with zero based indexing.
     pub line: Option<u64>,
@@ -130,14 +130,23 @@ pub struct SourceLocation {
 }
 
 impl SourceLocation {
-    /// The full path of the source file, combinig the `directory` and `file` fields.
-    pub fn combined_path(&self) -> Option<PathBuf> {
-        self.directory.as_ref().and_then(|dir| {
+    /// The full path of the source file, combining the `directory` and `file` fields.
+    /// If the path does not resolve to an existing file, and error is returned.
+    pub fn combined_path(&self) -> Result<PathBuf, DebugError> {
+        if let Some(valid_path) = self.directory.as_ref().and_then(|dir| {
             self.file
                 .as_ref()
                 .map(|file| dir.join(file))
                 .filter(|path| path.exists())
-        })
+        }) {
+            Ok(valid_path)
+        } else {
+            Err(DebugError::Other(anyhow::anyhow!(
+                "Unable to find source file for directory {:?} and file {:?}",
+                self.directory,
+                self.file
+            )))
+        }
     }
 }
 

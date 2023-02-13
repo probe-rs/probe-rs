@@ -704,10 +704,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         if let Some(source_path) = args.source.path.as_ref().map(Path::new) {
             // Always clear existing breakpoints for the specified `[crate::debug_adapter::dap_types::Source]` before setting new ones.
             // The DAP Specification doesn't make allowances for deleting and setting individual breakpoints for a specific `Source`.
-            match target_core.clear_breakpoints(BreakpointType::SourceBreakpoint(
-                args.source.clone(),
-                SourceLocation::default(),
-            )) {
+            match target_core.clear_breakpoints(None) {
                 Ok(_) => {}
                 Err(error) => {
                     return self.send_response::<()>(
@@ -816,7 +813,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let mut created_breakpoints: Vec<Breakpoint> = Vec::new();
 
         // Always clear existing breakpoints before setting new ones.
-        match target_core.clear_breakpoints(BreakpointType::InstructionBreakpoint) {
+        match target_core.clear_breakpoints(Some(BreakpointType::InstructionBreakpoint)) {
             Ok(_) => {}
             Err(error) => tracing::warn!("Failed to clear instruction breakpoints. {}", error),
         }
