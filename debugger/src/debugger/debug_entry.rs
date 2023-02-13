@@ -554,35 +554,7 @@ impl Debugger {
                         }
                     };
 
-                    if if let Some(check_current_binary_timestamp) = saved_binary_timestamp {
-                        // We have a timestamp for the binary that is currently on the device, so we need to compare it with the new binary.
-                        if let Ok(Some(new_binary_timestamp)) = fs::metadata(path_to_elf)
-                            .and_then(|metadata| metadata.modified())
-                            .map(|modified| modified.duration_since(UNIX_EPOCH).ok())
-                        {
-                            // If it is newer, we can flash it. Otherwise just skip flashing.
-                            if new_binary_timestamp > check_current_binary_timestamp {
-                                saved_binary_timestamp = Some(new_binary_timestamp);
-                                true
-                            } else {
-                                false
-                            }
-                        } else {
-                            // For some reason we couldn't get a timestamp for the new binary. Warn and assume it is new.
-                            tracing::warn!(
-                                "Could not get timestamp for new binary. Assuming it is new."
-                            );
-                            true
-                        }
-                    } else {
-                        // We don't have a timestamp for the binary that is currently on the device, so we can flash the binary.
-                        saved_binary_timestamp = fs::metadata(path_to_elf)
-                            .and_then(|metadata| metadata.modified())
-                            .map(|modified| modified.duration_since(UNIX_EPOCH).ok())
-                            .ok()
-                            .flatten();
-                        true
-                    } {
+                    if is_file_newer(&mut saved_binary_timestamp, path_to_elf) {
                         // If there is a new binary as part of a restart, there are some key things that
                         // need to be 'reset' for things to work properly.
                         if session_request.command == "restart" {
@@ -955,6 +927,39 @@ impl Debugger {
             }
         }
         Ok(DebugSessionStatus::Terminate)
+    }
+}
+
+fn is_file_newer(
+    saved_binary_timestamp: &mut Option<Duration>,
+    path_to_elf: &std::path::PathBuf,
+) -> bool {
+    if let Some(check_current_binary_timestamp) = *saved_binary_timestamp {
+        // We have a timestamp for the binary that is currently on the device, so we need to compare it with the new binary.
+        if let Ok(Some(new_binary_timestamp)) = fs::metadata(path_to_elf)
+            .and_then(|metadata| metadata.modified())
+            .map(|modified| modified.duration_since(UNIX_EPOCH).ok())
+        {
+            // If it is newer, we can flash it. Otherwise just skip flashing.
+            if new_binary_timestamp > check_current_binary_timestamp {
+                *saved_binary_timestamp = Some(new_binary_timestamp);
+                true
+            } else {
+                false
+            }
+        } else {
+            // For some reason we couldn't get a timestamp for the new binary. Warn and assume it is new.
+            tracing::warn!("Could not get timestamp for new binary. Assuming it is new.");
+            true
+        }
+    } else {
+        // We don't have a timestamp for the binary that is currently on the device, so we can flash the binary.
+        *saved_binary_timestamp = fs::metadata(path_to_elf)
+            .and_then(|metadata| metadata.modified())
+            .map(|modified| modified.duration_since(UNIX_EPOCH).ok())
+            .ok()
+            .flatten();
+        true
     }
 }
 
