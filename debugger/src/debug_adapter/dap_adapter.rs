@@ -119,28 +119,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    /// Handles the `terminate` request, and very specifically only terminates the target application,
-    /// and does not impact the debug sessions status.
-    pub(crate) fn terminate(
-        &mut self,
-        target_core: &mut CoreHandle,
-        request: Request,
-    ) -> Result<()> {
-        // TODO: For now (until we do multicore), we will assume that terminate request translates to a halt of the core.
-        match target_core.core.halt(Duration::from_millis(500)) {
-            Ok(_) => self.send_response::<TerminateResponse>(request, Ok(None)),
-            // An error here is not fatal, we will just send a response and let the DAP client force a disconnect.
-            Err(error) => {
-                let debug_error = format!("Failed to halt the target: {error:?}");
-                self.send_response::<TerminateResponse>(
-                    request,
-                    Err(DebuggerError::Other(anyhow!(debug_error.clone()))),
-                )?;
-                Err(anyhow!(debug_error))
-            }
-        }
-    }
-
     pub(crate) fn disconnect(
         &mut self,
         target_core: &mut CoreHandle,

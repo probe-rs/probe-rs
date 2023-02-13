@@ -217,16 +217,6 @@ impl Debugger {
                         "disconnect" => debug_adapter
                             .disconnect(&mut target_core, request)
                             .and(Ok(DebugSessionStatus::Terminate)),
-                        // terminate request only affects the target application, and conditionally, the session.
-                        "terminate" => {
-                            if debug_adapter.terminate(&mut target_core, request).is_ok() {
-                                // If the target terminated, the debug session can terminate also.
-                                Ok(DebugSessionStatus::Terminate)
-                            } else {
-                                // If the target didn't terminate, the debug session should continue, so that the client can force a disconnect.
-                                Ok(DebugSessionStatus::Continue)
-                            }
-                        }
                         "next" => debug_adapter
                             .next(&mut target_core, request)
                             .and(Ok(DebugSessionStatus::Continue)),
@@ -407,8 +397,6 @@ impl Debugger {
         let capabilities = Capabilities {
             supports_configuration_done_request: Some(true),
             supports_restart_request: Some(true),
-            supports_terminate_request: Some(true),
-            support_terminate_debuggee: Some(true),
             support_suspend_debuggee: Some(true),
             supports_delayed_stack_trace_loading: Some(true),
             supports_read_memory_request: Some(true),
