@@ -35,7 +35,7 @@ bincode = "1.3.3"
 bitfield = "0.14.0"
 bitvec = "1.0"
 enum-primitive-derive = "0.2.2"
-gimli = { version = "0.27.1", default-features = false, features = [
+gimli = { version = "0.27.2", default-features = false, features = [
     "endian-reader",
     "read",
     "std",
