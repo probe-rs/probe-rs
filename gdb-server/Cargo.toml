@@ -30,4 +30,4 @@ itertools = "0.10.5"
 gdbstub = "0.6.3"
 
 [dev-dependencies]
-insta = "1.26.0"
+insta = "1.28.0"
