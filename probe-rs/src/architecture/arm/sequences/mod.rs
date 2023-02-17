@@ -694,6 +694,7 @@ pub trait ArmDebugSequence: Send + Sync {
         _interface: &mut dyn ArmProbeInterface,
         _default_ap: MemoryAp,
         _permissions: &crate::Permissions,
+        _core_index: usize,
     ) -> Result<(), ArmError> {
         tracing::debug!("debug_device_unlock - empty by default");
         Ok(())

@@ -30,16 +30,30 @@ pub trait Nrf: Sync + Send {
 const ERASEALL: u8 = 0x04;
 const ERASEALLSTATUS: u8 = 0x08;
 
+const APPROTECT_DISABLE: u8 = 0x10;
+const SECUREAPPROTECT_DISABLE: u8 = 0x14;
+
 const APPLICATION_RESET_S_NETWORK_FORCEOFF_REGISTER: u32 = 0x50005614;
 const RELEASE_FORCEOFF: u32 = 0;
 
-/// Unlocks the core by performing an erase all procedure.
+/// Unlocks the core by performing an erase all procedure,
+/// or by setting the appropriate key value to diable approtect.
+///
 /// The `ap_address` must be of the ctrl ap of the core.
 fn unlock_core(
     arm_interface: &mut ArmCommunicationInterface<Initialized>,
     ap_address: ApAddress,
     permissions: &crate::Permissions,
 ) -> Result<(), ArmError> {
+    if let Some(unlock_key) = permissions.unlock_key {
+        tracing::debug!("Unlocking debug core using key");
+
+        arm_interface.write_raw_ap_register(ap_address, SECUREAPPROTECT_DISABLE, unlock_key)?;
+        arm_interface.write_raw_ap_register(ap_address, APPROTECT_DISABLE, unlock_key)?;
+
+        return Ok(());
+    }
+
     permissions
         .erase_all()
         .map_err(|MissingPermissions(desc)| ArmError::MissingPermissions(desc))?;
@@ -66,6 +80,7 @@ impl<T: Nrf> ArmDebugSequence for T {
         interface: &mut dyn ArmProbeInterface,
         default_ap: MemoryAp,
         permissions: &crate::Permissions,
+        chosen_core_index: usize,
     ) -> Result<(), ArmError> {
         let mut interface = interface.memory_interface(default_ap)?;
 
@@ -76,6 +91,11 @@ impl<T: Nrf> ArmDebugSequence for T {
         for (core_index, (core_ahb_ap_address, core_ctrl_ap_address)) in
             self.core_aps(&mut *interface).iter().copied().enumerate()
         {
+            // TODO: Don't loop, just choose the right core directly
+            if core_index != chosen_core_index {
+                continue;
+            }
+
             tracing::info!("Checking if core {} is unlocked", core_index);
             if self.is_core_unlocked(
                 interface.get_arm_communication_interface()?,

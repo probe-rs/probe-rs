@@ -9,6 +9,7 @@ pub(crate) mod stlink;
 use self::espusbjtag::list_espjtag_devices;
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::error::Error;
+use crate::session::Config;
 use crate::Session;
 use crate::{
     architecture::arm::communication_interface::UninitializedArmProbe,
@@ -307,7 +308,11 @@ impl Probe {
     ) -> Result<Session, Error> {
         self.attached = true;
 
-        Session::new(self, target.into(), AttachMethod::Normal, permissions)
+        let mut config = Config::default();
+
+        config.permissions = permissions;
+
+        Session::new(self, target.into(), config)
     }
 
     /// Attach to a target without knowing what target you have at hand.
@@ -335,6 +340,17 @@ impl Probe {
         Ok(())
     }
 
+    pub fn attach_with_config(
+        mut self,
+        target: impl Into<TargetSelector>,
+        config: Config,
+    ) -> Result<Session, Error> {
+        self.attached = true;
+
+        // The session will de-assert reset after connecting to the debug interface.
+        Session::new(self, target.into(), config)
+    }
+
     /// Attach to the chip under hard-reset.
     ///
     /// This asserts the reset pin via the probe, plays the protocol init routines and deasserts the pin.
@@ -346,8 +362,14 @@ impl Probe {
         permissions: Permissions,
     ) -> Result<Session, Error> {
         self.attached = true;
+
+        let mut config = Config::default();
+
+        config.attach_method = AttachMethod::UnderReset;
+        config.permissions = permissions;
+
         // The session will de-assert reset after connecting to the debug interface.
-        Session::new(self, target.into(), AttachMethod::UnderReset, permissions).map_err(|e| {
+        Session::new(self, target.into(), config).map_err(|e| {
             if matches!(e, Error::Timeout) {
                 Error::Other(
                 anyhow::anyhow!("Timeout while attaching to target under reset. This can happen if the target is not responding to the reset sequence. Ensure the chip's reset pin is connected, or try attaching without reset."))
@@ -903,9 +925,10 @@ pub enum CommandResult {
 }
 
 /// The method that should be used for attaching.
-#[derive(PartialEq, Eq, Debug, Copy, Clone)]
+#[derive(PartialEq, Eq, Default, Debug, Copy, Clone)]
 pub enum AttachMethod {
     /// Attach normally with no special behavior.
+    #[default]
     Normal,
     /// Attach to the target while it is in reset.
     ///

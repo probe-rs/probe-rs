@@ -33,7 +33,7 @@
 //! ```
 use crate::ArtifactError;
 
-use std::{fs::File, io::Write, path::Path, path::PathBuf};
+use std::{fs::File, io::Write, num::ParseIntError, path::Path, path::PathBuf};
 
 use byte_unit::Byte;
 use clap;
@@ -148,6 +148,7 @@ pub struct ProbeOptions {
     /// Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one probe with the same VID:PID.",
     #[structopt(long = "probe", help_heading = "PROBE CONFIGURATION")]
     pub probe_selector: Option<DebugProbeSelector>,
+
     #[clap(
         long,
         help = "The protocol speed in kHz.",
@@ -159,14 +160,23 @@ pub struct ProbeOptions {
         help = "Use this flag to assert the nreset & ntrst pins during attaching the probe to the chip."
     )]
     pub connect_under_reset: bool,
+
     #[structopt(long = "dry-run")]
     pub dry_run: bool,
+
     #[structopt(
         long = "allow-erase-all",
         help = "Use this flag to allow all memory, including security keys and 3rd party firmware, to be erased \
         even when it has read-only protection."
     )]
     pub allow_erase_all: bool,
+
+    #[clap(long, value_parser = parse_hex)]
+    pub unlock_key: Option<u32>,
+}
+
+fn parse_hex(src: &str) -> Result<u32, ParseIntError> {
+    u32::from_str_radix(src.trim_start_matches("0x"), 16)
 }
 
 impl ProbeOptions {
@@ -268,6 +278,8 @@ impl ProbeOptions {
         if self.allow_erase_all {
             permissions = permissions.allow_erase_all();
         }
+
+        permissions.unlock_key = self.unlock_key;
 
         let session = if self.connect_under_reset {
             probe.attach_under_reset(target, permissions)

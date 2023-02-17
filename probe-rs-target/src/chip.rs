@@ -72,6 +72,16 @@ pub enum CoreAccessOptions {
     Riscv(RiscvCoreAccessOptions),
 }
 
+impl CoreAccessOptions {
+    #[track_caller]
+    pub fn expect_arm(&self) -> &ArmCoreAccessOptions {
+        match self {
+            CoreAccessOptions::Arm(opts) => opts,
+            other => panic!("{self:?} is not an ARM core."),
+        }
+    }
+}
+
 /// The data required to access an ARM core
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ArmCoreAccessOptions {

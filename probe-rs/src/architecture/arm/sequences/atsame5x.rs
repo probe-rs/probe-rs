@@ -392,6 +392,7 @@ impl ArmDebugSequence for AtSAME5x {
         interface: &mut dyn ArmProbeInterface,
         default_ap: architecture::arm::ap::MemoryAp,
         permissions: &Permissions,
+        _core_index: usize,
     ) -> Result<(), ArmError> {
         // First check if the device is locked
         let mut memory = interface.memory_interface(default_ap)?;
