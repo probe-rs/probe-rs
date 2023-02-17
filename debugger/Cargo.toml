@@ -48,4 +48,4 @@ time = { version = "0.3", default-features = false, features = [
 ] }
 
 [dev-dependencies]
-insta = "1.26.0"
+insta = "1.28.0"
