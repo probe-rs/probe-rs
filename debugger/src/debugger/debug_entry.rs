@@ -12,7 +12,7 @@ use crate::{
 use anyhow::{anyhow, Context, Result};
 use probe_rs::{
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format},
-    CoreStatus, Probe,
+    Architecture, CoreStatus, Probe,
 };
 use serde::Deserialize;
 use std::{
@@ -245,12 +245,20 @@ impl Debugger {
                             .and(Ok(DebugSessionStatus::Continue)),
                         "restart" => {
                             // Reset RTT so that the link can be re-established
-                            target_core.core_data.rtt_connection = None;
-                            target_core
-                                .core
-                                .halt(Duration::from_millis(500))
-                                .map_err(|error| anyhow!("Failed to halt core: {}", error))
-                                .and(Ok(DebugSessionStatus::Restart(request)))
+                            if target_core.core.architecture() == Architecture::Riscv {
+                                debug_adapter.show_message(
+                                    MessageSeverity::Information,
+                                    "In-session `restart` is not currently supported for RISC-V.",
+                                );
+                                Ok(DebugSessionStatus::Continue)
+                            } else {
+                                target_core.core_data.rtt_connection = None;
+                                target_core
+                                    .core
+                                    .halt(Duration::from_millis(500))
+                                    .map_err(|error| anyhow!("Failed to halt core: {}", error))
+                                    .and(Ok(DebugSessionStatus::Restart(request)))
+                            }
                         }
                         "setBreakpoints" => debug_adapter
                             .set_breakpoints(&mut target_core, request)
