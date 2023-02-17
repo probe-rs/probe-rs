@@ -150,12 +150,11 @@ fn extract_stack_info(elf: &Elf, ram_range: &Range<u64>) -> Option<StackInfo> {
         let name = section.name().unwrap_or("<unknown>");
 
         if ram_range.contains(&(*section_range.end() as u64)) {
-            log::debug!("section `{}` is in RAM at {:#010X?}", name, section_range);
+            log::debug!("section `{name}` is in RAM at {section_range:#010X?}");
 
             if section_range.contains(stack_range.end()) {
                 log::debug!(
-                    "initial SP is in section `{}`, cannot determine valid stack range",
-                    name
+                    "initial SP is in section `{name}`, cannot determine valid stack range",
                 );
                 return None;
             } else if stack_range.contains(section_range.end()) {
@@ -164,7 +163,7 @@ fn extract_stack_info(elf: &Elf, ram_range: &Range<u64>) -> Option<StackInfo> {
         }
     }
 
-    log::debug!("valid SP range: {:#010X?}", stack_range);
+    log::debug!("valid SP range: {stack_range:#010X?}");
     Some(StackInfo {
         data_below_stack: *stack_range.start() as u64 > ram_range.start,
         range: stack_range,

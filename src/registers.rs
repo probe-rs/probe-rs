@@ -49,7 +49,7 @@ impl<'c, 'probe> Registers<'c, 'probe> {
                 let old_cfa = self.cache.get(&SP.0);
                 let changed = old_cfa != Some(&cfa);
                 if changed {
-                    log::debug!("update_cfa: CFA changed {:8x?} -> {:8x}", old_cfa, cfa);
+                    log::debug!("update_cfa: CFA changed {old_cfa:8x?} -> {cfa:8x}");
                 }
                 self.cache.insert(SP.0, cfa);
                 Ok(changed)
@@ -70,11 +70,7 @@ impl<'c, 'probe> Registers<'c, 'probe> {
                 let addr = (cfa as i64 + offset) as u32;
                 let value = self.core.read_word_32(addr.into())?;
                 log::trace!(
-                    "update reg={:?}, rule={:?}, abs={:#010x} -> value={:#010x}",
-                    reg,
-                    rule,
-                    addr,
-                    value
+                    "update reg={reg:?}, rule={rule:?}, abs={addr:#010x} -> value={value:#010x}"
                 );
                 self.cache.insert(reg.0, value);
             }
