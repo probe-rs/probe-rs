@@ -38,71 +38,34 @@ mod rcc {
     /// The base address of the RCC peripheral
     const RCC: u64 = 0x40021000;
 
-    bitfield! {
-        pub struct EnrF0(u32);
-        impl Debug;
+    macro_rules! enable_reg {
+        ($name:ident, $offset:literal, $bit:literal) => {
+            bitfield! {
+                pub struct $name(u32);
+                impl Debug;
+                pub u8, dbgen, enable_dbg: $bit;
+            }
+            impl $name {
+                const ADDRESS: u64 = $offset;
+                /// Read the enable register from memory.
+                pub fn read(memory: &mut dyn ArmProbe) -> Result<Self, ArmError> {
+                    let contents = memory.read_word_32(RCC + Self::ADDRESS)?;
+                    Ok(Self(contents))
+                }
 
-        pub u8, dbgen, enable_dbg: 22;
+                /// Write the enable register to memory.
+                pub fn write(&mut self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
+                    memory.write_word_32(RCC + Self::ADDRESS, self.0)
+                }
+            }
+        };
     }
 
-    bitfield! {
-        pub struct EnrL0(u32);
-        impl Debug;
-
-        pub u8, dbgen, enable_dbg: 22;
-    }
-
-    bitfield! {
-        pub struct EnrG0(u32);
-        impl Debug;
-
-        pub u8, dbgen, enable_dbg: 27;
-    }
-
-    impl EnrF0 {
-        const ADDRESS: u64 = 0x18;
-
-        /// Read the enable register from memory.
-        pub fn read(memory: &mut dyn ArmProbe) -> Result<Self, ArmError> {
-            let contents = memory.read_word_32(RCC + Self::ADDRESS)?;
-            Ok(Self(contents))
-        }
-
-        /// Write the enable register to memory.
-        pub fn write(&mut self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
-            memory.write_word_32(RCC + Self::ADDRESS, self.0)
-        }
-    }
-
-    impl EnrL0 {
-        const ADDRESS: u64 = 0x34;
-
-        /// Read the enable register from memory.
-        pub fn read(memory: &mut dyn ArmProbe) -> Result<Self, ArmError> {
-            let contents = memory.read_word_32(RCC + Self::ADDRESS)?;
-            Ok(Self(contents))
-        }
-
-        /// Write the enable register to memory.
-        pub fn write(&mut self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
-            memory.write_word_32(RCC + Self::ADDRESS, self.0)
-        }
-    }
-
-    impl EnrG0 {
-        const ADDRESS: u64 = 0x3c;
-
-        /// Read the enable register from memory.
-        pub fn read(memory: &mut dyn ArmProbe) -> Result<Self, ArmError> {
-            let contents = memory.read_word_32(RCC + Self::ADDRESS)?;
-            Ok(Self(contents))
-        }
-
-        /// Write the enable register to memory.
-        pub fn write(&mut self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
-            memory.write_word_32(RCC + Self::ADDRESS, self.0)
-        }
-    }
+    // Create enable registers for each device family.
+    // On F0 and L0 this is bit 22 in APB2ENR, while on G0 it's bit 27 in APBENR1.
+    enable_reg!(EnrF0, 0x18, 22);
+    enable_reg!(EnrL0, 0x34, 22);
+    enable_reg!(EnrG0, 0x3c, 27);
 }
 
 mod dbgmcu {
