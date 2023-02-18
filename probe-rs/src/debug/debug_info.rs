@@ -29,6 +29,18 @@ pub(crate) type GimliAttribute = gimli::Attribute<GimliReader>;
 
 pub(crate) type DwarfReader = gimli::read::EndianRcSlice<gimli::LittleEndian>;
 
+/// Capture the required information when a breakpoint is set based on a requested source location.
+/// It is possible that the requested source location cannot be resolved to a valid instruction address,
+/// in which case the first 'valid' instruction address will be used, and the source location will be
+/// updated to reflect the actual source location, not the requested source location.
+#[derive(Clone, Debug)]
+pub struct VerifiedBreakpoint {
+    /// The address in target memory, where the breakpoint was set.
+    pub address: u64,
+    /// If the breakpoint request was for a specific source location, then this field will contain the resolved source location.
+    pub source_location: SourceLocation,
+}
+
 /// Debug information which is parsed from DWARF debugging information.
 pub struct DebugInfo {
     pub(crate) dwarf: gimli::Dwarf<DwarfReader>,
@@ -886,7 +898,7 @@ impl DebugInfo {
         path: &Path,
         line: u64,
         column: Option<u64>,
-    ) -> Result<(Option<u64>, Option<SourceLocation>), DebugError> {
+    ) -> Result<VerifiedBreakpoint, DebugError> {
         tracing::debug!(
             "Looking for breakpoint location for {}:{}:{}",
             path.display(),
@@ -927,58 +939,21 @@ impl DebugInfo {
                                     let source_statements =
                                         SourceStatements::new(self, &unit_header, row.address())?
                                             .statements;
-                                    if let Some((halt_address, halt_location)) = source_statements
-                                        .iter()
-                                        .find(|statement| {
-                                            statement.line == Some(cur_line)
-                                                && column
-                                                    .and_then(NonZeroU64::new)
-                                                    .map(ColumnType::Column)
-                                                    .map_or(false, |col| col == statement.column)
-                                        })
-                                        .map(|source_statement| {
-                                            (
-                                                Some(source_statement.low_pc()),
-                                                line_program
-                                                    .header()
-                                                    .file(source_statement.file_index)
-                                                    .and_then(|file_entry| {
-                                                        self.find_file_and_directory(
-                                                            &unit_header.unit,
-                                                            line_program.header(),
-                                                            file_entry,
-                                                        )
-                                                        .map(|(file, directory)| SourceLocation {
-                                                            line: source_statement
-                                                                .line
-                                                                .map(std::num::NonZeroU64::get),
-                                                            column: Some(
-                                                                source_statement.column.into(),
-                                                            ),
-                                                            file,
-                                                            directory,
-                                                            low_pc: Some(
-                                                                source_statement.low_pc() as u32
-                                                            ),
-                                                            high_pc: Some(
-                                                                source_statement
-                                                                    .instruction_range
-                                                                    .end
-                                                                    as u32,
-                                                            ),
-                                                        })
-                                                    }),
-                                            )
-                                        })
-                                    {
-                                        return Ok((halt_address, halt_location));
-                                    } else if let Some((halt_address, halt_location)) =
+                                    if let Some((halt_address, Some(halt_location))) =
                                         source_statements
                                             .iter()
-                                            .find(|statement| statement.line == Some(cur_line))
+                                            .find(|statement| {
+                                                statement.line == Some(cur_line)
+                                                    && column
+                                                        .and_then(NonZeroU64::new)
+                                                        .map(ColumnType::Column)
+                                                        .map_or(false, |col| {
+                                                            col == statement.column
+                                                        })
+                                            })
                                             .map(|source_statement| {
                                                 (
-                                                    Some(source_statement.low_pc()),
+                                                    source_statement.low_pc(),
                                                     line_program
                                                         .header()
                                                         .file(source_statement.file_index)
@@ -1018,7 +993,60 @@ impl DebugInfo {
                                                 )
                                             })
                                     {
-                                        return Ok((halt_address, halt_location));
+                                        return Ok(VerifiedBreakpoint {
+                                            address: halt_address,
+                                            source_location: halt_location,
+                                        });
+                                    } else if let Some((halt_address, Some(halt_location))) =
+                                        source_statements
+                                            .iter()
+                                            .find(|statement| statement.line == Some(cur_line))
+                                            .map(|source_statement| {
+                                                (
+                                                    source_statement.low_pc(),
+                                                    line_program
+                                                        .header()
+                                                        .file(source_statement.file_index)
+                                                        .and_then(|file_entry| {
+                                                            self.find_file_and_directory(
+                                                                &unit_header.unit,
+                                                                line_program.header(),
+                                                                file_entry,
+                                                            )
+                                                            .map(|(file, directory)| {
+                                                                SourceLocation {
+                                                                    line: source_statement
+                                                                        .line
+                                                                        .map(
+                                                                        std::num::NonZeroU64::get,
+                                                                    ),
+                                                                    column: Some(
+                                                                        source_statement
+                                                                            .column
+                                                                            .into(),
+                                                                    ),
+                                                                    file,
+                                                                    directory,
+                                                                    low_pc: Some(
+                                                                        source_statement.low_pc()
+                                                                            as u32,
+                                                                    ),
+                                                                    high_pc: Some(
+                                                                        source_statement
+                                                                            .instruction_range
+                                                                            .end
+                                                                            as u32,
+                                                                    ),
+                                                                }
+                                                            })
+                                                        }),
+                                                )
+                                            })
+                                    {
+                                        return Ok(VerifiedBreakpoint {
+                                            address: halt_address,
+                                            source_location: halt_location,
+                                        });
                                     }
                                 }
                             }

@@ -41,6 +41,7 @@ pub struct SessionConfig {
     pub(crate) allow_erase_all: bool,
 
     /// Flashing configuration
+    #[serde(default)]
     pub(crate) flashing_config: FlashingConfig,
 
     /// Every core on the target has certain configuration.
@@ -76,14 +77,15 @@ impl SessionConfig {
                         )));
                 }
             };
-            // Update the `svd_file` and validate that the file exists.
-            // If there is a problem with this file, warn the user and continue with the session.
+            // Update the `svd_file` and validate that the file exists, or else return an error.
             target_core_config.svd_file =
                 match get_absolute_path(self.cwd.clone(), target_core_config.svd_file.as_ref()) {
                     Ok(svd_file) => {
                         if !svd_file.is_file() {
-                            tracing::error!("SVD file {:?} not found.", svd_file);
-                            None
+                            return Err(DebuggerError::Other(anyhow!(
+                                "SVD file {:?} not found.",
+                                svd_file
+                            )));
                         } else {
                             Some(svd_file)
                         }
