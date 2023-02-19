@@ -182,12 +182,10 @@ impl RegisterValue {
 
     /// A helper function to determine if the contained register value is zero.
     pub fn is_zero(&self) -> bool {
-        match self {
-            RegisterValue::U32(0) => true,
-            RegisterValue::U64(0) => true,
-            RegisterValue::U128(0) => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            RegisterValue::U32(0) | RegisterValue::U64(0) | RegisterValue::U128(0)
+        )
     }
 }
 

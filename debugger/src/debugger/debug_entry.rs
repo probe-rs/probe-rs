@@ -360,7 +360,7 @@ impl Debugger {
             match debug_session_status {
                 DebugSessionStatus::Continue => {
                     // All is good. We can process the next request.
-                    ()
+                    
                 }
                 DebugSessionStatus::Restart(request) => {
                     debug_adapter = self.restart(debug_adapter, &mut session_data, &request)?;

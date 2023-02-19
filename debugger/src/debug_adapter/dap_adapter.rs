@@ -79,12 +79,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 let new_status = match target_core.core.status() {
                     Ok(new_status) => new_status,
                     Err(error) => {
-                        self.send_response::<()>(&request, Err(DebuggerError::ProbeRs(error)))?;
+                        self.send_response::<()>(request, Err(DebuggerError::ProbeRs(error)))?;
                         return Err(anyhow!("Failed to retrieve core status"));
                     }
                 };
                 self.send_response(
-                    &request,
+                    request,
                     Ok(Some(format!(
                         "Core stopped at address {:#010x}",
                         cpu_info.pc
@@ -106,7 +106,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 Ok(())
             }
             Err(error) => {
-                self.send_response::<()>(&request, Err(DebuggerError::Other(anyhow!("{}", error))))
+                self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))
             }
         }
     }
@@ -116,9 +116,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
-        let arguments: DisconnectArguments = match get_arguments(&request) {
+        let arguments: DisconnectArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
-            Err(error) => return self.send_response::<()>(&request, Err(error)),
+            Err(error) => return self.send_response::<()>(request, Err(error)),
         };
 
         // TODO: For now (until we do multicore), we will assume that both terminate and suspend translate to a halt of the core.
@@ -129,7 +129,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             let _ = target_core.core.halt(Duration::from_millis(100));
         }
 
-        self.send_response::<DisconnectResponse>(&request, Ok(None))
+        self.send_response::<DisconnectResponse>(request, Ok(None))
     }
 
     pub(crate) fn read_memory(
@@ -137,9 +137,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
-        let arguments: ReadMemoryArguments = match get_arguments(&request) {
+        let arguments: ReadMemoryArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
-            Err(error) => return self.send_response::<()>(&request, Err(error)),
+            Err(error) => return self.send_response::<()>(request, Err(error)),
         };
 
         let memory_offset = arguments.offset.unwrap_or(0);
@@ -148,7 +148,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 address + memory_offset as u64
             } else {
                 return self.send_response::<()>(
-                    &request,
+                    request,
                     Err(DebuggerError::Other(anyhow!(
                         "Could not read any data at address {:?}",
                         arguments.memory_reference
@@ -187,7 +187,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             // Currently, VSCode sends a request with count=0 after the last successful one ... so let's ignore it.
             let response = base64_engine::STANDARD.encode(&result_buffer);
             self.send_response(
-                &request,
+                request,
                 Ok(Some(ReadMemoryResponseBody {
                     address: format!("{address:#010x}"),
                     data: Some(response),
@@ -200,7 +200,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             )
         } else {
             self.send_response::<()>(
-                &request,
+                request,
                 Err(DebuggerError::Other(anyhow!(
                     "Could not read any data at address {:#010x}",
                     address
@@ -214,16 +214,16 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
-        let arguments: WriteMemoryArguments = match get_arguments(&request) {
+        let arguments: WriteMemoryArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
-            Err(error) => return self.send_response::<()>(&request, Err(error)),
+            Err(error) => return self.send_response::<()>(request, Err(error)),
         };
         let memory_offset = arguments.offset.unwrap_or(0);
         let address: u64 = if let Ok(address) = parse::<i64>(arguments.memory_reference.as_ref()) {
             match (address + memory_offset).try_into() {
                     Ok(modified_address) => modified_address,
                     Err(error) => return self.send_response::<()>(
-                    &request,
+                    request,
                     Err(DebuggerError::Other(anyhow!(
                         "Could not convert memory_reference: {} and offset: {:?} into a 32-bit memory address: {:?}",
                         arguments.memory_reference, arguments.offset, error
@@ -232,7 +232,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
         } else {
             return self.send_response::<()>(
-                &request,
+                request,
                 Err(DebuggerError::Other(anyhow!(
                     "Could not read any data at address {:?}",
                     arguments.memory_reference
@@ -243,7 +243,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             Ok(decoded_bytes) => decoded_bytes,
             Err(error) => {
                 return self.send_response::<()>(
-                    &request,
+                    request,
                     Err(DebuggerError::Other(anyhow!(
                         "Could not decode base64 data:{:?} :  {:?}",
                         arguments.data,
@@ -259,7 +259,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         {
             Ok(_) => {
                 self.send_response(
-                    &request,
+                    request,
                     Ok(Some(WriteMemoryResponseBody {
                         bytes_written: Some(data_bytes.len() as i64),
                         offset: None,
@@ -275,7 +275,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     }),
                 )
             }
-            Err(error) => self.send_response::<()>(&request, Err(error)),
+            Err(error) => self.send_response::<()>(request, Err(error)),
         }
     }
 
@@ -288,9 +288,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     ) -> Result<()> {
         // TODO: When variables appear in the `watch` context, they will not resolve correctly after a 'step' function. Consider doing the lazy load for 'either/or' of Variables vs. Evaluate
 
-        let arguments: EvaluateArguments = match get_arguments(&request) {
+        let arguments: EvaluateArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
-            Err(error) => return self.send_response::<()>(&request, Err(error)),
+            Err(error) => return self.send_response::<()>(request, Err(error)),
         };
 
         // Various fields in the response_body will be updated before we return.
@@ -379,7 +379,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         }
 
-        self.send_response(&request, Ok(Some(response_body)))
+        self.send_response(request, Ok(Some(response_body)))
     }
 
     /// Set the variable with the given name in the variable container to a new value.
@@ -388,9 +388,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
-        let arguments: SetVariableArguments = match get_arguments(&request) {
+        let arguments: SetVariableArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
-            Err(error) => return self.send_response::<()>(&request, Err(error)),
+            Err(error) => return self.send_response::<()>(request, Err(error)),
         };
 
         // Various fields in the response_body will be updated before we return.
@@ -425,7 +425,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 {
                     // TODO: Does it make sense for us to consider implementing an update of platform registers?
                     return self.send_response::<SetVariableResponseBody>(
-                        &request,
+                        request,
                         Err(DebuggerError::Other(anyhow!(
                             "Set Register values is not yet supported."
                         ))),
@@ -482,7 +482,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         }
                         Err(error) => {
                             return self.send_response::<SetVariableResponseBody>(
-                                &request,
+                                request,
                                 Err(DebuggerError::Other(anyhow!(
                                     "Failed to update variable: {}, with new value {:?} : {:?}",
                                     cache_variable.name,
@@ -499,7 +499,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         if response_body.value.is_empty() {
             // If we get here, it is a bug.
             self.send_response::<SetVariableResponseBody>(
-                                &request,
+                                request,
                                 Err(DebuggerError::Other(anyhow!(
                                     "Failed to update variable: {}, with new value {:?} : Please report this as a bug.",
                                     arguments.name,
@@ -507,7 +507,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 ))),
                             )
         } else {
-            self.send_response(&request, Ok(Some(response_body)))
+            self.send_response(request, Ok(Some(response_body)))
         }
     }
 
@@ -521,7 +521,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             Err(error) => {
                 if let Some(request) = request {
                     return self.send_response::<()>(
-                        &request,
+                        request,
                         Err(DebuggerError::Other(anyhow!("{}", error))),
                     );
                 } else {
@@ -537,7 +537,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             // Use reset_and_halt(), and then resume again afterwards, depending on the reset_after_halt flag.
             if let Err(error) = target_core.core.reset_and_halt(Duration::from_millis(500)) {
                 return self.send_response::<()>(
-                    &request,
+                    request,
                     Err(DebuggerError::Other(anyhow!("{}", error))),
                 );
             }
@@ -570,7 +570,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             if !self.halt_after_reset {
                 match self.r#continue(target_core, request) {
                     Ok(_) => {
-                        self.send_response::<()>(&request, Ok(None))?;
+                        self.send_response::<()>(request, Ok(None))?;
                         let event_body = Some(ContinuedEventBody {
                             all_threads_continued: Some(false), // TODO: Implement multi-core logic here
                             thread_id: target_core.core.id() as i64,
@@ -579,12 +579,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         Ok(())
                     }
                     Err(error) => self.send_response::<()>(
-                        &request,
+                        request,
                         Err(DebuggerError::Other(anyhow!("{}", error))),
                     ),
                 }
             } else {
-                self.send_response::<()>(&request, Ok(None))?;
+                self.send_response::<()>(request, Ok(None))?;
                 let event_body = Some(StoppedEventBody {
                     reason: "restart".to_owned(),
                     description: Some(
@@ -640,7 +640,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         _core_data: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
-        self.send_response::<()>(&request, Ok(None))
+        self.send_response::<()>(request, Ok(None))
     }
 
     pub(crate) fn set_breakpoints(
@@ -648,11 +648,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
-        let args: SetBreakpointsArguments = match get_arguments(&request) {
+        let args: SetBreakpointsArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => {
                 return self.send_response::<()>(
-                    &request,
+                    request,
                     Err(DebuggerError::Other(anyhow!(
                         "Could not read arguments : {}",
                         error
@@ -670,7 +670,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 Ok(_) => {}
                 Err(error) => {
                     return self.send_response::<()>(
-                        &request,
+                        request,
                         Err(DebuggerError::Other(anyhow!(
                             "Failed to clear existing breakpoints before setting new ones : {}",
                             error
@@ -742,10 +742,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             let breakpoint_body = SetBreakpointsResponseBody {
                 breakpoints: created_breakpoints,
             };
-            self.send_response(&request, Ok(Some(breakpoint_body)))
+            self.send_response(request, Ok(Some(breakpoint_body)))
         } else {
             return self.send_response::<()>(
-                &request,
+                request,
                 Err(DebuggerError::Other(anyhow!(
                     "Could not get a valid source path from arguments: {args:?}"
                 ))),
@@ -758,11 +758,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
-        let arguments: SetInstructionBreakpointsArguments = match get_arguments(&request) {
+        let arguments: SetInstructionBreakpointsArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => {
                 return self.send_response::<()>(
-                    &request,
+                    request,
                     Err(DebuggerError::Other(anyhow!(
                         "Could not read arguments : {}",
                         error
@@ -859,7 +859,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let instruction_breakpoint_body = SetInstructionBreakpointsResponseBody {
             breakpoints: created_breakpoints,
         };
-        self.send_response(&request, Ok(Some(instruction_breakpoint_body)))
+        self.send_response(request, Ok(Some(instruction_breakpoint_body)))
     }
 
     pub(crate) fn threads(
@@ -885,7 +885,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     Ok(pc) => pc,
                     Err(error) => {
                         return self
-                            .send_response::<()>(&request, Err(DebuggerError::ProbeRs(error)))
+                            .send_response::<()>(request, Err(DebuggerError::ProbeRs(error)))
                     }
                 };
                 tracing::debug!(
@@ -897,7 +897,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     .core_data
                     .debug_info
                     .unwind(&mut target_core.core, pc)?;
-                return self.send_response(&request, Ok(Some(ThreadsResponseBody { threads })));
+                return self.send_response(request, Ok(Some(ThreadsResponseBody { threads })));
             }
         } else {
             // This is the initial call to `threads` that happens after the `configuration_done` request, and requires special handling. (see [`DebugAdapter.configuration_done`])
@@ -933,13 +933,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         name: target_core.core_data.target_name.clone(),
                     };
                     threads.push(single_thread);
-                    self.send_response(&request, Ok(Some(ThreadsResponseBody { threads })))?;
+                    self.send_response(request, Ok(Some(ThreadsResponseBody { threads })))?;
                     return self.r#continue(target_core, request);
                 }
             }
         }
         self.send_response::<()>(
-            &request,
+            request,
             Err(DebuggerError::Other(anyhow!(
                 "Received request for `threads`, while last known core status was {:?}",
                 current_core_status
@@ -956,7 +956,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             Ok(status) => {
                 if !status.is_halted() {
                     return self.send_response::<()>(
-                        &request,
+                        request,
                         Err(DebuggerError::Other(anyhow!(
                             "Core must be halted before requesting a stack trace"
                         ))),
@@ -964,15 +964,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
             }
             Err(error) => {
-                return self.send_response::<()>(&request, Err(DebuggerError::ProbeRs(error)))
+                return self.send_response::<()>(request, Err(DebuggerError::ProbeRs(error)))
             }
         };
 
-        let arguments: StackTraceArguments = match get_arguments(&request) {
+        let arguments: StackTraceArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => {
                 return self.send_response::<()>(
-                    &request,
+                    request,
                     Err(DebuggerError::Other(anyhow!(
                         "Could not read arguments : {}",
                         error
@@ -1027,7 +1027,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         .1
                 } else {
                     return self.send_response::<()>(
-                        &request,
+                        request,
                         Err(DebuggerError::Other(anyhow!(
                             "Request for stack trace failed with invalid arguments: {:?}",
                             arguments
@@ -1098,10 +1098,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     stack_frames: frame_list,
                     total_frames: Some(total_frames),
                 };
-                self.send_response(&request, Ok(Some(body)))
+                self.send_response(request, Ok(Some(body)))
             } else {
                 self.send_response::<()>(
-                    &request,
+                    request,
                     Err(DebuggerError::Other(anyhow!(
                         "Request for stack trace failed with invalid start_frame argument: {:?}",
                         arguments.start_frame
@@ -1110,7 +1110,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         } else {
             self.send_response::<()>(
-                &request,
+                request,
                 Err(DebuggerError::Other(anyhow!(
                     "Request for stack trace failed with invalid levels argument: {:?}",
                     arguments.levels
@@ -1124,9 +1124,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// - registers     : The [probe_rs::Core::registers] for the target [probe_rs::CoreType]
     /// - local scope   : Variables defined between start of current frame, and the current pc (program counter)
     pub(crate) fn scopes(&mut self, target_core: &mut CoreHandle, request: &Request) -> Result<()> {
-        let arguments: ScopesArguments = match get_arguments(&request) {
+        let arguments: ScopesArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
-            Err(error) => return self.send_response::<()>(&request, Err(error)),
+            Err(error) => return self.send_response::<()>(request, Err(error)),
         };
 
         let mut dap_scopes: Vec<Scope> = vec![];
@@ -1227,7 +1227,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             };
         }
         self.send_response(
-            &request,
+            request,
             Ok(Some(ScopesResponseBody { scopes: dap_scopes })),
         )
     }
@@ -1500,9 +1500,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
-        let arguments: DisassembleArguments = match get_arguments(&request) {
+        let arguments: DisassembleArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
-            Err(error) => return self.send_response::<()>(&request, Err(error)),
+            Err(error) => return self.send_response::<()>(request, Err(error)),
         };
         if let Ok(memory_reference) = if arguments.memory_reference.starts_with("0x")
             || arguments.memory_reference.starts_with("0X")
@@ -1519,18 +1519,18 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 arguments.instruction_count,
             ) {
                 Ok(disassembled_instructions) => self.send_response(
-                    &request,
+                    request,
                     Ok(Some(DisassembleResponseBody {
                         instructions: disassembled_instructions,
                     })),
                 ),
                 Err(error) => {
-                    self.send_response::<()>(&request, Err(DebuggerError::Other(anyhow!(error))))
+                    self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!(error))))
                 }
             }
         } else {
             self.send_response::<()>(
-                &request,
+                request,
                 Err(DebuggerError::Other(anyhow!(
                     "Invalid memory reference {:?}",
                     arguments.memory_reference
@@ -1545,9 +1545,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
-        let arguments: VariablesArguments = match get_arguments(&request) {
+        let arguments: VariablesArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
-            Err(error) => return self.send_response::<()>(&request, Err(error)),
+            Err(error) => return self.send_response::<()>(request, Err(error)),
         };
 
         if let Some(core_peripherals) = &mut target_core.core_data.core_peripherals {
@@ -1604,7 +1604,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     })
                     .collect();
                 return self.send_response(
-                    &request,
+                    request,
                     Ok(Some(VariablesResponseBody {
                         variables: dap_variables,
                     })),
@@ -1661,7 +1661,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         })
                         .collect();
                     return self.send_response(
-                        &request,
+                        request,
                         Ok(Some(VariablesResponseBody {
                             variables: dap_variables,
                         })),
@@ -1740,7 +1740,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         };
 
-        self.send_response(&request, response)
+        self.send_response(request, response)
     }
 
     pub(crate) fn r#continue(
@@ -1754,7 +1754,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 if request.command.as_str() == "continue" {
                     // If this continue was initiated as part of some other request, then do not respond.
                     self.send_response(
-                        &request,
+                        request,
                         Ok(Some(ContinueResponseBody {
                             all_threads_continued: Some(false), // TODO: Implement multi-core logic here
                         })),
@@ -1793,7 +1793,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
             Err(error) => {
                 self.send_response::<()>(
-                    &request,
+                    request,
                     Err(DebuggerError::Other(anyhow!("{}", error))),
                 )?;
                 Err(error.into())
@@ -1805,7 +1805,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// - [SteppingMode::StepInstruction]: If MS DAP [SteppingGranularity::Instruction] (usually sent from the disassembly view)
     /// - [SteppingMode::OverStatement]: In all other cases.
     pub(crate) fn next(&mut self, target_core: &mut CoreHandle, request: &Request) -> Result<()> {
-        let arguments: NextArguments = get_arguments(&request)?;
+        let arguments: NextArguments = get_arguments(request)?;
 
         let stepping_granularity = match arguments.granularity {
             Some(SteppingGranularity::Instruction) => SteppingMode::StepInstruction,
@@ -1823,7 +1823,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
-        let arguments: StepInArguments = get_arguments(&request)?;
+        let arguments: StepInArguments = get_arguments(request)?;
 
         let stepping_granularity = match arguments.granularity {
             Some(SteppingGranularity::Instruction) => SteppingMode::StepInstruction,
@@ -1840,7 +1840,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
-        let arguments: StepOutArguments = get_arguments(&request)?;
+        let arguments: StepOutArguments = get_arguments(request)?;
 
         let stepping_granularity = match arguments.granularity {
             Some(SteppingGranularity::Instruction) => SteppingMode::StepInstruction,
@@ -1880,7 +1880,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             },
         };
 
-        self.send_response::<()>(&request, Ok(None))?;
+        self.send_response::<()>(request, Ok(None))?;
 
         // We override the halt reason because our implementation of stepping uses breakpoints and results in a "BreakPoint" halt reason, which is not appropriate here.
         target_core.core_data.last_known_status = CoreStatus::Halted(HaltReason::Step);
