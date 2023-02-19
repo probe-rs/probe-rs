@@ -1,3 +1,5 @@
+use probe_rs_target::CoreAccessOptions;
+
 use crate::architecture::arm::component::get_arm_components;
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
 use crate::architecture::arm::{ApAddress, ArmError, DpAddress};
@@ -220,13 +222,12 @@ impl Session {
                             ap: arm_core_access_options.ap,
                         });
 
-                        let mut memory_interface = interface.memory_interface(mem_ap)?;
-
                         let core_start_sequence =
                             tracing::debug_span!("debug_core_start").entered();
                         // Enable debug mode
                         sequence_handle.debug_core_start(
-                            &mut *memory_interface,
+                            &mut *interface,
+                            mem_ap,
                             config.core_type,
                             arm_core_access_options.debug_base,
                             arm_core_access_options.cti_base,
@@ -551,11 +552,10 @@ impl Session {
                                     ap: arm_core_access_options.ap,
                                 });
 
-                                let mut memory_interface = interface.memory_interface(mem_ap)?;
-
                                 // Enable debug mode
                                 debug_sequence.debug_core_start(
-                                    &mut *memory_interface,
+                                    &mut **interface,
+                                    mem_ap,
                                     config.core_type,
                                     arm_core_access_options.debug_base,
                                     arm_core_access_options.cti_base,
@@ -724,15 +724,34 @@ impl Drop for Session {
         if let DebugSequence::Arm(sequence) = &self.target.debug_sequence {
             let sequence = sequence.clone();
 
-            // Note(unwrap): We already verified we're using an arm debug sequence, so we should
-            // always be able to access the arm probe interface.
-            let interface = self.get_arm_interface().unwrap();
+            if let Err(err) = { 0..self.cores.len() }.try_for_each(|i| {
+                // Note(unwrap): We already verified we're using an arm debug sequence, so we should
+                // always be able to access the arm probe interface.
 
-            let stop_span = tracing::debug_span!("debug_core_stop").entered();
-            if sequence.debug_core_stop(interface).is_err() {
-                tracing::warn!("Failed to deconfigure device during shutdown");
+                let core_type = self.target.cores[i].core_type;
+
+                let core_information = match &self.target.cores[i].core_access_options {
+                    CoreAccessOptions::Arm(arm) => arm,
+                    CoreAccessOptions::Riscv(_) => panic!(),
+                };
+
+                let ap = core_information.ap;
+                let dp = match core_information.psel {
+                    0 => DpAddress::Default,
+                    x => DpAddress::Multidrop(x),
+                };
+
+                let interface = self.get_arm_interface().unwrap();
+                let core_ap = MemoryAp::new(ApAddress { dp, ap });
+
+                let stop_span = tracing::debug_span!("debug_core_stop", core_id = i).entered();
+                sequence.debug_core_stop(interface, core_ap, core_type)?;
+                drop(stop_span);
+
+                Ok::<(), ArmError>(())
+            }) {
+                tracing::warn!("Failed to deconfigure device during shutdown: {err:?}");
             }
-            drop(stop_span);
         }
     }
 }
