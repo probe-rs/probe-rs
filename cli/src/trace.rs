@@ -1,8 +1,7 @@
 //! Provides ITM tracing capabilities.
 
 use super::{CoreOptions, ProbeOptions};
-use probe_rs::architecture::arm::component::TraceSink;
-use probe_rs_cli_util::common_options::CoreIdentifier;
+use probe_rs::{architecture::arm::component::TraceSink, CoreSelector};
 
 /// Trace the application using ITM.
 ///
@@ -22,10 +21,10 @@ pub(crate) fn itm_trace(
     let core_index = match shared_options
         .core
         .as_ref()
-        .unwrap_or(&CoreIdentifier::Index(0))
+        .unwrap_or(&CoreSelector::Index(0))
     {
-        CoreIdentifier::Index(i) => *i,
-        CoreIdentifier::Name(_name) => {
+        CoreSelector::Index(i) => *i,
+        CoreSelector::Name(_name) => {
             todo!()
         }
     };

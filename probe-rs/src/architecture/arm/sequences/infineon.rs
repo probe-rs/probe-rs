@@ -1,9 +1,10 @@
 //! Sequences for Infineon target families
 
+use crate::architecture::arm::ap::MemoryAp;
 use crate::architecture::arm::armv7m::{Aircr, Dhcsr, FpCtrl, FpRev1CompX, FpRev2CompX};
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::sequences::ArmDebugSequenceError;
-use crate::architecture::arm::ArmError;
+use crate::architecture::arm::{ArmError, ArmProbeInterface};
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::thread;
@@ -413,14 +414,20 @@ impl ArmDebugSequence for XMC4000 {
         Ok(())
     }
 
-    fn reset_hardware_deassert(&self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
+    fn reset_hardware_deassert(
+        &self,
+        probe: &mut dyn ArmProbeInterface,
+        default_ap: MemoryAp,
+    ) -> Result<(), ArmError> {
         tracing::trace!("performing XMC4000 ResetHardwareDeassert");
 
         // We already deasserted nRST in ResetHardwareAssert, because that's how Cold Reset Halts
         // work on this platform.
 
         // We should however wait until the SSW is ready.
-        spin_until_dapsa_is_clear(memory)?;
+
+        let mut memory = probe.memory_interface(default_ap)?;
+        spin_until_dapsa_is_clear(&mut *memory)?;
 
         Ok(())
     }

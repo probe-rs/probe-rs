@@ -15,21 +15,19 @@ use probe_rs::{
     architecture::arm::{component::TraceSink, swo::SwoConfig},
     debug::debug_info::DebugInfo,
     flashing::{erase_all, BinOptions, FileDownloadError, Format},
-    MemoryInterface, Probe,
+    CoreSelector, MemoryInterface, Probe,
 };
 
 use probe_rs_cli_util::{
     clap,
     clap::Parser,
-    common_options::{
-        print_chip_info, print_families, CargoOptions, CoreIdentifier, FlashOptions, ProbeOptions,
-    },
+    common_options::{print_chip_info, print_families, CargoOptions, FlashOptions, ProbeOptions},
     flash::run_flash_download,
 };
 
 use rustyline::DefaultEditor;
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use time::{OffsetDateTime, UtcOffset};
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::{
@@ -233,7 +231,7 @@ enum Chip {
 #[derive(clap::Parser)]
 pub(crate) struct CoreOptions {
     #[clap(long)]
-    core: Option<CoreIdentifier>,
+    core: Option<CoreSelector>,
 }
 
 #[derive(clap::Subcommand)]
@@ -437,11 +435,22 @@ fn dump_memory(
     let core_index = match shared_options
         .core
         .as_ref()
-        .unwrap_or(&CoreIdentifier::Index(0))
+        .unwrap_or(&CoreSelector::Index(0))
     {
-        CoreIdentifier::Index(i) => *i,
-        CoreIdentifier::Name(_name) => {
-            todo!()
+        CoreSelector::Index(i) => *i,
+        CoreSelector::Name(ref name) => {
+            let found_core = session
+                .target()
+                .cores
+                .iter()
+                .enumerate()
+                .find(|(_id, c)| &c.name == name);
+
+            if let Some((id, _core)) = found_core {
+                id
+            } else {
+                bail!("Unable to find core with name '{name}'");
+            }
         }
     };
 
@@ -530,10 +539,10 @@ fn reset_target_of_device(
     let core_index = match shared_options
         .core
         .as_ref()
-        .unwrap_or(&CoreIdentifier::Index(0))
+        .unwrap_or(&CoreSelector::Index(0))
     {
-        CoreIdentifier::Index(i) => *i,
-        CoreIdentifier::Name(_name) => {
+        CoreSelector::Index(i) => *i,
+        CoreSelector::Name(_name) => {
             todo!()
         }
     };
@@ -563,10 +572,10 @@ fn trace_u32_on_target(
     let core_index = match shared_options
         .core
         .as_ref()
-        .unwrap_or(&CoreIdentifier::Index(0))
+        .unwrap_or(&CoreSelector::Index(0))
     {
-        CoreIdentifier::Index(i) => *i,
-        CoreIdentifier::Name(_name) => {
+        CoreSelector::Index(i) => *i,
+        CoreSelector::Name(_name) => {
             todo!()
         }
     };
@@ -614,10 +623,10 @@ fn debug(shared_options: &CoreOptions, common: &ProbeOptions, exe: Option<PathBu
     let core_index = match shared_options
         .core
         .as_ref()
-        .unwrap_or(&CoreIdentifier::Index(0))
+        .unwrap_or(&CoreSelector::Index(0))
     {
-        CoreIdentifier::Index(i) => *i,
-        CoreIdentifier::Name(_name) => {
+        CoreSelector::Index(i) => *i,
+        CoreSelector::Name(_name) => {
             todo!()
         }
     };

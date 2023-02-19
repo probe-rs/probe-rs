@@ -33,15 +33,15 @@
 //! ```
 use crate::ArtifactError;
 
-use std::{convert::Infallible, fs::File, io::Write, path::Path, path::PathBuf, str::FromStr};
+use std::{fs::File, io::Write, path::Path, path::PathBuf};
 
 use byte_unit::Byte;
 use clap;
 use probe_rs::{
     config::{RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError, FlashLoader},
-    AttachMethod, Config, CoreSelection, DebugProbeError, DebugProbeSelector, FakeProbe,
-    Permissions, Probe, Session, Target, WireProtocol,
+    AttachMethod, Config, CoreSelection, CoreSelector, DebugProbeError, DebugProbeSelector,
+    FakeProbe, Permissions, Probe, Session, Target, WireProtocol,
 };
 
 /// Common options when flashing a target device.
@@ -172,25 +172,6 @@ pub struct ProbeOptions {
     pub allow_erase_all: bool,
 }
 
-#[derive(Debug, Clone)]
-pub enum CoreIdentifier {
-    Index(usize),
-    Name(String),
-}
-
-impl FromStr for CoreIdentifier {
-    type Err = Infallible;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // Try to parse as an integer.
-        if let Ok(index) = usize::from_str(s) {
-            Ok(CoreIdentifier::Index(index))
-        } else {
-            Ok(CoreIdentifier::Name(s.to_string()))
-        }
-    }
-}
-
 impl ProbeOptions {
     /// Add targets contained in file given by --chip-description-path
     /// to probe-rs registery.
@@ -285,7 +266,7 @@ impl ProbeOptions {
         &self,
         probe: Probe,
         target: TargetSelector,
-        core_identifier: Option<CoreIdentifier>,
+        core_identifier: Option<CoreSelector>,
     ) -> Result<Session, OperationError> {
         let mut permissions = Permissions::new();
         if self.allow_erase_all {
@@ -302,8 +283,8 @@ impl ProbeOptions {
 
         if let Some(core_selector) = core_identifier {
             match core_selector {
-                CoreIdentifier::Index(i) => config.cores = CoreSelection::Specific(vec![i]),
-                CoreIdentifier::Name(_) => todo!(),
+                CoreSelector::Index(i) => config.cores = CoreSelection::Specific(vec![i]),
+                CoreSelector::Name(_) => todo!(),
             }
         }
 
@@ -321,7 +302,7 @@ impl ProbeOptions {
     /// and target session.
     pub fn simple_attach(
         &self,
-        core_identifier: Option<CoreIdentifier>,
+        core_identifier: Option<CoreSelector>,
     ) -> Result<Session, OperationError> {
         let target = self.get_target_selector()?;
         let probe = self.attach_probe()?;

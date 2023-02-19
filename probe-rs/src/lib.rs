@@ -100,7 +100,7 @@ pub use crate::probe::{
     Probe, ProbeCreationError, WireProtocol,
 };
 pub use crate::session::permissions::Permissions;
-pub use crate::session::{Config, CoreSelection, Session};
+pub use crate::session::{Config, CoreSelection, Session, CoreSelector};
 
 // TODO: Hide behind feature
 pub use crate::probe::fake_probe::FakeProbe;

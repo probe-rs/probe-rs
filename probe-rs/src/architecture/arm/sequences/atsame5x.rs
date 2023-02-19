@@ -361,12 +361,16 @@ impl ArmDebugSequence for AtSAME5x {
     ///
     /// Instead of de-asserting `nReset` here (this was already done during the CPU Reset Extension process),
     /// the device is released from Reset Extension.
-    fn reset_hardware_deassert(&self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
+    fn reset_hardware_deassert(
+        &self,
+        probe: &mut dyn ArmProbeInterface,
+        default_ap: MemoryAp,
+    ) -> Result<(), ArmError> {
         let mut pins = architecture::arm::Pins(0);
         pins.set_nreset(true);
 
         let current_pins =
-            architecture::arm::Pins(memory.swj_pins(pins.0 as u32, pins.0 as u32, 0)? as u8);
+            architecture::arm::Pins(probe.swj_pins(pins.0 as u32, pins.0 as u32, 0)? as u8);
         if !current_pins.nreset() {
             return Err(ArmDebugSequenceError::SequenceSpecific(
                 "Expected nReset to already be de-asserted".into(),
@@ -374,7 +378,9 @@ impl ArmDebugSequence for AtSAME5x {
             .into());
         }
 
-        self.release_reset_extension(memory)
+        let mut memory = probe.memory_interface(default_ap)?;
+
+        self.release_reset_extension(&mut *memory)
     }
 
     /// `debug_device_unlock` for ATSAM D5x/E5x devices

@@ -17,7 +17,9 @@ use crate::{
     config::DebugSequence,
 };
 use crate::{AttachMethod, Core, CoreType, Error, FakeProbe, Probe};
+use std::convert::Infallible;
 use std::ops::DerefMut;
+use std::str::FromStr;
 use std::{fmt, sync::Arc, time::Duration};
 
 use self::permissions::Permissions;
@@ -130,55 +132,11 @@ impl Session {
     ///
     ///
     pub(crate) fn new(probe: Probe, target: TargetSelector, config: Config) -> Result<Self, Error> {
-        let (mut probe, target) = get_target_from_selector(target, config.attach_method, probe)?;
+        let (probe, target) = get_target_from_selector(target, config.attach_method, probe)?;
 
         let mut session = match target.architecture() {
             Architecture::Arm => Session::attach_arm(probe, target, config)?,
-            Architecture::Riscv => {
-                // TODO: Handle attach under reset
-                let cores = target
-                    .cores
-                    .iter()
-                    .enumerate()
-                    .map(|(id, core)| {
-                        (
-                            SpecificCoreState::from_core_type(core.core_type),
-                            Core::create_state(id, core.core_access_options.clone()),
-                        )
-                    })
-                    .collect();
-
-                let sequence_handle = match &target.debug_sequence {
-                    DebugSequence::Riscv(sequence) => sequence.clone(),
-                    DebugSequence::Arm(_) => {
-                        panic!("Mismatch between architecture and sequence type!")
-                    }
-                };
-
-                probe.inner_attach()?;
-
-                let interface = probe
-                    .try_into_riscv_interface()
-                    .map_err(|(_probe, err)| err)?;
-
-                let mut session = Session {
-                    target,
-                    interface: ArchitectureInterface::Riscv(Box::new(interface)),
-                    cores,
-                    configured_trace_sink: None,
-                };
-
-                {
-                    // Todo: Add multicore support. How to deal with any cores that are not active and won't respond?
-                    let mut core = session.core(0)?;
-
-                    core.halt(Duration::from_millis(100))?;
-                }
-
-                sequence_handle.on_connect(session.get_riscv_interface()?)?;
-
-                session
-            }
+            Architecture::Riscv => Session::attach_riscv(target, probe)?,
         };
 
         session.clear_all_hw_breakpoints()?;
@@ -311,9 +269,7 @@ impl Session {
 
         // For each core, setup debugging
         for (id, memory_ap, core_type) in &core_access_options {
-            let _core_span = tracing::debug_span!("debug_setup", core_id = id).entered();
-
-            tracing::debug_span!("debug_core_start").in_scope(|| {
+            tracing::debug_span!("debug_core_start", core_id = id).in_scope(|| {
                 // Enable debug mode
                 sequence_handle.debug_core_start(
                     &mut *interface,
@@ -366,13 +322,13 @@ impl Session {
                 drop(reset_catch_span);
             }
 
-            let mut memory_interface = interface.memory_interface(default_memory_ap)?;
-
             let reset_hardware_deassert = tracing::debug_span!("reset_hardware_deassert").entered();
 
             // TODO: A timeout here indicates that the reset pin is probably not properly
             //       connected.
-            if let Err(e) = sequence_handle.reset_hardware_deassert(&mut *memory_interface) {
+            if let Err(e) =
+                sequence_handle.reset_hardware_deassert(&mut *interface, default_memory_ap)
+            {
                 if matches!(e, ArmError::Timeout) {
                     tracing::warn!("Timeout while deasserting hardware reset pin. This indicates that the reset pin is not properly connected. Please check your hardware setup.");
                 }
@@ -380,8 +336,6 @@ impl Session {
                 return Err(e.into());
             }
             drop(reset_hardware_deassert);
-
-            drop(memory_interface);
 
             let mut session = Session {
                 target,
@@ -416,6 +370,44 @@ impl Session {
             }
             Ok(session)
         }
+    }
+
+    fn attach_riscv(target: Target, mut probe: Probe) -> Result<Session, Error> {
+        let cores = target
+            .cores
+            .iter()
+            .enumerate()
+            .map(|(id, core)| {
+                (
+                    SpecificCoreState::from_core_type(core.core_type),
+                    Core::create_state(id, core.core_access_options.clone()),
+                )
+            })
+            .collect();
+        let sequence_handle = match &target.debug_sequence {
+            DebugSequence::Riscv(sequence) => sequence.clone(),
+            DebugSequence::Arm(_) => {
+                panic!("Mismatch between architecture and sequence type!")
+            }
+        };
+        probe.inner_attach()?;
+        let interface = probe
+            .try_into_riscv_interface()
+            .map_err(|(_probe, err)| err)?;
+        let mut session = Session {
+            target,
+            interface: ArchitectureInterface::Riscv(Box::new(interface)),
+            cores,
+            configured_trace_sink: None,
+        };
+        {
+            // Todo: Add multicore support. How to deal with any cores that are not active and won't respond?
+            let mut core = session.core(0)?;
+
+            core.halt(Duration::from_millis(100))?;
+        }
+        sequence_handle.on_connect(session.get_riscv_interface()?)?;
+        Ok(session)
     }
 
     /// Lists the available cores with their number and their type.
@@ -928,4 +920,27 @@ pub fn memory_ap(access_options: &ArmCoreAccessOptions) -> MemoryAp {
         },
         ap: access_options.ap,
     })
+}
+
+/// Select a core using either its index or name
+#[derive(Debug, Clone)]
+pub enum CoreSelector {
+    /// Index based selection of a core, based on the order in which the cores are defined
+    /// in the target description
+    Index(usize),
+    /// Select a core based on its name
+    Name(String),
+}
+
+impl FromStr for CoreSelector {
+    type Err = Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // Try to parse as an integer.
+        if let Ok(index) = usize::from_str(s) {
+            Ok(CoreSelector::Index(index))
+        } else {
+            Ok(CoreSelector::Name(s.to_string()))
+        }
+    }
 }
