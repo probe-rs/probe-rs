@@ -73,11 +73,14 @@ pub enum CoreAccessOptions {
 }
 
 impl CoreAccessOptions {
+    /// Get ARM access options
+    ///
+    /// This funciton will panic if self is `CoreAccessOptions::Riscv`.
     #[track_caller]
     pub fn expect_arm(&self) -> &ArmCoreAccessOptions {
         match self {
             CoreAccessOptions::Arm(opts) => opts,
-            other => panic!("{self:?} is not an ARM core."),
+            other => panic!("{other:?} is not an ARM core."),
         }
     }
 }

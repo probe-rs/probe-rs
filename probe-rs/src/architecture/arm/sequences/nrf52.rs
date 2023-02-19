@@ -86,7 +86,7 @@ impl ArmDebugSequence for Nrf52 {
         iface: &mut dyn ArmProbeInterface,
         _default_ap: MemoryAp,
         permissions: &crate::Permissions,
-        core_index: usize,
+        _core_index: usize,
     ) -> Result<(), ArmError> {
         let ctrl_ap = ApAddress {
             ap: 1,
