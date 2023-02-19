@@ -12,17 +12,18 @@ use crate::{
 use anyhow::{anyhow, Context, Result};
 use probe_rs::{
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format},
-    CoreStatus, Probe,
+    Architecture, CoreStatus, Probe,
 };
 use serde::Deserialize;
 use std::{
     cell::RefCell,
+    fs,
     net::{Ipv4Addr, TcpListener},
     ops::Mul,
     path::Path,
     rc::Rc,
     thread,
-    time::Duration,
+    time::{Duration, UNIX_EPOCH},
 };
 use time::UtcOffset;
 
@@ -46,11 +47,12 @@ impl std::str::FromStr for TargetSessionType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug, PartialEq)]
 /// The `DebuggerStatus` is used to control how the Debugger::debug_session() decides if it should respond to DAP Client requests such as `Terminate`, `Disconnect`, and `Reset`, as well as how to repond to unrecoverable errors during a debug session interacting with a target session.
-pub(crate) enum DebuggerStatus {
-    ContinueSession,
-    TerminateSession,
+pub(crate) enum DebugSessionStatus {
+    Continue,
+    Terminate,
+    Restart(Request),
 }
 
 /// #Debugger Overview
@@ -66,6 +68,10 @@ pub struct Debugger {
     /// Getting the offset fails in multithreaded programs, so it's
     /// easier to determine it once and then save it.
     timestamp_offset: UtcOffset,
+
+    // TODO: Store somewhere else
+    // Timestamp of the flashed binary
+    binary_timestamp: Option<Duration>,
 }
 
 impl Debugger {
@@ -74,6 +80,7 @@ impl Debugger {
         Self {
             config: configuration::SessionConfig::default(),
             timestamp_offset,
+            binary_timestamp: None,
         }
     }
 
@@ -88,7 +95,7 @@ impl Debugger {
         &mut self,
         session_data: &mut SessionData,
         debug_adapter: &mut DebugAdapter<P>,
-    ) -> Result<DebuggerStatus, DebuggerError> {
+    ) -> Result<DebugSessionStatus, DebuggerError> {
         match debug_adapter.listen_for_request()? {
             None => {
                 if debug_adapter.all_cores_halted {
@@ -112,7 +119,7 @@ impl Debugger {
                     };
                 }
 
-                Ok(DebuggerStatus::ContinueSession)
+                Ok(DebugSessionStatus::Continue)
             }
             Some(request) => {
                 // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
@@ -127,7 +134,7 @@ impl Debugger {
                         )));
                     } else {
                         // Keep processing "configuration" requests until we've passed `configuration_done` and have a valid `target_core`.
-                        return Ok(DebuggerStatus::ContinueSession);
+                        return Ok(DebugSessionStatus::Continue);
                     }
                 }
 
@@ -219,83 +226,90 @@ impl Debugger {
                                 }
                             }
                         }
-                        Ok(DebuggerStatus::ContinueSession)
+                        Ok(DebugSessionStatus::Continue)
                     }
                     "disconnect" => debug_adapter
-                        .send_response::<()>(&request, Ok(None))
-                        .and(Ok(DebuggerStatus::TerminateSession)),
-                    "terminate" => debug_adapter
-                        .pause(&mut target_core, request)
-                        .and(Ok(DebuggerStatus::TerminateSession)),
+                        .disconnect(&mut target_core, request)
+                        .and(Ok(DebugSessionStatus::Terminate)),
                     "next" => debug_adapter
                         .next(&mut target_core, request)
-                        .and(Ok(DebuggerStatus::ContinueSession)),
+                        .and(Ok(DebugSessionStatus::Continue)),
                     "stepIn" => debug_adapter
                         .step_in(&mut target_core, request)
-                        .and(Ok(DebuggerStatus::ContinueSession)),
+                        .and(Ok(DebugSessionStatus::Continue)),
                     "stepOut" => debug_adapter
                         .step_out(&mut target_core, request)
-                        .and(Ok(DebuggerStatus::ContinueSession)),
+                        .and(Ok(DebugSessionStatus::Continue)),
                     "pause" => debug_adapter
                         .pause(&mut target_core, request)
-                        .and(Ok(DebuggerStatus::ContinueSession)),
+                        .and(Ok(DebugSessionStatus::Continue)),
                     "readMemory" => debug_adapter
                         .read_memory(&mut target_core, request)
-                        .and(Ok(DebuggerStatus::ContinueSession)),
+                        .and(Ok(DebugSessionStatus::Continue)),
                     "writeMemory" => debug_adapter
                         .write_memory(&mut target_core, request)
-                        .and(Ok(DebuggerStatus::ContinueSession)),
+                        .and(Ok(DebugSessionStatus::Continue)),
                     "setVariable" => debug_adapter
                         .set_variable(&mut target_core, request)
-                        .and(Ok(DebuggerStatus::ContinueSession)),
+                        .and(Ok(DebugSessionStatus::Continue)),
                     "configurationDone" => debug_adapter
                         .configuration_done(&mut target_core, request)
-                        .and(Ok(DebuggerStatus::ContinueSession)),
+                        .and(Ok(DebugSessionStatus::Continue)),
                     "threads" => debug_adapter
                         .threads(&mut target_core, request)
-                        .and(Ok(DebuggerStatus::ContinueSession)),
+                        .and(Ok(DebugSessionStatus::Continue)),
                     "restart" => {
-                        // Reset RTT so that the link can be re-established
-                        target_core.core_data.rtt_connection = None;
-                        debug_adapter
-                            .restart(&mut target_core, Some(request))
-                            .and(Ok(DebuggerStatus::ContinueSession))
+                        if target_core.core.architecture() == Architecture::Riscv {
+                            debug_adapter.show_message(
+                                MessageSeverity::Information,
+                                "In-session `restart` is not currently supported for RISC-V.",
+                            );
+                            Ok(DebugSessionStatus::Continue)
+                        } else {
+                            // Reset RTT so that the link can be re-established
+                            target_core.core_data.rtt_connection = None;
+                            target_core
+                                .core
+                                .halt(Duration::from_millis(500))
+                                .map_err(|error| anyhow!("Failed to halt core: {}", error))
+                                .and(Ok(DebugSessionStatus::Restart(request)))
+                        }
                     }
                     "setBreakpoints" => debug_adapter
                         .set_breakpoints(&mut target_core, request)
-                        .and(Ok(DebuggerStatus::ContinueSession)),
+                        .and(Ok(DebugSessionStatus::Continue)),
                     "setInstructionBreakpoints" => debug_adapter
                         .set_instruction_breakpoints(&mut target_core, request)
-                        .and(Ok(DebuggerStatus::ContinueSession)),
+                        .and(Ok(DebugSessionStatus::Continue)),
                     "stackTrace" => debug_adapter
                         .stack_trace(&mut target_core, request)
-                        .and(Ok(DebuggerStatus::ContinueSession)),
+                        .and(Ok(DebugSessionStatus::Continue)),
                     "scopes" => debug_adapter
                         .scopes(&mut target_core, request)
-                        .and(Ok(DebuggerStatus::ContinueSession)),
+                        .and(Ok(DebugSessionStatus::Continue)),
                     "disassemble" => debug_adapter
                         .disassemble(&mut target_core, request)
-                        .and(Ok(DebuggerStatus::ContinueSession)),
+                        .and(Ok(DebugSessionStatus::Continue)),
                     "variables" => debug_adapter
                         .variables(&mut target_core, request)
-                        .and(Ok(DebuggerStatus::ContinueSession)),
+                        .and(Ok(DebugSessionStatus::Continue)),
                     "continue" => debug_adapter
                         .r#continue(&mut target_core, request)
-                        .and(Ok(DebuggerStatus::ContinueSession)),
+                        .and(Ok(DebugSessionStatus::Continue)),
                     "evaluate" => debug_adapter
                         .evaluate(&mut target_core, request)
-                        .and(Ok(DebuggerStatus::ContinueSession)),
+                        .and(Ok(DebugSessionStatus::Continue)),
                     other_command => {
                         // Unimplemented command.
                         debug_adapter.send_response::<()>(
                             &request,
                             Err(DebuggerError::Other(anyhow!("Received request '{}', which is not supported or not implemented yet", other_command))),)
-                            .and(Ok(DebuggerStatus::ContinueSession))
+                            .and(Ok(DebugSessionStatus::Continue))
                     }
                 };
 
                 match result {
-                    Ok(debugger_status) => {
+                    Ok(debug_session_status) => {
                         if unhalt_me {
                             if let Err(error) = target_core.core.run() {
                                 debug_adapter.send_error_response(&DebuggerError::Other(
@@ -304,14 +318,12 @@ impl Debugger {
                                 return Err(error.into());
                             }
                         }
-                        Ok(debugger_status)
+                        Ok(debug_session_status)
                     }
                     Err(e) => Err(DebuggerError::Other(e.context("Error executing request."))),
                 }
             }
         }
-
-        // Now we can process the next (if any) DAP request.
     }
 
     /// `debug_session` is where the primary _debug processing_ for the DAP (Debug Adapter Protocol) adapter happens.
@@ -321,7 +333,7 @@ impl Debugger {
         &mut self,
         mut debug_adapter: DebugAdapter<P>,
         log_info_message: &str,
-    ) -> Result<DebuggerStatus, DebuggerError> {
+    ) -> Result<DebugSessionStatus, DebuggerError> {
         debug_adapter.log_to_console("Starting debug session...");
         debug_adapter.log_to_console(log_info_message);
 
@@ -350,14 +362,9 @@ impl Debugger {
 
         // Loop through remaining (user generated) requests and send to the [processs_request] method until either the client or some unexpected behaviour termintates the process.
         loop {
-            match self.process_next_request(&mut session_data, &mut debug_adapter) {
-                Ok(DebuggerStatus::ContinueSession) => {
-                    // All is good. We can process the next request.
-                }
-                Ok(DebuggerStatus::TerminateSession) => {
-                    return Ok(DebuggerStatus::TerminateSession);
-                }
-                Err(e) => {
+            let debug_session_status = self
+                .process_next_request(&mut session_data, &mut debug_adapter)
+                .or_else(|e| {
                     debug_adapter.show_message(
                         MessageSeverity::Error,
                         format!("Debug Adapter terminated unexpectedly with an error: {e:?}"),
@@ -369,9 +376,21 @@ impl Debugger {
                     for _loop_count in 0..10 {
                         thread::sleep(Duration::from_millis(50));
                     }
-                    return Err(e);
+                    Err(e)
+                })?;
+
+            match debug_session_status {
+                DebugSessionStatus::Continue => {
+                    // All is good. We can process the next request.
+                    ()
                 }
-            }
+                DebugSessionStatus::Restart(request) => {
+                    debug_adapter = self.restart(debug_adapter, &mut session_data, &request)?;
+                }
+                DebugSessionStatus::Terminate => {
+                    return Ok(DebugSessionStatus::Terminate);
+                }
+            };
         }
     }
 
@@ -459,13 +478,39 @@ impl Debugger {
                     "Cannot continue unless one target core configuration is defined."
                 ))
             })?;
+            let Some(path_to_elf) = target_core_config.program_binary.clone() else {
+                    let err =  DebuggerError::Other(anyhow!("Please specify use the `program-binary` option in `launch.json` to specify an executable"));
 
-            let Some(binary_path) = target_core_config.program_binary.clone() else {
-                    return Err(DebuggerError::Other(anyhow!("Missing binary for core 0")));
+                    debug_adapter.send_error_response(&err)?;
+                    return Err(err);
                 };
 
             debug_adapter = self.flash(
-                &binary_path,
+                &path_to_elf,
+                debug_adapter,
+                launch_attach_request.seq,
+                &mut session_data,
+            )?;
+        }
+
+        if self.config.flashing_config.flashing_enabled {
+            let target_core_config = self.config.core_configs.first_mut().ok_or_else(|| {
+                DebuggerError::Other(anyhow!(
+                    "Cannot continue unless one target core configuration is defined."
+                ))
+            })?;
+            let Some(path_to_elf) = target_core_config.program_binary.clone() else {
+                    let err =  DebuggerError::Other(anyhow!("Please specify use the `program-binary` option in `launch.json` to specify an executable"));
+
+                    debug_adapter.send_error_response(&err)?;
+                    return Err(err);
+                };
+
+            // Store timestamp of flashed binary
+            self.binary_timestamp = get_file_timestamp(&path_to_elf);
+
+            debug_adapter = self.flash(
+                &path_to_elf,
                 debug_adapter,
                 launch_attach_request.seq,
                 &mut session_data,
@@ -523,9 +568,74 @@ impl Debugger {
 
         drop(target_core);
 
-        debug_adapter.send_response::<()>(&launch_attach_request, Ok(None))?;
-
         Ok((debug_adapter, session_data))
+    }
+
+    fn restart<P: ProtocolAdapter + 'static>(
+        &mut self,
+        mut debug_adapter: DebugAdapter<P>,
+        session_data: &mut SessionData,
+        request: &Request,
+    ) -> Result<DebugAdapter<P>, DebuggerError> {
+        if self.config.flashing_config.flashing_enabled {
+            let target_core_config = self.config.core_configs.first_mut().ok_or_else(|| {
+                DebuggerError::Other(anyhow!(
+                    "Cannot continue unless one target core configuration is defined."
+                ))
+            })?;
+            let Some(path_to_elf) = target_core_config.program_binary.clone() else {
+                    let err =  DebuggerError::Other(anyhow!("Please specify use the `program-binary` option in `launch.json` to specify an executable"));
+
+                    debug_adapter.send_error_response(&err)?;
+                    return Err(err);
+                };
+
+            if is_file_newer(&mut self.binary_timestamp, &path_to_elf) {
+                // If there is a new binary as part of a restart, there are some key things that
+                // need to be 'reset' for things to work properly.
+                session_data.load_debug_info_for_core(target_core_config)?;
+                session_data
+                    .attach_core(target_core_config.core_index)
+                    .map(|mut target_core| target_core.recompute_breakpoints())??;
+
+                debug_adapter =
+                    self.flash(&path_to_elf, debug_adapter, request.seq, session_data)?;
+            }
+        }
+
+        let target_core_config = self.config.core_configs.first_mut().ok_or_else(|| {
+            DebuggerError::Other(anyhow!(
+                "Cannot continue unless one target core configuration is defined."
+            ))
+        })?;
+
+        // First, attach to the core
+        let mut target_core = session_data
+            .attach_core(target_core_config.core_index)
+            .or_else(|error| {
+                debug_adapter.send_error_response(&error)?;
+                Err(error)
+            })?;
+
+        // Immediately after attaching, halt the core, so that we can finish initalization without bumping into user code.
+        // Depending on supplied `config`, the core will be restarted at the end of initialization in the `configuration_done` request.
+        if let Err(error) = halt_core(&mut target_core.core) {
+            debug_adapter.send_error_response(&error)?;
+            return Err(error);
+        }
+
+        // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
+        target_core.core.debug_on_sw_breakpoint(true)?;
+
+        if self.config.flashing_config.flashing_enabled
+            && self.config.flashing_config.reset_after_flashing
+        {
+            debug_adapter
+                .restart(&mut target_core, Some(request))
+                .context("Failed to restart core")?;
+        }
+
+        Ok(debug_adapter)
     }
 
     /// Flash the given binary, and report the progress to the
@@ -756,7 +866,8 @@ impl Debugger {
         let capabilities = Capabilities {
             supports_configuration_done_request: Some(true),
             supports_restart_request: Some(true),
-            supports_terminate_request: Some(true),
+            support_terminate_debuggee: Some(true),
+            support_suspend_debuggee: Some(true),
             supports_delayed_stack_trace_loading: Some(true),
             supports_read_memory_request: Some(true),
             supports_write_memory_request: Some(true),
@@ -886,10 +997,10 @@ pub fn debug(
                     Err(error) => {
                         tracing::error!("probe-rs-debugger session ended: {}", error);
                     }
-                    Ok(DebuggerStatus::TerminateSession) => {
+                    Ok(DebugSessionStatus::Terminate) => {
                         log_to_console_and_tracing(&format!("....Closing session from  :{addr}"));
                     }
-                    Ok(DebuggerStatus::ContinueSession) => {
+                    Ok(DebugSessionStatus::Continue) | Ok(DebugSessionStatus::Restart(_)) => {
                         tracing::error!("probe-rs-debugger enountered unexpected `DebuggerStatus` in debug() execution. Please report this as a bug.");
                     }
                 }
@@ -915,4 +1026,41 @@ pub fn debug(
 fn log_to_console_and_tracing(message: &str) {
     eprintln!("probe-rs-debug: {}", &message);
     tracing::info!("{}", &message);
+}
+
+/// Try to get the timestamp of a file.
+///
+/// If an error occurs, None is returned.
+fn get_file_timestamp(path_to_elf: &Path) -> Option<Duration> {
+    fs::metadata(path_to_elf)
+        .and_then(|metadata| metadata.modified())
+        .ok()
+        .and_then(|modified| modified.duration_since(UNIX_EPOCH).ok())
+}
+
+fn is_file_newer(saved_binary_timestamp: &mut Option<Duration>, path_to_elf: &Path) -> bool {
+    if let Some(check_current_binary_timestamp) = *saved_binary_timestamp {
+        // We have a timestamp for the binary that is currently on the device, so we need to compare it with the new binary.
+        if let Some(new_binary_timestamp) = get_file_timestamp(path_to_elf) {
+            // If it is newer, we can flash it. Otherwise just skip flashing.
+            if new_binary_timestamp > check_current_binary_timestamp {
+                *saved_binary_timestamp = Some(new_binary_timestamp);
+                true
+            } else {
+                false
+            }
+        } else {
+            // For some reason we couldn't get a timestamp for the new binary. Warn and assume it is new.
+            tracing::warn!("Could not get timestamp for new binary. Assuming it is new.");
+            true
+        }
+    } else {
+        // We don't have a timestamp for the binary that is currently on the device, so we can flash the binary.
+        *saved_binary_timestamp = fs::metadata(path_to_elf)
+            .and_then(|metadata| metadata.modified())
+            .map(|modified| modified.duration_since(UNIX_EPOCH).ok())
+            .ok()
+            .flatten();
+        true
+    }
 }

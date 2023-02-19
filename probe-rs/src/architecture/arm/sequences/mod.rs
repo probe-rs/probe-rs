@@ -7,7 +7,8 @@ pub mod nrf52;
 pub mod nrf53;
 pub mod nrf91;
 pub mod nxp;
-pub mod stm32f_series;
+pub mod stm32_armv6;
+pub mod stm32_armv7;
 pub mod stm32h7;
 
 use std::{

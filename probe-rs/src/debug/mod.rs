@@ -129,6 +129,27 @@ pub struct SourceLocation {
     pub high_pc: Option<u32>,
 }
 
+impl SourceLocation {
+    /// The full path of the source file, combining the `directory` and `file` fields.
+    /// If the path does not resolve to an existing file, and error is returned.
+    pub fn combined_path(&self) -> Result<PathBuf, DebugError> {
+        if let Some(valid_path) = self.directory.as_ref().and_then(|dir| {
+            self.file
+                .as_ref()
+                .map(|file| dir.join(file))
+                .filter(|path| path.exists())
+        }) {
+            Ok(valid_path)
+        } else {
+            Err(DebugError::Other(anyhow::anyhow!(
+                "Unable to find source file for directory {:?} and file {:?}",
+                self.directory,
+                self.file
+            )))
+        }
+    }
+}
+
 /// If file information is available, it returns `Some(directory:PathBuf, file_name:String)`, otherwise `None`.
 fn extract_file(
     debug_info: &DebugInfo,

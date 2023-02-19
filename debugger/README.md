@@ -1,6 +1,8 @@
 # probe-rs-debugger
 
-A debugger that uses the [probe-rs](https://github.com/probe-rs/probe-rs) library to provide an interactive debugging experience with [DAP](https://microsoft.github.io/debug-adapter-protocol/) capable clients, such as Microsoft VSCode.
+[![crates.io](https://img.shields.io/crates/v/probe-rs-debugger.svg)](https://crates.io/crates/probe-rs-debugger) [![Actions Status](https://img.shields.io/github/actions/workflow/status/probe-rs/probe-rs/ci.yml?branch=master)](https://github.com/probe-rs/probe-rs/actions) [![chat](https://img.shields.io/badge/chat-probe--rs%3Amatrix.org-brightgreen)](https://matrix.to/#/!vhKMWjizPZBgKeknOo:matrix.org)
+
+A full featured embedded debugger that uses the [probe-rs](https://github.com/probe-rs/probe-rs) library to provide an interactive debugging experience with [DAP](https://microsoft.github.io/debug-adapter-protocol/) capable clients, such as Microsoft VSCode.
 
 ## Usage
 

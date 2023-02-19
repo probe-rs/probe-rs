@@ -8,8 +8,9 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use probe_rs::{
-    config::TargetSelector, debug::debug_info::DebugInfo, CoreStatus, DebugProbeError, Permissions,
-    Probe, ProbeCreationError, Session,
+    config::TargetSelector,
+    debug::{debug_info::DebugInfo, SourceLocation},
+    CoreStatus, DebugProbeError, Permissions, Probe, ProbeCreationError, Session,
 };
 use std::env::set_current_dir;
 use time::UtcOffset;
@@ -17,15 +18,19 @@ use time::UtcOffset;
 /// The supported breakpoint types
 #[derive(Clone, Debug, PartialEq)]
 pub enum BreakpointType {
+    /// A breakpoint was requested using an instruction address, and usually a result of a user requesting a
+    /// breakpoint while in a 'disassembly' view.
     InstructionBreakpoint,
-    SourceBreakpoint(Source),
+    /// A breakpoint was requested using a source location, and usually a result of a user requesting a
+    /// breakpoint while in a 'source' view.
+    SourceBreakpoint(Source, SourceLocation),
 }
 
 /// Provide the storage and methods to handle various [`BreakpointType`]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ActiveBreakpoint {
     pub(crate) breakpoint_type: BreakpointType,
-    pub(crate) breakpoint_address: u64,
+    pub(crate) address: u64,
 }
 
 /// SessionData is designed to be similar to [probe_rs::Session], in as much that it provides handles to the [CoreHandle] instances for each of the available [probe_rs::Core] involved in the debug session.
@@ -155,18 +160,6 @@ impl SessionData {
         let mut core_data_vec = vec![];
 
         for core_configuration in &valid_core_configs {
-            // Configure the [DebugInfo].
-            let debug_info = if let Some(binary_path) = &core_configuration.program_binary {
-                DebugInfo::from_file(binary_path)
-                    .map_err(|error| DebuggerError::Other(anyhow!(error)))?
-            } else {
-                return Err(anyhow!(
-                    "Please provide a valid `program_binary` for debug core: {:?}",
-                    core_configuration.core_index
-                )
-                .into());
-            };
-
             core_data_vec.push(CoreData {
                 core_index: core_configuration.core_index,
                 last_known_status: CoreStatus::Unknown,
@@ -175,7 +168,7 @@ impl SessionData {
                     core_configuration.core_index,
                     target_session.target().name
                 ),
-                debug_info,
+                debug_info: debug_info_from_binary(core_configuration)?,
                 core_peripherals: None,
                 stack_frames: Vec::<probe_rs::debug::stack_frame::StackFrame>::new(),
                 breakpoints: Vec::<ActiveBreakpoint>::new(),
@@ -188,6 +181,25 @@ impl SessionData {
             core_data: core_data_vec,
             timestamp_offset,
         })
+    }
+
+    /// Reload the a specific core's debug info from the binary file.
+    pub(crate) fn load_debug_info_for_core(
+        &mut self,
+        core_configuration: &CoreConfig,
+    ) -> Result<(), DebuggerError> {
+        if let Some(core_data) = self
+            .core_data
+            .iter_mut()
+            .find(|core_data| core_data.core_index == core_configuration.core_index)
+        {
+            core_data.debug_info = debug_info_from_binary(core_configuration)?;
+            Ok(())
+        } else {
+            Err(DebuggerError::UnableToOpenProbe(Some(
+                "No core at the specified index.",
+            )))
+        }
     }
 
     /// Do a 'light weight'(just get references to existing data structures) attach to the core and return relevant debug data.
@@ -296,4 +308,19 @@ impl SessionData {
         }
         Ok((status_of_cores, suggest_delay_required))
     }
+}
+
+pub(crate) fn debug_info_from_binary(
+    core_configuration: &CoreConfig,
+) -> Result<DebugInfo, DebuggerError> {
+    let debug_info = if let Some(binary_path) = &core_configuration.program_binary {
+        DebugInfo::from_file(binary_path).map_err(|error| DebuggerError::Other(anyhow!(error)))?
+    } else {
+        return Err(anyhow!(
+            "Please provide a valid `program_binary` for debug core: {:?}",
+            core_configuration.core_index
+        )
+        .into());
+    };
+    Ok(debug_info)
 }

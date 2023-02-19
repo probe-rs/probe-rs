@@ -1,10 +1,10 @@
-use std::fs::File;
+use std::{fs::File, path::Path};
 
-use super::session_data;
+use super::session_data::{self, BreakpointType};
 use crate::{
     debug_adapter::{
         dap_adapter::{DapStatus, DebugAdapter},
-        dap_types::{ContinuedEventBody, MessageSeverity, StoppedEventBody},
+        dap_types::{ContinuedEventBody, MessageSeverity, Source, StoppedEventBody},
         protocol::ProtocolAdapter,
     },
     debugger::debug_rtt,
@@ -13,7 +13,7 @@ use crate::{
 };
 use anyhow::{anyhow, Result};
 use probe_rs::{
-    debug::debug_info::DebugInfo,
+    debug::{debug_info::DebugInfo, ColumnType, VerifiedBreakpoint},
     rtt::{Rtt, ScanRegion},
     Core, CoreStatus, Error, HaltReason,
 };
@@ -237,7 +237,7 @@ impl<'p> CoreHandle<'p> {
             .breakpoints
             .push(session_data::ActiveBreakpoint {
                 breakpoint_type,
-                breakpoint_address: address,
+                address,
             });
         Ok(())
     }
@@ -249,7 +249,7 @@ impl<'p> CoreHandle<'p> {
             .map_err(DebuggerError::ProbeRs)?;
         let mut breakpoint_position: Option<usize> = None;
         for (position, active_breakpoint) in self.core_data.breakpoints.iter().enumerate() {
-            if active_breakpoint.breakpoint_address == address {
+            if active_breakpoint.address == address {
                 breakpoint_position = Some(position);
                 break;
             }
@@ -260,20 +260,109 @@ impl<'p> CoreHandle<'p> {
         Ok(())
     }
 
-    /// Clear all breakpoints of a specified [`super::session_data::BreakpointType`]. Affects target configuration as well as [`super::core_data::CoreHandle`]
+    /// Clear all breakpoints of a specified [`super::session_data::BreakpointType`].
+    /// Affects target configuration as well as [`super::core_data::CoreHandle`].
+    /// If `breakpoint_type` is `None`, all breakpoints of type [`super::session_data::BreakpointType::SourceBreakpoint`] will be cleared.
     pub(crate) fn clear_breakpoints(
         &mut self,
-        breakpoint_type: session_data::BreakpointType,
+        breakpoint_type: Option<session_data::BreakpointType>,
     ) -> Result<()> {
         let target_breakpoints = self
             .core_data
             .breakpoints
             .iter()
-            .filter(|breakpoint| breakpoint.breakpoint_type == breakpoint_type)
-            .map(|breakpoint| breakpoint.breakpoint_address)
+            .filter(|breakpoint| {
+                if let Some(breakpoint_type) = breakpoint_type.as_ref() {
+                    breakpoint.breakpoint_type == *breakpoint_type
+                } else {
+                    matches!(
+                        breakpoint.breakpoint_type,
+                        BreakpointType::SourceBreakpoint(_, _)
+                    )
+                }
+            })
+            .map(|breakpoint| breakpoint.address)
             .collect::<Vec<u64>>();
         for breakpoint in target_breakpoints {
-            self.clear_breakpoint(breakpoint).ok();
+            self.clear_breakpoint(breakpoint)?;
+        }
+        Ok(())
+    }
+
+    /// Set a breakpoint at the requested address. If the requested source location is not specific, or
+    /// if the requested address is not a valid breakpoint location,
+    /// the debugger will attempt to find the closest location to the requested location, and set a breakpoint there.
+    /// The Result<> contains the "verified" `address` and `SourceLocation` where the breakpoint that was set.
+    pub(crate) fn verify_and_set_breakpoint(
+        &mut self,
+        source_path: &Path,
+        requested_breakpoint_line: u64,
+        requested_breakpoint_column: Option<u64>,
+        requested_source: &Source,
+    ) -> Result<VerifiedBreakpoint, DebuggerError> {
+        let VerifiedBreakpoint {
+                 address,
+                 source_location,
+             } = self.core_data
+            .debug_info
+            .get_breakpoint_location(
+                source_path,
+                requested_breakpoint_line,
+                requested_breakpoint_column,
+            )
+            .map_err(|debug_error|
+                DebuggerError::Other(anyhow!("Cannot set breakpoint here. Try reducing compile time-, and link time-, optimization in your build configuration, or choose a different source location: {debug_error}")))?;
+        self.set_breakpoint(
+            address,
+            BreakpointType::SourceBreakpoint(requested_source.clone(), source_location.clone()),
+        )?;
+        Ok(VerifiedBreakpoint {
+            address,
+            source_location,
+        })
+    }
+
+    /// In the case where a new binary is flashed as part of a restart, we need to recompute the breakpoint address,
+    /// for a specified source location, of any [`super::session_data::BreakpointType::SourceBreakpoint`].
+    /// This is because the address of the breakpoint may have changed based on changes in the source file that created the new binary.
+    pub(crate) fn recompute_breakpoints(&mut self) -> Result<(), DebuggerError> {
+        let target_breakpoints = self.core_data.breakpoints.clone();
+        for breakpoint in target_breakpoints
+            .iter()
+            .cloned()
+            // If the breakpoint type is not a source breakpoint, we don't need to recompute anything.
+            .filter(|breakpoint| {
+                matches!(
+                    breakpoint.breakpoint_type,
+                    BreakpointType::SourceBreakpoint(..)
+                )
+            })
+        {
+            self.clear_breakpoint(breakpoint.address)?;
+            if let BreakpointType::SourceBreakpoint(source, source_location) =
+                breakpoint.breakpoint_type
+            {
+                if let Err(breakpoint_error) =
+                    source_location
+                        .combined_path()
+                        .as_ref()
+                        .map(|requested_path| {
+                            self.verify_and_set_breakpoint(
+                                requested_path,
+                                source_location.line.unwrap_or(0),
+                                source_location.column.map(|col| match col {
+                                    ColumnType::LeftEdge => 0_u64,
+                                    ColumnType::Column(c) => c,
+                                }),
+                                &source,
+                            )
+                        })
+                {
+                    return Err(DebuggerError::Other(anyhow!(
+                        "Failed to recompute breakpoint at {source_location:?} in {source:?}. Error: {breakpoint_error:?}"
+                    )));
+                }
+            }
         }
         Ok(())
     }
