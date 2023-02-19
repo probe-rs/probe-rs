@@ -251,7 +251,7 @@ impl Session {
             // Enable debug mode
             let unlock_res = sequence_handle.debug_device_unlock(
                 &mut *interface,
-                memory_ap.clone(),
+                *memory_ap,
                 &config.permissions,
                 *id,
             );
