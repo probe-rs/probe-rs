@@ -21,7 +21,9 @@ use probe_rs::{
 use probe_rs_cli_util::{
     clap,
     clap::Parser,
-    common_options::{print_chip_info, print_families, CargoOptions, FlashOptions, ProbeOptions},
+    common_options::{
+        print_chip_info, print_families, CargoOptions, CoreIdentifier, FlashOptions, ProbeOptions,
+    },
     flash::run_flash_download,
 };
 
@@ -230,8 +232,8 @@ enum Chip {
 /// Shared options for core selection, shared between commands
 #[derive(clap::Parser)]
 pub(crate) struct CoreOptions {
-    #[clap(long, default_value = "0")]
-    core: usize,
+    #[clap(long)]
+    core: Option<CoreIdentifier>,
 }
 
 #[derive(clap::Subcommand)]
@@ -423,7 +425,7 @@ fn dump_memory(
     loc: u64,
     words: u32,
 ) -> Result<()> {
-    let mut session = common.simple_attach()?;
+    let mut session = common.simple_attach(shared_options.core.clone())?;
 
     let mut data = vec![0_u32; words as usize];
 
@@ -432,7 +434,18 @@ fn dump_memory(
 
     // let loc = 220 * 1024;
 
-    let mut core = session.core(shared_options.core)?;
+    let core_index = match shared_options
+        .core
+        .as_ref()
+        .unwrap_or(&CoreIdentifier::Index(0))
+    {
+        CoreIdentifier::Index(i) => *i,
+        CoreIdentifier::Name(_name) => {
+            todo!()
+        }
+    };
+
+    let mut core = session.core(core_index)?;
 
     core.read_32(loc, data.as_mut_slice())?;
     // Stop timer.
@@ -460,7 +473,7 @@ fn download_program_fast(
     disable_progressbars: bool,
     disable_double_buffering: bool,
 ) -> Result<()> {
-    let mut session = common.simple_attach()?;
+    let mut session = common.simple_attach(None)?;
 
     let mut file = match File::open(path) {
         Ok(file) => file,
@@ -500,7 +513,7 @@ fn download_program_fast(
 }
 
 fn erase(common: &ProbeOptions) -> Result<()> {
-    let mut session = common.simple_attach()?;
+    let mut session = common.simple_attach(None)?;
 
     erase_all(&mut session, None)?;
 
@@ -512,9 +525,20 @@ fn reset_target_of_device(
     common: &ProbeOptions,
     _assert: Option<bool>,
 ) -> Result<()> {
-    let mut session = common.simple_attach()?;
+    let mut session = common.simple_attach(shared_options.core.clone())?;
 
-    session.core(shared_options.core)?.reset()?;
+    let core_index = match shared_options
+        .core
+        .as_ref()
+        .unwrap_or(&CoreIdentifier::Index(0))
+    {
+        CoreIdentifier::Index(i) => *i,
+        CoreIdentifier::Name(_name) => {
+            todo!()
+        }
+    };
+
+    session.core(core_index)?.reset()?;
 
     Ok(())
 }
@@ -534,9 +558,20 @@ fn trace_u32_on_target(
 
     let start = Instant::now();
 
-    let mut session = common.simple_attach()?;
+    let mut session = common.simple_attach(shared_options.core.clone())?;
 
-    let mut core = session.core(shared_options.core)?;
+    let core_index = match shared_options
+        .core
+        .as_ref()
+        .unwrap_or(&CoreIdentifier::Index(0))
+    {
+        CoreIdentifier::Index(i) => *i,
+        CoreIdentifier::Name(_name) => {
+            todo!()
+        }
+    };
+
+    let mut core = session.core(core_index)?;
 
     loop {
         // Prepare read.
@@ -568,7 +603,7 @@ fn trace_u32_on_target(
 }
 
 fn debug(shared_options: &CoreOptions, common: &ProbeOptions, exe: Option<PathBuf>) -> Result<()> {
-    let mut session = common.simple_attach()?;
+    let mut session = common.simple_attach(shared_options.core.clone())?;
 
     let di = exe
         .as_ref()
@@ -576,7 +611,18 @@ fn debug(shared_options: &CoreOptions, common: &ProbeOptions, exe: Option<PathBu
 
     let cli = debugger::DebugCli::new();
 
-    let core = session.core(shared_options.core)?;
+    let core_index = match shared_options
+        .core
+        .as_ref()
+        .unwrap_or(&CoreIdentifier::Index(0))
+    {
+        CoreIdentifier::Index(i) => *i,
+        CoreIdentifier::Name(_name) => {
+            todo!()
+        }
+    };
+
+    let core = session.core(core_index)?;
 
     let mut cli_data = debugger::CliData::new(core, di)?;
 

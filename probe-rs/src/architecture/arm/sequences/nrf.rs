@@ -9,7 +9,7 @@ use crate::architecture::arm::{
     communication_interface::Initialized, ApAddress, ArmCommunicationInterface, ArmProbeInterface,
     DapAccess,
 };
-use crate::session::MissingPermissions;
+use crate::session::permissions::MissingPermissions;
 
 pub trait Nrf: Sync + Send {
     /// Returns the ahb_ap and ctrl_ap of every core
@@ -30,9 +30,6 @@ pub trait Nrf: Sync + Send {
 const ERASEALL: u8 = 0x04;
 const ERASEALLSTATUS: u8 = 0x08;
 
-const APPROTECT_DISABLE: u8 = 0x10;
-const SECUREAPPROTECT_DISABLE: u8 = 0x14;
-
 const APPLICATION_RESET_S_NETWORK_FORCEOFF_REGISTER: u32 = 0x50005614;
 const RELEASE_FORCEOFF: u32 = 0;
 
@@ -45,15 +42,6 @@ fn unlock_core(
     ap_address: ApAddress,
     permissions: &crate::Permissions,
 ) -> Result<(), ArmError> {
-    if let Some(unlock_key) = permissions.unlock_key {
-        tracing::debug!("Unlocking debug core using key");
-
-        arm_interface.write_raw_ap_register(ap_address, SECUREAPPROTECT_DISABLE, unlock_key)?;
-        arm_interface.write_raw_ap_register(ap_address, APPROTECT_DISABLE, unlock_key)?;
-
-        return Ok(());
-    }
-
     permissions
         .erase_all()
         .map_err(|MissingPermissions(desc)| ArmError::MissingPermissions(desc))?;

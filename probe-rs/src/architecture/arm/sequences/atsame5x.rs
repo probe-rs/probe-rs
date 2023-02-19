@@ -9,7 +9,7 @@ use crate::{
             ArmProbeInterface, DpAddress,
         },
     },
-    session::MissingPermissions,
+    session::permissions::MissingPermissions,
     DebugProbeError, Permissions,
 };
 use bitfield::bitfield;

@@ -8,7 +8,7 @@ pub fn run_gdb_server(
     connection_string: Option<&str>,
     reset_halt: bool,
 ) -> anyhow::Result<()> {
-    let mut session = common.simple_attach()?;
+    let mut session = common.simple_attach(None)?;
 
     if reset_halt {
         session

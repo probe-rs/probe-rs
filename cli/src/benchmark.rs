@@ -45,7 +45,7 @@ pub fn benchmark(common_options: ProbeOptions, options: BenchmarkOptions) -> any
 
     let target = common_options.get_target_selector()?;
     let probe_name = probe.get_name();
-    let mut session = common_options.attach_session(probe, target)?;
+    let mut session = common_options.attach_session(probe, target, None)?;
 
     let target_name = session.target().name.clone();
 

@@ -7,7 +7,7 @@ use crate::architecture::arm::{
     ap::MemoryAp, component::TraceSink, memory::CoresightComponent, ApAddress, ArmError,
     ArmProbeInterface, DpAddress,
 };
-use crate::session::MissingPermissions;
+use crate::session::permissions::MissingPermissions;
 
 /// An error when operating a core ROM table component occurred.
 #[derive(thiserror::Error, Debug)]

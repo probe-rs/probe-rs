@@ -33,15 +33,15 @@
 //! ```
 use crate::ArtifactError;
 
-use std::{fs::File, io::Write, num::ParseIntError, path::Path, path::PathBuf};
+use std::{convert::Infallible, fs::File, io::Write, path::Path, path::PathBuf, str::FromStr};
 
 use byte_unit::Byte;
 use clap;
 use probe_rs::{
     config::{RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError, FlashLoader},
-    DebugProbeError, DebugProbeSelector, FakeProbe, Permissions, Probe, Session, Target,
-    WireProtocol,
+    AttachMethod, Config, CoreSelection, DebugProbeError, DebugProbeSelector, FakeProbe,
+    Permissions, Probe, Session, Target, WireProtocol,
 };
 
 /// Common options when flashing a target device.
@@ -170,13 +170,25 @@ pub struct ProbeOptions {
         even when it has read-only protection."
     )]
     pub allow_erase_all: bool,
-
-    #[clap(long, value_parser = parse_hex)]
-    pub unlock_key: Option<u32>,
 }
 
-fn parse_hex(src: &str) -> Result<u32, ParseIntError> {
-    u32::from_str_radix(src.trim_start_matches("0x"), 16)
+#[derive(Debug, Clone)]
+pub enum CoreIdentifier {
+    Index(usize),
+    Name(String),
+}
+
+impl FromStr for CoreIdentifier {
+    type Err = Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // Try to parse as an integer.
+        if let Ok(index) = usize::from_str(s) {
+            Ok(CoreIdentifier::Index(index))
+        } else {
+            Ok(CoreIdentifier::Name(s.to_string()))
+        }
+    }
 }
 
 impl ProbeOptions {
@@ -273,22 +285,33 @@ impl ProbeOptions {
         &self,
         probe: Probe,
         target: TargetSelector,
+        core_identifier: Option<CoreIdentifier>,
     ) -> Result<Session, OperationError> {
         let mut permissions = Permissions::new();
         if self.allow_erase_all {
             permissions = permissions.allow_erase_all();
         }
 
-        permissions.unlock_key = self.unlock_key;
+        let mut config = Config::default();
 
-        let session = if self.connect_under_reset {
-            probe.attach_under_reset(target, permissions)
-        } else {
-            probe.attach(target, permissions)
+        if self.connect_under_reset {
+            config.attach_method = AttachMethod::UnderReset;
         }
-        .map_err(|error| OperationError::AttachingFailed {
-            source: error,
-            connect_under_reset: self.connect_under_reset,
+
+        config.permissions = permissions;
+
+        if let Some(core_selector) = core_identifier {
+            match core_selector {
+                CoreIdentifier::Index(i) => config.cores = CoreSelection::Specific(vec![i]),
+                CoreIdentifier::Name(_) => todo!(),
+            }
+        }
+
+        let session = probe.attach_with_config(target, config).map_err(|error| {
+            OperationError::AttachingFailed {
+                source: error,
+                connect_under_reset: self.connect_under_reset,
+            }
         })?;
 
         Ok(session)
@@ -296,10 +319,13 @@ impl ProbeOptions {
 
     /// Convenience method that attaches to the specified probe, target,
     /// and target session.
-    pub fn simple_attach(&self) -> Result<Session, OperationError> {
+    pub fn simple_attach(
+        &self,
+        core_identifier: Option<CoreIdentifier>,
+    ) -> Result<Session, OperationError> {
         let target = self.get_target_selector()?;
         let probe = self.attach_probe()?;
-        let session = self.attach_session(probe, target)?;
+        let session = self.attach_session(probe, target, core_identifier)?;
 
         Ok(session)
     }

@@ -16,7 +16,7 @@ pub fn run(
     disable_double_buffering: bool,
     timestamp_offset: UtcOffset,
 ) -> Result<()> {
-    let mut session = common.simple_attach()?;
+    let mut session = common.simple_attach(None)?;
 
     let mut file = match File::open(path) {
         Ok(file) => file,

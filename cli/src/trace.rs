@@ -2,6 +2,7 @@
 
 use super::{CoreOptions, ProbeOptions};
 use probe_rs::architecture::arm::component::TraceSink;
+use probe_rs_cli_util::common_options::CoreIdentifier;
 
 /// Trace the application using ITM.
 ///
@@ -17,9 +18,19 @@ pub(crate) fn itm_trace(
     sink: TraceSink,
     duration: std::time::Duration,
 ) -> anyhow::Result<()> {
-    let mut session = common.simple_attach()?;
+    let mut session = common.simple_attach(shared_options.core.clone())?;
+    let core_index = match shared_options
+        .core
+        .as_ref()
+        .unwrap_or(&CoreIdentifier::Index(0))
+    {
+        CoreIdentifier::Index(i) => *i,
+        CoreIdentifier::Name(_name) => {
+            todo!()
+        }
+    };
 
-    session.setup_tracing(shared_options.core, sink)?;
+    session.setup_tracing(core_index, sink)?;
 
     let decoder = itm::Decoder::new(
         session.swo_reader()?,

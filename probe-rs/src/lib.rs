@@ -99,7 +99,8 @@ pub use crate::probe::{
     AttachMethod, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType,
     Probe, ProbeCreationError, WireProtocol,
 };
-pub use crate::session::{Permissions, Session};
+pub use crate::session::permissions::Permissions;
+pub use crate::session::{Config, CoreSelection, Session};
 
 // TODO: Hide behind feature
 pub use crate::probe::fake_probe::FakeProbe;

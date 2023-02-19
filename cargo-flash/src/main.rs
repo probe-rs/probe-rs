@@ -168,7 +168,9 @@ fn main_try(metadata: Arc<Mutex<Metadata>>) -> Result<(), OperationError> {
     }
 
     // Create a new session
-    let mut session = opt.probe_options.attach_session(probe, target_selector)?;
+    let mut session = opt
+        .probe_options
+        .attach_session(probe, target_selector, None)?;
 
     // Flash the binary
     let flashloader = opt.probe_options.build_flashloader(&mut session, &path)?;

@@ -20,6 +20,10 @@ use crate::{AttachMethod, Core, CoreType, Error, FakeProbe, Probe};
 use std::ops::DerefMut;
 use std::{fmt, sync::Arc, time::Duration};
 
+use self::permissions::Permissions;
+
+pub(crate) mod permissions;
+
 /// The `Session` struct represents an active debug session.
 ///
 /// ## Creating a session
@@ -118,7 +122,7 @@ impl Session {
     ///
     /// ## ARM
     ///
-    /// - The actual target is determined using the given `TargetSelector`.
+    /// - The actual target is determined using the given TargetSelector`.
     ///
     /// - If attach under reset is selected, the [`ArmDebugSequence::reset_hardware_assert()`] function is called,
     ///   if the probe is CMSIS-DAP probe or a J-Link. For other probes, where a custom sequence is not supported,
@@ -128,17 +132,14 @@ impl Session {
     pub(crate) fn new(probe: Probe, target: TargetSelector, config: Config) -> Result<Self, Error> {
         let (mut probe, target) = get_target_from_selector(target, config.attach_method, probe)?;
 
-        let enabled_cores = &[0, 1];
-
         let mut session = match target.architecture() {
-            Architecture::Arm => Session::attach_arm(probe, target, config, enabled_cores)?,
+            Architecture::Arm => Session::attach_arm(probe, target, config)?,
             Architecture::Riscv => {
                 // TODO: Handle attach under reset
                 let cores = target
                     .cores
                     .iter()
                     .enumerate()
-                    .filter(|(id, _)| enabled_cores.contains(&id))
                     .map(|(id, core)| {
                         (
                             SpecificCoreState::from_core_type(core.core_type),
@@ -208,7 +209,6 @@ impl Session {
         mut probe: Probe,
         target: Target,
         config: Config,
-        enabled_cores: &[usize],
     ) -> Result<Session, crate::Error> {
         let core_config = match &config.cores {
             CoreSelection::All => {
@@ -238,17 +238,18 @@ impl Session {
             }
         };
 
-        let cores: Vec<_> = enabled_cores
+        let core_access_options: Vec<_> = target
+            .cores
             .iter()
-            .map(|id| {
-                let arm_core_access_options =
-                    target.cores[*id].core_access_options.expect_arm().clone();
+            .enumerate()
+            .filter(|(id, _core)| match config.cores {
+                CoreSelection::All => true,
+                CoreSelection::Specific(ref cores) => cores.contains(id),
+            })
+            .map(|(id, core)| {
+                let arm_core_access_options = core.core_access_options.expect_arm().clone();
 
-                (
-                    *id,
-                    memory_ap(&arm_core_access_options),
-                    target.cores[*id].core_type,
-                )
+                (id, memory_ap(&arm_core_access_options), core.core_type)
             })
             .collect();
 
@@ -286,7 +287,7 @@ impl Session {
             .initialize(sequence_handle.clone())
             .map_err(|(_interface, e)| e)?;
 
-        for (id, memory_ap, _) in &cores {
+        for (id, memory_ap, _) in &core_access_options {
             let unlock_span = tracing::debug_span!("debug_device_unlock", core_id = id).entered();
 
             // Enable debug mode
@@ -308,30 +309,31 @@ impl Session {
             }
         }
 
-        {
-            // For each core, setup debugging
-            for (id, memory_ap, core_type) in &cores {
-                let _core_span = tracing::debug_span!("debug_setup", core_id = id).entered();
+        // For each core, setup debugging
+        for (id, memory_ap, core_type) in &core_access_options {
+            let _core_span = tracing::debug_span!("debug_setup", core_id = id).entered();
 
-                let mut memory_interface = interface.memory_interface(*memory_ap)?;
+            let mut memory_interface = interface.memory_interface(*memory_ap)?;
 
-                tracing::debug_span!("debug_core_start").in_scope(|| {
-                    // Enable debug mode
-                    sequence_handle.debug_core_start(
-                        &mut *memory_interface,
-                        *core_type,
-                        arm_core_access_options.debug_base,
-                        arm_core_access_options.cti_base,
-                    )
-                })?;
-            }
+            tracing::debug_span!("debug_core_start").in_scope(|| {
+                // Enable debug mode
+                sequence_handle.debug_core_start(
+                    &mut *memory_interface,
+                    *core_type,
+                    arm_core_access_options.debug_base,
+                    arm_core_access_options.cti_base,
+                )
+            })?;
         }
 
         let cores = target
             .cores
             .iter()
             .enumerate()
-            .filter(|(id, _)| enabled_cores.contains(&id))
+            .filter(|(id, _)| match config.cores {
+                CoreSelection::All => true,
+                CoreSelection::Specific(ref cores) => cores.contains(id),
+            })
             .map(|(id, core)| {
                 (
                     SpecificCoreState::from_core_type(core.core_type),
@@ -350,24 +352,15 @@ impl Session {
                 configured_trace_sink: None,
             })
         } else {
-            for (id, core) in target.cores.iter().enumerate() {
-                if !enabled_cores.contains(&id) {
-                    tracing::info!(core_id = id, "Core not selected for debugging");
-                    continue;
-                }
-
-                let core_opts = core.core_access_options.expect_arm();
-
-                let memory_ap = memory_ap(&core_opts);
-
-                let mut memory_interface = interface.memory_interface(memory_ap)?;
+            for (id, memory_ap, core_type) in &core_access_options {
+                let mut memory_interface = interface.memory_interface(*memory_ap)?;
 
                 let reset_catch_span =
                     tracing::debug_span!("reset_catch_set", core_id = id).entered();
                 // we need to halt the chip here
                 sequence_handle.reset_catch_set(
                     &mut *memory_interface,
-                    core.core_type,
+                    *core_type,
                     arm_core_access_options.debug_base,
                 )?;
 
@@ -407,33 +400,17 @@ impl Session {
             }
 
             {
-                let target = session.target.clone();
-
                 let interface = session.get_arm_interface()?;
 
-                for (id, core) in target.cores.iter().enumerate() {
-                    if !enabled_cores.contains(&id) {
-                        tracing::info!(core_id = id, "Core not selected for debugging");
-                        continue;
-                    }
-                    let core_opts = core.core_access_options.expect_arm();
-
-                    let memory_ap = MemoryAp::new(ApAddress {
-                        dp: match core_opts.psel {
-                            0 => DpAddress::Default,
-                            x => DpAddress::Multidrop(x),
-                        },
-                        ap: core_opts.ap,
-                    });
-
-                    let mut memory_interface = interface.memory_interface(memory_ap)?;
+                for (id, memory_ap, core_type) in &core_access_options {
+                    let mut memory_interface = interface.memory_interface(*memory_ap)?;
 
                     // Clear the reset_catch bit which was set earlier.
                     let _reset_catch_span =
                         tracing::debug_span!("reset_catch_clear", core_id = id).entered();
                     sequence_handle.reset_catch_clear(
                         &mut *memory_interface,
-                        core.core_type,
+                        *core_type,
                         arm_core_access_options.debug_base,
                     )?;
                 }
@@ -900,9 +877,10 @@ fn get_target_from_selector(
     Ok((probe, target))
 }
 
+/// Configuration for a session
 #[derive(Debug, Default, Clone)]
 pub struct Config {
-    /// Selection of cores which should be debugged.
+    /// Selection of cores which should be debugged / attached to
     pub cores: CoreSelection,
 
     /// Attach method which should be used when connecting
@@ -913,6 +891,7 @@ pub struct Config {
     pub permissions: Permissions,
 }
 
+/// Selection of cores for debugging
 #[derive(Debug, Default, Clone)]
 pub enum CoreSelection {
     /// All cores of the target will be set up for debugging.
@@ -921,60 +900,8 @@ pub enum CoreSelection {
     #[default]
     All,
     /// Only the cores with the given indices will be set up for debugging.
-    Specific(Vec<u8>),
+    Specific(Vec<usize>),
 }
-
-/// The `Permissions` struct represents what a [Session] is allowed to do with a target.
-/// Some operations can be irreversable, so need to be explicitly allowed by the user.
-///
-/// # Example
-///
-/// ```
-/// use probe_rs::Permissions;
-///
-/// let permissions = Permissions::new().allow_erase_all();
-/// ```
-#[non_exhaustive]
-#[derive(Debug, Clone, Default)]
-pub struct Permissions {
-    /// When set to true, all memory of the chip may be erased or reset to factory default
-    erase_all: bool,
-
-    /// Optional unlock key value for nRF53
-    pub unlock_key: Option<u32>,
-}
-
-impl Permissions {
-    /// Constructs a new permissions object with the default values
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Allow the session to erase all memory of the chip or reset it to factory default.
-    ///
-    /// # Warning
-    /// This may irreversibly remove otherwise read-protected data from the device like security keys and 3rd party firmware.
-    /// What happens exactly may differ per device and per probe-rs version.
-    #[must_use]
-    pub fn allow_erase_all(self) -> Self {
-        Self {
-            erase_all: true,
-            ..self
-        }
-    }
-
-    pub(crate) fn erase_all(&self) -> Result<(), MissingPermissions> {
-        if self.erase_all {
-            Ok(())
-        } else {
-            Err(MissingPermissions("erase_all".into()))
-        }
-    }
-}
-
-#[derive(Debug, Clone, thiserror::Error)]
-#[error("An operation could not be performed because it lacked the permission to do so: {0}")]
-pub struct MissingPermissions(pub String);
 
 pub fn memory_ap(access_options: &ArmCoreAccessOptions) -> MemoryAp {
     MemoryAp::new(ApAddress {

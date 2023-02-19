@@ -340,6 +340,7 @@ impl Probe {
         Ok(())
     }
 
+    /// Attach with the given config
     pub fn attach_with_config(
         mut self,
         target: impl Into<TargetSelector>,
@@ -347,7 +348,6 @@ impl Probe {
     ) -> Result<Session, Error> {
         self.attached = true;
 
-        // The session will de-assert reset after connecting to the debug interface.
         Session::new(self, target.into(), config)
     }
 
