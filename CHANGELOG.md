@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added LPC55Sxx target #1513
 - Added custom sequence support to STM32L0, L1, L4, G0, G4, F0, F3, WB, WL,
   enabling debug clocks during sleep modes #1521
-- Add default sequence 'debug_core_stop', which disables debugging when disconneting from ARM cores by default.
+- Add default sequence 'debug_core_stop', which disables debugging when disconneting from ARM cores by default. (#1525)
 
 ## [0.17.0]
 
