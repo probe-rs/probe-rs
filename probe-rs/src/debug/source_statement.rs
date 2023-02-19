@@ -1,6 +1,5 @@
 use super::{unit_info::UnitInfo, DebugError, DebugInfo};
 use gimli::{ColumnType, LineSequence};
-use num_traits::Zero;
 use std::{
     fmt::{Debug, Formatter},
     num::NonZeroU64,
@@ -100,7 +99,7 @@ impl SourceStatements {
             }
         }
 
-        if source_statements.len().is_zero() {
+        if source_statements.len() == 0 {
             Err(DebugError::NoValidHaltLocation{
                 message: "Could not find valid source statements for this address. Consider using instruction level stepping.".to_string(),
                 pc_at_error: program_counter,

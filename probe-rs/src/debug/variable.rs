@@ -1,7 +1,6 @@
 use super::*;
 use anyhow::anyhow;
 use gimli::{DebugInfoOffset, UnitOffset};
-use num_traits::Zero;
 use std::str::FromStr;
 
 /// Define the role that a variable plays in a Variant relationship. See section '5.7.10 Variant Entries' of the DWARF 5 specification
@@ -706,7 +705,7 @@ impl Variable {
         indentation: usize,
         show_name: bool,
     ) -> String {
-        let line_feed = if indentation.is_zero() { "" } else { "\n" }.to_string();
+        let line_feed = if indentation == 0 { "" } else { "\n" }.to_string();
         // Allow for chained `if let` without complaining
         #[allow(clippy::if_same_then_else)]
         if !self.value.is_empty() {
@@ -1023,7 +1022,7 @@ impl Value for String {
                     }
                     None => 0_u64,
                 };
-                if string_location.is_zero() {
+                if string_location == 0 {
                     str_value = "Error: Failed to determine &str memory location".to_string();
                 } else {
                     // Limit string length to work around buggy information, otherwise the debugger
@@ -1039,7 +1038,7 @@ impl Value for String {
                         string_length = 200;
                     }
 
-                    if string_length.is_zero() {
+                    if string_length == 0 {
                         // A string with length 0 doesn't need to be read from memory.
                     } else {
                         let mut buff = vec![0u8; string_length];

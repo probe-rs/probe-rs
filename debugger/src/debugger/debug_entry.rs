@@ -193,6 +193,8 @@ impl Debugger {
                     _ => {}
                 }
 
+                let mut debug_session = DebugSessionStatus::Continue;
+
                 // Now we are ready to execute supported commands, or return an error if it isn't supported.
                 let result = match request.command.clone().as_ref() {
                     "rttWindowOpened" => {
@@ -226,90 +228,65 @@ impl Debugger {
                                 }
                             }
                         }
-                        Ok(DebugSessionStatus::Continue)
+                        Ok(())
                     }
-                    "disconnect" => debug_adapter
-                        .disconnect(&mut target_core, request)
-                        .and(Ok(DebugSessionStatus::Terminate)),
-                    "next" => debug_adapter
-                        .next(&mut target_core, request)
-                        .and(Ok(DebugSessionStatus::Continue)),
-                    "stepIn" => debug_adapter
-                        .step_in(&mut target_core, request)
-                        .and(Ok(DebugSessionStatus::Continue)),
-                    "stepOut" => debug_adapter
-                        .step_out(&mut target_core, request)
-                        .and(Ok(DebugSessionStatus::Continue)),
-                    "pause" => debug_adapter
-                        .pause(&mut target_core, request)
-                        .and(Ok(DebugSessionStatus::Continue)),
-                    "readMemory" => debug_adapter
-                        .read_memory(&mut target_core, request)
-                        .and(Ok(DebugSessionStatus::Continue)),
-                    "writeMemory" => debug_adapter
-                        .write_memory(&mut target_core, request)
-                        .and(Ok(DebugSessionStatus::Continue)),
-                    "setVariable" => debug_adapter
-                        .set_variable(&mut target_core, request)
-                        .and(Ok(DebugSessionStatus::Continue)),
-                    "configurationDone" => debug_adapter
-                        .configuration_done(&mut target_core, request)
-                        .and(Ok(DebugSessionStatus::Continue)),
-                    "threads" => debug_adapter
-                        .threads(&mut target_core, request)
-                        .and(Ok(DebugSessionStatus::Continue)),
+                    "disconnect" => {
+                        let result = debug_adapter.disconnect(&mut target_core, &request);
+                        debug_session = DebugSessionStatus::Terminate;
+                        result
+                    }
+                    "next" => debug_adapter.next(&mut target_core, &request),
+                    "stepIn" => debug_adapter.step_in(&mut target_core, &request),
+                    "stepOut" => debug_adapter.step_out(&mut target_core, &request),
+                    "pause" => debug_adapter.pause(&mut target_core, &request),
+                    "readMemory" => debug_adapter.read_memory(&mut target_core, &request),
+                    "writeMemory" => debug_adapter.write_memory(&mut target_core, &request),
+                    "setVariable" => debug_adapter.set_variable(&mut target_core, &request),
+                    "configurationDone" => {
+                        debug_adapter.configuration_done(&mut target_core, &request)
+                    }
+                    "threads" => debug_adapter.threads(&mut target_core, &request),
                     "restart" => {
                         if target_core.core.architecture() == Architecture::Riscv {
                             debug_adapter.show_message(
                                 MessageSeverity::Information,
                                 "In-session `restart` is not currently supported for RISC-V.",
                             );
-                            Ok(DebugSessionStatus::Continue)
+                            Ok(())
                         } else {
                             // Reset RTT so that the link can be re-established
                             target_core.core_data.rtt_connection = None;
-                            target_core
+                            let result = target_core
                                 .core
                                 .halt(Duration::from_millis(500))
                                 .map_err(|error| anyhow!("Failed to halt core: {}", error))
-                                .and(Ok(DebugSessionStatus::Restart(request)))
+                                .and(Ok(()));
+
+                            debug_session = DebugSessionStatus::Restart(request);
+                            result
                         }
                     }
-                    "setBreakpoints" => debug_adapter
-                        .set_breakpoints(&mut target_core, request)
-                        .and(Ok(DebugSessionStatus::Continue)),
-                    "setInstructionBreakpoints" => debug_adapter
-                        .set_instruction_breakpoints(&mut target_core, request)
-                        .and(Ok(DebugSessionStatus::Continue)),
-                    "stackTrace" => debug_adapter
-                        .stack_trace(&mut target_core, request)
-                        .and(Ok(DebugSessionStatus::Continue)),
-                    "scopes" => debug_adapter
-                        .scopes(&mut target_core, request)
-                        .and(Ok(DebugSessionStatus::Continue)),
-                    "disassemble" => debug_adapter
-                        .disassemble(&mut target_core, request)
-                        .and(Ok(DebugSessionStatus::Continue)),
-                    "variables" => debug_adapter
-                        .variables(&mut target_core, request)
-                        .and(Ok(DebugSessionStatus::Continue)),
-                    "continue" => debug_adapter
-                        .r#continue(&mut target_core, request)
-                        .and(Ok(DebugSessionStatus::Continue)),
-                    "evaluate" => debug_adapter
-                        .evaluate(&mut target_core, request)
-                        .and(Ok(DebugSessionStatus::Continue)),
+                    "setBreakpoints" => debug_adapter.set_breakpoints(&mut target_core, &request),
+                    "setInstructionBreakpoints" => {
+                        debug_adapter.set_instruction_breakpoints(&mut target_core, &request)
+                    }
+                    "stackTrace" => debug_adapter.stack_trace(&mut target_core, &request),
+                    "scopes" => debug_adapter.scopes(&mut target_core, &request),
+                    "disassemble" => debug_adapter.disassemble(&mut target_core, &request),
+                    "variables" => debug_adapter.variables(&mut target_core, &request),
+                    "continue" => debug_adapter.r#continue(&mut target_core, &request),
+                    "evaluate" => debug_adapter.evaluate(&mut target_core, &request),
                     other_command => {
                         // Unimplemented command.
                         debug_adapter.send_response::<()>(
                             &request,
                             Err(DebuggerError::Other(anyhow!("Received request '{}', which is not supported or not implemented yet", other_command))),)
-                            .and(Ok(DebugSessionStatus::Continue))
+                            .and(Ok(()))
                     }
                 };
 
                 match result {
-                    Ok(debug_session_status) => {
+                    Ok(()) => {
                         if unhalt_me {
                             if let Err(error) = target_core.core.run() {
                                 debug_adapter.send_error_response(&DebuggerError::Other(
@@ -318,7 +295,8 @@ impl Debugger {
                                 return Err(error.into());
                             }
                         }
-                        Ok(debug_session_status)
+
+                        Ok(debug_session)
                     }
                     Err(e) => Err(DebuggerError::Other(e.context("Error executing request."))),
                 }
