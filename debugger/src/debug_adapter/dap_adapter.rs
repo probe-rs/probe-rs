@@ -536,10 +536,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         if let Some(request) = request {
             // Use reset_and_halt(), and then resume again afterwards, depending on the reset_after_halt flag.
             if let Err(error) = target_core.core.reset_and_halt(Duration::from_millis(500)) {
-                return self.send_response::<()>(
-                    request,
-                    Err(DebuggerError::Other(anyhow!("{}", error))),
-                );
+                return self
+                    .send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))));
             }
 
             // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
@@ -1226,10 +1224,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 });
             };
         }
-        self.send_response(
-            request,
-            Ok(Some(ScopesResponseBody { scopes: dap_scopes })),
-        )
+        self.send_response(request, Ok(Some(ScopesResponseBody { scopes: dap_scopes })))
     }
 
     /// Attempt to extract disassembled source code to supply the instruction_count required.
@@ -1792,10 +1787,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 Ok(())
             }
             Err(error) => {
-                self.send_response::<()>(
-                    request,
-                    Err(DebuggerError::Other(anyhow!("{}", error))),
-                )?;
+                self.send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))))?;
                 Err(error.into())
             }
         }
