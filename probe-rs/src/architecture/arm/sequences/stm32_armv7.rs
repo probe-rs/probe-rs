@@ -10,10 +10,11 @@
 
 use std::sync::Arc;
 
+use probe_rs_target::CoreType;
+
 use super::ArmDebugSequence;
 use crate::architecture::arm::{
-    ap::MemoryAp, component::TraceSink, memory::CoresightComponent, ApAddress, ArmError,
-    ArmProbeInterface, DpAddress,
+    ap::MemoryAp, component::TraceSink, memory::CoresightComponent, ArmError, ArmProbeInterface,
 };
 
 /// Marker structure for most ARMv7 STM32 devices.
@@ -81,14 +82,13 @@ impl ArmDebugSequence for Stm32Armv7 {
         Ok(())
     }
 
-    fn debug_core_stop(&self, interface: &mut dyn ArmProbeInterface) -> Result<(), ArmError> {
-        // Power down the debug components
-        let ap = MemoryAp::new(ApAddress {
-            dp: DpAddress::Default,
-            ap: 0,
-        });
-
-        let mut memory = interface.memory_interface(ap)?;
+    fn debug_core_stop(
+        &self,
+        interface: &mut dyn ArmProbeInterface,
+        core_ap: MemoryAp,
+        _core_type: CoreType,
+    ) -> Result<(), ArmError> {
+        let mut memory = interface.memory_interface(core_ap)?;
 
         let mut cr = dbgmcu::Control::read(&mut *memory)?;
         cr.enable_standby_debug(false);

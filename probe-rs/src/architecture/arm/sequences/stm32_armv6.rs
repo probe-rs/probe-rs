@@ -4,8 +4,10 @@
 
 use std::sync::Arc;
 
+use probe_rs_target::CoreType;
+
 use super::ArmDebugSequence;
-use crate::architecture::arm::{ap::MemoryAp, ApAddress, ArmError, ArmProbeInterface, DpAddress};
+use crate::architecture::arm::{ap::MemoryAp, ArmError, ArmProbeInterface};
 
 /// Supported families for custom sequences on ARMv6 STM32 devices.
 pub enum Stm32Armv6Family {
@@ -137,14 +139,13 @@ impl ArmDebugSequence for Stm32Armv6 {
         Ok(())
     }
 
-    fn debug_core_stop(&self, interface: &mut dyn ArmProbeInterface) -> Result<(), ArmError> {
-        // Power down the debug components
-        let ap = MemoryAp::new(ApAddress {
-            dp: DpAddress::Default,
-            ap: 0,
-        });
-
-        let mut memory = interface.memory_interface(ap)?;
+    fn debug_core_stop(
+        &self,
+        interface: &mut dyn ArmProbeInterface,
+        core_ap: MemoryAp,
+        _core_type: CoreType,
+    ) -> Result<(), ArmError> {
+        let mut memory = interface.memory_interface(core_ap)?;
 
         match self.family {
             Stm32Armv6Family::F0 => {
