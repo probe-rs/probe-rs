@@ -27,7 +27,7 @@ use probe_rs_cli_util::{
     flash::run_flash_download,
 };
 
-use rustyline::Editor;
+use rustyline::DefaultEditor;
 
 use anyhow::{Context, Result};
 use time::{OffsetDateTime, UtcOffset};
@@ -626,7 +626,7 @@ fn debug(shared_options: &CoreOptions, common: &ProbeOptions, exe: Option<PathBu
 
     let mut cli_data = debugger::CliData::new(core, di)?;
 
-    let mut rl = Editor::<()>::new()?;
+    let mut rl = DefaultEditor::new()?;
 
     loop {
         cli_data.print_state()?;
@@ -635,7 +635,7 @@ fn debug(shared_options: &CoreOptions, common: &ProbeOptions, exe: Option<PathBu
         match readline {
             Ok(line) => {
                 let history_entry: &str = line.as_ref();
-                rl.add_history_entry(history_entry);
+                rl.add_history_entry(history_entry)?;
                 let cli_state = cli.handle_line(&line, &mut cli_data)?;
 
                 match cli_state {

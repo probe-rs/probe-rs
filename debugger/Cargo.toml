@@ -8,13 +8,13 @@ authors = [
 ]
 edition.workspace = true
 description = "An MS DAP Server built on top of the debug probe capabilities provided by probe-rs."
-documentation.workspace = true
+license.workspace = true
 homepage.workspace = true
 repository.workspace = true
 readme = "README.md"
 categories = ["embedded", "hardware-support", "development-tools::debugging"]
 keywords = ["embedded"]
-license.workspace = true
+documentation = "https://probe.rs/docs/tools/vscode/"
 
 [features]
 ftdi = ["probe-rs/ftdi"]
@@ -48,4 +48,4 @@ time = { version = "0.3", default-features = false, features = [
 ] }
 
 [dev-dependencies]
-insta = "1.26.0"
+insta = "1.28.0"

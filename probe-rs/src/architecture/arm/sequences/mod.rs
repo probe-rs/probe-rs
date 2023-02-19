@@ -7,7 +7,8 @@ pub mod nrf52;
 pub mod nrf53;
 pub mod nrf91;
 pub mod nxp;
-pub mod stm32f_series;
+pub mod stm32_armv6;
+pub mod stm32_armv7;
 pub mod stm32h7;
 
 use std::{
@@ -24,8 +25,10 @@ use crate::{architecture::arm::ArmProbeInterface, core::MemoryMappedRegister, De
 
 use super::{
     ap::{AccessPortError, MemoryAp},
+    armv6m::Demcr,
     communication_interface::{DapProbe, Initialized},
     component::{TraceFunnel, TraceSink},
+    core::cortex_m::Dhcsr,
     dp::{Abort, Ctrl, DebugPortError, DpAccess, Select, DPIDR},
     memory::{
         adi_v5_memory_interface::ArmProbe,
@@ -568,17 +571,20 @@ pub trait ArmDebugSequence: Send + Sync {
     #[doc(alias = "DebugCoreStart")]
     fn debug_core_start(
         &self,
-        core: &mut dyn ArmProbe,
+        interface: &mut dyn ArmProbeInterface,
+        core_ap: MemoryAp,
         core_type: CoreType,
         debug_base: Option<u64>,
         cti_base: Option<u64>,
     ) -> Result<(), ArmError> {
+        let mut core = interface.memory_interface(core_ap)?;
+
         // Dispatch based on core type (Cortex-A vs M)
         match core_type {
-            CoreType::Armv7a => armv7a_core_start(core, debug_base),
-            CoreType::Armv8a => armv8a_core_start(core, debug_base, cti_base),
+            CoreType::Armv7a => armv7a_core_start(&mut *core, debug_base),
+            CoreType::Armv8a => armv8a_core_start(&mut *core, debug_base, cti_base),
             CoreType::Armv6m | CoreType::Armv7m | CoreType::Armv7em | CoreType::Armv8m => {
-                cortex_m_core_start(core)
+                cortex_m_core_start(&mut *core)
             }
             _ => panic!("Logic inconsistency bug - non ARM core type passed {core_type:?}"),
         }
@@ -716,8 +722,26 @@ pub trait ArmDebugSequence: Send + Sync {
     ///
     /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#recoverSupportStart
     #[doc(alias = "DebugCoreStop")]
-    fn debug_core_stop(&self, _interface: &mut dyn ArmProbeInterface) -> Result<(), ArmError> {
-        // Empty by default
+    fn debug_core_stop(
+        &self,
+        interface: &mut dyn ArmProbeInterface,
+        core_ap: MemoryAp,
+        core_type: CoreType,
+    ) -> Result<(), ArmError> {
+        if core_type.is_cortex_m() {
+            let mut memory_interface = interface.memory_interface(core_ap)?;
+
+            // System Control Space (SCS) offset as defined in Armv6-M/Armv7-M.
+            // Disable Core Debug via DHCSR
+            let mut dhcsr = Dhcsr(0);
+            dhcsr.enable_write();
+            memory_interface.write_word_32(Dhcsr::ADDRESS, dhcsr.0)?;
+
+            // Disable DWT and ITM blocks, DebugMonitor handler,
+            // halting debug traps, and Reset Vector Catch.
+            memory_interface.write_word_32(Demcr::ADDRESS, 0x0)?;
+        }
+
         Ok(())
     }
 
