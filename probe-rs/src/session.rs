@@ -725,14 +725,11 @@ impl Drop for Session {
             let sequence = sequence.clone();
 
             if let Err(err) = { 0..self.cores.len() }.try_for_each(|i| {
-                // Note(unwrap): We already verified we're using an arm debug sequence, so we should
-                // always be able to access the arm probe interface.
-
                 let core_type = self.target.cores[i].core_type;
 
                 let core_information = match &self.target.cores[i].core_access_options {
                     CoreAccessOptions::Arm(arm) => arm,
-                    CoreAccessOptions::Riscv(_) => panic!(),
+                    CoreAccessOptions::Riscv(_) => unreachable!(),
                 };
 
                 let ap = core_information.ap;
@@ -741,7 +738,10 @@ impl Drop for Session {
                     x => DpAddress::Multidrop(x),
                 };
 
+                // Note(unwrap): We already verified we're using an arm debug sequence, so we should
+                // always be able to access the arm probe interface.
                 let interface = self.get_arm_interface().unwrap();
+
                 let core_ap = MemoryAp::new(ApAddress { dp, ap });
 
                 let stop_span = tracing::debug_span!("debug_core_stop", core_id = i).entered();
