@@ -26,7 +26,7 @@ gdb-server = { workspace = true }
 pretty_env_logger = { workspace = true }
 log = { workspace = true }
 scroll = "0.11.0"
-rustyline = "10.1.1"
+rustyline = "11.0.0"
 capstone = "0.11.0"
 ron = "0.8.0"
 ihex = "3.0.0"
