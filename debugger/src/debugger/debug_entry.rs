@@ -524,6 +524,8 @@ impl Debugger {
 
         drop(target_core);
 
+        debug_adapter.send_response::<()>(&launch_attach_request, Ok(None))?;
+
         Ok((debug_adapter, session_data))
     }
 
