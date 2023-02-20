@@ -462,27 +462,6 @@ impl Debugger {
                     return Err(err);
                 };
 
-            debug_adapter = self.flash(
-                &path_to_elf,
-                debug_adapter,
-                launch_attach_request.seq,
-                &mut session_data,
-            )?;
-        }
-
-        if self.config.flashing_config.flashing_enabled {
-            let target_core_config = self.config.core_configs.first_mut().ok_or_else(|| {
-                DebuggerError::Other(anyhow!(
-                    "Cannot continue unless one target core configuration is defined."
-                ))
-            })?;
-            let Some(path_to_elf) = target_core_config.program_binary.clone() else {
-                    let err =  DebuggerError::Other(anyhow!("Please specify use the `program-binary` option in `launch.json` to specify an executable"));
-
-                    debug_adapter.send_error_response(&err)?;
-                    return Err(err);
-                };
-
             // Store timestamp of flashed binary
             self.binary_timestamp = get_file_timestamp(&path_to_elf);
 
