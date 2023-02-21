@@ -62,7 +62,10 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
     let probe = probe::open(opts)?;
 
     let probe_target = target_info.probe_target.clone();
-    let permissions = Permissions::default().allow_erase_all();
+    let permissions = match opts.erase_all {
+        false => Permissions::new(),
+        true => Permissions::new().allow_erase_all(),
+    };
     let mut sess = if opts.connect_under_reset {
         probe.attach_under_reset(probe_target, permissions)?
     } else {
