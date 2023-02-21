@@ -1,7 +1,6 @@
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::riscv::RiscVState;
 use crate::{CoreType, InstructionSet};
-use num_traits::Zero;
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
 
 use crate::architecture::{
@@ -183,11 +182,10 @@ impl RegisterValue {
 
     /// A helper function to determine if the contained register value is zero.
     pub fn is_zero(&self) -> bool {
-        match self {
-            RegisterValue::U32(register_value) => register_value.is_zero(),
-            RegisterValue::U64(register_value) => register_value.is_zero(),
-            RegisterValue::U128(register_value) => register_value.is_zero(),
-        }
+        matches!(
+            self,
+            RegisterValue::U32(0) | RegisterValue::U64(0) | RegisterValue::U128(0)
+        )
     }
 }
 

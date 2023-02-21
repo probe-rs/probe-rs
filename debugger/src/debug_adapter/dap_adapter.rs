@@ -1,11 +1,6 @@
 use crate::{
     debug_adapter::{dap_types, protocol::ProtocolAdapter},
-    debugger::{
-        configuration::ConsoleLog,
-        core_data::CoreHandle,
-        debug_entry::TargetSessionType,
-        session_data::{ActiveBreakpoint, BreakpointType},
-    },
+    debugger::{configuration::ConsoleLog, core_data::CoreHandle, session_data::BreakpointType},
     DebuggerError,
 };
 use anyhow::{anyhow, Result};
@@ -57,8 +52,6 @@ pub struct DebugAdapter<P: ProtocolAdapter> {
     pub(crate) lines_start_at_1: bool,
     /// DWARF spec at Sect 2.14 uses 1 based numbering, with a 0 indicating not-specified. We will follow that standard, and translate incoming requests depending on the DAP Client treatment of 0 or 1 based numbering.
     pub(crate) columns_start_at_1: bool,
-    /// The behaviour of the debug adapter sometimes depend on the TargetSessionType
-    pub(crate) target_session_type: Option<TargetSessionType>,
     adapter: P,
 }
 
@@ -72,7 +65,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             supports_progress_reporting: false,
             lines_start_at_1: true,
             columns_start_at_1: true,
-            target_session_type: None,
             adapter,
         }
     }
@@ -81,7 +73,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.configuration_done
     }
 
-    pub(crate) fn pause(&mut self, target_core: &mut CoreHandle, request: Request) -> Result<()> {
+    pub(crate) fn pause(&mut self, target_core: &mut CoreHandle, request: &Request) -> Result<()> {
         match target_core.core.halt(Duration::from_millis(500)) {
             Ok(cpu_info) => {
                 let new_status = match target_core.core.status() {
@@ -122,9 +114,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn disconnect(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
-        let arguments: DisconnectArguments = match get_arguments(&request) {
+        let arguments: DisconnectArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
@@ -143,12 +135,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn read_memory(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
-        let arguments: ReadMemoryArguments = match get_arguments(&request) {
+        let arguments: ReadMemoryArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
+
         let memory_offset = arguments.offset.unwrap_or(0);
         let mut address: u64 =
             if let Ok(address) = parse::<u64>(arguments.memory_reference.as_ref()) {
@@ -219,9 +212,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn write_memory(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
-        let arguments: WriteMemoryArguments = match get_arguments(&request) {
+        let arguments: WriteMemoryArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
@@ -291,11 +284,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn evaluate(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
         // TODO: When variables appear in the `watch` context, they will not resolve correctly after a 'step' function. Consider doing the lazy load for 'either/or' of Variables vs. Evaluate
 
-        let arguments: EvaluateArguments = match get_arguments(&request) {
+        let arguments: EvaluateArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
@@ -393,9 +386,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn set_variable(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
-        let arguments: SetVariableArguments = match get_arguments(&request) {
+        let arguments: SetVariableArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
@@ -521,7 +514,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn restart(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Option<Request>,
+        request: Option<&Request>,
     ) -> Result<()> {
         match target_core.core.halt(Duration::from_millis(500)) {
             Ok(_) => {}
@@ -538,123 +531,112 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
 
         target_core.reset_core_status(self);
+
         // Different code paths if we invoke this from a request, versus an internal function.
         if let Some(request) = request {
             // Use reset_and_halt(), and then resume again afterwards, depending on the reset_after_halt flag.
-            match target_core.core.reset_and_halt(Duration::from_millis(500)) {
-                Ok(_) => {
-                    // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
-                    target_core.core.debug_on_sw_breakpoint(true)?;
+            if let Err(error) = target_core.core.reset_and_halt(Duration::from_millis(500)) {
+                return self
+                    .send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))));
+            }
 
-                    // For RISC-V, we need to re-enable any breakpoints that were previously set, because the core reset 'forgets' them.
-                    if target_core.core.architecture() == Riscv {
-                        let saved_breakpoints = target_core
-                            .core_data
-                            .breakpoints
-                            .drain(..)
-                            .collect::<Vec<ActiveBreakpoint>>();
-                        for breakpoint in saved_breakpoints {
-                            match target_core.set_breakpoint(
-                                breakpoint.address,
-                                breakpoint.breakpoint_type.clone(),
-                            ) {
-                                Ok(_) => {}
-                                Err(error) => {
-                                    //This will cause the debugger to show the user an error, but not stop the debugger.
-                                    tracing::error!(
-                                        "Failed to re-enable breakpoint {:?} after reset. {}",
-                                        breakpoint,
-                                        error
-                                    );
-                                }
-                            }
-                        }
-                    }
+            // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
+            target_core.core.debug_on_sw_breakpoint(true)?;
 
-                    // Now that we have the breakpoints re-enabled, we can decide if it is appropriate to resume the core.
-                    if !self.halt_after_reset {
-                        match self.r#continue(target_core, request.clone()) {
-                            Ok(_) => {
-                                self.send_response::<()>(request, Ok(None))?;
-                                let event_body = Some(ContinuedEventBody {
-                                    all_threads_continued: Some(false), // TODO: Implement multi-core logic here
-                                    thread_id: target_core.core.id() as i64,
-                                });
-                                self.send_event("continued", event_body)?;
-                                Ok(())
-                            }
-                            Err(error) => self.send_response::<()>(
-                                request,
-                                Err(DebuggerError::Other(anyhow!("{}", error))),
-                            ),
+            // For RISC-V, we need to re-enable any breakpoints that were previously set, because the core reset 'forgets' them.
+            if target_core.core.architecture() == Riscv {
+                let saved_breakpoints = std::mem::take(&mut target_core.core_data.breakpoints);
+
+                for breakpoint in saved_breakpoints {
+                    match target_core
+                        .set_breakpoint(breakpoint.address, breakpoint.breakpoint_type.clone())
+                    {
+                        Ok(_) => {}
+                        Err(error) => {
+                            //This will cause the debugger to show the user an error, but not stop the debugger.
+                            tracing::error!(
+                                "Failed to re-enable breakpoint {:?} after reset. {}",
+                                breakpoint,
+                                error
+                            );
                         }
-                    } else {
-                        self.send_response::<()>(request, Ok(None))?;
-                        let event_body = Some(StoppedEventBody {
-                            reason: "restart".to_owned(),
-                            description: Some(
-                                CoreStatus::Halted(HaltReason::External)
-                                    .short_long_status(None)
-                                    .1,
-                            ),
-                            thread_id: Some(target_core.core.id() as i64),
-                            preserve_focus_hint: None,
-                            text: None,
-                            all_threads_stopped: Some(self.all_cores_halted),
-                            hit_breakpoint_ids: None,
-                        });
-                        self.send_event("stopped", event_body)?;
-                        Ok(())
                     }
                 }
-                Err(error) => self
-                    .send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error)))),
+            }
+
+            // Now that we have the breakpoints re-enabled, we can decide if it is appropriate to resume the core.
+            if !self.halt_after_reset {
+                match self.r#continue(target_core, request) {
+                    Ok(_) => {
+                        self.send_response::<()>(request, Ok(None))?;
+                        let event_body = Some(ContinuedEventBody {
+                            all_threads_continued: Some(false), // TODO: Implement multi-core logic here
+                            thread_id: target_core.core.id() as i64,
+                        });
+                        self.send_event("continued", event_body)?;
+                        Ok(())
+                    }
+                    Err(error) => self.send_response::<()>(
+                        request,
+                        Err(DebuggerError::Other(anyhow!("{}", error))),
+                    ),
+                }
+            } else {
+                self.send_response::<()>(request, Ok(None))?;
+                let event_body = Some(StoppedEventBody {
+                    reason: "restart".to_owned(),
+                    description: Some(
+                        CoreStatus::Halted(HaltReason::External)
+                            .short_long_status(None)
+                            .1,
+                    ),
+                    thread_id: Some(target_core.core.id() as i64),
+                    preserve_focus_hint: None,
+                    text: None,
+                    all_threads_stopped: Some(self.all_cores_halted),
+                    hit_breakpoint_ids: None,
+                });
+                self.send_event("stopped", event_body)?;
+                Ok(())
             }
         } else {
             // The DAP Client will always do a `reset_and_halt`, and then will consider `halt_after_reset` value after the `configuration_done` request.
             // Otherwise the probe will run past the `main()` before the DAP Client has had a chance to set breakpoints in `main()`.
-            match target_core.core.reset_and_halt(Duration::from_millis(500)) {
-                Ok(core_info) => {
-                    // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
-                    target_core.core.debug_on_sw_breakpoint(true)?;
-
-                    // Only notify the DAP client if we are NOT in initialization stage ([`DebugAdapter::configuration_done`]).
-                    if self.configuration_is_done() {
-                        let event_body = Some(StoppedEventBody {
-                            reason: "restart".to_owned(),
-                            description: Some(
-                                CoreStatus::Halted(HaltReason::External)
-                                    .short_long_status(Some(core_info.pc))
-                                    .1,
-                            ),
-                            thread_id: Some(target_core.core.id() as i64),
-                            preserve_focus_hint: None,
-                            text: None,
-                            all_threads_stopped: Some(self.all_cores_halted),
-                            hit_breakpoint_ids: None,
-                        });
-                        self.send_event("stopped", event_body)?;
-                    }
-                    Ok(())
-                }
+            let core_info = match target_core.core.reset_and_halt(Duration::from_millis(500)) {
+                Ok(core_info) => core_info,
                 Err(error) => {
-                    if let Some(request) = request {
-                        self.send_response::<()>(
-                            request,
-                            Err(DebuggerError::Other(anyhow!("{}", error))),
-                        )
-                    } else {
-                        self.send_error_response(&DebuggerError::Other(anyhow!("{}", error)))
-                    }
+                    return self.send_error_response(&DebuggerError::Other(anyhow!("{}", error)));
                 }
+            };
+
+            // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
+            target_core.core.debug_on_sw_breakpoint(true)?;
+
+            // Only notify the DAP client if we are NOT in initialization stage ([`DebugAdapter::configuration_done`]).
+            if self.configuration_is_done() {
+                let event_body = Some(StoppedEventBody {
+                    reason: "restart".to_owned(),
+                    description: Some(
+                        CoreStatus::Halted(HaltReason::External)
+                            .short_long_status(Some(core_info.pc))
+                            .1,
+                    ),
+                    thread_id: Some(target_core.core.id() as i64),
+                    preserve_focus_hint: None,
+                    text: None,
+                    all_threads_stopped: Some(self.all_cores_halted),
+                    hit_breakpoint_ids: None,
+                });
+                self.send_event("stopped", event_body)?;
             }
+            Ok(())
         }
     }
 
     pub(crate) fn configuration_done(
         &mut self,
         _core_data: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
         self.send_response::<()>(request, Ok(None))
     }
@@ -662,9 +644,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn set_breakpoints(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
-        let args: SetBreakpointsArguments = match get_arguments(&request) {
+        let args: SetBreakpointsArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => {
                 return self.send_response::<()>(
@@ -772,9 +754,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn set_instruction_breakpoints(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
-        let arguments: SetInstructionBreakpointsArguments = match get_arguments(&request) {
+        let arguments: SetInstructionBreakpointsArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => {
                 return self.send_response::<()>(
@@ -878,7 +860,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.send_response(request, Ok(Some(instruction_breakpoint_body)))
     }
 
-    pub(crate) fn threads(&mut self, target_core: &mut CoreHandle, request: Request) -> Result<()> {
+    pub(crate) fn threads(
+        &mut self,
+        target_core: &mut CoreHandle,
+        request: &Request,
+    ) -> Result<()> {
         // TODO: Implement actual thread resolution. For now, we just use the core id as the thread id.
         let current_core_status = target_core.core.status()?;
         let mut threads: Vec<Thread> = vec![];
@@ -945,7 +931,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         name: target_core.core_data.target_name.clone(),
                     };
                     threads.push(single_thread);
-                    self.send_response(request.clone(), Ok(Some(ThreadsResponseBody { threads })))?;
+                    self.send_response(request, Ok(Some(ThreadsResponseBody { threads })))?;
                     return self.r#continue(target_core, request);
                 }
             }
@@ -962,7 +948,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn stack_trace(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
         match target_core.core.status() {
             Ok(status) => {
@@ -980,7 +966,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         };
 
-        let arguments: StackTraceArguments = match get_arguments(&request) {
+        let arguments: StackTraceArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => {
                 return self.send_response::<()>(
@@ -1135,8 +1121,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// - static scope  : Variables with `static` modifier
     /// - registers     : The [probe_rs::Core::registers] for the target [probe_rs::CoreType]
     /// - local scope   : Variables defined between start of current frame, and the current pc (program counter)
-    pub(crate) fn scopes(&mut self, target_core: &mut CoreHandle, request: Request) -> Result<()> {
-        let arguments: ScopesArguments = match get_arguments(&request) {
+    pub(crate) fn scopes(&mut self, target_core: &mut CoreHandle, request: &Request) -> Result<()> {
+        let arguments: ScopesArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
@@ -1507,9 +1493,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn disassemble(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
-        let arguments: DisassembleArguments = match get_arguments(&request) {
+        let arguments: DisassembleArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
@@ -1552,9 +1538,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn variables(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
-        let arguments: VariablesArguments = match get_arguments(&request) {
+        let arguments: VariablesArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
@@ -1755,7 +1741,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn r#continue(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
         match target_core.core.run() {
             Ok(_) => {
@@ -1810,8 +1796,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// Steps through the code at the requested granularity.
     /// - [SteppingMode::StepInstruction]: If MS DAP [SteppingGranularity::Instruction] (usually sent from the disassembly view)
     /// - [SteppingMode::OverStatement]: In all other cases.
-    pub(crate) fn next(&mut self, target_core: &mut CoreHandle, request: Request) -> Result<()> {
-        let arguments: NextArguments = get_arguments(&request)?;
+    pub(crate) fn next(&mut self, target_core: &mut CoreHandle, request: &Request) -> Result<()> {
+        let arguments: NextArguments = get_arguments(request)?;
 
         let stepping_granularity = match arguments.granularity {
             Some(SteppingGranularity::Instruction) => SteppingMode::StepInstruction,
@@ -1824,8 +1810,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// Steps through the code at the requested granularity.
     /// - [SteppingMode::StepInstruction]: If MS DAP [SteppingGranularity::Instruction] (usually sent from the disassembly view)
     /// - [SteppingMode::IntoStatement]: In all other cases.
-    pub(crate) fn step_in(&mut self, target_core: &mut CoreHandle, request: Request) -> Result<()> {
-        let arguments: StepInArguments = get_arguments(&request)?;
+    pub(crate) fn step_in(
+        &mut self,
+        target_core: &mut CoreHandle,
+        request: &Request,
+    ) -> Result<()> {
+        let arguments: StepInArguments = get_arguments(request)?;
 
         let stepping_granularity = match arguments.granularity {
             Some(SteppingGranularity::Instruction) => SteppingMode::StepInstruction,
@@ -1840,9 +1830,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn step_out(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
-        let arguments: StepOutArguments = get_arguments(&request)?;
+        let arguments: StepOutArguments = get_arguments(request)?;
 
         let stepping_granularity = match arguments.granularity {
             Some(SteppingGranularity::Instruction) => SteppingMode::StepInstruction,
@@ -1857,7 +1847,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         &mut self,
         stepping_granularity: SteppingMode,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<(), anyhow::Error> {
         target_core.reset_core_status(self);
         let (new_status, program_counter) = match stepping_granularity
@@ -1963,7 +1953,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// failure.
     pub fn send_response<S: Serialize>(
         &mut self,
-        request: Request,
+        request: &Request,
         response: Result<Option<S>, DebuggerError>,
     ) -> Result<()> {
         self.adapter.send_response(request, response)
@@ -2194,6 +2184,30 @@ pub fn get_arguments<T: DeserializeOwned>(req: &Request) -> Result<T, crate::Deb
         .ok_or(crate::DebuggerError::InvalidRequest)?;
 
     serde_json::from_value(value.to_owned()).map_err(|e| e.into())
+}
+
+pub fn get_arguments_v2<T: DeserializeOwned, P: ProtocolAdapter>(
+    debug_adapter: &mut DebugAdapter<P>,
+    req: &Request,
+) -> Result<T, crate::DebuggerError> {
+    let Some(raw_arguments) = &req.arguments else {
+        debug_adapter.send_response::<()>(req, Err(DebuggerError::InvalidRequest))?;
+        return Err(DebuggerError::Other(anyhow!(
+            "Failed to get {} arguments", req.command
+        )));
+
+    };
+
+    match serde_json::from_value(raw_arguments.to_owned()) {
+        Ok(value) => Ok(value),
+        Err(e) => {
+            debug_adapter.send_response::<()>(req, Err(e.into()))?;
+            Err(DebuggerError::Other(anyhow!(
+                "Failed to get {} arguments",
+                req.command
+            )))
+        }
+    }
 }
 
 pub(crate) trait DapStatus {

@@ -32,7 +32,7 @@ pub trait ProtocolAdapter {
 
     fn send_response<S: Serialize>(
         &mut self,
-        request: Request,
+        request: &Request,
         response: Result<Option<S>, DebuggerError>,
     ) -> anyhow::Result<()>;
 }
@@ -64,17 +64,13 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
 
         self.output.write_all(response_header.as_bytes())?;
 
-        match self.output.write_all(response_body) {
-            Ok(_) => {}
-            Err(error) => {
-                // TODO: Implement catch of errorkind "WouldBlock" and retry
-                tracing::error!("send_data - body: {:?}", error);
-                self.output.flush().ok();
-                return Err(error);
-            }
+        if let Err(err) = self.output.write_all(response_body) {
+            // TODO: Implement catch of errorkind "WouldBlock" and retry
+            tracing::error!("send_data - body: {:?}", err);
+            return Err(err);
         }
 
-        self.output.flush().ok();
+        self.output.flush()?;
 
         self.seq += 1;
 
@@ -290,7 +286,7 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
 
     fn send_response<S: Serialize>(
         &mut self,
-        request: Request,
+        request: &Request,
         response: Result<Option<S>, DebuggerError>,
     ) -> anyhow::Result<()> {
         let mut resp = Response {
