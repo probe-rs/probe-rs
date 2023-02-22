@@ -62,10 +62,14 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
     let probe = probe::open(opts)?;
 
     let probe_target = target_info.probe_target.clone();
+    let permissions = match opts.erase_all {
+        false => Permissions::new(),
+        true => Permissions::new().allow_erase_all(),
+    };
     let mut sess = if opts.connect_under_reset {
-        probe.attach_under_reset(probe_target, Permissions::default())?
+        probe.attach_under_reset(probe_target, permissions)?
     } else {
-        let probe_attach = probe.attach(probe_target, Permissions::default());
+        let probe_attach = probe.attach(probe_target, permissions);
         if let Err(probe_rs::Error::Probe(ProbeSpecific(e))) = &probe_attach {
             // FIXME Using `to_string().contains(...)` is a workaround as the concrete type
             // of `e` is not public and therefore does not allow downcasting.
@@ -88,40 +92,11 @@ fn run_target_program(elf_path: &Path, chip_name: &str, opts: &cli::Opts) -> any
     if opts.no_flash {
         log::info!("skipped flashing");
     } else {
-        let fp = flashing::FlashProgress::new(|evt| {
-            match evt {
-                // The flash layout has been built and the flashing procedure was initialized.
-                flashing::ProgressEvent::Initialized { flash_layout, .. } => {
-                    let pages = flash_layout.pages();
-                    let num_pages = pages.len();
-                    let num_bytes: u64 = pages.iter().map(|x| x.size() as u64).sum();
-                    log::info!(
-                        "flashing program ({} pages / {:.02} KiB)",
-                        num_pages,
-                        num_bytes as f64 / 1024.0
-                    );
-                }
-                // A sector has been erased. Sectors (usually) contain multiple pages.
-                flashing::ProgressEvent::SectorErased { size, time } => {
-                    log::debug!(
-                        "Erased sector of size {} bytes in {} ms",
-                        size,
-                        time.as_millis()
-                    );
-                }
-                // A page has been programmed.
-                flashing::ProgressEvent::PageProgrammed { size, time } => {
-                    log::debug!(
-                        "Programmed page of size {} bytes in {} ms",
-                        size,
-                        time.as_millis()
-                    );
-                }
-                _ => {
-                    // Ignore other events
-                }
-            }
-        });
+        let fp = flashing_progress();
+
+        if opts.erase_all {
+            flashing::erase_all(&mut sess, Some(fp.clone()))?;
+        }
 
         let mut options = flashing::DownloadOptions::default();
         options.dry_run = false;
@@ -443,4 +418,41 @@ fn configure_terminal_colorization() {
     if let Ok("dumb") = env::var("TERM").as_deref() {
         colored::control::set_override(false)
     }
+}
+
+fn flashing_progress() -> flashing::FlashProgress {
+    flashing::FlashProgress::new(|evt| {
+        match evt {
+            // The flash layout has been built and the flashing procedure was initialized.
+            flashing::ProgressEvent::Initialized { flash_layout, .. } => {
+                let pages = flash_layout.pages();
+                let num_pages = pages.len();
+                let num_bytes: u64 = pages.iter().map(|x| x.size() as u64).sum();
+                log::info!(
+                    "flashing program ({} pages / {:.02} KiB)",
+                    num_pages,
+                    num_bytes as f64 / 1024.0
+                );
+            }
+            // A sector has been erased. Sectors (usually) contain multiple pages.
+            flashing::ProgressEvent::SectorErased { size, time } => {
+                log::debug!(
+                    "Erased sector of size {} bytes in {} ms",
+                    size,
+                    time.as_millis()
+                );
+            }
+            // A page has been programmed.
+            flashing::ProgressEvent::PageProgrammed { size, time } => {
+                log::debug!(
+                    "Programmed page of size {} bytes in {} ms",
+                    size,
+                    time.as_millis()
+                );
+            }
+            _ => {
+                // Ignore other events
+            }
+        }
+    })
 }

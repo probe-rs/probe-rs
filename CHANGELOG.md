@@ -7,10 +7,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/) and this p
 ## [Unreleased]
 
 - [#384] Satisfy clippy
+- [#380] Add `--erase-all` flag
 - [#379] Update to `probe-rs v0.17`
 - [#378] Update to `probe-rs v0.16`
 
 [#384]: https://github.com/knurling-rs/probe-run/pull/384
+[#380]: https://github.com/knurling-rs/probe-run/pull/380
 [#379]: https://github.com/knurling-rs/probe-run/pull/379
 [#378]: https://github.com/knurling-rs/probe-run/pull/378
 

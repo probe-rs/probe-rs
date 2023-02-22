@@ -43,6 +43,10 @@ pub struct Opts {
     #[arg(required = true, conflicts_with_all = HELPER_CMDS)]
     elf: Option<PathBuf>,
 
+    /// Mass-erase all nonvolatile memory before downloading flash.
+    #[arg(long)]
+    pub erase_all: bool,
+
     /// Output logs a structured json.
     #[arg(long)]
     pub json: bool,
