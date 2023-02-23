@@ -1,0 +1,49 @@
+
+on:
+  push:
+    branches: [master, staging, trying]
+  pull_request:
+  merge_group:
+
+
+name: Run smoke test
+
+env:
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Install libusb, libudev (linux)
+        run: |
+          sudo apt update
+          sudo apt install -y libusb-1.0-0-dev libudev-dev
+        # Only install on Ubuntu
+        if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-20.04')
+
+      - uses: ./.github/actions/setup
+
+      - name: Install cross 
+        uses: taiki-e/install-action@v2.4.2
+        with:
+          tool: cross
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2.2.0
+      
+      - name: Build smoke-tester
+        run:
+          cross build --release --target aarch64-unknown-linux-gnu -p smoke_tester
+      
+      - uses: actions/upload-artifact@v3
+        with:
+          name: smoke_tester
+          path: target/aarch64-unknown-linux-gnu/release/smoke_tester
+
+      
+
