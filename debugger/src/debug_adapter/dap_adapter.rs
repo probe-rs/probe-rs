@@ -25,6 +25,8 @@ use probe_rs_cli_util::rtt;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{convert::TryInto, path::Path, str, string::ToString, time::Duration};
 
+use super::repl_commands::command_completions;
+
 /// Progress ID used for progress reporting when the debug adapter protocol is used.
 type ProgressId = i64;
 
@@ -378,6 +380,26 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
             }
         }
+
+        self.send_response(request, Ok(Some(response_body)))
+    }
+
+    /// Works in tandem with the `evaluate` request, to provide possible completions in the Debug Console REPL window.
+    pub(crate) fn completions(
+        &mut self,
+        target_core: &mut CoreHandle,
+        request: &Request,
+    ) -> Result<()> {
+        // TODO: When variables appear in the `watch` context, they will not resolve correctly after a 'step' function. Consider doing the lazy load for 'either/or' of Variables vs. Evaluate
+
+        let arguments: CompletionsArguments = match get_arguments(request) {
+            Ok(arguments) => arguments,
+            Err(error) => return self.send_response::<()>(request, Err(error)),
+        };
+
+        let response_body = CompletionsResponseBody {
+            targets: command_completions(arguments),
+        };
 
         self.send_response(request, Ok(Some(response_body)))
     }
