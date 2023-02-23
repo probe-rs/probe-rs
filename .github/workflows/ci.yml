@@ -44,16 +44,10 @@ jobs:
         uses: Swatinem/rust-cache@v2.2.0
 
       - name: cargo check for probe-rs, --no-default-features
-        uses: actions-rs/cargo@v1.0.3
-        with:
-          command: check
-          args: -p probe-rs --no-default-features --locked
+        run: cargo check -p probe-rs --no-default-features --locked
 
       - name: Run cargo check
-        uses: actions-rs/cargo@v1.0.3
-        with:
-          command: check
-          args: --all-features --locked
+        run: cargo check --all-features --locked
 
   test:
     name: Test Suite
@@ -90,10 +84,7 @@ jobs:
         uses: Swatinem/rust-cache@v2.2.0
 
       - name: Run cargo test
-        uses: actions-rs/cargo@v1.0.3
-        with:
-          command: test
-          args: --all-features --locked
+        run: cargo test --all-features --locked
 
   fmt:
     name: Rustfmt
@@ -107,10 +98,7 @@ jobs:
           components: rustfmt
 
       - name: Run cargo fmt
-        uses: actions-rs/cargo@v1.0.3
-        with:
-          command: fmt
-          args: --all -- --check
+        run: cargo fmt --all -- --check
 
   clippy:
     name: Clippy
@@ -132,10 +120,7 @@ jobs:
         uses: Swatinem/rust-cache@v2.2.0
 
       - name: Run cargo clippy
-        uses: actions-rs/clippy-check@v1.0.7
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features --locked -- -D warnings
+        run: cargo clippy --all-features --locked -- -D warnings
 
   cargo-deny:
     runs-on: ubuntu-latest
@@ -161,9 +146,6 @@ jobs:
         uses: Swatinem/rust-cache@v2.2.0
 
       - name: Run cargo doc
-        uses: actions-rs/cargo@v1.0.3
-        with:
-          command: doc
-          args: --all-features --locked
+        run: cargo doc --all-features --locked
         env:
           RUSTDOCFLAGS: '-D warnings'
