@@ -30,7 +30,7 @@ jobs:
       - name: Install libusb, libudev (linux)
         run: |
           sudo dpkg --add-architecture arm64 || true
-          sudo apt update
+          sudo apt update || true
           sudo apt install -y libusb-1.0-0-dev:arm64 libudev-dev:arm64
 
       - uses: ./.github/actions/setup
