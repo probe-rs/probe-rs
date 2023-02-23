@@ -514,6 +514,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "201de327520df007757c1f0adce6e827fe8562fbc28bfd9c15571c66ca1f5f79"
 
 [[package]]
+name = "libftdi1-sys"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3ff6928872c7d13bec3c8a60c4c92f41f6252f3369b7552a5b4f9c90c8ba2338"
+dependencies = [
+ "cfg-if",
+ "libc",
+ "pkg-config",
+ "vcpkg",
+]
+
+[[package]]
 name = "libusb1-sys"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -716,6 +728,7 @@ dependencies = [
  "jaylink",
  "jep106",
  "kmp",
+ "libftdi1-sys",
  "num-traits",
  "object",
  "once_cell",

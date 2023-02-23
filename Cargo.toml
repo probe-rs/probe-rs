@@ -37,3 +37,6 @@ pretty_assertions = "1"
 rstest = { version = "0.16", default-features = false }
 nix = "0.26"
 serial_test = { version = "1", default-features = false }
+
+[features]
+ftdi = ["probe-rs/ftdi"]
