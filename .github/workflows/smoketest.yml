@@ -27,6 +27,9 @@ jobs:
         if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-20.04')
 
       - uses: ./.github/actions/setup
+        with:
+          targets:
+            aarch64-unknown-linux-gnu
 
       - name: Install cross 
         uses: taiki-e/install-action@v2.4.2
