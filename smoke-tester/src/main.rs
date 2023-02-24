@@ -7,7 +7,7 @@ use crate::{
         test_register_access,
     },
 };
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use colored::Colorize;
 
 use clap::{Arg, Command};
@@ -70,7 +70,7 @@ fn main() -> Result<()> {
 
     let mut test_tracker = TestTracker::new(definitions, 0);
 
-    test_tracker.run(|tracker, definition| {
+    let result = test_tracker.run(|tracker, definition| {
         let probe = definition.open_probe()?;
 
         println_dut_status!(tracker, blue, "Probe: {:?}", probe.get_name());
@@ -140,8 +140,29 @@ fn main() -> Result<()> {
         Ok(())
     });
 
+    if result.any_failed() {
+        return Err(anyhow!(
+            "{} out of {} tests failed.",
+            result.num_tests - result.num_successful,
+            result.num_tests
+        ));
+    }
+
     Ok(())
 }
+
+#[derive(Debug)]
+struct TestResult {
+    num_successful: usize,
+    num_tests: usize,
+}
+
+impl TestResult {
+    fn any_failed(&self) -> bool {
+        self.num_successful < self.num_tests
+    }
+}
+
 pub struct TestTracker<'a> {
     dut_definitions: Vec<DutDefinition>,
     current_dut: usize,
@@ -190,9 +211,20 @@ impl<'a> TestTracker<'a> {
         self.current_test += 1;
     }
 
-    fn run(&mut self, handle_dut: impl Fn(&mut TestTracker, &DutDefinition) -> Result<(), Error>) {
+    #[must_use]
+    fn run(
+        &mut self,
+        handle_dut: impl Fn(&mut TestTracker, &DutDefinition) -> Result<(), Error>,
+    ) -> TestResult {
         let mut tests_ok = true;
+
+        let mut num_duts = 0;
+
+        let mut num_ok = 0;
+
         for definition in &mut self.dut_definitions.clone() {
+            num_duts += 1;
+
             print_dut_status!(self, blue, "Starting Test",);
 
             if let DefinitionSource::File(path) = &definition.source {
@@ -202,6 +234,7 @@ impl<'a> TestTracker<'a> {
 
             match handle_dut(self, definition) {
                 Ok(()) => {
+                    num_ok += 1;
                     println_dut_status!(self, green, "Tests Passed",);
                 }
                 Err(e) => {
@@ -219,6 +252,11 @@ impl<'a> TestTracker<'a> {
             println_status!(self, green, "All DUTs passed.",);
         } else {
             println_status!(self, red, "Some DUTs failed some tests.",);
+        }
+
+        TestResult {
+            num_successful: num_ok,
+            num_tests: num_duts,
         }
     }
 
