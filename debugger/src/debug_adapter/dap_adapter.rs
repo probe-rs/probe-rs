@@ -25,7 +25,7 @@ use probe_rs_cli_util::rtt;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{convert::TryInto, path::Path, str, string::ToString, time::Duration};
 
-use super::repl_commands::command_completions;
+use super::repl_commands::{build_expanded_commands, command_completions};
 
 /// Progress ID used for progress reporting when the debug adapter protocol is used.
 type ProgressId = i64;
@@ -301,86 +301,100 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             memory_reference: None,
             named_variables: None,
             presentation_hint: None,
-            result: format!("<variable not found {:?}>", arguments.expression),
+            result: format!("<invalid expression {:?}>", arguments.expression),
             type_: None,
             variables_reference: 0_i64,
         };
 
-        // The Variables request sometimes returns the variable name, and other times the variable id, so this expression will be tested to determine if it is an id or not.
-        let expression = arguments.expression.clone();
-
-        // Make sure we have a valid StackFrame
-        if let Some(stack_frame) = match arguments.frame_id {
-            Some(frame_id) => target_core
-                .core_data
-                .stack_frames
-                .iter_mut()
-                .find(|stack_frame| stack_frame.id == frame_id),
-            None => {
-                // Use the current frame_id
-                target_core.core_data.stack_frames.first_mut()
-            }
-        } {
-            // Always search the registers first, because we don't have a VariableCache for them.
-            if let Some(register_value) = stack_frame
-                .registers
-                .get_register_by_name(expression.as_str())
-                .and_then(|reg| reg.value)
-            {
-                response_body.type_ = Some(format!("{}", VariableName::RegistersRoot));
-                response_body.result = format!("{register_value}");
+        if let Some(context) = arguments.context {
+            if context == "repl" {
+                let (_, repl_commands) = build_expanded_commands(arguments.expression.trim());
+                if let Some(repl_command) = repl_commands.first() {
+                    match (repl_command.handler)(target_core) {
+                        Ok(_) => todo!(),
+                        Err(error) => response_body.result = format!("{error:?}",),
+                    }
+                }
             } else {
-                // If the expression wasn't pointing to a register, then check if is a local or static variable in our stack_frame
-                let mut variable: Option<probe_rs::debug::Variable> = None;
-                let mut variable_cache: Option<&mut probe_rs::debug::VariableCache> = None;
-                // Search through available caches and stop as soon as the variable is found
-                #[allow(clippy::manual_flatten)]
-                for variable_cache_entry in [
-                    stack_frame.local_variables.as_mut(),
-                    stack_frame.static_variables.as_mut(),
-                    target_core
+                // Handle other contexts: 'watch', 'hover', 'clipboard', etc.
+                // The Variables request sometimes returns the variable name, and other times the variable id, so this expression will be tested to determine if it is an id or not.
+                let expression = arguments.expression.clone();
+
+                // Make sure we have a valid StackFrame
+                if let Some(stack_frame) = match arguments.frame_id {
+                    Some(frame_id) => target_core
                         .core_data
-                        .core_peripherals
-                        .as_mut()
-                        .map(|core_peripherals| &mut core_peripherals.svd_variable_cache),
-                ] {
-                    if let Some(search_cache) = variable_cache_entry {
-                        if let Ok(expression_as_key) = expression.parse::<i64>() {
-                            variable = search_cache.get_variable_by_key(expression_as_key);
-                        } else {
-                            variable = search_cache
-                                .get_variable_by_name(&VariableName::Named(expression.clone()));
-                        }
-                        if let Some(variable) = &mut variable {
-                            if variable.variable_node_type == VariableNodeType::SvdRegister
-                                || variable.variable_node_type == VariableNodeType::SvdField
-                            {
-                                variable.extract_value(&mut target_core.core, search_cache)
+                        .stack_frames
+                        .iter_mut()
+                        .find(|stack_frame| stack_frame.id == frame_id),
+                    None => {
+                        // Use the current frame_id
+                        target_core.core_data.stack_frames.first_mut()
+                    }
+                } {
+                    // Always search the registers first, because we don't have a VariableCache for them.
+                    if let Some(register_value) = stack_frame
+                        .registers
+                        .get_register_by_name(expression.as_str())
+                        .and_then(|reg| reg.value)
+                    {
+                        response_body.type_ = Some(format!("{}", VariableName::RegistersRoot));
+                        response_body.result = format!("{register_value}");
+                    } else {
+                        // If the expression wasn't pointing to a register, then check if is a local or static variable in our stack_frame
+                        let mut variable: Option<probe_rs::debug::Variable> = None;
+                        let mut variable_cache: Option<&mut probe_rs::debug::VariableCache> = None;
+                        // Search through available caches and stop as soon as the variable is found
+                        #[allow(clippy::manual_flatten)]
+                        for variable_cache_entry in
+                            [
+                                stack_frame.local_variables.as_mut(),
+                                stack_frame.static_variables.as_mut(),
+                                target_core.core_data.core_peripherals.as_mut().map(
+                                    |core_peripherals| &mut core_peripherals.svd_variable_cache,
+                                ),
+                            ]
+                        {
+                            if let Some(search_cache) = variable_cache_entry {
+                                if let Ok(expression_as_key) = expression.parse::<i64>() {
+                                    variable = search_cache.get_variable_by_key(expression_as_key);
+                                } else {
+                                    variable = search_cache.get_variable_by_name(
+                                        &VariableName::Named(expression.clone()),
+                                    );
+                                }
+                                if let Some(variable) = &mut variable {
+                                    if variable.variable_node_type == VariableNodeType::SvdRegister
+                                        || variable.variable_node_type == VariableNodeType::SvdField
+                                    {
+                                        variable.extract_value(&mut target_core.core, search_cache)
+                                    }
+                                    variable_cache = Some(search_cache);
+                                    break;
+                                }
                             }
-                            variable_cache = Some(search_cache);
-                            break;
+                        }
+                        // Check if we found a variable.
+                        if let (Some(variable), Some(variable_cache)) = (variable, variable_cache) {
+                            let (
+                                variables_reference,
+                                named_child_variables_cnt,
+                                indexed_child_variables_cnt,
+                            ) = self.get_variable_reference(&variable, variable_cache);
+                            response_body.indexed_variables = Some(indexed_child_variables_cnt);
+                            response_body.memory_reference =
+                                Some(format!("{}", variable.memory_location));
+                            response_body.named_variables = Some(named_child_variables_cnt);
+                            response_body.result = variable.get_value(variable_cache);
+                            response_body.type_ = Some(format!("{:?}", variable.type_name));
+                            response_body.variables_reference = variables_reference;
+                        } else {
+                            // If we made it to here, no register or variable matched the expression.
                         }
                     }
                 }
-                // Check if we found a variable.
-                if let (Some(variable), Some(variable_cache)) = (variable, variable_cache) {
-                    let (
-                        variables_reference,
-                        named_child_variables_cnt,
-                        indexed_child_variables_cnt,
-                    ) = self.get_variable_reference(&variable, variable_cache);
-                    response_body.indexed_variables = Some(indexed_child_variables_cnt);
-                    response_body.memory_reference = Some(format!("{}", variable.memory_location));
-                    response_body.named_variables = Some(named_child_variables_cnt);
-                    response_body.result = variable.get_value(variable_cache);
-                    response_body.type_ = Some(format!("{:?}", variable.type_name));
-                    response_body.variables_reference = variables_reference;
-                } else {
-                    // If we made it to here, no register or variable matched the expression.
-                }
             }
         }
-
         self.send_response(request, Ok(Some(response_body)))
     }
 
