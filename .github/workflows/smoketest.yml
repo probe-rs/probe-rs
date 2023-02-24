@@ -19,20 +19,6 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v3
 
-      #- name: Add ports mirrors
-      #  run: |
-      #    echo "deb [arch=arm64] http://ports.ubuntu.com/ jammy main multiverse universe" | sudo tee -a /etc/apt/sources.list
-      #    echo "deb [arch=arm64] http://ports.ubuntu.com/ jammy-security main multiverse universe" | sudo tee -a /etc/apt/sources.list
-      #    echo "deb [arch=arm64] http://ports.ubuntu.com/ jammy-backports main multiverse universe" | sudo tee -a /etc/apt/sources.list
-      #    echo "deb [arch=arm64] http://ports.ubuntu.com/ jammy-updates main multiverse universe" | sudo tee -a /etc/apt/sources.list
-      #    sudo cat /etc/apt/sources.list
-
-      #- name: Install libusb, libudev (linux)
-      #  run: |
-      #    sudo dpkg --add-architecture arm64 || true
-      #    sudo apt update || true
-      #    sudo apt install -y libusb-1.0-0-dev:arm64 libudev-dev:arm64
-
       - uses: ./.github/actions/setup
         with:
           targets:
@@ -47,14 +33,27 @@ jobs:
         uses: Swatinem/rust-cache@v2.2.0
       
       - name: Build smoke-tester
-        run: | 
-          which cross
-          cross build -vv --release --target aarch64-unknown-linux-gnu -p smoke_tester
+        run:
+          cross build --release --target aarch64-unknown-linux-gnu -p smoke_tester
       
       - uses: actions/upload-artifact@v3
         with:
           name: smoke_tester
           path: target/aarch64-unknown-linux-gnu/release/smoke_tester
+
+  test:
+    runs-on: ["self-hosted", "linux", "ARM64", "smoke-test"]
+
+    needs: build
+
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: smoke_tester
+
+      - name: Run smoke-tester
+        run:
+          smoke_tester --dut-definitions $SMOKE_TESTER_CONFIG
 
       
 
