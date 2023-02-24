@@ -47,8 +47,9 @@ jobs:
         uses: Swatinem/rust-cache@v2.2.0
       
       - name: Build smoke-tester
-        run:
-          cross build --release --target aarch64-unknown-linux-gnu -p smoke_tester
+        run: | 
+          which cross
+          cross build -vv --release --target aarch64-unknown-linux-gnu -p smoke_tester
       
       - uses: actions/upload-artifact@v3
         with:
