@@ -21,6 +21,7 @@ pre-build = [
 # image.name = "ahuszagh/aarch64-cross:aarch64-unknown-linux-gnu"
 # image.toolchain = ["aarch64-unknown-linux-gnu"]
 pre-build = [
+    "dpkg --add-architecture arm64",
     "apt-get update",
-    "apt-get install --assume-yes libusb-1.0-0-dev libftdi1-dev libudev-dev libssl-dev",
+    "apt-get install --assume-yes libusb-1.0-0-dev:arm64 libftdi1-dev:arm64 libudev-dev:arm64 libssl-dev:arm64",
 ]
