@@ -5,6 +5,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Update description of Fedora prequisites in README.md
+
 ## [0.17.0]
 
 Released 2023-02-06
