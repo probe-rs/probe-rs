@@ -54,7 +54,7 @@ jobs:
       - name: Run smoke-tester
         run:  |
           chmod +x smoke_tester
-          ./smoke_tester --dut-definitions $SMOKE_TESTER_CONFIG
+          ./smoke_tester --dut-definitions $SMOKE_TESTER_CONFIG --markdown-summary $GITHUB_STEP_SUMMARY
 
       
 

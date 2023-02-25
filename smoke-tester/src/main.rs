@@ -1,6 +1,8 @@
 use std::{
+    io::Write,
     marker::PhantomData,
     path::Path,
+    process::ExitCode,
     time::{Duration, Instant},
 };
 
@@ -11,7 +13,7 @@ use crate::{
         test_register_access,
     },
 };
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result};
 use colored::Colorize;
 
 use clap::{Arg, Command};
@@ -21,7 +23,7 @@ mod dut_definition;
 mod macros;
 mod tests;
 
-fn main() -> Result<()> {
+fn main() -> Result<ExitCode> {
     pretty_env_logger::init();
 
     let app = Command::new("smoke tester")
@@ -51,6 +53,12 @@ fn main() -> Result<()> {
                 .value_name("FILE")
                 .required(true)
                 .conflicts_with_all(["chip", "dut_definitions"]),
+        )
+        .arg(
+            Arg::new("markdown_summary")
+                .long("markdown-summary")
+                .value_name("FILE")
+                .required(false),
         );
 
     let matches = app.get_matches();
@@ -144,26 +152,106 @@ fn main() -> Result<()> {
         Ok(())
     });
 
-    if result.any_failed() {
-        return Err(anyhow!(
-            "{} out of {} tests failed.",
-            result.num_tests - result.num_successful,
-            result.num_tests
-        ));
+    println!();
+
+    let printer = ConsoleReportPrinter;
+
+    printer.print(&result, std::io::stdout())?;
+
+    if let Some(summary_file) = matches.get_one::<String>("markdown_summary") {
+        let mut file = std::fs::File::create(summary_file)?;
+
+        writeln!(file, "## smoke-tester")?;
+
+        for dut in &result.dut_tests {
+            let test_state = if dut.succesful { "Passed" } else { "Failed" };
+
+            writeln!(file, " - {}: {}", dut.name, test_state)?;
+        }
     }
 
-    Ok(())
+    Ok(result.exit_code())
 }
 
 #[derive(Debug)]
-struct TestResult {
-    num_successful: usize,
-    num_tests: usize,
+struct DutReport {
+    name: String,
+    succesful: bool,
 }
 
-impl TestResult {
+#[derive(Debug)]
+struct TestReport {
+    dut_tests: Vec<DutReport>,
+}
+
+impl TestReport {
+    fn new() -> Self {
+        TestReport { dut_tests: vec![] }
+    }
+
+    fn add_report(&mut self, report: DutReport) {
+        self.dut_tests.push(report)
+    }
+
     fn any_failed(&self) -> bool {
-        self.num_successful < self.num_tests
+        self.dut_tests.iter().any(|d| !d.succesful)
+    }
+
+    /// Return the appropriate exit code for the test result.
+    ///
+    /// This is current 0, or success, if all tests have passed,
+    /// and the default failure exit code for the platform otherwise.
+    ///
+    /// See [ExitCode::SUCESS] and [ExitCode::FAILURE].
+    fn exit_code(&self) -> ExitCode {
+        if self.any_failed() {
+            ExitCode::FAILURE
+        } else {
+            ExitCode::SUCCESS
+        }
+    }
+
+    fn num_failed_tests(&self) -> usize {
+        self.dut_tests.iter().filter(|d| !d.succesful).count()
+    }
+
+    fn num_tests(&self) -> usize {
+        self.dut_tests.iter().count()
+    }
+}
+
+#[derive(Debug)]
+struct ConsoleReportPrinter;
+
+impl ConsoleReportPrinter {
+    fn print(
+        &self,
+        report: &TestReport,
+        mut writer: impl std::io::Write,
+    ) -> Result<(), std::io::Error> {
+        writeln!(writer, "Test summary:")?;
+
+        for dut in &report.dut_tests {
+            if dut.succesful {
+                writeln!(writer, " [{}] passed", &dut.name)?;
+            } else {
+                writeln!(writer, " [{}] failed", &dut.name)?;
+            }
+        }
+
+        // Write summary
+        if report.any_failed() {
+            writeln!(
+                writer,
+                "{} out of {} tests failed.",
+                report.num_failed_tests(),
+                report.num_tests()
+            )?;
+        } else {
+            writeln!(writer, "All tests passed.")?;
+        }
+
+        Ok(())
     }
 }
 
@@ -219,16 +307,12 @@ impl<'a> TestTracker<'a> {
     fn run(
         &mut self,
         handle_dut: impl Fn(&mut TestTracker, &DutDefinition) -> Result<(), Error>,
-    ) -> TestResult {
+    ) -> TestReport {
+        let mut report = TestReport::new();
+
         let mut tests_ok = true;
 
-        let mut num_duts = 0;
-
-        let mut num_ok = 0;
-
-        for definition in &mut self.dut_definitions.clone() {
-            num_duts += 1;
-
+        for definition in &self.dut_definitions.clone() {
             print_dut_status!(self, blue, "Starting Test",);
 
             if let DefinitionSource::File(path) = &definition.source {
@@ -238,11 +322,18 @@ impl<'a> TestTracker<'a> {
 
             match handle_dut(self, definition) {
                 Ok(()) => {
-                    num_ok += 1;
+                    report.add_report(DutReport {
+                        name: definition.chip.name.clone(),
+                        succesful: true,
+                    });
                     println_dut_status!(self, green, "Tests Passed",);
                 }
                 Err(e) => {
                     tests_ok = false;
+                    report.add_report(DutReport {
+                        name: definition.chip.name.clone(),
+                        succesful: false,
+                    });
 
                     println_dut_status!(self, red, "Error message: {:#}", e);
                     println_dut_status!(self, red, "Tests Failed",);
@@ -258,10 +349,7 @@ impl<'a> TestTracker<'a> {
             println_status!(self, red, "Some DUTs failed some tests.",);
         }
 
-        TestResult {
-            num_successful: num_ok,
-            num_tests: num_duts,
-        }
+        report
     }
 
     fn run_test(
