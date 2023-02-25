@@ -1,4 +1,8 @@
-use std::{marker::PhantomData, path::Path, time::Duration};
+use std::{
+    marker::PhantomData,
+    path::Path,
+    time::{Duration, Instant},
+};
 
 use crate::{
     dut_definition::{DefinitionSource, DutDefinition},
@@ -264,18 +268,28 @@ impl<'a> TestTracker<'a> {
         &mut self,
         test: impl FnOnce(&TestTracker) -> Result<(), Error>,
     ) -> Result<(), Error> {
-        let res = match test(self) {
+        let start_time = Instant::now();
+
+        let test_result = test(self);
+
+        let duration = start_time.elapsed();
+
+        let formatted_duration = if duration < Duration::from_secs(1) {
+            format!("{} ms", duration.as_millis())
+        } else {
+            format!("{:.2} s", duration.as_secs_f32())
+        };
+
+        match &test_result {
             Ok(()) => {
-                println_test_status!(self, green, "Test passed.");
-                Ok(())
+                println_test_status!(self, green, "Test passed in {formatted_duration}.");
             }
-            Err(e) => {
-                println_test_status!(self, red, "Test failed.");
-                Err(e)
+            Err(_e) => {
+                println_test_status!(self, red, "Test failed in {formatted_duration}.");
             }
         };
         self.advance_test();
-        res?;
-        Ok(())
+
+        test_result
     }
 }
