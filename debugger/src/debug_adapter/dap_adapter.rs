@@ -1,6 +1,9 @@
 use crate::{
     debug_adapter::{dap_types, protocol::ProtocolAdapter},
-    debugger::{configuration::ConsoleLog, core_data::CoreHandle, session_data::BreakpointType},
+    debugger::{
+        configuration::ConsoleLog, core_data::CoreHandle, debug_entry::DebugSessionStatus,
+        session_data::BreakpointType,
+    },
     DebuggerError,
 };
 use anyhow::{anyhow, Result};
@@ -306,13 +309,48 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             variables_reference: 0_i64,
         };
 
-        if let Some(context) = arguments.context {
+        if let Some(context) = &arguments.context {
             if context == "repl" {
-                let (_, repl_commands) = build_expanded_commands(arguments.expression.trim());
-                if let Some(repl_command) = repl_commands.first() {
-                    match (repl_command.handler)(target_core) {
-                        Ok(_) => todo!(),
-                        Err(error) => response_body.result = format!("{error:?}",),
+                // While the target is running, we only allow a 'break' command.
+                if !target_core.core.core_halted()?
+                    && !matches!(arguments.expression.trim(), "break" | "quit")
+                {
+                    response_body.result =
+                        "The target is running. Only the 'break' or 'quit' commands are allowed."
+                            .to_string();
+                } else {
+                    // The target is halted, so we can allow any repl command.
+                    // Now we can make sure we have a valid expression and evaluate it.
+                    let (command_root, repl_commands) =
+                        build_expanded_commands(arguments.expression.trim());
+                    if let Some(repl_command) = repl_commands.first() {
+                        // We have a valid repl command, so we can evaluate it.
+                        // First, let's extract the remainder of the arguments, so that we can pass them to the handler.
+                        let argument_string = arguments
+                            .expression
+                            .trim_start_matches(&command_root)
+                            .trim_start()
+                            .trim_start_matches(repl_command.command)
+                            .trim_start();
+                        match (repl_command.handler)(
+                            target_core,
+                            &mut response_body,
+                            argument_string,
+                            &arguments,
+                        ) {
+                            Ok(debug_session_status) => {
+                                if debug_session_status == DebugSessionStatus::Terminate {
+                                    // This is a special case, where a repl command has requested that the debug session be terminated.
+                                    self.send_event(
+                                        "terminated",
+                                        Some(TerminatedEventBody { restart: None }),
+                                    )?;
+                                } else {
+                                    // In all other cases, the response_body would have been updated by the repl command handler.
+                                }
+                            }
+                            Err(error) => response_body.result = format!("{error:?}",),
+                        }
                     }
                 }
             } else {
@@ -380,7 +418,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 variables_reference,
                                 named_child_variables_cnt,
                                 indexed_child_variables_cnt,
-                            ) = self.get_variable_reference(&variable, variable_cache);
+                            ) = get_variable_reference(&variable, variable_cache);
                             response_body.indexed_variables = Some(indexed_child_variables_cnt);
                             response_body.memory_reference =
                                 Some(format!("{}", variable.memory_location));
@@ -399,11 +437,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     }
 
     /// Works in tandem with the `evaluate` request, to provide possible completions in the Debug Console REPL window.
-    pub(crate) fn completions(
-        &mut self,
-        target_core: &mut CoreHandle,
-        request: &Request,
-    ) -> Result<()> {
+    pub(crate) fn completions(&mut self, _: &mut CoreHandle, request: &Request) -> Result<()> {
         // TODO: When variables appear in the `watch` context, they will not resolve correctly after a 'step' function. Consider doing the lazy load for 'either/or' of Variables vs. Evaluate
 
         let arguments: CompletionsArguments = match get_arguments(request) {
@@ -509,7 +543,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 variables_reference,
                                 named_child_variables_cnt,
                                 indexed_child_variables_cnt,
-                            ) = self.get_variable_reference(&cache_variable, variable_cache);
+                            ) = get_variable_reference(&cache_variable, variable_cache);
                             response_body.variables_reference = Some(variables_reference);
                             response_body.named_variables = Some(named_child_variables_cnt);
                             response_body.indexed_variables = Some(indexed_child_variables_cnt);
@@ -1597,7 +1631,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             variables_reference,
                             named_child_variables_cnt,
                             indexed_child_variables_cnt,
-                        ) = self.get_variable_reference(
+                        ) = get_variable_reference(
                             variable,
                             &mut core_peripherals.svd_variable_cache,
                         );
@@ -1743,7 +1777,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             variables_reference,
                             named_child_variables_cnt,
                             indexed_child_variables_cnt,
-                        ) = self.get_variable_reference(variable, variable_cache);
+                        ) = get_variable_reference(variable, variable_cache);
                         Variable {
                             name: variable.name.to_string(),
                             // evaluate_name: Some(variable.name.to_string()),
@@ -1934,47 +1968,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             self.send_event("stopped", event_body)?;
         }
         Ok(())
-    }
-
-    /// The DAP protocol uses three related values to determine how to invoke the `Variables` request.
-    /// This function retrieves that information from the `DebugInfo::VariableCache` and returns it as
-    /// (`variable_reference`, `named_child_variables_cnt`, `indexed_child_variables_cnt`)
-    fn get_variable_reference(
-        &mut self,
-        parent_variable: &probe_rs::debug::Variable,
-        cache: &mut probe_rs::debug::VariableCache,
-    ) -> (i64, i64, i64) {
-        if !parent_variable.is_valid() {
-            return (0, 0, 0);
-        }
-        let mut named_child_variables_cnt = 0;
-        let mut indexed_child_variables_cnt = 0;
-        if let Ok(children) = cache.get_children(Some(parent_variable.variable_key)) {
-            for child_variable in children {
-                if child_variable.is_indexed() {
-                    indexed_child_variables_cnt += 1;
-                } else {
-                    named_child_variables_cnt += 1;
-                }
-            }
-        };
-
-        if named_child_variables_cnt > 0 || indexed_child_variables_cnt > 0 {
-            (
-                parent_variable.variable_key,
-                named_child_variables_cnt,
-                indexed_child_variables_cnt,
-            )
-        } else if parent_variable.variable_node_type.is_deferred()
-            && parent_variable.get_value(cache) != "()"
-        {
-            // We have not yet cached the children for this reference.
-            // Provide DAP Client with a reference so that it will explicitly ask for children when the user expands it.
-            (parent_variable.variable_key, 0, 0)
-        } else {
-            // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
-            (0, 0, 0)
-        }
     }
 
     /// Returns one of the standard DAP Requests if all goes well, or a "error" request, which should indicate that the calling function should return.
@@ -2306,5 +2299,45 @@ impl DapStatus for CoreStatus {
             },
             CoreStatus::Unknown => ("unknown", "Core status cannot be determined".to_string()),
         }
+    }
+}
+
+/// The DAP protocol uses three related values to determine how to invoke the `Variables` request.
+/// This function retrieves that information from the `DebugInfo::VariableCache` and returns it as
+/// (`variable_reference`, `named_child_variables_cnt`, `indexed_child_variables_cnt`)
+pub(crate) fn get_variable_reference(
+    parent_variable: &probe_rs::debug::Variable,
+    cache: &mut probe_rs::debug::VariableCache,
+) -> (i64, i64, i64) {
+    if !parent_variable.is_valid() {
+        return (0, 0, 0);
+    }
+    let mut named_child_variables_cnt = 0;
+    let mut indexed_child_variables_cnt = 0;
+    if let Ok(children) = cache.get_children(Some(parent_variable.variable_key)) {
+        for child_variable in children {
+            if child_variable.is_indexed() {
+                indexed_child_variables_cnt += 1;
+            } else {
+                named_child_variables_cnt += 1;
+            }
+        }
+    };
+
+    if named_child_variables_cnt > 0 || indexed_child_variables_cnt > 0 {
+        (
+            parent_variable.variable_key,
+            named_child_variables_cnt,
+            indexed_child_variables_cnt,
+        )
+    } else if parent_variable.variable_node_type.is_deferred()
+        && parent_variable.get_value(cache) != "()"
+    {
+        // We have not yet cached the children for this reference.
+        // Provide DAP Client with a reference so that it will explicitly ask for children when the user expands it.
+        (parent_variable.variable_key, 0, 0)
+    } else {
+        // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
+        (0, 0, 0)
     }
 }
