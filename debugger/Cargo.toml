@@ -35,7 +35,7 @@ bitfield = "0.14.0"
 serde_json = "1"
 serde = { version = "1", features = ["derive"] }
 schemafy = "0.6"
-goblin = "0.6.0"
+goblin = "0.6.1"
 base64 = "0.21"
 svd-parser = { version = "0.14.1", features = ["expand"] }
 directories = "4"
