@@ -41,4 +41,4 @@ goblin = "0.6.0"
 num-traits = "0.2.15"
 defmt-decoder = { version = "0.3.4", features = ["unstable"] }
 time = "0.3"
-is-terminal = "0.4.3"
+is-terminal = "0.4.4"
