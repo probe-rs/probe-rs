@@ -32,7 +32,7 @@ cargo_toml = "0.15.2"
 serde = { version = "1", features = ["derive"] }
 cargo_metadata = "0.15.3"
 dunce = "1.0.3"
-sentry = { version = "0.29.3", features = ["anyhow"], optional = true }
+sentry = { version = "0.30.0", features = ["anyhow"], optional = true }
 simplelog = "0.12.0"
 terminal_size = "0.2.5"
 clap = { version = "4.1", features = ["derive"] }
