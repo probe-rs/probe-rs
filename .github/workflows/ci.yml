@@ -41,7 +41,7 @@ jobs:
       - uses: ./.github/actions/setup
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v2.2.0
+        uses: Swatinem/rust-cache@v2.2.1
 
       - name: cargo check for probe-rs, --no-default-features
         run: cargo check -p probe-rs --no-default-features --locked
@@ -81,7 +81,7 @@ jobs:
           targets: thumbv7m-none-eabi
       
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v2.2.0
+        uses: Swatinem/rust-cache@v2.2.1
 
       - name: Run cargo test
         run: cargo test --all-features --locked
@@ -117,7 +117,7 @@ jobs:
           components: clippy
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v2.2.0
+        uses: Swatinem/rust-cache@v2.2.1
 
       - name: Run cargo clippy
         run: cargo clippy --all-features --locked -- -D warnings
@@ -143,7 +143,7 @@ jobs:
       - uses: ./.github/actions/setup
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v2.2.0
+        uses: Swatinem/rust-cache@v2.2.1
 
       - name: Run cargo doc
         run: cargo doc --all-features --locked
