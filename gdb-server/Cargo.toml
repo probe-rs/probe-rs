@@ -27,7 +27,7 @@ probe-rs = { workspace = true }
 log = { workspace = true }
 anyhow = { workspace = true }
 itertools = "0.10.5"
-gdbstub = "0.6.3"
+gdbstub = "0.6.4"
 
 [dev-dependencies]
 insta = "1.28.0"
