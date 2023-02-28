@@ -30,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   enabling debug clocks during sleep modes #1521
 - Add default sequence 'debug_core_stop', which disables debugging when disconneting from ARM cores by default. (#1525)
 
+### Changed
+
+- probe-rs: Allows `add_target_from_yaml` function to accept multiple sources
+
 ## [0.17.0]
 
 Released 2023-02-06

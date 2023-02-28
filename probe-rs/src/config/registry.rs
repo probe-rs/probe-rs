@@ -277,12 +277,9 @@ impl Registry {
         Target::new(family, &chip.name)
     }
 
-    fn add_target_from_yaml<R>(
-        &mut self,
-        yaml_reader: R
-    ) -> Result<(), RegistryError>
+    fn add_target_from_yaml<R>(&mut self, yaml_reader: R) -> Result<(), RegistryError>
     where
-        R: Read
+        R: Read,
     {
         let family: ChipFamily = serde_yaml::from_reader(yaml_reader)?;
 
@@ -320,11 +317,9 @@ pub(crate) fn get_target_by_chip_info(chip_info: ChipInfo) -> Result<Target, Reg
 
 /// Parse a target description and add the contained targets
 /// to the internal target registry.
-pub fn add_target_from_yaml<R>(
-    yaml_reader: R
-) -> Result<(), RegistryError>
+pub fn add_target_from_yaml<R>(yaml_reader: R) -> Result<(), RegistryError>
 where
-    R: Read
+    R: Read,
 {
     REGISTRY.lock().unwrap().add_target_from_yaml(yaml_reader)
 }
