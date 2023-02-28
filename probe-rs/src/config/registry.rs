@@ -4,8 +4,7 @@ use super::{Chip, ChipFamily, ChipInfo, Core, Target, TargetDescriptionSource};
 use crate::config::CoreType;
 use once_cell::sync::Lazy;
 use probe_rs_target::{CoreAccessOptions, RiscvCoreAccessOptions};
-use std::fs::File;
-use std::path::Path;
+use std::io::Read;
 use std::sync::{Arc, Mutex};
 
 static REGISTRY: Lazy<Arc<Mutex<Registry>>> =
@@ -278,9 +277,14 @@ impl Registry {
         Target::new(family, &chip.name)
     }
 
-    fn add_target_from_yaml(&mut self, path_to_yaml: &Path) -> Result<(), RegistryError> {
-        let file = File::open(path_to_yaml)?;
-        let family: ChipFamily = serde_yaml::from_reader(file)?;
+    fn add_target_from_yaml<R>(
+        &mut self,
+        yaml_reader: R
+    ) -> Result<(), RegistryError>
+    where
+        R: Read
+    {
+        let family: ChipFamily = serde_yaml::from_reader(yaml_reader)?;
 
         family
             .validate()
@@ -314,10 +318,15 @@ pub(crate) fn get_target_by_chip_info(chip_info: ChipInfo) -> Result<Target, Reg
     REGISTRY.lock().unwrap().get_target_by_chip_info(chip_info)
 }
 
-/// Parse a target description file and add the contained targets
+/// Parse a target description and add the contained targets
 /// to the internal target registry.
-pub fn add_target_from_yaml(path_to_yaml: &Path) -> Result<(), RegistryError> {
-    REGISTRY.lock().unwrap().add_target_from_yaml(path_to_yaml)
+pub fn add_target_from_yaml<R>(
+    yaml_reader: R
+) -> Result<(), RegistryError>
+where
+    R: Read
+{
+    REGISTRY.lock().unwrap().add_target_from_yaml(yaml_reader)
 }
 
 /// Get a list of all families which are contained in the internal
