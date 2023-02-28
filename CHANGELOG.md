@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `Restart` will now restart the debug session. Currently this is support for ARM targets only.
   - If a newer binary is available, and flashing enabled, then the new binary will be flashed before starting the new debug session.
 
+### Changed
+
+- Update MS DAP protocol to v1.60.0. Documentation clarifications only. (#)
+
 ### Added
 
 - Added LPC55Sxx target #1513
