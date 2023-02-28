@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `Restart` will now restart the debug session. Currently this is support for ARM targets only.
   - If a newer binary is available, and flashing enabled, then the new binary will be flashed before starting the new debug session.
 
-- probe-rs-debugger: Ensure VSCode will halt on early `main()`, irrespective of flashing config. (#1529)
+- probe-rs-debugger: Ensure VSCode will halt on all configured breakpoints`, irrespective of flashing config. (#1529)
 
 ### Changed
 
