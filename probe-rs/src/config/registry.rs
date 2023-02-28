@@ -323,6 +323,7 @@ pub(crate) fn get_target_by_chip_info(chip_info: ChipInfo) -> Result<Target, Reg
 /// ## Add targets from a YAML file
 ///
 /// ```no_run
+/// use std::path::Path;
 /// use std::fs::File;
 ///
 /// let file = File::open(Path::new("/path/target.yaml"))?;
