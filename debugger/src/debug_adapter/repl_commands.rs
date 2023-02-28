@@ -309,6 +309,7 @@ static REPL_COMMANDS: &[ReplCommand<H>] = &[
         handler: |target_core, response_body, _, _| {
             target_core.core.run()?;
             response_body.result = CoreStatus::Running.short_long_status(None).1;
+            target_core.core_data.last_known_status = CoreStatus::Running;
             Ok(DebugSessionStatus::Continue)
         },
     },
@@ -325,7 +326,7 @@ static REPL_COMMANDS: &[ReplCommand<H>] = &[
                     .short_long_status(Some(core_info.pc))
                     .1;
             } else {
-                // TODO: Currently this sets breakpoints without synching the VSCode UI. Investigate if this is possible.
+                // TODO: Currently this sets breakpoints without synching the VSCode UI. We can send a Dap `breakpoint` event.
                 println!("Setting breakpoint at address: {}", command_arguments);
 
                 let mut input_arguments = command_arguments.split_whitespace();
