@@ -493,9 +493,6 @@ impl Debugger {
             return Err(error);
         }
 
-        // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
-        target_core.core.debug_on_sw_breakpoint(true)?;
-
         // Before we complete, load the (optional) CMSIS-SVD file and its variable cache.
         // Configure the [CorePeripherals].
         if let Some(svd_file) = &target_core_config.svd_file {
@@ -513,10 +510,15 @@ impl Debugger {
             };
         }
 
-        if self.config.flashing_config.flashing_enabled {
+        if requested_target_session_type == TargetSessionType::LaunchRequest {
+            // This will effectively do a `reset` and `halt` of the core, which is what we want until after the `configuration_done` request.
             debug_adapter
                 .restart(&mut target_core, None)
                 .context("Failed to restart core")?;
+        } else {
+            // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
+            // For LaunchRequest, this is done in the `restart` above.
+            target_core.core.debug_on_sw_breakpoint(true)?;
         }
 
         drop(target_core);
@@ -572,21 +574,16 @@ impl Debugger {
                 Err(error)
             })?;
 
-        // Immediately after attaching, halt the core, so that we can finish initalization without bumping into user code.
-        // Depending on supplied `config`, the core will be restarted at the end of initialization in the `configuration_done` request.
+        // Immediately after attaching, halt the core, so that we can finish restart logic without bumping into user code.
         if let Err(error) = halt_core(&mut target_core.core) {
             debug_adapter.send_error_response(&error)?;
             return Err(error);
         }
 
-        // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
-        target_core.core.debug_on_sw_breakpoint(true)?;
-
-        if self.config.flashing_config.flashing_enabled {
-            debug_adapter
-                .restart(&mut target_core, Some(request))
-                .context("Failed to restart core")?;
-        }
+        // After completing optional flashing and other config, we can run the debug adapter's restart logic.
+        debug_adapter
+            .restart(&mut target_core, Some(request))
+            .context("Failed to restart core")?;
 
         Ok(debug_adapter)
     }
