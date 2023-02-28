@@ -43,6 +43,8 @@ pub enum DebuggerError {
     Other(#[from] anyhow::Error),
     #[error(transparent)]
     ProbeRs(#[from] Error),
+    #[error("{0}")]
+    ReplError(String),
     #[error("Serialiazation error")]
     SerdeError(#[from] serde_json::Error),
     #[error("Failed to open source file '{source_file_name}'.")]

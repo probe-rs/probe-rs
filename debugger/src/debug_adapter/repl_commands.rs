@@ -1,12 +1,14 @@
 use super::{
-    dap_adapter::DapStatus,
+    dap_adapter::{disassemble_target_memory, DapStatus},
     dap_types::{
-        CompletionItem, CompletionItemType, CompletionsArguments, EvaluateArguments,
-        EvaluateResponseBody, VariablePresentationHint,
+        CompletionItem, CompletionItemType, CompletionsArguments, DisassembledInstruction,
+        EvaluateArguments, EvaluateResponseBody, VariablePresentationHint,
     },
 };
 use crate::{
-    debugger::{core_data::CoreHandle, debug_entry::DebugSessionStatus},
+    debugger::{
+        core_data::CoreHandle, debug_entry::DebugSessionStatus, session_data::BreakpointType,
+    },
     DebuggerError,
 };
 use probe_rs::{debug::VariableName, CoreStatus, HaltReason, MemoryInterface};
@@ -74,6 +76,200 @@ impl<H> Display for ReplCommand<H> {
     }
 }
 
+// Limited subset of gdb format specifiers
+#[derive(PartialEq)]
+enum GdbFormat {
+    Binary,
+    Hex,
+    Instruction,
+}
+
+impl TryFrom<&char> for GdbFormat {
+    type Error = DebuggerError;
+
+    fn try_from(format: &char) -> Result<Self, Self::Error> {
+        match format {
+            't' => Ok(GdbFormat::Binary),
+            'x' => Ok(GdbFormat::Hex),
+            'i' => Ok(GdbFormat::Instruction),
+            _ => Err(DebuggerError::ReplError(format!(
+                "Invalid format specifier: {format}"
+            ))),
+        }
+    }
+}
+
+impl Display for GdbFormat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GdbFormat::Binary => write!(f, "t(binary)"),
+            GdbFormat::Hex => write!(f, "x(hexadecimal)"),
+            GdbFormat::Instruction => write!(f, "i(nstruction)"),
+        }
+    }
+}
+
+enum GdbUnit {
+    Byte,
+    HalfWord,
+    Word,
+    Giant,
+}
+
+impl TryFrom<&char> for GdbUnit {
+    type Error = DebuggerError;
+
+    fn try_from(unit_size: &char) -> Result<Self, Self::Error> {
+        match unit_size {
+            'b' => Ok(GdbUnit::Byte),
+            'h' => Ok(GdbUnit::HalfWord),
+            'w' => Ok(GdbUnit::Word),
+            'g' => Ok(GdbUnit::Giant),
+            _ => Err(DebuggerError::ReplError(format!(
+                "Invalid unit size: {unit_size}"
+            ))),
+        }
+    }
+}
+
+impl GdbUnit {
+    fn get_size(&self) -> usize {
+        match self {
+            GdbUnit::Byte => 1,
+            GdbUnit::HalfWord => 2,
+            GdbUnit::Word => 4,
+            GdbUnit::Giant => 8,
+        }
+    }
+}
+
+impl Display for GdbUnit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            GdbUnit::Byte => write!(f, "b(yte)"),
+            GdbUnit::HalfWord => write!(f, "h(alfword)"),
+            GdbUnit::Word => write!(f, "w(ord)"),
+            GdbUnit::Giant => write!(f, "g(iant)"),
+        }
+    }
+}
+
+struct GdbNuf {
+    unit_count: usize,
+    unit_specifier: GdbUnit,
+    format_specifier: GdbFormat,
+}
+
+impl GdbNuf {
+    // TODO: If the format_specifier is `instruction` we should return the size of the instruction for the architecture.
+    fn get_size(&self) -> usize {
+        self.unit_count * self.unit_specifier.get_size()
+    }
+}
+
+/// TODO: gdb changes the default `format_specifier` everytime x or p is used. For now we will use a static default of `x`.
+impl Default for GdbNuf {
+    fn default() -> Self {
+        Self {
+            unit_count: 1,
+            unit_specifier: GdbUnit::Word,
+            format_specifier: GdbFormat::Hex,
+        }
+    }
+}
+
+impl TryFrom<&str> for GdbNuf {
+    type Error = DebuggerError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let mut nuf = value.to_string();
+        let mut unit_specifier: Option<GdbUnit> = None;
+        let mut format_specifier: Option<GdbFormat> = None;
+
+        // Decode in reverse order, so that we can deal with variable 'count' characters.
+        while let Some(last_char) = nuf.pop() {
+            match last_char {
+                't' | 'x' | 'i' => {
+                    if format_specifier.is_none() {
+                        format_specifier = Some(GdbFormat::try_from(&last_char)?);
+                    } else {
+                        return Err(DebuggerError::ReplError(format!(
+                            "Invalid format specifier: {value}"
+                        )));
+                    }
+                }
+                'b' | 'h' | 'w' | 'g' => {
+                    if unit_specifier.is_none() {
+                        unit_specifier = Some(GdbUnit::try_from(&last_char)?);
+                    } else {
+                        return Err(DebuggerError::ReplError(format!(
+                            "Invalid unit specifier: {value}"
+                        )));
+                    }
+                }
+                _ => {
+                    if last_char.is_numeric() {
+                        // The remainder of the string is the unit count.
+                        nuf.push(last_char);
+                        break;
+                    } else {
+                        return Err(DebuggerError::ReplError(format!(
+                            "Invalid '/Nuf' specifier: {value}"
+                        )));
+                    }
+                }
+            }
+        }
+
+        let mut result = Self::default();
+        if let Some(format_specifier) = format_specifier {
+            result.format_specifier = format_specifier;
+        }
+        if let Some(unit_specifier) = unit_specifier {
+            result.unit_specifier = unit_specifier;
+        }
+        if !nuf.is_empty() {
+            result.unit_count = nuf.parse::<usize>().map_err(|error| {
+                DebuggerError::ReplError(format!("Invalid unit count specifier: {value} - {error}"))
+            })?;
+        }
+
+        Ok(result)
+    }
+}
+
+struct GdbNufMemoryResult<'a> {
+    nuf: &'a GdbNuf,
+    memory: &'a Vec<u8>,
+}
+
+impl Display for GdbNufMemoryResult<'_> {
+    // TODO: Consider wrapping lines at 80 characters.
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.nuf.format_specifier {
+            GdbFormat::Binary => {
+                let width = 10_usize;
+                for byte in self.memory {
+                    write!(f, "{:#0width$b} ", byte)?;
+                }
+            }
+            GdbFormat::Hex => {
+                let width = 4_usize;
+                for byte in self.memory {
+                    write!(f, "{:#0width$x} ", byte)?;
+                }
+            }
+            GdbFormat::Instruction => {
+                let width = 4_usize;
+                for byte in self.memory {
+                    write!(f, "{:#0width$x} ", byte)?;
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
 static REPL_COMMANDS: &[ReplCommand<H>] = &[
     ReplCommand {
         command: "help",
@@ -119,39 +315,43 @@ static REPL_COMMANDS: &[ReplCommand<H>] = &[
     ReplCommand {
         command: "break",
         // Stricly speaking, gdb refers to this as an expression, but we only support variables.
-        help_text: "Breakpoints:",
-        sub_commands: Some(&[
-            ReplCommand {
-                command: "",
-                help_text: "Halt the target at the next instruction.",
-                sub_commands: None,
-                args: None,
-                handler: |target_core, response_body, _, _| {
-                    let core_info = target_core.core.halt(Duration::from_millis(500))?;
-                    response_body.result = CoreStatus::Halted(HaltReason::Request)
-                        .short_long_status(Some(core_info.pc))
-                        .1;
-                    Ok(DebugSessionStatus::Continue)
-                },
-            },
-            ReplCommand {
-                command: "*",
-                help_text: "Sets a breakpoint specified (hex) address.",
-                sub_commands: None,
-                args: Some(&[ReplCommandArgs::Required("address")]),
-                handler: |target_core, response_body, command_arguments, _| {
-                    println!("Setting breakpoint at address: {}", command_arguments);
-                    let core_info = target_core.core.halt(Duration::from_millis(500))?;
-                    response_body.result = CoreStatus::Halted(HaltReason::Request)
-                        .short_long_status(Some(core_info.pc))
-                        .1;
-                    Ok(DebugSessionStatus::Continue)
-                },
-            },
-        ]),
-        args: None,
-        handler: |_, response_body, _, _| {
-            response_body.result = "Please provide one of the required subcommands. See the `help` command for more information.".to_string();
+        help_text: "Sets a breakpoint specified location, or next instruction if unspecified.",
+        sub_commands: None,
+        args: Some(&[ReplCommandArgs::Optional("*address")]),
+        handler: |target_core, response_body, command_arguments, _| {
+            if command_arguments.is_empty() {
+                let core_info = target_core.core.halt(Duration::from_millis(500))?;
+                response_body.result = CoreStatus::Halted(HaltReason::Request)
+                    .short_long_status(Some(core_info.pc))
+                    .1;
+            } else {
+                // TODO: Currently this sets breakpoints without synching the VSCode UI. Investigate if this is possible.
+                println!("Setting breakpoint at address: {}", command_arguments);
+
+                let mut input_arguments = command_arguments.split_whitespace();
+                if let Some(input_argument) = input_arguments.next() {
+                    if input_argument.starts_with("*0x") || input_argument.starts_with("*0X") {
+                        if let Ok(memory_reference) = u64::from_str_radix(&input_argument[3..], 16)
+                        {
+                            target_core.set_breakpoint(
+                                memory_reference,
+                                BreakpointType::InstructionBreakpoint,
+                            )?;
+                            response_body.result =
+                                format!("Added breakpoint @ {:#010x}", memory_reference);
+                        } else {
+                            return Err(DebuggerError::ReplError(
+                                "Invalid hex address.".to_string(),
+                            ));
+                        }
+                    } else {
+                        return Err(DebuggerError::ReplError(
+                            "Invalid parameters. See the `help` command for more information."
+                                .to_string(),
+                        ));
+                    }
+                }
+            }
             Ok(DebugSessionStatus::Continue)
         },
     },
@@ -217,22 +417,22 @@ static REPL_COMMANDS: &[ReplCommand<H>] = &[
                                     lazy: Some(false),
                                     visibility: None,
                                 });
+                                Ok(DebugSessionStatus::Continue)
                             } else {
-                                response_body.result = format!(
+                                Err(DebuggerError::ReplError(format!(
                                     "No local variables found for frame: {:?}.",
                                     stack_frame.function_name
-                                );
+                                )))
                             }
                         } else {
-                            response_body.result = format!(
+                            Err(DebuggerError::ReplError(format!(
                                 "No variables available for frame: {:?}.",
                                 stack_frame.function_name
-                            );
+                            )))
                         }
                     } else {
-                        response_body.result = "No frame selected.".to_string();
+                        Err(DebuggerError::ReplError(("No frame selected.").to_string()))
                     }
-                    Ok(DebugSessionStatus::Continue)
                 },
             },
             ReplCommand {
@@ -253,9 +453,8 @@ static REPL_COMMANDS: &[ReplCommand<H>] = &[
             },
         ]),
         args: None,
-        handler: |_, response_body, _, _| {
-            response_body.result = "Please provide one of the required subcommands. See the `help` command for more information.".to_string();
-            Ok(DebugSessionStatus::Continue)
+        handler: |_, _, _, _| {
+            Err(DebuggerError::ReplError("Please provide one of the required subcommands. See the `help` command for more information.".to_string()))
         },
     },
     ReplCommand {
@@ -291,93 +490,139 @@ static REPL_COMMANDS: &[ReplCommand<H>] = &[
                         response_body.type_ = Some(format!("{:?}", variable.type_name));
                         response_body.variables_reference = variable.variable_key;
                     } else {
-                        response_body.result = format!(
+                        return Err(DebuggerError::ReplError(format!(
                             "No variable named {:?} found for frame: {:?}.",
                             variable_name, stack_frame.function_name
-                        );
+                        )));
                     }
                 } else {
-                    response_body.result = format!(
+                    return Err(DebuggerError::ReplError(format!(
                         "No variables available for frame: {:?}.",
                         stack_frame.function_name
-                    );
+                    )));
                 }
             } else {
-                response_body.result = "No frame selected.".to_string();
+                return Err(DebuggerError::ReplError("No frame selected.".to_string()));
             }
             Ok(DebugSessionStatus::Continue)
         },
     },
     ReplCommand {
         command: "x",
-        help_text: "Examine Memory.",
-        sub_commands: Some(&[
-            ReplCommand {
-                command: "",
-                help_text: "Examine Memory at specified address.",
-                sub_commands: None,
-                args: Some(&[ReplCommandArgs::Optional("address (hex)")]),
-                handler: |target_core, response_body, command_arguments, _| {
-                    if command_arguments.starts_with("0x") || command_arguments.starts_with("0X") {
-                        if let Ok(memory_reference) =
-                            u32::from_str_radix(&command_arguments[2..], 16)
-                        {
-                            let mut memory_result = [0u8; 4];
-                            match target_core
-                                .core
-                                .read(memory_reference.into(), &mut memory_result)
-                            {
-                                Ok(()) => {
-                                    response_body.result =
-                                        format!("{:#010x}", u32::from_le_bytes(memory_result))
-                                }
-                                Err(err) => {
-                                    response_body.result = format!(
-                                        "Cannot read memory at address {:#010x}: {:?}",
-                                        memory_reference, err
-                                    )
-                                }
-                            }
-                        } else {
-                            response_body.result = "Invalid address.".to_string();
-                        }
-                    } else {
-                        response_body.result =
-                            "Invalid address. Please specify as a hex address, starting with `0x`."
-                                .to_string();
-                    }
-                    Ok(DebugSessionStatus::Continue)
-                },
-            },
-            ReplCommand {
-                command: "/",
-                help_text: "Examine Memory, using format specifications, at the specified address.",
-                sub_commands: None,
-                args: Some(&[
-                    ReplCommandArgs::Optional("N - count of units"),
-                    ReplCommandArgs::Optional(
-                        "u - unit size: b(ytes), h(alfwords), w(ords), g(iant words",
-                    ),
-                    ReplCommandArgs::Optional("f - format: i(nstruction), t(binary), x(hex)"),
-                    ReplCommandArgs::Optional("address (hex)"),
-                ]),
-                handler: |target_core, response_body, command_arguments, _| {
-                    println!("memory request: {}", command_arguments);
-                    let core_info = target_core.core.halt(Duration::from_millis(500))?;
-                    response_body.result = CoreStatus::Halted(HaltReason::Request)
-                        .short_long_status(Some(core_info.pc))
-                        .1;
-                    Ok(DebugSessionStatus::Continue)
-                },
-            },
+        help_text: "Examine Memory, using format specifications, at the specified address.",
+        sub_commands: None,
+        args: Some(&[
+            ReplCommandArgs::Optional("/Nuf (N=count, u=unit, f=format)"),
+            ReplCommandArgs::Optional("address (hex)"),
         ]),
-        args: None,
-        handler: |_, response_body, _, _| {
-            response_body.result = "Please provide one of the required subcommands. See the `help` command for more information.".to_string();
-            Ok(DebugSessionStatus::Continue)
+        handler: |target_core, response_body, command_arguments, request_arguments| {
+            let input_arguments = command_arguments.split_whitespace();
+            let mut gdb_nuf = GdbNuf {
+                ..Default::default()
+            };
+            // Sequence of evaluations will be:
+            // 1. Specified address
+            // 2. Frame address
+            // 3. Program counter
+            let mut input_address = 0_u64;
+
+            for input_argument in input_arguments {
+                if input_argument.starts_with("0x") || input_argument.starts_with("0X") {
+                    if let Ok(memory_reference) = u64::from_str_radix(&input_argument[2..], 16) {
+                        input_address = memory_reference;
+                    } else {
+                        return Err(DebuggerError::ReplError("Invalid hex address.".to_string()));
+                    }
+                } else if input_argument.starts_with('/') {
+                    if let Some(gdb_nuf_string) = input_argument.strip_prefix('/') {
+                        gdb_nuf = GdbNuf::try_from(gdb_nuf_string)?;
+                    } else {
+                        return Err(DebuggerError::ReplError(
+                            "The '/' specifier must be followed by a valid gdb 'Nuf' format specifier."
+                                .to_string(),
+                        ));
+                    }
+                } else {
+                    return Err(DebuggerError::ReplError(
+                        "Invalid parameters. See the `help` command for more information."
+                            .to_string(),
+                    ));
+                }
+            }
+            if input_address == 0 {
+                // No address was specified, so we'll use the frame address, if available.
+                input_address = if let Some(frame_pc) = request_arguments
+                    .frame_id
+                    .and_then(|frame_id| {
+                        target_core
+                            .core_data
+                            .stack_frames
+                            .iter_mut()
+                            .find(|stack_frame| stack_frame.id == frame_id)
+                    })
+                    .map(|stack_frame| stack_frame.pc)
+                {
+                    frame_pc.try_into()?
+                } else {
+                    target_core
+                        .core
+                        .read_core_reg(target_core.core.registers().program_counter())?
+                }
+            }
+
+            memory_read(input_address, gdb_nuf, target_core, response_body)
         },
     },
 ];
+
+/// Read memory at the specified address (hex), using the [`GdbNuf`] specifiers to determine size and format.
+fn memory_read(
+    address: u64,
+    gdb_nuf: GdbNuf,
+    target_core: &mut CoreHandle,
+    response_body: &mut EvaluateResponseBody,
+) -> Result<DebugSessionStatus, DebuggerError> {
+    if gdb_nuf.format_specifier == GdbFormat::Instruction {
+        let assembly_lines: Vec<DisassembledInstruction> = disassemble_target_memory(
+            target_core,
+            0_i64,
+            0_i64,
+            address,
+            gdb_nuf.unit_count as i64,
+        )?;
+        if assembly_lines.is_empty() {
+            return Err(DebuggerError::ReplError(format!(
+                "Cannot disassemble memory at address {:#010x}",
+                address
+            )));
+        } else {
+            let mut formatted_output = "".to_string();
+            for assembly_line in &assembly_lines {
+                formatted_output.push_str(&assembly_line.to_string());
+            }
+            response_body.result = formatted_output;
+        }
+    } else {
+        let mut memory_result = vec![0u8; gdb_nuf.get_size()];
+        match target_core.core.read_8(address, &mut memory_result) {
+            Ok(()) => {
+                let formatted_output = GdbNufMemoryResult {
+                    nuf: &gdb_nuf,
+                    memory: &memory_result,
+                }
+                .to_string();
+                response_body.result = formatted_output;
+            }
+            Err(err) => {
+                return Err(DebuggerError::ReplError(format!(
+                    "Cannot read memory at address {:#010x}: {:?}",
+                    address, err
+                )))
+            }
+        }
+    }
+    Ok(DebugSessionStatus::Continue)
+}
 
 /// Get a list of command matches, based on the given command piece.
 /// The `command_piece` is a valid [`ReplCommand`], which can be either a command or a sub_command.
@@ -395,7 +640,7 @@ fn find_commands<'a>(
 /// If multiple levels of commands are involved, the ReplCommand::command will be concatenated.
 pub(crate) fn build_expanded_commands(command_filter: &str) -> (String, Vec<&ReplCommand<H>>) {
     // Split the given text into a command, optional sub-command, and optional arguments.
-    let command_pieces = command_filter.split_whitespace();
+    let command_pieces = command_filter.split(&[' ', '/', '*'][..]);
 
     // Always start building from the top-level commands.
     let mut repl_commands: Vec<&ReplCommand<H>> = REPL_COMMANDS.iter().collect();
@@ -419,9 +664,6 @@ pub(crate) fn build_expanded_commands(command_filter: &str) -> (String, Vec<&Rep
                 }
             }
         }
-
-        // If there is only one match, and we expect arguments, then we need to return the match, and its arguments
-        // TODO:
 
         if matches.is_empty() {
             // If there are no matches, then we can keep the matches from the previous iteration (if there were any).
