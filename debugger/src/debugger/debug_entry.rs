@@ -415,7 +415,6 @@ impl Debugger {
         if requested_target_session_type == TargetSessionType::AttachRequest {
             // Since VSCode doesn't do field validation checks for relationships in launch.json request types, check it here.
             if self.config.flashing_config.flashing_enabled
-                || self.config.flashing_config.reset_after_flashing
                 || self.config.flashing_config.halt_after_reset
                 || self.config.flashing_config.full_chip_erase
                 || self.config.flashing_config.restore_unwritten_bytes
@@ -514,9 +513,7 @@ impl Debugger {
             };
         }
 
-        if self.config.flashing_config.flashing_enabled
-            && self.config.flashing_config.reset_after_flashing
-        {
+        if self.config.flashing_config.flashing_enabled {
             debug_adapter
                 .restart(&mut target_core, None)
                 .context("Failed to restart core")?;
@@ -585,9 +582,7 @@ impl Debugger {
         // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
         target_core.core.debug_on_sw_breakpoint(true)?;
 
-        if self.config.flashing_config.flashing_enabled
-            && self.config.flashing_config.reset_after_flashing
-        {
+        if self.config.flashing_config.flashing_enabled {
             debug_adapter
                 .restart(&mut target_core, Some(request))
                 .context("Failed to restart core")?;
