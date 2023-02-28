@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- target-gen: Use the correct flash base address when testing flash algorithm (#1542)
+
 - VSCode and probe-rs-debugger is very slow if `rttEnabled: true` and target application has no RTT initialized (#1497).
 
 - prober-rs-debugger: Using the readMemory request on RISC-V (ESP32C3 board) is slow (#1275).
@@ -21,8 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `Restart` will now restart the debug session. Currently this is support for ARM targets only.
   - If a newer binary is available, and flashing enabled, then the new binary will be flashed before starting the new debug session.
 
+### Changed
+
+- Update MS DAP protocol to v1.60.0. Documentation clarifications only. (#1458)
+- probe-rs-debugger: Cleaned up the timing of caching unwind information, based on new MS DAP protocol docs. (#1458)
+
 ### Added
 
+- Added EFM32TG11B family targets #1420
 - Added LPC55Sxx target #1513
 - Added custom sequence support to STM32L0, L1, L4, G0, G4, F0, F3, WB, WL,
   enabling debug clocks during sleep modes #1521
