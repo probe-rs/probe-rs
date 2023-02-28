@@ -317,6 +317,24 @@ pub(crate) fn get_target_by_chip_info(chip_info: ChipInfo) -> Result<Target, Reg
 
 /// Parse a target description and add the contained targets
 /// to the internal target registry.
+///
+/// # Examples
+///
+/// ## Add targets from a YAML file
+///
+/// ```no_run
+/// use std::fs::File;
+///
+/// let file = File::open(Path::new("/path/target.yaml"))?;
+/// probe_rs::config::add_target_from_yaml(file)?;
+/// ```
+///
+/// ## Add targets from a embedded YAML file
+///
+/// ```no_run
+/// const BUILTIN_TARGET_YAML: &[u8] = include_bytes!("/path/target.yaml");
+/// probe_rs::config::add_target_from_yaml(BUILTIN_TARGET_YAML)?;
+/// ```
 pub fn add_target_from_yaml<R>(yaml_reader: R) -> Result<(), RegistryError>
 where
     R: Read,
