@@ -20,13 +20,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `Terminate` request is not supported, and DAP configuration is such that it won't be requested by the client.
 
 - probe-rs-debugger: Improve handling of `restart` request. With support in DAP Client/VSCode for: (#1507)
+
   - `Restart` will now restart the debug session. Currently this is support for ARM targets only.
   - If a newer binary is available, and flashing enabled, then the new binary will be flashed before starting the new debug session.
+
+- probe-rs-debugger: Ensure VSCode will halt on all configured breakpoints`, irrespective of flashing config. (#1529)
 
 ### Changed
 
 - Update MS DAP protocol to v1.60.0. Documentation clarifications only. (#1458)
+
 - probe-rs-debugger: Cleaned up the timing of caching unwind information, based on new MS DAP protocol docs. (#1458)
+
+- probe-rs-debugger: Remove `restart-after-flashing` option, and make it the default behaviour. (#1550)
 
 ### Added
 
