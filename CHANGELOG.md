@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Update MS DAP protocol to v1.60.0. Documentation clarifications only. (#1458)
 - probe-rs-debugger: Cleaned up the timing of caching unwind information, based on new MS DAP protocol docs. (#1458)
+- probe-rs: Allows `add_target_from_yaml` function to accept multiple sources
 
 ### Added
 
@@ -35,10 +36,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added custom sequence support to STM32L0, L1, L4, G0, G4, F0, F3, WB, WL,
   enabling debug clocks during sleep modes #1521
 - Add default sequence 'debug_core_stop', which disables debugging when disconneting from ARM cores by default. (#1525)
-
-### Changed
-
-- probe-rs: Allows `add_target_from_yaml` function to accept multiple sources
 
 ## [0.17.0]
 
