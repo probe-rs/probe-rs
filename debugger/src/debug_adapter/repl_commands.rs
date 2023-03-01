@@ -2,7 +2,7 @@ use super::{
     dap_adapter::{disassemble_target_memory, DapStatus},
     dap_types::{
         CompletionItem, CompletionItemType, CompletionsArguments, DisassembledInstruction,
-        EvaluateArguments, EvaluateResponseBody, VariablePresentationHint,
+        EvaluateArguments, EvaluateResponseBody,
     },
 };
 use crate::{
@@ -76,12 +76,19 @@ impl<H> Display for ReplCommand<H> {
     }
 }
 
-// Limited subset of gdb format specifiers
+/// Limited subset of gdb format specifiers
 #[derive(PartialEq)]
 enum GdbFormat {
+    /// Same as GDB's `t` format specifier
     Binary,
+    /// Same as GDB's `x` format specifier
     Hex,
+    /// Same as GDB's `i` format specifier
     Instruction,
+    /// DAP variable reference, will show up in the REPL as a clickable link.
+    DapReference,
+    /// Native (as defined by data type) format.
+    Native,
 }
 
 impl TryFrom<&char> for GdbFormat {
@@ -92,6 +99,8 @@ impl TryFrom<&char> for GdbFormat {
             't' => Ok(GdbFormat::Binary),
             'x' => Ok(GdbFormat::Hex),
             'i' => Ok(GdbFormat::Instruction),
+            'v' => Ok(GdbFormat::DapReference),
+            'n' => Ok(GdbFormat::Native),
             _ => Err(DebuggerError::ReplError(format!(
                 "Invalid format specifier: {format}"
             ))),
@@ -105,6 +114,8 @@ impl Display for GdbFormat {
             GdbFormat::Binary => write!(f, "t(binary)"),
             GdbFormat::Hex => write!(f, "x(hexadecimal)"),
             GdbFormat::Instruction => write!(f, "i(nstruction)"),
+            GdbFormat::DapReference => write!(f, "v(ariable structured for DAP/VSCode)"),
+            GdbFormat::Native => write!(f, "n(ative - as defined by data type)"),
         }
     }
 }
@@ -165,6 +176,18 @@ impl GdbNuf {
     fn get_size(&self) -> usize {
         self.unit_count * self.unit_specifier.get_size()
     }
+    // Validate that the format specifier is valid for a given range of supported formats
+    fn check_supported_formats(&self, supported_list: &[GdbFormat]) -> Result<(), String> {
+        if supported_list.contains(&self.format_specifier) {
+            Ok(())
+        } else {
+            let mut message = "".to_string();
+            for supported_format in supported_list {
+                message.push_str(&format!("{supported_format}\n"));
+            }
+            Err(message)
+        }
+    }
 }
 
 /// TODO: gdb changes the default `format_specifier` everytime x or p is used. For now we will use a static default of `x`.
@@ -189,7 +212,7 @@ impl TryFrom<&str> for GdbNuf {
         // Decode in reverse order, so that we can deal with variable 'count' characters.
         while let Some(last_char) = nuf.pop() {
             match last_char {
-                't' | 'x' | 'i' => {
+                't' | 'x' | 'i' | 'v' | 'n' => {
                     if format_specifier.is_none() {
                         format_specifier = Some(GdbFormat::try_from(&last_char)?);
                     } else {
@@ -259,12 +282,7 @@ impl Display for GdbNufMemoryResult<'_> {
                     write!(f, "{:#0width$x} ", byte)?;
                 }
             }
-            GdbFormat::Instruction => {
-                let width = 4_usize;
-                for byte in self.memory {
-                    write!(f, "{:#0width$x} ", byte)?;
-                }
-            }
+            _ => write!(f, "<cannot print>")?,
         }
         Ok(())
     }
@@ -361,6 +379,7 @@ static REPL_COMMANDS: &[ReplCommand<H>] = &[
         sub_commands: None,
         help_text: "Print the backtrace of the current thread.",
         args: None,
+        // TODO: This is easy to implement ... just requires deciding how to format the output.
         handler: |_, _, _, _| Err(DebuggerError::Unimplemented),
     },
     ReplCommand {
@@ -368,18 +387,12 @@ static REPL_COMMANDS: &[ReplCommand<H>] = &[
         help_text: "Information of specified program data.",
         sub_commands: Some(&[
             ReplCommand {
-                command: "threads",
-                help_text: "List all threads.",
-                sub_commands: None,
-                args: None,
-                handler: |_, _, _, _| Err(DebuggerError::Unimplemented),
-            },
-            ReplCommand {
                 command: "frame",
                 help_text:
                     "Describe the current frame, or the frame at the specified (hex) address.",
                 sub_commands: None,
                 args: Some(&[ReplCommandArgs::Optional("address")]),
+                // TODO: This is easy to implement ... just requires deciding how to format the output.
                 handler: |_, _, _, _| Err(DebuggerError::Unimplemented),
             },
             ReplCommand {
@@ -388,68 +401,34 @@ static REPL_COMMANDS: &[ReplCommand<H>] = &[
                 sub_commands: None,
                 args: None,
                 handler: |target_core, response_body, _, evaluate_arguments| {
-                    // Make sure we have a valid StackFrame
-                    if let Some(stack_frame) = match evaluate_arguments.frame_id {
-                        Some(frame_id) => target_core
-                            .core_data
-                            .stack_frames
-                            .iter_mut()
-                            .find(|stack_frame| stack_frame.id == frame_id),
-                        None => {
-                            // Use the current frame_id
-                            target_core.core_data.stack_frames.first_mut()
-                        }
-                    } {
-                        if let Some(variable_cache) = stack_frame.local_variables.as_mut() {
-                            if let Some(local_variable_root) =
-                                variable_cache.get_variable_by_name(&VariableName::LocalScopeRoot)
-                            {
-                                response_body.memory_reference =
-                                    Some(format!("{}", local_variable_root.memory_location));
-                                response_body.result =
-                                    "Local Variables : Click to expand".to_string();
-                                response_body.type_ =
-                                    Some(format!("{:?}", local_variable_root.type_name));
-                                response_body.variables_reference =
-                                    local_variable_root.variable_key;
-                                response_body.presentation_hint = Some(VariablePresentationHint {
-                                    attributes: None,
-                                    kind: None,
-                                    lazy: Some(false),
-                                    visibility: None,
-                                });
-                                Ok(DebugSessionStatus::Continue)
-                            } else {
-                                Err(DebuggerError::ReplError(format!(
-                                    "No local variables found for frame: {:?}.",
-                                    stack_frame.function_name
-                                )))
-                            }
-                        } else {
-                            Err(DebuggerError::ReplError(format!(
-                                "No variables available for frame: {:?}.",
-                                stack_frame.function_name
-                            )))
-                        }
-                    } else {
-                        Err(DebuggerError::ReplError(("No frame selected.").to_string()))
-                    }
+                    let gdb_nuf = GdbNuf {
+                        format_specifier: GdbFormat::Native,
+                        ..Default::default()
+                    };
+                    let variable_name = VariableName::LocalScopeRoot;
+                    get_local_variable(
+                        evaluate_arguments,
+                        target_core,
+                        variable_name,
+                        gdb_nuf,
+                        response_body,
+                    )
                 },
             },
             ReplCommand {
                 command: "all-reg",
                 help_text: "List all registers of the selected frame.",
                 sub_commands: None,
-                // TODO: Add & implement arguments.
                 args: None,
+                // TODO: This is easy to implement ... just requires deciding how to format the output.
                 handler: |_, _, _, _| Err(DebuggerError::Unimplemented),
             },
             ReplCommand {
                 command: "var",
                 help_text: "List all static variables.",
                 sub_commands: None,
-                // TODO: Add & implement arguments.
                 args: None,
+                // TODO: This is easy to implement ... just requires deciding how to format the output.
                 handler: |_, _, _, _| Err(DebuggerError::Unimplemented),
             },
         ]),
@@ -463,49 +442,51 @@ static REPL_COMMANDS: &[ReplCommand<H>] = &[
         // Stricly speaking, gdb refers to this as an expression, but we only support variables.
         help_text: "Print known information about variable.",
         sub_commands: None,
-        args: Some(&[ReplCommandArgs::Required("<variable name>")]),
-        handler: |target_core, response_body, variable_name, evaluate_arguments| {
-            // Make sure we have a valid StackFrame
-            if let Some(stack_frame) = match evaluate_arguments.frame_id {
-                Some(frame_id) => target_core
-                    .core_data
-                    .stack_frames
-                    .iter_mut()
-                    .find(|stack_frame| stack_frame.id == frame_id),
-                None => {
-                    // Use the current frame_id
-                    target_core.core_data.stack_frames.first_mut()
-                }
-            } {
-                if let Some(variable_cache) = stack_frame.local_variables.as_mut() {
-                    if let Some(variable) = variable_cache
-                        .get_variable_by_name(&VariableName::Named(variable_name.to_string()))
-                    {
-                        response_body.memory_reference =
-                            Some(format!("{}", variable.memory_location));
-                        response_body.result = format!(
-                            "{} : {} ",
-                            variable.name,
-                            variable.get_value(variable_cache)
-                        );
-                        response_body.type_ = Some(format!("{:?}", variable.type_name));
-                        response_body.variables_reference = variable.variable_key;
+        args: Some(&[
+            ReplCommandArgs::Optional("/f (f=format[n|v])"),
+            ReplCommandArgs::Required("<local variable name>"),
+        ]),
+        handler: |target_core, response_body, command_arguments, evaluate_arguments| {
+            let input_arguments = command_arguments.split_whitespace();
+            let mut gdb_nuf = GdbNuf {
+                format_specifier: GdbFormat::Native,
+                ..Default::default()
+            };
+            // If no variable name is provided, use the root of the local scope, and print all it's children.
+            let mut variable_name = VariableName::LocalScopeRoot;
+
+            for input_argument in input_arguments {
+                if input_argument.starts_with('/') {
+                    if let Some(gdb_nuf_string) = input_argument.strip_prefix('/') {
+                        gdb_nuf = GdbNuf::try_from(gdb_nuf_string)?;
+                        gdb_nuf
+                            .check_supported_formats(&[
+                                GdbFormat::Native,
+                                GdbFormat::DapReference,
+                            ])
+                            .map_err(|error| {
+                                DebuggerError::ReplError(format!(
+                                    "Format specifier : {}, is not valid here.\nPlease select one of the supported formats:\n{error}", gdb_nuf.format_specifier
+                                ))
+                            })?;
                     } else {
-                        return Err(DebuggerError::ReplError(format!(
-                            "No variable named {:?} found for frame: {:?}.",
-                            variable_name, stack_frame.function_name
-                        )));
+                        return Err(DebuggerError::ReplError(
+                            "The '/' specifier must be followed by a valid gdb 'f' format specifier."
+                                .to_string(),
+                        ));
                     }
                 } else {
-                    return Err(DebuggerError::ReplError(format!(
-                        "No variables available for frame: {:?}.",
-                        stack_frame.function_name
-                    )));
+                    variable_name = VariableName::Named(input_argument.to_string());
                 }
-            } else {
-                return Err(DebuggerError::ReplError("No frame selected.".to_string()));
             }
-            Ok(DebugSessionStatus::Continue)
+
+            get_local_variable(
+                evaluate_arguments,
+                target_core,
+                variable_name,
+                gdb_nuf,
+                response_body,
+            )
         },
     },
     ReplCommand {
@@ -513,7 +494,7 @@ static REPL_COMMANDS: &[ReplCommand<H>] = &[
         help_text: "Examine Memory, using format specifications, at the specified address.",
         sub_commands: None,
         args: Some(&[
-            ReplCommandArgs::Optional("/Nuf (N=count, u=unit, f=format)"),
+            ReplCommandArgs::Optional("/Nuf (N=count, u=unit[b|h|w|g], f=format[t|x|i])"),
             ReplCommandArgs::Optional("address (hex)"),
         ]),
         handler: |target_core, response_body, command_arguments, request_arguments| {
@@ -537,6 +518,17 @@ static REPL_COMMANDS: &[ReplCommand<H>] = &[
                 } else if input_argument.starts_with('/') {
                     if let Some(gdb_nuf_string) = input_argument.strip_prefix('/') {
                         gdb_nuf = GdbNuf::try_from(gdb_nuf_string)?;
+                        gdb_nuf
+                            .check_supported_formats(&[
+                                GdbFormat::Binary,
+                                GdbFormat::Hex,
+                                GdbFormat::Instruction,
+                            ])
+                            .map_err(|error| {
+                                DebuggerError::ReplError(format!(
+                                    "Format specifier : {}, is not valid here.\nPlease select one of the supported formats:\n{error}", gdb_nuf.format_specifier
+                                ))
+                            })?;
                     } else {
                         return Err(DebuggerError::ReplError(
                             "The '/' specifier must be followed by a valid gdb 'Nuf' format specifier."
@@ -575,6 +567,81 @@ static REPL_COMMANDS: &[ReplCommand<H>] = &[
         },
     },
 ];
+
+/// Format the `variable` and add it to the `response_body.result` for display to the user.
+/// - If the `variable_name` is `VariableName::LocalScopeRoot`, then all local variables will be printed.
+fn get_local_variable(
+    evaluate_arguments: &EvaluateArguments,
+    target_core: &mut CoreHandle,
+    variable_name: VariableName,
+    gdb_nuf: GdbNuf,
+    response_body: &mut EvaluateResponseBody,
+) -> Result<DebugSessionStatus, DebuggerError> {
+    // Make sure we have a valid StackFrame
+    if let Some(stack_frame) = match evaluate_arguments.frame_id {
+        Some(frame_id) => target_core
+            .core_data
+            .stack_frames
+            .iter_mut()
+            .find(|stack_frame| stack_frame.id == frame_id),
+        None => {
+            // Use the current frame_id
+            target_core.core_data.stack_frames.first_mut()
+        }
+    } {
+        if let Some(variable_cache) = stack_frame.local_variables.as_mut() {
+            if let Some(variable) = variable_cache.get_variable_by_name(&variable_name) {
+                let variable_list = if variable.name == VariableName::LocalScopeRoot {
+                    variable_cache
+                        .get_children(Some(variable.variable_key))
+                        .map_err(|_| {
+                            DebuggerError::ReplError(format!(
+                                "No local variables available for frame : {}",
+                                stack_frame.function_name
+                            ))
+                        })?
+                } else {
+                    vec![variable]
+                };
+                response_body.result = "".to_string();
+                for variable in variable_list {
+                    if gdb_nuf.format_specifier == GdbFormat::DapReference {
+                        response_body.memory_reference =
+                            Some(format!("{}", variable.memory_location));
+                        response_body.result = format!(
+                            "{} : {} ",
+                            variable.name,
+                            variable.get_value(variable_cache)
+                        );
+                        response_body.type_ = Some(format!("{:?}", variable.type_name));
+                        response_body.variables_reference = variable.variable_key;
+                    } else {
+                        response_body.result.push_str(&format!(
+                            "\n{} [{} @ {}]: {} ",
+                            variable.name,
+                            variable.type_name,
+                            variable.memory_location,
+                            variable.get_value(variable_cache)
+                        ));
+                    }
+                }
+            } else {
+                return Err(DebuggerError::ReplError(format!(
+                    "No variable named {:?} found for frame: {:?}.",
+                    variable_name, stack_frame.function_name
+                )));
+            }
+        } else {
+            return Err(DebuggerError::ReplError(format!(
+                "No variables available for frame: {:?}.",
+                stack_frame.function_name
+            )));
+        }
+    } else {
+        return Err(DebuggerError::ReplError("No frame selected.".to_string()));
+    }
+    Ok(DebugSessionStatus::Continue)
+}
 
 /// Read memory at the specified address (hex), using the [`GdbNuf`] specifiers to determine size and format.
 fn memory_read(
