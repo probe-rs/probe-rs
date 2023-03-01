@@ -2093,7 +2093,7 @@ pub(crate) fn disassemble_target_memory(
                                 instruction.op_str().unwrap_or("")
                             ),
                             instruction_bytes: Some(
-                                instruction.bytes().iter().map(|b| format!("{:02X} ", b)).collect(),
+                                instruction.bytes().iter().map(|b| format!("{b:02X} ")).collect(),
                             ),
                             line,
                             location,

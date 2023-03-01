@@ -131,7 +131,7 @@ impl Display for DisassembledInstruction {
                 self.line,
                 self.column
             ) {
-                format!("<{}:{}:{}>", file, line, column)
+                format!("<{file}:{line}:{column}>")
             } else {
                 "".to_string()
             },

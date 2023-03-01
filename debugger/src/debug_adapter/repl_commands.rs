@@ -23,10 +23,10 @@ impl Display for ReplCommandArgs {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ReplCommandArgs::Required(arg_value) => {
-                write!(f, "{}", arg_value)
+                write!(f, "{arg_value}")
             }
             ReplCommandArgs::Optional(arg_value) => {
-                write!(f, "[{}]", arg_value)
+                write!(f, "[{arg_value}]")
             }
         }
     }
@@ -62,14 +62,14 @@ impl<H> Display for ReplCommand<H> {
         }
         if let Some(args) = self.args {
             for arg in args {
-                write!(f, " {} ", arg)?;
+                write!(f, " {arg} ")?;
             }
         }
         write!(f, ": {} ", self.help_text)?;
         if let Some(sub_commands) = self.sub_commands {
             write!(f, "\n  Subcommands:")?;
             for sub_command in sub_commands {
-                write!(f, "\n  - {}", sub_command)?;
+                write!(f, "\n  - {sub_command}")?;
             }
         }
         Ok(())
@@ -273,13 +273,13 @@ impl Display for GdbNufMemoryResult<'_> {
             GdbFormat::Binary => {
                 let width = 10_usize;
                 for byte in self.memory {
-                    write!(f, "{:#0width$b} ", byte)?;
+                    write!(f, "{byte:#0width$b} ")?;
                 }
             }
             GdbFormat::Hex => {
                 let width = 4_usize;
                 for byte in self.memory {
-                    write!(f, "{:#0width$x} ", byte)?;
+                    write!(f, "{byte:#0width$x} ")?;
                 }
             }
             _ => write!(f, "<cannot print>")?,
@@ -302,7 +302,7 @@ static REPL_COMMANDS: &[ReplCommand<H>] = &[
             help_text.push_str("\n\t- Note: This implementation is a subset of gdb commands, and is intended to behave similarly.");
             help_text.push_str("\nAvailable commands:");
             for command in REPL_COMMANDS {
-                help_text.push_str(&format!("\n{}", command));
+                help_text.push_str(&format!("\n{command}"));
             }
             response_body.result = help_text;
             Ok(DebugSessionStatus::Continue)
@@ -345,7 +345,7 @@ static REPL_COMMANDS: &[ReplCommand<H>] = &[
                     .1;
             } else {
                 // TODO: Currently this sets breakpoints without synching the VSCode UI. We can send a Dap `breakpoint` event.
-                println!("Setting breakpoint at address: {}", command_arguments);
+                println!("Setting breakpoint at address: {command_arguments}");
 
                 let mut input_arguments = command_arguments.split_whitespace();
                 if let Some(input_argument) = input_arguments.next() {
@@ -357,7 +357,7 @@ static REPL_COMMANDS: &[ReplCommand<H>] = &[
                                 BreakpointType::InstructionBreakpoint,
                             )?;
                             response_body.result =
-                                format!("Added breakpoint @ {:#010x}", memory_reference);
+                                format!("Added breakpoint @ {memory_reference:#010x}");
                         } else {
                             return Err(DebuggerError::ReplError(
                                 "Invalid hex address.".to_string(),
@@ -660,8 +660,7 @@ fn memory_read(
         )?;
         if assembly_lines.is_empty() {
             return Err(DebuggerError::ReplError(format!(
-                "Cannot disassemble memory at address {:#010x}",
-                address
+                "Cannot disassemble memory at address {address:#010x}"
             )));
         } else {
             let mut formatted_output = "".to_string();
@@ -683,8 +682,7 @@ fn memory_read(
             }
             Err(err) => {
                 return Err(DebuggerError::ReplError(format!(
-                    "Cannot read memory at address {:#010x}: {:?}",
-                    address, err
+                    "Cannot read memory at address {address:#010x}: {err:?}"
                 )))
             }
         }
@@ -755,14 +753,14 @@ pub(crate) fn command_completions(arguments: CompletionsArguments) -> Vec<Comple
     } else {
         // Iterate over the command pieces, and find the matching commands.
         let (command_root, command_list) = build_expanded_commands(&arguments.text);
-        (format!("{} ", command_root), command_list)
+        (format!("{command_root} "), command_list)
     };
     command_list
         .iter()
         .map(|command| CompletionItem {
             // Add a space after the command, so that the user can start typing the next command.
             // This space will be trimmed if the user selects to evaluate the command as is.
-            label: format!("{}{} ", command_root, command.command),
+            label: format!("{command_root}{} ", command.command),
             text: None,
             sort_text: None,
             detail: Some(command.to_string()),
