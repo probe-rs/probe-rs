@@ -12,7 +12,7 @@ use crate::{
     DebuggerError,
 };
 use probe_rs::{debug::VariableName, CoreStatus, HaltReason, MemoryInterface};
-use std::{fmt::Display, time::Duration};
+use std::{fmt::Display, str::FromStr, time::Duration};
 
 pub(crate) enum ReplCommandArgs {
     Required(&'static str),
@@ -37,7 +37,7 @@ impl Display for ReplCommandArgs {
 /// The handler can return a [`DebugSessionStatus`], which is used to determine if the debug session should continue, or if it should be terminated.
 /// The handler can also return a [`DebuggerError`], which is used to populate the response to the client.
 /// The majority of the REPL command results will be populated into the response body.
-type H = fn(
+type ReplHandler = fn(
     target_core: &mut CoreHandle,
     response: &mut EvaluateResponseBody,
     command_arguments: &str,
@@ -165,6 +165,7 @@ impl Display for GdbUnit {
     }
 }
 
+/// The term 'Nuf' is borrowed from gdb's `x` command arguments, and stands for N(umber or count of units), U(nit size), and F(ormat specifier).
 struct GdbNuf {
     unit_count: usize,
     unit_specifier: GdbUnit,
@@ -181,7 +182,11 @@ impl GdbNuf {
         if supported_list.contains(&self.format_specifier) {
             Ok(())
         } else {
-            let mut message = "".to_string();
+            let mut message = if supported_list.is_empty() {
+                "No supported formats for this command.".to_string()
+            } else {
+                "".to_string()
+            };
             for supported_format in supported_list {
                 message.push_str(&format!("{supported_format}\n"));
             }
@@ -201,10 +206,10 @@ impl Default for GdbNuf {
     }
 }
 
-impl TryFrom<&str> for GdbNuf {
-    type Error = DebuggerError;
+impl FromStr for GdbNuf {
+    type Err = DebuggerError;
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
         let mut nuf = value.to_string();
         let mut unit_specifier: Option<GdbUnit> = None;
         let mut format_specifier: Option<GdbFormat> = None;
@@ -263,7 +268,7 @@ impl TryFrom<&str> for GdbNuf {
 
 struct GdbNufMemoryResult<'a> {
     nuf: &'a GdbNuf,
-    memory: &'a Vec<u8>,
+    memory: &'a [u8],
 }
 
 impl Display for GdbNufMemoryResult<'_> {
@@ -288,7 +293,7 @@ impl Display for GdbNufMemoryResult<'_> {
     }
 }
 
-static REPL_COMMANDS: &[ReplCommand<H>] = &[
+static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
     ReplCommand {
         command: "help",
         help_text: "Information about available commands and how to use them.",
@@ -458,7 +463,7 @@ static REPL_COMMANDS: &[ReplCommand<H>] = &[
             for input_argument in input_arguments {
                 if input_argument.starts_with('/') {
                     if let Some(gdb_nuf_string) = input_argument.strip_prefix('/') {
-                        gdb_nuf = GdbNuf::try_from(gdb_nuf_string)?;
+                        gdb_nuf = GdbNuf::from_str(gdb_nuf_string)?;
                         gdb_nuf
                             .check_supported_formats(&[
                                 GdbFormat::Native,
@@ -517,7 +522,7 @@ static REPL_COMMANDS: &[ReplCommand<H>] = &[
                     }
                 } else if input_argument.starts_with('/') {
                     if let Some(gdb_nuf_string) = input_argument.strip_prefix('/') {
-                        gdb_nuf = GdbNuf::try_from(gdb_nuf_string)?;
+                        gdb_nuf = GdbNuf::from_str(gdb_nuf_string)?;
                         gdb_nuf
                             .check_supported_formats(&[
                                 GdbFormat::Binary,
@@ -693,28 +698,31 @@ fn memory_read(
 /// Get a list of command matches, based on the given command piece.
 /// The `command_piece` is a valid [`ReplCommand`], which can be either a command or a sub_command.
 fn find_commands<'a>(
-    repl_commands: Vec<&'a ReplCommand<H>>,
+    repl_commands: &[&'a ReplCommand<ReplHandler>],
     command_piece: &'a str,
-) -> Vec<&'a ReplCommand<H>> {
+) -> Vec<&'a ReplCommand<ReplHandler>> {
     repl_commands
-        .into_iter()
+        .iter()
         .filter(move |command| command.command.starts_with(command_piece))
-        .collect::<Vec<&ReplCommand<H>>>()
+        .copied()
+        .collect::<Vec<&ReplCommand<ReplHandler>>>()
 }
 
 /// Iteratively builds a list of command matches, based on the given filter.
 /// If multiple levels of commands are involved, the ReplCommand::command will be concatenated.
-pub(crate) fn build_expanded_commands(command_filter: &str) -> (String, Vec<&ReplCommand<H>>) {
+pub(crate) fn build_expanded_commands(
+    command_filter: &str,
+) -> (String, Vec<&ReplCommand<ReplHandler>>) {
     // Split the given text into a command, optional sub-command, and optional arguments.
     let command_pieces = command_filter.split(&[' ', '/', '*'][..]);
 
     // Always start building from the top-level commands.
-    let mut repl_commands: Vec<&ReplCommand<H>> = REPL_COMMANDS.iter().collect();
+    let mut repl_commands: Vec<&ReplCommand<ReplHandler>> = REPL_COMMANDS.iter().collect();
 
     let mut command_root = "".to_string();
     for command_piece in command_pieces {
         // Find the matching commands.
-        let matches = find_commands(repl_commands.clone(), command_piece);
+        let matches = find_commands(&repl_commands, command_piece);
 
         // If there is only one match, and it has sub-commands, then we can continue iterating (implicit recursion with new sub-command).
         if matches.len() == 1 {
@@ -748,7 +756,9 @@ pub(crate) fn command_completions(arguments: CompletionsArguments) -> Vec<Comple
         // If the filter is empty, then we can return all commands.
         (
             arguments.text,
-            REPL_COMMANDS.iter().collect::<Vec<&ReplCommand<H>>>(),
+            REPL_COMMANDS
+                .iter()
+                .collect::<Vec<&ReplCommand<ReplHandler>>>(),
         )
     } else {
         // Iterate over the command pieces, and find the matching commands.
