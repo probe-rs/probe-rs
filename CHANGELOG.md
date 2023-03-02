@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - probe-rs-debugger: Ensure VSCode will halt on all configured breakpoints`, irrespective of flashing config. (#1529)
 
+- probe-rs-debugger: Fix issue where "Watch" variables were not found in the debug session. (#1552)
+
 ### Changed
 
 - Update MS DAP protocol to v1.60.0. Documentation clarifications only. (#1458)

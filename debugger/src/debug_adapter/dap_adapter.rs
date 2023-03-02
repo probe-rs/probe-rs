@@ -309,7 +309,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         };
 
         if let Some(context) = &arguments.context {
-            if context == "repl" {
+            if context == "clipboard" {
+                response_body.result = arguments.expression;
+            } else if context == "repl" {
                 // While the target is running, we only allow a 'break' command.
                 if !target_core.core.core_halted()?
                     && !matches!(arguments.expression.trim(), "break" | "quit")
@@ -359,7 +361,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     }
                 }
             } else {
-                // Handle other contexts: 'watch', 'hover', 'clipboard', etc.
+                // Handle other contexts: 'watch', 'hover', etc.
                 // The Variables request sometimes returns the variable name, and other times the variable id, so this expression will be tested to determine if it is an id or not.
                 let expression = arguments.expression.clone();
 
@@ -399,6 +401,20 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             ]
                         {
                             if let Some(search_cache) = variable_cache_entry {
+                                if search_cache.len() == 1 {
+                                    // This is a special case where we have a single variable in the cache, and it is the root of a scope.
+                                    // These variables don't have cached children by default, so we need to resolve them before we proceed.
+                                    // We check for len() == 1, so unwrap() on first_mut() is safe.
+                                    #[allow(clippy::unwrap_used)]
+                                    target_core.core_data.debug_info.cache_deferred_variables(
+                                        search_cache,
+                                        &mut target_core.core,
+                                        search_cache.get_children(None)?.first_mut().unwrap(),
+                                        &stack_frame.registers,
+                                        stack_frame.frame_base,
+                                    )?;
+                                }
+
                                 if let Ok(expression_as_key) = expression.parse::<i64>() {
                                     variable = search_cache.get_variable_by_key(expression_as_key);
                                 } else {
