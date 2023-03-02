@@ -45,7 +45,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add default sequence 'debug_core_stop', which disables debugging when disconneting from ARM cores by default. (#1525)
 
-- probe-rs-debugger: Add support (Part 1) for 'gdb-like' commands to be typed into VSCode Debug Console REPL. ()
+- probe-rs-debugger: Initial support for 'gdb-like' commands to be typed into VSCode Debug Console REPL. (#1552)
+  - The `help` command will list available commands, and arguments.
+  - Command completions are supported for the individual commands, but not for the arguments.
+  - Additional commands can be added in the future, as required, but will benefit from some refactoring to share code with functionality that is already implementated in `dap_adapter.rs` for MS DAP requests.
 
 ## [0.17.0]
 

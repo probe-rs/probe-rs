@@ -1,3 +1,4 @@
+use super::repl_commands::{build_expanded_commands, command_completions};
 use crate::{
     debug_adapter::{dap_types, protocol::ProtocolAdapter},
     debugger::{
@@ -27,8 +28,6 @@ use probe_rs::{
 use probe_rs_cli_util::rtt;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{convert::TryInto, path::Path, str, string::ToString, time::Duration};
-
-use super::repl_commands::{build_expanded_commands, command_completions};
 
 /// Progress ID used for progress reporting when the debug adapter protocol is used.
 type ProgressId = i64;
