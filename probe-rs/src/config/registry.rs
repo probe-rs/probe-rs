@@ -334,11 +334,9 @@ pub(crate) fn get_target_by_chip_info(chip_info: ChipInfo) -> Result<Target, Reg
 ///
 /// ## Add targets from a embedded YAML file
 ///
-/// ```no_run
+/// ```ignore
 /// const BUILTIN_TARGET_YAML: &[u8] = include_bytes!("/path/target.yaml");
 /// probe_rs::config::add_target_from_yaml(BUILTIN_TARGET_YAML)?;
-///
-/// # Ok::<(), anyhow::Error>(())
 /// ```
 pub fn add_target_from_yaml<R>(yaml_reader: R) -> Result<(), RegistryError>
 where
