@@ -156,10 +156,6 @@ pub struct FlashingConfig {
     #[serde(default)]
     pub(crate) flashing_enabled: bool,
 
-    /// Reset the target after flashing
-    #[serde(default)]
-    pub(crate) reset_after_flashing: bool,
-
     /// Halt the target after reset
     #[serde(default)]
     pub(crate) halt_after_reset: bool,
