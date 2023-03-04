@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update MS DAP protocol to v1.60.0. Documentation clarifications only. (#1458)
 
 - probe-rs-debugger: Cleaned up the timing of caching unwind information, based on new MS DAP protocol docs. (#1458)
+- probe-rs: Allows `add_target_from_yaml` function to accept multiple sources
 
 - probe-rs-debugger: Remove `restart-after-flashing` option, and make it the default behaviour. (#1550)
 

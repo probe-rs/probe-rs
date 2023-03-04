@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::fs::File;
 use std::path::Path;
 use std::rc::Rc;
 use std::time::Instant;
@@ -38,7 +39,8 @@ pub fn cmd_test(
         println!("{error}");
     }
 
-    probe_rs::config::add_target_from_yaml(definition_export_path)?;
+    let file = File::open(Path::new(definition_export_path))?;
+    probe_rs::config::add_target_from_yaml(file)?;
     let mut session =
         probe_rs::Session::auto_attach(ALGORITHM_NAME, Permissions::new().allow_erase_all())?;
 

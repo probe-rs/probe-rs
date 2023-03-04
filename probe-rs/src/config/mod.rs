@@ -18,7 +18,7 @@
 //!
 //! ## Adding targets at runtime
 //!
-//! To add a target at runtime, the [add_target_from_yaml] file can
+//! To add a target at runtime, the [add_target_from_yaml] function can
 //! be used to read targets from a YAML file.
 //!
 
