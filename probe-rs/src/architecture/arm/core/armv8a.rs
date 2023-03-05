@@ -7,7 +7,7 @@ use crate::architecture::arm::ArmError;
 use crate::core::{RegisterFile, RegisterValue};
 use crate::error::Error;
 use crate::memory::valid_32bit_address;
-use crate::CoreInterface;
+use crate::core::CoreInterface;
 use crate::CoreStatus;
 use crate::MemoryInterface;
 use crate::RegisterId;
@@ -1093,6 +1093,17 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         } else {
             Ok(())
         }
+    }
+
+    fn reset_catch_clear(&mut self) -> Result<(), Error> {
+        // Release from reset
+        self.sequence.reset_catch_clear(
+            &mut *self.memory,
+            crate::CoreType::Armv8a,
+            Some(self.base_address),
+        )?;
+
+        Ok(())
     }
 }
 

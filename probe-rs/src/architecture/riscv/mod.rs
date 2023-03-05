@@ -2,8 +2,8 @@
 
 #![allow(clippy::inconsistent_digit_grouping)]
 
-use crate::core::{Architecture, BreakpointCause};
-use crate::{CoreInterface, CoreType, InstructionSet};
+use crate::core::{Architecture, BreakpointCause, CoreInterface};
+use crate::{CoreType, InstructionSet};
 use anyhow::{anyhow, Result};
 use communication_interface::{
     AbstractCommandErrorKind, DebugRegister, RiscvCommunicationInterface, RiscvError,
@@ -603,6 +603,10 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         dcsr.set_ebreaku(enabled);
 
         self.write_csr(0x7b0, dcsr.0).map_err(|e| e.into())
+    }
+
+    fn reset_catch_clear(&mut self) -> Result<(), Error> {
+        todo!()
     }
 }
 

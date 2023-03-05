@@ -214,18 +214,20 @@ impl AtSAME5x {
         let dsu_status_b = DsuStatusB::from(memory.read_word_8(DsuStatusB::ADDRESS)?);
 
         match (dsu_status_b.celck(), dsu_status_b.prot(), permissions.erase_all()) {
-            (true, _, _) => Err(ArmError::MissingPermissions(
-                "Chip-Erase is locked. This can only be unlocked from within the device firmware by performing \
+            (true, _, _) => Err(ArmError::MissingPermissions{
+                operation: "Chip-Erase is locked. This can only be unlocked from within the device firmware by performing \
                 a Chip-Erase Unlock (CEULCK) command."
                     .into(),
-            )),
-            (false, true, Err(MissingPermissions(permission))) => Err(ArmError::MissingPermissions(
-                format!("Device is locked. A Chip-Erase operation is required to unlock. \
-                            Re-run with granting the '{permission}' permission and connecting under reset"
+                    core: None,
+            }),
+            (false, true, Err(MissingPermissions { operation })) => Err(ArmError::MissingPermissions{
+                operation: format!("Device is locked. A Chip-Erase operation is required to unlock. \
+                            Re-run with granting the '{operation}' permission and connecting under reset"
                     ),
-            )),
+                    core: None,
+            }),
             // TODO: This seems wrong? Currently preserves the bevaiour before the change of the error type.
-            (false, false,Err(MissingPermissions(permission))) => Err(ArmError::MissingPermissions(permission)),
+            (false, false,Err(MissingPermissions { operation })) => Err(ArmError::MissingPermissions{operation, core: None}),
             (false, _, Ok(())) => Ok(()),
         }?;
 

@@ -626,9 +626,14 @@ fn debug(shared_options: &CoreOptions, common: &ProbeOptions, exe: Option<PathBu
         .unwrap_or(&CoreSelector::Index(0))
     {
         CoreSelector::Index(i) => *i,
-        CoreSelector::Name(_name) => {
-            todo!()
-        }
+        CoreSelector::Name(name) => session
+            .target()
+            .cores
+            .iter()
+            .enumerate()
+            .find(|(_, c)| &c.name == name)
+            .map(|(id, _)| id)
+            .unwrap(),
     };
 
     let core = session.core(core_index)?;

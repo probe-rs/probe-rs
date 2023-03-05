@@ -1019,6 +1019,13 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
     fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
         Ok(self.state.fp_present)
     }
+
+    fn reset_catch_clear(&mut self) -> Result<(), Error> {
+        self.sequence
+            .reset_catch_clear(&mut *self.memory, crate::CoreType::Armv7m, None)?;
+
+        Ok(())
+    }
 }
 
 impl<'probe> MemoryInterface for Armv7m<'probe> {

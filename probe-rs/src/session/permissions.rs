@@ -38,11 +38,17 @@ impl Permissions {
         if self.erase_all {
             Ok(())
         } else {
-            Err(MissingPermissions("erase_all".into()))
+            Err(MissingPermissions {
+                operation: "erase_all".into(),
+            })
         }
     }
 }
 
 #[derive(Debug, Clone, thiserror::Error)]
-#[error("An operation could not be performed because it lacked the permission to do so: {0}")]
-pub struct MissingPermissions(pub String);
+#[error(
+    "An operation could not be performed because it lacked the permission to do so: {operation}"
+)]
+pub struct MissingPermissions {
+    pub operation: String,
+}

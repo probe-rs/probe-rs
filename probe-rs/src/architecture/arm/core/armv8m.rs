@@ -3,12 +3,13 @@
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::architecture::arm::ArmError;
+use crate::core::CoreInterface;
 use crate::core::RegisterFile;
 use crate::error::Error;
 use crate::memory::valid_32bit_address;
 use crate::{architecture::arm::core::register, CoreStatus, HaltReason, MemoryInterface};
 use crate::{Architecture, CoreInformation};
-use crate::{CoreInterface, CoreType, InstructionSet, MemoryMappedRegister};
+use crate::{CoreType, InstructionSet, MemoryMappedRegister};
 use crate::{RegisterId, RegisterValue};
 use anyhow::Result;
 
@@ -406,6 +407,12 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
     fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
         Ok(self.state.fp_present)
+    }
+
+    fn reset_catch_clear(&mut self) -> Result<(), Error> {
+        self.sequence
+            .reset_catch_clear(&mut *self.memory, crate::CoreType::Armv8m, None)?;
+        Ok(())
     }
 }
 

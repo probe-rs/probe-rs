@@ -6,13 +6,13 @@ use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::architecture::arm::ArmError;
 use crate::core::{
-    RegisterDataType, RegisterDescription, RegisterFile, RegisterKind, RegisterValue,
+    CoreInterface, RegisterDataType, RegisterDescription, RegisterFile, RegisterKind, RegisterValue,
 };
 use crate::error::Error;
 use crate::memory::valid_32bit_address;
 use crate::{
-    Architecture, CoreInformation, CoreInterface, CoreStatus, CoreType, DebugProbeError,
-    HaltReason, InstructionSet, MemoryInterface, MemoryMappedRegister, RegisterId,
+    Architecture, CoreInformation, CoreStatus, CoreType, DebugProbeError, HaltReason,
+    InstructionSet, MemoryInterface, MemoryMappedRegister, RegisterId,
 };
 use anyhow::Result;
 use bitfield::bitfield;
@@ -835,6 +835,13 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
 
     fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
         Ok(false)
+    }
+
+    fn reset_catch_clear(&mut self) -> Result<(), Error> {
+        self.sequence
+            .reset_catch_clear(&mut *self.memory, crate::CoreType::Armv6m, None)?;
+
+        Ok(())
     }
 }
 

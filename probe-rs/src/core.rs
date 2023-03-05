@@ -1,7 +1,11 @@
+use crate::architecture::arm::ap::MemoryAp;
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
+use crate::architecture::arm::sequences::ArmDebugSequence;
+use crate::architecture::arm::{ApAddress, ArmProbeInterface, DpAddress};
 use crate::architecture::riscv::RiscVState;
 use crate::{CoreType, InstructionSet};
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
+use probe_rs_target::{ArmCoreAccessOptions, RiscvCoreAccessOptions};
 
 use crate::architecture::{
     arm::core::CortexAState, arm::core::CortexMState,
@@ -13,6 +17,7 @@ use crate::{Error, MemoryInterface};
 use anyhow::{anyhow, Result};
 use std::cmp::Ordering;
 use std::convert::Infallible;
+use std::sync::Arc;
 use std::time::Duration;
 
 /// A memory mapped register, for instance ARM debug registers (DHCSR, etc).
@@ -469,7 +474,7 @@ impl RegisterFile {
 }
 
 /// A generic interface to control a MCU core.
-pub trait CoreInterface: MemoryInterface {
+pub(crate) trait CoreInterface: MemoryInterface {
     /// Wait until the core is halted. If the core does not halt on its own,
     /// a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) error will be returned.
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), error::Error>;
@@ -562,6 +567,7 @@ pub trait CoreInterface: MemoryInterface {
     fn on_session_stop(&mut self) -> Result<(), Error> {
         Ok(())
     }
+    fn reset_catch_clear(&mut self) -> Result<(), Error>;
 }
 
 impl<'probe> MemoryInterface for Core<'probe> {
@@ -634,18 +640,92 @@ impl<'probe> MemoryInterface for Core<'probe> {
     }
 }
 
+#[derive(Debug)]
+pub struct CombinedCoreState {
+    /// Flag to indicate if the core is enabled for debugging
+    ///
+    /// In multi-core systems, only a subset of cores could be enabled.
+    pub(crate) debug_enabled: bool,
+
+    pub(crate) core_state: CoreState,
+
+    pub(crate) specific_state: SpecificCoreState,
+}
+
+impl CombinedCoreState {
+    pub fn id(&self) -> usize {
+        self.core_state.id()
+    }
+
+    pub fn core_type(&self) -> CoreType {
+        self.specific_state.core_type()
+    }
+
+    pub(crate) fn attach_arm<'probe>(
+        &'probe mut self,
+        arm_interface: &'probe mut Box<dyn ArmProbeInterface>,
+    ) -> Result<Core<'probe>, Error> {
+        if !self.debug_enabled {
+            return Err(Error::DebugNotEnabled(self.id()));
+        }
+
+        let memory = arm_interface.memory_interface(self.arm_memory_ap())?;
+
+        self.specific_state.attach_arm(&mut self.core_state, memory)
+    }
+
+    pub(crate) fn attach_riscv<'probe>(
+        &'probe mut self,
+        interface: &'probe mut RiscvCommunicationInterface,
+    ) -> Result<Core<'probe>, Error> {
+        self.specific_state
+            .attach_riscv(&mut self.core_state, interface)
+    }
+
+    /// Get the memory AP for this core.
+    ///
+    /// ## Panic
+    ///
+    /// This function will panic if the core is not an ARM core and doesn't have a memory AP
+    pub(crate) fn arm_memory_ap(&self) -> MemoryAp {
+        self.core_state.memory_ap()
+    }
+}
+
 /// A generic core state which caches the generic parts of the core state.
 #[derive(Debug)]
 pub struct CoreState {
     id: usize,
-
     /// Information needed to access the core
-    core_access_options: CoreAccessOptions,
+    core_access_options: ResolvedCoreOptions,
+}
+
+pub enum ResolvedCoreOptions {
+    Arm {
+        sequence: Arc<dyn ArmDebugSequence>,
+        options: ArmCoreAccessOptions,
+    },
+    Riscv {
+        options: RiscvCoreAccessOptions,
+    },
+}
+
+impl std::fmt::Debug for ResolvedCoreOptions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Arm { options, .. } => f
+                .debug_struct("Arm")
+                .field("sequence", &"<ArmDebugSequence>")
+                .field("options", options)
+                .finish(),
+            Self::Riscv { options } => f.debug_struct("Riscv").field("options", options).finish(),
+        }
+    }
 }
 
 impl CoreState {
     /// Creates a new core state from the core ID.
-    pub fn new(id: usize, core_access_options: CoreAccessOptions) -> Self {
+    pub fn new(id: usize, core_access_options: ResolvedCoreOptions) -> Self {
         Self {
             id,
             core_access_options,
@@ -656,6 +736,27 @@ impl CoreState {
 
     pub fn id(&self) -> usize {
         self.id
+    }
+
+    fn memory_ap(&self) -> MemoryAp {
+        let arm_core_access_options = match &self.core_access_options {
+            ResolvedCoreOptions::Arm { options, .. } => options,
+            ResolvedCoreOptions::Riscv { .. } => {
+                panic!("This should never happen. Please file a bug if it does.")
+            }
+        };
+
+        let dp = match arm_core_access_options.psel {
+            0 => DpAddress::Default,
+            x => DpAddress::Multidrop(x),
+        };
+
+        let ap = ApAddress {
+            dp,
+            ap: arm_core_access_options.ap,
+        };
+
+        MemoryAp::new(ap)
     }
 }
 
@@ -707,20 +808,10 @@ impl SpecificCoreState {
         &'probe mut self,
         state: &'probe mut CoreState,
         memory: Box<dyn ArmProbe + 'probe>,
-        target: &'target Target,
     ) -> Result<Core<'probe>, Error> {
-        let debug_sequence = match &target.debug_sequence {
-            crate::config::DebugSequence::Arm(sequence) => sequence.clone(),
-            crate::config::DebugSequence::Riscv(_) => {
-                return Err(Error::UnableToOpenProbe(
-                    "Core architecture and Probe mismatch.",
-                ))
-            }
-        };
-
-        let options = match &state.core_access_options {
-            CoreAccessOptions::Arm(options) => options,
-            CoreAccessOptions::Riscv(_) => {
+        let (options, debug_sequence) = match &state.core_access_options {
+            ResolvedCoreOptions::Arm { options, sequence } => (options, sequence.clone()),
+            ResolvedCoreOptions::Riscv { .. } => {
                 return Err(Error::UnableToOpenProbe(
                     "Core architecture and Probe mismatch.",
                 ))
@@ -794,12 +885,12 @@ impl SpecificCoreState {
 /// to allow potential other shareholders of the session struct to grab a core handle too.
 pub struct Core<'probe> {
     inner: Box<dyn CoreInterface + 'probe>,
-    state: &'probe mut CoreState,
+    state: &'probe CoreState,
 }
 
 impl<'probe> Core<'probe> {
     /// Create a new [`Core`].
-    pub fn new(core: impl CoreInterface + 'probe, state: &'probe mut CoreState) -> Core<'probe> {
+    pub(crate) fn new(core: impl CoreInterface + 'probe, state: &'probe CoreState) -> Core<'probe> {
         Self {
             inner: Box::new(core),
             state,
@@ -807,13 +898,24 @@ impl<'probe> Core<'probe> {
     }
 
     /// Creates a new [`CoreState`]
-    pub fn create_state(id: usize, options: CoreAccessOptions) -> CoreState {
-        CoreState::new(id, options)
+    pub fn create_state(id: usize, options: CoreAccessOptions, target: &Target) -> CoreState {
+        match options {
+            CoreAccessOptions::Arm(options) => {
+                let sequence = match &target.debug_sequence {
+                    crate::config::DebugSequence::Arm(seq) => seq.clone(),
+                    crate::config::DebugSequence::Riscv(_) => todo!(),
+                };
+                CoreState::new(id, ResolvedCoreOptions::Arm { sequence, options })
+            }
+            CoreAccessOptions::Riscv(options) => {
+                CoreState::new(id, ResolvedCoreOptions::Riscv { options })
+            }
+        }
     }
 
     /// Returns the ID of this core.
     pub fn id(&self) -> usize {
-        self.state.id
+        self.state.id()
     }
 
     /// Wait until the core is halted. If the core does not halt on its own,
@@ -1055,6 +1157,11 @@ impl<'probe> Core<'probe> {
     #[tracing::instrument(skip(self))]
     pub(crate) fn on_session_stop(&mut self) -> Result<(), Error> {
         self.inner.on_session_stop()
+    }
+
+    /// Clear the reset catch bit
+    pub(crate) fn reset_catch_clear(&mut self) -> Result<(), Error> {
+        self.inner.reset_catch_clear()
     }
 }
 

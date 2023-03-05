@@ -44,7 +44,12 @@ fn unlock_core(
 ) -> Result<(), ArmError> {
     permissions
         .erase_all()
-        .map_err(|MissingPermissions(desc)| ArmError::MissingPermissions(desc))?;
+        .map_err(
+            |MissingPermissions { operation }| ArmError::MissingPermissions {
+                operation,
+                core: None,
+            },
+        )?;
 
     arm_interface.write_raw_ap_register(ap_address, ERASEALL, 1)?;
 
@@ -102,7 +107,17 @@ impl<T: Nrf> ArmDebugSequence for T {
                 interface.get_arm_communication_interface()?,
                 core_ctrl_ap_address,
                 permissions,
-            )?;
+            )
+            .map_err(|e| {
+                if let ArmError::MissingPermissions { operation, .. } = e {
+                    ArmError::MissingPermissions {
+                        operation,
+                        core: Some(chosen_core_index),
+                    }
+                } else {
+                    e
+                }
+            })?;
 
             if !self.is_core_unlocked(
                 interface.get_arm_communication_interface()?,

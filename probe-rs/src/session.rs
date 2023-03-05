@@ -5,7 +5,7 @@ use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
 use crate::architecture::arm::{ApAddress, ArmError, DpAddress};
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::config::{ChipInfo, RegistryError, Target, TargetSelector};
-use crate::core::{Architecture, CoreState, SpecificCoreState};
+use crate::core::{Architecture, CombinedCoreState, SpecificCoreState};
 use crate::{
     architecture::{
         arm::{
@@ -48,7 +48,7 @@ pub(crate) mod permissions;
 pub struct Session {
     target: Target,
     interface: ArchitectureInterface,
-    cores: Vec<(SpecificCoreState, CoreState)>,
+    cores: Vec<CombinedCoreState>,
     configured_trace_sink: Option<TraceSink>,
 }
 
@@ -81,37 +81,11 @@ impl From<ArchitectureInterface> for Architecture {
 impl ArchitectureInterface {
     fn attach<'probe, 'target: 'probe>(
         &'probe mut self,
-        core: &'probe mut SpecificCoreState,
-        core_state: &'probe mut CoreState,
-        target: &'target Target,
+        core_state: &'probe mut CombinedCoreState,
     ) -> Result<Core<'probe>, Error> {
         match self {
-            ArchitectureInterface::Arm(state) => {
-                let config = target
-                    .cores
-                    .get(core_state.id())
-                    .ok_or_else(|| Error::CoreNotFound(core_state.id()))?;
-                let arm_core_access_options = match &config.core_access_options {
-                    probe_rs_target::CoreAccessOptions::Arm(opt) => opt,
-                    probe_rs_target::CoreAccessOptions::Riscv(_) => {
-                        unreachable!("This should never happen. Please file a bug if it does.")
-                    }
-                };
-
-                let dp = match arm_core_access_options.psel {
-                    0 => DpAddress::Default,
-                    x => DpAddress::Multidrop(x),
-                };
-
-                let ap = ApAddress {
-                    dp,
-                    ap: arm_core_access_options.ap,
-                };
-                let memory = state.memory_interface(MemoryAp::new(ap))?;
-
-                core.attach_arm(core_state, memory, target)
-            }
-            ArchitectureInterface::Riscv(state) => core.attach_riscv(core_state, state),
+            ArchitectureInterface::Arm(arm_interface) => core_state.attach_arm(arm_interface),
+            ArchitectureInterface::Riscv(state) => core_state.attach_riscv(state),
         }
     }
 }
@@ -136,7 +110,7 @@ impl Session {
 
         let mut session = match target.architecture() {
             Architecture::Arm => Session::attach_arm(probe, target, config)?,
-            Architecture::Riscv => Session::attach_riscv(target, probe)?,
+            Architecture::Riscv => Session::attach_riscv(target, probe, &config)?,
         };
 
         session.clear_all_hw_breakpoints()?;
@@ -168,50 +142,24 @@ impl Session {
         target: Target,
         config: Config,
     ) -> Result<Session, crate::Error> {
-        let core_config = match &config.cores {
-            CoreSelection::All => {
-                if target.cores.len() > 1 {
-                    let default_core = target.cores[0].clone();
+        let default_core = config.default_core(&target);
 
-                    tracing::info!(
-                        "Connection to all cores of a multi-core target, using core {} (index 0) for initial connection.",
-                        default_core.name
-                    );
-
-                    default_core
-                } else {
-                    // Single core, so there is no choice anyways
-                    target.cores[0].clone()
-                }
-            }
-            CoreSelection::Specific(cores) => {
-                // TODO: Verify that there are actually cores here...
-                let default_core_index = cores[0];
-
-                if cores.len() > 1 {
-                    tracing::info!("Connection to cores {:?} of a multi-core target, using core {} for connection.", cores, default_core_index);
-                }
-
-                target.cores[0].clone()
-            }
-        };
-
-        let core_access_options: Vec<_> = target
+        let cores: Vec<_> = target
             .cores
             .iter()
             .enumerate()
-            .filter(|(id, _core)| match config.cores {
-                CoreSelection::All => true,
-                CoreSelection::Specific(ref cores) => cores.contains(id),
-            })
             .map(|(id, core)| {
-                let arm_core_access_options = core.core_access_options.expect_arm().clone();
+                let core_enabled = config.is_core_enabled(id);
 
-                (id, memory_ap(&arm_core_access_options), core.core_type)
+                CombinedCoreState {
+                    debug_enabled: core_enabled,
+                    core_state: Core::create_state(id, core.core_access_options.clone(), &target),
+                    specific_state: SpecificCoreState::from_core_type(core.core_type),
+                }
             })
             .collect();
 
-        let arm_core_access_options = core_config.core_access_options.expect_arm().clone();
+        let arm_core_access_options = default_core.core_access_options.expect_arm().clone();
 
         let default_memory_ap = memory_ap(&arm_core_access_options);
 
@@ -245,15 +193,16 @@ impl Session {
             .initialize(sequence_handle.clone())
             .map_err(|(_interface, e)| e)?;
 
-        for (id, memory_ap, _) in &core_access_options {
-            let unlock_span = tracing::debug_span!("debug_device_unlock", core_id = id).entered();
+        for core in cores.iter().filter(|c| c.debug_enabled) {
+            let unlock_span =
+                tracing::debug_span!("debug_device_unlock", core_id = core.id()).entered();
 
             // Enable debug mode
             let unlock_res = sequence_handle.debug_device_unlock(
                 &mut *interface,
-                *memory_ap,
+                core.arm_memory_ap(),
                 &config.permissions,
-                *id,
+                core.id(),
             );
             drop(unlock_span);
 
@@ -268,34 +217,18 @@ impl Session {
         }
 
         // For each core, setup debugging
-        for (id, memory_ap, core_type) in &core_access_options {
-            tracing::debug_span!("debug_core_start", core_id = id).in_scope(|| {
+        for core in cores.iter().filter(|c| c.debug_enabled) {
+            tracing::debug_span!("debug_core_start", core_id = core.id()).in_scope(|| {
                 // Enable debug mode
                 sequence_handle.debug_core_start(
                     &mut *interface,
-                    *memory_ap,
-                    *core_type,
+                    core.arm_memory_ap(),
+                    core.core_type(),
                     arm_core_access_options.debug_base,
                     arm_core_access_options.cti_base,
                 )
             })?;
         }
-
-        let cores = target
-            .cores
-            .iter()
-            .enumerate()
-            .filter(|(id, _)| match config.cores {
-                CoreSelection::All => true,
-                CoreSelection::Specific(ref cores) => cores.contains(id),
-            })
-            .map(|(id, core)| {
-                (
-                    SpecificCoreState::from_core_type(core.core_type),
-                    Core::create_state(id, core.core_access_options.clone()),
-                )
-            })
-            .collect();
 
         if config.attach_method == AttachMethod::Normal {
             // No further work needs to be done for the "normal" attach procedure
@@ -307,35 +240,31 @@ impl Session {
                 configured_trace_sink: None,
             })
         } else {
-            for (id, memory_ap, core_type) in &core_access_options {
-                let mut memory_interface = interface.memory_interface(*memory_ap)?;
+            for core in &cores {
+                let mut memory_interface = interface.memory_interface(core.arm_memory_ap())?;
 
-                let reset_catch_span =
-                    tracing::debug_span!("reset_catch_set", core_id = id).entered();
-                // we need to halt the chip here
-                sequence_handle.reset_catch_set(
-                    &mut *memory_interface,
-                    *core_type,
-                    arm_core_access_options.debug_base,
-                )?;
-
-                drop(reset_catch_span);
+                tracing::debug_span!("reset_catch_set", core_id = core.id()).in_scope(|| {
+                    sequence_handle.reset_catch_set(
+                        &mut *memory_interface,
+                        core.core_type(),
+                        arm_core_access_options.debug_base,
+                    )
+                })?;
             }
-
-            let reset_hardware_deassert = tracing::debug_span!("reset_hardware_deassert").entered();
 
             // TODO: A timeout here indicates that the reset pin is probably not properly
             //       connected.
-            if let Err(e) =
+            let result = tracing::debug_span!("reset_hardware_deassert").in_scope(|| {
                 sequence_handle.reset_hardware_deassert(&mut *interface, default_memory_ap)
-            {
+            });
+
+            if let Err(e) = result {
                 if matches!(e, ArmError::Timeout) {
                     tracing::warn!("Timeout while deasserting hardware reset pin. This indicates that the reset pin is not properly connected. Please check your hardware setup.");
                 }
 
                 return Err(e.into());
             }
-            drop(reset_hardware_deassert);
 
             let mut session = Session {
                 target,
@@ -350,38 +279,23 @@ impl Session {
                 // means that the core should stop when coming out of reset.
                 let mut core = session.core(0)?;
                 core.wait_for_core_halted(Duration::from_millis(100))?;
+
+                core.reset_catch_clear()?;
             }
 
-            {
-                let interface = session.get_arm_interface()?;
-
-                for (id, memory_ap, core_type) in &core_access_options {
-                    let mut memory_interface = interface.memory_interface(*memory_ap)?;
-
-                    // Clear the reset_catch bit which was set earlier.
-                    let _reset_catch_span =
-                        tracing::debug_span!("reset_catch_clear", core_id = id).entered();
-                    sequence_handle.reset_catch_clear(
-                        &mut *memory_interface,
-                        *core_type,
-                        arm_core_access_options.debug_base,
-                    )?;
-                }
-            }
             Ok(session)
         }
     }
 
-    fn attach_riscv(target: Target, mut probe: Probe) -> Result<Session, Error> {
+    fn attach_riscv(target: Target, mut probe: Probe, config: &Config) -> Result<Session, Error> {
         let cores = target
             .cores
             .iter()
             .enumerate()
-            .map(|(id, core)| {
-                (
-                    SpecificCoreState::from_core_type(core.core_type),
-                    Core::create_state(id, core.core_access_options.clone()),
-                )
+            .map(|(id, core)| CombinedCoreState {
+                debug_enabled: config.is_core_enabled(id),
+                specific_state: SpecificCoreState::from_core_type(core.core_type),
+                core_state: Core::create_state(id, core.core_access_options.clone(), &target),
             })
             .collect();
         let sequence_handle = match &target.debug_sequence {
@@ -414,8 +328,7 @@ impl Session {
     pub fn list_cores(&self) -> Vec<(usize, CoreType)> {
         self.cores
             .iter()
-            .map(|(t, _)| t.core_type())
-            .enumerate()
+            .map(|t| (t.core_state.id(), t.core_type()))
             .collect()
     }
 
@@ -436,11 +349,12 @@ impl Session {
     ///
     #[tracing::instrument(skip(self), name = "attach_to_core")]
     pub fn core(&mut self, core_index: usize) -> Result<Core<'_>, Error> {
-        let (core, core_state) = self
+        let combined_state = self
             .cores
             .get_mut(core_index)
             .ok_or(Error::CoreNotFound(core_index))?;
-        self.interface.attach(core, core_state, &self.target)
+
+        self.interface.attach(combined_state)
     }
 
     /// Read available trace data from the specified data sink.
@@ -715,10 +629,19 @@ impl Session {
 
     /// Clears all hardware breakpoints on all cores
     pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), Error> {
-        { 0..self.cores.len() }.try_for_each(|n| {
-            self.core(n)
+        self.enabled_core_indices().iter().try_for_each(|n| {
+            self.core(*n)
                 .and_then(|mut core| core.clear_all_hw_breakpoints())
         })
+    }
+
+    /// Get indices of all cores with enabled debugging
+    fn enabled_core_indices(&self) -> Vec<usize> {
+        self.cores
+            .iter()
+            .filter(|c| c.debug_enabled)
+            .map(|c| c.id())
+            .collect()
     }
 }
 
@@ -729,32 +652,34 @@ static_assertions::assert_impl_all!(Session: Send);
 impl Drop for Session {
     #[tracing::instrument(name = "session_drop", skip(self))]
     fn drop(&mut self) {
-        if let Err(err) = { 0..self.cores.len() }.try_for_each(|i| {
-            self.core(i)
+        if let Err(err) = self.enabled_core_indices().iter().try_for_each(|i| {
+            self.core(*i)
                 .and_then(|mut core| core.clear_all_hw_breakpoints())
         }) {
             tracing::warn!("Could not clear all hardware breakpoints: {err}");
         }
 
-        if let Err(err) = { 0..self.cores.len() }.try_for_each(|i| {
-            self.core(i)
+        if let Err(err) = self.enabled_core_indices().iter().try_for_each(|i| {
+            self.core(*i)
                 .and_then(|mut core| core.debug_on_sw_breakpoint(false))
         }) {
             tracing::warn!("Could not reset software breakpoint behaviour: {:?}", err);
         }
 
-        if let Err(err) = { 0..self.cores.len() }
-            .try_for_each(|i| self.core(i).and_then(|mut core| core.on_session_stop()))
+        if let Err(err) = self
+            .enabled_core_indices()
+            .iter()
+            .try_for_each(|i| self.core(*i).and_then(|mut core| core.on_session_stop()))
         {
             tracing::warn!("Error during on_session_stop: {:?}", err);
         }
 
         // Disable tracing for all Cortex-M cores.
-        if let Err(err) = { 0..self.cores.len() }.try_for_each(|i| {
-            let is_cortex_m = self.core(i)?.core_type().is_cortex_m();
+        if let Err(err) = self.enabled_core_indices().iter().try_for_each(|i| {
+            let is_cortex_m = self.core(*i)?.core_type().is_cortex_m();
 
             if is_cortex_m {
-                self.disable_swv(i)
+                self.disable_swv(*i)
             } else {
                 Ok(())
             }
@@ -766,10 +691,10 @@ impl Drop for Session {
         if let DebugSequence::Arm(sequence) = &self.target.debug_sequence {
             let sequence = sequence.clone();
 
-            if let Err(err) = { 0..self.cores.len() }.try_for_each(|i| {
-                let core_type = self.target.cores[i].core_type;
+            if let Err(err) = self.enabled_core_indices().iter().try_for_each(|i| {
+                let core_type = self.target.cores[*i].core_type;
 
-                let core_information = match &self.target.cores[i].core_access_options {
+                let core_information = match &self.target.cores[*i].core_access_options {
                     CoreAccessOptions::Arm(arm) => arm,
                     CoreAccessOptions::Riscv(_) => unreachable!(),
                 };
@@ -898,6 +823,47 @@ pub struct Config {
     /// Allowed permisisons for potentially irreverable actions,
     /// such as erasing the device memory.
     pub permissions: Permissions,
+}
+
+impl Config {
+    fn default_core(&self, target: &Target) -> probe_rs_target::Core {
+        let core_config = match &self.cores {
+            CoreSelection::All => {
+                if target.cores.len() > 1 {
+                    let default_core = target.cores[0].clone();
+
+                    tracing::info!(
+                        "Connection to all cores of a multi-core target, using core {} (index 0) for initial connection.",
+                        default_core.name
+                    );
+
+                    default_core
+                } else {
+                    // Single core, so there is no choice anyways
+                    target.cores[0].clone()
+                }
+            }
+            CoreSelection::Specific(cores) => {
+                // TODO: Verify that there are actually cores here...
+                let default_core_index = cores[0];
+
+                if cores.len() > 1 {
+                    tracing::info!("Connection to cores {:?} of a multi-core target, using core {} for connection.", cores, default_core_index);
+                }
+
+                target.cores[0].clone()
+            }
+        };
+
+        core_config
+    }
+
+    fn is_core_enabled(&self, id: usize) -> bool {
+        match &self.cores {
+            CoreSelection::All => true,
+            CoreSelection::Specific(cores) => cores.contains(&id),
+        }
+    }
 }
 
 /// Selection of cores for debugging

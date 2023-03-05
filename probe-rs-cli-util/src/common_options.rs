@@ -285,7 +285,17 @@ impl ProbeOptions {
         if let Some(core_selector) = core_identifier {
             match core_selector {
                 CoreSelector::Index(i) => config.cores = CoreSelection::Specific(vec![i]),
-                CoreSelector::Name(_) => todo!(),
+                CoreSelector::Name(name) => match &target {
+                    TargetSelector::Unspecified(_) => todo!(),
+                    TargetSelector::Specified(t) => {
+                        config.cores = CoreSelection::Specific(vec![t
+                            .cores
+                            .iter()
+                            .position(|c| c.name == name)
+                            .unwrap()])
+                    }
+                    TargetSelector::Auto => todo!(),
+                },
             }
         }
 

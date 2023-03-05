@@ -102,7 +102,12 @@ impl ArmDebugSequence for Nrf52 {
         tracing::warn!("Core is locked. Erase procedure will be started to unlock it.");
         permissions
             .erase_all()
-            .map_err(|MissingPermissions(desc)| ArmError::MissingPermissions(desc))?;
+            .map_err(
+                |MissingPermissions { operation }| ArmError::MissingPermissions {
+                    operation,
+                    core: None,
+                },
+            )?;
 
         // Reset
         iface.write_raw_ap_register(ctrl_ap, RESET, 1)?;
