@@ -276,6 +276,7 @@ impl Debugger {
                     "variables" => debug_adapter.variables(&mut target_core, &request),
                     "continue" => debug_adapter.r#continue(&mut target_core, &request),
                     "evaluate" => debug_adapter.evaluate(&mut target_core, &request),
+                    "completions" => debug_adapter.completions(&mut target_core, &request),
                     other_command => {
                         // Unimplemented command.
                         debug_adapter.send_response::<()>(
@@ -826,6 +827,7 @@ impl Debugger {
             supports_disassemble_request: Some(true),
             supports_instruction_breakpoints: Some(true),
             supports_stepping_granularity: Some(true),
+            supports_completions_request: Some(true),
             // supports_value_formatting_options: Some(true),
             // supports_function_breakpoints: Some(true),
             // TODO: Use DEMCR register to implement exception breakpoints

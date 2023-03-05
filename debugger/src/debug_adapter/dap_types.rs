@@ -8,7 +8,7 @@ use parse_int::parse;
 use probe_rs_cli_util::rtt;
 use schemafy::schemafy;
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
+use std::{convert::TryFrom, fmt::Display};
 
 // Convert the MSDAP `debugAdaptor.json` file into Rust types.
 schemafy!(root: debugserver_types "src/debug_adapter/debugProtocol.json");
@@ -109,6 +109,34 @@ impl TryFrom<&serde_json::Value> for WriteMemoryArguments {
             offset: None,
             allow_partial: Some(false),
         })
+    }
+}
+
+impl Display for Source {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name.as_deref().unwrap_or(""))
+    }
+}
+
+impl Display for DisassembledInstruction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(
+            f,
+            "{} : [{:<12}] {:<40}  {}",
+            self.address,
+            self.instruction_bytes.as_deref().unwrap_or(""),
+            self.instruction,
+            if let (Some(file), Some(line), Some(column)) = (
+                self.location.as_ref().map(|s| s.to_string()),
+                self.line,
+                self.column
+            ) {
+                format!("<{file}:{line}:{column}>")
+            } else {
+                "".to_string()
+            },
+        )?;
+        Ok(())
     }
 }
 
