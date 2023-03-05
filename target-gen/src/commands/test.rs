@@ -1,4 +1,5 @@
 use std::cell::RefCell;
+use std::fs::File;
 use std::path::Path;
 use std::rc::Rc;
 use std::time::Instant;
@@ -38,7 +39,8 @@ pub fn cmd_test(
         println!("{error}");
     }
 
-    probe_rs::config::add_target_from_yaml(definition_export_path)?;
+    let file = File::open(Path::new(definition_export_path))?;
+    probe_rs::config::add_target_from_yaml(file)?;
     let mut session =
         probe_rs::Session::auto_attach(ALGORITHM_NAME, Permissions::new().allow_erase_all())?;
 
@@ -95,7 +97,9 @@ pub fn cmd_test(
     // TODO: The sector used here is not necessarily the sector the flash algorithm targets.
     // Make this configurable.
     let mut readback = vec![0; flash_properties.sectors[0].size as usize];
-    session.core(0)?.read_8(0x0, &mut readback)?;
+    session
+        .core(0)?
+        .read_8(flash_properties.address_range.start, &mut readback)?;
     assert!(
         !readback.iter().any(|v| *v != erased_state),
         "Not all sectors were erased"
@@ -106,10 +110,12 @@ pub fn cmd_test(
         .into_iter()
         .map(|n| (n % 256) as u8)
         .collect::<Vec<_>>();
-    loader.add_data(0x1, &data)?;
+    loader.add_data(flash_properties.address_range.start + 1, &data)?;
     run_flash_download(&mut session, loader, progress.clone(), true)?;
     let mut readback = vec![0; data_size as usize];
-    session.core(0)?.read_8(0x1, &mut readback)?;
+    session
+        .core(0)?
+        .read_8(flash_properties.address_range.start + 1, &mut readback)?;
     assert_eq!(readback, data);
 
     println!("{test}: Erasing the entire chip and writing two pages ...");
@@ -117,7 +123,9 @@ pub fn cmd_test(
     // TODO: The sector used here is not necessarily the sector the flash algorithm targets.
     // Make this configurable.
     let mut readback = vec![0; flash_properties.sectors[0].size as usize];
-    session.core(0)?.read_8(0x0, &mut readback)?;
+    session
+        .core(0)?
+        .read_8(flash_properties.address_range.start, &mut readback)?;
     assert!(
         !readback.iter().any(|v| *v != erased_state),
         "Not all sectors were erased"
@@ -128,10 +136,12 @@ pub fn cmd_test(
         .into_iter()
         .map(|n| (n % 256) as u8)
         .collect::<Vec<_>>();
-    loader.add_data(0x1, &data)?;
+    loader.add_data(flash_properties.address_range.start + 1, &data)?;
     run_flash_download(&mut session, loader, progress.clone(), true)?;
     let mut readback = vec![0; data_size as usize];
-    session.core(0)?.read_8(0x1, &mut readback)?;
+    session
+        .core(0)?
+        .read_8(flash_properties.address_range.start + 1, &mut readback)?;
     assert_eq!(readback, data);
 
     println!("{test}: Erasing sectorwise and writing two pages double buffered ...");
@@ -139,7 +149,9 @@ pub fn cmd_test(
     // TODO: The sector used here is not necessarily the sector the flash algorithm targets.
     // Make this configurable.
     let mut readback = vec![0; flash_properties.sectors[0].size as usize];
-    session.core(0)?.read_8(0x0, &mut readback)?;
+    session
+        .core(0)?
+        .read_8(flash_properties.address_range.start, &mut readback)?;
     assert!(
         !readback.iter().any(|v| *v != erased_state),
         "Not all sectors were erased"
@@ -150,10 +162,12 @@ pub fn cmd_test(
         .into_iter()
         .map(|n| (n % 256) as u8)
         .collect::<Vec<_>>();
-    loader.add_data(0x1, &data)?;
+    loader.add_data(flash_properties.address_range.start + 1, &data)?;
     run_flash_download(&mut session, loader, progress, false)?;
     let mut readback = vec![0; data_size as usize];
-    session.core(0)?.read_8(0x1, &mut readback)?;
+    session
+        .core(0)?
+        .read_8(flash_properties.address_range.start + 1, &mut readback)?;
     assert_eq!(readback, data);
 
     Ok(())

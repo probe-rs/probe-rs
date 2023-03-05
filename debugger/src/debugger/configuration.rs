@@ -9,9 +9,6 @@ use std::{env::current_dir, path::PathBuf};
 #[derive(Clone, Deserialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionConfig {
-    /// IP port number to listen for incoming DAP connections, e.g. "50000"
-    pub(crate) port: Option<u16>,
-
     /// Level of information to be logged to the debugger console (Error, Info or Debug )
     #[serde(default = "default_console_log")]
     pub(crate) console_log_level: Option<ConsoleLog>,
@@ -19,7 +16,7 @@ pub struct SessionConfig {
     /// Path to the requested working directory for the debugger
     pub(crate) cwd: Option<PathBuf>,
 
-    /// The number associated with the debug probe to use. Use 'list' command to see available probes
+    /// The debug probe selector associated with the debug probe to use. Use 'list' command to see available probes
     #[serde(alias = "probe")]
     pub(crate) probe_selector: Option<DebugProbeSelector>,
 
@@ -158,10 +155,6 @@ pub struct FlashingConfig {
     /// Flash the target before debugging
     #[serde(default)]
     pub(crate) flashing_enabled: bool,
-
-    /// Reset the target after flashing
-    #[serde(default)]
-    pub(crate) reset_after_flashing: bool,
 
     /// Halt the target after reset
     #[serde(default)]

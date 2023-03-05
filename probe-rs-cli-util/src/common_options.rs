@@ -179,7 +179,8 @@ impl ProbeOptions {
     /// Note: should be called before [FlashOptions::early_exit] and any other functions in [ProbeOptions].
     pub fn maybe_load_chip_desc(&self) -> Result<(), OperationError> {
         if let Some(ref cdp) = self.chip_description_path {
-            probe_rs::config::add_target_from_yaml(Path::new(cdp)).map_err(|error| {
+            let file = File::open(Path::new(cdp))?;
+            probe_rs::config::add_target_from_yaml(file).map_err(|error| {
                 OperationError::FailedChipDescriptionParsing {
                     source: error,
                     path: cdp.clone(),

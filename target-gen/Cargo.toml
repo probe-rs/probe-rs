@@ -18,7 +18,7 @@ license.workspace = true
 probe-rs = { path = "../probe-rs", version = "0.17.0", default-features = false }
 probe-rs-target = { path = "../probe-rs-target", version = "0.17.0", default-features = false }
 cmsis-pack = { version = "0.6.2" }
-goblin = { version = "0.6.0", default-features = false, features = [
+goblin = { version = "0.6.1", default-features = false, features = [
     "elf32",
     "elf64",
     "endian_fd",

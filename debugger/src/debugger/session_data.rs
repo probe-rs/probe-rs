@@ -221,7 +221,7 @@ impl SessionData {
         }
     }
 
-    /// The target has no way of notifying the debug adapater when things changes, so we have to constantly poll it to determine:
+    /// The target has no way of notifying the debug adapter when things changes, so we have to constantly poll it to determine:
     /// - Whether the target cores are running, and what their actual status is.
     /// - Whether the target cores have data in their RTT buffers that we need to read and pass to the client.
     ///
@@ -252,61 +252,59 @@ impl SessionData {
         // Always set `all_cores_halted` to true, until one core is found to be running.
         debug_adapter.all_cores_halted = true;
         for core_config in session_config.core_configs.iter() {
-            if let Ok(mut target_core) = self.attach_core(core_config.core_index) {
-                // We need to poll the core to determine its status.
-                match target_core.poll_core(debug_adapter) {
-                    Ok(current_core_status) => {
-                        // If appropriate, check for RTT data.
-                        if core_config.rtt_config.enabled {
-                            if let Some(core_rtt) = &mut target_core.core_data.rtt_connection {
-                                // We should poll the target for rtt data, and if any RTT data was processed, we clear the flag.
-                                if core_rtt.process_rtt_data(debug_adapter, &mut target_core.core) {
-                                    suggest_delay_required = false;
-                                }
-                            } else if debug_adapter.configuration_is_done() {
-                                // We have not yet reached the point in the target application where the RTT buffers are initialized,
-                                // so, provided we have processed the MSDAP request for "configurationDone" , we should check again.
-                                {
-                                    #[allow(clippy::unwrap_used)]
-                                    match target_core.attach_to_rtt(
-                                        debug_adapter,
-                                        target_memory_map,
-                                        core_config.program_binary.as_ref().unwrap(),
-                                        &core_config.rtt_config,
-                                        timestamp_offset,
-                                    ) {
-                                        Ok(_) => {
-                                            // Nothing else to do.
-                                        }
-                                        Err(error) => {
-                                            debug_adapter
-                                                .send_error_response(&DebuggerError::Other(error))
-                                                .ok();
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        // If the core is running, we set the flag to indicate that at least one core is not halted.
-                        // By setting it here, we ensure that RTT will be checked at least once after the core has halted.
-                        if !current_core_status.is_halted() {
-                            debug_adapter.all_cores_halted = false;
-                        }
-                        status_of_cores.push(current_core_status);
-                    }
-                    Err(error) => {
-                        let error = DebuggerError::ProbeRs(error);
-                        let _ = debug_adapter.send_error_response(&error);
-                        return Err(error);
-                    }
-                }
-            } else {
+            let Ok(mut target_core) = self.attach_core(core_config.core_index) else {
                 tracing::debug!(
                     "Failed to attach to target core #{}. Cannot poll for RTT data.",
                     core_config.core_index
                 );
+                continue;
+            };
+
+            // We need to poll the core to determine its status.
+            let current_core_status = target_core.poll_core(debug_adapter).map_err(|error| {
+                let error = DebuggerError::ProbeRs(error);
+                let _ = debug_adapter.send_error_response(&error);
+                error
+            })?;
+
+            // If appropriate, check for RTT data.
+            if core_config.rtt_config.enabled {
+                if let Some(core_rtt) = &mut target_core.core_data.rtt_connection {
+                    // We should poll the target for rtt data, and if any RTT data was processed, we clear the flag.
+                    if core_rtt.process_rtt_data(debug_adapter, &mut target_core.core) {
+                        suggest_delay_required = false;
+                    }
+                } else if debug_adapter.configuration_is_done() {
+                    // We have not yet reached the point in the target application where the RTT buffers are initialized,
+                    // so, provided we have processed the MSDAP request for "configurationDone" , we should check again.
+                    {
+                        #[allow(clippy::unwrap_used)]
+                        match target_core.attach_to_rtt(
+                            debug_adapter,
+                            target_memory_map,
+                            core_config.program_binary.as_ref().unwrap(),
+                            &core_config.rtt_config,
+                            timestamp_offset,
+                        ) {
+                            Ok(_) => {
+                                // Nothing else to do.
+                            }
+                            Err(error) => {
+                                debug_adapter
+                                    .send_error_response(&DebuggerError::Other(error))
+                                    .ok();
+                            }
+                        }
+                    }
+                }
             }
+
+            // If the core is running, we set the flag to indicate that at least one core is not halted.
+            // By setting it here, we ensure that RTT will be checked at least once after the core has halted.
+            if !current_core_status.is_halted() {
+                debug_adapter.all_cores_halted = false;
+            }
+            status_of_cores.push(current_core_status);
         }
         Ok((status_of_cores, suggest_delay_required))
     }

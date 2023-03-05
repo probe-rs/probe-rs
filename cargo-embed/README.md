@@ -97,7 +97,7 @@ On Ubuntu or Debian, the following packages need to be installed:
 For Fedora or CentOS
 
 ```
-> dnf install systemd-devel
+> dnf install systemd-devel libusbx-devel
 ```
 
 You may also need to remove old versions of libusb:

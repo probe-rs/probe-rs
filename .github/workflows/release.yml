@@ -1,81 +1,147 @@
-# This Action is triggered when a PR with the label 'release' is closed and merged into 'master'.
-# It publishes the crates in the repo to crates.io.
+# CI that:
+#
+# * checks for a Git Tag that looks like a release
+# * creates a Github Release™ and fills in its text
+# * builds artifacts with cargo-dist (executable-zips, installers)
+# * uploads those artifacts to the Github Release™
+#
+# Note that the Github Release™ will be created before the artifacts,
+# so there will be a few minutes where the release has no artifacts
+# and then they will slowly trickle in, possibly failing. To make
+# this more pleasant we mark the release as a "draft" until all
+# artifacts have been successfully uploaded. This allows you to
+# choose what to do with partial successes and avoids spamming
+# anyone with notifications before the release is actually ready.
+name: Release
 
+permissions:
+  contents: write
+
+# This task will run whenever you push a git tag that looks like a version
+# like "v1", "v1.2.0", "v0.1.0-prerelease01", "my-app-v1.0.0", etc.
+# The version will be roughly parsed as ({PACKAGE_NAME}-)?v{VERSION}, where
+# PACKAGE_NAME must be the name of a Cargo package in your workspace, and VERSION
+# must be a Cargo-style SemVer Version.
+#
+# If PACKAGE_NAME is specified, then we will create a Github Release™ for that
+# package (erroring out if it doesn't have the given version or isn't cargo-dist-able).
+#
+# If PACKAGE_NAME isn't specified, then we will create a Github Release™ for all
+# (cargo-dist-able) packages in the workspace with that version (this is mode is
+# intended for workspaces with only one dist-able package, or with all dist-able
+# packages versioned/released in lockstep).
+#
+# If you push multiple tags at once, separate instances of this workflow will
+# spin up, creating an independent Github Release™ for each one.
+#
+# If there's a prerelease-style suffix to the version then the Github Release™
+# will be marked as a prerelease.
 on:
-  pull_request:
-    branches: [master]
-    types: [closed]
-  workflow_dispatch:
-
-name: Release on crates.io
+  push:
+    tags:
+      - '*-?v[0-9]+*'
 
 jobs:
-  release:
-    name: Release
+  # Create the Github Release™ so the packages have something to be uploaded to
+  create-release:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'release'))
-
+    outputs:
+      has-releases: ${{ steps.create-release.outputs.has-releases }}
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        run: rustup update 1.67.1 --no-self-update && rustup default 1.67.1
 
-      - name: Checkout sources
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0  # This is a workaround for cargo-release, see https://github.com/crate-ci/cargo-release/issues/625
+      # Manual addition of build deps
 
-      - name: Install libusb and libftdi (linux)
+      - name: Install libusb, libudev (linux)
         run: |
           sudo apt update
-          sudo apt install -y libusb-1.0-0-dev libftdi1-dev libudev-dev
+          sudo apt install -y libusb-1.0-0-dev libudev-dev
+        # Only install on Ubuntu
+        if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-20.04')
 
-      - uses: chainguard-dev/actions/setup-gitsign@main
-
-      - name: install cargo-release
+      - name: Install cargo-dist
+        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.0.4/cargo-dist-v0.0.4-installer.sh | sh
+      - id: create-release
         run: |
-          curl -LsSf https://github.com/crate-ci/cargo-release/releases/download/v0.24.0/cargo-release-v0.24.0-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ${CARGO_HOME:-~/.cargo}/bin
+          cargo dist manifest --tag=${{ github.ref_name }} --artifacts=all --no-local-paths --output-format=json > dist-manifest.json
+          echo "dist manifest ran successfully"
+          cat dist-manifest.json
+        
+          # Create the Github Release™ based on what cargo-dist thinks it should be
+          ANNOUNCEMENT_TITLE=$(cat dist-manifest.json | jq --raw-output ".announcement_title")
+          IS_PRERELEASE=$(cat dist-manifest.json | jq --raw-output ".announcement_is_prerelease")
+          cat dist-manifest.json | jq --raw-output ".announcement_github_body" > new_dist_announcement.md
+          gh release create ${{ github.ref_name }} --draft --prerelease="$IS_PRERELEASE" --title="$ANNOUNCEMENT_TITLE" --notes-file=new_dist_announcement.md
+          echo "created announcement!"
 
-      - name: Install SSH
+          # Upload the manifest to the Github Release™
+          gh release upload ${{ github.ref_name }} dist-manifest.json
+          echo "uploaded manifest!"
+
+          # Disable all the upload-artifacts tasks if we have no actual releases
+          HAS_RELEASES=$(cat dist-manifest.json | jq --raw-output ".releases != null")
+          echo "has-releases=$HAS_RELEASES" >> "$GITHUB_OUTPUT"
+
+  # Build and packages all the things
+  upload-artifacts:
+    # Let the initial task tell us to not run (currently very blunt)
+    needs: create-release
+    if: ${{ needs.create-release.outputs.has-releases == 'true' }}
+    strategy:
+      matrix:
+        # For these target platforms
+        include:
+        - os: macos-11
+          dist-args: --artifacts=local --target=aarch64-apple-darwin --target=x86_64-apple-darwin
+          install-dist: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.0.4/cargo-dist-v0.0.4-installer.sh | sh
+        - os: ubuntu-20.04
+          dist-args: --artifacts=local --target=x86_64-unknown-linux-gnu
+          install-dist: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.0.4/cargo-dist-v0.0.4-installer.sh | sh
+        - os: windows-2019
+          dist-args: --artifacts=local --target=x86_64-pc-windows-msvc
+          install-dist: irm  https://github.com/axodotdev/cargo-dist/releases/download/v0.0.4/cargo-dist-v0.0.4-installer.ps1 | iex
+
+    runs-on: ${{ matrix.os }}
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Rust
+        run: rustup update 1.67.1 --no-self-update && rustup default 1.67.1
+      - name: Install cargo-dist
+        run: ${{ matrix.install-dist }}
+      - name: Run cargo-dist
+        # This logic is a bit janky because it's trying to be a polyglot between
+        # powershell and bash since this will run on windows, macos, and linux!
+        # The two platforms don't agree on how to talk about env vars but they
+        # do agree on 'cat' and '$()' so we use that to marshal values between commands.
         run: |
-          apt-get update -y && apt-get install openssh-client -y
-          eval $(ssh-agent -s -a $SSH_AUTH_SOCK)
-          echo "$SSH_SIGNING_KEY" | tr -d '\r' | ssh-add -
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
-        env:
-          SSH_SIGNING_KEY: ${{ secrets.SSH_SIGNING_KEY }}
-          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+          # Actually do builds and make zips and whatnot
+          cargo dist build --tag=${{ github.ref_name }} --output-format=json ${{ matrix.dist-args }} > dist-manifest.json
+          echo "dist ran successfully"
+          cat dist-manifest.json
 
-      - name: Git setup
+          # Parse out what we just built and upload it to the Github Release™
+          cat dist-manifest.json | jq --raw-output ".artifacts[]?.path | select( . != null )" > uploads.txt
+          echo "uploading..."
+          cat uploads.txt
+          gh release upload ${{ github.ref_name }} $(cat uploads.txt)
+          echo "uploaded!"
+
+  # Mark the Github Release™ as a non-draft now that everything has succeeded!
+  publish-release:
+    # Only run after all the other tasks, but it's ok if upload-artifacts was skipped
+    needs: [create-release, upload-artifacts]
+    if: ${{ always() && needs.create-release.result == 'success' && (needs.upload-artifacts.result == 'skipped' || needs.upload-artifacts.result == 'success') }}
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: mark release as non-draft
         run: |
-          git config user.name "probe-rs"
-          git config user.email "bot@probe.rs"
-          git config --global gpg.format ssh
-          git config --global user.signingkey "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGr8+OZiQ6EHlhZcsPbnbkiW0wBtgNYGR2J5SI+QOw9Q bot@probe.rs"
-
-      - name: Generate Release Notes
-        run: |
-          cargo xtask generate-release-changelog > /tmp/GENERATED_CHANGELOG.md
-
-      - name: Extract crate version
-        id: crate_version
-        run: |
-          VERSION=$(cargo pkgid -p probe-rs | cut -d# -f2 | cut -d: -f2)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Create a GitHub release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.crate_version.outputs.version }}
-          release_name: ${{ steps.crate_version.outputs.version }}
-          body_path: /tmp/GENERATED_CHANGELOG.md
-          draft: true
-          prerelease: false
-
-      - name: release to crates.io
-        run: |
-          git checkout master
-          cargo login ${{ secrets.CARGO_REGISTRY_TOKEN }}
-          cargo release --no-confirm --execute --sign ${{ steps.crate_version.outputs.version }}
-        env:
-          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+          gh release edit ${{ github.ref_name }} --draft=false

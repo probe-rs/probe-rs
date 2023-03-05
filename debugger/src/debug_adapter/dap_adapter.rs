@@ -1,10 +1,9 @@
+use super::repl_commands::{build_expanded_commands, command_completions};
 use crate::{
     debug_adapter::{dap_types, protocol::ProtocolAdapter},
     debugger::{
-        configuration::ConsoleLog,
-        core_data::CoreHandle,
-        debug_entry::TargetSessionType,
-        session_data::{ActiveBreakpoint, BreakpointType},
+        configuration::ConsoleLog, core_data::CoreHandle, debug_entry::DebugSessionStatus,
+        session_data::BreakpointType,
     },
     DebuggerError,
 };
@@ -57,8 +56,6 @@ pub struct DebugAdapter<P: ProtocolAdapter> {
     pub(crate) lines_start_at_1: bool,
     /// DWARF spec at Sect 2.14 uses 1 based numbering, with a 0 indicating not-specified. We will follow that standard, and translate incoming requests depending on the DAP Client treatment of 0 or 1 based numbering.
     pub(crate) columns_start_at_1: bool,
-    /// The behaviour of the debug adapter sometimes depend on the TargetSessionType
-    pub(crate) target_session_type: Option<TargetSessionType>,
     adapter: P,
 }
 
@@ -72,7 +69,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             supports_progress_reporting: false,
             lines_start_at_1: true,
             columns_start_at_1: true,
-            target_session_type: None,
             adapter,
         }
     }
@@ -81,7 +77,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.configuration_done
     }
 
-    pub(crate) fn pause(&mut self, target_core: &mut CoreHandle, request: Request) -> Result<()> {
+    pub(crate) fn pause(&mut self, target_core: &mut CoreHandle, request: &Request) -> Result<()> {
         match target_core.core.halt(Duration::from_millis(500)) {
             Ok(cpu_info) => {
                 let new_status = match target_core.core.status() {
@@ -122,9 +118,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn disconnect(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
-        let arguments: DisconnectArguments = match get_arguments(&request) {
+        let arguments: DisconnectArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
@@ -143,12 +139,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn read_memory(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
-        let arguments: ReadMemoryArguments = match get_arguments(&request) {
+        let arguments: ReadMemoryArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
+
         let memory_offset = arguments.offset.unwrap_or(0);
         let mut address: u64 =
             if let Ok(address) = parse::<u64>(arguments.memory_reference.as_ref()) {
@@ -219,9 +216,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn write_memory(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
-        let arguments: WriteMemoryArguments = match get_arguments(&request) {
+        let arguments: WriteMemoryArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
@@ -291,11 +288,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn evaluate(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
         // TODO: When variables appear in the `watch` context, they will not resolve correctly after a 'step' function. Consider doing the lazy load for 'either/or' of Variables vs. Evaluate
 
-        let arguments: EvaluateArguments = match get_arguments(&request) {
+        let arguments: EvaluateArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
@@ -306,85 +303,172 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             memory_reference: None,
             named_variables: None,
             presentation_hint: None,
-            result: format!("<variable not found {:?}>", arguments.expression),
+            result: format!("<invalid expression {:?}>", arguments.expression),
             type_: None,
             variables_reference: 0_i64,
         };
 
-        // The Variables request sometimes returns the variable name, and other times the variable id, so this expression will be tested to determine if it is an id or not.
-        let expression = arguments.expression.clone();
-
-        // Make sure we have a valid StackFrame
-        if let Some(stack_frame) = match arguments.frame_id {
-            Some(frame_id) => target_core
-                .core_data
-                .stack_frames
-                .iter_mut()
-                .find(|stack_frame| stack_frame.id == frame_id),
-            None => {
-                // Use the current frame_id
-                target_core.core_data.stack_frames.first_mut()
-            }
-        } {
-            // Always search the registers first, because we don't have a VariableCache for them.
-            if let Some(register_value) = stack_frame
-                .registers
-                .get_register_by_name(expression.as_str())
-                .and_then(|reg| reg.value)
-            {
-                response_body.type_ = Some(format!("{}", VariableName::RegistersRoot));
-                response_body.result = format!("{register_value}");
-            } else {
-                // If the expression wasn't pointing to a register, then check if is a local or static variable in our stack_frame
-                let mut variable: Option<probe_rs::debug::Variable> = None;
-                let mut variable_cache: Option<&mut probe_rs::debug::VariableCache> = None;
-                // Search through available caches and stop as soon as the variable is found
-                #[allow(clippy::manual_flatten)]
-                for variable_cache_entry in [
-                    stack_frame.local_variables.as_mut(),
-                    stack_frame.static_variables.as_mut(),
-                    target_core
-                        .core_data
-                        .core_peripherals
-                        .as_mut()
-                        .map(|core_peripherals| &mut core_peripherals.svd_variable_cache),
-                ] {
-                    if let Some(search_cache) = variable_cache_entry {
-                        if let Ok(expression_as_key) = expression.parse::<i64>() {
-                            variable = search_cache.get_variable_by_key(expression_as_key);
-                        } else {
-                            variable = search_cache
-                                .get_variable_by_name(&VariableName::Named(expression.clone()));
-                        }
-                        if let Some(variable) = &mut variable {
-                            if variable.variable_node_type == VariableNodeType::SvdRegister
-                                || variable.variable_node_type == VariableNodeType::SvdField
-                            {
-                                variable.extract_value(&mut target_core.core, search_cache)
+        if let Some(context) = &arguments.context {
+            if context == "clipboard" {
+                response_body.result = arguments.expression;
+            } else if context == "repl" {
+                // While the target is running, we only allow a 'break' command.
+                if !target_core.core.core_halted()?
+                    && !matches!(arguments.expression.trim(), "break" | "quit")
+                {
+                    response_body.result =
+                        "The target is running. Only the 'break' or 'quit' commands are allowed."
+                            .to_string();
+                } else {
+                    // The target is halted, so we can allow any repl command.
+                    //TODO: Do we need to look for '/' in the expression, before we split it?
+                    // Now we can make sure we have a valid expression and evaluate it.
+                    let (command_root, repl_commands) =
+                        build_expanded_commands(arguments.expression.trim());
+                    if let Some(repl_command) = repl_commands.first() {
+                        // We have a valid repl command, so we can evaluate it.
+                        // First, let's extract the remainder of the arguments, so that we can pass them to the handler.
+                        let argument_string = arguments
+                            .expression
+                            .trim_start_matches(&command_root)
+                            .trim_start()
+                            .trim_start_matches(repl_command.command)
+                            .trim_start();
+                        match (repl_command.handler)(
+                            target_core,
+                            &mut response_body,
+                            argument_string,
+                            &arguments,
+                        ) {
+                            Ok(debug_session_status) => {
+                                if debug_session_status == DebugSessionStatus::Terminate {
+                                    // This is a special case, where a repl command has requested that the debug session be terminated.
+                                    self.send_event(
+                                        "terminated",
+                                        Some(TerminatedEventBody { restart: None }),
+                                    )?;
+                                } else {
+                                    // In all other cases, the response_body would have been updated by the repl command handler.
+                                }
                             }
-                            variable_cache = Some(search_cache);
-                            break;
+                            Err(error) => match &error {
+                                DebuggerError::ReplError(repl_message) => {
+                                    response_body.result = repl_message.to_owned()
+                                }
+                                other_error => response_body.result = format!("{other_error:?}",),
+                            },
                         }
                     }
                 }
-                // Check if we found a variable.
-                if let (Some(variable), Some(variable_cache)) = (variable, variable_cache) {
-                    let (
-                        variables_reference,
-                        named_child_variables_cnt,
-                        indexed_child_variables_cnt,
-                    ) = self.get_variable_reference(&variable, variable_cache);
-                    response_body.indexed_variables = Some(indexed_child_variables_cnt);
-                    response_body.memory_reference = Some(format!("{}", variable.memory_location));
-                    response_body.named_variables = Some(named_child_variables_cnt);
-                    response_body.result = variable.get_value(variable_cache);
-                    response_body.type_ = Some(format!("{:?}", variable.type_name));
-                    response_body.variables_reference = variables_reference;
-                } else {
-                    // If we made it to here, no register or variable matched the expression.
+            } else {
+                // Handle other contexts: 'watch', 'hover', etc.
+                // The Variables request sometimes returns the variable name, and other times the variable id, so this expression will be tested to determine if it is an id or not.
+                let expression = arguments.expression.clone();
+
+                // Make sure we have a valid StackFrame
+                if let Some(stack_frame) = match arguments.frame_id {
+                    Some(frame_id) => target_core
+                        .core_data
+                        .stack_frames
+                        .iter_mut()
+                        .find(|stack_frame| stack_frame.id == frame_id),
+                    None => {
+                        // Use the current frame_id
+                        target_core.core_data.stack_frames.first_mut()
+                    }
+                } {
+                    // Always search the registers first, because we don't have a VariableCache for them.
+                    if let Some(register_value) = stack_frame
+                        .registers
+                        .get_register_by_name(expression.as_str())
+                        .and_then(|reg| reg.value)
+                    {
+                        response_body.type_ = Some(format!("{}", VariableName::RegistersRoot));
+                        response_body.result = format!("{register_value}");
+                    } else {
+                        // If the expression wasn't pointing to a register, then check if is a local or static variable in our stack_frame
+                        let mut variable: Option<probe_rs::debug::Variable> = None;
+                        let mut variable_cache: Option<&mut probe_rs::debug::VariableCache> = None;
+                        // Search through available caches and stop as soon as the variable is found
+                        #[allow(clippy::manual_flatten)]
+                        for variable_cache_entry in
+                            [
+                                stack_frame.local_variables.as_mut(),
+                                stack_frame.static_variables.as_mut(),
+                                target_core.core_data.core_peripherals.as_mut().map(
+                                    |core_peripherals| &mut core_peripherals.svd_variable_cache,
+                                ),
+                            ]
+                        {
+                            if let Some(search_cache) = variable_cache_entry {
+                                if search_cache.len() == 1 {
+                                    // This is a special case where we have a single variable in the cache, and it is the root of a scope.
+                                    // These variables don't have cached children by default, so we need to resolve them before we proceed.
+                                    // We check for len() == 1, so unwrap() on first_mut() is safe.
+                                    #[allow(clippy::unwrap_used)]
+                                    target_core.core_data.debug_info.cache_deferred_variables(
+                                        search_cache,
+                                        &mut target_core.core,
+                                        search_cache.get_children(None)?.first_mut().unwrap(),
+                                        &stack_frame.registers,
+                                        stack_frame.frame_base,
+                                    )?;
+                                }
+
+                                if let Ok(expression_as_key) = expression.parse::<i64>() {
+                                    variable = search_cache.get_variable_by_key(expression_as_key);
+                                } else {
+                                    variable = search_cache.get_variable_by_name(
+                                        &VariableName::Named(expression.clone()),
+                                    );
+                                }
+                                if let Some(variable) = &mut variable {
+                                    if variable.variable_node_type == VariableNodeType::SvdRegister
+                                        || variable.variable_node_type == VariableNodeType::SvdField
+                                    {
+                                        variable.extract_value(&mut target_core.core, search_cache)
+                                    }
+                                    variable_cache = Some(search_cache);
+                                    break;
+                                }
+                            }
+                        }
+                        // Check if we found a variable.
+                        if let (Some(variable), Some(variable_cache)) = (variable, variable_cache) {
+                            let (
+                                variables_reference,
+                                named_child_variables_cnt,
+                                indexed_child_variables_cnt,
+                            ) = get_variable_reference(&variable, variable_cache);
+                            response_body.indexed_variables = Some(indexed_child_variables_cnt);
+                            response_body.memory_reference =
+                                Some(format!("{}", variable.memory_location));
+                            response_body.named_variables = Some(named_child_variables_cnt);
+                            response_body.result = variable.get_value(variable_cache);
+                            response_body.type_ = Some(format!("{:?}", variable.type_name));
+                            response_body.variables_reference = variables_reference;
+                        } else {
+                            // If we made it to here, no register or variable matched the expression.
+                        }
+                    }
                 }
             }
         }
+        self.send_response(request, Ok(Some(response_body)))
+    }
+
+    /// Works in tandem with the `evaluate` request, to provide possible completions in the Debug Console REPL window.
+    pub(crate) fn completions(&mut self, _: &mut CoreHandle, request: &Request) -> Result<()> {
+        // TODO: When variables appear in the `watch` context, they will not resolve correctly after a 'step' function. Consider doing the lazy load for 'either/or' of Variables vs. Evaluate
+
+        let arguments: CompletionsArguments = match get_arguments(request) {
+            Ok(arguments) => arguments,
+            Err(error) => return self.send_response::<()>(request, Err(error)),
+        };
+
+        let response_body = CompletionsResponseBody {
+            targets: command_completions(arguments),
+        };
 
         self.send_response(request, Ok(Some(response_body)))
     }
@@ -393,9 +477,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn set_variable(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
-        let arguments: SetVariableArguments = match get_arguments(&request) {
+        let arguments: SetVariableArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
@@ -480,7 +564,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 variables_reference,
                                 named_child_variables_cnt,
                                 indexed_child_variables_cnt,
-                            ) = self.get_variable_reference(&cache_variable, variable_cache);
+                            ) = get_variable_reference(&cache_variable, variable_cache);
                             response_body.variables_reference = Some(variables_reference);
                             response_body.named_variables = Some(named_child_variables_cnt);
                             response_body.indexed_variables = Some(indexed_child_variables_cnt);
@@ -521,7 +605,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn restart(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Option<Request>,
+        request: Option<&Request>,
     ) -> Result<()> {
         match target_core.core.halt(Duration::from_millis(500)) {
             Ok(_) => {}
@@ -538,123 +622,112 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
 
         target_core.reset_core_status(self);
+
         // Different code paths if we invoke this from a request, versus an internal function.
         if let Some(request) = request {
             // Use reset_and_halt(), and then resume again afterwards, depending on the reset_after_halt flag.
-            match target_core.core.reset_and_halt(Duration::from_millis(500)) {
-                Ok(_) => {
-                    // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
-                    target_core.core.debug_on_sw_breakpoint(true)?;
+            if let Err(error) = target_core.core.reset_and_halt(Duration::from_millis(500)) {
+                return self
+                    .send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error))));
+            }
 
-                    // For RISC-V, we need to re-enable any breakpoints that were previously set, because the core reset 'forgets' them.
-                    if target_core.core.architecture() == Riscv {
-                        let saved_breakpoints = target_core
-                            .core_data
-                            .breakpoints
-                            .drain(..)
-                            .collect::<Vec<ActiveBreakpoint>>();
-                        for breakpoint in saved_breakpoints {
-                            match target_core.set_breakpoint(
-                                breakpoint.address,
-                                breakpoint.breakpoint_type.clone(),
-                            ) {
-                                Ok(_) => {}
-                                Err(error) => {
-                                    //This will cause the debugger to show the user an error, but not stop the debugger.
-                                    tracing::error!(
-                                        "Failed to re-enable breakpoint {:?} after reset. {}",
-                                        breakpoint,
-                                        error
-                                    );
-                                }
-                            }
-                        }
-                    }
+            // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
+            target_core.core.debug_on_sw_breakpoint(true)?;
 
-                    // Now that we have the breakpoints re-enabled, we can decide if it is appropriate to resume the core.
-                    if !self.halt_after_reset {
-                        match self.r#continue(target_core, request.clone()) {
-                            Ok(_) => {
-                                self.send_response::<()>(request, Ok(None))?;
-                                let event_body = Some(ContinuedEventBody {
-                                    all_threads_continued: Some(false), // TODO: Implement multi-core logic here
-                                    thread_id: target_core.core.id() as i64,
-                                });
-                                self.send_event("continued", event_body)?;
-                                Ok(())
-                            }
-                            Err(error) => self.send_response::<()>(
-                                request,
-                                Err(DebuggerError::Other(anyhow!("{}", error))),
-                            ),
+            // For RISC-V, we need to re-enable any breakpoints that were previously set, because the core reset 'forgets' them.
+            if target_core.core.architecture() == Riscv {
+                let saved_breakpoints = std::mem::take(&mut target_core.core_data.breakpoints);
+
+                for breakpoint in saved_breakpoints {
+                    match target_core
+                        .set_breakpoint(breakpoint.address, breakpoint.breakpoint_type.clone())
+                    {
+                        Ok(_) => {}
+                        Err(error) => {
+                            //This will cause the debugger to show the user an error, but not stop the debugger.
+                            tracing::error!(
+                                "Failed to re-enable breakpoint {:?} after reset. {}",
+                                breakpoint,
+                                error
+                            );
                         }
-                    } else {
-                        self.send_response::<()>(request, Ok(None))?;
-                        let event_body = Some(StoppedEventBody {
-                            reason: "restart".to_owned(),
-                            description: Some(
-                                CoreStatus::Halted(HaltReason::External)
-                                    .short_long_status(None)
-                                    .1,
-                            ),
-                            thread_id: Some(target_core.core.id() as i64),
-                            preserve_focus_hint: None,
-                            text: None,
-                            all_threads_stopped: Some(self.all_cores_halted),
-                            hit_breakpoint_ids: None,
-                        });
-                        self.send_event("stopped", event_body)?;
-                        Ok(())
                     }
                 }
-                Err(error) => self
-                    .send_response::<()>(request, Err(DebuggerError::Other(anyhow!("{}", error)))),
+            }
+
+            // Now that we have the breakpoints re-enabled, we can decide if it is appropriate to resume the core.
+            if !self.halt_after_reset {
+                match self.r#continue(target_core, request) {
+                    Ok(_) => {
+                        self.send_response::<()>(request, Ok(None))?;
+                        let event_body = Some(ContinuedEventBody {
+                            all_threads_continued: Some(false), // TODO: Implement multi-core logic here
+                            thread_id: target_core.core.id() as i64,
+                        });
+                        self.send_event("continued", event_body)?;
+                        Ok(())
+                    }
+                    Err(error) => self.send_response::<()>(
+                        request,
+                        Err(DebuggerError::Other(anyhow!("{}", error))),
+                    ),
+                }
+            } else {
+                self.send_response::<()>(request, Ok(None))?;
+                let event_body = Some(StoppedEventBody {
+                    reason: "restart".to_owned(),
+                    description: Some(
+                        CoreStatus::Halted(HaltReason::External)
+                            .short_long_status(None)
+                            .1,
+                    ),
+                    thread_id: Some(target_core.core.id() as i64),
+                    preserve_focus_hint: None,
+                    text: None,
+                    all_threads_stopped: Some(self.all_cores_halted),
+                    hit_breakpoint_ids: None,
+                });
+                self.send_event("stopped", event_body)?;
+                Ok(())
             }
         } else {
             // The DAP Client will always do a `reset_and_halt`, and then will consider `halt_after_reset` value after the `configuration_done` request.
             // Otherwise the probe will run past the `main()` before the DAP Client has had a chance to set breakpoints in `main()`.
-            match target_core.core.reset_and_halt(Duration::from_millis(500)) {
-                Ok(core_info) => {
-                    // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
-                    target_core.core.debug_on_sw_breakpoint(true)?;
-
-                    // Only notify the DAP client if we are NOT in initialization stage ([`DebugAdapter::configuration_done`]).
-                    if self.configuration_is_done() {
-                        let event_body = Some(StoppedEventBody {
-                            reason: "restart".to_owned(),
-                            description: Some(
-                                CoreStatus::Halted(HaltReason::External)
-                                    .short_long_status(Some(core_info.pc))
-                                    .1,
-                            ),
-                            thread_id: Some(target_core.core.id() as i64),
-                            preserve_focus_hint: None,
-                            text: None,
-                            all_threads_stopped: Some(self.all_cores_halted),
-                            hit_breakpoint_ids: None,
-                        });
-                        self.send_event("stopped", event_body)?;
-                    }
-                    Ok(())
-                }
+            let core_info = match target_core.core.reset_and_halt(Duration::from_millis(500)) {
+                Ok(core_info) => core_info,
                 Err(error) => {
-                    if let Some(request) = request {
-                        self.send_response::<()>(
-                            request,
-                            Err(DebuggerError::Other(anyhow!("{}", error))),
-                        )
-                    } else {
-                        self.send_error_response(&DebuggerError::Other(anyhow!("{}", error)))
-                    }
+                    return self.send_error_response(&DebuggerError::Other(anyhow!("{}", error)));
                 }
+            };
+
+            // Ensure ebreak enters debug mode, this is necessary for soft breakpoints to work on architectures like RISC-V.
+            target_core.core.debug_on_sw_breakpoint(true)?;
+
+            // Only notify the DAP client if we are NOT in initialization stage ([`DebugAdapter::configuration_done`]).
+            if self.configuration_is_done() {
+                let event_body = Some(StoppedEventBody {
+                    reason: "restart".to_owned(),
+                    description: Some(
+                        CoreStatus::Halted(HaltReason::External)
+                            .short_long_status(Some(core_info.pc))
+                            .1,
+                    ),
+                    thread_id: Some(target_core.core.id() as i64),
+                    preserve_focus_hint: None,
+                    text: None,
+                    all_threads_stopped: Some(self.all_cores_halted),
+                    hit_breakpoint_ids: None,
+                });
+                self.send_event("stopped", event_body)?;
             }
+            Ok(())
         }
     }
 
     pub(crate) fn configuration_done(
         &mut self,
         _core_data: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
         self.send_response::<()>(request, Ok(None))
     }
@@ -662,9 +735,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn set_breakpoints(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
-        let args: SetBreakpointsArguments = match get_arguments(&request) {
+        let args: SetBreakpointsArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => {
                 return self.send_response::<()>(
@@ -772,9 +845,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn set_instruction_breakpoints(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
-        let arguments: SetInstructionBreakpointsArguments = match get_arguments(&request) {
+        let arguments: SetInstructionBreakpointsArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => {
                 return self.send_response::<()>(
@@ -878,7 +951,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.send_response(request, Ok(Some(instruction_breakpoint_body)))
     }
 
-    pub(crate) fn threads(&mut self, target_core: &mut CoreHandle, request: Request) -> Result<()> {
+    pub(crate) fn threads(
+        &mut self,
+        target_core: &mut CoreHandle,
+        request: &Request,
+    ) -> Result<()> {
         // TODO: Implement actual thread resolution. For now, we just use the core id as the thread id.
         let current_core_status = target_core.core.status()?;
         let mut threads: Vec<Thread> = vec![];
@@ -890,25 +967,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     name: target_core.core_data.target_name.clone(),
                 };
                 threads.push(single_thread);
-                // We do the actual stack trace here, because VSCode sometimes sends multiple StackTrace requests, which lead to unnecessary unwind processing.
-                // By doing it here, we do it once, and serve up the results when we get the StackTrace requests.
-                let regs = target_core.core.registers();
-                let pc = match target_core.core.read_core_reg(regs.program_counter()) {
-                    Ok(pc) => pc,
-                    Err(error) => {
-                        return self
-                            .send_response::<()>(request, Err(DebuggerError::ProbeRs(error)))
-                    }
-                };
-                tracing::debug!(
-                    "Updating the stack frame data for core #{}",
-                    target_core.core.id()
-                );
 
-                target_core.core_data.stack_frames = target_core
-                    .core_data
-                    .debug_info
-                    .unwind(&mut target_core.core, pc)?;
                 return self.send_response(request, Ok(Some(ThreadsResponseBody { threads })));
             }
         } else {
@@ -945,7 +1004,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         name: target_core.core_data.target_name.clone(),
                     };
                     threads.push(single_thread);
-                    self.send_response(request.clone(), Ok(Some(ThreadsResponseBody { threads })))?;
+                    self.send_response(request, Ok(Some(ThreadsResponseBody { threads })))?;
                     return self.r#continue(target_core, request);
                 }
             }
@@ -962,7 +1021,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn stack_trace(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
         match target_core.core.status() {
             Ok(status) => {
@@ -980,7 +1039,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         };
 
-        let arguments: StackTraceArguments = match get_arguments(&request) {
+        let arguments: StackTraceArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => {
                 return self.send_response::<()>(
@@ -993,150 +1052,160 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         };
 
-        if let Some(levels) = arguments.levels {
-            if let Some(start_frame) = arguments.start_frame {
-                // Determine the correct 'slice' of available [StackFrame]s to serve up ...
-                let total_frames = target_core.core_data.stack_frames.len() as i64;
+        // The DAP spec says that the `levels` is optional if `None` or `Some(0)`, then all available frames should be returned.
+        let mut levels = arguments.levels.unwrap_or(0);
+        // The DAP spec says that the `startFrame` is optional and should be 0 if not specified.
+        let start_frame = arguments.start_frame.unwrap_or(0);
 
-                // We need to copy some parts of StackFrame so that we can re-use it later without references to target_core.
-                struct PartialStackFrameData {
-                    id: i64,
-                    function_name: String,
-                    source_location: Option<SourceLocation>,
-                    pc: RegisterValue,
-                    is_inlined: bool,
+        // VSCode sends multiple StackTrace requests, which lead to out of synch frame_id numbers.
+        // We only refresh the stacktrace when the `startFrame` is 0 and `levels` is 1.
+        if levels == 1 && start_frame == 0 {
+            let regs = target_core.core.registers();
+            let pc = match target_core.core.read_core_reg(regs.program_counter()) {
+                Ok(pc) => pc,
+                Err(error) => {
+                    return self.send_response::<()>(request, Err(DebuggerError::ProbeRs(error)))
                 }
+            };
+            tracing::debug!(
+                "Updating the stack frame data for core #{}",
+                target_core.core.id()
+            );
 
-                let frame_set = if levels == 1 && start_frame == 0 {
-                    // Just the first frame - use the LHS of the split at `levels`
-                    target_core
-                        .core_data
-                        .stack_frames
-                        .split_at(levels as usize)
-                        .0
-                } else if total_frames <= 20 && start_frame >= 0 && start_frame <= total_frames {
-                    // When we have less than 20 frames - use the RHS of of the split at `start_frame`
-                    target_core
-                        .core_data
-                        .stack_frames
-                        .split_at(start_frame as usize)
-                        .1
-                } else if total_frames > 20 && start_frame + levels <= total_frames {
-                    // When we have more than 20 frames - we can safely split twice
-                    target_core
-                        .core_data
-                        .stack_frames
-                        .split_at(start_frame as usize)
-                        .1
-                        .split_at(levels as usize)
-                        .0
-                } else if total_frames > 20 && start_frame + levels > total_frames {
-                    // The MS DAP spec may also ask for more frames than what we reported.
-                    target_core
-                        .core_data
-                        .stack_frames
-                        .split_at(start_frame as usize)
-                        .1
-                } else {
-                    return self.send_response::<()>(
-                        request,
-                        Err(DebuggerError::Other(anyhow!(
-                            "Request for stack trace failed with invalid arguments: {:?}",
-                            arguments
-                        ))),
-                    );
-                }
-                .iter()
-                .map(|stack_frame| PartialStackFrameData {
-                    id: stack_frame.id,
-                    function_name: stack_frame.function_name.clone(),
-                    source_location: stack_frame.source_location.clone(),
-                    pc: stack_frame.pc,
-                    is_inlined: stack_frame.is_inlined,
-                })
-                .collect::<Vec<PartialStackFrameData>>();
+            target_core.core_data.stack_frames = target_core
+                .core_data
+                .debug_info
+                .unwind(&mut target_core.core, pc)?;
+        }
+        // Update the `levels` to the number of available frames if it is 0.
+        if levels == 0 {
+            levels = target_core.core_data.stack_frames.len() as i64;
+        }
 
-                let frame_list: Vec<StackFrame> = frame_set
-                    .iter()
-                    .map(|frame| {
-                        let column = frame
-                            .source_location
-                            .as_ref()
-                            .and_then(|sl| sl.column)
-                            .map(|col| match col {
-                                ColumnType::LeftEdge => 0,
-                                ColumnType::Column(c) => c,
-                            })
-                            .unwrap_or(0);
+        // Determine the correct 'slice' of available [StackFrame]s to serve up ...
+        let total_frames = target_core.core_data.stack_frames.len() as i64;
 
-                        let line = frame
-                            .source_location
-                            .as_ref()
-                            .and_then(|sl| sl.line)
-                            .unwrap_or(0) as i64;
+        // We need to copy some parts of StackFrame so that we can re-use it later without references to target_core.
+        struct PartialStackFrameData {
+            id: i64,
+            function_name: String,
+            source_location: Option<SourceLocation>,
+            pc: RegisterValue,
+            is_inlined: bool,
+        }
 
-                        let function_display_name = if frame.is_inlined {
-                            format!("{} #[inline]", frame.function_name)
-                        } else {
-                            format!("{} @{}", frame.function_name, frame.pc)
-                        };
-
-                        // Create the appropriate [`dap_types::Source`] for the response
-                        let source = if let Some(source_location) = &frame.source_location {
-                            get_dap_source(source_location)
-                        } else {
-                            tracing::debug!("No source location present for frame!");
-                            None
-                        };
-
-                        // TODO: Can we add more meaningful info to `module_id`, etc.
-                        StackFrame {
-                            id: frame.id,
-                            name: function_display_name,
-                            source,
-                            line,
-                            column: column as i64,
-                            end_column: None,
-                            end_line: None,
-                            module_id: None,
-                            presentation_hint: Some("normal".to_owned()),
-                            can_restart: Some(false),
-                            instruction_pointer_reference: Some(format!("{}", frame.pc)),
-                        }
-                    })
-                    .collect();
-
-                let body = StackTraceResponseBody {
-                    stack_frames: frame_list,
-                    total_frames: Some(total_frames),
-                };
-                self.send_response(request, Ok(Some(body)))
-            } else {
-                self.send_response::<()>(
-                    request,
-                    Err(DebuggerError::Other(anyhow!(
-                        "Request for stack trace failed with invalid start_frame argument: {:?}",
-                        arguments.start_frame
-                    ))),
-                )
-            }
+        let frame_set = if levels == 1 && start_frame == 0 {
+            // Just the first frame - use the LHS of the split at `levels`
+            target_core
+                .core_data
+                .stack_frames
+                .split_at(levels as usize)
+                .0
+        } else if total_frames <= 20 && start_frame >= 0 && start_frame <= total_frames {
+            // When we have less than 20 frames - use the RHS of of the split at `start_frame`
+            target_core
+                .core_data
+                .stack_frames
+                .split_at(start_frame as usize)
+                .1
+        } else if total_frames > 20 && start_frame + levels <= total_frames {
+            // When we have more than 20 frames - we can safely split twice
+            target_core
+                .core_data
+                .stack_frames
+                .split_at(start_frame as usize)
+                .1
+                .split_at(levels as usize)
+                .0
+        } else if total_frames > 20 && start_frame + levels > total_frames {
+            // The MS DAP spec may also ask for more frames than what we reported.
+            target_core
+                .core_data
+                .stack_frames
+                .split_at(start_frame as usize)
+                .1
         } else {
-            self.send_response::<()>(
+            return self.send_response::<()>(
                 request,
                 Err(DebuggerError::Other(anyhow!(
-                    "Request for stack trace failed with invalid levels argument: {:?}",
-                    arguments.levels
+                    "Request for stack trace failed with invalid arguments: {:?}",
+                    arguments
                 ))),
-            )
+            );
         }
+        .iter()
+        .map(|stack_frame| PartialStackFrameData {
+            id: stack_frame.id,
+            function_name: stack_frame.function_name.clone(),
+            source_location: stack_frame.source_location.clone(),
+            pc: stack_frame.pc,
+            is_inlined: stack_frame.is_inlined,
+        })
+        .collect::<Vec<PartialStackFrameData>>();
+
+        let frame_list: Vec<StackFrame> = frame_set
+            .iter()
+            .map(|frame| {
+                let column = frame
+                    .source_location
+                    .as_ref()
+                    .and_then(|sl| sl.column)
+                    .map(|col| match col {
+                        ColumnType::LeftEdge => 0,
+                        ColumnType::Column(c) => c,
+                    })
+                    .unwrap_or(0);
+
+                let line = frame
+                    .source_location
+                    .as_ref()
+                    .and_then(|sl| sl.line)
+                    .unwrap_or(0) as i64;
+
+                let function_display_name = if frame.is_inlined {
+                    format!("{} #[inline]", frame.function_name)
+                } else {
+                    format!("{} @{}", frame.function_name, frame.pc)
+                };
+
+                // Create the appropriate [`dap_types::Source`] for the response
+                let source = if let Some(source_location) = &frame.source_location {
+                    get_dap_source(source_location)
+                } else {
+                    tracing::debug!("No source location present for frame!");
+                    None
+                };
+
+                // TODO: Can we add more meaningful info to `module_id`, etc.
+                StackFrame {
+                    id: frame.id,
+                    name: function_display_name,
+                    source,
+                    line,
+                    column: column as i64,
+                    end_column: None,
+                    end_line: None,
+                    module_id: None,
+                    presentation_hint: Some("normal".to_owned()),
+                    can_restart: Some(false),
+                    instruction_pointer_reference: Some(format!("{}", frame.pc)),
+                }
+            })
+            .collect();
+
+        let body = StackTraceResponseBody {
+            stack_frames: frame_list,
+            total_frames: Some(total_frames),
+        };
+        self.send_response(request, Ok(Some(body)))
     }
 
     /// Retrieve available scopes  
     /// - static scope  : Variables with `static` modifier
     /// - registers     : The [probe_rs::Core::registers] for the target [probe_rs::CoreType]
     /// - local scope   : Variables defined between start of current frame, and the current pc (program counter)
-    pub(crate) fn scopes(&mut self, target_core: &mut CoreHandle, request: Request) -> Result<()> {
-        let arguments: ScopesArguments = match get_arguments(&request) {
+    pub(crate) fn scopes(&mut self, target_core: &mut CoreHandle, request: &Request) -> Result<()> {
+        let arguments: ScopesArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
@@ -1254,230 +1323,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // The EXACT number of instructions to return in the result.
         instruction_count: i64,
     ) -> Result<Vec<dap_types::DisassembledInstruction>, DebuggerError> {
-        let target_instruction_set = target_core.core.instruction_set()?;
-        let mut cs = match target_instruction_set {
-            InstructionSet::Thumb2 => {
-                let mut capstone_builder = Capstone::new()
-                    .arm()
-                    .mode(armArchMode::Thumb)
-                    .endian(Endian::Little);
-                if matches!(target_core.core.core_type(), CoreType::Armv8m) {
-                    capstone_builder = capstone_builder
-                        .extra_mode(std::iter::once(capstone::arch::arm::ArchExtraMode::V8));
-                }
-                capstone_builder.build()
-            }
-            InstructionSet::A32 => Capstone::new()
-                .arm()
-                .mode(armArchMode::Arm)
-                .endian(Endian::Little)
-                .build(),
-            InstructionSet::A64 => Capstone::new()
-                .arm64()
-                .mode(aarch64ArchMode::Arm)
-                .endian(Endian::Little)
-                .build(),
-            InstructionSet::RV32 => Capstone::new()
-                .riscv()
-                .mode(riscvArchMode::RiscV32)
-                .endian(Endian::Little)
-                .build(),
-            InstructionSet::RV32C => Capstone::new()
-                .riscv()
-                .mode(riscvArchMode::RiscV32)
-                .endian(Endian::Little)
-                .extra_mode(std::iter::once(
-                    capstone::arch::riscv::ArchExtraMode::RiscVC,
-                ))
-                .build(),
-        }
-        .map_err(|err| anyhow!("Error creating capstone: {:?}", err))?;
-        let _ = cs.set_skipdata(true);
-
-        // Adjust instruction offset as required for variable length instruction sets.
-        let instruction_offset_as_bytes = match target_instruction_set {
-            InstructionSet::Thumb2 | InstructionSet::RV32C => {
-                // Since we cannot guarantee the size of individual instructions, let's assume we will read the 120% of the requested number of 16-bit instructions.
-                (instruction_offset
-                    * target_core
-                        .core
-                        .instruction_set()?
-                        .get_minimum_instruction_size() as i64)
-                    / 4
-                    * 5
-            }
-            InstructionSet::A32 | InstructionSet::A64 | InstructionSet::RV32 => {
-                instruction_offset
-                    * target_core
-                        .core
-                        .instruction_set()?
-                        .get_minimum_instruction_size() as i64
-            }
-        };
-
-        // The vector we will use to return results.
-        let mut assembly_lines: Vec<DisassembledInstruction> = vec![];
-
-        // The buffer to hold data we read from our target.
-        let mut code_buffer: Vec<u8> = vec![];
-
-        // Control whether we need to read target memory in order to disassemble the next instruction.
-        let mut read_more_bytes = true;
-
-        // The memory address for the next read from target memory. We have to manually adjust it to be word aligned, and make sure it doesn't underflow/overflow.
-        let mut read_pointer = if byte_offset.is_negative() {
-            Some(memory_reference.saturating_sub(byte_offset.abs()) as u64)
-        } else {
-            Some(memory_reference.saturating_add(byte_offset) as u64)
-        };
-        // We can't rely on the MSDAP arguments to result in a memory aligned address for us to read from, so we force the read_pointer to be a 32-bit memory_aligned address.
-        read_pointer = if instruction_offset_as_bytes.is_negative() {
-            read_pointer
-                .and_then(|rp| {
-                    rp.saturating_sub(instruction_offset_as_bytes.unsigned_abs())
-                        .checked_div(4)
-                })
-                .map(|rp_memory_aligned| rp_memory_aligned * 4)
-        } else {
-            read_pointer
-                .and_then(|rp| {
-                    rp.saturating_add(instruction_offset_as_bytes as u64)
-                        .checked_div(4)
-                })
-                .map(|rp_memory_aligned| rp_memory_aligned * 4)
-        };
-
-        // The memory address for the next instruction to be disassembled
-        let mut instruction_pointer = if let Some(read_pointer) = read_pointer {
-            read_pointer
-        } else {
-            let error_message = format!("Unable to calculate starting address for disassembly request with memory reference:{memory_reference:#010X}, byte offset:{byte_offset:#010X}, and instruction offset:{instruction_offset:#010X}.");
-            return Err(DebuggerError::Other(anyhow!(error_message)));
-        };
-
-        // We will only include source location data in a resulting instruction, if it is different from the previous one.
-        let mut stored_source_location = None;
-
-        // The MS DAP spec requires that we always have to return a fixed number of instructions.
-        while assembly_lines.len() < instruction_count as usize {
-            if read_more_bytes {
-                if let Some(current_read_pointer) = read_pointer {
-                    // All supported architectures use maximum 32-bit instructions, and require 32-bit memory aligned reads.
-                    match target_core.core.read_word_32(current_read_pointer) {
-                        Ok(new_word) => {
-                            // Advance the read pointer for next time we need it.
-                            read_pointer = if let Some(valid_read_pointer) =
-                                current_read_pointer.checked_add(4)
-                            {
-                                Some(valid_read_pointer)
-                            } else {
-                                // If this happens, the next loop will generate "invalid instruction" records.
-                                read_pointer = None;
-                                continue;
-                            };
-                            // Update the code buffer.
-                            for new_byte in new_word.to_le_bytes() {
-                                code_buffer.push(new_byte);
-                            }
-                        }
-                        Err(memory_read_error) => {
-                            // If we can't read data at a given address, then create a "invalid instruction" record, and keep trying.
-                            assembly_lines.push(dap_types::DisassembledInstruction {
-                                address: format!("{current_read_pointer:#010X}"),
-                                column: None,
-                                end_column: None,
-                                end_line: None,
-                                instruction: format!(
-                                    "<instruction address not readable : {memory_read_error:?}>"
-                                ),
-                                instruction_bytes: None,
-                                line: None,
-                                location: None,
-                                symbol: None,
-                            });
-                            read_pointer = Some(current_read_pointer.saturating_add(4));
-                            continue;
-                        }
-                    }
-                }
-            }
-
-            match cs.disasm_all(&code_buffer, instruction_pointer) {
-                Ok(instructions) => {
-                    if num_traits::Zero::is_zero(&instructions.len()) {
-                        // The capstone library sometimes returns an empty result set, instead of an Err. Catch it here or else we risk an infinte loop looking for a valid instruction.
-                        return Err(DebuggerError::Other(anyhow::anyhow!(
-                            "Disassembly encountered unsupported instructions at memory reference {:#010x?}",
-                            instruction_pointer
-                        )));
-                    }
-
-                    let mut result_instruction = instructions
-                        .iter()
-                        .map(|instruction| {
-                            // Before processing, update the code buffer appropriately
-                            code_buffer = code_buffer.split_at(instruction.len()).1.to_vec();
-
-                            // Variable width instruction sets my not use the full `code_buffer`, so we need to read ahead, to ensure we have enough code in the buffer to disassemble the 'widest' of instructions in the instruction set.
-                            read_more_bytes = code_buffer.len() < target_instruction_set.get_maximum_instruction_size() as usize;
-
-                            // Move the instruction_pointer for the next read.
-                            instruction_pointer += instruction.len() as u64;
-
-                            // Try to resolve the source location for this instruction.
-                            // If we find one, we use it ONLY if it is different from the previous one (stored_source_location).
-                            // - This helps to reduce visual noise in the VSCode UX, by not displaying the same line of source code multiple times over.
-                            // If we do not find a source location, then just return the raw assembly without file/line/column information.
-                            let mut location = None;
-                            let mut line = None;
-                            let mut column = None;
-                            if let Some(current_source_location) = target_core
-                                .core_data
-                                .debug_info
-                                .get_source_location(instruction.address()) {
-                                if let Some(previous_source_location) = stored_source_location.clone() {
-                                    if current_source_location != previous_source_location {
-                                        location = get_dap_source(&current_source_location);
-                                        line = current_source_location.line.map(|line| line as i64);
-                                        column = current_source_location.column.map(|col| match col {
-                                            ColumnType::LeftEdge => 0_i64,
-                                            ColumnType::Column(c) => c as i64,
-                                        });
-                                        stored_source_location = Some(current_source_location);
-                                    }
-                                } else {
-                                        stored_source_location = Some(current_source_location);
-                                }
-                            } else {
-                                // It won't affect the outcome, but log it for completeness.
-                                tracing::debug!("The request `Disassemble` could not resolve a source location for memory reference: {:#010}", instruction.address());
-                            }
-
-                            // Create the instruction data.
-                            dap_types::DisassembledInstruction {
-                                address: format!("{:#010X}", instruction.address()),
-                                column,
-                                end_column: None,
-                                end_line: None,
-                                instruction: format!(
-                                    "{}  {}",
-                                    instruction.mnemonic().unwrap_or("<unknown>"),
-                                    instruction.op_str().unwrap_or("")
-                                ),
-                                instruction_bytes: None,
-                                line,
-                                location,
-                                symbol: None,
-                            }
-                        })
-                        .collect::<Vec<DisassembledInstruction>>();
-                    assembly_lines.append(&mut result_instruction);
-                }
-                Err(error) => {
-                    return Err(DebuggerError::Other(anyhow!(error)));
-                }
-            };
-        }
+        let assembly_lines = disassemble_target_memory(
+            target_core,
+            instruction_offset,
+            byte_offset,
+            memory_reference as u64,
+            instruction_count,
+        )?;
 
         if assembly_lines.is_empty() {
             Err(DebuggerError::Other(anyhow::anyhow!(
@@ -1507,9 +1359,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn disassemble(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
-        let arguments: DisassembleArguments = match get_arguments(&request) {
+        let arguments: DisassembleArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
@@ -1552,9 +1404,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn variables(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
-        let arguments: VariablesArguments = match get_arguments(&request) {
+        let arguments: VariablesArguments = match get_arguments(request) {
             Ok(arguments) => arguments,
             Err(error) => return self.send_response::<()>(request, Err(error)),
         };
@@ -1575,7 +1427,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             variables_reference,
                             named_child_variables_cnt,
                             indexed_child_variables_cnt,
-                        ) = self.get_variable_reference(
+                        ) = get_variable_reference(
                             variable,
                             &mut core_peripherals.svd_variable_cache,
                         );
@@ -1721,7 +1573,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             variables_reference,
                             named_child_variables_cnt,
                             indexed_child_variables_cnt,
-                        ) = self.get_variable_reference(variable, variable_cache);
+                        ) = get_variable_reference(variable, variable_cache);
                         Variable {
                             name: variable.name.to_string(),
                             // evaluate_name: Some(variable.name.to_string()),
@@ -1755,7 +1607,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn r#continue(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
         match target_core.core.run() {
             Ok(_) => {
@@ -1810,8 +1662,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// Steps through the code at the requested granularity.
     /// - [SteppingMode::StepInstruction]: If MS DAP [SteppingGranularity::Instruction] (usually sent from the disassembly view)
     /// - [SteppingMode::OverStatement]: In all other cases.
-    pub(crate) fn next(&mut self, target_core: &mut CoreHandle, request: Request) -> Result<()> {
-        let arguments: NextArguments = get_arguments(&request)?;
+    pub(crate) fn next(&mut self, target_core: &mut CoreHandle, request: &Request) -> Result<()> {
+        let arguments: NextArguments = get_arguments(request)?;
 
         let stepping_granularity = match arguments.granularity {
             Some(SteppingGranularity::Instruction) => SteppingMode::StepInstruction,
@@ -1824,8 +1676,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// Steps through the code at the requested granularity.
     /// - [SteppingMode::StepInstruction]: If MS DAP [SteppingGranularity::Instruction] (usually sent from the disassembly view)
     /// - [SteppingMode::IntoStatement]: In all other cases.
-    pub(crate) fn step_in(&mut self, target_core: &mut CoreHandle, request: Request) -> Result<()> {
-        let arguments: StepInArguments = get_arguments(&request)?;
+    pub(crate) fn step_in(
+        &mut self,
+        target_core: &mut CoreHandle,
+        request: &Request,
+    ) -> Result<()> {
+        let arguments: StepInArguments = get_arguments(request)?;
 
         let stepping_granularity = match arguments.granularity {
             Some(SteppingGranularity::Instruction) => SteppingMode::StepInstruction,
@@ -1840,9 +1696,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn step_out(
         &mut self,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<()> {
-        let arguments: StepOutArguments = get_arguments(&request)?;
+        let arguments: StepOutArguments = get_arguments(request)?;
 
         let stepping_granularity = match arguments.granularity {
             Some(SteppingGranularity::Instruction) => SteppingMode::StepInstruction,
@@ -1857,7 +1713,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         &mut self,
         stepping_granularity: SteppingMode,
         target_core: &mut CoreHandle,
-        request: Request,
+        request: &Request,
     ) -> Result<(), anyhow::Error> {
         target_core.reset_core_status(self);
         let (new_status, program_counter) = match stepping_granularity
@@ -1910,47 +1766,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         Ok(())
     }
 
-    /// The DAP protocol uses three related values to determine how to invoke the `Variables` request.
-    /// This function retrieves that information from the `DebugInfo::VariableCache` and returns it as
-    /// (`variable_reference`, `named_child_variables_cnt`, `indexed_child_variables_cnt`)
-    fn get_variable_reference(
-        &mut self,
-        parent_variable: &probe_rs::debug::Variable,
-        cache: &mut probe_rs::debug::VariableCache,
-    ) -> (i64, i64, i64) {
-        if !parent_variable.is_valid() {
-            return (0, 0, 0);
-        }
-        let mut named_child_variables_cnt = 0;
-        let mut indexed_child_variables_cnt = 0;
-        if let Ok(children) = cache.get_children(Some(parent_variable.variable_key)) {
-            for child_variable in children {
-                if child_variable.is_indexed() {
-                    indexed_child_variables_cnt += 1;
-                } else {
-                    named_child_variables_cnt += 1;
-                }
-            }
-        };
-
-        if named_child_variables_cnt > 0 || indexed_child_variables_cnt > 0 {
-            (
-                parent_variable.variable_key,
-                named_child_variables_cnt,
-                indexed_child_variables_cnt,
-            )
-        } else if parent_variable.variable_node_type.is_deferred()
-            && parent_variable.get_value(cache) != "()"
-        {
-            // We have not yet cached the children for this reference.
-            // Provide DAP Client with a reference so that it will explicitly ask for children when the user expands it.
-            (parent_variable.variable_key, 0, 0)
-        } else {
-            // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
-            (0, 0, 0)
-        }
-    }
-
     /// Returns one of the standard DAP Requests if all goes well, or a "error" request, which should indicate that the calling function should return.
     /// When preparing to return an "error" request, we will send a Response containing the DebuggerError encountered.
     pub fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>> {
@@ -1963,7 +1778,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// failure.
     pub fn send_response<S: Serialize>(
         &mut self,
-        request: Request,
+        request: &Request,
         response: Result<Option<S>, DebuggerError>,
     ) -> Result<()> {
         self.adapter.send_response(request, response)
@@ -2130,6 +1945,253 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     }
 }
 
+pub(crate) fn disassemble_target_memory(
+    target_core: &mut CoreHandle,
+    instruction_offset: i64,
+    byte_offset: i64,
+    memory_reference: u64,
+    instruction_count: i64,
+) -> Result<Vec<DisassembledInstruction>, DebuggerError> {
+    let cs = get_capstone(target_core)?;
+    let target_instruction_set = target_core.core.instruction_set()?;
+    let instruction_offset_as_bytes = match target_instruction_set {
+        InstructionSet::Thumb2 | InstructionSet::RV32C => {
+            // Since we cannot guarantee the size of individual instructions, let's assume we will read the 120% of the requested number of 16-bit instructions.
+            (instruction_offset
+                * target_core
+                    .core
+                    .instruction_set()?
+                    .get_minimum_instruction_size() as i64)
+                / 4
+                * 5
+        }
+        InstructionSet::A32 | InstructionSet::A64 | InstructionSet::RV32 => {
+            instruction_offset
+                * target_core
+                    .core
+                    .instruction_set()?
+                    .get_minimum_instruction_size() as i64
+        }
+    };
+    let mut assembly_lines: Vec<DisassembledInstruction> = vec![];
+    let mut code_buffer: Vec<u8> = vec![];
+    let mut read_more_bytes = true;
+    let mut read_pointer = if byte_offset.is_negative() {
+        Some(memory_reference.saturating_sub(byte_offset.unsigned_abs()))
+    } else {
+        Some(memory_reference.saturating_add(byte_offset as u64))
+    };
+    read_pointer = if instruction_offset_as_bytes.is_negative() {
+        read_pointer
+            .and_then(|rp| {
+                rp.saturating_sub(instruction_offset_as_bytes.unsigned_abs())
+                    .checked_div(4)
+            })
+            .map(|rp_memory_aligned| rp_memory_aligned * 4)
+    } else {
+        read_pointer
+            .and_then(|rp| {
+                rp.saturating_add(instruction_offset_as_bytes as u64)
+                    .checked_div(4)
+            })
+            .map(|rp_memory_aligned| rp_memory_aligned * 4)
+    };
+    let mut instruction_pointer = if let Some(read_pointer) = read_pointer {
+        read_pointer
+    } else {
+        let error_message = format!("Unable to calculate starting address for disassembly request with memory reference:{memory_reference:#010X}, byte offset:{byte_offset:#010X}, and instruction offset:{instruction_offset:#010X}.");
+        return Err(DebuggerError::Other(anyhow!(error_message)));
+    };
+    let mut stored_source_location = None;
+    while assembly_lines.len() < instruction_count as usize {
+        if read_more_bytes {
+            if let Some(current_read_pointer) = read_pointer {
+                // All supported architectures use maximum 32-bit instructions, and require 32-bit memory aligned reads.
+                match target_core.core.read_word_32(current_read_pointer) {
+                    Ok(new_word) => {
+                        // Advance the read pointer for next time we need it.
+                        read_pointer =
+                            if let Some(valid_read_pointer) = current_read_pointer.checked_add(4) {
+                                Some(valid_read_pointer)
+                            } else {
+                                // If this happens, the next loop will generate "invalid instruction" records.
+                                read_pointer = None;
+                                continue;
+                            };
+                        // Update the code buffer.
+                        for new_byte in new_word.to_le_bytes() {
+                            code_buffer.push(new_byte);
+                        }
+                    }
+                    Err(memory_read_error) => {
+                        // If we can't read data at a given address, then create a "invalid instruction" record, and keep trying.
+                        assembly_lines.push(dap_types::DisassembledInstruction {
+                            address: format!("{current_read_pointer:#010X}"),
+                            column: None,
+                            end_column: None,
+                            end_line: None,
+                            instruction: format!(
+                                "<instruction address not readable : {memory_read_error:?}>"
+                            ),
+                            instruction_bytes: None,
+                            line: None,
+                            location: None,
+                            symbol: None,
+                        });
+                        read_pointer = Some(current_read_pointer.saturating_add(4));
+                        continue;
+                    }
+                }
+            }
+        }
+
+        match cs.disasm_all(&code_buffer, instruction_pointer) {
+            Ok(instructions) => {
+                if num_traits::Zero::is_zero(&instructions.len()) {
+                    // The capstone library sometimes returns an empty result set, instead of an Err. Catch it here or else we risk an infinte loop looking for a valid instruction.
+                    return Err(DebuggerError::Other(anyhow::anyhow!(
+                        "Disassembly encountered unsupported instructions at memory reference {:#010x?}",
+                        instruction_pointer
+                    )));
+                }
+
+                let mut result_instruction = instructions
+                    .iter()
+                    .map(|instruction| {
+                        // Before processing, update the code buffer appropriately
+                        code_buffer = code_buffer.split_at(instruction.len()).1.to_vec();
+
+                        // Variable width instruction sets my not use the full `code_buffer`, so we need to read ahead, to ensure we have enough code in the buffer to disassemble the 'widest' of instructions in the instruction set.
+                        read_more_bytes = code_buffer.len() < target_instruction_set.get_maximum_instruction_size() as usize;
+
+                        // Move the instruction_pointer for the next read.
+                        instruction_pointer += instruction.len() as u64;
+
+                        // Try to resolve the source location for this instruction.
+                        // If we find one, we use it ONLY if it is different from the previous one (stored_source_location).
+                        // - This helps to reduce visual noise in the VSCode UX, by not displaying the same line of source code multiple times over.
+                        // If we do not find a source location, then just return the raw assembly without file/line/column information.
+                        let mut location = None;
+                        let mut line = None;
+                        let mut column = None;
+                        if let Some(current_source_location) = target_core
+                            .core_data
+                            .debug_info
+                            .get_source_location(instruction.address()) {
+                            if let Some(previous_source_location) = stored_source_location.clone() {
+                                if current_source_location != previous_source_location {
+                                    location = get_dap_source(&current_source_location);
+                                    line = current_source_location.line.map(|line| line as i64);
+                                    column = current_source_location.column.map(|col| match col {
+                                        ColumnType::LeftEdge => 0_i64,
+                                        ColumnType::Column(c) => c as i64,
+                                    });
+                                    stored_source_location = Some(current_source_location);
+                                }
+                            } else {
+                                    stored_source_location = Some(current_source_location);
+                            }
+                        } else {
+                            // It won't affect the outcome, but log it for completeness.
+                            tracing::debug!("The request `Disassemble` could not resolve a source location for memory reference: {:#010}", instruction.address());
+                        }
+
+                        // Create the instruction data.
+                        dap_types::DisassembledInstruction {
+                            address: format!("{:#010X}", instruction.address()),
+                            column,
+                            end_column: None,
+                            end_line: None,
+                            instruction: format!(
+                                "{}  {}",
+                                instruction.mnemonic().unwrap_or("<unknown>"),
+                                instruction.op_str().unwrap_or("")
+                            ),
+                            instruction_bytes: Some(
+                                instruction.bytes().iter().map(|b| format!("{b:02X} ")).collect(),
+                            ),
+                            line,
+                            location,
+                            symbol: None,
+                        }
+                    })
+                    .collect::<Vec<DisassembledInstruction>>();
+                assembly_lines.append(&mut result_instruction);
+            }
+            Err(error) => {
+                return Err(DebuggerError::Other(anyhow!(error)));
+            }
+        };
+    }
+    // Because we need to read on a 32-bit boundary, there are cases when the requested start address
+    // is not the first line.
+    if instruction_offset.is_zero()
+        && byte_offset.is_zero()
+        && assembly_lines
+            .first()
+            .and_then(|first| {
+                if u64::from_str_radix(&first.address[2..], 16).unwrap_or(memory_reference)
+                    < memory_reference
+                {
+                    Some(true)
+                } else {
+                    None
+                }
+            })
+            .is_some()
+    {
+        assembly_lines.remove(0);
+    }
+    // With variable length instructions, we sometimes get one to many instructions
+    // (e.g. when we read a 32-bit instruction, but the next two instructions are 16-bits).
+    while assembly_lines.len() > instruction_count as usize {
+        let _ = assembly_lines.pop();
+    }
+    Ok(assembly_lines)
+}
+
+pub(crate) fn get_capstone(target_core: &mut CoreHandle) -> Result<Capstone, DebuggerError> {
+    let mut cs = match target_core.core.instruction_set()? {
+        InstructionSet::Thumb2 => {
+            let mut capstone_builder = Capstone::new()
+                .arm()
+                .mode(armArchMode::Thumb)
+                .endian(Endian::Little);
+            if matches!(target_core.core.core_type(), CoreType::Armv8m) {
+                capstone_builder = capstone_builder
+                    .extra_mode(std::iter::once(capstone::arch::arm::ArchExtraMode::V8));
+            }
+            capstone_builder.build()
+        }
+        InstructionSet::A32 => Capstone::new()
+            .arm()
+            .mode(armArchMode::Arm)
+            .endian(Endian::Little)
+            .build(),
+        InstructionSet::A64 => Capstone::new()
+            .arm64()
+            .mode(aarch64ArchMode::Arm)
+            .endian(Endian::Little)
+            .build(),
+        InstructionSet::RV32 => Capstone::new()
+            .riscv()
+            .mode(riscvArchMode::RiscV32)
+            .endian(Endian::Little)
+            .build(),
+        InstructionSet::RV32C => Capstone::new()
+            .riscv()
+            .mode(riscvArchMode::RiscV32)
+            .endian(Endian::Little)
+            .extra_mode(std::iter::once(
+                capstone::arch::riscv::ArchExtraMode::RiscVC,
+            ))
+            .build(),
+    }
+    .map_err(|err| anyhow!("Error creating capstone: {:?}", err))?;
+    let _ = cs.set_skipdata(true);
+    Ok(cs)
+}
+
 /// A helper function to greate a [`dap_types::Source`] struct from a [`SourceLocation`]
 fn get_dap_source(source_location: &SourceLocation) -> Option<Source> {
     // Attempt to construct the path for the source code
@@ -2196,6 +2258,30 @@ pub fn get_arguments<T: DeserializeOwned>(req: &Request) -> Result<T, crate::Deb
     serde_json::from_value(value.to_owned()).map_err(|e| e.into())
 }
 
+pub fn get_arguments_v2<T: DeserializeOwned, P: ProtocolAdapter>(
+    debug_adapter: &mut DebugAdapter<P>,
+    req: &Request,
+) -> Result<T, crate::DebuggerError> {
+    let Some(raw_arguments) = &req.arguments else {
+        debug_adapter.send_response::<()>(req, Err(DebuggerError::InvalidRequest))?;
+        return Err(DebuggerError::Other(anyhow!(
+            "Failed to get {} arguments", req.command
+        )));
+
+    };
+
+    match serde_json::from_value(raw_arguments.to_owned()) {
+        Ok(value) => Ok(value),
+        Err(e) => {
+            debug_adapter.send_response::<()>(req, Err(e.into()))?;
+            Err(DebuggerError::Other(anyhow!(
+                "Failed to get {} arguments",
+                req.command
+            )))
+        }
+    }
+}
+
 pub(crate) trait DapStatus {
     fn short_long_status(&self, program_counter: Option<u64>) -> (&'static str, String);
 }
@@ -2256,5 +2342,45 @@ impl DapStatus for CoreStatus {
             },
             CoreStatus::Unknown => ("unknown", "Core status cannot be determined".to_string()),
         }
+    }
+}
+
+/// The DAP protocol uses three related values to determine how to invoke the `Variables` request.
+/// This function retrieves that information from the `DebugInfo::VariableCache` and returns it as
+/// (`variable_reference`, `named_child_variables_cnt`, `indexed_child_variables_cnt`)
+pub(crate) fn get_variable_reference(
+    parent_variable: &probe_rs::debug::Variable,
+    cache: &mut probe_rs::debug::VariableCache,
+) -> (i64, i64, i64) {
+    if !parent_variable.is_valid() {
+        return (0, 0, 0);
+    }
+    let mut named_child_variables_cnt = 0;
+    let mut indexed_child_variables_cnt = 0;
+    if let Ok(children) = cache.get_children(Some(parent_variable.variable_key)) {
+        for child_variable in children {
+            if child_variable.is_indexed() {
+                indexed_child_variables_cnt += 1;
+            } else {
+                named_child_variables_cnt += 1;
+            }
+        }
+    };
+
+    if named_child_variables_cnt > 0 || indexed_child_variables_cnt > 0 {
+        (
+            parent_variable.variable_key,
+            named_child_variables_cnt,
+            indexed_child_variables_cnt,
+        )
+    } else if parent_variable.variable_node_type.is_deferred()
+        && parent_variable.get_value(cache) != "()"
+    {
+        // We have not yet cached the children for this reference.
+        // Provide DAP Client with a reference so that it will explicitly ask for children when the user expands it.
+        (parent_variable.variable_key, 0, 0)
+    } else {
+        // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
+        (0, 0, 0)
     }
 }
