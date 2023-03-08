@@ -1,12 +1,10 @@
-use super::{
-    dap::adapter::disassemble_target_memory,
-    dap::{
-        core_status::DapStatus,
-        dap_types::{
-            CompletionItem, CompletionItemType, CompletionsArguments, DisassembledInstruction,
-            EvaluateArguments, EvaluateResponseBody,
-        },
+use super::dap::{
+    core_status::DapStatus,
+    dap_types::{
+        CompletionItem, CompletionItemType, CompletionsArguments, DisassembledInstruction,
+        EvaluateArguments, EvaluateResponseBody,
     },
+    request_helpers::disassemble_target_memory,
 };
 use crate::{
     debugger::{

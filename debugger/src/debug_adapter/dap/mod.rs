@@ -4,3 +4,5 @@ pub(crate) mod adapter;
 pub(crate) mod core_status;
 /// The MS DAP api (from json spec), and extensions (custom), for communicating with the MS DAP client.
 pub(crate) mod dap_types;
+/// ...
+pub(crate) mod request_helpers;

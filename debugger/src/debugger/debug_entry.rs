@@ -2,7 +2,7 @@ use super::session_data::SessionData;
 use crate::{
     debug_adapter::{
         dap::adapter::*,
-        dap::dap_types::*,
+        dap::{dap_types::*, request_helpers::halt_core},
         protocol::{DapAdapter, ProtocolAdapter},
     },
     debugger::configuration::{self, ConsoleLog},
