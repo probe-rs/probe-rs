@@ -2,15 +2,15 @@
 #![warn(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
 // Uses Schemafy to generate DAP types from Json
 mod debug_adapter;
-mod debugger;
 mod peripherals;
+mod server;
 
 use anyhow::{Context, Result};
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
-use debugger::debug_entry::{debug, list_connected_devices, list_supported_chips};
 use probe_rs::{
     architecture::arm::ap::AccessPortError, flashing::FileDownloadError, DebugProbeError, Error,
 };
+use server::startup::{debug, list_connected_devices, list_supported_chips};
 use std::{env::var, fs::File, io::stderr};
 use time::{OffsetDateTime, UtcOffset};
 use tracing::metadata::LevelFilter;

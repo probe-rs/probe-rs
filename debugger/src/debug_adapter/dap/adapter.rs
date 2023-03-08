@@ -1,8 +1,8 @@
 use crate::debug_adapter::dap::repl_commands::{build_expanded_commands, command_completions};
 use crate::{
     debug_adapter::{dap::dap_types, protocol::ProtocolAdapter},
-    debugger::{
-        configuration::ConsoleLog, core_data::CoreHandle, debug_entry::DebugSessionStatus,
+    server::{
+        configuration::ConsoleLog, core_data::CoreHandle, debugger::DebugSessionStatus,
         session_data::BreakpointType,
     },
     DebuggerError,

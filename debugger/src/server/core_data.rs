@@ -10,8 +10,8 @@ use crate::{
         },
         protocol::ProtocolAdapter,
     },
-    debugger::debug_rtt,
     peripherals::svd_variables::SvdCache,
+    server::debug_rtt,
     DebuggerError,
 };
 use anyhow::{anyhow, Result};

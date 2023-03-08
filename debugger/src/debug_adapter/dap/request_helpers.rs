@@ -1,5 +1,5 @@
 use crate::debug_adapter::dap::dap_types::{DisassembledInstruction, Source};
-use crate::debugger::core_data::CoreHandle;
+use crate::server::core_data::CoreHandle;
 use crate::DebuggerError;
 use anyhow::{anyhow, Result};
 use capstone::Endian;

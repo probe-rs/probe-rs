@@ -7,9 +7,7 @@ use super::{
     request_helpers::disassemble_target_memory,
 };
 use crate::{
-    debugger::{
-        core_data::CoreHandle, debug_entry::DebugSessionStatus, session_data::BreakpointType,
-    },
+    server::{core_data::CoreHandle, debugger::DebugSessionStatus, session_data::BreakpointType},
     DebuggerError,
 };
 use probe_rs::{debug::VariableName, CoreStatus, HaltReason, MemoryInterface};

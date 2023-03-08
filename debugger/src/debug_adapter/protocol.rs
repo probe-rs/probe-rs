@@ -3,7 +3,7 @@ use crate::{
         Event, MessageSeverity, OutputEventBody, ProtocolMessage, Request, Response,
         ShowMessageEventBody,
     },
-    debugger::configuration::ConsoleLog,
+    server::configuration::ConsoleLog,
     DebuggerError,
 };
 use anyhow::anyhow;
