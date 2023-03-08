@@ -122,10 +122,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
-        let arguments: DisconnectArguments = match get_arguments(request) {
-            Ok(arguments) => arguments,
-            Err(error) => return self.send_response::<()>(request, Err(error)),
-        };
+        let arguments: DisconnectArguments = get_arguments(self, request)?;
 
         // TODO: For now (until we do multicore), we will assume that both terminate and suspend translate to a halt of the core.
         let must_halt_debuggee = arguments.terminate_debuggee.unwrap_or(false)
@@ -143,10 +140,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
-        let arguments: ReadMemoryArguments = match get_arguments(request) {
-            Ok(arguments) => arguments,
-            Err(error) => return self.send_response::<()>(request, Err(error)),
-        };
+        let arguments: ReadMemoryArguments = get_arguments(self, request)?;
 
         let memory_offset = arguments.offset.unwrap_or(0);
         let mut address: u64 =
@@ -220,10 +214,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
-        let arguments: WriteMemoryArguments = match get_arguments(request) {
-            Ok(arguments) => arguments,
-            Err(error) => return self.send_response::<()>(request, Err(error)),
-        };
+        let arguments: WriteMemoryArguments = get_arguments(self, request)?;
         let memory_offset = arguments.offset.unwrap_or(0);
         let address: u64 = if let Ok(address) = parse::<i64>(arguments.memory_reference.as_ref()) {
             match (address + memory_offset).try_into() {
@@ -294,10 +285,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     ) -> Result<()> {
         // TODO: When variables appear in the `watch` context, they will not resolve correctly after a 'step' function. Consider doing the lazy load for 'either/or' of Variables vs. Evaluate
 
-        let arguments: EvaluateArguments = match get_arguments(request) {
-            Ok(arguments) => arguments,
-            Err(error) => return self.send_response::<()>(request, Err(error)),
-        };
+        let arguments: EvaluateArguments = get_arguments(self, request)?;
 
         // Various fields in the response_body will be updated before we return.
         let mut response_body = EvaluateResponseBody {
@@ -463,10 +451,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub(crate) fn completions(&mut self, _: &mut CoreHandle, request: &Request) -> Result<()> {
         // TODO: When variables appear in the `watch` context, they will not resolve correctly after a 'step' function. Consider doing the lazy load for 'either/or' of Variables vs. Evaluate
 
-        let arguments: CompletionsArguments = match get_arguments(request) {
-            Ok(arguments) => arguments,
-            Err(error) => return self.send_response::<()>(request, Err(error)),
-        };
+        let arguments: CompletionsArguments = get_arguments(self, request)?;
 
         let response_body = CompletionsResponseBody {
             targets: command_completions(arguments),
@@ -481,10 +466,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
-        let arguments: SetVariableArguments = match get_arguments(request) {
-            Ok(arguments) => arguments,
-            Err(error) => return self.send_response::<()>(request, Err(error)),
-        };
+        let arguments: SetVariableArguments = get_arguments(self, request)?;
 
         // Various fields in the response_body will be updated before we return.
         let mut response_body = SetVariableResponseBody {
@@ -739,18 +721,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
-        let args: SetBreakpointsArguments = match get_arguments(request) {
-            Ok(arguments) => arguments,
-            Err(error) => {
-                return self.send_response::<()>(
-                    request,
-                    Err(DebuggerError::Other(anyhow!(
-                        "Could not read arguments : {}",
-                        error
-                    ))),
-                )
-            }
-        };
+        let args: SetBreakpointsArguments = get_arguments(self, request)?;
 
         let mut created_breakpoints: Vec<Breakpoint> = Vec::new(); // For returning in the Response
 
@@ -849,18 +820,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
-        let arguments: SetInstructionBreakpointsArguments = match get_arguments(request) {
-            Ok(arguments) => arguments,
-            Err(error) => {
-                return self.send_response::<()>(
-                    request,
-                    Err(DebuggerError::Other(anyhow!(
-                        "Could not read arguments : {}",
-                        error
-                    ))),
-                )
-            }
-        };
+        let arguments: SetInstructionBreakpointsArguments = get_arguments(self, request)?;
 
         // For returning in the Response
         let mut created_breakpoints: Vec<Breakpoint> = Vec::new();
@@ -1041,18 +1001,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
         };
 
-        let arguments: StackTraceArguments = match get_arguments(request) {
-            Ok(arguments) => arguments,
-            Err(error) => {
-                return self.send_response::<()>(
-                    request,
-                    Err(DebuggerError::Other(anyhow!(
-                        "Could not read arguments : {}",
-                        error
-                    ))),
-                )
-            }
-        };
+        let arguments: StackTraceArguments = get_arguments(self, request)?;
 
         // The DAP spec says that the `levels` is optional if `None` or `Some(0)`, then all available frames should be returned.
         let mut levels = arguments.levels.unwrap_or(0);
@@ -1207,10 +1156,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// - registers     : The [probe_rs::Core::registers] for the target [probe_rs::CoreType]
     /// - local scope   : Variables defined between start of current frame, and the current pc (program counter)
     pub(crate) fn scopes(&mut self, target_core: &mut CoreHandle, request: &Request) -> Result<()> {
-        let arguments: ScopesArguments = match get_arguments(request) {
-            Ok(arguments) => arguments,
-            Err(error) => return self.send_response::<()>(request, Err(error)),
-        };
+        let arguments: ScopesArguments = get_arguments(self, request)?;
 
         let mut dap_scopes: Vec<Scope> = vec![];
 
@@ -1363,10 +1309,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
-        let arguments: DisassembleArguments = match get_arguments(request) {
-            Ok(arguments) => arguments,
-            Err(error) => return self.send_response::<()>(request, Err(error)),
-        };
+        let arguments: DisassembleArguments = get_arguments(self, request)?;
+
         if let Ok(memory_reference) = if arguments.memory_reference.starts_with("0x")
             || arguments.memory_reference.starts_with("0X")
         {
@@ -1408,10 +1352,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
-        let arguments: VariablesArguments = match get_arguments(request) {
-            Ok(arguments) => arguments,
-            Err(error) => return self.send_response::<()>(request, Err(error)),
-        };
+        let arguments: VariablesArguments = get_arguments(self, request)?;
 
         if let Some(core_peripherals) = &mut target_core.core_data.core_peripherals {
             // First we check the SVD VariableCache, we do this first because it is the lowest computational overhead.
@@ -1665,7 +1606,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// - [SteppingMode::StepInstruction]: If MS DAP [SteppingGranularity::Instruction] (usually sent from the disassembly view)
     /// - [SteppingMode::OverStatement]: In all other cases.
     pub(crate) fn next(&mut self, target_core: &mut CoreHandle, request: &Request) -> Result<()> {
-        let arguments: NextArguments = get_arguments(request)?;
+        let arguments: NextArguments = get_arguments(self, request)?;
 
         let stepping_granularity = match arguments.granularity {
             Some(SteppingGranularity::Instruction) => SteppingMode::StepInstruction,
@@ -1683,7 +1624,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
-        let arguments: StepInArguments = get_arguments(request)?;
+        let arguments: StepInArguments = get_arguments(self, request)?;
 
         let stepping_granularity = match arguments.granularity {
             Some(SteppingGranularity::Instruction) => SteppingMode::StepInstruction,
@@ -1700,7 +1641,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
-        let arguments: StepOutArguments = get_arguments(request)?;
+        let arguments: StepOutArguments = get_arguments(self, request)?;
 
         let stepping_granularity = match arguments.granularity {
             Some(SteppingGranularity::Instruction) => SteppingMode::StepInstruction,
@@ -2251,16 +2192,7 @@ pub(crate) fn halt_core(
     }
 }
 
-pub fn get_arguments<T: DeserializeOwned>(req: &Request) -> Result<T, crate::DebuggerError> {
-    let value = req
-        .arguments
-        .as_ref()
-        .ok_or(crate::DebuggerError::InvalidRequest)?;
-
-    serde_json::from_value(value.to_owned()).map_err(|e| e.into())
-}
-
-pub fn get_arguments_v2<T: DeserializeOwned, P: ProtocolAdapter>(
+pub fn get_arguments<T: DeserializeOwned, P: ProtocolAdapter>(
     debug_adapter: &mut DebugAdapter<P>,
     req: &Request,
 ) -> Result<T, crate::DebuggerError> {
@@ -2277,7 +2209,7 @@ pub fn get_arguments_v2<T: DeserializeOwned, P: ProtocolAdapter>(
         Err(e) => {
             debug_adapter.send_response::<()>(req, Err(e.into()))?;
             Err(DebuggerError::Other(anyhow!(
-                "Failed to get {} arguments",
+                "Failed to deserialize {} arguments",
                 req.command
             )))
         }

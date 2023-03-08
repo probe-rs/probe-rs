@@ -201,32 +201,26 @@ impl Debugger {
                         if let Some(debugger_rtt_target) =
                             target_core.core_data.rtt_connection.as_mut()
                         {
-                            match get_arguments::<RttWindowOpenedArguments>(&request) {
-                                Ok(arguments) => {
-                                    debugger_rtt_target
-                                        .debugger_rtt_channels
-                                        .iter_mut()
-                                        .find(|debugger_rtt_channel| {
-                                            debugger_rtt_channel.channel_number
-                                                == arguments.channel_number
-                                        })
-                                        .map_or(false, |rtt_channel| {
-                                            rtt_channel.has_client_window =
-                                                arguments.window_is_open;
-                                            arguments.window_is_open
-                                        });
-                                    debug_adapter.send_response::<()>(&request, Ok(None))?;
-                                }
-                                Err(error) => {
-                                    debug_adapter.send_response::<()>(
-                                        &request,
-                                        Err(DebuggerError::Other(anyhow!(
-                                    "Could not deserialize arguments for RttWindowOpened : {:?}.",
-                                    error
-                                ))),
-                                    )?;
-                                }
-                            }
+                            let arguments: RttWindowOpenedArguments =
+                                get_arguments(debug_adapter, &request)?;
+                            debugger_rtt_target
+                                .debugger_rtt_channels
+                                .iter_mut()
+                                .find(|debugger_rtt_channel| {
+                                    debugger_rtt_channel.channel_number == arguments.channel_number
+                                })
+                                .map_or(false, |rtt_channel| {
+                                    rtt_channel.has_client_window = arguments.window_is_open;
+                                    arguments.window_is_open
+                                });
+                            debug_adapter
+                                .send_response::<()>(&request, Ok(None))
+                                .map_err(|error| {
+                                    DebuggerError::Other(anyhow!(
+                                        "Could not deserialize arguments for RttWindowOpened : {:?}.",
+                                        error
+                                    ))
+                                })?;
                         }
                         Ok(())
                     }
@@ -398,18 +392,7 @@ impl Debugger {
             }
         };
 
-        let arguments = get_arguments(&launch_attach_request).or_else(|error| {
-            let error_message = format!(
-                "Could not derive SessionConfig from request '{}', with arguments {:?}\n{:?} ",
-                launch_attach_request.command, launch_attach_request.arguments, error
-            );
-            debug_adapter.send_response::<()>(
-                &launch_attach_request,
-                Err(DebuggerError::Other(anyhow!(error_message.clone()))),
-            )?;
-
-            Err(DebuggerError::Other(anyhow!(error_message)))
-        })?;
+        let arguments = get_arguments(&mut debug_adapter, &launch_attach_request)?;
 
         self.config = configuration::SessionConfig { ..arguments };
 
@@ -785,7 +768,7 @@ impl Debugger {
         let initialize_request = expect_request(debug_adapter, "initialize")?;
 
         let initialize_arguments =
-            get_arguments_v2::<InitializeRequestArguments, _>(debug_adapter, &initialize_request)?;
+            get_arguments::<InitializeRequestArguments, _>(debug_adapter, &initialize_request)?;
 
         if !(initialize_arguments.columns_start_at_1.unwrap_or(true)
             && initialize_arguments.lines_start_at_1.unwrap_or(true))
