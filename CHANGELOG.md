@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Add reset catch sequence for Silicon Labs EFM32/EFR32 Series 2 chips.
+
 - target-gen: Use the correct flash base address when testing flash algorithm (#1542)
 
 - VSCode and probe-rs-debugger is very slow if `rttEnabled: true` and target application has no RTT initialized (#1497).
