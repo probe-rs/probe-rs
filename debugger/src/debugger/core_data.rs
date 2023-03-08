@@ -4,7 +4,8 @@ use super::session_data::{self, BreakpointType};
 use crate::{
     debug_adapter::{
         dap::{
-            adapter::{DapStatus, DebugAdapter},
+            adapter::DebugAdapter,
+            core_status::DapStatus,
             dap_types::{ContinuedEventBody, MessageSeverity, Source, StoppedEventBody},
         },
         protocol::ProtocolAdapter,

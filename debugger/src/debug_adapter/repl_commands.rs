@@ -1,8 +1,11 @@
 use super::{
-    dap::adapter::{disassemble_target_memory, DapStatus},
-    dap::dap_types::{
-        CompletionItem, CompletionItemType, CompletionsArguments, DisassembledInstruction,
-        EvaluateArguments, EvaluateResponseBody,
+    dap::adapter::disassemble_target_memory,
+    dap::{
+        core_status::DapStatus,
+        dap_types::{
+            CompletionItem, CompletionItemType, CompletionsArguments, DisassembledInstruction,
+            EvaluateArguments, EvaluateResponseBody,
+        },
     },
 };
 use crate::{
