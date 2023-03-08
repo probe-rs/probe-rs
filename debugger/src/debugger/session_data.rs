@@ -3,7 +3,9 @@ use super::{
     core_data::{CoreData, CoreHandle},
 };
 use crate::{
-    debug_adapter::{dap_adapter::DebugAdapter, dap_types::Source, protocol::ProtocolAdapter},
+    debug_adapter::{
+        dap::adapter::DebugAdapter, dap::dap_types::Source, protocol::ProtocolAdapter,
+    },
     DebuggerError,
 };
 use anyhow::{anyhow, Result};

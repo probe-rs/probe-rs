@@ -1,8 +1,8 @@
 use super::session_data::SessionData;
 use crate::{
     debug_adapter::{
-        dap_adapter::*,
-        dap_types::*,
+        dap::adapter::*,
+        dap::dap_types::*,
         protocol::{DapAdapter, ProtocolAdapter},
     },
     debugger::configuration::{self, ConsoleLog},

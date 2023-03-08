@@ -1,5 +1,5 @@
 use crate::{
-    debug_adapter::{dap_adapter::*, protocol::ProtocolAdapter},
+    debug_adapter::{dap::adapter::*, protocol::ProtocolAdapter},
     DebuggerError,
 };
 use probe_rs::Core;

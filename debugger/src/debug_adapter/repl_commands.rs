@@ -1,6 +1,6 @@
 use super::{
-    dap_adapter::{disassemble_target_memory, DapStatus},
-    dap_types::{
+    dap::adapter::{disassemble_target_memory, DapStatus},
+    dap::dap_types::{
         CompletionItem, CompletionItemType, CompletionsArguments, DisassembledInstruction,
         EvaluateArguments, EvaluateResponseBody,
     },

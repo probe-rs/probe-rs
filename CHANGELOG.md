@@ -37,7 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - probe-rs-debugger: Remove `restart-after-flashing` option, and make it the default behaviour. (#1550)
 
-- probe-rs-debugger: Refactor `dap_adapter.rs` to facilitate better code reuse. ()
+- probe-rs-debugger: Refactor `dap_adapter.rs` to facilitate better code reuse. (#1557)
 
 ### Added
 

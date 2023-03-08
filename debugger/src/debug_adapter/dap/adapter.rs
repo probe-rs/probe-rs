@@ -1,6 +1,6 @@
-use super::repl_commands::{build_expanded_commands, command_completions};
+use crate::debug_adapter::repl_commands::{build_expanded_commands, command_completions};
 use crate::{
-    debug_adapter::{dap_types, protocol::ProtocolAdapter},
+    debug_adapter::{dap::dap_types, protocol::ProtocolAdapter},
     debugger::{
         configuration::ConsoleLog, core_data::CoreHandle, debug_entry::DebugSessionStatus,
         session_data::BreakpointType,

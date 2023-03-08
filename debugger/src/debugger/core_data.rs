@@ -3,8 +3,10 @@ use std::{fs::File, path::Path};
 use super::session_data::{self, BreakpointType};
 use crate::{
     debug_adapter::{
-        dap_adapter::{DapStatus, DebugAdapter},
-        dap_types::{ContinuedEventBody, MessageSeverity, Source, StoppedEventBody},
+        dap::{
+            adapter::{DapStatus, DebugAdapter},
+            dap_types::{ContinuedEventBody, MessageSeverity, Source, StoppedEventBody},
+        },
         protocol::ProtocolAdapter,
     },
     debugger::debug_rtt,
