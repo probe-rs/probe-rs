@@ -262,7 +262,7 @@ pub(crate) fn get_capstone(target_core: &mut CoreHandle) -> Result<Capstone, Deb
     Ok(cs)
 }
 
-/// A helper function to greate a [`dap_types::Source`] struct from a [`SourceLocation`]
+/// A helper function to greate a [`Source`] struct from a [`SourceLocation`]
 pub(crate) fn get_dap_source(source_location: &SourceLocation) -> Option<Source> {
     // Attempt to construct the path for the source code
     source_location.directory.as_ref().map(|path| {
