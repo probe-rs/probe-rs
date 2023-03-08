@@ -80,15 +80,14 @@ pub(crate) fn disassemble_target_memory(
                 match target_core.core.read_word_32(current_read_pointer) {
                     Ok(new_word) => {
                         // Advance the read pointer for next time we need it.
-                        read_pointer = if let Some(valid_read_pointer) =
-                            current_read_pointer.checked_add(4)
-                        {
-                            Some(valid_read_pointer)
-                        } else {
-                            // If this happens, the next loop will generate "invalid instruction" records.
-                            read_pointer = None;
-                            continue;
-                        };
+                        read_pointer =
+                            if let Some(valid_read_pointer) = current_read_pointer.checked_add(4) {
+                                Some(valid_read_pointer)
+                            } else {
+                                // If this happens, the next loop will generate "invalid instruction" records.
+                                read_pointer = None;
+                                continue;
+                            };
                         // Update the code buffer.
                         for new_byte in new_word.to_le_bytes() {
                             code_buffer.push(new_byte);
@@ -317,5 +316,45 @@ pub(crate) fn halt_core(
     match target_core.halt(Duration::from_millis(100)) {
         Ok(cpu_info) => Ok(cpu_info),
         Err(error) => Err(DebuggerError::Other(anyhow!("{}", error))),
+    }
+}
+
+/// The DAP protocol uses three related values to determine how to invoke the `Variables` request.
+/// This function retrieves that information from the `DebugInfo::VariableCache` and returns it as
+/// (`variable_reference`, `named_child_variables_cnt`, `indexed_child_variables_cnt`)
+pub(crate) fn get_variable_reference(
+    parent_variable: &probe_rs::debug::Variable,
+    cache: &mut probe_rs::debug::VariableCache,
+) -> (i64, i64, i64) {
+    if !parent_variable.is_valid() {
+        return (0, 0, 0);
+    }
+    let mut named_child_variables_cnt = 0;
+    let mut indexed_child_variables_cnt = 0;
+    if let Ok(children) = cache.get_children(Some(parent_variable.variable_key)) {
+        for child_variable in children {
+            if child_variable.is_indexed() {
+                indexed_child_variables_cnt += 1;
+            } else {
+                named_child_variables_cnt += 1;
+            }
+        }
+    };
+
+    if named_child_variables_cnt > 0 || indexed_child_variables_cnt > 0 {
+        (
+            parent_variable.variable_key,
+            named_child_variables_cnt,
+            indexed_child_variables_cnt,
+        )
+    } else if parent_variable.variable_node_type.is_deferred()
+        && parent_variable.get_value(cache) != "()"
+    {
+        // We have not yet cached the children for this reference.
+        // Provide DAP Client with a reference so that it will explicitly ask for children when the user expands it.
+        (parent_variable.variable_key, 0, 0)
+    } else {
+        // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
+        (0, 0, 0)
     }
 }

@@ -1,4 +1,4 @@
-use super::dap::{
+use super::{
     core_status::DapStatus,
     dap_types::{
         CompletionItem, CompletionItemType, CompletionsArguments, DisassembledInstruction,
