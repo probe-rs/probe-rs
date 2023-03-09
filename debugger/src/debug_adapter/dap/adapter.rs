@@ -792,7 +792,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             source: None,
                             instruction_reference: None,
                             offset: None,
-                            verified: true,
+                            verified: false,
                         }),
                     };
                 }
