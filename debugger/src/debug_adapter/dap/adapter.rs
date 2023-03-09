@@ -1,6 +1,15 @@
-use crate::debug_adapter::dap::repl_commands::{build_expanded_commands, command_completions};
+use super::{
+    core_status::DapStatus,
+    request_helpers::{disassemble_target_memory, get_dap_source, get_variable_reference},
+};
 use crate::{
-    debug_adapter::{dap::dap_types, protocol::ProtocolAdapter},
+    debug_adapter::{
+        dap::{
+            dap_types,
+            repl_commands::{build_expanded_commands, command_completions},
+        },
+        protocol::ProtocolAdapter,
+    },
     server::{
         configuration::ConsoleLog, core_data::CoreHandle, debugger::DebugSessionStatus,
         session_data::BreakpointType,
@@ -24,9 +33,6 @@ use probe_rs::{
 use probe_rs_cli_util::rtt;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{convert::TryInto, path::Path, str, string::ToString, time::Duration};
-
-use super::core_status::DapStatus;
-use super::request_helpers::{disassemble_target_memory, get_dap_source, get_variable_reference};
 
 /// Progress ID used for progress reporting when the debug adapter protocol is used.
 type ProgressId = i64;

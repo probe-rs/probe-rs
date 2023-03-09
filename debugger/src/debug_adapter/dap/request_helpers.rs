@@ -1,18 +1,18 @@
-use crate::debug_adapter::dap::dap_types::{DisassembledInstruction, Source};
-use crate::server::core_data::CoreHandle;
-use crate::DebuggerError;
+use crate::{
+    debug_adapter::dap::dap_types::{DisassembledInstruction, Source},
+    server::core_data::CoreHandle,
+    DebuggerError,
+};
 use anyhow::{anyhow, Result};
-use capstone::Endian;
 use capstone::{
     arch::arm::ArchMode as armArchMode, arch::arm64::ArchMode as aarch64ArchMode,
-    arch::riscv::ArchMode as riscvArchMode, prelude::*,
+    arch::riscv::ArchMode as riscvArchMode, prelude::*, Endian,
 };
 use num_traits::Zero;
-use probe_rs::debug::ColumnType;
-use probe_rs::debug::SourceLocation;
-use probe_rs::CoreType;
-use probe_rs::InstructionSet;
-use probe_rs::MemoryInterface;
+use probe_rs::{
+    debug::{ColumnType, SourceLocation},
+    CoreType, InstructionSet, MemoryInterface,
+};
 use std::time::Duration;
 
 pub(crate) fn disassemble_target_memory(
