@@ -36,6 +36,7 @@ impl SourceStatements {
         let (complete_line_program, active_sequence) =
             get_program_info_at_pc(debug_info, program_unit, program_counter)?;
         let mut sequence_rows = complete_line_program.resume_from(&active_sequence);
+        let _program_language = program_unit.get_language();
         let mut prologue_completed = false;
         let mut source_statement: Option<SourceStatement> = None;
         while let Ok(Some((_, row))) = sequence_rows.next_row() {

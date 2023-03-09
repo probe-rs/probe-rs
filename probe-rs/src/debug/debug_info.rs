@@ -918,8 +918,10 @@ impl DebugInfo {
 
                 for file_name in header.file_names() {
                     let combined_path = self.get_path(unit, header, file_name);
-
-                    if combined_path.map(|p| p == path).unwrap_or(false) {
+                    if combined_path
+                        .map(|p| path_fuzzy_eq(path, &p))
+                        .unwrap_or(false)
+                    {
                         let mut rows = line_program.clone().rows();
 
                         while let Some((header, row)) = rows.next_row()? {
@@ -927,7 +929,7 @@ impl DebugInfo {
                                 .file(header)
                                 .and_then(|file_entry| self.get_path(unit, header, file_entry));
 
-                            if row_path.map(|p| p != path).unwrap_or(true) {
+                            if row_path.map(|p| !path_fuzzy_eq(path, &p)).unwrap_or(true) {
                                 continue;
                             }
 
@@ -1063,7 +1065,8 @@ impl DebugInfo {
         )))
     }
 
-    /// Get the absolute path for an entry in a line program header
+    /// Get the path for an entry in a line program header, using the compilation unit's directory and file entries.
+    // TODO: Determine if it is necessary to navigate the include directories to find the file absolute path for C files.
     pub(crate) fn get_path(
         &self,
         unit: &gimli::read::Unit<DwarfReader>,
@@ -1076,7 +1079,6 @@ impl DebugInfo {
             .and_then(|dir| self.dwarf.attr_string(unit, dir).ok());
 
         let name_path = Path::new(from_utf8(&file_name_attr_string).ok()?);
-
         let dir_path =
             dir_name_attr_string.and_then(|dir_name| from_utf8(&dir_name).ok().map(PathBuf::from));
 
@@ -1093,7 +1095,6 @@ impl DebugInfo {
                 .transpose()
                 .ok()?
                 .map(PathBuf::from);
-
             if let Some(comp_dir) = comp_dir {
                 combined_path = comp_dir.join(&combined_path);
             }
@@ -1117,6 +1118,35 @@ impl DebugInfo {
         let directory = combined_path.parent().map(|p| p.to_path_buf());
 
         Some((file_name, directory))
+    }
+}
+
+/// This is a fuzzy 'equality' check for path names.
+/// If both paths are absolute, then it will use the standard `Path::eq` method.
+/// If the secondary path is relative, then it will succeeed if the primary ends with the compared path,
+/// e.g. `/home/user/project/src/main.rs` ends with `src/main.rs` and will return true.
+pub(crate) fn path_fuzzy_eq(primary_path: &Path, secondary_path: &Path) -> bool {
+    if primary_path.is_absolute() && secondary_path.is_relative() {
+        // First make sure the secondary path does not start with special sequences, e.g. `./` or `../`
+        let stripped_secondary_path = secondary_path
+            .components()
+            .skip_while(|component| {
+                component
+                    .as_os_str()
+                    .to_str()
+                    // If the component is not a string, then it is not a special sequence.
+                    .unwrap_or("")
+                    .starts_with('.')
+            })
+            .collect::<PathBuf>();
+        tracing::debug!(
+            "Fuzzy path equality: Using `{:?}.ends_with({:?})` to compare paths.",
+            primary_path,
+            stripped_secondary_path
+        );
+        primary_path.ends_with(stripped_secondary_path)
+    } else {
+        primary_path.eq(secondary_path)
     }
 }
 
