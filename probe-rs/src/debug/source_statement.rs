@@ -36,7 +36,7 @@ impl SourceStatements {
         let (complete_line_program, active_sequence) =
             get_program_info_at_pc(debug_info, program_unit, program_counter)?;
         let mut sequence_rows = complete_line_program.resume_from(&active_sequence);
-        let _program_language = program_unit.get_language();
+        let program_language = program_unit.get_language();
         let mut prologue_completed = false;
         let mut source_statement: Option<SourceStatement> = None;
         while let Ok(Some((_, row))) = sequence_rows.next_row() {
@@ -57,6 +57,24 @@ impl SourceStatements {
             // Don't do anything until we are at least at the prologue_end() of a function.
             if row.prologue_end() {
                 prologue_completed = true;
+            }
+            // For GNU C, the `DW_LNS_set_prologue_end` is not set, so we employ the same heuristic as GDB to determine when the prologue is complete.
+            // See https://gcc.gnu.org/legacy-ml/gcc-patches/2011-03/msg02106.html
+            if !prologue_completed
+                && matches!(
+                    program_language,
+                    gimli::DW_LANG_C99 | gimli::DW_LANG_C11 | gimli::DW_LANG_C17
+                )
+            {
+                if let Some(source_row) = source_statement.as_mut() {
+                    if row.end_sequence()
+                        || (row.is_stmt()
+                            && (row.file_index() == source_row.file_index
+                                && (row.line() != source_row.line || row.line().is_none())))
+                    {
+                        prologue_completed = true;
+                    }
+                }
             }
 
             if !prologue_completed {

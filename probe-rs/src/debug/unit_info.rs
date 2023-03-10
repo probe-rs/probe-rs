@@ -23,7 +23,7 @@ pub(crate) struct UnitInfo<'debuginfo> {
 }
 
 impl<'debuginfo> UnitInfo<'debuginfo> {
-    /// Retrieve the DW_AT_language attribute of the compilation unit.
+    /// Retrieve the value of the DW_AT_language attribute of the compilation unit.
     /// This is used to influence logic for special cases related to the way the debug_info is generated.
     /// In the unlikely event that we are unable to retrieve the language, we assume Rust,
     /// so that other logic can follow the default behaviour.
