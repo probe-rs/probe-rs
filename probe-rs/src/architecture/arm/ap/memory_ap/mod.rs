@@ -50,13 +50,14 @@ impl From<GenericAp> for MemoryAp {
 /// This can be configured with the CSW command.
 ///
 /// ALL MCUs support `U32`. All other transfer sizes are optionally implemented.
-#[derive(Debug, Primitive, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Primitive, Clone, Copy, PartialEq, Eq)]
 pub enum DataSize {
     /// 1 byte transfers are supported.
     U8 = 0b000,
     /// 2 byte transfers are supported.
     U16 = 0b001,
     /// 4 byte transfers are supported.
+    #[default]
     U32 = 0b010,
     /// 8 byte transfers are supported.
     U64 = 0b011,
@@ -88,62 +89,41 @@ impl DataSize {
     }
 }
 
-impl Default for DataSize {
-    fn default() -> Self {
-        DataSize::U32
-    }
-}
-
 /// The increment to the TAR that is performed after each DRW read or write.
 ///
 /// This can be used to avoid successive TAR transfers for writes of consecutive addresses.
 /// This will effectively save half the bandwidth!
 ///
 /// Can be configured in the CSW.
-#[derive(Debug, Primitive, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Primitive, Clone, Copy, PartialEq, Eq)]
 pub enum AddressIncrement {
     /// No increments are happening after the DRW access. TAR always stays the same.
     /// Always supported.
     Off = 0b00,
     /// Increments the TAR by the size of the access after each DRW access.
     /// Always supported.
+    #[default]
     Single = 0b01,
     /// Enables packed access to the DRW (see C2.2.7).
     /// Only available if sub-word access is supported by the core.
     Packed = 0b10,
 }
 
-impl Default for AddressIncrement {
-    fn default() -> Self {
-        AddressIncrement::Single
-    }
-}
-
 /// The format of the BASE register (see C2.6.1).
-#[derive(Debug, PartialEq, Eq, Primitive, Clone, Copy)]
+#[derive(Debug, Default, PartialEq, Eq, Primitive, Clone, Copy)]
 pub enum BaseaddrFormat {
     /// The legacy format of very old cores. Very little cores use this.
+    #[default]
     Legacy = 0,
     /// The format all newer MCUs use.
     ADIv5 = 1,
 }
 
-impl Default for BaseaddrFormat {
-    fn default() -> Self {
-        BaseaddrFormat::Legacy
-    }
-}
-
-#[derive(Debug, Primitive, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Primitive, Clone, Copy, PartialEq, Eq)]
 pub enum DebugEntryState {
+    #[default]
     NotPresent = 0,
     Present = 1,
-}
-
-impl Default for DebugEntryState {
-    fn default() -> Self {
-        DebugEntryState::NotPresent
-    }
 }
 
 define_ap_register!(
