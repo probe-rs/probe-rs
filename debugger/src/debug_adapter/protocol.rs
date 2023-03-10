@@ -243,7 +243,7 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
         match self.send_data(&encoded_event) {
             Ok(_) => {}
             Err(error) => {
-                let message = format!("Unexpected Error while sending event: {:?}", error);
+                let message = format!("Unexpected Error while sending event: {error:?}");
                 tracing::error!("{message}");
                 self.log_to_console(&message);
                 self.show_message(MessageSeverity::Error, message);
