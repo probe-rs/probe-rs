@@ -54,7 +54,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Command completions are supported for the individual commands, but not for the arguments.
   - Additional commands can be added in the future, as required, but will benefit from some refactoring to share code with functionality that is already implementated in `dap_adapter.rs` for MS DAP requests.
 
-- debug: Enable debug initial support for binaries compiled from C files (GNU C99). (#1558)
+- debug: Enable debug experimental support for binaries compiled from C files (GNU C99/11/17). (#1558)
 
 ## [0.17.0]
 
