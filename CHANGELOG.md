@@ -56,6 +56,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - debug: Enable debug experimental support for binaries compiled from C files (GNU C99/11/17). (#1558)
 
+- Added support for `monitor reset` and `monitor reset halt` commands in `gdb-server` #1565
+
+
 ## [0.17.0]
 
 Released 2023-02-06
