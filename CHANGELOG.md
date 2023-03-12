@@ -53,6 +53,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Command completions are supported for the individual commands, but not for the arguments.
   - Additional commands can be added in the future, as required, but will benefit from some refactoring to share code with functionality that is already implementated in `dap_adapter.rs` for MS DAP requests.
 
+- Added support for `monitor reset` and `monitor reset halt` commands in `gdb-server` #1565
+
 ## [0.17.0]
 
 Released 2023-02-06
