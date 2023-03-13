@@ -330,21 +330,27 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             .trim_start()
                             .trim_start_matches(repl_command.command)
                             .trim_start();
-                        match (repl_command.handler)(
-                            target_core,
-                            &mut response_body,
-                            argument_string,
-                            &arguments,
-                        ) {
-                            Ok(debug_session_status) => {
-                                if debug_session_status == DebugSessionStatus::Terminate {
+                        match (repl_command.handler)(target_core, argument_string, &arguments) {
+                            Ok(repl_response) => {
+                                if repl_response.command.eq("terminate") {
                                     // This is a special case, where a repl command has requested that the debug session be terminated.
                                     self.send_event(
                                         "terminated",
                                         Some(TerminatedEventBody { restart: None }),
                                     )?;
                                 } else {
-                                    // In all other cases, the response_body would have been updated by the repl command handler.
+                                    // In all other cases, the response would have been updated by the repl command handler.
+                                    if repl_response.success {
+                                        response_body.result = repl_response
+                                            .message
+                                            // This should always have a value, but just in case someone was lazy ...
+                                            .unwrap_or_else(|| "Success.".to_string());
+                                    } else {
+                                        response_body.result = format!(
+                                            "Error: {:?} {:?}",
+                                            repl_response.command, repl_response.message
+                                        );
+                                    }
                                 }
                             }
                             Err(error) => match &error {

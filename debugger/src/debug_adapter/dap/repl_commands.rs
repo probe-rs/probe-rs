@@ -1,6 +1,6 @@
 use super::{
     core_status::DapStatus,
-    dap_types::{EvaluateArguments, EvaluateResponseBody, InstructionBreakpoint},
+    dap_types::{Breakpoint, EvaluateArguments, InstructionBreakpoint, Response},
     repl_commands_helpers::*,
     repl_types::*,
     request_helpers::set_instruction_breakpoint,
@@ -14,15 +14,17 @@ use std::{fmt::Display, str::FromStr, time::Duration};
 
 /// The handler is a function that takes a reference to the target core, and a reference to the response body.
 /// The response body is used to populate the response to the client.
-/// The handler can return a [`DebugSessionStatus`], which is used to determine if the debug session should continue, or if it should be terminated.
-/// The handler can also return a [`DebuggerError`], which is used to populate the response to the client.
+/// The handler returns a Result<[`Response`], [`DebuggerError`]>.
+/// We use the [`Response`] type here, so that we can have a consistent interface for processing the result as follows:
+/// - The `command`, `success`, annd `message` fields are the most commonly used fields for all the REPL commands.
+/// - The `body` field is used if we need to pass back other DAP body types, e.g. [`Breakpoint`].
+/// - The remainder of the fields are unused/ignored.
 /// The majority of the REPL command results will be populated into the response body.
 pub(crate) type ReplHandler = fn(
     target_core: &mut CoreHandle,
-    response: &mut EvaluateResponseBody,
     command_arguments: &str,
     evaluate_arguments: &EvaluateArguments,
-) -> Result<DebugSessionStatus, DebuggerError>;
+) -> Result<Response, DebuggerError>;
 
 pub(crate) struct ReplCommand<H: 'static> {
     /// The text that the user will type to invoke the command.
@@ -62,7 +64,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
         help_text: "Information about available commands and how to use them.",
         sub_commands: None,
         args: None,
-        handler: |_, response_body, _, _| {
+        handler: |_, _, _| {
             let mut help_text =
                 "Usage:\t-Use <Ctrl+Space> to get a list of available commands.".to_string();
             help_text.push_str("\n\t- Use <Up/DownArrows> to navigate through the command list.");
@@ -72,8 +74,15 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
             for command in REPL_COMMANDS {
                 help_text.push_str(&format!("\n{command}"));
             }
-            response_body.result = help_text;
-            Ok(DebugSessionStatus::Continue)
+            Ok(Response {
+                command: "help".to_string(),
+                success: true,
+                message: Some(help_text),
+                type_: "response".to_string(),
+                request_seq: 0,
+                seq: 0,
+                body: None,
+            })
         },
     },
     ReplCommand {
@@ -81,10 +90,17 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
         help_text: "Disconnect (and suspend) the target.",
         sub_commands: None,
         args: None,
-        handler: |target_core, response_body, _, _| {
+        handler: |target_core, _, _| {
             target_core.core.halt(Duration::from_millis(500))?;
-            response_body.result = "Debug Session Terminated".to_string();
-            Ok(DebugSessionStatus::Terminate)
+            Ok(Response {
+                command: "terminate".to_string(),
+                success: true,
+                message: Some("Debug Session Terminated".to_string()),
+                type_: "response".to_string(),
+                request_seq: 0,
+                seq: 0,
+                body: None,
+            })
         },
     },
     ReplCommand {
@@ -92,11 +108,19 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
         help_text: "Continue running the program on the target.",
         sub_commands: None,
         args: None,
-        handler: |target_core, response_body, _, _| {
+        handler: |target_core, _, _| {
             target_core.core.run()?;
-            response_body.result = CoreStatus::Running.short_long_status(None).1;
+            // Changing the status below will result in the debugger automaticlly synching the client status.
             target_core.core_data.last_known_status = CoreStatus::Running;
-            Ok(DebugSessionStatus::Continue)
+            Ok(Response {
+                command: "continue".to_string(),
+                success: true,
+                message: Some(CoreStatus::Running.short_long_status(None).1),
+                type_: "response".to_string(),
+                request_seq: 0,
+                seq: 0,
+                body: None,
+            })
         },
     },
     ReplCommand {
@@ -105,12 +129,22 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
         help_text: "Sets a breakpoint specified location, or next instruction if unspecified.",
         sub_commands: None,
         args: Some(&[ReplCommandArgs::Optional("*address")]),
-        handler: |target_core, response_body, command_arguments, _| {
+        handler: |target_core, command_arguments, _| {
             if command_arguments.is_empty() {
                 let core_info = target_core.core.halt(Duration::from_millis(500))?;
-                response_body.result = CoreStatus::Halted(HaltReason::Request)
-                    .short_long_status(Some(core_info.pc))
-                    .1;
+                return Ok(Response {
+                    command: "pause".to_string(),
+                    success: true,
+                    message: Some(
+                        CoreStatus::Halted(HaltReason::Request)
+                            .short_long_status(Some(core_info.pc))
+                            .1,
+                    ),
+                    type_: "response".to_string(),
+                    request_seq: 0,
+                    seq: 0,
+                    body: None,
+                });
             } else {
                 let mut input_arguments = command_arguments.split_whitespace();
                 if let Some(input_argument) = input_arguments.next() {
@@ -124,21 +158,26 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                             },
                             target_core,
                         );
-                        response_body.result = result.message.unwrap_or_else(|| {
-                            format!("Unexpected error creating breakpoint at {input_argument}.")
-                        });
                         if result.verified {
                             // TODO: Currently this sets breakpoints without synching the VSCode UI. We can send a Dap `breakpoint` event.
                         }
-                    } else {
-                        return Err(DebuggerError::UserMessage(
-                            "Invalid parameters. See the `help` command for more information."
-                                .to_string(),
-                        ));
-                    };
+                        return Ok(Response {
+                            command: "setInstructionBreakpoints".to_string(),
+                            success: true,
+                            message: Some(result.message.unwrap_or_else(|| {
+                                format!("Unexpected error creating breakpoint at {input_argument}.")
+                            })),
+                            type_: "response".to_string(),
+                            request_seq: 0,
+                            seq: 0,
+                            body: None,
+                        });
+                    }
                 }
             }
-            Ok(DebugSessionStatus::Continue)
+            Err(DebuggerError::UserMessage(
+                format!("Invalid parameters {command_arguments:?}. See the `help` command for more information."),
+            ))
         },
     },
     ReplCommand {
@@ -147,7 +186,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
         help_text: "Print the backtrace of the current thread.",
         args: None,
         // TODO: This is easy to implement ... just requires deciding how to format the output.
-        handler: |_, _, _, _| Err(DebuggerError::Unimplemented),
+        handler: |_, _, _| Err(DebuggerError::Unimplemented),
     },
     ReplCommand {
         command: "info",
@@ -160,26 +199,20 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                 sub_commands: None,
                 args: Some(&[ReplCommandArgs::Optional("address")]),
                 // TODO: This is easy to implement ... just requires deciding how to format the output.
-                handler: |_, _, _, _| Err(DebuggerError::Unimplemented),
+                handler: |_, _, _| Err(DebuggerError::Unimplemented),
             },
             ReplCommand {
                 command: "locals",
                 help_text: "List local variables of the selected frame.",
                 sub_commands: None,
                 args: None,
-                handler: |target_core, response_body, _, evaluate_arguments| {
+                handler: |target_core, _, evaluate_arguments| {
                     let gdb_nuf = GdbNuf {
                         format_specifier: GdbFormat::Native,
                         ..Default::default()
                     };
                     let variable_name = VariableName::LocalScopeRoot;
-                    get_local_variable(
-                        evaluate_arguments,
-                        target_core,
-                        variable_name,
-                        gdb_nuf,
-                        response_body,
-                    )
+                    get_local_variable(evaluate_arguments, target_core, variable_name, gdb_nuf)
                 },
             },
             ReplCommand {
@@ -188,7 +221,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                 sub_commands: None,
                 args: None,
                 // TODO: This is easy to implement ... just requires deciding how to format the output.
-                handler: |_, _, _, _| Err(DebuggerError::Unimplemented),
+                handler: |_, _, _| Err(DebuggerError::Unimplemented),
             },
             ReplCommand {
                 command: "var",
@@ -196,11 +229,11 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                 sub_commands: None,
                 args: None,
                 // TODO: This is easy to implement ... just requires deciding how to format the output.
-                handler: |_, _, _, _| Err(DebuggerError::Unimplemented),
+                handler: |_, _, _| Err(DebuggerError::Unimplemented),
             },
         ]),
         args: None,
-        handler: |_, _, _, _| {
+        handler: |_, _, _| {
             Err(DebuggerError::UserMessage("Please provide one of the required subcommands. See the `help` command for more information.".to_string()))
         },
     },
@@ -213,7 +246,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
             ReplCommandArgs::Optional("/f (f=format[n|v])"),
             ReplCommandArgs::Required("<local variable name>"),
         ]),
-        handler: |target_core, response_body, command_arguments, evaluate_arguments| {
+        handler: |target_core, command_arguments, evaluate_arguments| {
             let input_arguments = command_arguments.split_whitespace();
             let mut gdb_nuf = GdbNuf {
                 format_specifier: GdbFormat::Native,
@@ -247,13 +280,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                 }
             }
 
-            get_local_variable(
-                evaluate_arguments,
-                target_core,
-                variable_name,
-                gdb_nuf,
-                response_body,
-            )
+            get_local_variable(evaluate_arguments, target_core, variable_name, gdb_nuf)
         },
     },
     ReplCommand {
@@ -264,7 +291,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
             ReplCommandArgs::Optional("/Nuf (N=count, u=unit[b|h|w|g], f=format[t|x|i])"),
             ReplCommandArgs::Optional("address (hex)"),
         ]),
-        handler: |target_core, response_body, command_arguments, request_arguments| {
+        handler: |target_core, command_arguments, request_arguments| {
             let input_arguments = command_arguments.split_whitespace();
             let mut gdb_nuf = GdbNuf {
                 ..Default::default()
@@ -332,7 +359,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                 }
             }
 
-            memory_read(input_address, gdb_nuf, target_core, response_body)
+            memory_read(input_address, gdb_nuf, target_core)
         },
     },
 ];

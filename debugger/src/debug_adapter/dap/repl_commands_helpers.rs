@@ -8,7 +8,7 @@ use crate::{
 use super::{
     dap_types::{
         CompletionItem, CompletionItemType, CompletionsArguments, DisassembledInstruction,
-        EvaluateArguments, EvaluateResponseBody,
+        EvaluateArguments, EvaluateResponseBody, Response,
     },
     repl_commands::{ReplCommand, ReplHandler, REPL_COMMANDS},
     repl_types::*,
@@ -22,8 +22,7 @@ pub(crate) fn get_local_variable(
     target_core: &mut CoreHandle,
     variable_name: VariableName,
     gdb_nuf: GdbNuf,
-    response_body: &mut EvaluateResponseBody,
-) -> Result<DebugSessionStatus, DebuggerError> {
+) -> Result<Response, DebuggerError> {
     // Make sure we have a valid StackFrame
     if let Some(stack_frame) = match evaluate_arguments.frame_id {
         Some(frame_id) => target_core
@@ -38,6 +37,15 @@ pub(crate) fn get_local_variable(
     } {
         if let Some(variable_cache) = stack_frame.local_variables.as_mut() {
             if let Some(variable) = variable_cache.get_variable_by_name(&variable_name) {
+                let mut response = Response {
+                    command: "variables".to_string(),
+                    success: true,
+                    message: None,
+                    type_: "response".to_string(),
+                    request_seq: 0,
+                    seq: 0,
+                    body: None,
+                };
                 let variable_list = if variable.name == VariableName::LocalScopeRoot {
                     variable_cache
                         .get_children(Some(variable.variable_key))
@@ -49,6 +57,15 @@ pub(crate) fn get_local_variable(
                         })?
                 } else {
                     vec![variable]
+                };
+                let mut response_body = EvaluateResponseBody {
+                    result: "".to_string(),
+                    variables_reference: 0,
+                    named_variables: None,
+                    indexed_variables: None,
+                    memory_reference: None,
+                    type_: None,
+                    presentation_hint: None,
                 };
                 response_body.result = "".to_string();
                 for variable in variable_list {
@@ -72,6 +89,9 @@ pub(crate) fn get_local_variable(
                         ));
                     }
                 }
+                response.message = Some(response_body.result);
+                response.body = Some(serde_json::to_value(response_body).unwrap());
+                Ok(response)
             } else {
                 return Err(DebuggerError::UserMessage(format!(
                     "No variable named {:?} found for frame: {:?}.",
@@ -87,7 +107,6 @@ pub(crate) fn get_local_variable(
     } else {
         return Err(DebuggerError::UserMessage("No frame selected.".to_string()));
     }
-    Ok(DebugSessionStatus::Continue)
 }
 
 /// Read memory at the specified address (hex), using the [`GdbNuf`] specifiers to determine size and format.
@@ -95,8 +114,16 @@ pub(crate) fn memory_read(
     address: u64,
     gdb_nuf: GdbNuf,
     target_core: &mut CoreHandle,
-    response_body: &mut EvaluateResponseBody,
-) -> Result<DebugSessionStatus, DebuggerError> {
+) -> Result<Response, DebuggerError> {
+    let mut response = Response {
+        command: "readMemory".to_string(),
+        success: true,
+        message: None,
+        type_: "response".to_string(),
+        request_seq: 0,
+        seq: 0,
+        body: None,
+    };
     if gdb_nuf.format_specifier == GdbFormat::Instruction {
         let assembly_lines: Vec<DisassembledInstruction> = disassemble_target_memory(
             target_core,
@@ -114,7 +141,7 @@ pub(crate) fn memory_read(
             for assembly_line in &assembly_lines {
                 formatted_output.push_str(&assembly_line.to_string());
             }
-            response_body.result = formatted_output;
+            response.message = Some(formatted_output);
         }
     } else {
         let mut memory_result = vec![0u8; gdb_nuf.get_size()];
@@ -125,7 +152,7 @@ pub(crate) fn memory_read(
                     memory: &memory_result,
                 }
                 .to_string();
-                response_body.result = formatted_output;
+                response.message = Some(formatted_output);
             }
             Err(err) => {
                 return Err(DebuggerError::UserMessage(format!(
@@ -134,7 +161,7 @@ pub(crate) fn memory_read(
             }
         }
     }
-    Ok(DebugSessionStatus::Continue)
+    Ok(response)
 }
 
 /// Get a list of command matches, based on the given command piece.
