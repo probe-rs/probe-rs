@@ -4,7 +4,7 @@ use gimli::{DebugInfoOffset, UnitOffset};
 use std::str::FromStr;
 
 /// Define the role that a variable plays in a Variant relationship. See section '5.7.10 Variant Entries' of the DWARF 5 specification
-#[derive(Debug, Default, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Default)]
 pub enum VariantRole {
     /// A (parent) Variable that can have any number of Variant's as its value
     VariantPart(u64),
@@ -18,7 +18,7 @@ pub enum VariantRole {
 /// A [Variable] will have either a valid value, or some reason why a value could not be constructed.
 /// - If we encounter expected errors, they will be displayed to the user as defined below.
 /// - If we encounter unexpected errors, they will be treated as proper errors and will propogated to the calling process as an `Err()`
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub enum VariableValue {
     /// A valid value of this variable
     Valid(String),
@@ -59,7 +59,7 @@ impl VariableValue {
 }
 
 /// The type of variable we have at hand.
-#[derive(Debug, Default, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub enum VariableName {
     /// Top-level variable for static variables, child of a stack frame variable, and holds all the static scoped variables which are directly visible to the compile unit of the frame.
     StaticScopeRoot,
@@ -100,7 +100,7 @@ impl std::fmt::Display for VariableName {
 
 /// Encode the nature of the Debug Information Entry in a way that we can resolve child nodes of a [Variable]
 /// The rules for 'lazy loading'/deferred recursion of [Variable] children are described under each of the enum values.
-#[derive(Default, Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub enum VariableNodeType {
     /// For pointer values, their referenced variables are found at an [gimli::UnitOffset] in the [DebugInfo].
     /// - Rule: Pointers to `struct` variables WILL NOT BE recursed, because  this may lead to infinite loops/stack overflows in `struct`s that self-reference.
@@ -147,7 +147,7 @@ impl VariableNodeType {
 }
 
 /// The variants of VariableType allows us to streamline the conditional logic that requires specific handling depending on the nature of the variable.
-#[derive(Default, Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum VariableType {
     /// A variable with a Rust base datatype.
     Base(String),
