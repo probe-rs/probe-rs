@@ -1,14 +1,11 @@
 use super::{
     core_status::DapStatus,
-    dap_types::{Breakpoint, EvaluateArguments, InstructionBreakpoint, Response},
+    dap_types::{BreakpointEventBody, EvaluateArguments, InstructionBreakpoint, Response},
     repl_commands_helpers::*,
     repl_types::*,
     request_helpers::set_instruction_breakpoint,
 };
-use crate::{
-    server::{core_data::CoreHandle, debugger::DebugSessionStatus},
-    DebuggerError,
-};
+use crate::{server::core_data::CoreHandle, DebuggerError};
 use probe_rs::{debug::VariableName, CoreStatus, HaltReason};
 use std::{fmt::Display, str::FromStr, time::Duration};
 
@@ -17,7 +14,7 @@ use std::{fmt::Display, str::FromStr, time::Duration};
 /// The handler returns a Result<[`Response`], [`DebuggerError`]>.
 /// We use the [`Response`] type here, so that we can have a consistent interface for processing the result as follows:
 /// - The `command`, `success`, annd `message` fields are the most commonly used fields for all the REPL commands.
-/// - The `body` field is used if we need to pass back other DAP body types, e.g. [`Breakpoint`].
+/// - The `body` field is used if we need to pass back other DAP body types, e.g. [`BreakpointEventBody`].
 /// - The remainder of the fields are unused/ignored.
 /// The majority of the REPL command results will be populated into the response body.
 pub(crate) type ReplHandler = fn(
@@ -158,20 +155,26 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                             },
                             target_core,
                         );
-                        if result.verified {
-                            // TODO: Currently this sets breakpoints without synching the VSCode UI. We can send a Dap `breakpoint` event.
-                        }
-                        return Ok(Response {
+                        let mut response = Response {
                             command: "setInstructionBreakpoints".to_string(),
                             success: true,
-                            message: Some(result.message.unwrap_or_else(|| {
+                            message: Some(result.message.clone().unwrap_or_else(|| {
                                 format!("Unexpected error creating breakpoint at {input_argument}.")
                             })),
                             type_: "response".to_string(),
                             request_seq: 0,
                             seq: 0,
                             body: None,
-                        });
+                        };
+                        if result.verified {
+                            // The caller will catch this event body and use it to synch the UI breakpoint list.
+                            response.body = serde_json::to_value(BreakpointEventBody {
+                                breakpoint: result,
+                                reason: "new".to_string(),
+                            })
+                            .ok();
+                        }
+                        return Ok(response);
                     }
                 }
             }

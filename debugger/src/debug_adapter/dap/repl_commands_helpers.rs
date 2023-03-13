@@ -1,9 +1,6 @@
 use probe_rs::{debug::VariableName, MemoryInterface};
 
-use crate::{
-    server::{core_data::CoreHandle, debugger::DebugSessionStatus},
-    DebuggerError,
-};
+use crate::{server::core_data::CoreHandle, DebuggerError};
 
 use super::{
     dap_types::{
@@ -89,23 +86,23 @@ pub(crate) fn get_local_variable(
                         ));
                     }
                 }
-                response.message = Some(response_body.result);
-                response.body = Some(serde_json::to_value(response_body).unwrap());
+                response.message = Some(response_body.result.clone());
+                response.body = serde_json::to_value(response_body).ok();
                 Ok(response)
             } else {
-                return Err(DebuggerError::UserMessage(format!(
+                Err(DebuggerError::UserMessage(format!(
                     "No variable named {:?} found for frame: {:?}.",
                     variable_name, stack_frame.function_name
-                )));
+                )))
             }
         } else {
-            return Err(DebuggerError::UserMessage(format!(
+            Err(DebuggerError::UserMessage(format!(
                 "No variables available for frame: {:?}.",
                 stack_frame.function_name
-            )));
+            )))
         }
     } else {
-        return Err(DebuggerError::UserMessage("No frame selected.".to_string()));
+        Err(DebuggerError::UserMessage("No frame selected.".to_string()))
     }
 }
 
