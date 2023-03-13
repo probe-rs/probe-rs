@@ -1,6 +1,9 @@
 use super::{
     core_status::DapStatus,
-    request_helpers::{disassemble_target_memory, get_dap_source, get_variable_reference},
+    request_helpers::{
+        disassemble_target_memory, get_dap_source, get_variable_reference,
+        set_instruction_breakpoint,
+    },
 };
 use crate::{
     debug_adapter::{
@@ -345,7 +348,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 }
                             }
                             Err(error) => match &error {
-                                DebuggerError::ReplError(repl_message) => {
+                                DebuggerError::UserMessage(repl_message) => {
                                     response_body.result = repl_message.to_owned()
                                 }
                                 other_error => response_body.result = format!("{other_error:?}",),
@@ -809,12 +812,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             };
             self.send_response(request, Ok(Some(breakpoint_body)))
         } else {
-            return self.send_response::<()>(
+            self.send_response::<()>(
                 request,
                 Err(DebuggerError::Other(anyhow!(
                     "Could not get a valid source path from arguments: {args:?}"
                 ))),
-            );
+            )
         }
     }
 
@@ -825,94 +828,32 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     ) -> Result<()> {
         let arguments: SetInstructionBreakpointsArguments = get_arguments(self, request)?;
 
-        // For returning in the Response
-        let mut created_breakpoints: Vec<Breakpoint> = Vec::new();
-
         // Always clear existing breakpoints before setting new ones.
         match target_core.clear_breakpoints(Some(BreakpointType::InstructionBreakpoint)) {
             Ok(_) => {}
             Err(error) => tracing::warn!("Failed to clear instruction breakpoints. {}", error),
         }
 
-        // Set the new (potentially an empty list) breakpoints.
-        for requested_breakpoint in arguments.breakpoints {
-            let mut breakpoint_response = Breakpoint {
-                column: None,
-                end_column: None,
-                end_line: None,
-                id: None,
-                instruction_reference: None,
-                line: None,
-                message: None,
-                offset: None,
-                source: None,
-                verified: false,
-            };
+        let instruction_breakpoint_body = SetInstructionBreakpointsResponseBody {
+            breakpoints: arguments
+                .breakpoints
+                .into_iter()
+                .map(|requested_breakpoint| {
+                    set_instruction_breakpoint(requested_breakpoint, target_core)
+                })
+                .collect(),
+        };
 
-            if let Ok(memory_reference) =
-                if requested_breakpoint.instruction_reference.starts_with("0x")
-                    || requested_breakpoint.instruction_reference.starts_with("0X")
-                {
-                    u64::from_str_radix(&requested_breakpoint.instruction_reference[2..], 16)
-                } else {
-                    requested_breakpoint.instruction_reference.parse()
+        // In addition to the response values, also show a message to users for any breakpoints that could not be verified.
+        for breakpoint_response in &instruction_breakpoint_body.breakpoints {
+            if !breakpoint_response.verified {
+                if let Some(message) = &breakpoint_response.message {
+                    self.log_to_console(format!("Warning: {message}"));
+                    self.show_message(MessageSeverity::Warning, message.clone());
                 }
-            {
-                match target_core
-                    .set_breakpoint(memory_reference, BreakpointType::InstructionBreakpoint)
-                {
-                    Ok(_) => {
-                        breakpoint_response.verified = true;
-                        breakpoint_response.instruction_reference =
-                            Some(format!("{memory_reference:#010x}"));
-                        // Try to resolve the source location for this breakpoint.
-                        match target_core
-                            .core_data
-                            .debug_info
-                            .get_source_location(memory_reference)
-                        {
-                            Some(source_location) => {
-                                breakpoint_response.source = get_dap_source(&source_location);
-                                breakpoint_response.line =
-                                    source_location.line.map(|line| line as i64);
-                                breakpoint_response.column =
-                                    source_location.column.map(|col| match col {
-                                        ColumnType::LeftEdge => 0_i64,
-                                        ColumnType::Column(c) => c as i64,
-                                    });
-                            }
-                            None => {
-                                tracing::debug!("The request `SetInstructionBreakpoints` could not resolve a source location for memory reference: {:#010}", memory_reference);
-                            }
-                        }
-                    }
-                    Err(error) => {
-                        let message = format!(
-                            "Warning: Could not set breakpoint at memory address: {memory_reference:#010x}: {error}"
-                        )
-                        .to_string();
-                        // In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log.
-                        self.log_to_console(format!("Warning: {message}"));
-                        self.show_message(MessageSeverity::Warning, message.clone());
-                        breakpoint_response.message = Some(message);
-                        breakpoint_response.instruction_reference =
-                            Some(format!("{memory_reference:#010x}"));
-                    }
-                }
-            } else {
-                breakpoint_response.instruction_reference =
-                    Some(requested_breakpoint.instruction_reference.clone());
-                breakpoint_response.message = Some(format!(
-                    "Invalid memory reference specified: {:?}",
-                    requested_breakpoint.instruction_reference
-                ));
-            };
-            created_breakpoints.push(breakpoint_response);
+            }
         }
 
-        let instruction_breakpoint_body = SetInstructionBreakpointsResponseBody {
-            breakpoints: created_breakpoints,
-        };
         self.send_response(request, Ok(Some(instruction_breakpoint_body)))
     }
 

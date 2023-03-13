@@ -2,9 +2,9 @@ use super::{
     core_status::DapStatus,
     dap_types::{
         CompletionItem, CompletionItemType, CompletionsArguments, DisassembledInstruction,
-        EvaluateArguments, EvaluateResponseBody,
+        EvaluateArguments, EvaluateResponseBody, InstructionBreakpoint,
     },
-    request_helpers::disassemble_target_memory,
+    request_helpers::{disassemble_target_memory, set_instruction_breakpoint},
 };
 use crate::{
     server::{core_data::CoreHandle, debugger::DebugSessionStatus, session_data::BreakpointType},
@@ -100,7 +100,7 @@ impl TryFrom<&char> for GdbFormat {
             'i' => Ok(GdbFormat::Instruction),
             'v' => Ok(GdbFormat::DapReference),
             'n' => Ok(GdbFormat::Native),
-            _ => Err(DebuggerError::ReplError(format!(
+            _ => Err(DebuggerError::UserMessage(format!(
                 "Invalid format specifier: {format}"
             ))),
         }
@@ -135,7 +135,7 @@ impl TryFrom<&char> for GdbUnit {
             'h' => Ok(GdbUnit::HalfWord),
             'w' => Ok(GdbUnit::Word),
             'g' => Ok(GdbUnit::Giant),
-            _ => Err(DebuggerError::ReplError(format!(
+            _ => Err(DebuggerError::UserMessage(format!(
                 "Invalid unit size: {unit_size}"
             ))),
         }
@@ -220,7 +220,7 @@ impl FromStr for GdbNuf {
                     if format_specifier.is_none() {
                         format_specifier = Some(GdbFormat::try_from(&last_char)?);
                     } else {
-                        return Err(DebuggerError::ReplError(format!(
+                        return Err(DebuggerError::UserMessage(format!(
                             "Invalid format specifier: {value}"
                         )));
                     }
@@ -229,7 +229,7 @@ impl FromStr for GdbNuf {
                     if unit_specifier.is_none() {
                         unit_specifier = Some(GdbUnit::try_from(&last_char)?);
                     } else {
-                        return Err(DebuggerError::ReplError(format!(
+                        return Err(DebuggerError::UserMessage(format!(
                             "Invalid unit specifier: {value}"
                         )));
                     }
@@ -240,7 +240,7 @@ impl FromStr for GdbNuf {
                         nuf.push(last_char);
                         break;
                     } else {
-                        return Err(DebuggerError::ReplError(format!(
+                        return Err(DebuggerError::UserMessage(format!(
                             "Invalid '/Nuf' specifier: {value}"
                         )));
                     }
@@ -257,7 +257,9 @@ impl FromStr for GdbNuf {
         }
         if !nuf.is_empty() {
             result.unit_count = nuf.parse::<usize>().map_err(|error| {
-                DebuggerError::ReplError(format!("Invalid unit count specifier: {value} - {error}"))
+                DebuggerError::UserMessage(format!(
+                    "Invalid unit count specifier: {value} - {error}"
+                ))
             })?;
         }
 
@@ -348,31 +350,30 @@ static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                     .short_long_status(Some(core_info.pc))
                     .1;
             } else {
-                // TODO: Currently this sets breakpoints without synching the VSCode UI. We can send a Dap `breakpoint` event.
-                println!("Setting breakpoint at address: {command_arguments}");
-
                 let mut input_arguments = command_arguments.split_whitespace();
                 if let Some(input_argument) = input_arguments.next() {
-                    if input_argument.starts_with("*0x") || input_argument.starts_with("*0X") {
-                        if let Ok(memory_reference) = u64::from_str_radix(&input_argument[3..], 16)
-                        {
-                            target_core.set_breakpoint(
-                                memory_reference,
-                                BreakpointType::InstructionBreakpoint,
-                            )?;
-                            response_body.result =
-                                format!("Added breakpoint @ {memory_reference:#010x}");
-                        } else {
-                            return Err(DebuggerError::ReplError(
-                                "Invalid hex address.".to_string(),
-                            ));
+                    if let Some(address_str) = &input_argument.strip_prefix('*') {
+                        let result = set_instruction_breakpoint(
+                            InstructionBreakpoint {
+                                instruction_reference: address_str.to_string(),
+                                condition: None,
+                                hit_condition: None,
+                                offset: None,
+                            },
+                            target_core,
+                        );
+                        response_body.result = result.message.unwrap_or_else(|| {
+                            format!("Unexpected error creating breakpoint at {input_argument}.")
+                        });
+                        if result.verified {
+                            // TODO: Currently this sets breakpoints without synching the VSCode UI. We can send a Dap `breakpoint` event.
                         }
                     } else {
-                        return Err(DebuggerError::ReplError(
+                        return Err(DebuggerError::UserMessage(
                             "Invalid parameters. See the `help` command for more information."
                                 .to_string(),
                         ));
-                    }
+                    };
                 }
             }
             Ok(DebugSessionStatus::Continue)
@@ -438,7 +439,7 @@ static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
         ]),
         args: None,
         handler: |_, _, _, _| {
-            Err(DebuggerError::ReplError("Please provide one of the required subcommands. See the `help` command for more information.".to_string()))
+            Err(DebuggerError::UserMessage("Please provide one of the required subcommands. See the `help` command for more information.".to_string()))
         },
     },
     ReplCommand {
@@ -469,12 +470,12 @@ static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                                 GdbFormat::DapReference,
                             ])
                             .map_err(|error| {
-                                DebuggerError::ReplError(format!(
+                                DebuggerError::UserMessage(format!(
                                     "Format specifier : {}, is not valid here.\nPlease select one of the supported formats:\n{error}", gdb_nuf.format_specifier
                                 ))
                             })?;
                     } else {
-                        return Err(DebuggerError::ReplError(
+                        return Err(DebuggerError::UserMessage(
                             "The '/' specifier must be followed by a valid gdb 'f' format specifier."
                                 .to_string(),
                         ));
@@ -517,7 +518,9 @@ static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                     if let Ok(memory_reference) = u64::from_str_radix(&input_argument[2..], 16) {
                         input_address = memory_reference;
                     } else {
-                        return Err(DebuggerError::ReplError("Invalid hex address.".to_string()));
+                        return Err(DebuggerError::UserMessage(
+                            "Invalid hex address.".to_string(),
+                        ));
                     }
                 } else if input_argument.starts_with('/') {
                     if let Some(gdb_nuf_string) = input_argument.strip_prefix('/') {
@@ -529,18 +532,18 @@ static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                                 GdbFormat::Instruction,
                             ])
                             .map_err(|error| {
-                                DebuggerError::ReplError(format!(
+                                DebuggerError::UserMessage(format!(
                                     "Format specifier : {}, is not valid here.\nPlease select one of the supported formats:\n{error}", gdb_nuf.format_specifier
                                 ))
                             })?;
                     } else {
-                        return Err(DebuggerError::ReplError(
+                        return Err(DebuggerError::UserMessage(
                             "The '/' specifier must be followed by a valid gdb 'Nuf' format specifier."
                                 .to_string(),
                         ));
                     }
                 } else {
-                    return Err(DebuggerError::ReplError(
+                    return Err(DebuggerError::UserMessage(
                         "Invalid parameters. See the `help` command for more information."
                             .to_string(),
                     ));
@@ -599,7 +602,7 @@ fn get_local_variable(
                     variable_cache
                         .get_children(Some(variable.variable_key))
                         .map_err(|_| {
-                            DebuggerError::ReplError(format!(
+                            DebuggerError::UserMessage(format!(
                                 "No local variables available for frame : {}",
                                 stack_frame.function_name
                             ))
@@ -630,19 +633,19 @@ fn get_local_variable(
                     }
                 }
             } else {
-                return Err(DebuggerError::ReplError(format!(
+                return Err(DebuggerError::UserMessage(format!(
                     "No variable named {:?} found for frame: {:?}.",
                     variable_name, stack_frame.function_name
                 )));
             }
         } else {
-            return Err(DebuggerError::ReplError(format!(
+            return Err(DebuggerError::UserMessage(format!(
                 "No variables available for frame: {:?}.",
                 stack_frame.function_name
             )));
         }
     } else {
-        return Err(DebuggerError::ReplError("No frame selected.".to_string()));
+        return Err(DebuggerError::UserMessage("No frame selected.".to_string()));
     }
     Ok(DebugSessionStatus::Continue)
 }
@@ -663,7 +666,7 @@ fn memory_read(
             gdb_nuf.unit_count as i64,
         )?;
         if assembly_lines.is_empty() {
-            return Err(DebuggerError::ReplError(format!(
+            return Err(DebuggerError::UserMessage(format!(
                 "Cannot disassemble memory at address {address:#010x}"
             )));
         } else {
@@ -685,7 +688,7 @@ fn memory_read(
                 response_body.result = formatted_output;
             }
             Err(err) => {
-                return Err(DebuggerError::ReplError(format!(
+                return Err(DebuggerError::UserMessage(format!(
                     "Cannot read memory at address {address:#010x}: {err:?}"
                 )))
             }
