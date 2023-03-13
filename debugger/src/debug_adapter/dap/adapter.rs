@@ -9,7 +9,7 @@ use crate::{
     debug_adapter::{
         dap::{
             dap_types,
-            repl_commands::{build_expanded_commands, command_completions},
+            repl_commands_helpers::{build_expanded_commands, command_completions},
         },
         protocol::ProtocolAdapter,
     },
