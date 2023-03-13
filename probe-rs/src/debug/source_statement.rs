@@ -58,7 +58,8 @@ impl SourceStatements {
             if row.prologue_end() {
                 prologue_completed = true;
             }
-            // For GNU C, the `DW_LNS_set_prologue_end` is not set, so we employ the same heuristic as GDB to determine when the prologue is complete.
+            // For GNU C, it is known that the `DW_LNS_set_prologue_end` is not set, so we employ the same heuristic as GDB to determine when the prologue is complete.
+            // For other C compilers in the C99/11/17 standard, they will either set the `DW_LNS_set_prologue_end` or they will trigger this heuristic also.
             // See https://gcc.gnu.org/legacy-ml/gcc-patches/2011-03/msg02106.html
             if !prologue_completed
                 && matches!(

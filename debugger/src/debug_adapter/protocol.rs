@@ -80,8 +80,6 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
             self.output.flush()?;
         }
 
-        self.output.flush()?;
-
         self.seq += 1;
 
         Ok(())
