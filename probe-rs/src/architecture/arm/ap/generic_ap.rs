@@ -6,8 +6,7 @@ use enum_primitive_derive::Primitive;
 use num_traits::cast::{FromPrimitive, ToPrimitive};
 
 /// Describes the class of an access port defined in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification.
-#[derive(Debug, Primitive, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Primitive, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ApClass {
     /// This describes a custom AP that is vendor defined and not defined by ARM
     #[default]
@@ -18,13 +17,10 @@ pub enum ApClass {
     MemAp = 0b1000,
 }
 
-
-
 /// The type of AP defined in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification.
 /// The different types correspond to the different access/memory buses of ARM cores.
 #[allow(non_camel_case_types)]
-#[derive(Debug, Primitive, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Primitive, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ApType {
     /// This is the most basic AP that is included in most MCUs and uses SWD or JTAG as an access bus.
     #[default]
@@ -44,8 +40,6 @@ pub enum ApType {
     /// A AMBA based protected AHB5 AP (see E1.7).
     AmbaAhb5Hprot = 0x8,
 }
-
-
 
 define_ap!(
     /// A generic access port which implements just the register every access port has to implement

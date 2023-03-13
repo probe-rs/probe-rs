@@ -852,8 +852,6 @@ enum DebugState {
     Halted(HaltedState),
 }
 
-
-
 struct HaltedState {
     program_counter: u64,
     current_frame: usize,

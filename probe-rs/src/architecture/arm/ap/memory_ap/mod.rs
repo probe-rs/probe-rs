@@ -50,8 +50,7 @@ impl From<GenericAp> for MemoryAp {
 /// This can be configured with the CSW command.
 ///
 /// ALL MCUs support `U32`. All other transfer sizes are optionally implemented.
-#[derive(Debug, Primitive, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Primitive, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DataSize {
     /// 1 byte transfers are supported.
     U8 = 0b000,
@@ -90,16 +89,13 @@ impl DataSize {
     }
 }
 
-
-
 /// The increment to the TAR that is performed after each DRW read or write.
 ///
 /// This can be used to avoid successive TAR transfers for writes of consecutive addresses.
 /// This will effectively save half the bandwidth!
 ///
 /// Can be configured in the CSW.
-#[derive(Debug, Primitive, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Primitive, Clone, Copy, PartialEq, Eq, Default)]
 pub enum AddressIncrement {
     /// No increments are happening after the DRW access. TAR always stays the same.
     /// Always supported.
@@ -113,11 +109,8 @@ pub enum AddressIncrement {
     Packed = 0b10,
 }
 
-
-
 /// The format of the BASE register (see C2.6.1).
-#[derive(Debug, PartialEq, Eq, Primitive, Clone, Copy)]
-#[derive(Default)]
+#[derive(Debug, PartialEq, Eq, Primitive, Clone, Copy, Default)]
 pub enum BaseaddrFormat {
     /// The legacy format of very old cores. Very little cores use this.
     #[default]
@@ -126,17 +119,12 @@ pub enum BaseaddrFormat {
     ADIv5 = 1,
 }
 
-
-
-#[derive(Debug, Primitive, Clone, Copy, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Primitive, Clone, Copy, PartialEq, Eq, Default)]
 pub enum DebugEntryState {
     #[default]
     NotPresent = 0,
     Present = 1,
 }
-
-
 
 define_ap_register!(
     type: MemoryAp,
