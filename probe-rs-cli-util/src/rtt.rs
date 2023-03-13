@@ -58,7 +58,9 @@ fn default_include_location() -> bool {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Default)]
 pub enum DataFormat {
+    #[default]
     String,
     BinaryLE,
     Defmt,
@@ -77,11 +79,7 @@ impl FromStr for DataFormat {
         }
     }
 }
-impl Default for DataFormat {
-    fn default() -> Self {
-        DataFormat::String
-    }
-}
+
 
 /// The initial configuration for RTT (Real Time Transfer). This configuration is complimented with the additional information specified for each of the channels in `RttChannel`.
 #[derive(clap::Parser, Debug, Clone, Deserialize, Default)]

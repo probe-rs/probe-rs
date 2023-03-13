@@ -107,7 +107,6 @@ pub fn cmd_test(
 
     let mut loader = session.target().flash_loader();
     let data = (0..data_size)
-        .into_iter()
         .map(|n| (n % 256) as u8)
         .collect::<Vec<_>>();
     loader.add_data(flash_properties.address_range.start + 1, &data)?;
@@ -133,7 +132,6 @@ pub fn cmd_test(
 
     let mut loader = session.target().flash_loader();
     let data = (0..data_size)
-        .into_iter()
         .map(|n| (n % 256) as u8)
         .collect::<Vec<_>>();
     loader.add_data(flash_properties.address_range.start + 1, &data)?;
@@ -159,7 +157,6 @@ pub fn cmd_test(
 
     let mut loader = session.target().flash_loader();
     let data = (0..data_size)
-        .into_iter()
         .map(|n| (n % 256) as u8)
         .collect::<Vec<_>>();
     loader.add_data(flash_properties.address_range.start + 1, &data)?;

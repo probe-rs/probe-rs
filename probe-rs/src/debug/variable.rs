@@ -5,25 +5,24 @@ use std::str::FromStr;
 
 /// Define the role that a variable plays in a Variant relationship. See section '5.7.10 Variant Entries' of the DWARF 5 specification
 #[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Default)]
 pub enum VariantRole {
     /// A (parent) Variable that can have any number of Variant's as its value
     VariantPart(u64),
     /// A (child) Variable that defines one of many possible types to hold the current value of a VariantPart.
     Variant(u64),
     /// This variable doesn't play a role in a Variant relationship
+    #[default]
     NonVariant,
 }
 
-impl Default for VariantRole {
-    fn default() -> Self {
-        VariantRole::NonVariant
-    }
-}
+
 
 /// A [Variable] will have either a valid value, or some reason why a value could not be constructed.
 /// - If we encounter expected errors, they will be displayed to the user as defined below.
 /// - If we encounter unexpected errors, they will be treated as proper errors and will propogated to the calling process as an `Err()`
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Default)]
 pub enum VariableValue {
     /// A valid value of this variable
     Valid(String),
@@ -35,14 +34,11 @@ pub enum VariableValue {
     /// The value has not been set. This could be because ...
     /// - It is too early in the process to have discovered its value, or ...
     /// - The variable cannot have a stored value, e.g. a `struct`. In this case, please use `Variable::get_value` to infer a human readable value from the value of the struct's fields.
+    #[default]
     Empty,
 }
 
-impl Default for VariableValue {
-    fn default() -> Self {
-        VariableValue::Empty
-    }
-}
+
 
 impl std::fmt::Display for VariableValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -70,6 +66,7 @@ impl VariableValue {
 
 /// The type of variable we have at hand.
 #[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Default)]
 pub enum VariableName {
     /// Top-level variable for static variables, child of a stack frame variable, and holds all the static scoped variables which are directly visible to the compile unit of the frame.
     StaticScopeRoot,
@@ -88,14 +85,11 @@ pub enum VariableName {
     /// Variable with a specific name
     Named(String),
     /// Variable with an unknown name
+    #[default]
     Unknown,
 }
 
-impl Default for VariableName {
-    fn default() -> Self {
-        VariableName::Unknown
-    }
-}
+
 
 impl std::fmt::Display for VariableName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -116,6 +110,7 @@ impl std::fmt::Display for VariableName {
 /// Encode the nature of the Debug Information Entry in a way that we can resolve child nodes of a [Variable]
 /// The rules for 'lazy loading'/deferred recursion of [Variable] children are described under each of the enum values.
 #[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Default)]
 pub enum VariableNodeType {
     /// For pointer values, their referenced variables are found at an [gimli::UnitOffset] in the [DebugInfo].
     /// - Rule: Pointers to `struct` variables WILL NOT BE recursed, because  this may lead to infinite loops/stack overflows in `struct`s that self-reference.
@@ -139,6 +134,7 @@ pub enum VariableNodeType {
     /// - Rule: Enumerated types WILL ALWAYS BE recursed, because we only ever want to see the 'active' child as the value.
     /// - Rule: For now, Array types WILL ALWAYS BE recursed. TODO: Evaluate if it is beneficial to defer these.
     /// - Rule: For now, Union types WILL ALWAYS BE recursed. TODO: Evaluate if it is beneficial to defer these.
+    #[default]
     RecurseToBaseType,
     /// SVD Device Peripherals
     SvdPeripheral,
@@ -160,14 +156,11 @@ impl VariableNodeType {
     }
 }
 
-impl Default for VariableNodeType {
-    fn default() -> Self {
-        VariableNodeType::RecurseToBaseType
-    }
-}
+
 
 /// The variants of VariableType allows us to streamline the conditional logic that requires specific handling depending on the nature of the variable.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub enum VariableType {
     /// A variable with a Rust base datatype.
     Base(String),
@@ -187,16 +180,13 @@ pub enum VariableType {
         count: usize,
     },
     /// When we are unable to determine the name of a variable.
+    #[default]
     Unknown,
     /// For infrequently used categories of variables that does not fall into any of the other VriableType variants.
     Other(String),
 }
 
-impl Default for VariableType {
-    fn default() -> Self {
-        VariableType::Unknown
-    }
-}
+
 
 impl VariableType {
     /// A Rust PhantomData type used as a marker for to "act like" they own a specific type.
@@ -244,8 +234,10 @@ impl std::fmt::Display for VariableType {
 
 /// Location of a variable
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Default)]
 pub enum VariableLocation {
     /// Location of the variable is not known. This means that it has not been evaluated yet.
+    #[default]
     Unknown,
     /// The variable does not have a location currently, probably due to optimisations.
     Unavailable,
@@ -294,11 +286,7 @@ impl std::fmt::Display for VariableLocation {
     }
 }
 
-impl Default for VariableLocation {
-    fn default() -> Self {
-        VariableLocation::Unknown
-    }
-}
+
 
 /// The `Variable` struct is used in conjunction with `VariableCache` to cache data about variables.
 ///

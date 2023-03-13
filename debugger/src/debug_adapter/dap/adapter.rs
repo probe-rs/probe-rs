@@ -803,12 +803,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             };
             self.send_response(request, Ok(Some(breakpoint_body)))
         } else {
-            return self.send_response::<()>(
+            self.send_response::<()>(
                 request,
                 Err(DebuggerError::Other(anyhow!(
                     "Could not get a valid source path from arguments: {args:?}"
                 ))),
-            );
+            )
         }
     }
 

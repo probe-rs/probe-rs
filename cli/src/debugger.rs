@@ -845,16 +845,14 @@ impl<'p> CliData<'p> {
     }
 }
 
+#[derive(Default)]
 enum DebugState {
+    #[default]
     Running,
     Halted(HaltedState),
 }
 
-impl std::default::Default for DebugState {
-    fn default() -> Self {
-        DebugState::Running
-    }
-}
+
 
 struct HaltedState {
     program_counter: u64,

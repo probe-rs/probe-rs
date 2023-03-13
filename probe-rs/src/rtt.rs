@@ -307,9 +307,11 @@ impl Rtt {
 
 /// Used to specify which memory regions to scan for the RTT control block.
 #[derive(Clone, Debug)]
+#[derive(Default)]
 pub enum ScanRegion {
     /// Scans all RAM regions known to probe-rs. This is the default and should always work, however
     /// if your device has a lot of RAM, scanning all of it is slow.
+    #[default]
     Ram,
 
     /// Limit scanning to these memory addresses in target memory. It is up to the user to ensure
@@ -322,11 +324,7 @@ pub enum ScanRegion {
     Exact(u32),
 }
 
-impl Default for ScanRegion {
-    fn default() -> Self {
-        ScanRegion::Ram
-    }
-}
+
 
 /// Error type for RTT operations.
 #[derive(thiserror::Error, Debug)]
