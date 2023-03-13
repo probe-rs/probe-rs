@@ -57,8 +57,9 @@ fn default_include_location() -> bool {
     true
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Default)]
 pub enum DataFormat {
+    #[default]
     String,
     BinaryLE,
     Defmt,
@@ -75,11 +76,6 @@ impl FromStr for DataFormat {
             "defmt" => Ok(Self::Defmt),
             _ => Err(format!("{src} is not a valid format")),
         }
-    }
-}
-impl Default for DataFormat {
-    fn default() -> Self {
-        DataFormat::String
     }
 }
 
