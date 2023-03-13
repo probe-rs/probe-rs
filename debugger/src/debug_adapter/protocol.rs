@@ -1,9 +1,9 @@
 use crate::{
-    debug_adapter::dap_types::{
+    debug_adapter::dap::dap_types::{
         Event, MessageSeverity, OutputEventBody, ProtocolMessage, Request, Response,
         ShowMessageEventBody,
     },
-    debugger::configuration::ConsoleLog,
+    server::configuration::ConsoleLog,
     DebuggerError,
 };
 use anyhow::anyhow;

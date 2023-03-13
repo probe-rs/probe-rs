@@ -1,24 +1,31 @@
-use super::session_data::SessionData;
+use super::{
+    configuration::{self, ConsoleLog},
+    session_data::SessionData,
+    startup::{get_file_timestamp, TargetSessionType},
+};
 use crate::{
     debug_adapter::{
-        dap_adapter::*,
-        dap_types::*,
-        protocol::{DapAdapter, ProtocolAdapter},
+        dap::{
+            adapter::{get_arguments, DebugAdapter},
+            dap_types::{
+                Capabilities, Event, ExitedEventBody, InitializeRequestArguments, MessageSeverity,
+                Request, RttWindowOpenedArguments, TerminatedEventBody,
+            },
+            request_helpers::halt_core,
+        },
+        protocol::ProtocolAdapter,
     },
-    debugger::configuration::{self, ConsoleLog},
     peripherals::svd_variables::SvdCache,
     DebuggerError,
 };
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Context};
 use probe_rs::{
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format},
-    Architecture, CoreStatus, Probe,
+    Architecture, CoreStatus,
 };
-use serde::Deserialize;
 use std::{
     cell::RefCell,
     fs,
-    net::{Ipv4Addr, TcpListener},
     ops::Mul,
     path::Path,
     rc::Rc,
@@ -26,26 +33,6 @@ use std::{
     time::{Duration, UNIX_EPOCH},
 };
 use time::UtcOffset;
-
-#[derive(Copy, Clone, Debug, Deserialize, PartialEq)]
-pub(crate) enum TargetSessionType {
-    AttachRequest,
-    LaunchRequest,
-}
-
-impl std::str::FromStr for TargetSessionType {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match &s.to_ascii_lowercase()[..] {
-            "attach" => Ok(TargetSessionType::AttachRequest),
-            "launch" => Ok(TargetSessionType::LaunchRequest),
-            _ => Err(format!(
-                "'{s}' is not a valid target session type. Can be either 'attach' or 'launch']."
-            )),
-        }
-    }
-}
 
 #[derive(Clone, Debug, PartialEq)]
 /// The `DebuggerStatus` is used to control how the Debugger::debug_session() decides if it should respond to DAP Client requests such as `Terminate`, `Disconnect`, and `Reset`, as well as how to repond to unrecoverable errors during a debug session interacting with a target session.
@@ -201,32 +188,26 @@ impl Debugger {
                         if let Some(debugger_rtt_target) =
                             target_core.core_data.rtt_connection.as_mut()
                         {
-                            match get_arguments::<RttWindowOpenedArguments>(&request) {
-                                Ok(arguments) => {
-                                    debugger_rtt_target
-                                        .debugger_rtt_channels
-                                        .iter_mut()
-                                        .find(|debugger_rtt_channel| {
-                                            debugger_rtt_channel.channel_number
-                                                == arguments.channel_number
-                                        })
-                                        .map_or(false, |rtt_channel| {
-                                            rtt_channel.has_client_window =
-                                                arguments.window_is_open;
-                                            arguments.window_is_open
-                                        });
-                                    debug_adapter.send_response::<()>(&request, Ok(None))?;
-                                }
-                                Err(error) => {
-                                    debug_adapter.send_response::<()>(
-                                        &request,
-                                        Err(DebuggerError::Other(anyhow!(
-                                    "Could not deserialize arguments for RttWindowOpened : {:?}.",
-                                    error
-                                ))),
-                                    )?;
-                                }
-                            }
+                            let arguments: RttWindowOpenedArguments =
+                                get_arguments(debug_adapter, &request)?;
+                            debugger_rtt_target
+                                .debugger_rtt_channels
+                                .iter_mut()
+                                .find(|debugger_rtt_channel| {
+                                    debugger_rtt_channel.channel_number == arguments.channel_number
+                                })
+                                .map_or(false, |rtt_channel| {
+                                    rtt_channel.has_client_window = arguments.window_is_open;
+                                    arguments.window_is_open
+                                });
+                            debug_adapter
+                                .send_response::<()>(&request, Ok(None))
+                                .map_err(|error| {
+                                    DebuggerError::Other(anyhow!(
+                                        "Could not deserialize arguments for RttWindowOpened : {:?}.",
+                                        error
+                                    ))
+                                })?;
                         }
                         Ok(())
                     }
@@ -398,18 +379,7 @@ impl Debugger {
             }
         };
 
-        let arguments = get_arguments(&launch_attach_request).or_else(|error| {
-            let error_message = format!(
-                "Could not derive SessionConfig from request '{}', with arguments {:?}\n{:?} ",
-                launch_attach_request.command, launch_attach_request.arguments, error
-            );
-            debug_adapter.send_response::<()>(
-                &launch_attach_request,
-                Err(DebuggerError::Other(anyhow!(error_message.clone()))),
-            )?;
-
-            Err(DebuggerError::Other(anyhow!(error_message)))
-        })?;
+        let arguments = get_arguments(&mut debug_adapter, &launch_attach_request)?;
 
         self.config = configuration::SessionConfig { ..arguments };
 
@@ -785,7 +755,7 @@ impl Debugger {
         let initialize_request = expect_request(debug_adapter, "initialize")?;
 
         let initialize_arguments =
-            get_arguments_v2::<InitializeRequestArguments, _>(debug_adapter, &initialize_request)?;
+            get_arguments::<InitializeRequestArguments, _>(debug_adapter, &initialize_request)?;
 
         if !(initialize_arguments.columns_start_at_1.unwrap_or(true)
             && initialize_arguments.lines_start_at_1.unwrap_or(true))
@@ -876,121 +846,10 @@ fn expect_request<P: ProtocolAdapter>(
     }
 }
 
-pub fn list_connected_devices() -> Result<()> {
-    let connected_devices = Probe::list_all();
-
-    if !connected_devices.is_empty() {
-        println!("The following devices were found:");
-        connected_devices
-            .iter()
-            .enumerate()
-            .for_each(|(num, device)| println!("[{num}]: {device:?}"));
-    } else {
-        println!("No devices were found.");
-    }
-    Ok(())
-}
-
-pub fn list_supported_chips() -> Result<()> {
-    println!("Available chips:");
-    for family in
-        probe_rs::config::families().map_err(|e| anyhow!("Families could not be read: {:?}", e))?
-    {
-        println!("{}", &family.name);
-        println!("    Variants:");
-        for variant in family.variants() {
-            println!("        {}", variant.name);
-        }
-    }
-
-    Ok(())
-}
-
-pub fn debug(
-    port: u16,
-    vscode: bool,
-    log_info_message: &str,
-    timestamp_offset: UtcOffset,
-) -> Result<()> {
-    let mut debugger = Debugger::new(timestamp_offset);
-
-    log_to_console_and_tracing("Starting as a DAP Protocol server");
-
-    let addr = std::net::SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::LOCALHOST), port);
-
-    // Tell the user if (and where) RUST_LOG messages are written.
-    log_to_console_and_tracing(log_info_message);
-
-    loop {
-        let listener = TcpListener::bind(addr)?;
-
-        log_to_console_and_tracing(&format!("Listening for requests on port {}", addr.port()));
-
-        listener.set_nonblocking(false)?;
-
-        match listener.accept() {
-            Ok((socket, addr)) => {
-                socket.set_nonblocking(true).with_context(|| {
-                    format!("Failed to negotiate non-blocking socket with request from :{addr}")
-                })?;
-
-                log_to_console_and_tracing(&format!("..Starting session from   :{addr}"));
-
-                let reader = socket
-                    .try_clone()
-                    .context("Failed to establish a bi-directional Tcp connection.")?;
-                let writer = socket;
-
-                let dap_adapter = DapAdapter::new(reader, writer);
-
-                let debug_adapter = DebugAdapter::new(dap_adapter);
-
-                match debugger.debug_session(debug_adapter, log_info_message) {
-                    Err(error) => {
-                        tracing::error!("probe-rs-debugger session ended: {}", error);
-                    }
-                    Ok(DebugSessionStatus::Terminate) => {
-                        log_to_console_and_tracing(&format!("....Closing session from  :{addr}"));
-                    }
-                    Ok(DebugSessionStatus::Continue) | Ok(DebugSessionStatus::Restart(_)) => {
-                        tracing::error!("probe-rs-debugger enountered unexpected `DebuggerStatus` in debug() execution. Please report this as a bug.");
-                    }
-                }
-                // Terminate this process if it was started by VSCode
-                if vscode {
-                    break;
-                }
-            }
-            Err(error) => {
-                tracing::error!(
-                    "probe-rs-debugger failed to establish a socket connection. Reason: {:?}",
-                    error
-                );
-            }
-        }
-    }
-    log_to_console_and_tracing("CONSOLE: DAP Protocol server exiting");
-
-    Ok(())
-}
-
-/// All eprintln! messages are picked up by the VSCode extension and displayed in the debug console. We send these to stderr, in addition to logging them, so that they will show up, irrespective of the RUST_LOG level filters.
-fn log_to_console_and_tracing(message: &str) {
-    eprintln!("probe-rs-debug: {}", &message);
-    tracing::info!("{}", &message);
-}
-
-/// Try to get the timestamp of a file.
-///
-/// If an error occurs, None is returned.
-fn get_file_timestamp(path_to_elf: &Path) -> Option<Duration> {
-    fs::metadata(path_to_elf)
-        .and_then(|metadata| metadata.modified())
-        .ok()
-        .and_then(|modified| modified.duration_since(UNIX_EPOCH).ok())
-}
-
-fn is_file_newer(saved_binary_timestamp: &mut Option<Duration>, path_to_elf: &Path) -> bool {
+pub(crate) fn is_file_newer(
+    saved_binary_timestamp: &mut Option<Duration>,
+    path_to_elf: &Path,
+) -> bool {
     if let Some(check_current_binary_timestamp) = *saved_binary_timestamp {
         // We have a timestamp for the binary that is currently on the device, so we need to compare it with the new binary.
         if let Some(new_binary_timestamp) = get_file_timestamp(path_to_elf) {

@@ -31,7 +31,7 @@ anyhow = "1"
 bytesize = "1"
 thiserror = "1"
 dunce = "1"
-clap = { version = "4.1.6", features = ["string"] }
+clap = { version = "4.1.8", features = ["string"] }
 git-version = "0.3.5"
 
 [dev-dependencies]

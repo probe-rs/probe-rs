@@ -3,6 +3,7 @@ use probe_rs_target::{Architecture, ChipFamily};
 use super::{Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource};
 use crate::architecture::arm::sequences::{
     atsame5x::AtSAME5x,
+    efm32xg2::EFM32xG2,
     infineon::XMC4000,
     nrf52::Nrf52,
     nrf53::Nrf5340,
@@ -110,6 +111,14 @@ impl Target {
         {
             tracing::warn!("Using custom sequence for LPC55S16/26/28/66/69");
             debug_sequence = DebugSequence::Arm(LPC55Sxx::create());
+        } else if chip.name.starts_with("EFM32PG2")
+            || chip.name.starts_with("EFR32BG2")
+            || chip.name.starts_with("EFR32FG2")
+            || chip.name.starts_with("EFR32MG2")
+            || chip.name.starts_with("EFR32ZG2")
+        {
+            tracing::warn!("Using custom sequence for EFM32 Series 2");
+            debug_sequence = DebugSequence::Arm(EFM32xG2::create());
         } else if chip.name.starts_with("esp32c3") {
             tracing::warn!("Using custom sequence for ESP32C3");
             debug_sequence = DebugSequence::Riscv(ESP32C3::create());

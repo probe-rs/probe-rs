@@ -3,12 +3,15 @@ use std::{fs::File, path::Path};
 use super::session_data::{self, BreakpointType};
 use crate::{
     debug_adapter::{
-        dap_adapter::{DapStatus, DebugAdapter},
-        dap_types::{ContinuedEventBody, MessageSeverity, Source, StoppedEventBody},
+        dap::{
+            adapter::DebugAdapter,
+            core_status::DapStatus,
+            dap_types::{ContinuedEventBody, MessageSeverity, Source, StoppedEventBody},
+        },
         protocol::ProtocolAdapter,
     },
-    debugger::debug_rtt,
     peripherals::svd_variables::SvdCache,
+    server::debug_rtt,
     DebuggerError,
 };
 use anyhow::{anyhow, Result};
@@ -25,7 +28,7 @@ pub struct CoreData {
     pub(crate) core_index: usize,
     /// Track the last_known_status of the core.
     /// The debug client needs to be notified when the core changes state, and this can happen in one of two ways:
-    /// 1. By polling the core status periodically (in [`super::debug_entry::Debugger::process_next_request()`]).
+    /// 1. By polling the core status periodically (in [`crate::server::debugger::Debugger::process_next_request()`]).
     ///   For instance, when the client sets the core running, and the core halts because of a breakpoint, we need to notify the client.
     /// 2. Some requests, like [`DebugAdapter::next()`], has an implicit action of setting the core running, before it waits for it to halt at the next statement.
     ///   To ensure the [`CoreHandle::poll_core()`] behaves correctly, it will set the `last_known_status` to [`CoreStatus::Running`],
