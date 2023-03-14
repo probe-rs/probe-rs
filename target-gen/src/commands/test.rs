@@ -106,10 +106,7 @@ pub fn cmd_test(
     );
 
     let mut loader = session.target().flash_loader();
-    let data = (0..data_size)
-        .into_iter()
-        .map(|n| (n % 256) as u8)
-        .collect::<Vec<_>>();
+    let data = (0..data_size).map(|n| (n % 256) as u8).collect::<Vec<_>>();
     loader.add_data(flash_properties.address_range.start + 1, &data)?;
     run_flash_download(&mut session, loader, progress.clone(), true)?;
     let mut readback = vec![0; data_size as usize];
@@ -132,10 +129,7 @@ pub fn cmd_test(
     );
 
     let mut loader = session.target().flash_loader();
-    let data = (0..data_size)
-        .into_iter()
-        .map(|n| (n % 256) as u8)
-        .collect::<Vec<_>>();
+    let data = (0..data_size).map(|n| (n % 256) as u8).collect::<Vec<_>>();
     loader.add_data(flash_properties.address_range.start + 1, &data)?;
     run_flash_download(&mut session, loader, progress.clone(), true)?;
     let mut readback = vec![0; data_size as usize];
@@ -158,10 +152,7 @@ pub fn cmd_test(
     );
 
     let mut loader = session.target().flash_loader();
-    let data = (0..data_size)
-        .into_iter()
-        .map(|n| (n % 256) as u8)
-        .collect::<Vec<_>>();
+    let data = (0..data_size).map(|n| (n % 256) as u8).collect::<Vec<_>>();
     loader.add_data(flash_properties.address_range.start + 1, &data)?;
     run_flash_download(&mut session, loader, progress, false)?;
     let mut readback = vec![0; data_size as usize];

@@ -5,7 +5,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- probe-rs: Trigger rebuild if changes in the `PROBE_RS_TARGETS_DIR` detected (#1562).
+
+- probe-rs: Set the flash range of RP2040 to the max supported size (#1567)
+
 ### Fixed
+
+- Add reset catch sequence for Silicon Labs EFM32/EFR32 Series 2 chips.
 
 - target-gen: Use the correct flash base address when testing flash algorithm (#1542)
 
