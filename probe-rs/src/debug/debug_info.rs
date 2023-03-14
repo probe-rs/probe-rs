@@ -919,7 +919,7 @@ impl DebugInfo {
                 for file_name in header.file_names() {
                     let combined_path = self.get_path(unit, header, file_name);
                     if combined_path
-                        .map(|p| path_fuzzy_eq(path, &p))
+                        .map(|p| canonical_path_eq(path, &p))
                         .unwrap_or(false)
                     {
                         let mut rows = line_program.clone().rows();
@@ -929,7 +929,10 @@ impl DebugInfo {
                                 .file(header)
                                 .and_then(|file_entry| self.get_path(unit, header, file_entry));
 
-                            if row_path.map(|p| !path_fuzzy_eq(path, &p)).unwrap_or(true) {
+                            if row_path
+                                .map(|p| !canonical_path_eq(path, &p))
+                                .unwrap_or(true)
+                            {
                                 continue;
                             }
 
@@ -1121,33 +1124,25 @@ impl DebugInfo {
     }
 }
 
-/// This is a fuzzy 'equality' check for path names.
-/// If both paths are absolute, then it will use the standard `Path::eq` method.
-/// If the secondary path is relative, then it will succeeed if the primary ends with the compared path,
-/// e.g. `/home/user/project/src/main.rs` ends with `src/main.rs` and will return true.
-pub(crate) fn path_fuzzy_eq(primary_path: &Path, secondary_path: &Path) -> bool {
-    if primary_path.is_absolute() && secondary_path.is_relative() {
-        // First make sure the secondary path does not start with special sequences, e.g. `./` or `../`
-        let stripped_secondary_path = secondary_path
-            .components()
-            .skip_while(|component| {
-                component
-                    .as_os_str()
-                    .to_str()
-                    // If the component is not a string, then it is not a special sequence.
-                    .unwrap_or("")
-                    .starts_with('.')
-            })
-            .collect::<PathBuf>();
-        tracing::debug!(
-            "Fuzzy path equality: Using `{:?}.ends_with({:?})` to compare paths.",
-            primary_path,
-            stripped_secondary_path
-        );
-        primary_path.ends_with(stripped_secondary_path)
-    } else {
-        primary_path.eq(secondary_path)
-    }
+/// Uses the [std::fs::canonicalize] function to canonicalize both paths before applying the [std::path::PathBuf::eq]
+/// to test if the secondary path is equal or a suffix of the primary path.
+/// We do this to maximize the chances of finding a match where the secondary path can be given as
+/// an absolute, relative, or partial path.
+pub(crate) fn canonical_path_eq(primary_path: &Path, secondary_path: &Path) -> bool {
+    primary_path
+        .canonicalize()
+        .ok()
+        .and_then(|canonical_primary_path| {
+            secondary_path
+                .canonicalize()
+                .ok()
+                .map(|canonical_secondary_path| {
+                    println!(
+                        "Canonical path equality: Using `{canonical_primary_path:?}.eq({canonical_secondary_path:?})` to compare paths.");
+                    canonical_primary_path.eq(&canonical_secondary_path)
+                })
+        })
+        .unwrap_or(false)
 }
 
 /// Get a handle to the [`gimli::UnwindTableRow`] for this call frame, so that we can reference it to unwind register values.
