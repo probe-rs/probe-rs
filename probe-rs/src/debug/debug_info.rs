@@ -1137,12 +1137,17 @@ pub(crate) fn canonical_path_eq(primary_path: &Path, secondary_path: &Path) -> b
                 .canonicalize()
                 .ok()
                 .map(|canonical_secondary_path| {
-                    println!(
+                    tracing::debug!(
                         "Canonical path equality: Using `{canonical_primary_path:?}.eq({canonical_secondary_path:?})` to compare paths.");
                     canonical_primary_path.eq(&canonical_secondary_path)
                 })
         })
-        .unwrap_or(false)
+        .unwrap_or_else(|| {
+            // If for some reason we can't canonicalize the paths, fall back to the original equality check.
+            tracing::debug!(
+                "Original path equality: Using `{primary_path:?}.eq({secondary_path:?})` to compare paths.");
+            primary_path.eq(secondary_path)
+        })
 }
 
 /// Get a handle to the [`gimli::UnwindTableRow`] for this call frame, so that we can reference it to unwind register values.
