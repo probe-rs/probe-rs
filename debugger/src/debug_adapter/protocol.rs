@@ -364,11 +364,10 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
         match self.send_data(&encoded_resp) {
             Ok(_) => {}
             Err(error) => {
-                // Store pending request so that we can notify the listener about the error.
-                self.output.flush()?;
-                self.pending_requests
-                    .insert(request.seq, request.command.clone());
-                return self.send_response::<()>(request, Err(DebuggerError::StdIO(error)));
+                // If we can't send the response, we can't do much about it, so best to terminate the session with an error.
+                let message = format!("Unexpected Error while sending response: {error:?}");
+                tracing::error!("{message}");
+                return Err(anyhow::anyhow!(message));
             }
         }
 
