@@ -156,7 +156,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                             target_core,
                         );
                         let mut response = Response {
-                            command: "setInstructionBreakpoints".to_string(),
+                            command: "setBreakpoints".to_string(),
                             success: true,
                             message: Some(result.message.clone().unwrap_or_else(|| {
                                 format!("Unexpected error creating breakpoint at {input_argument}.")

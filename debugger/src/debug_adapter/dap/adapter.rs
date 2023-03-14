@@ -306,6 +306,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 response_body.result = arguments.expression;
             } else if context == "repl" {
                 // While the target is running, we only allow a 'break' command.
+                // Override clippy, because the recommendation would change the logic.
+                #[allow(clippy::nonminimal_bool)]
                 if !target_core.core.core_halted()?
                     && !(arguments.expression.starts_with("break")
                         || arguments.expression.starts_with("quit"))
@@ -334,6 +336,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 match repl_response.command.as_str() {
                                     "terminate" => {
                                         // This is a special case, where a repl command has requested that the debug session be terminated.
+                                        response_body.result = repl_response
+                                            .message
+                                            .unwrap_or_else(|| "Success.".to_string());
                                         self.send_event(
                                             "terminated",
                                             Some(TerminatedEventBody { restart: None }),
@@ -358,7 +363,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                                 .unwrap_or_else(|| "Success.".to_string());
                                         };
                                     }
-                                    "setInstructionBreakpoints" => {
+                                    "setBreakpoints" => {
                                         response_body.result = repl_response
                                             .message
                                             // This should always have a value, but just in case someone was lazy ...
