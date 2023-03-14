@@ -89,9 +89,9 @@ mod session;
 
 pub use crate::config::{CoreType, InstructionSet, Target};
 pub use crate::core::{
-    Architecture, BreakpointCause, BreakpointId, Core, CoreInformation, CoreState,
-    CoreStatus, HaltReason, MemoryMappedRegister, RegisterDescription, RegisterFile, RegisterId,
-    RegisterValue, SpecificCoreState,
+    Architecture, BreakpointCause, BreakpointId, Core, CoreInformation, CoreState, CoreStatus,
+    HaltReason, MemoryMappedRegister, RegisterDescription, RegisterFile, RegisterId, RegisterValue,
+    SpecificCoreState,
 };
 pub use crate::error::Error;
 pub use crate::memory::MemoryInterface;
@@ -100,7 +100,7 @@ pub use crate::probe::{
     Probe, ProbeCreationError, WireProtocol,
 };
 pub use crate::session::permissions::Permissions;
-pub use crate::session::{Config, CoreSelection, Session, CoreSelector};
+pub use crate::session::{Config, CoreSelection, CoreSelector, Session};
 
 // TODO: Hide behind feature
 pub use crate::probe::fake_probe::FakeProbe;
