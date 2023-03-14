@@ -1,6 +1,8 @@
 use super::{
     core_status::DapStatus,
-    dap_types::{BreakpointEventBody, EvaluateArguments, InstructionBreakpoint, Response},
+    dap_types::{
+        BreakpointEventBody, EvaluateArguments, InstructionBreakpoint, MemoryAddress, Response,
+    },
     repl_commands_helpers::*,
     repl_types::*,
     request_helpers::set_instruction_breakpoint,
@@ -307,13 +309,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
 
             for input_argument in input_arguments {
                 if input_argument.starts_with("0x") || input_argument.starts_with("0X") {
-                    if let Ok(memory_reference) = u64::from_str_radix(&input_argument[2..], 16) {
-                        input_address = memory_reference;
-                    } else {
-                        return Err(DebuggerError::UserMessage(
-                            "Invalid hex address.".to_string(),
-                        ));
-                    }
+                    MemoryAddress(input_address) = input_argument.try_into()?;
                 } else if input_argument.starts_with('/') {
                     if let Some(gdb_nuf_string) = input_argument.strip_prefix('/') {
                         gdb_nuf = GdbNuf::from_str(gdb_nuf_string)?;

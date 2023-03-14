@@ -13,6 +13,28 @@ use std::{convert::TryFrom, fmt::Display};
 // Convert the MSDAP `debugAdaptor.json` file into Rust types.
 schemafy!(root: debugserver_types "src/debug_adapter/dap/debugProtocol.json");
 
+/// Memory addresses come in as strings, but we want to use them as u64s.
+pub struct MemoryAddress(pub u64);
+
+impl TryFrom<&str> for MemoryAddress {
+    type Error = DebuggerError;
+    /// Convert either a decimal or hexadecimal string into a `MemoryAddress(u64)`.
+    fn try_from(string_address: &str) -> Result<Self, Self::Error> {
+        Ok(MemoryAddress(
+            if string_address[..2].eq_ignore_ascii_case("0x") {
+                u64::from_str_radix(&string_address[2..], 16)
+            } else {
+                string_address.parse()
+            }
+            .map_err(|error| {
+                DebuggerError::UserMessage(format!(
+                    "Invalid memory address: {string_address:?}: {error:?}"
+                ))
+            })?,
+        ))
+    }
+}
+
 /// Custom 'quit' request, so that VSCode can tell the `probe-rs-debugger` to terminate its own process.
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
 pub struct QuitRequest {

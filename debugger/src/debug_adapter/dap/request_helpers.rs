@@ -15,7 +15,7 @@ use probe_rs::{
 };
 use std::time::Duration;
 
-use super::dap_types::{Breakpoint, InstructionBreakpoint};
+use super::dap_types::{Breakpoint, InstructionBreakpoint, MemoryAddress};
 
 pub(crate) fn disassemble_target_memory(
     target_core: &mut CoreHandle,
@@ -379,13 +379,7 @@ pub(crate) fn set_instruction_breakpoint(
         verified: false,
     };
 
-    if let Ok(memory_reference) = if requested_breakpoint.instruction_reference.starts_with("0x")
-        || requested_breakpoint.instruction_reference.starts_with("0X")
-    {
-        u64::from_str_radix(&requested_breakpoint.instruction_reference[2..], 16)
-    } else {
-        requested_breakpoint.instruction_reference.parse()
-    } {
+    if let Ok(MemoryAddress(memory_reference)) =  requested_breakpoint.instruction_reference.as_str().try_into() {
         match target_core.set_breakpoint(memory_reference, BreakpointType::InstructionBreakpoint) {
             Ok(_) => {
                 breakpoint_response.verified = true;

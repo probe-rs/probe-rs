@@ -1,6 +1,6 @@
 use std::{fs::File, path::Path};
 
-use super::session_data::{self, BreakpointType};
+use super::session_data::{self, ActiveBreakpoint, BreakpointType};
 use crate::{
     debug_adapter::{
         dap::{
@@ -227,15 +227,33 @@ impl<'p> CoreHandle<'p> {
         Ok(())
     }
 
+    /// Check if a breakpoint address is already cached in [`CoreData::breakpoints`].
+    /// Use this to avoid duplicate breakpoint entries, and also to help with clearing existing breakpoints on request.
+    fn find_breakpoint_in_cache(&self, address: u64) -> Option<(usize, &ActiveBreakpoint)> {
+        self.core_data
+            .breakpoints
+            .iter()
+            .enumerate()
+            .find(|(_, breakpoint)| breakpoint.address == address)
+    }
+
     /// Set a single breakpoint in target configuration as well as [`super::core_data::CoreHandle`]
     pub(crate) fn set_breakpoint(
         &mut self,
         address: u64,
         breakpoint_type: session_data::BreakpointType,
     ) -> Result<(), DebuggerError> {
+        // NOTE: After receiving a DAP [`crate::debug_adapter::dap::dap_types::BreakpointEvent`], VSCode will mistakenly
+        // identify a `InstructionBreakpoint` as a `SourceBreakpoint`. This results in breakpoints not being cleared correctly from [`CoreHandle::clear_breakpoints()`].
+        // To work around this, we have to clear the breakpoints manually before we set them again.
+        if let Some((_, breakpoint)) = self.find_breakpoint_in_cache(address) {
+            self.clear_breakpoint(breakpoint.address)?;
+        }
+
         self.core
             .set_hw_breakpoint(address)
             .map_err(DebuggerError::ProbeRs)?;
+        // Wait until the set of the hw breakpoint succeeded, before we cache it here ...
         self.core_data
             .breakpoints
             .push(session_data::ActiveBreakpoint {
@@ -250,21 +268,14 @@ impl<'p> CoreHandle<'p> {
         self.core
             .clear_hw_breakpoint(address)
             .map_err(DebuggerError::ProbeRs)?;
-        let mut breakpoint_position: Option<usize> = None;
-        for (position, active_breakpoint) in self.core_data.breakpoints.iter().enumerate() {
-            if active_breakpoint.address == address {
-                breakpoint_position = Some(position);
-                break;
-            }
-        }
-        if let Some(breakpoint_position) = breakpoint_position {
+        if let Some((breakpoint_position, _)) = self.find_breakpoint_in_cache(address) {
             self.core_data.breakpoints.remove(breakpoint_position);
         }
         Ok(())
     }
 
     /// Clear all breakpoints of a specified [`super::session_data::BreakpointType`].
-    /// Affects target configuration as well as [`super::core_data::CoreHandle`].
+    /// Affects target configuration as well as [`CoreData::breakpoints`].
     /// If `breakpoint_type` is `None`, all breakpoints of type [`super::session_data::BreakpointType::SourceBreakpoint`] will be cleared.
     pub(crate) fn clear_breakpoints(
         &mut self,
