@@ -58,7 +58,7 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
     }
 
     fn send_data(&mut self, raw_data: &[u8]) -> Result<(), std::io::Error> {
-        let response_body = raw_data;
+        let mut response_body = raw_data;
 
         let response_header = format!("Content-Length: {}\r\n\r\n", response_body.len());
 
@@ -66,19 +66,25 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
         self.output.flush()?;
 
         // NOTE: Sometimes when writing large response, the debugger will fail with an IO error (ErrorKind::WouldBlock == error.kind())
-        // Retrying is not an option, because there is no way to know how much data was already written.
-        // Trying to resend smaller chunks after this error just causes the request to fail.
-        // The strategy then is to avoid this error as much as possible, by always sending data in smaller chunks.
-        if response_body.len() > 1024 {
-            let chunked_output = response_body.chunks(1024);
-            for chunk in chunked_output {
-                self.output.write_all(chunk)?;
-                self.output.flush()?;
+        let mut bytes_remaining = response_body.len();
+        while bytes_remaining > 0 {
+            match self.output.write(response_body) {
+                Ok(bytes_written) => {
+                    bytes_remaining = bytes_remaining.saturating_sub(bytes_written);
+                    response_body = &response_body[bytes_written..];
+                }
+                Err(error) => {
+                    if error.kind() == std::io::ErrorKind::WouldBlock {
+                        // The client is not ready to receive data (probably still processing the last chunk we sent),
+                        // so we need to keep trying.
+                    } else {
+                        tracing::error!("Failed to send a response to the client: {}", error);
+                        return Err(error);
+                    }
+                }
             }
-        } else {
-            self.output.write_all(response_body)?;
-            self.output.flush()?;
         }
+        self.output.flush()?;
 
         self.seq += 1;
 
