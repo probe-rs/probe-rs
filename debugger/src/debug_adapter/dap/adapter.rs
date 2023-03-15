@@ -352,10 +352,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                             {
                                                 response_body = evaluate_response;
                                             } else {
-                                                response_body.result = format!(
-                                                    "Error: Could not parse response body: {:?}",
-                                                    repl_response_body
-                                                );
+                                                response_body.result = format!("Error: Could not parse response body: {repl_response_body:?}");
                                             };
                                         } else {
                                             response_body.result = repl_response
