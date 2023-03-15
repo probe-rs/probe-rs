@@ -379,7 +379,11 @@ pub(crate) fn set_instruction_breakpoint(
         verified: false,
     };
 
-    if let Ok(MemoryAddress(memory_reference)) =  requested_breakpoint.instruction_reference.as_str().try_into() {
+    if let Ok(MemoryAddress(memory_reference)) = requested_breakpoint
+        .instruction_reference
+        .as_str()
+        .try_into()
+    {
         match target_core.set_breakpoint(memory_reference, BreakpointType::InstructionBreakpoint) {
             Ok(_) => {
                 breakpoint_response.verified = true;
@@ -400,7 +404,7 @@ pub(crate) fn set_instruction_breakpoint(
                         });
                         breakpoint_response.message = Some(format!("Instruction breakpoint set @:{memory_reference:#010x}. File: {}: Line: {}, Column: {}", 
                         &source_location.file.unwrap_or_else(|| "<unknown source file>".to_string()), 
-                        breakpoint_response.line.unwrap_or(0), 
+                        breakpoint_response.line.unwrap_or(0),
                         breakpoint_response.column.unwrap_or(0)));
                     }
                     None => {
