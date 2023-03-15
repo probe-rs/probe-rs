@@ -10,10 +10,10 @@ pub(crate) mod dap_types;
 /// It doesn't make sense to implement all gdb commands, and this implementation will focus on the ones that
 /// are most useful to users, and this list is expected to grow over time.
 pub(crate) mod repl_commands;
-/// Helper functions to validate and build command subsets from [`repl_commands`]].
+/// Helper functions to validate and build command subsets from [`crate::debug_adapter::dap::repl_commands`].
 pub(crate) mod repl_commands_helpers;
-/// Various enums and structs used by the [`repl_commands::ReplCommand`].
+/// Various enums and structs used by the [`crate::debug_adapter::dap::repl_commands::ReplCommand`].
 pub(crate) mod repl_types;
 /// The logic for handling the various MS DAP requests, implemented so that it can be used by both the
-/// [`adapter::DebugAdapter`] and the [`repl_commands::ReplCommand`].
+/// [`crate::debug_adapter::dap::adapter::DebugAdapter`] and the [`crate::debug_adapter::dap::repl_commands::ReplCommand`].
 pub(crate) mod request_helpers;
