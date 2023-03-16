@@ -58,18 +58,32 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
     }
 
     fn send_data(&mut self, raw_data: &[u8]) -> Result<(), std::io::Error> {
-        let response_body = raw_data;
+        let mut response_body = raw_data;
 
         let response_header = format!("Content-Length: {}\r\n\r\n", response_body.len());
 
         self.output.write_all(response_header.as_bytes())?;
+        self.output.flush()?;
 
-        if let Err(err) = self.output.write_all(response_body) {
-            // TODO: Implement catch of errorkind "WouldBlock" and retry
-            tracing::error!("send_data - body: {:?}", err);
-            return Err(err);
+        // NOTE: Sometimes when writing large response, the debugger will fail with an IO error (ErrorKind::WouldBlock == error.kind())
+        let mut bytes_remaining = response_body.len();
+        while bytes_remaining > 0 {
+            match self.output.write(response_body) {
+                Ok(bytes_written) => {
+                    bytes_remaining = bytes_remaining.saturating_sub(bytes_written);
+                    response_body = &response_body[bytes_written..];
+                }
+                Err(error) => {
+                    if error.kind() == std::io::ErrorKind::WouldBlock {
+                        // The client is not ready to receive data (probably still processing the last chunk we sent),
+                        // so we need to keep trying.
+                    } else {
+                        tracing::error!("Failed to send a response to the client: {}", error);
+                        return Err(error);
+                    }
+                }
+            }
         }
-
         self.output.flush()?;
 
         self.seq += 1;
@@ -230,7 +244,15 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
 
         let encoded_event = serde_json::to_vec(&new_event)?;
 
-        self.send_data(&encoded_event)?;
+        match self.send_data(&encoded_event) {
+            Ok(_) => {}
+            Err(error) => {
+                let message = format!("Unexpected Error while sending event: {error:?}");
+                tracing::error!("{message}");
+                self.log_to_console(&message);
+                self.show_message(MessageSeverity::Error, message);
+            }
+        }
 
         if new_event.event != "output" {
             // This would result in an endless loop.
@@ -310,7 +332,8 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
             }
             Err(debugger_error) => {
                 resp.success = false;
-                resp.message = {
+                resp.message = Some("cancelled".to_string());
+                resp.body = {
                     let mut response_message = debugger_error.to_string();
                     let mut offset_iterations = 0;
                     let mut child_error: Option<&dyn std::error::Error> =
@@ -328,7 +351,7 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
                         );
                         child_error = std::error::Error::source(source_error);
                     }
-                    Some(response_message)
+                    Some(serde_json::to_value(response_message)?)
                 };
             }
         };
@@ -344,7 +367,15 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
 
         let encoded_resp = serde_json::to_vec(&resp)?;
 
-        self.send_data(&encoded_resp)?;
+        match self.send_data(&encoded_resp) {
+            Ok(_) => {}
+            Err(error) => {
+                // If we can't send the response, we can't do much about it, so best to terminate the session with an error.
+                let message = format!("Unexpected Error while sending response: {error:?}");
+                tracing::error!("{message}");
+                return Err(anyhow::anyhow!(message));
+            }
+        }
 
         if !resp.success {
             self.log_to_console(
