@@ -918,8 +918,10 @@ impl DebugInfo {
 
                 for file_name in header.file_names() {
                     let combined_path = self.get_path(unit, header, file_name);
-
-                    if combined_path.map(|p| p == path).unwrap_or(false) {
+                    if combined_path
+                        .map(|p| canonical_path_eq(path, &p))
+                        .unwrap_or(false)
+                    {
                         let mut rows = line_program.clone().rows();
 
                         while let Some((header, row)) = rows.next_row()? {
@@ -927,7 +929,10 @@ impl DebugInfo {
                                 .file(header)
                                 .and_then(|file_entry| self.get_path(unit, header, file_entry));
 
-                            if row_path.map(|p| p != path).unwrap_or(true) {
+                            if row_path
+                                .map(|p| !canonical_path_eq(path, &p))
+                                .unwrap_or(true)
+                            {
                                 continue;
                             }
 
@@ -1063,7 +1068,8 @@ impl DebugInfo {
         )))
     }
 
-    /// Get the absolute path for an entry in a line program header
+    /// Get the path for an entry in a line program header, using the compilation unit's directory and file entries.
+    // TODO: Determine if it is necessary to navigate the include directories to find the file absolute path for C files.
     pub(crate) fn get_path(
         &self,
         unit: &gimli::read::Unit<DwarfReader>,
@@ -1076,7 +1082,6 @@ impl DebugInfo {
             .and_then(|dir| self.dwarf.attr_string(unit, dir).ok());
 
         let name_path = Path::new(from_utf8(&file_name_attr_string).ok()?);
-
         let dir_path =
             dir_name_attr_string.and_then(|dir_name| from_utf8(&dir_name).ok().map(PathBuf::from));
 
@@ -1093,7 +1098,6 @@ impl DebugInfo {
                 .transpose()
                 .ok()?
                 .map(PathBuf::from);
-
             if let Some(comp_dir) = comp_dir {
                 combined_path = comp_dir.join(&combined_path);
             }
@@ -1118,6 +1122,33 @@ impl DebugInfo {
 
         Some((file_name, directory))
     }
+}
+
+/// Uses the [std::fs::canonicalize] function to canonicalize both paths before applying the [std::path::PathBuf::eq]
+/// to test if the secondary path is equal or a suffix of the primary path.
+/// If for some reason (e.g., the paths don't exist) the canonicalization fails, the original equality check is used.
+/// We do this to maximize the chances of finding a match where the secondary path can be given as
+/// an absolute, relative, or partial path.
+pub(crate) fn canonical_path_eq(primary_path: &Path, secondary_path: &Path) -> bool {
+    primary_path
+        .canonicalize()
+        .ok()
+        .and_then(|canonical_primary_path| {
+            secondary_path
+                .canonicalize()
+                .ok()
+                .map(|canonical_secondary_path| {
+                    tracing::debug!(
+                        "Canonical path equality: Using `{canonical_primary_path:?}.eq({canonical_secondary_path:?})` to compare paths.");
+                    canonical_primary_path.eq(&canonical_secondary_path)
+                })
+        })
+        .unwrap_or_else(|| {
+            // If for some reason we can't canonicalize the paths, fall back to the original equality check.
+            tracing::debug!(
+                "Original path equality: Using `{primary_path:?}.eq({secondary_path:?})` to compare paths.");
+            primary_path.eq(secondary_path)
+        })
 }
 
 /// Get a handle to the [`gimli::UnwindTableRow`] for this call frame, so that we can reference it to unwind register values.
