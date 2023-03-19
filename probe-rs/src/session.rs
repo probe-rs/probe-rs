@@ -827,7 +827,9 @@ pub struct Config {
 
 impl Config {
     fn default_core(&self, target: &Target) -> probe_rs_target::Core {
-        let core_config = match &self.cores {
+        
+
+        match &self.cores {
             CoreSelection::All => {
                 if target.cores.len() > 1 {
                     let default_core = target.cores[0].clone();
@@ -853,9 +855,7 @@ impl Config {
 
                 target.cores[0].clone()
             }
-        };
-
-        core_config
+        }
     }
 
     fn is_core_enabled(&self, id: usize) -> bool {
