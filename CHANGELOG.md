@@ -43,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - probe-rs-debugger: Remove `restart-after-flashing` option, and make it the default behaviour. (#1550)
 
+- probe-rs-debugger: Slightly relax the RISC-V restriction when handling `restart` request. Allows restart, but does not re-flash. (#1569)
+
 ### Added
 
 - Added EFM32TG11B family targets #1420
