@@ -228,24 +228,26 @@ impl Debugger {
                     }
                     "threads" => debug_adapter.threads(&mut target_core, &request),
                     "restart" => {
-                        if target_core.core.architecture() == Architecture::Riscv {
+                        if target_core.core.architecture() == Architecture::Riscv
+                            && self.config.flashing_config.flashing_enabled
+                        {
                             debug_adapter.show_message(
                                 MessageSeverity::Information,
-                                "In-session `restart` is not currently supported for RISC-V.",
+                                "Re-flashing the target during on-session `restart` is not currently supported for RISC-V. Flashing will be disabled for the remainder of this session.",
                             );
-                            Ok(())
-                        } else {
-                            // Reset RTT so that the link can be re-established
-                            target_core.core_data.rtt_connection = None;
-                            let result = target_core
-                                .core
-                                .halt(Duration::from_millis(500))
-                                .map_err(|error| anyhow!("Failed to halt core: {}", error))
-                                .and(Ok(()));
-
-                            debug_session = DebugSessionStatus::Restart(request);
-                            result
+                            self.config.flashing_config.flashing_enabled = false;
                         }
+
+                        // Reset RTT so that the link can be re-established
+                        target_core.core_data.rtt_connection = None;
+                        let result = target_core
+                            .core
+                            .halt(Duration::from_millis(500))
+                            .map_err(|error| anyhow!("Failed to halt core: {}", error))
+                            .and(Ok(()));
+
+                        debug_session = DebugSessionStatus::Restart(request);
+                        result
                     }
                     "setBreakpoints" => debug_adapter.set_breakpoints(&mut target_core, &request),
                     "setInstructionBreakpoints" => {
