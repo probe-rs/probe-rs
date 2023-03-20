@@ -36,9 +36,9 @@ sentry = { version = "0.30.0", features = ["anyhow"], optional = true }
 simplelog = "0.12.1"
 terminal_size = "0.2.5"
 clap = { version = "4.1", features = ["derive"] }
-byte-unit = "4.0.18"
+byte-unit = "4.0.19"
 goblin = "0.6.1"
 num-traits = "0.2.15"
 defmt-decoder = { version = "0.3.4", features = ["unstable"] }
 time = "0.3"
-is-terminal = "0.4.4"
+is-terminal = "0.4.5"
