@@ -44,7 +44,7 @@ rand = "0.8.5"
 reqwest = { version = "0.11.14", features = ["blocking", "json"] }
 serde = { version = "1.0.158", features = ["derive"] }
 termtree = "0.4.1"
-directories = "4"
+directories = "5"
 sanitize-filename = "0.4"
 time = { version = "0.3", default-features = false, features = [
     "alloc",
