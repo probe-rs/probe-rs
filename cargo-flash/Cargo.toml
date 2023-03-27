@@ -36,7 +36,7 @@ git-version = "0.3.5"
 
 [dev-dependencies]
 assert_cmd = "2"
-predicates = "2"
+predicates = "3"
 
 [build-dependencies]
 git-version = "0.3.5"
