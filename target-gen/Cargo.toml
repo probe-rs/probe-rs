@@ -47,5 +47,5 @@ indicatif = { version = "0.17", default-features = false }
 
 [dev-dependencies]
 assert_cmd = "2.0.10"
-predicates = "2.1.5"
+predicates = "3.0.2"
 assert_fs = "1.0.12"
