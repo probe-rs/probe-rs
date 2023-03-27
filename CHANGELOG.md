@@ -51,6 +51,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added LPC55Sxx target #1513
 
+- Added STM32H5xx targets #1575
+
 - Added custom sequence support to STM32L0, L1, L4, G0, G4, F0, F3, WB, WL,
   enabling debug clocks during sleep modes #1521
 

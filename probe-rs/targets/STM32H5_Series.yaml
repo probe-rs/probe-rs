@@ -1,0 +1,987 @@
+name: STM32H5 Series
+generated_from_pack: true
+pack_file_release: 1.0.0
+variants:
+- name: STM32H503CBTx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM2
+    range:
+      start: 0x20004000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h503_128k_0800
+- name: STM32H503CBUx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM2
+    range:
+      start: 0x20004000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h503_128k_0800
+- name: STM32H503EBYx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM2
+    range:
+      start: 0x20004000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h503_128k_0800
+- name: STM32H503KBUx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM2
+    range:
+      start: 0x20004000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h503_128k_0800
+- name: STM32H503RBTx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1
+    range:
+      start: 0x20000000
+      end: 0x20004000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM2
+    range:
+      start: 0x20004000
+      end: 0x20008000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h503_128k_0800
+- name: STM32H562AIIx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H562IIKx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H562IITx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H562RITx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H562RIVx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H562VITx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H562ZITx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H563AIIx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H563IIKx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H563IITx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H563MIYxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H563RITx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H563RIVx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H563VITx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H563ZITx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H573AIIx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H573IIKx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H573IITx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H573MIYxQ
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H573RITx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H573RIVx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H573VITx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+- name: STM32H573ZITx
+  cores:
+  - name: main
+    type: armv8m
+    core_access_options: !Arm
+      ap: 1
+      psel: 0
+  memory_map:
+  - !Ram
+    name: SRAM1_2
+    range:
+      start: 0x20000000
+      end: 0x20050000
+    cores:
+    - main
+  - !Nvm
+    name: Flash
+    range:
+      start: 0x8000000
+      end: 0x8200000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: SRAM3
+    range:
+      start: 0x20050000
+      end: 0x200a0000
+    cores:
+    - main
+  flash_algorithms:
+  - stm32h5xx_2m_0800
+  - stm32h5xx_2m_0c00
+flash_algorithms:
+- name: stm32h503_128k_0800
+  description: STM32H503 128k NSecure Flash
+  default: true
+  instructions: ASBwR0DyBADA8gAACesAAYpoT/T8AxNgWfgAIE/0AEMTYBNoQ/AgAxNgv/NPj0loCWjJBwfQAL8J6wABAL9JaAloyQf40QAgcEcAABC1QPIEAcDyAAEJ6wEC0ukDw1JoT/D/PhJoDOtTDA7rUwPSBwPqAA4H0AC/CesBAgC/UmgSaNIH+NEJ6wECk2hP9PwEHGAEJG/wPwPI8gAEA+reE4RFiL8EJFn4AQAjRANgA2hD8CADA2C/80+PUGgCaNIHB9AAvwnrAQAAv0BoAmjSB/jRAGgQ9PwPCNAJ6wEAgGhP9PwBAWABIBC9AL8AIBC9sLVC8iACxPICAlFtSParHAHwf0FA8iMesfE0T0DyBAHM9u9cxPJnXsDyAAFI0QLxDANJ+AEwCesBAxQdAvEUBcPpAUVC+BjsQvgYzL/zT49TaNsHBNAAvwC/U2jbB/vRT/D/M8L4gDDC+IQwwviIMML4jDDC+IAxwviEMcL4iDHC+IwxCesBAlJoEmjSBwbQCesBAgC/UmgSaNIH+NFJRMhgT/YMAMD2/wAAaE/2AELA8v8yAuqAIgAgCmGwvQC/AvEIA0n4ATAJ6wEDAvEQBMPpASRC+BzsQvgczL/zT48TaNsHztAAvwC/E2jbB/vRyOcAAIC1QPIEDsDyAA4J6w4DW2gPMRtoIfAPDNsHBtAJ6w4BAL9JaAloyQf40QnrDgGJaE/0/AMLYFn4DhACI7zxAA8LYB3QEWgBYFFoQWCRaIFg0WjBYL/zT48J6w4BSWgLaNsHAdAAv/fnCWgR9PwPC9EQMLzxEAwC8RAC49FZ+A4QACAIYIC9AL8J6w4AgGhP9PwBAWABIIC9QPIEAMDyAABZ+AAgCesAAQEjE2C/80+PSWgJaMkHBtAJ6wABAL9JaAloyQf40QAgcEcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+  pc_init: 0xf1
+  pc_uninit: 0x27d
+  pc_program_page: 0x1e5
+  pc_erase_sector: 0x4d
+  pc_erase_all: 0x5
+  data_section_offset: 0x2b0
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8020000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 400
+    erase_sector_timeout: 400
+    sectors:
+    - size: 0x2000
+      address: 0x0
+- name: stm32h5xx_2m_0800
+  description: STM32H5xx 2M NSecure Flash
+  default: true
+  instructions: ELVC8iACxPICAlFtSParHAHwf0FA8iMesfE0T0DyFAHM9u9cxPJnXsDyAAEd0UDyEAQC8QwDwPIABEn4BDATHUDyDARJ+AEwAvEUA8DyAARJ+AQwQvgY7EL4GMy/80+PU2jbBx/QAL/650DyEAQC8QgDwPIABEn4BDBA8gwEAvEQA8DyAARJ+AEgSfgEMEL4HOxC+BzMv/NPjwC/E2jbBxPQAL/650/w/zPC+IAwwviEMML4iDDC+IwwwviAMcL4hDHC+IgxwviMMVn4ASASaNIHBdAAv1n4ASASaNIH+dFA8gQBwPIAAUn4AQBP9gwAwPb/AABoT/YAQcDy/zFA8ggCAeqAIcDyAAIAIEn4AhAQvQC/QPIQAMDyAABZ+AAAASEBYEDyFADA8gAAv/NPj1n4ABAJaMkHBtAAvwC/WfgAEAloyQf50QAgcEcBIHBHQPIMAMDyAABZ+AAAT/T8AQFgQPIQAMDyAABZ+AAAT/QAQQFgAWhB8CABAWBA8hQAwPIAAL/zT49Z+AAQCWjJBwbQAL8Av1n4ABAJaMkH+dEAIHBHELVA8gQBQPIIAsDyAAHA8gACWfgBEFn4AiBP8P88AetSDkDyFAHA8gABWfgBMAzrUgIbaAJA2wcG0AC/AL9Z+AEwG2jbB/nRQPIMDMDyAAxZ+AwwT/T8BBxgb/A/AwPq0hIEI4ZFQPIQAMjyAAPA8gAAiL8EI1n4AAAaRAJgAmhC8CACAmC/80+PAL9Z+AEAAmjSBwHQAL/45wBoEPT8Dw+/ACBZ+AwAT/T8AQFgGL8BIBC9sLVA8hQDwPIAA1n4A0APMSRoIfAPAeQHBtAAvwC/WfgDQCRo5Af50UDyDAzA8gAMWfgM4E/0/ATO+ABAQPIQDsDyAA5Z+A5AAiUlYOmxAL8UaARgVGhEYJRohGDUaMRgv/NPj1n4A0AlaO0HAtAAv/jnAL8kaBT0/A8J0RAwEDkC8RAC5NFZ+A5AACAgYLC9WfgMAE/0/AEBYAEgsL0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x115
+  pc_program_page: 0x259
+  pc_erase_sector: 0x1a5
+  pc_erase_all: 0x151
+  data_section_offset: 0x2f8
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8200000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 400
+    erase_sector_timeout: 400
+    sectors:
+    - size: 0x2000
+      address: 0x0
+- name: stm32h5xx_2m_0c00
+  description: STM32H5xx 2M Secure Flash
+  default: true
+  instructions: ASBwR0DyDADA8gAAWfgAAE/0/AEBYEDyEADA8gAAWfgAAE/0AEEBYAFoQfAgAQFgQPIUAMDyAAC/80+PWfgAEAloyQcG0AC/AL9Z+AAQCWjJB/nRACBwRxC1QPIEAUDyCALA8gABwPIAAln4ARBZ+AIgT/D/PAHrUg5A8hQBwPIAAVn4ATAM61ICG2gCQNsHBtAAvwC/WfgBMBto2wf50UDyDAzA8gAMWfgMME/0/AQcYG/wPwMD6tISBCOGRUDyEADI8gADwPIAAIi/BCNZ+AAAGkQCYAJoQvAgAgJgv/NPjwC/WfgBAAJo0gcB0AC/+OcAaBD0/A8PvwAgWfgMAE/0/AEBYBi/ASAQvRC1QvIgAsTyAgJRbUj2qxwB8H9BQPIjHrHxNE9A8hQBzPbvXMTyZ17A8gABHdFA8hAEAvEMA8DyAARJ+AQwEx1A8gwESfgBMALxFAPA8gAESfgEMEL4GOxC+BjMv/NPj1No2wcf0AC/+udA8hAEAvEIA8DyAARJ+AQwQPIMBALxEAPA8gAESfgBIEn4BDBC+BzsQvgczL/zT48AvxNo2wcT0AC/+udP8P8zwviAMML4hDDC+IgwwviMMML4gDHC+IQxwviIMcL4jDFZ+AEgEmjSBwXQAL9Z+AEgEmjSB/nRQPIEAcDyAAFJ+AEAT/YMAMD2/wAAaE/2AEHA8v8xQPIIAgHqgCHA8gACACBJ+AIQEL0AALC1QPIUA8DyAANZ+ANADzEkaCHwDwHkBwbQAL8Av1n4A0AkaOQH+dFA8gwMwPIADFn4DOBP9PwEzvgAQEDyEA7A8gAOWfgOQAIlJWDpsQC/FGgEYFRoRGCUaIRg1GjEYL/zT49Z+ANAJWjtBwLQAL/45wC/JGgU9PwPCdEQMBA5AvEQAuTRWfgOQAAgIGCwvVn4DABP9PwBAWABILC9AABA8hAAwPIAAFn4AAABIQFgQPIUAMDyAAC/80+PWfgAEAloyQcG0AC/AL9Z+AAQCWjJB/nRACBwRwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+  pc_init: 0x10d
+  pc_uninit: 0x2c1
+  pc_program_page: 0x221
+  pc_erase_sector: 0x59
+  pc_erase_all: 0x5
+  data_section_offset: 0x2f8
+  flash_properties:
+    address_range:
+      start: 0xc000000
+      end: 0xc200000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 400
+    erase_sector_timeout: 400
+    sectors:
+    - size: 0x2000
+      address: 0x0
