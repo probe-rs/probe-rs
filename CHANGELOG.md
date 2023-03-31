@@ -5,6 +5,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.0]
+
+Released 2023-03-31
+
 - probe-rs: Trigger rebuild if changes in the `PROBE_RS_TARGETS_DIR` detected (#1562).
 
 - probe-rs: Set the flash range of RP2040 to the max supported size (#1567)
@@ -850,7 +854,8 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.17.0...master
+[unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.18.0...master
+[0.18.0]: https://github.com/probe-rs/probe-rs/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/probe-rs/probe-rs/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/probe-rs/probe-rs/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/probe-rs/probe-rs/compare/v0.14.2...v0.15.0
