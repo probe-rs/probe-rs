@@ -1,19 +1,21 @@
-use crate::debug_adapter::dap::dap_types::{DisassembledInstruction, Source};
-use crate::server::core_data::CoreHandle;
-use crate::DebuggerError;
+use crate::{
+    debug_adapter::dap::dap_types::{DisassembledInstruction, Source},
+    server::{core_data::CoreHandle, session_data::BreakpointType},
+    DebuggerError,
+};
 use anyhow::{anyhow, Result};
-use capstone::Endian;
 use capstone::{
     arch::arm::ArchMode as armArchMode, arch::arm64::ArchMode as aarch64ArchMode,
-    arch::riscv::ArchMode as riscvArchMode, prelude::*,
+    arch::riscv::ArchMode as riscvArchMode, prelude::*, Endian,
 };
 use num_traits::Zero;
-use probe_rs::debug::ColumnType;
-use probe_rs::debug::SourceLocation;
-use probe_rs::CoreType;
-use probe_rs::InstructionSet;
-use probe_rs::MemoryInterface;
+use probe_rs::{
+    debug::{ColumnType, SourceLocation},
+    CoreType, InstructionSet, MemoryInterface,
+};
 use std::time::Duration;
+
+use super::dap_types::{Breakpoint, InstructionBreakpoint, MemoryAddress};
 
 pub(crate) fn disassemble_target_memory(
     target_core: &mut CoreHandle,
@@ -357,4 +359,72 @@ pub(crate) fn get_variable_reference(
         // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
         (0, 0, 0)
     }
+}
+
+/// A helper function to set and return a [`Breakpoint`] struct from a [`InstructionBreakpoint`]
+pub(crate) fn set_instruction_breakpoint(
+    requested_breakpoint: InstructionBreakpoint,
+    target_core: &mut CoreHandle,
+) -> Breakpoint {
+    let mut breakpoint_response = Breakpoint {
+        column: None,
+        end_column: None,
+        end_line: None,
+        id: None,
+        instruction_reference: None,
+        line: None,
+        message: None,
+        offset: None,
+        source: None,
+        verified: false,
+    };
+
+    if let Ok(MemoryAddress(memory_reference)) = requested_breakpoint
+        .instruction_reference
+        .as_str()
+        .try_into()
+    {
+        match target_core.set_breakpoint(memory_reference, BreakpointType::InstructionBreakpoint) {
+            Ok(_) => {
+                breakpoint_response.verified = true;
+                breakpoint_response.instruction_reference =
+                    Some(format!("{memory_reference:#010x}"));
+                // Try to resolve the source location for this breakpoint.
+                match target_core
+                    .core_data
+                    .debug_info
+                    .get_source_location(memory_reference)
+                {
+                    Some(source_location) => {
+                        breakpoint_response.source = get_dap_source(&source_location);
+                        breakpoint_response.line = source_location.line.map(|line| line as i64);
+                        breakpoint_response.column = source_location.column.map(|col| match col {
+                            ColumnType::LeftEdge => 0_i64,
+                            ColumnType::Column(c) => c as i64,
+                        });
+                        breakpoint_response.message = Some(format!("Instruction breakpoint set @:{memory_reference:#010x}. File: {}: Line: {}, Column: {}", 
+                        &source_location.file.unwrap_or_else(|| "<unknown source file>".to_string()), 
+                        breakpoint_response.line.unwrap_or(0),
+                        breakpoint_response.column.unwrap_or(0)));
+                    }
+                    None => {
+                        breakpoint_response.message = Some(format!("Instruction breakpoint set @:{memory_reference:#010x}, but could not resolve a source location."));
+                    }
+                }
+            }
+            Err(error) => {
+                breakpoint_response.instruction_reference =
+                    Some(requested_breakpoint.instruction_reference);
+                breakpoint_response.message = Some(format!("Warning: Could not set breakpoint at memory address: {memory_reference:#010x}: {error}"));
+            }
+        }
+    } else {
+        breakpoint_response.instruction_reference =
+            Some(requested_breakpoint.instruction_reference.clone());
+        breakpoint_response.message = Some(format!(
+            "Invalid memory reference specified: {:?}",
+            requested_breakpoint.instruction_reference
+        ));
+    };
+    breakpoint_response
 }

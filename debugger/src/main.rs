@@ -44,7 +44,9 @@ pub enum DebuggerError {
     #[error(transparent)]
     ProbeRs(#[from] Error),
     #[error("{0}")]
-    ReplError(String),
+    /// A message that is intended to be displayed to the user, and does not unwind nested errors.
+    /// It is intended to communicate helpful "correct and try again" information to users.
+    UserMessage(String),
     #[error("Serialiazation error")]
     SerdeError(#[from] serde_json::Error),
     #[error("Failed to open source file '{source_file_name}'.")]
