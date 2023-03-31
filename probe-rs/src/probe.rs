@@ -288,7 +288,7 @@ impl Probe {
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),
         };
-        match bitbang::BitBangProbe::new_from_selector(selector.clone()) {
+        match bitbang::BitBangProbe::new_from_selector(selector) {
             Ok(bb) => return Ok(Probe::from_specific_probe(bb)),
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),

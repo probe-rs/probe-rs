@@ -42,7 +42,7 @@ impl BitBangEngine {
         let mut tdos = vec![];
 
         // Nothing to write...
-        if tdis.len() == 0 {
+        if tdis.is_empty() {
             return Ok(tdos);
         }
 
@@ -153,12 +153,9 @@ pub fn bool_slice_to_u8_slice(r: &[bool], len: usize) -> Vec<u8> {
 
     let mut read_data = vec![];
     // first populate with all zeros
-    for _ in 0..len / 8 {
-        read_data.push(0u8);
-    }
-    if len % 8 != 0 {
-        read_data.push(0u8);
-    }
+    let bytes = len / 8 + (len % 8 != 0) as usize;
+    read_data.resize(bytes, 0u8);
+
     // now fill in the actual data
     for i in 0..len {
         let bit = r[i] as u8;

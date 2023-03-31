@@ -216,16 +216,14 @@ impl JTAGAccess for BitBangProbe {
 }
 
 #[tracing::instrument(skip_all)]
+// TODO this is just a hack to make it show up in list interfaces for now.  Probably should remove.
 pub(crate) fn list_bitbang_devices() -> Vec<DebugProbeInfo> {
-    let mut devs = vec![];
-    devs.push(DebugProbeInfo {
+    vec![DebugProbeInfo {
         identifier: "BitBang Interface".to_owned(),
         vendor_id: 0,
         product_id: 0,
         serial_number: None,
         probe_type: DebugProbeType::BitBang,
         hid_interface: None,
-    });
-
-    devs
+    }]
 }
