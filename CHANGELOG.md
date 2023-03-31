@@ -9,10 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Released 2023-03-31
 
-- probe-rs: Trigger rebuild if changes in the `PROBE_RS_TARGETS_DIR` detected (#1562).
-
-- probe-rs: Set the flash range of RP2040 to the max supported size (#1567)
-
 ### Fixed
 
 - Add reset catch sequence for Silicon Labs EFM32/EFR32 Series 2 chips.
@@ -43,22 +39,27 @@ Released 2023-03-31
 - Update MS DAP protocol to v1.60.0. Documentation clarifications only. (#1458)
 
 - probe-rs-debugger: Cleaned up the timing of caching unwind information, based on new MS DAP protocol docs. (#1458)
+
 - probe-rs: Allows `add_target_from_yaml` function to accept multiple sources
 
 - probe-rs-debugger: Remove `restart-after-flashing` option, and make it the default behaviour. (#1550)
+
+- probe-rs: Trigger rebuild if changes in the `PROBE_RS_TARGETS_DIR` detected (#1562).
+
+- probe-rs: Set the flash range of RP2040 to the max supported size (#1567)
 
 - probe-rs-debugger: Slightly relax the RISC-V restriction when handling `restart` request. Allows restart, but does not re-flash. (#1569)
 
 ### Added
 
-- Added EFM32TG11B family targets #1420
+- Added EFM32TG11B family targets (#1420)
 
-- Added LPC55Sxx target #1513
+- Added LPC55Sxx target (#1513)
 
-- Added STM32H5xx targets #1575
+- Added STM32H5xx targets (#1575)
 
 - Added custom sequence support to STM32L0, L1, L4, G0, G4, F0, F3, WB, WL,
-  enabling debug clocks during sleep modes #1521
+  enabling debug clocks during sleep modes (#1521)
 
 - Add default sequence 'debug_core_stop', which disables debugging when disconneting from ARM cores by default. (#1525)
 
@@ -70,8 +71,7 @@ Released 2023-03-31
 
 - debug: Enable debug experimental support for binaries compiled from C files (GNU C99/11/17). (#1558)
 
-- Added support for `monitor reset` and `monitor reset halt` commands in `gdb-server` #1565
-
+- Added support for `monitor reset` and `monitor reset halt` commands in `gdb-server` (#1565)
 
 ## [0.17.0]
 
