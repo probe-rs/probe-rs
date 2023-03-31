@@ -429,16 +429,20 @@ impl DebugProbe for FtdiProbe {
     where
         Self: Sized,
     {
-        let selector = selector.into();
+        let DebugProbeSelector {
+            vendor_id,
+            product_id,
+            ..
+        } = selector.into();
 
-        // Only open FTDI probes
-        if selector.vendor_id != 0x0403 {
+        // Only open FTDI-compatible probes
+        if !FTDI_COMPAT_DEVICE_IDS.contains(&(vendor_id, product_id)) {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::NotFound,
             ));
         }
 
-        let adapter = JtagAdapter::open(selector.vendor_id, selector.product_id)
+        let adapter = JtagAdapter::open(vendor_id, product_id)
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
 
         let probe = FtdiProbe {
@@ -749,8 +753,12 @@ impl JTAGAccess for FtdiProbe {
 }
 
 /// (VendorId, ProductId)
-static FTDI_COMPAT_DEVICE_IDS: &[(u16, u16)] =
-    &[(0x0403, 0x6010), (0x0403, 0x6011), (0x0403, 0x6014)];
+static FTDI_COMPAT_DEVICE_IDS: &[(u16, u16)] = &[
+    (0x0403, 0x6010), // FTDI Ltd. FT2232C/D/H Dual UART/FIFO IC
+    (0x0403, 0x6011), // FTDI Ltd. FT4232H Quad HS USB-UART/FIFO IC
+    (0x0403, 0x6014), // FTDI Ltd. FT232H Single HS USB-UART/FIFO IC
+    (0x15ba, 0x002a), // Olimex Ltd. ARM-USB-TINY-H JTAG interface
+];
 
 fn get_device_info(device: &rusb::Device<rusb::Context>) -> Option<DebugProbeInfo> {
     let d_desc = device.device_descriptor().ok()?;
