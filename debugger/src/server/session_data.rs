@@ -265,7 +265,7 @@ impl SessionData {
             // We need to poll the core to determine its status.
             let current_core_status = target_core.poll_core(debug_adapter).map_err(|error| {
                 let error = DebuggerError::ProbeRs(error);
-                let _ = debug_adapter.send_error_response(&error);
+                let _ = debug_adapter.show_error_message(&error);
                 error
             })?;
 
@@ -293,7 +293,7 @@ impl SessionData {
                             }
                             Err(error) => {
                                 debug_adapter
-                                    .send_error_response(&DebuggerError::Other(error))
+                                    .show_error_message(&DebuggerError::Other(error))
                                     .ok();
                             }
                         }

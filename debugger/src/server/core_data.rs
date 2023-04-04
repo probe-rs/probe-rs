@@ -130,7 +130,7 @@ impl<'p> CoreHandle<'p> {
                                 )));
                             }
                             CoreStatus::Unknown => {
-                                debug_adapter.send_error_response(&DebuggerError::Other(
+                                debug_adapter.show_error_message(&DebuggerError::Other(
                                     anyhow!("Unknown Device status reveived from Probe-rs"),
                                 ))?;
 
