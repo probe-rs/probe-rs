@@ -5,6 +5,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- probe-rs-debugger: Show errors that happen before VSCode/DAP Client session initializion has completed (#).
+
 ## [0.18.0]
 
 Released 2023-03-31
