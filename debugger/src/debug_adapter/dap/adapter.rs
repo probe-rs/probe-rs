@@ -642,7 +642,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         Err(DebuggerError::Other(anyhow!("{}", error))),
                     );
                 } else {
-                    return self.send_error_response(&DebuggerError::Other(anyhow!("{}", error)));
+                    return self.show_error_message(&DebuggerError::Other(anyhow!("{}", error)));
                 }
             }
         }
@@ -722,7 +722,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             let core_info = match target_core.core.reset_and_halt(Duration::from_millis(500)) {
                 Ok(core_info) => core_info,
                 Err(error) => {
-                    return self.send_error_response(&DebuggerError::Other(anyhow!("{}", error)));
+                    return self.show_error_message(&DebuggerError::Other(anyhow!("{}", error)));
                 }
             };
 
@@ -1707,7 +1707,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.adapter.send_response(request, response)
     }
 
-    pub fn send_error_response(&mut self, response: &DebuggerError) -> Result<()> {
+    /// Displays an error message to the user.
+    pub fn show_error_message(&mut self, response: &DebuggerError) -> Result<()> {
         let expanded_error = {
             let mut response_message = response.to_string();
             let mut offset_iterations = 0;
