@@ -305,10 +305,25 @@ impl Debugger {
         // before entering the iterative loop that processes requests through the process_request method.
 
         // Initialize request
-        self.handle_initialize(&mut debug_adapter)?;
+        if let Err(initialize_error) = self.handle_initialize(&mut debug_adapter) {
+            tracing::error!(
+                "probe-rs-debugger session failed to initialize: {}",
+                initialize_error
+            );
+            return Ok(DebugSessionStatus::Terminate);
+        }
 
         // Process either the Launch or Attach request.
-        let (mut debug_adapter, mut session_data) = self.handle_launch_attach(debug_adapter)?;
+        let (mut debug_adapter, mut session_data) = match self.handle_launch_attach(debug_adapter) {
+            Ok((debug_adapter, session_data)) => (debug_adapter, session_data),
+            Err(launch_attach_error) => {
+                tracing::error!(
+                    "probe-rs-debugger session failed to start a new debug session: {}",
+                    launch_attach_error
+                );
+                return Ok(DebugSessionStatus::Terminate);
+            }
+        };
 
         if debug_adapter
             .send_event::<Event>("initialized", None)
