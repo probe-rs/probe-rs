@@ -228,24 +228,26 @@ impl Debugger {
                     }
                     "threads" => debug_adapter.threads(&mut target_core, &request),
                     "restart" => {
-                        if target_core.core.architecture() == Architecture::Riscv {
+                        if target_core.core.architecture() == Architecture::Riscv
+                            && self.config.flashing_config.flashing_enabled
+                        {
                             debug_adapter.show_message(
                                 MessageSeverity::Information,
-                                "In-session `restart` is not currently supported for RISC-V.",
+                                "Re-flashing the target during on-session `restart` is not currently supported for RISC-V. Flashing will be disabled for the remainder of this session.",
                             );
-                            Ok(())
-                        } else {
-                            // Reset RTT so that the link can be re-established
-                            target_core.core_data.rtt_connection = None;
-                            let result = target_core
-                                .core
-                                .halt(Duration::from_millis(500))
-                                .map_err(|error| anyhow!("Failed to halt core: {}", error))
-                                .and(Ok(()));
-
-                            debug_session = DebugSessionStatus::Restart(request);
-                            result
+                            self.config.flashing_config.flashing_enabled = false;
                         }
+
+                        // Reset RTT so that the link can be re-established
+                        target_core.core_data.rtt_connection = None;
+                        let result = target_core
+                            .core
+                            .halt(Duration::from_millis(500))
+                            .map_err(|error| anyhow!("Failed to halt core: {}", error))
+                            .and(Ok(()));
+
+                        debug_session = DebugSessionStatus::Restart(request);
+                        result
                     }
                     "setBreakpoints" => debug_adapter.set_breakpoints(&mut target_core, &request),
                     "setInstructionBreakpoints" => {
@@ -271,7 +273,7 @@ impl Debugger {
                     Ok(()) => {
                         if unhalt_me {
                             if let Err(error) = target_core.core.run() {
-                                debug_adapter.send_error_response(&DebuggerError::Other(
+                                debug_adapter.show_error_message(&DebuggerError::Other(
                                     anyhow!("{}", error),
                                 ))?;
                                 return Err(error.into());
@@ -303,10 +305,25 @@ impl Debugger {
         // before entering the iterative loop that processes requests through the process_request method.
 
         // Initialize request
-        self.handle_initialize(&mut debug_adapter)?;
+        if let Err(initialize_error) = self.handle_initialize(&mut debug_adapter) {
+            tracing::error!(
+                "probe-rs-debugger session failed to initialize: {}",
+                initialize_error
+            );
+            return Ok(DebugSessionStatus::Terminate);
+        }
 
         // Process either the Launch or Attach request.
-        let (mut debug_adapter, mut session_data) = self.handle_launch_attach(debug_adapter)?;
+        let (mut debug_adapter, mut session_data) = match self.handle_launch_attach(debug_adapter) {
+            Ok((debug_adapter, session_data)) => (debug_adapter, session_data),
+            Err(launch_attach_error) => {
+                tracing::error!(
+                    "probe-rs-debugger session failed to start a new debug session: {}",
+                    launch_attach_error
+                );
+                return Ok(DebugSessionStatus::Terminate);
+            }
+        };
 
         if debug_adapter
             .send_event::<Event>("initialized", None)
@@ -315,7 +332,7 @@ impl Debugger {
             let error =
                 DebuggerError::Other(anyhow!("Failed sending 'initialized' event to DAP Client"));
 
-            debug_adapter.send_error_response(&error)?;
+            debug_adapter.show_error_message(&error)?;
 
             return Err(error);
         }
@@ -413,7 +430,7 @@ impl Debugger {
 
         let mut session_data =
             SessionData::new(&mut self.config, self.timestamp_offset).or_else(|error| {
-                debug_adapter.send_error_response(&error)?;
+                debug_adapter.show_error_message(&error)?;
                 Err(error)
             })?;
 
@@ -428,7 +445,7 @@ impl Debugger {
             let Some(path_to_elf) = target_core_config.program_binary.clone() else {
                     let err =  DebuggerError::Other(anyhow!("Please specify use the `program-binary` option in `launch.json` to specify an executable"));
 
-                    debug_adapter.send_error_response(&err)?;
+                    debug_adapter.show_error_message(&err)?;
                     return Err(err);
                 };
 
@@ -453,14 +470,14 @@ impl Debugger {
         let mut target_core = session_data
             .attach_core(target_core_config.core_index)
             .or_else(|error| {
-                debug_adapter.send_error_response(&error)?;
+                debug_adapter.show_error_message(&error)?;
                 Err(error)
             })?;
 
         // Immediately after attaching, halt the core, so that we can finish initalization without bumping into user code.
         // Depending on supplied `config`, the core will be restarted at the end of initialization in the `configuration_done` request.
         if let Err(error) = halt_core(&mut target_core.core) {
-            debug_adapter.send_error_response(&error)?;
+            debug_adapter.show_error_message(&error)?;
             return Err(error);
         }
 
@@ -514,7 +531,7 @@ impl Debugger {
             let Some(path_to_elf) = target_core_config.program_binary.clone() else {
                     let err =  DebuggerError::Other(anyhow!("Please specify use the `program-binary` option in `launch.json` to specify an executable"));
 
-                    debug_adapter.send_error_response(&err)?;
+                    debug_adapter.show_error_message(&err)?;
                     return Err(err);
                 };
 
@@ -541,13 +558,13 @@ impl Debugger {
         let mut target_core = session_data
             .attach_core(target_core_config.core_index)
             .or_else(|error| {
-                debug_adapter.send_error_response(&error)?;
+                debug_adapter.show_error_message(&error)?;
                 Err(error)
             })?;
 
         // Immediately after attaching, halt the core, so that we can finish restart logic without bumping into user code.
         if let Err(error) = halt_core(&mut target_core.core) {
-            debug_adapter.send_error_response(&error)?;
+            debug_adapter.show_error_message(&error)?;
             return Err(error);
         }
 
@@ -742,7 +759,7 @@ impl Debugger {
             }
             Err(error) => {
                 let error = DebuggerError::FileDownload(error);
-                debug_adapter.send_error_response(&error)?;
+                debug_adapter.show_error_message(&error)?;
                 Err(error)
             }
         }

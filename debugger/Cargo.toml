@@ -38,7 +38,7 @@ schemafy = "0.6"
 goblin = "0.6.1"
 base64 = "0.21"
 svd-parser = { version = "0.14.1", features = ["expand"] }
-directories = "4"
+directories = "5"
 sanitize-filename = "0.4"
 time = { version = "0.3", default-features = false, features = [
     "alloc",
@@ -48,4 +48,4 @@ time = { version = "0.3", default-features = false, features = [
 ] }
 
 [dev-dependencies]
-insta = "1.28.0"
+insta = "1.29.0"

@@ -15,8 +15,8 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-probe-rs = { path = "../probe-rs", version = "0.17.0", default-features = false }
-probe-rs-target = { path = "../probe-rs-target", version = "0.17.0", default-features = false }
+probe-rs = { path = "../probe-rs", version = "0.18.0", default-features = false }
+probe-rs-target = { path = "../probe-rs-target", version = "0.18.0", default-features = false }
 cmsis-pack = { version = "0.6.2" }
 goblin = { version = "0.6.1", default-features = false, features = [
     "elf32",
@@ -26,16 +26,16 @@ goblin = { version = "0.6.1", default-features = false, features = [
     "std",
 ] }
 scroll = "0.11.0"
-serde_yaml = "^0.9"
+serde_yaml = "^0.9.19"
 log = "0.4.17"
 zip = "0.6.4"
 clap = { version = "4.1", features = ["derive"] }
 colored = "2"
 base64 = "0.21.0"
-anyhow = "1.0.69"
-reqwest = { version = "0.11.14", features = ["json", "blocking"] }
+anyhow = "1.0.70"
+reqwest = { version = "0.11.15", features = ["json", "blocking"] }
 serde = { version = "1", features = ["derive"] }
-futures = "0.3.26"
+futures = "0.3.27"
 tokio = { version = "1.26.0", features = ["macros", "rt", "rt-multi-thread"] }
 tracing-subscriber = { version = "0.3.16", features = [
     "env-filter",
@@ -46,6 +46,6 @@ cargo_metadata = { version = "0.15", default-features = false }
 indicatif = { version = "0.17", default-features = false }
 
 [dev-dependencies]
-assert_cmd = "2.0.8"
-predicates = "2.1.5"
-assert_fs = "1.0.10"
+assert_cmd = "2.0.10"
+predicates = "3.0.2"
+assert_fs = "1.0.12"

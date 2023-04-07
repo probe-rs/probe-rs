@@ -1,10 +1,19 @@
-use crate::debug_adapter::dap::repl_commands::{build_expanded_commands, command_completions};
-use crate::{
-    debug_adapter::{dap::dap_types, protocol::ProtocolAdapter},
-    server::{
-        configuration::ConsoleLog, core_data::CoreHandle, debugger::DebugSessionStatus,
-        session_data::BreakpointType,
+use super::{
+    core_status::DapStatus,
+    request_helpers::{
+        disassemble_target_memory, get_dap_source, get_variable_reference,
+        set_instruction_breakpoint,
     },
+};
+use crate::{
+    debug_adapter::{
+        dap::{
+            dap_types,
+            repl_commands_helpers::{build_expanded_commands, command_completions},
+        },
+        protocol::ProtocolAdapter,
+    },
+    server::{configuration::ConsoleLog, core_data::CoreHandle, session_data::BreakpointType},
     DebuggerError,
 };
 use anyhow::{anyhow, Result};
@@ -24,9 +33,6 @@ use probe_rs::{
 use probe_rs_cli_util::rtt;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{convert::TryInto, path::Path, str, string::ToString, time::Duration};
-
-use super::core_status::DapStatus;
-use super::request_helpers::{disassemble_target_memory, get_dap_source, get_variable_reference};
 
 /// Progress ID used for progress reporting when the debug adapter protocol is used.
 type ProgressId = i64;
@@ -300,8 +306,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 response_body.result = arguments.expression;
             } else if context == "repl" {
                 // While the target is running, we only allow a 'break' command.
+                // Override clippy, because the recommendation would change the logic.
+                #[allow(clippy::nonminimal_bool)]
                 if !target_core.core.core_halted()?
-                    && !matches!(arguments.expression.trim(), "break" | "quit")
+                    && !(arguments.expression.starts_with("break")
+                        || arguments.expression.starts_with("quit"))
                 {
                     response_body.result =
                         "The target is running. Only the 'break' or 'quit' commands are allowed."
@@ -321,25 +330,61 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             .trim_start()
                             .trim_start_matches(repl_command.command)
                             .trim_start();
-                        match (repl_command.handler)(
-                            target_core,
-                            &mut response_body,
-                            argument_string,
-                            &arguments,
-                        ) {
-                            Ok(debug_session_status) => {
-                                if debug_session_status == DebugSessionStatus::Terminate {
-                                    // This is a special case, where a repl command has requested that the debug session be terminated.
-                                    self.send_event(
-                                        "terminated",
-                                        Some(TerminatedEventBody { restart: None }),
-                                    )?;
-                                } else {
-                                    // In all other cases, the response_body would have been updated by the repl command handler.
+                        match (repl_command.handler)(target_core, argument_string, &arguments) {
+                            Ok(repl_response) => {
+                                // Perform any special post-processing of the response.
+                                match repl_response.command.as_str() {
+                                    "terminate" => {
+                                        // This is a special case, where a repl command has requested that the debug session be terminated.
+                                        response_body.result = repl_response
+                                            .message
+                                            .unwrap_or_else(|| "Success.".to_string());
+                                        self.send_event(
+                                            "terminated",
+                                            Some(TerminatedEventBody { restart: None }),
+                                        )?;
+                                    }
+                                    "variables" => {
+                                        // This is a special case, where a repl command has requested that the variables be displayed.
+                                        if let Some(repl_response_body) = repl_response.body {
+                                            if let Ok(evaluate_response) =
+                                                serde_json::from_value(repl_response_body.clone())
+                                            {
+                                                response_body = evaluate_response;
+                                            } else {
+                                                response_body.result = format!("Error: Could not parse response body: {repl_response_body:?}");
+                                            };
+                                        } else {
+                                            response_body.result = repl_response
+                                                .message
+                                                .unwrap_or_else(|| "Success.".to_string());
+                                        };
+                                    }
+                                    "setBreakpoints" => {
+                                        response_body.result = repl_response
+                                            .message
+                                            // This should always have a value, but just in case someone was lazy ...
+                                            .unwrap_or_else(|| "Success.".to_string()); // This is a special case, where we've added a breakpoint, and need to synch the DAP client UI.
+                                        self.send_event("breakpoint", repl_response.body)?;
+                                    }
+                                    _other_commands => {
+                                        // In all other cases, the response would have been updated by the repl command handler.
+                                        if repl_response.success {
+                                            response_body.result = repl_response
+                                                .message
+                                                // This should always have a value, but just in case someone was lazy ...
+                                                .unwrap_or_else(|| "Success.".to_string());
+                                        } else {
+                                            response_body.result = format!(
+                                                "Error: {:?} {:?}",
+                                                repl_response.command, repl_response.message
+                                            );
+                                        }
+                                    }
                                 }
                             }
                             Err(error) => match &error {
-                                DebuggerError::ReplError(repl_message) => {
+                                DebuggerError::UserMessage(repl_message) => {
                                     response_body.result = repl_message.to_owned()
                                 }
                                 other_error => response_body.result = format!("{other_error:?}",),
@@ -597,7 +642,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         Err(DebuggerError::Other(anyhow!("{}", error))),
                     );
                 } else {
-                    return self.send_error_response(&DebuggerError::Other(anyhow!("{}", error)));
+                    return self.show_error_message(&DebuggerError::Other(anyhow!("{}", error)));
                 }
             }
         }
@@ -677,7 +722,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             let core_info = match target_core.core.reset_and_halt(Duration::from_millis(500)) {
                 Ok(core_info) => core_info,
                 Err(error) => {
-                    return self.send_error_response(&DebuggerError::Other(anyhow!("{}", error)));
+                    return self.show_error_message(&DebuggerError::Other(anyhow!("{}", error)));
                 }
             };
 
@@ -819,94 +864,32 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     ) -> Result<()> {
         let arguments: SetInstructionBreakpointsArguments = get_arguments(self, request)?;
 
-        // For returning in the Response
-        let mut created_breakpoints: Vec<Breakpoint> = Vec::new();
-
         // Always clear existing breakpoints before setting new ones.
         match target_core.clear_breakpoints(Some(BreakpointType::InstructionBreakpoint)) {
             Ok(_) => {}
             Err(error) => tracing::warn!("Failed to clear instruction breakpoints. {}", error),
         }
 
-        // Set the new (potentially an empty list) breakpoints.
-        for requested_breakpoint in arguments.breakpoints {
-            let mut breakpoint_response = Breakpoint {
-                column: None,
-                end_column: None,
-                end_line: None,
-                id: None,
-                instruction_reference: None,
-                line: None,
-                message: None,
-                offset: None,
-                source: None,
-                verified: false,
-            };
+        let instruction_breakpoint_body = SetInstructionBreakpointsResponseBody {
+            breakpoints: arguments
+                .breakpoints
+                .into_iter()
+                .map(|requested_breakpoint| {
+                    set_instruction_breakpoint(requested_breakpoint, target_core)
+                })
+                .collect(),
+        };
 
-            if let Ok(memory_reference) =
-                if requested_breakpoint.instruction_reference.starts_with("0x")
-                    || requested_breakpoint.instruction_reference.starts_with("0X")
-                {
-                    u64::from_str_radix(&requested_breakpoint.instruction_reference[2..], 16)
-                } else {
-                    requested_breakpoint.instruction_reference.parse()
+        // In addition to the response values, also show a message to users for any breakpoints that could not be verified.
+        for breakpoint_response in &instruction_breakpoint_body.breakpoints {
+            if !breakpoint_response.verified {
+                if let Some(message) = &breakpoint_response.message {
+                    self.log_to_console(format!("Warning: {message}"));
+                    self.show_message(MessageSeverity::Warning, message.clone());
                 }
-            {
-                match target_core
-                    .set_breakpoint(memory_reference, BreakpointType::InstructionBreakpoint)
-                {
-                    Ok(_) => {
-                        breakpoint_response.verified = true;
-                        breakpoint_response.instruction_reference =
-                            Some(format!("{memory_reference:#010x}"));
-                        // Try to resolve the source location for this breakpoint.
-                        match target_core
-                            .core_data
-                            .debug_info
-                            .get_source_location(memory_reference)
-                        {
-                            Some(source_location) => {
-                                breakpoint_response.source = get_dap_source(&source_location);
-                                breakpoint_response.line =
-                                    source_location.line.map(|line| line as i64);
-                                breakpoint_response.column =
-                                    source_location.column.map(|col| match col {
-                                        ColumnType::LeftEdge => 0_i64,
-                                        ColumnType::Column(c) => c as i64,
-                                    });
-                            }
-                            None => {
-                                tracing::debug!("The request `SetInstructionBreakpoints` could not resolve a source location for memory reference: {:#010}", memory_reference);
-                            }
-                        }
-                    }
-                    Err(error) => {
-                        let message = format!(
-                            "Warning: Could not set breakpoint at memory address: {memory_reference:#010x}: {error}"
-                        )
-                        .to_string();
-                        // In addition to sending the error to the 'Hover' message, also write it to the Debug Console Log.
-                        self.log_to_console(format!("Warning: {message}"));
-                        self.show_message(MessageSeverity::Warning, message.clone());
-                        breakpoint_response.message = Some(message);
-                        breakpoint_response.instruction_reference =
-                            Some(format!("{memory_reference:#010x}"));
-                    }
-                }
-            } else {
-                breakpoint_response.instruction_reference =
-                    Some(requested_breakpoint.instruction_reference.clone());
-                breakpoint_response.message = Some(format!(
-                    "Invalid memory reference specified: {:?}",
-                    requested_breakpoint.instruction_reference
-                ));
-            };
-            created_breakpoints.push(breakpoint_response);
+            }
         }
 
-        let instruction_breakpoint_body = SetInstructionBreakpointsResponseBody {
-            breakpoints: created_breakpoints,
-        };
         self.send_response(request, Ok(Some(instruction_breakpoint_body)))
     }
 
@@ -1724,7 +1707,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.adapter.send_response(request, response)
     }
 
-    pub fn send_error_response(&mut self, response: &DebuggerError) -> Result<()> {
+    /// Displays an error message to the user.
+    pub fn show_error_message(&mut self, response: &DebuggerError) -> Result<()> {
         let expanded_error = {
             let mut response_message = response.to_string();
             let mut offset_iterations = 0;
