@@ -15,5 +15,5 @@ anyhow = "1.0.70"
 serde = { version = "1", features = ["derive"] }
 pretty_env_logger = "0.4.0"
 log = "0.4.17"
-clap = "4.1"
+clap = "4.2"
 colored = "2.0.0"

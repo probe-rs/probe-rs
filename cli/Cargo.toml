@@ -41,8 +41,8 @@ itm = { version = "0.9.0-rc.1", default-features = false }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter", "json"] }
 rand = "0.8.5"
-reqwest = { version = "0.11.15", features = ["blocking", "json"] }
-serde = { version = "1.0.158", features = ["derive"] }
+reqwest = { version = "0.11.16", features = ["blocking", "json"] }
+serde = { version = "1.0.159", features = ["derive"] }
 termtree = "0.4.1"
 directories = "5"
 sanitize-filename = "0.4"
