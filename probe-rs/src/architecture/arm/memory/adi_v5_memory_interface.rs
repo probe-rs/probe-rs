@@ -12,6 +12,8 @@ use std::convert::TryInto;
 use std::ops::Range;
 
 pub trait ArmProbe: SwdSequence {
+    fn set_running(&mut self, _running: bool) {}
+
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError>;
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError>;
@@ -880,6 +882,13 @@ impl<AP> ArmProbe for ADIMemoryInterface<'_, AP>
 where
     AP: FlushableArmAccess + ApAccess + DpAccess,
 {
+    fn set_running(&mut self, running: bool) {
+        self.interface
+            .get_arm_communication_interface()
+            .map(|i| i.set_running(running))
+            .ok();
+    }
+
     fn supports_native_64bit_access(&mut self) -> bool {
         self.ap_information.has_large_data_extension
     }

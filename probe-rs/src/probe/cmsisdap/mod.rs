@@ -628,6 +628,11 @@ impl DebugProbe for CmsisDap {
 }
 
 impl RawDapAccess for CmsisDap {
+    fn set_running(&mut self, running: bool) {
+        let _: Result<HostStatusResponse, _> =
+            commands::send_command(&mut self.device, HostStatusRequest::running(running));
+    }
+
     fn select_dp(&mut self, dp: DpAddress) -> Result<(), ArmError> {
         match dp {
             DpAddress::Default => Ok(()), // nop

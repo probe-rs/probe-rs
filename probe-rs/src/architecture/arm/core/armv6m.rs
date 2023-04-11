@@ -498,6 +498,17 @@ impl<'probe> Armv6m<'probe> {
             sequence,
         })
     }
+
+    fn set_current_core_status(&mut self, status: CoreStatus) {
+        if status != self.state.current_state {
+            if status == CoreStatus::Running {
+                self.memory.set_running(true);
+            } else {
+                self.memory.set_running(false);
+            }
+            self.state.current_state = status;
+        }
+    }
 }
 
 impl<'probe> CoreInterface for Armv6m<'probe> {
@@ -558,7 +569,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         self.memory.flush()?;
 
         // We assume that the core is running now.
-        self.state.current_state = CoreStatus::Running;
+        self.set_current_core_status(CoreStatus::Running);
 
         Ok(())
     }
@@ -737,7 +748,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
                 "The core is in locked up status as a result of an unrecoverable exception"
             );
 
-            self.state.current_state = CoreStatus::LockedUp;
+            self.set_current_core_status(CoreStatus::LockedUp);
 
             return Ok(CoreStatus::LockedUp);
         }
@@ -748,7 +759,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
                 tracing::warn!("Expected core to be halted, but core is running");
             }
 
-            self.state.current_state = CoreStatus::Sleeping;
+            self.set_current_core_status(CoreStatus::Sleeping);
 
             return Ok(CoreStatus::Sleeping);
         }
@@ -782,7 +793,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
                 );
             }
 
-            self.state.current_state = CoreStatus::Halted(reason);
+            self.set_current_core_status(CoreStatus::Halted(reason));
 
             return Ok(CoreStatus::Halted(reason));
         }
@@ -792,7 +803,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
             tracing::warn!("Core is running, but we expected it to be halted");
         }
 
-        self.state.current_state = CoreStatus::Running;
+        self.set_current_core_status(CoreStatus::Running);
 
         Ok(CoreStatus::Running)
     }

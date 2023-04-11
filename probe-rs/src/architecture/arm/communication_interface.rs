@@ -448,6 +448,11 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         Ok(initialized_interface)
     }
 
+    /// Report the running state to the underlying probe.
+    pub fn set_running(&mut self, running: bool) {
+        self.probe.set_running(running);
+    }
+
     /// Tries to obtain a memory interface which can be used to read memory from ARM targets.
     pub fn memory_interface(
         &'interface mut self,

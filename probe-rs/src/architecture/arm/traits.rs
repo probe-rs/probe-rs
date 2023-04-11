@@ -148,6 +148,10 @@ pub trait RawDapAccess {
 
     /// Cast this interface into a generic [`DebugProbe`].
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
+
+    /// Report the running state of the chip attached to our probe
+    /// to the probe.
+    fn set_running(&mut self, _running: bool) {}
 }
 
 /// High-level DAP register access.
