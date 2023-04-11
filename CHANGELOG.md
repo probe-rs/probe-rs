@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - probe-rs-debugger: Show errors that happen before VSCode/DAP Client session initializion has completed (#1581).
 
+### Added
+
+- Added support for the Olimex ARM-USB-TINY-H JTAG device (#1586).
+
 ## [0.18.0]
 
 Released 2023-03-31
