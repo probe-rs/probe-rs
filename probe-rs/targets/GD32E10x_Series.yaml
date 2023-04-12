@@ -1,0 +1,226 @@
+name: GD32E10x Series
+generated_from_pack: true
+pack_file_release: 1.2.1
+variants:
+- name: GD32E103C8
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e10x
+- name: GD32E103CB
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e10x
+- name: GD32E103R8
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e10x
+- name: GD32E103RB
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e10x
+- name: GD32E103T8
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e10x
+- name: GD32E103TB
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e10x
+- name: GD32E103V8
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20005000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8010000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e10x
+- name: GD32E103VB
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x8000000
+      end: 0x8020000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - gd32e10x
+flash_algorithms:
+- name: gd32e10x
+  description: GD32E10x
+  default: true
+  instructions: ELUDRlgMQARUTExEIGAAIFNMIGBTSGBgU0hgYCBGwGkA8AQAQLlF8lVQUEwgYAYgYGBA9v9woGAAIBC9AUZISABpQPCAAEZKEGEAIHBHREgAaUDwBABCSQhhCEYAaUDwQAAIYQPgSvaqIEBJCGA8SMBoAPABAAAo9dE5SABpIPAEADdJCGEAIHBHAUY0SABpQPACADJKEGEQRkFhAGlA8EAAEGED4Er2qiAwShBgLEjAaADwAQAAKPXRKUgAaSDwAgAnShBhACBwR/C1A0YAJlUYAfAHABixAfAHAMDxCAYAJAPg/yAF+AELZBy0QvnTyB0g8AcBGUhIRABoAPUAMINCKNIl4BZIAGlA8AEAFE84YRBoGGBQaFhgAL8QSMBoAPABAAAo+dENSABpIPABAAtPOGE4RsBoAPAUADCxOEbAaEDwFAD4YAEg8L0IMwgyCDkAKdfRACD35wAABAAAAAAgAkAjAWdFq4nvzQAwAEAAAAAAAAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x3d
+  pc_program_page: 0xcb
+  pc_erase_sector: 0x8b
+  pc_erase_all: 0x4f
+  data_section_offset: 0x170
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8020000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 150
+    erase_sector_timeout: 1000
+    sectors:
+    - size: 0x400
+      address: 0x0
