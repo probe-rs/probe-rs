@@ -46,7 +46,9 @@ impl FlushableArmAccess for MockMemoryAp {
         >,
         DebugProbeError,
     > {
-        todo!()
+        Err(DebugProbeError::NotImplemented(
+            "get_arm_communication_interface",
+        ))
     }
 }
 
