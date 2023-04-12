@@ -7,13 +7,11 @@ use crate::architecture::arm::{
     communication_interface::Initialized, dp::DpAccess, MemoryApInformation,
 };
 use crate::architecture::arm::{ArmCommunicationInterface, ArmError};
-use crate::DebugProbeError;
+use crate::{CoreStatus, DebugProbeError};
 use std::convert::TryInto;
 use std::ops::Range;
 
 pub trait ArmProbe: SwdSequence {
-    fn set_running(&mut self, _running: bool) {}
-
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError>;
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError>;
@@ -138,6 +136,11 @@ pub trait ArmProbe: SwdSequence {
 
     /// Returns the underlying [`ApAddress`].
     fn ap(&mut self) -> MemoryAp;
+
+    /// Report the CoreStatus of the chip attached to the probe (to the probe).
+    //
+    // NOTE: this function is designed to be infallible.
+    fn update_core_status(&mut self, state: CoreStatus);
 
     fn get_arm_communication_interface(
         &mut self,
@@ -882,10 +885,9 @@ impl<AP> ArmProbe for ADIMemoryInterface<'_, AP>
 where
     AP: FlushableArmAccess + ApAccess + DpAccess,
 {
-    fn set_running(&mut self, running: bool) {
-        self.interface
-            .get_arm_communication_interface()
-            .map(|i| i.set_running(running))
+    fn update_core_status(&mut self, state: CoreStatus) {
+        self.get_arm_communication_interface()
+            .map(|i| i.update_core_status(state))
             .ok();
     }
 

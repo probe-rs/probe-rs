@@ -293,11 +293,7 @@ impl<'probe> Armv7a<'probe> {
 
     fn set_current_core_status(&mut self, status: CoreStatus) {
         if status != self.state.current_state {
-            if status == CoreStatus::Running {
-                self.memory.set_running(true);
-            } else {
-                self.memory.set_running(false);
-            }
+            self.memory.update_core_status(status);
             self.state.current_state = status;
         }
     }
@@ -717,7 +713,6 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
             let reason = dbgdscr.halt_reason();
 
             self.set_current_core_status(CoreStatus::Halted(reason));
-            self.memory.set_running(false);
 
             self.read_fp_reg_count()?;
 
@@ -961,7 +956,7 @@ mod test {
     }
 
     impl ArmProbe for MockProbe {
-        fn set_running(&mut self, _running: bool) {}
+        fn update_core_status(&mut self, _: CoreStatus) {}
 
         fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), ArmError> {
             todo!()

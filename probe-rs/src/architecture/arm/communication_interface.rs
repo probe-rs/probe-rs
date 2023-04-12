@@ -12,7 +12,8 @@ use super::{
     ApAddress, ArmError, DapAccess, DpAddress, PortType, RawDapAccess, SwoAccess, SwoConfig,
 };
 use crate::{
-    architecture::arm::ap::DataSize, DebugProbe, DebugProbeError, Error as ProbeRsError, Probe,
+    architecture::arm::ap::DataSize, CoreStatus, DebugProbe, DebugProbeError,
+    Error as ProbeRsError, Probe,
 };
 use jep106::JEP106Code;
 
@@ -448,9 +449,9 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         Ok(initialized_interface)
     }
 
-    /// Report the running state to the underlying probe.
-    pub fn set_running(&mut self, running: bool) {
-        self.probe.set_running(running);
+    /// Report the [`CoreStatus`] of the chip attached to the probe (to the probe).
+    pub fn update_core_status(&mut self, state: CoreStatus) {
+        self.probe.update_core_status(state).ok();
     }
 
     /// Tries to obtain a memory interface which can be used to read memory from ARM targets.

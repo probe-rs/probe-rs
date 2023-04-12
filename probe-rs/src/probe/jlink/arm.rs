@@ -1386,6 +1386,10 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
 
         Ok(())
     }
+
+    fn update_core_status(&mut self, _: crate::CoreStatus) -> Result<(), DebugProbeError> {
+        Ok(())
+    }
 }
 
 #[cfg(test)]

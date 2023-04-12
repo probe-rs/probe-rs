@@ -78,11 +78,7 @@ impl<'probe> Armv8m<'probe> {
 
     fn set_current_core_status(&mut self, status: CoreStatus) {
         if status != self.state.current_state {
-            if status == CoreStatus::Running {
-                self.memory.set_running(true);
-            } else {
-                self.memory.set_running(false);
-            }
+            self.memory.update_core_status(status);
             self.state.current_state = status;
         }
     }
