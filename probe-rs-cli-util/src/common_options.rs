@@ -287,7 +287,7 @@ impl ProbeOptions {
             CoreSelector::Name(name) => match &target {
                 TargetSelector::Unspecified(_) => CoreSelection::All,
                 TargetSelector::Specified(t) => {
-                    CoreSelection::Specific(vec![t.core_index_by_name(&name).unwrap()])
+                    CoreSelection::Specific(vec![t.core_index_by_name(name).unwrap()])
                 }
                 TargetSelector::Auto => CoreSelection::All,
             },
