@@ -39,7 +39,7 @@ permissions:
 on:
   push:
     tags:
-      - '*-?v[0-9]+*'
+      - "*-?v[0-9]+*"
 
 jobs:
   # Create the Github Release™ so the packages have something to be uploaded to
@@ -52,25 +52,15 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install Rust
-        run: rustup update 1.67.1 --no-self-update && rustup default 1.67.1
-
-      # Manual addition of build deps
-
-      - name: Install libusb, libudev (linux)
-        run: |
-          sudo apt update
-          sudo apt install -y libusb-1.0-0-dev libudev-dev
-        # Only install on Ubuntu
-        if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-20.04')
-
+        run: rustup update 1.68.2 --no-self-update && rustup default 1.68.2
       - name: Install cargo-dist
-        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.0.4/cargo-dist-v0.0.4-installer.sh | sh
+        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.0.5/cargo-dist-v0.0.5-installer.sh | sh
       - id: create-release
         run: |
           cargo dist manifest --tag=${{ github.ref_name }} --artifacts=all --no-local-paths --output-format=json > dist-manifest.json
           echo "dist manifest ran successfully"
           cat dist-manifest.json
-        
+
           # Create the Github Release™ based on what cargo-dist thinks it should be
           ANNOUNCEMENT_TITLE=$(cat dist-manifest.json | jq --raw-output ".announcement_title")
           IS_PRERELEASE=$(cat dist-manifest.json | jq --raw-output ".announcement_is_prerelease")
@@ -95,15 +85,15 @@ jobs:
       matrix:
         # For these target platforms
         include:
-        - os: macos-11
-          dist-args: --artifacts=local --target=aarch64-apple-darwin --target=x86_64-apple-darwin
-          install-dist: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.0.4/cargo-dist-v0.0.4-installer.sh | sh
-        - os: ubuntu-20.04
-          dist-args: --artifacts=local --target=x86_64-unknown-linux-gnu
-          install-dist: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.0.4/cargo-dist-v0.0.4-installer.sh | sh
-        - os: windows-2019
-          dist-args: --artifacts=local --target=x86_64-pc-windows-msvc
-          install-dist: irm  https://github.com/axodotdev/cargo-dist/releases/download/v0.0.4/cargo-dist-v0.0.4-installer.ps1 | iex
+          - os: macos-11
+            dist-args: --artifacts=local --target=aarch64-apple-darwin --target=x86_64-apple-darwin
+            install-dist: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.0.5/cargo-dist-v0.0.5-installer.sh | sh
+          - os: ubuntu-20.04
+            dist-args: --artifacts=local --target=x86_64-unknown-linux-gnu
+            install-dist: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.0.5/cargo-dist-v0.0.5-installer.sh | sh
+          - os: windows-2019
+            dist-args: --artifacts=local --target=x86_64-pc-windows-msvc
+            install-dist: irm  https://github.com/axodotdev/cargo-dist/releases/download/v0.0.5/cargo-dist-v0.0.5-installer.ps1 | iex
 
     runs-on: ${{ matrix.os }}
     env:
@@ -111,7 +101,14 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install Rust
-        run: rustup update 1.67.1 --no-self-update && rustup default 1.67.1
+        run: rustup update 1.68.2 --no-self-update && rustup default 1.68.2
+      # Manual addition of build deps
+      - name: Install libusb, libudev (linux)
+        run: |
+          sudo apt update
+          sudo apt install -y libusb-1.0-0-dev libudev-dev
+        # Only install on Ubuntu
+        if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-20.04')
       - name: Install cargo-dist
         run: ${{ matrix.install-dist }}
       - name: Run cargo-dist
