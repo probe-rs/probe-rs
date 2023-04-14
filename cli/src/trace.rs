@@ -1,7 +1,7 @@
 //! Provides ITM tracing capabilities.
 
 use super::{CoreOptions, ProbeOptions};
-use probe_rs::{architecture::arm::component::TraceSink, CoreSelector};
+use probe_rs::architecture::arm::component::TraceSink;
 
 /// Trace the application using ITM.
 ///
@@ -17,17 +17,11 @@ pub(crate) fn itm_trace(
     sink: TraceSink,
     duration: std::time::Duration,
 ) -> anyhow::Result<()> {
-    let mut session = common.simple_attach(shared_options.core.clone())?;
-    let core_index = match shared_options
-        .core
-        .as_ref()
-        .unwrap_or(&CoreSelector::Index(0))
-    {
-        CoreSelector::Index(i) => *i,
-        CoreSelector::Name(_name) => {
-            todo!()
-        }
-    };
+    let mut session = common.simple_attach(&shared_options.core)?;
+    let core_index = session
+        .target()
+        .core_index_by_selector(&shared_options.core)
+        .unwrap();
 
     session.setup_tracing(core_index, sink)?;
 

@@ -357,6 +357,19 @@ impl Session {
         self.interface.attach(combined_state)
     }
 
+    /// Select a core by a core selector
+    pub fn core_by_selector(&mut self, selector: &CoreSelector) -> Result<Core<'_>, Error> {
+        let core_index = match selector {
+            CoreSelector::Index(i) => *i,
+            CoreSelector::Name(name) => self
+                .target
+                .core_index_by_name(name)
+                .expect("Failed to find core "),
+        };
+
+        self.core(core_index)
+    }
+
     /// Read available trace data from the specified data sink.
     ///
     /// This method is only supported for ARM-based targets, and will
@@ -827,8 +840,6 @@ pub struct Config {
 
 impl Config {
     fn default_core(&self, target: &Target) -> probe_rs_target::Core {
-        
-
         match &self.cores {
             CoreSelection::All => {
                 if target.cores.len() > 1 {
@@ -896,6 +907,23 @@ pub enum CoreSelector {
     Index(usize),
     /// Select a core based on its name
     Name(String),
+}
+
+impl Default for CoreSelector {
+    fn default() -> Self {
+        CoreSelector::Index(0)
+    }
+}
+
+// This is implemented for CLI applications,
+// so that this can be used as a default value for a CLI arguments in clap.
+impl std::fmt::Display for CoreSelector {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CoreSelector::Index(i) => write!(f, "core {i}"),
+            CoreSelector::Name(name) => write!(f, "core '{name}'"),
+        }
+    }
 }
 
 impl FromStr for CoreSelector {

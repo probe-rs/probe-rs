@@ -6,7 +6,7 @@ use std::{
 };
 
 use anyhow::Context;
-use probe_rs::MemoryInterface;
+use probe_rs::{CoreSelector, MemoryInterface};
 use probe_rs_cli_util::{clap, common_options::ProbeOptions};
 
 use rand::prelude::*;
@@ -45,7 +45,7 @@ pub fn benchmark(common_options: ProbeOptions, options: BenchmarkOptions) -> any
 
     let target = common_options.get_target_selector()?;
     let probe_name = probe.get_name();
-    let mut session = common_options.attach_session(probe, target, None)?;
+    let mut session = common_options.attach_session(probe, target, &CoreSelector::default())?;
 
     let target_name = session.target().name.clone();
 

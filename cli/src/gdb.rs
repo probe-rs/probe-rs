@@ -1,6 +1,7 @@
 use std::sync::Mutex;
 use std::time::Duration;
 
+use probe_rs::CoreSelector;
 use probe_rs_cli_util::common_options::ProbeOptions;
 
 pub fn run_gdb_server(
@@ -8,7 +9,9 @@ pub fn run_gdb_server(
     connection_string: Option<&str>,
     reset_halt: bool,
 ) -> anyhow::Result<()> {
-    let mut session = common.simple_attach(None)?;
+    // TODO: Attach to all cores here
+
+    let mut session = common.simple_attach(&CoreSelector::default())?;
 
     if reset_halt {
         session

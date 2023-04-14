@@ -1,22 +1,25 @@
 use probe_rs_target::{Architecture, ChipFamily};
 
 use super::{Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource};
-use crate::architecture::arm::sequences::{
-    atsame5x::AtSAME5x,
-    efm32xg2::EFM32xG2,
-    infineon::XMC4000,
-    nrf52::Nrf52,
-    nrf53::Nrf5340,
-    nrf91::Nrf9160,
-    nxp::{LPC55Sxx, MIMXRT10xx, MIMXRT11xx},
-    stm32_armv6::{Stm32Armv6, Stm32Armv6Family},
-    stm32_armv7::Stm32Armv7,
-    stm32h7::Stm32h7,
-    ArmDebugSequence,
-};
 use crate::architecture::riscv::sequences::{esp32c3::ESP32C3, esp32c6::ESP32C6};
 use crate::architecture::riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence};
 use crate::flashing::FlashLoader;
+use crate::{
+    architecture::arm::sequences::{
+        atsame5x::AtSAME5x,
+        efm32xg2::EFM32xG2,
+        infineon::XMC4000,
+        nrf52::Nrf52,
+        nrf53::Nrf5340,
+        nrf91::Nrf9160,
+        nxp::{LPC55Sxx, MIMXRT10xx, MIMXRT11xx},
+        stm32_armv6::{Stm32Armv6, Stm32Armv6Family},
+        stm32_armv7::Stm32Armv7,
+        stm32h7::Stm32h7,
+        ArmDebugSequence,
+    },
+    CoreSelector,
+};
 use std::sync::Arc;
 
 use crate::architecture::arm::sequences::DefaultArmSequence;
@@ -210,8 +213,21 @@ impl Target {
     }
 
     /// Gets the core index from the core name
-    pub(crate) fn core_index_by_name(&self, name: &str) -> Option<usize> {
+    pub fn core_index_by_name(&self, name: &str) -> Option<usize> {
         self.cores.iter().position(|c| c.name == name)
+    }
+
+    pub fn core_index_by_selector(&self, selector: &CoreSelector) -> Option<usize> {
+        match selector {
+            CoreSelector::Index(i) => {
+                if *i < self.cores.len() {
+                    Some(*i)
+                } else {
+                    None
+                }
+            }
+            CoreSelector::Name(name) => self.core_index_by_name(name),
+        }
     }
 
     /// Gets the first found [MemoryRegion] that contains the given address

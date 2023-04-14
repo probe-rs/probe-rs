@@ -1,4 +1,4 @@
-/// The `Permissions` struct represents what a [Session] is allowed to do with a target.
+/// The `Permissions` struct represents what a [`Session`](crate::Session) is allowed to do with a target.
 /// Some operations can be irreversable, so need to be explicitly allowed by the user.
 ///
 /// # Example

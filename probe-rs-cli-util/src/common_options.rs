@@ -267,7 +267,7 @@ impl ProbeOptions {
         &self,
         probe: Probe,
         target: TargetSelector,
-        core_identifier: Option<CoreSelector>,
+        core_identifier: &CoreSelector,
     ) -> Result<Session, OperationError> {
         let mut permissions = Permissions::new();
         if self.allow_erase_all {
@@ -282,22 +282,16 @@ impl ProbeOptions {
 
         config.permissions = permissions;
 
-        if let Some(core_selector) = core_identifier {
-            match core_selector {
-                CoreSelector::Index(i) => config.cores = CoreSelection::Specific(vec![i]),
-                CoreSelector::Name(name) => match &target {
-                    TargetSelector::Unspecified(_) => todo!(),
-                    TargetSelector::Specified(t) => {
-                        config.cores = CoreSelection::Specific(vec![t
-                            .cores
-                            .iter()
-                            .position(|c| c.name == name)
-                            .unwrap()])
-                    }
-                    TargetSelector::Auto => todo!(),
-                },
-            }
-        }
+        config.cores = match core_identifier {
+            CoreSelector::Index(i) => CoreSelection::Specific(vec![*i]),
+            CoreSelector::Name(name) => match &target {
+                TargetSelector::Unspecified(_) => CoreSelection::All,
+                TargetSelector::Specified(t) => {
+                    CoreSelection::Specific(vec![t.core_index_by_name(&name).unwrap()])
+                }
+                TargetSelector::Auto => CoreSelection::All,
+            },
+        };
 
         let session = probe.attach_with_config(target, config).map_err(|error| {
             OperationError::AttachingFailed {
@@ -311,10 +305,7 @@ impl ProbeOptions {
 
     /// Convenience method that attaches to the specified probe, target,
     /// and target session.
-    pub fn simple_attach(
-        &self,
-        core_identifier: Option<CoreSelector>,
-    ) -> Result<Session, OperationError> {
+    pub fn simple_attach(&self, core_identifier: &CoreSelector) -> Result<Session, OperationError> {
         let target = self.get_target_selector()?;
         let probe = self.attach_probe()?;
         let session = self.attach_session(probe, target, core_identifier)?;

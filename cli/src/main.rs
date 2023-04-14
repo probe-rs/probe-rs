@@ -27,7 +27,7 @@ use probe_rs_cli_util::{
 
 use rustyline::DefaultEditor;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result};
 use time::{OffsetDateTime, UtcOffset};
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::{
@@ -230,8 +230,8 @@ enum Chip {
 /// Shared options for core selection, shared between commands
 #[derive(clap::Parser)]
 pub(crate) struct CoreOptions {
-    #[clap(long)]
-    core: Option<CoreSelector>,
+    #[clap(long, default_value_t)]
+    core: CoreSelector,
 }
 
 #[derive(clap::Subcommand)]
@@ -423,38 +423,14 @@ fn dump_memory(
     loc: u64,
     words: u32,
 ) -> Result<()> {
-    let mut session = common.simple_attach(shared_options.core.clone())?;
+    let mut session = common.simple_attach(&shared_options.core)?;
 
     let mut data = vec![0_u32; words as usize];
 
     // Start timer.
     let instant = Instant::now();
 
-    // let loc = 220 * 1024;
-
-    let core_index = match shared_options
-        .core
-        .as_ref()
-        .unwrap_or(&CoreSelector::Index(0))
-    {
-        CoreSelector::Index(i) => *i,
-        CoreSelector::Name(ref name) => {
-            let found_core = session
-                .target()
-                .cores
-                .iter()
-                .enumerate()
-                .find(|(_id, c)| &c.name == name);
-
-            if let Some((id, _core)) = found_core {
-                id
-            } else {
-                bail!("Unable to find core with name '{name}'");
-            }
-        }
-    };
-
-    let mut core = session.core(core_index)?;
+    let mut core = session.core_by_selector(&shared_options.core)?;
 
     core.read_32(loc, data.as_mut_slice())?;
     // Stop timer.
@@ -482,7 +458,7 @@ fn download_program_fast(
     disable_progressbars: bool,
     disable_double_buffering: bool,
 ) -> Result<()> {
-    let mut session = common.simple_attach(None)?;
+    let mut session = common.simple_attach(&CoreSelector::default())?;
 
     let mut file = match File::open(path) {
         Ok(file) => file,
@@ -522,7 +498,7 @@ fn download_program_fast(
 }
 
 fn erase(common: &ProbeOptions) -> Result<()> {
-    let mut session = common.simple_attach(None)?;
+    let mut session = common.simple_attach(&CoreSelector::default())?;
 
     erase_all(&mut session, None)?;
 
@@ -534,20 +510,9 @@ fn reset_target_of_device(
     common: &ProbeOptions,
     _assert: Option<bool>,
 ) -> Result<()> {
-    let mut session = common.simple_attach(shared_options.core.clone())?;
+    let mut session = common.simple_attach(&shared_options.core.clone())?;
 
-    let core_index = match shared_options
-        .core
-        .as_ref()
-        .unwrap_or(&CoreSelector::Index(0))
-    {
-        CoreSelector::Index(i) => *i,
-        CoreSelector::Name(_name) => {
-            todo!()
-        }
-    };
-
-    session.core(core_index)?.reset()?;
+    session.core_by_selector(&shared_options.core)?.reset()?;
 
     Ok(())
 }
@@ -567,20 +532,9 @@ fn trace_u32_on_target(
 
     let start = Instant::now();
 
-    let mut session = common.simple_attach(shared_options.core.clone())?;
+    let mut session = common.simple_attach(&shared_options.core)?;
 
-    let core_index = match shared_options
-        .core
-        .as_ref()
-        .unwrap_or(&CoreSelector::Index(0))
-    {
-        CoreSelector::Index(i) => *i,
-        CoreSelector::Name(_name) => {
-            todo!()
-        }
-    };
-
-    let mut core = session.core(core_index)?;
+    let mut core = session.core_by_selector(&shared_options.core)?;
 
     loop {
         // Prepare read.
@@ -612,7 +566,7 @@ fn trace_u32_on_target(
 }
 
 fn debug(shared_options: &CoreOptions, common: &ProbeOptions, exe: Option<PathBuf>) -> Result<()> {
-    let mut session = common.simple_attach(shared_options.core.clone())?;
+    let mut session = common.simple_attach(&shared_options.core)?;
 
     let di = exe
         .as_ref()
@@ -620,23 +574,7 @@ fn debug(shared_options: &CoreOptions, common: &ProbeOptions, exe: Option<PathBu
 
     let cli = debugger::DebugCli::new();
 
-    let core_index = match shared_options
-        .core
-        .as_ref()
-        .unwrap_or(&CoreSelector::Index(0))
-    {
-        CoreSelector::Index(i) => *i,
-        CoreSelector::Name(name) => session
-            .target()
-            .cores
-            .iter()
-            .enumerate()
-            .find(|(_, c)| &c.name == name)
-            .map(|(id, _)| id)
-            .unwrap(),
-    };
-
-    let core = session.core(core_index)?;
+    let core = session.core_by_selector(&shared_options.core)?;
 
     let mut cli_data = debugger::CliData::new(core, di)?;
 

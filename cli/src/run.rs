@@ -1,5 +1,6 @@
 use anyhow::{Context, Result};
 use probe_rs::flashing::FileDownloadError;
+use probe_rs::CoreSelector;
 use probe_rs_cli_util::common_options::{CargoOptions, FlashOptions, ProbeOptions};
 use probe_rs_cli_util::flash::run_flash_download;
 use probe_rs_cli_util::rtt;
@@ -16,7 +17,7 @@ pub fn run(
     disable_double_buffering: bool,
     timestamp_offset: UtcOffset,
 ) -> Result<()> {
-    let mut session = common.simple_attach(None)?;
+    let mut session = common.simple_attach(&CoreSelector::default())?;
 
     let mut file = match File::open(path) {
         Ok(file) => file,

@@ -4,6 +4,7 @@ include!(concat!(env!("OUT_DIR"), "/meta.rs"));
 
 use colored::*;
 use diagnostics::render_diagnostics;
+use probe_rs::CoreSelector;
 use std::{env, path::PathBuf, process, sync::Arc};
 use std::{panic, sync::Mutex};
 
@@ -168,9 +169,9 @@ fn main_try(metadata: Arc<Mutex<Metadata>>) -> Result<(), OperationError> {
     }
 
     // Create a new session
-    let mut session = opt
-        .probe_options
-        .attach_session(probe, target_selector, None)?;
+    let mut session =
+        opt.probe_options
+            .attach_session(probe, target_selector, &CoreSelector::default())?;
 
     // Flash the binary
     let flashloader = opt.probe_options.build_flashloader(&mut session, &path)?;
