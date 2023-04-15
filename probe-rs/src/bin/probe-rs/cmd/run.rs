@@ -4,6 +4,7 @@ use std::path::Path;
 use std::time::Duration;
 
 use anyhow::Context;
+use probe_rs::debug::DebugInfo;
 use probe_rs::flashing::{FileDownloadError, Format};
 use time::UtcOffset;
 
@@ -90,10 +91,9 @@ impl Cmd {
                 None
             }
         };
-
-        if let Some(rtta) = &mut rtta {
-            let mut stdout = std::io::stdout();
-            loop {
+        let mut stdout = std::io::stdout();
+        loop {
+            if let Some(rtta) = &mut rtta {
                 for (_ch, data) in rtta.poll_rtt_fallible(&mut core)? {
                     stdout.write_all(data.as_bytes())?;
                 }
@@ -103,6 +103,64 @@ impl Cmd {
                 // If the polling frequency is too high,
                 // the USB connection to the probe can become unstable.
                 std::thread::sleep(Duration::from_millis(100));
+            }
+
+            let status = core.status()?;
+            let registers = core.registers();
+            let pc_register = registers.pc().expect("a program counter register");
+            #[allow(clippy::single_match)]
+            match status {
+                probe_rs::CoreStatus::Halted(probe_rs::HaltReason::Exception) => {
+                    let Some(debug_info) = DebugInfo::from_file(self.path).ok() else {
+                    log::error!("No debug info found.");
+                    return Ok(());
+                };
+                    let program_counter: u64 = core.read_core_reg(pc_register)?;
+
+                    let stack_frames = debug_info.unwind(&mut core, program_counter).unwrap();
+
+                    for (i, frame) in stack_frames.iter().enumerate() {
+                        print!("Frame {}: {} @ {}", i, frame.function_name, frame.pc);
+
+                        if frame.is_inlined {
+                            print!(" inline");
+                        }
+                        println!();
+
+                        if let Some(location) = &frame.source_location {
+                            if location.directory.is_some() || location.file.is_some() {
+                                print!("       ");
+
+                                if let Some(dir) = &location.directory {
+                                    print!("{}", dir.display());
+                                }
+
+                                if let Some(file) = &location.file {
+                                    print!("/{file}");
+
+                                    if let Some(line) = location.line {
+                                        print!(":{line}");
+
+                                        if let Some(col) = location.column {
+                                            match col {
+                                                probe_rs::debug::ColumnType::LeftEdge => {
+                                                    print!(":1")
+                                                }
+                                                probe_rs::debug::ColumnType::Column(c) => {
+                                                    print!(":{c}")
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                println!();
+                            }
+                        }
+                    }
+                    break;
+                }
+                _ => {}
             }
         }
 

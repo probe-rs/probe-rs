@@ -153,7 +153,12 @@ pub trait CoreInterface: MemoryInterface + ExceptionInterface {
     }
 
     /// Enables vector catching for the given `condition`
-    fn enable_vector_catch(&mut self, _condition: VectorCatch) -> Result<(), Error> {
+    fn enable_vector_catch(&mut self, _condition: VectorCatchCondition) -> Result<(), Error> {
+        Err(Error::NotImplemented("vector catch"))
+    }
+
+    /// Disables vector catching for the given `condition`
+    fn disable_vector_catch(&mut self, _condition: VectorCatchCondition) -> Result<(), Error> {
         Err(Error::NotImplemented("vector catch"))
     }
 }
@@ -633,6 +638,16 @@ impl<'probe> Core<'probe> {
 
     pub(crate) fn debug_core_stop(&mut self) -> Result<(), Error> {
         self.inner.debug_core_stop()
+    }
+
+    /// Enables vector catching for the given `condition`
+    pub fn enable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
+        self.inner.enable_vector_catch(condition)
+    }
+
+    /// Disables vector catching for the given `condition`
+    pub fn disable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
+        self.inner.disable_vector_catch(condition)
     }
 }
 

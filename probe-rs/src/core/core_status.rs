@@ -68,9 +68,9 @@ pub enum HaltReason {
 ///
 /// `VectorCatch` describes which event exactly should trigger a halt.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub enum VectorCatch {
+pub enum VectorCatchCondition {
     /// We encountered a hardfault.
-    Hardfault,
+    HardFault,
     /// We encountered a local reset.
     CoreReset,
     /// We encountered any exception.

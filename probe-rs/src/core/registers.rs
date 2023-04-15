@@ -504,6 +504,14 @@ impl CoreRegisters {
             .nth(index)
     }
 
+    /// The program counter.
+    pub fn pc(&self) -> Option<&CoreRegister> {
+        self.0
+            .iter()
+            .find(|r| r.register_has_role(RegisterRole::ProgramCounter))
+            .cloned()
+    }
+
     /// The main stack pointer.
     pub fn msp(&self) -> Option<&CoreRegister> {
         self.0
