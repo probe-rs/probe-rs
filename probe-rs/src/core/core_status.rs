@@ -63,3 +63,16 @@ pub enum HaltReason {
     /// This can happen for example when the core is already halted when we connect.
     Unknown,
 }
+
+/// When a core hits an exception, we halt the core.
+///
+/// `VectorCatch` describes which event exactly should trigger a halt.
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub enum VectorCatch {
+    /// We encountered a hardfault.
+    Hardfault,
+    /// We encountered a local reset.
+    CoreReset,
+    /// We encountered any exception.
+    All,
+}

@@ -14,7 +14,7 @@ use crate::{
     },
     core::{
         Architecture, CoreInformation, CoreInterface, CoreRegisters, CoreStatus, HaltReason,
-        MemoryMappedRegister, RegisterId, RegisterValue,
+        MemoryMappedRegister, RegisterId, RegisterValue, VectorCatch,
     },
     error::Error,
     memory::valid_32bit_address,
@@ -1071,7 +1071,28 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
     fn debug_core_stop(&mut self) -> Result<(), Error> {
         self.sequence
             .debug_core_stop(&mut *self.memory, CoreType::Armv7m)?;
+        Ok(())
+    }
 
+    #[tracing::instrument(skip(self))]
+    fn enable_vector_catch(&mut self, vector_catch: VectorCatch) -> Result<(), Error> {
+        let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
+        dhcsr.set_c_debugen(true);
+        self.memory
+            .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
+
+        let mut demcr = Demcr(self.memory.read_word_32(Demcr::get_mmio_address())?);
+        match vector_catch {
+            VectorCatch::Hardfault => demcr.set_vc_harderr(true),
+            VectorCatch::CoreReset => demcr.set_vc_corereset(true),
+            VectorCatch::All => {
+                demcr.set_vc_harderr(true);
+                demcr.set_vc_corereset(true);
+            }
+        };
+
+        self.memory
+            .write_word_32(Demcr::get_mmio_address(), demcr.into())?;
         Ok(())
     }
 }
