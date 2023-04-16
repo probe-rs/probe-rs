@@ -291,11 +291,8 @@ impl<'probe> Armv7a<'probe> {
         self.execute_instruction_with_input(instruction, value)
     }
 
-    fn set_current_core_status(&mut self, status: CoreStatus) {
-        if status != self.state.current_state {
-            self.memory.update_core_status(status);
-            self.state.current_state = status;
-        }
+    fn set_core_status(&mut self, new_status: CoreStatus) {
+        super::update_core_status(&mut self.memory, &mut self.state.current_state, new_status);
     }
 }
 
@@ -373,7 +370,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         }
 
         // Recompute / verify current state
-        self.set_current_core_status(CoreStatus::Running);
+        self.set_core_status(CoreStatus::Running);
         let _ = self.status()?;
 
         Ok(())
@@ -712,7 +709,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         if dbgdscr.halted() {
             let reason = dbgdscr.halt_reason();
 
-            self.set_current_core_status(CoreStatus::Halted(reason));
+            self.set_core_status(CoreStatus::Halted(reason));
 
             self.read_fp_reg_count()?;
 
@@ -723,7 +720,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
             tracing::warn!("Core is running, but we expected it to be halted");
         }
 
-        self.set_current_core_status(CoreStatus::Running);
+        self.set_core_status(CoreStatus::Running);
 
         Ok(CoreStatus::Running)
     }

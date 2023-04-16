@@ -76,11 +76,8 @@ impl<'probe> Armv8m<'probe> {
         })
     }
 
-    fn set_current_core_status(&mut self, status: CoreStatus) {
-        if status != self.state.current_state {
-            self.memory.update_core_status(status);
-            self.state.current_state = status;
-        }
+    fn set_core_status(&mut self, new_status: CoreStatus) {
+        super::update_core_status(&mut self.memory, &mut self.state.current_state, new_status);
     }
 }
 
@@ -139,7 +136,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         self.memory.flush()?;
 
         // We assume that the core is running now
-        self.set_current_core_status(CoreStatus::Running);
+        self.set_core_status(CoreStatus::Running);
 
         Ok(())
     }
@@ -332,7 +329,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
                 "The core is in locked up status as a result of an unrecoverable exception"
             );
 
-            self.set_current_core_status(CoreStatus::LockedUp);
+            self.set_core_status(CoreStatus::LockedUp);
 
             return Ok(CoreStatus::LockedUp);
         }
@@ -343,7 +340,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
                 tracing::warn!("Expected core to be halted, but core is running");
             }
 
-            self.set_current_core_status(CoreStatus::Sleeping);
+            self.set_core_status(CoreStatus::Sleeping);
 
             return Ok(CoreStatus::Sleeping);
         }
@@ -377,7 +374,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
                 );
             }
 
-            self.set_current_core_status(CoreStatus::Halted(reason));
+            self.set_core_status(CoreStatus::Halted(reason));
 
             return Ok(CoreStatus::Halted(reason));
         }
@@ -387,7 +384,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
             tracing::warn!("Core is running, but we expected it to be halted");
         }
 
-        self.set_current_core_status(CoreStatus::Running);
+        self.set_core_status(CoreStatus::Running);
 
         Ok(CoreStatus::Running)
     }

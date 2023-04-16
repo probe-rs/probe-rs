@@ -715,11 +715,8 @@ impl<'probe> Armv8a<'probe> {
         Ok(())
     }
 
-    fn set_current_core_status(&mut self, status: CoreStatus) {
-        if status != self.state.current_state {
-            self.memory.update_core_status(status);
-            self.state.current_state = status;
-        }
+    fn set_core_status(&mut self, new_status: CoreStatus) {
+        super::update_core_status(&mut self.memory, &mut self.state.current_state, new_status);
     }
 }
 
@@ -823,7 +820,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         }
 
         // Recompute / verify current state
-        self.set_current_core_status(CoreStatus::Running);
+        self.set_core_status(CoreStatus::Running);
         let _ = self.status()?;
 
         // Gate restart channel
@@ -1048,7 +1045,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         if edscr.halted() {
             let reason = edscr.halt_reason();
 
-            self.set_current_core_status(CoreStatus::Halted(reason));
+            self.set_core_status(CoreStatus::Halted(reason));
             self.state.is_64_bit = edscr.currently_64_bit();
 
             return Ok(CoreStatus::Halted(reason));
@@ -1058,7 +1055,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
             tracing::warn!("Core is running, but we expected it to be halted");
         }
 
-        self.set_current_core_status(CoreStatus::Running);
+        self.set_core_status(CoreStatus::Running);
 
         Ok(CoreStatus::Running)
     }

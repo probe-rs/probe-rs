@@ -139,7 +139,8 @@ pub trait ArmProbe: SwdSequence {
 
     /// Report the CoreStatus of the chip attached to the probe (to the probe).
     //
-    // NOTE: this function is designed to be infallible.
+    // NOTE: this function is designed to be infallible as it is usually only
+    // a visual indication.
     fn update_core_status(&mut self, state: CoreStatus);
 
     fn get_arm_communication_interface(
