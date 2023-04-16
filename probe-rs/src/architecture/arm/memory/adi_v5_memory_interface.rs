@@ -137,15 +137,20 @@ pub trait ArmProbe: SwdSequence {
     /// Returns the underlying [`ApAddress`].
     fn ap(&mut self) -> MemoryAp;
 
-    /// Report the CoreStatus of the chip attached to the probe (to the probe).
-    //
-    // NOTE: this function is designed to be infallible as it is usually only
-    // a visual indication.
-    fn update_core_status(&mut self, state: CoreStatus);
-
     fn get_arm_communication_interface(
         &mut self,
     ) -> Result<&mut ArmCommunicationInterface<Initialized>, DebugProbeError>;
+
+    /// Inform the probe of the [`CoreStatus`] of the chip/core attached to
+    /// the probe.
+    //
+    // NOTE: this function should be infallible as it is usually only
+    // a visual indication.
+    fn update_core_status(&mut self, state: CoreStatus) {
+        self.get_arm_communication_interface()
+            .map(|iface| iface.update_core_status(state))
+            .ok();
+    }
 }
 
 /// A struct to give access to a targets memory using a certain DAP.
@@ -886,12 +891,6 @@ impl<AP> ArmProbe for ADIMemoryInterface<'_, AP>
 where
     AP: FlushableArmAccess + ApAccess + DpAccess,
 {
-    fn update_core_status(&mut self, state: CoreStatus) {
-        self.get_arm_communication_interface()
-            .map(|i| i.update_core_status(state))
-            .ok();
-    }
-
     fn supports_native_64bit_access(&mut self) -> bool {
         self.ap_information.has_large_data_extension
     }

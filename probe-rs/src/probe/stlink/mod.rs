@@ -1646,8 +1646,6 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
     fn ap(&mut self) -> MemoryAp {
         self.current_ap
     }
-
-    fn update_core_status(&mut self, _: crate::CoreStatus) {}
 }
 
 fn is_wait_error(e: &StlinkError) -> bool {
