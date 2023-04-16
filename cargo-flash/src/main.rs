@@ -136,7 +136,7 @@ fn main_try(metadata: Arc<Mutex<Metadata>>) -> Result<(), OperationError> {
             .into()
     };
 
-    logging::println(format!(
+    logging::eprintln(format!(
         "    {} {}",
         "Flashing".green().bold(),
         path.display()
