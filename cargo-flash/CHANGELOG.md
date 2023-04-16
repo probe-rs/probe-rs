@@ -5,6 +5,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+### Fixed
+
+- Replace unwanted instance of `println` with `eprintln` (#1595).
+
 ## [0.18.0]
 
 Released 2023-03-31
