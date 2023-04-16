@@ -449,7 +449,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         Ok(initialized_interface)
     }
 
-    /// Report the [`CoreStatus`] of the chip attached to the probe (to the probe).
+    /// Inform the probe of the [`CoreStatus`] of the chip attached to the probe.
     pub fn update_core_status(&mut self, state: CoreStatus) {
         self.probe.update_core_status(state).ok();
     }

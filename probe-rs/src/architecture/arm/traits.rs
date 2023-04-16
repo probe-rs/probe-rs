@@ -149,7 +149,7 @@ pub trait RawDapAccess {
     /// Cast this interface into a generic [`DebugProbe`].
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
 
-    /// Report the [`CoreStatus`] of the chip attached to the probe (to the probe).
+    /// Inform the probe of the [`CoreStatus`] of the chip attached to the probe.
     fn update_core_status(&mut self, state: CoreStatus) -> Result<(), DebugProbeError>;
 }
 
