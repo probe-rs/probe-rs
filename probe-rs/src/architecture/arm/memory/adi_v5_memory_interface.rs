@@ -7,7 +7,7 @@ use crate::architecture::arm::{
     communication_interface::Initialized, dp::DpAccess, MemoryApInformation,
 };
 use crate::architecture::arm::{ArmCommunicationInterface, ArmError};
-use crate::DebugProbeError;
+use crate::{CoreStatus, DebugProbeError};
 use std::convert::TryInto;
 use std::ops::Range;
 
@@ -140,6 +140,17 @@ pub trait ArmProbe: SwdSequence {
     fn get_arm_communication_interface(
         &mut self,
     ) -> Result<&mut ArmCommunicationInterface<Initialized>, DebugProbeError>;
+
+    /// Inform the probe of the [`CoreStatus`] of the chip/core attached to
+    /// the probe.
+    //
+    // NOTE: this function should be infallible as it is usually only
+    // a visual indication.
+    fn update_core_status(&mut self, state: CoreStatus) {
+        self.get_arm_communication_interface()
+            .map(|iface| iface.core_status_notification(state))
+            .ok();
+    }
 }
 
 /// A struct to give access to a targets memory using a certain DAP.

@@ -1089,6 +1089,11 @@ impl CoreStatus {
     pub fn is_halted(&self) -> bool {
         matches!(self, CoreStatus::Halted(_))
     }
+
+    /// Returns `true` if the core is currently running.
+    pub fn is_running(&self) -> bool {
+        self == &Self::Running
+    }
 }
 
 /// When the core halts due to a breakpoint request, some architectures will allow us to distinguish between a software and hardware breakpoint.
