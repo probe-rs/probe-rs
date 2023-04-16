@@ -629,8 +629,7 @@ impl DebugProbe for CmsisDap {
 
 impl RawDapAccess for CmsisDap {
     fn update_core_status(&mut self, status: CoreStatus) -> Result<(), DebugProbeError> {
-        let running = status == CoreStatus::Running;
-
+        let running = status.is_running();
         commands::send_command(&mut self.device, HostStatusRequest::running(running))?;
         Ok(())
     }
