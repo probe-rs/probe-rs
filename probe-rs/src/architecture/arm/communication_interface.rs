@@ -450,8 +450,8 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     }
 
     /// Inform the probe of the [`CoreStatus`] of the chip attached to the probe.
-    pub fn update_core_status(&mut self, state: CoreStatus) {
-        self.probe.update_core_status(state).ok();
+    pub fn core_status_notification(&mut self, state: CoreStatus) {
+        self.probe.core_status_notification(state).ok();
     }
 
     /// Tries to obtain a memory interface which can be used to read memory from ARM targets.

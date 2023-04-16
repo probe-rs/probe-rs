@@ -148,7 +148,7 @@ pub trait ArmProbe: SwdSequence {
     // a visual indication.
     fn update_core_status(&mut self, state: CoreStatus) {
         self.get_arm_communication_interface()
-            .map(|iface| iface.update_core_status(state))
+            .map(|iface| iface.core_status_notification(state))
             .ok();
     }
 }
