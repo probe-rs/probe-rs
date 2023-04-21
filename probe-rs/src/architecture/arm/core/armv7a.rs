@@ -290,6 +290,10 @@ impl<'probe> Armv7a<'probe> {
 
         self.execute_instruction_with_input(instruction, value)
     }
+
+    fn set_core_status(&mut self, new_status: CoreStatus) {
+        super::update_core_status(&mut self.memory, &mut self.state.current_state, new_status);
+    }
 }
 
 impl<'probe> CoreInterface for Armv7a<'probe> {
@@ -366,7 +370,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         }
 
         // Recompute / verify current state
-        self.state.current_state = CoreStatus::Running;
+        self.set_core_status(CoreStatus::Running);
         let _ = self.status()?;
 
         Ok(())
@@ -705,7 +709,8 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         if dbgdscr.halted() {
             let reason = dbgdscr.halt_reason();
 
-            self.state.current_state = CoreStatus::Halted(reason);
+            self.set_core_status(CoreStatus::Halted(reason));
+
             self.read_fp_reg_count()?;
 
             return Ok(CoreStatus::Halted(reason));
@@ -715,7 +720,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
             tracing::warn!("Core is running, but we expected it to be halted");
         }
 
-        self.state.current_state = CoreStatus::Running;
+        self.set_core_status(CoreStatus::Running);
 
         Ok(CoreStatus::Running)
     }
@@ -958,6 +963,8 @@ mod test {
     }
 
     impl ArmProbe for MockProbe {
+        fn update_core_status(&mut self, _: CoreStatus) {}
+
         fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), ArmError> {
             todo!()
         }
@@ -1055,7 +1062,9 @@ mod test {
             >,
             DebugProbeError,
         > {
-            todo!()
+            Err(DebugProbeError::NotImplemented(
+                "get_arm_communication_interface",
+            ))
         }
 
         fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {

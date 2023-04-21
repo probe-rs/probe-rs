@@ -160,7 +160,7 @@ pub fn run_flash_download(
 
     // Stop timer.
     let elapsed = instant.elapsed();
-    logging::println(format!(
+    logging::eprintln(format!(
         "    {} in {}s",
         "Finished".green().bold(),
         elapsed.as_millis() as f32 / 1000.0,
