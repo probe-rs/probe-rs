@@ -37,7 +37,7 @@ reqwest = { version = "0.11.16", features = ["json", "blocking"] }
 serde = { version = "1", features = ["derive"] }
 futures = "0.3.28"
 tokio = { version = "1.27.0", features = ["macros", "rt", "rt-multi-thread"] }
-tracing-subscriber = { version = "0.3.16", features = [
+tracing-subscriber = { version = "0.3.17", features = [
     "env-filter",
     "tracing-log",
 ] }
@@ -46,6 +46,6 @@ cargo_metadata = { version = "0.15", default-features = false }
 indicatif = { version = "0.17", default-features = false }
 
 [dev-dependencies]
-assert_cmd = "2.0.10"
-predicates = "3.0.2"
-assert_fs = "1.0.12"
+assert_cmd = "2.0.11"
+predicates = "3.0.3"
+assert_fs = "1.0.13"
