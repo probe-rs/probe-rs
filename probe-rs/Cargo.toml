@@ -49,7 +49,7 @@ jep106 = "0.2.8"
 kmp = { version = "0.1", optional = true }
 once_cell = "1.17.1"
 num-traits = "0.2.15"
-object = { version = "0.30.3", default-features = false, features = [
+object = { version = "0.31.0", default-features = false, features = [
     "elf",
     "read_core",
     "std",
@@ -79,7 +79,7 @@ serde_yaml = "0.9.21"
 [dev-dependencies]
 pretty_env_logger = "0.4.0"
 rand = "0.8.5"
-serde_json = "1.0.95"
+serde_json = "1.0.96"
 serde = "1"
 clap = { version = "4.2", features = ["derive"] }
 itm = { version = "0.9.0-rc.1", default-features = false }
