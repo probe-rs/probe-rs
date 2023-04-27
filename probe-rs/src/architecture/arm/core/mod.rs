@@ -94,10 +94,42 @@ pub(crate) mod register {
         size_in_bits: 32,
     };
 
+    pub const MSPLIM_NS: RegisterDescription = RegisterDescription {
+        name: "MSPLIM_NS",
+        _kind: RegisterKind::General,
+        id: RegisterId(0b0011110),
+        _type: RegisterDataType::UnsignedInteger,
+        size_in_bits: 32,
+    };
+
+    pub const MSPLIM_S: RegisterDescription = RegisterDescription {
+        name: "MSPLIM_S",
+        _kind: RegisterKind::General,
+        id: RegisterId(0b0011100),
+        _type: RegisterDataType::UnsignedInteger,
+        size_in_bits: 32,
+    };
+
     pub const PSP: RegisterDescription = RegisterDescription {
         name: "PSP",
         _kind: RegisterKind::General,
         id: RegisterId(0b10010),
+        _type: RegisterDataType::UnsignedInteger,
+        size_in_bits: 32,
+    };
+
+    pub const PSPLIM_NS: RegisterDescription = RegisterDescription {
+        name: "PSPLIM_NS",
+        _kind: RegisterKind::General,
+        id: RegisterId(0b0011101),
+        _type: RegisterDataType::UnsignedInteger,
+        size_in_bits: 32,
+    };
+
+    pub const PSPLIM_S: RegisterDescription = RegisterDescription {
+        name: "PSPLIM_S",
+        _kind: RegisterKind::General,
+        id: RegisterId(0b0011111),
         _type: RegisterDataType::UnsignedInteger,
         size_in_bits: 32,
     };

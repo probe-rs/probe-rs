@@ -173,7 +173,7 @@ impl FlashLoader {
             };
 
             tracing::info!(
-                "    {} at {:08X?} ({} byte{})",
+                "    {} at {:#010X?} ({} byte{})",
                 source,
                 section.address,
                 section.data.len(),

@@ -840,7 +840,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
             {
                 tracing::debug!("Encountered a breakpoint instruction @ {}. We need to manually advance the program counter to the next instruction.", pc_after_step);
                 // Advance the program counter by the architecture specific byte size of the BKPT instruction.
-                pc_after_step.incremenet_address(2)?;
+                pc_after_step.increment_address(2)?;
                 self.write_core_reg(self.registers().program_counter().id, pc_after_step)?;
             }
             self.enable_breakpoints(true)?;
