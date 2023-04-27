@@ -780,6 +780,10 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
         let flasher = self;
         let algo = &flasher.flash_algorithm;
 
+        // This assumes that the `erase_sector_timeout` variable pertains to the largest declared sector
+        let max_sector_size = algo.flash_properties.sectors.iter().map(|sector| sector.size).max().unwrap();
+        let num_sectors = (algo.flash_properties.address_range.end - algo.flash_properties.address_range.start) / max_sector_size;
+
         if let Some(pc_erase_all) = algo.pc_erase_all {
             let result = flasher
                 .call_function_and_wait(
@@ -791,7 +795,10 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
                         r3: None,
                     },
                     false,
-                    Duration::from_secs(30),
+                    Duration::from_millis(
+                        // This timeout will generally be way too large to be useful, but it gives an upper bound
+                        algo.flash_properties.erase_sector_timeout as u64 * num_sectors,
+                    ),
                 )
                 .map_err(|error| FlashError::ChipEraseFailed {
                     source: Box::new(error),
