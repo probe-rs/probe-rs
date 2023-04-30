@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- probe-rs: recognize `CMSIS-DAP` probes with device strings containing `CMSIS_DAP`
 - probe-rs-debugger: Show errors that happen before VSCode/DAP Client session initializion has completed (#1581).
 - probe-rs-cli-util: replace unwanted instance of `println` with `eprintln` (#1595, fixes #1593).
 
