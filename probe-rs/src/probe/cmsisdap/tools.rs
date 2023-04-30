@@ -62,8 +62,8 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
         .read_serial_number_string(language, &d_desc, timeout)
         .ok();
 
-    // Most CMSIS-DAP probes say "CMSIS-DAP" or "CMSIS_DAP" in their product string.
-    let cmsis_dap_product = prod_str.contains("CMSIS-DAP") || prod_str.contains("CMSIS_DAP");
+    // Most CMSIS-DAP probes say something like "CMSIS-DAP"
+    let cmsis_dap_product = is_cmsis_dap(&prod_str);
 
     // Iterate all interfaces, looking for:
     // 1. Any with CMSIS-DAP in their interface string
@@ -86,7 +86,7 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
                 }
             };
 
-            if interface_desc.contains("CMSIS-DAP") || interface_desc.contains("CMSIS_DAP") {
+            if is_cmsis_dap(&interface_desc) {
                 tracing::trace!("  Interface {}: {}", interface.number(), interface_desc);
                 cmsis_dap_interface = true;
                 if descriptor.class_code() == LIBUSB_CLASS_HID {
@@ -127,11 +127,7 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
 fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> {
     let prod_str = device.product_string().unwrap_or("");
     let path = device.path().to_str().unwrap_or("");
-    if prod_str.contains("CMSIS-DAP")
-        || prod_str.contains("CMSIS_DAP")
-        || path.contains("CMSIS-DAP")
-        || path.contains("CMSIS_DAP")
-    {
+    if is_cmsis_dap(prod_str) || is_cmsis_dap(path) {
         tracing::trace!("CMSIS_DAP device with USB path: {:?}", device.path());
         tracing::trace!("                product_string: {:?}", prod_str);
         tracing::trace!(
@@ -166,16 +162,14 @@ pub fn open_v2_device(device: Device<rusb::Context>) -> Option<CmsisDapDevice> {
     // The CMSIS-DAPv2 spec says that v2 interfaces should use a specific
     // WinUSB interface GUID, but in addition to being hard to read, the
     // official DAPLink firmware doesn't use it. Instead, we scan for an
-    // interface whose string contains "CMSIS-DAP" and has two or three
+    // interface whose string like "CMSIS-DAP" and has two or three
     // endpoints of the correct type and direction.
     let c_desc = device.config_descriptor(0).ok()?;
     for interface in c_desc.interfaces() {
         for i_desc in interface.descriptors() {
-            // Skip interfaces without "CMSIS-DAP" in their string
+            // Skip interfaces without "CMSIS-DAP" like pattern in their string
             match handle.read_interface_string(language, &i_desc, timeout) {
-                Ok(i_str) if !i_str.contains("CMSIS-DAP") || i_str.contains("CMSIS_DAP") => {
-                    continue
-                }
+                Ok(i_str) if !is_cmsis_dap(&i_str) => continue,
                 Err(_) => continue,
                 Ok(_) => (),
             }
@@ -372,7 +366,7 @@ pub fn open_device_from_selector(
     let device = device_info.open_device(&hid_api)?;
 
     match device.get_product_string() {
-        Ok(Some(s)) if s.contains("CMSIS-DAP") || s.contains("CMSIS_DAP") => {
+        Ok(Some(s)) if is_cmsis_dap(&s) => {
             Ok(CmsisDapDevice::V1 {
                 handle: device,
                 // Start with a default 64-byte report size, which is the most
@@ -388,4 +382,12 @@ pub fn open_device_from_selector(
             Err(ProbeCreationError::NotFound)
         }
     }
+}
+
+    
+/// We recognise cmis dap interfaces if they have string like "CMSIS-DAP" 
+/// in them. As devices spell CMIS DAP differently we go through known
+/// spellings/patterns looking for a match 
+fn is_cmsis_dap(id: &str) -> bool {
+    id.contains("CMSIS-DAP") || id.contains("CMSIS_DAP")
 }
