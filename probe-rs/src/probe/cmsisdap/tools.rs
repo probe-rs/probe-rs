@@ -62,8 +62,8 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
         .read_serial_number_string(language, &d_desc, timeout)
         .ok();
 
-    // Most CMSIS-DAP probes say "CMSIS-DAP" in their product string.
-    let cmsis_dap_product = prod_str.contains("CMSIS-DAP");
+    // Most CMSIS-DAP probes say "CMSIS-DAP" or "CMSIS_DAP" in their product string.
+    let cmsis_dap_product = prod_str.contains("CMSIS-DAP") || prod_str.contains("CMSIS_DAP");
 
     // Iterate all interfaces, looking for:
     // 1. Any with CMSIS-DAP in their interface string
@@ -86,7 +86,7 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
                 }
             };
 
-            if interface_desc.contains("CMSIS-DAP") {
+            if interface_desc.contains("CMSIS-DAP") || interface_desc.contains("CMSIS_DAP") {
                 tracing::trace!("  Interface {}: {}", interface.number(), interface_desc);
                 cmsis_dap_interface = true;
                 if descriptor.class_code() == LIBUSB_CLASS_HID {
@@ -127,8 +127,12 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
 fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> {
     let prod_str = device.product_string().unwrap_or("");
     let path = device.path().to_str().unwrap_or("");
-    if prod_str.contains("CMSIS-DAP") || path.contains("CMSIS-DAP") {
-        tracing::trace!("CMSIS-DAP device with USB path: {:?}", device.path());
+    if prod_str.contains("CMSIS-DAP")
+        || prod_str.contains("CMSIS_DAP")
+        || path.contains("CMSIS-DAP")
+        || path.contains("CMSIS_DAP")
+    {
+        tracing::trace!("CMSIS_DAP device with USB path: {:?}", device.path());
         tracing::trace!("                product_string: {:?}", prod_str);
         tracing::trace!(
             "                     interface: {}",
@@ -169,7 +173,9 @@ pub fn open_v2_device(device: Device<rusb::Context>) -> Option<CmsisDapDevice> {
         for i_desc in interface.descriptors() {
             // Skip interfaces without "CMSIS-DAP" in their string
             match handle.read_interface_string(language, &i_desc, timeout) {
-                Ok(i_str) if !i_str.contains("CMSIS-DAP") => continue,
+                Ok(i_str) if !i_str.contains("CMSIS-DAP") || i_str.contains("CMSIS_DAP") => {
+                    continue
+                }
                 Err(_) => continue,
                 Ok(_) => (),
             }
@@ -366,13 +372,15 @@ pub fn open_device_from_selector(
     let device = device_info.open_device(&hid_api)?;
 
     match device.get_product_string() {
-        Ok(Some(s)) if s.contains("CMSIS-DAP") => Ok(CmsisDapDevice::V1 {
-            handle: device,
-            // Start with a default 64-byte report size, which is the most
-            // common size for CMSIS-DAPv1 HID devices. We'll request the
-            // actual size to use from the probe later.
-            report_size: 64,
-        }),
+        Ok(Some(s)) if s.contains("CMSIS-DAP") || s.contains("CMSIS_DAP") => {
+            Ok(CmsisDapDevice::V1 {
+                handle: device,
+                // Start with a default 64-byte report size, which is the most
+                // common size for CMSIS-DAPv1 HID devices. We'll request the
+                // actual size to use from the probe later.
+                report_size: 64,
+            })
+        }
         _ => {
             // Return NotFound if this VID:PID was not a valid CMSIS-DAP probe,
             // or if it couldn't be opened, so that other probe modules can
