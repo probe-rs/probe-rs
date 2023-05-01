@@ -2,15 +2,15 @@
 #![warn(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
 // Uses Schemafy to generate DAP types from Json
 mod debug_adapter;
-mod debugger;
 mod peripherals;
+mod server;
 
 use anyhow::{Context, Result};
 use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
-use debugger::debug_entry::{debug, list_connected_devices, list_supported_chips};
 use probe_rs::{
     architecture::arm::ap::AccessPortError, flashing::FileDownloadError, DebugProbeError, Error,
 };
+use server::startup::{debug, list_connected_devices, list_supported_chips};
 use std::{env::var, fs::File, io::stderr};
 use time::{OffsetDateTime, UtcOffset};
 use tracing::metadata::LevelFilter;
@@ -43,6 +43,10 @@ pub enum DebuggerError {
     Other(#[from] anyhow::Error),
     #[error(transparent)]
     ProbeRs(#[from] Error),
+    #[error("{0}")]
+    /// A message that is intended to be displayed to the user, and does not unwind nested errors.
+    /// It is intended to communicate helpful "correct and try again" information to users.
+    UserMessage(String),
     #[error("Serialiazation error")]
     SerdeError(#[from] serde_json::Error),
     #[error("Failed to open source file '{source_file_name}'.")]
@@ -81,7 +85,7 @@ enum CliCommands {
     Debug {
         /// IP port number to listen for incoming DAP connections, e.g. "50000"
         #[clap(long)]
-        port: Option<u16>,
+        port: u16,
 
         /// The debug adapter processed was launched by VSCode, and should terminate itself at the end of every debug session (when receiving `Disconnect` or `Terminate` Request from VSCode). The "false"(default) state of this option implies that the process was launched (and will be managed) by the user.
         #[clap(long, hide = true)]

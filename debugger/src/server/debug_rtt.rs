@@ -1,5 +1,5 @@
 use crate::{
-    debug_adapter::{dap_adapter::*, protocol::ProtocolAdapter},
+    debug_adapter::{dap::adapter::*, protocol::ProtocolAdapter},
     DebuggerError,
 };
 use probe_rs::Core;
@@ -62,7 +62,7 @@ impl DebuggerRttChannel {
                         Ok(data_result) => data_result,
                         Err(rtt_error) => {
                             debug_adapter
-                                .send_error_response(&DebuggerError::Other(rtt_error))
+                                .show_error_message(&DebuggerError::Other(rtt_error))
                                 .ok();
                             None
                         }

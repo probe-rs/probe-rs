@@ -3,12 +3,14 @@ use probe_rs_target::{Architecture, ChipFamily};
 use super::{Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource};
 use crate::architecture::arm::sequences::{
     atsame5x::AtSAME5x,
+    efm32xg2::EFM32xG2,
     infineon::XMC4000,
     nrf52::Nrf52,
     nrf53::Nrf5340,
     nrf91::Nrf9160,
-    nxp::{MIMXRT10xx, MIMXRT11xx, LPC55S69},
-    stm32f_series::Stm32fSeries,
+    nxp::{LPC55Sxx, MIMXRT10xx, MIMXRT11xx},
+    stm32_armv6::{Stm32Armv6, Stm32Armv6Family},
+    stm32_armv7::Stm32Armv7,
     stm32h7::Stm32h7,
     ArmDebugSequence,
 };
@@ -101,9 +103,22 @@ impl Target {
         } else if chip.name.starts_with("MIMXRT11") {
             tracing::warn!("Using custom sequence for MIMXRT11xx");
             debug_sequence = DebugSequence::Arm(MIMXRT11xx::create());
-        } else if chip.name.starts_with("LPC55S16") || chip.name.starts_with("LPC55S69") {
-            tracing::warn!("Using custom sequence for LPC55S16/LPC55S69");
-            debug_sequence = DebugSequence::Arm(LPC55S69::create());
+        } else if chip.name.starts_with("LPC55S16")
+            || chip.name.starts_with("LPC55S26")
+            || chip.name.starts_with("LPC55S28")
+            || chip.name.starts_with("LPC55S66")
+            || chip.name.starts_with("LPC55S69")
+        {
+            tracing::warn!("Using custom sequence for LPC55S16/26/28/66/69");
+            debug_sequence = DebugSequence::Arm(LPC55Sxx::create());
+        } else if chip.name.starts_with("EFM32PG2")
+            || chip.name.starts_with("EFR32BG2")
+            || chip.name.starts_with("EFR32FG2")
+            || chip.name.starts_with("EFR32MG2")
+            || chip.name.starts_with("EFR32ZG2")
+        {
+            tracing::warn!("Using custom sequence for EFM32 Series 2");
+            debug_sequence = DebugSequence::Arm(EFM32xG2::create());
         } else if chip.name.starts_with("esp32c3") {
             tracing::warn!("Using custom sequence for ESP32C3");
             debug_sequence = DebugSequence::Riscv(ESP32C3::create());
@@ -119,16 +134,31 @@ impl Target {
         } else if chip.name.starts_with("nRF9160") {
             tracing::warn!("Using custom sequence for nRF9160");
             debug_sequence = DebugSequence::Arm(Nrf9160::create());
+        } else if chip.name.starts_with("STM32F0") {
+            tracing::warn!("Using custom sequence for ARMv6 {}", chip.name);
+            debug_sequence = DebugSequence::Arm(Stm32Armv6::create(Stm32Armv6Family::F0));
+        } else if chip.name.starts_with("STM32L0") {
+            tracing::warn!("Using custom sequence for ARMv6 {}", chip.name);
+            debug_sequence = DebugSequence::Arm(Stm32Armv6::create(Stm32Armv6Family::L0));
+        } else if chip.name.starts_with("STM32G0") {
+            tracing::warn!("Using custom sequence for ARMv6 {}", chip.name);
+            debug_sequence = DebugSequence::Arm(Stm32Armv6::create(Stm32Armv6Family::G0));
+        } else if chip.name.starts_with("STM32F1")
+            || chip.name.starts_with("STM32F2")
+            || chip.name.starts_with("STM32F3")
+            || chip.name.starts_with("STM32F4")
+            || chip.name.starts_with("STM32F7")
+            || chip.name.starts_with("STM32G4")
+            || chip.name.starts_with("STM32L1")
+            || chip.name.starts_with("STM32L4")
+            || chip.name.starts_with("STM32WB")
+            || chip.name.starts_with("STM32WL")
+        {
+            tracing::warn!("Using custom sequence for ARMv7 {}", chip.name);
+            debug_sequence = DebugSequence::Arm(Stm32Armv7::create());
         } else if chip.name.starts_with("STM32H7") {
             tracing::warn!("Using custom sequence for STM32H7");
             debug_sequence = DebugSequence::Arm(Stm32h7::create());
-        } else if chip.name.starts_with("STM32F1")
-            || chip.name.starts_with("STM32F2")
-            || chip.name.starts_with("STM32F4")
-            || chip.name.starts_with("STM32F7")
-        {
-            tracing::warn!("Using custom sequence for STM32F1/2/4/7");
-            debug_sequence = DebugSequence::Arm(Stm32fSeries::create());
         } else if chip.name.starts_with("ATSAMD5") || chip.name.starts_with("ATSAME5") {
             tracing::warn!("Using custom sequence for {}", chip.name);
             debug_sequence = DebugSequence::Arm(AtSAME5x::create());

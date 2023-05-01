@@ -75,6 +75,10 @@ impl<'probe> Armv8m<'probe> {
             sequence,
         })
     }
+
+    fn set_core_status(&mut self, new_status: CoreStatus) {
+        super::update_core_status(&mut self.memory, &mut self.state.current_state, new_status);
+    }
 }
 
 impl<'probe> CoreInterface for Armv8m<'probe> {
@@ -132,7 +136,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         self.memory.flush()?;
 
         // We assume that the core is running now
-        self.state.current_state = CoreStatus::Running;
+        self.set_core_status(CoreStatus::Running);
 
         Ok(())
     }
@@ -325,7 +329,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
                 "The core is in locked up status as a result of an unrecoverable exception"
             );
 
-            self.state.current_state = CoreStatus::LockedUp;
+            self.set_core_status(CoreStatus::LockedUp);
 
             return Ok(CoreStatus::LockedUp);
         }
@@ -336,7 +340,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
                 tracing::warn!("Expected core to be halted, but core is running");
             }
 
-            self.state.current_state = CoreStatus::Sleeping;
+            self.set_core_status(CoreStatus::Sleeping);
 
             return Ok(CoreStatus::Sleeping);
         }
@@ -370,7 +374,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
                 );
             }
 
-            self.state.current_state = CoreStatus::Halted(reason);
+            self.set_core_status(CoreStatus::Halted(reason));
 
             return Ok(CoreStatus::Halted(reason));
         }
@@ -380,7 +384,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
             tracing::warn!("Core is running, but we expected it to be halted");
         }
 
-        self.state.current_state = CoreStatus::Running;
+        self.set_core_status(CoreStatus::Running);
 
         Ok(CoreStatus::Running)
     }

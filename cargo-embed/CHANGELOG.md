@@ -5,6 +5,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.0]
+
+Released 2023-03-31
+
+### Changed
+- Update description of Fedora prequisites in README.md
+
 ## [0.17.0]
 
 Released 2023-02-06
@@ -235,7 +242,8 @@ Released 2023-01-13
 
 - Initial release
 
-[unreleased]: https://github.com/probe-rs/cargo-embed/compare/v0.17.0...master
+[unreleased]: https://github.com/probe-rs/cargo-embed/compare/v0.18.0...master
+[0.18.0]: https://github.com/probe-rs/cargo-embed/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/probe-rs/cargo-embed/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/probe-rs/cargo-embed/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/probe-rs/cargo-embed/compare/v0.14.2...v0.15.0

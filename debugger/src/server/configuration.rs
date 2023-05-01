@@ -9,9 +9,6 @@ use std::{env::current_dir, path::PathBuf};
 #[derive(Clone, Deserialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionConfig {
-    /// IP port number to listen for incoming DAP connections, e.g. "50000"
-    pub(crate) port: Option<u16>,
-
     /// Level of information to be logged to the debugger console (Error, Info or Debug )
     #[serde(default = "default_console_log")]
     pub(crate) console_log_level: Option<ConsoleLog>,
@@ -19,7 +16,7 @@ pub struct SessionConfig {
     /// Path to the requested working directory for the debugger
     pub(crate) cwd: Option<PathBuf>,
 
-    /// The number associated with the debug probe to use. Use 'list' command to see available probes
+    /// The debug probe selector associated with the debug probe to use. Use 'list' command to see available probes
     #[serde(alias = "probe")]
     pub(crate) probe_selector: Option<DebugProbeSelector>,
 
@@ -41,6 +38,7 @@ pub struct SessionConfig {
     pub(crate) allow_erase_all: bool,
 
     /// Flashing configuration
+    #[serde(default)]
     pub(crate) flashing_config: FlashingConfig,
 
     /// Every core on the target has certain configuration.
@@ -76,14 +74,15 @@ impl SessionConfig {
                         )));
                 }
             };
-            // Update the `svd_file` and validate that the file exists.
-            // If there is a problem with this file, warn the user and continue with the session.
+            // Update the `svd_file` and validate that the file exists, or else return an error.
             target_core_config.svd_file =
                 match get_absolute_path(self.cwd.clone(), target_core_config.svd_file.as_ref()) {
                     Ok(svd_file) => {
                         if !svd_file.is_file() {
-                            tracing::error!("SVD file {:?} not found.", svd_file);
-                            None
+                            return Err(DebuggerError::Other(anyhow!(
+                                "SVD file {:?} not found.",
+                                svd_file
+                            )));
                         } else {
                             Some(svd_file)
                         }
@@ -156,10 +155,6 @@ pub struct FlashingConfig {
     /// Flash the target before debugging
     #[serde(default)]
     pub(crate) flashing_enabled: bool,
-
-    /// Reset the target after flashing
-    #[serde(default)]
-    pub(crate) reset_after_flashing: bool,
 
     /// Halt the target after reset
     #[serde(default)]

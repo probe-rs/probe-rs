@@ -1,15 +1,15 @@
 use crate::{
-    debug_adapter::dap_types::{
-        Event, MessageSeverity, OutputEventBody, ProtocolMessage, Request, Response,
-        ShowMessageEventBody,
+    debug_adapter::dap::dap_types::{
+        ErrorResponse, ErrorResponseBody, Event, Message, MessageSeverity, OutputEventBody,
+        ProtocolMessage, Request, Response, ShowMessageEventBody,
     },
-    debugger::configuration::ConsoleLog,
+    server::configuration::ConsoleLog,
     DebuggerError,
 };
 use anyhow::anyhow;
 use serde::Serialize;
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     io::{BufRead, BufReader, Read, Write},
     str,
     string::ToString,
@@ -32,7 +32,7 @@ pub trait ProtocolAdapter {
 
     fn send_response<S: Serialize>(
         &mut self,
-        request: Request,
+        request: &Request,
         response: Result<Option<S>, DebuggerError>,
     ) -> anyhow::Result<()>;
 }
@@ -58,23 +58,33 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
     }
 
     fn send_data(&mut self, raw_data: &[u8]) -> Result<(), std::io::Error> {
-        let response_body = raw_data;
+        let mut response_body = raw_data;
 
         let response_header = format!("Content-Length: {}\r\n\r\n", response_body.len());
 
         self.output.write_all(response_header.as_bytes())?;
+        self.output.flush()?;
 
-        match self.output.write_all(response_body) {
-            Ok(_) => {}
-            Err(error) => {
-                // TODO: Implement catch of errorkind "WouldBlock" and retry
-                tracing::error!("send_data - body: {:?}", error);
-                self.output.flush().ok();
-                return Err(error);
+        // NOTE: Sometimes when writing large response, the debugger will fail with an IO error (ErrorKind::WouldBlock == error.kind())
+        let mut bytes_remaining = response_body.len();
+        while bytes_remaining > 0 {
+            match self.output.write(response_body) {
+                Ok(bytes_written) => {
+                    bytes_remaining = bytes_remaining.saturating_sub(bytes_written);
+                    response_body = &response_body[bytes_written..];
+                }
+                Err(error) => {
+                    if error.kind() == std::io::ErrorKind::WouldBlock {
+                        // The client is not ready to receive data (probably still processing the last chunk we sent),
+                        // so we need to keep trying.
+                    } else {
+                        tracing::error!("Failed to send a response to the client: {}", error);
+                        return Err(error);
+                    }
+                }
             }
         }
-
-        self.output.flush().ok();
+        self.output.flush()?;
 
         self.seq += 1;
 
@@ -234,7 +244,15 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
 
         let encoded_event = serde_json::to_vec(&new_event)?;
 
-        self.send_data(&encoded_event)?;
+        match self.send_data(&encoded_event) {
+            Ok(_) => {}
+            Err(error) => {
+                let message = format!("Unexpected Error while sending event: {error:?}");
+                tracing::error!("{message}");
+                self.log_to_console(&message);
+                self.show_message(MessageSeverity::Error, message);
+            }
+        }
 
         if new_event.event != "output" {
             // This would result in an endless loop.
@@ -290,90 +308,110 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
 
     fn send_response<S: Serialize>(
         &mut self,
-        request: Request,
+        request: &Request,
         response: Result<Option<S>, DebuggerError>,
     ) -> anyhow::Result<()> {
-        let mut resp = Response {
-            command: request.command.clone(),
-            request_seq: request.seq,
-            seq: request.seq,
-            success: false,
-            body: None,
-            type_: "response".to_owned(),
-            message: None,
-        };
-
-        match response {
+        // The encoded response will be constructed from dap::Response for Ok, and dap::ErrorResponse for Err, to ensure VSCode doesn't lose the details of the error.
+        let encoded_resp = match response.as_ref() {
             Ok(value) => {
-                let body_value = match value {
-                    Some(value) => Some(serde_json::to_value(value)?),
-                    None => None,
+                let resp = Response {
+                    command: request.command.clone(),
+                    request_seq: request.seq,
+                    seq: request.seq,
+                    success: true,
+                    type_: "response".to_owned(),
+                    message: None,
+                    body: Some(serde_json::to_value(value)?),
                 };
-                resp.success = true;
-                resp.body = body_value;
+                tracing::debug!("send_response: {:?}", resp);
+                serde_json::to_vec(&resp)?
             }
             Err(debugger_error) => {
-                resp.success = false;
-                resp.message = {
-                    let mut response_message = debugger_error.to_string();
-                    let mut offset_iterations = 0;
-                    let mut child_error: Option<&dyn std::error::Error> =
-                        std::error::Error::source(&debugger_error);
-                    while let Some(source_error) = child_error {
-                        offset_iterations += 1;
-                        response_message = format!("{response_message}\n",);
-                        for _offset_counter in 0..offset_iterations {
-                            response_message = format!("{response_message}\t");
-                        }
-                        response_message = format!(
-                            "{}{:?}",
-                            response_message,
-                            <dyn std::error::Error>::to_string(source_error)
-                        );
-                        child_error = std::error::Error::source(source_error);
+                let mut response_message = debugger_error.to_string();
+                let mut offset_iterations = 0;
+                let mut child_error: Option<&dyn std::error::Error> =
+                    std::error::Error::source(&debugger_error);
+                while let Some(source_error) = child_error {
+                    offset_iterations += 1;
+                    response_message = format!("{response_message}\n",);
+                    for _offset_counter in 0..offset_iterations {
+                        response_message = format!("{response_message}\t");
                     }
-                    Some(response_message)
+                    response_message = format!(
+                        "{}{:?}",
+                        response_message,
+                        <dyn std::error::Error>::to_string(source_error)
+                    );
+                    child_error = std::error::Error::source(source_error);
+                }
+                // We have to send log messages on error conditions to the DAP Client now, because
+                // if this error happens during the 'launch' or 'attach' request, the DAP Client
+                // will not initiate a session, and will not be listening for 'output' events.
+                self.log_to_console(&response_message);
+                self.show_message(MessageSeverity::Error, &response_message);
+
+                let error_resp = ErrorResponse {
+                    command: request.command.clone(),
+                    request_seq: request.seq,
+                    seq: request.seq,
+                    success: false,
+                    type_: "error_response".to_owned(),
+                    message: Some("cancelled".to_string()), // Predefined value in the MSDAP spec.
+                    body: ErrorResponseBody {
+                        error: Some(Message {
+                            format: "{response_message}".to_string(),
+                            variables: Some(BTreeMap::from([(
+                                "response_message".to_string(),
+                                response_message,
+                            )])),
+                            // TODO: Implement unique error codes, that can index into the documentation for more information and suggested actions.
+                            id: 0,
+                            send_telemetry: Some(false),
+                            show_user: Some(true),
+                            url_label: Some("Documentation".to_string()),
+                            url: Some("https://probe.rs/docs/tools/vscode/".to_string()),
+                        }),
+                    },
                 };
+                tracing::debug!("send_response: {:?}", error_resp);
+                serde_json::to_vec(&error_resp)?
             }
         };
 
-        tracing::debug!("send_response: {:?}", resp);
-
         // Check if we got a request for this response
-        if let Some(request_command) = self.pending_requests.remove(&resp.request_seq) {
-            assert_eq!(request_command, resp.command);
+        if let Some(request_command) = self.pending_requests.remove(&request.seq) {
+            assert_eq!(request_command, request.command);
         } else {
-            tracing::error!("Trying to send a response to non-existing request! Response {:?} has no pending request", resp);
+            tracing::error!(
+                "Trying to send a response to non-existing request! {:?} has no pending request",
+                serde_json::to_value(&encoded_resp)?
+            );
         }
 
-        let encoded_resp = serde_json::to_vec(&resp)?;
+        match self.send_data(&encoded_resp) {
+            Ok(_) => {}
+            Err(error) => {
+                // If we can't send the response, we can't do much about it, so best to terminate the session with an error.
+                let message = format!("Unexpected Error while sending response: {error:?}");
+                tracing::error!("{message}");
+                return Err(anyhow::anyhow!(message));
+            }
+        }
 
-        self.send_data(&encoded_resp)?;
-
-        if !resp.success {
-            self.log_to_console(
-                &resp
-                    .clone()
-                    .message
-                    .unwrap_or_else(|| "<empty message>".to_string()),
-            );
-            self.show_message(
-                MessageSeverity::Error,
-                &resp
-                    .message
-                    .unwrap_or_else(|| "<empty message>".to_string()),
-            );
-        } else {
+        if response.is_ok() {
             match self.console_log_level {
                 ConsoleLog::Console => {}
                 ConsoleLog::Info => {
                     self.log_to_console(format!(
                         "   Sent DAP Response sequence #{} : {}",
-                        resp.seq, resp.command
+                        request.seq, request.command
                     ));
                 }
                 ConsoleLog::Debug => {
-                    self.log_to_console(format!("\nSent DAP Response: {resp:#?}"));
+                    self.log_to_console(format!(
+                        "\nSent DAP Response: {:#?}",
+                        serde_json::to_value(encoded_resp)?
+                    ));
                 }
             }
         }

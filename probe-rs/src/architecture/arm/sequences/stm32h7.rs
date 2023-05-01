@@ -2,6 +2,8 @@
 
 use std::sync::Arc;
 
+use probe_rs_target::CoreType;
+
 use super::ArmDebugSequence;
 use crate::architecture::arm::{
     ap::MemoryAp,
@@ -45,7 +47,7 @@ impl Stm32h7 {
     /// Configure all debug components on the chip.
     pub fn enable_debug_components(
         &self,
-        memory: &mut (impl ArmProbe + ?Sized),
+        memory: &mut dyn ArmProbe,
         enable: bool,
     ) -> Result<(), ArmError> {
         if enable {
@@ -149,7 +151,7 @@ impl ArmDebugSequence for Stm32h7 {
         _default_ap: MemoryAp,
         _permissions: &crate::Permissions,
     ) -> Result<(), ArmError> {
-        // Power up the debug components through AP2, which is the defualt AP debug port.
+        // Power up the debug components through AP2, which is the default AP debug port.
         let ap = MemoryAp::new(ApAddress {
             dp: DpAddress::Default,
             ap: 2,
@@ -161,14 +163,21 @@ impl ArmDebugSequence for Stm32h7 {
         Ok(())
     }
 
-    fn debug_core_stop(&self, interface: &mut dyn ArmProbeInterface) -> Result<(), ArmError> {
-        // Power up the debug components through AP2, which is the defualt AP debug port.
-        let ap = MemoryAp::new(ApAddress {
+    fn debug_core_stop(
+        &self,
+        interface: &mut dyn ArmProbeInterface,
+        _core_ap: MemoryAp,
+        _core_type: CoreType,
+    ) -> Result<(), ArmError> {
+        // Power up the debug components through AP2, which is the default AP debug port.
+
+        let debug_ap = MemoryAp::new(ApAddress {
             dp: DpAddress::Default,
             ap: 2,
         });
 
-        let mut memory = interface.memory_interface(ap)?;
+        let mut memory = interface.memory_interface(debug_ap)?;
+
         self.enable_debug_components(&mut *memory, false)?;
 
         Ok(())

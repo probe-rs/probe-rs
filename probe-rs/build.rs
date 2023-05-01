@@ -6,10 +6,12 @@ use std::path::{Path, PathBuf};
 use probe_rs_target::ChipFamily;
 
 fn main() {
-    // Only rerun build.rs if something inside targets/ has changed. (By default
-    // cargo reruns build.rs if any file under the crate root has changed)
-    // This improves build times and IDE responsivity when not editing targets.
+    // Only rerun build.rs if something inside targets/ or `PROBE_RS_TARGETS_DIR`
+    // has changed. (By default cargo reruns build.rs if any file under the crate
+    // root has changed) This improves build times and IDE responsivity when not
+    // editing targets.
     println!("cargo:rerun-if-changed=targets");
+    println!("cargo:rerun-if-env-changed=PROBE_RS_TARGETS_DIR");
 
     // Test if we have to generate built-in targets
     if env::var("CARGO_FEATURE_BUILTIN_TARGETS").is_err() {
@@ -24,6 +26,7 @@ fn main() {
     // Check if there are any additional targets to generate for
     match env::var("PROBE_RS_TARGETS_DIR") {
         Ok(additional_target_dir) => {
+            println!("cargo:rerun-if-changed={additional_target_dir}");
             visit_dirs(Path::new(&additional_target_dir), &mut files).unwrap();
         }
         Err(_err) => {

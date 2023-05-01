@@ -87,17 +87,17 @@ fn debug_port_start(
     Ok(powered_down)
 }
 
-/// The sequence handle for the LPC55S69.
-pub struct LPC55S69(());
+/// The sequence handle for the LPC55Sxx family.
+pub struct LPC55Sxx(());
 
-impl LPC55S69 {
-    /// Create a sequence handle for the LPC55S69.
+impl LPC55Sxx {
+    /// Create a sequence handle for the LPC55Sxx.
     pub fn create() -> Arc<dyn ArmDebugSequence> {
         Arc::new(Self(()))
     }
 }
 
-impl ArmDebugSequence for LPC55S69 {
+impl ArmDebugSequence for LPC55Sxx {
     fn debug_port_start(
         &self,
         interface: &mut ArmCommunicationInterface<Initialized>,

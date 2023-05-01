@@ -17,7 +17,7 @@ use crate::{
         },
         BatchCommand,
     },
-    DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
+    CoreStatus, DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
 };
 
 use commands::{
@@ -628,6 +628,12 @@ impl DebugProbe for CmsisDap {
 }
 
 impl RawDapAccess for CmsisDap {
+    fn core_status_notification(&mut self, status: CoreStatus) -> Result<(), DebugProbeError> {
+        let running = status.is_running();
+        commands::send_command(&mut self.device, HostStatusRequest::running(running))?;
+        Ok(())
+    }
+
     fn select_dp(&mut self, dp: DpAddress) -> Result<(), ArmError> {
         match dp {
             DpAddress::Default => Ok(()), // nop

@@ -1,19 +1,22 @@
-use std::fs::File;
+use std::{fs::File, path::Path};
 
-use super::session_data;
+use super::session_data::{self, ActiveBreakpoint, BreakpointType};
 use crate::{
     debug_adapter::{
-        dap_adapter::{DapStatus, DebugAdapter},
-        dap_types::{ContinuedEventBody, MessageSeverity, StoppedEventBody},
+        dap::{
+            adapter::DebugAdapter,
+            core_status::DapStatus,
+            dap_types::{ContinuedEventBody, MessageSeverity, Source, StoppedEventBody},
+        },
         protocol::ProtocolAdapter,
     },
-    debugger::debug_rtt,
     peripherals::svd_variables::SvdCache,
+    server::debug_rtt,
     DebuggerError,
 };
 use anyhow::{anyhow, Result};
 use probe_rs::{
-    debug::debug_info::DebugInfo,
+    debug::{debug_info::DebugInfo, ColumnType, VerifiedBreakpoint},
     rtt::{Rtt, ScanRegion},
     Core, CoreStatus, Error, HaltReason,
 };
@@ -25,7 +28,7 @@ pub struct CoreData {
     pub(crate) core_index: usize,
     /// Track the last_known_status of the core.
     /// The debug client needs to be notified when the core changes state, and this can happen in one of two ways:
-    /// 1. By polling the core status periodically (in [`super::debug_entry::Debugger::process_next_request()`]).
+    /// 1. By polling the core status periodically (in [`crate::server::debugger::Debugger::process_next_request()`]).
     ///   For instance, when the client sets the core running, and the core halts because of a breakpoint, we need to notify the client.
     /// 2. Some requests, like [`DebugAdapter::next()`], has an implicit action of setting the core running, before it waits for it to halt at the next statement.
     ///   To ensure the [`CoreHandle::poll_core()`] behaves correctly, it will set the `last_known_status` to [`CoreStatus::Running`],
@@ -127,7 +130,7 @@ impl<'p> CoreHandle<'p> {
                                 )));
                             }
                             CoreStatus::Unknown => {
-                                debug_adapter.send_error_response(&DebuggerError::Other(
+                                debug_adapter.show_error_message(&DebuggerError::Other(
                                     anyhow!("Unknown Device status reveived from Probe-rs"),
                                 ))?;
 
@@ -224,20 +227,38 @@ impl<'p> CoreHandle<'p> {
         Ok(())
     }
 
+    /// Check if a breakpoint address is already cached in [`CoreData::breakpoints`].
+    /// Use this to avoid duplicate breakpoint entries, and also to help with clearing existing breakpoints on request.
+    fn find_breakpoint_in_cache(&self, address: u64) -> Option<(usize, &ActiveBreakpoint)> {
+        self.core_data
+            .breakpoints
+            .iter()
+            .enumerate()
+            .find(|(_, breakpoint)| breakpoint.address == address)
+    }
+
     /// Set a single breakpoint in target configuration as well as [`super::core_data::CoreHandle`]
     pub(crate) fn set_breakpoint(
         &mut self,
         address: u64,
         breakpoint_type: session_data::BreakpointType,
     ) -> Result<(), DebuggerError> {
+        // NOTE: After receiving a DAP [`crate::debug_adapter::dap::dap_types::BreakpointEvent`], VSCode will mistakenly
+        // identify a `InstructionBreakpoint` as a `SourceBreakpoint`. This results in breakpoints not being cleared correctly from [`CoreHandle::clear_breakpoints()`].
+        // To work around this, we have to clear the breakpoints manually before we set them again.
+        if let Some((_, breakpoint)) = self.find_breakpoint_in_cache(address) {
+            self.clear_breakpoint(breakpoint.address)?;
+        }
+
         self.core
             .set_hw_breakpoint(address)
             .map_err(DebuggerError::ProbeRs)?;
+        // Wait until the set of the hw breakpoint succeeded, before we cache it here ...
         self.core_data
             .breakpoints
             .push(session_data::ActiveBreakpoint {
                 breakpoint_type,
-                breakpoint_address: address,
+                address,
             });
         Ok(())
     }
@@ -247,33 +268,115 @@ impl<'p> CoreHandle<'p> {
         self.core
             .clear_hw_breakpoint(address)
             .map_err(DebuggerError::ProbeRs)?;
-        let mut breakpoint_position: Option<usize> = None;
-        for (position, active_breakpoint) in self.core_data.breakpoints.iter().enumerate() {
-            if active_breakpoint.breakpoint_address == address {
-                breakpoint_position = Some(position);
-                break;
-            }
-        }
-        if let Some(breakpoint_position) = breakpoint_position {
+        if let Some((breakpoint_position, _)) = self.find_breakpoint_in_cache(address) {
             self.core_data.breakpoints.remove(breakpoint_position);
         }
         Ok(())
     }
 
-    /// Clear all breakpoints of a specified [`super::session_data::BreakpointType`]. Affects target configuration as well as [`super::core_data::CoreHandle`]
+    /// Clear all breakpoints of a specified [`super::session_data::BreakpointType`].
+    /// Affects target configuration as well as [`CoreData::breakpoints`].
+    /// If `breakpoint_type` is `None`, all breakpoints of type [`super::session_data::BreakpointType::SourceBreakpoint`] will be cleared.
     pub(crate) fn clear_breakpoints(
         &mut self,
-        breakpoint_type: session_data::BreakpointType,
+        breakpoint_type: Option<session_data::BreakpointType>,
     ) -> Result<()> {
         let target_breakpoints = self
             .core_data
             .breakpoints
             .iter()
-            .filter(|breakpoint| breakpoint.breakpoint_type == breakpoint_type)
-            .map(|breakpoint| breakpoint.breakpoint_address)
+            .filter(|breakpoint| {
+                if let Some(breakpoint_type) = breakpoint_type.as_ref() {
+                    breakpoint.breakpoint_type == *breakpoint_type
+                } else {
+                    matches!(
+                        breakpoint.breakpoint_type,
+                        BreakpointType::SourceBreakpoint(_, _)
+                    )
+                }
+            })
+            .map(|breakpoint| breakpoint.address)
             .collect::<Vec<u64>>();
         for breakpoint in target_breakpoints {
-            self.clear_breakpoint(breakpoint).ok();
+            self.clear_breakpoint(breakpoint)?;
+        }
+        Ok(())
+    }
+
+    /// Set a breakpoint at the requested address. If the requested source location is not specific, or
+    /// if the requested address is not a valid breakpoint location,
+    /// the debugger will attempt to find the closest location to the requested location, and set a breakpoint there.
+    /// The Result<> contains the "verified" `address` and `SourceLocation` where the breakpoint that was set.
+    pub(crate) fn verify_and_set_breakpoint(
+        &mut self,
+        source_path: &Path,
+        requested_breakpoint_line: u64,
+        requested_breakpoint_column: Option<u64>,
+        requested_source: &Source,
+    ) -> Result<VerifiedBreakpoint, DebuggerError> {
+        let VerifiedBreakpoint {
+                 address,
+                 source_location,
+             } = self.core_data
+            .debug_info
+            .get_breakpoint_location(
+                source_path,
+                requested_breakpoint_line,
+                requested_breakpoint_column,
+            )
+            .map_err(|debug_error|
+                DebuggerError::Other(anyhow!("Cannot set breakpoint here. Try reducing compile time-, and link time-, optimization in your build configuration, or choose a different source location: {debug_error}")))?;
+        self.set_breakpoint(
+            address,
+            BreakpointType::SourceBreakpoint(requested_source.clone(), source_location.clone()),
+        )?;
+        Ok(VerifiedBreakpoint {
+            address,
+            source_location,
+        })
+    }
+
+    /// In the case where a new binary is flashed as part of a restart, we need to recompute the breakpoint address,
+    /// for a specified source location, of any [`super::session_data::BreakpointType::SourceBreakpoint`].
+    /// This is because the address of the breakpoint may have changed based on changes in the source file that created the new binary.
+    pub(crate) fn recompute_breakpoints(&mut self) -> Result<(), DebuggerError> {
+        let target_breakpoints = self.core_data.breakpoints.clone();
+        for breakpoint in target_breakpoints
+            .iter()
+            .cloned()
+            // If the breakpoint type is not a source breakpoint, we don't need to recompute anything.
+            .filter(|breakpoint| {
+                matches!(
+                    breakpoint.breakpoint_type,
+                    BreakpointType::SourceBreakpoint(..)
+                )
+            })
+        {
+            self.clear_breakpoint(breakpoint.address)?;
+            if let BreakpointType::SourceBreakpoint(source, source_location) =
+                breakpoint.breakpoint_type
+            {
+                if let Err(breakpoint_error) =
+                    source_location
+                        .combined_path()
+                        .as_ref()
+                        .map(|requested_path| {
+                            self.verify_and_set_breakpoint(
+                                requested_path,
+                                source_location.line.unwrap_or(0),
+                                source_location.column.map(|col| match col {
+                                    ColumnType::LeftEdge => 0_u64,
+                                    ColumnType::Column(c) => c,
+                                }),
+                                &source,
+                            )
+                        })
+                {
+                    return Err(DebuggerError::Other(anyhow!(
+                        "Failed to recompute breakpoint at {source_location:?} in {source:?}. Error: {breakpoint_error:?}"
+                    )));
+                }
+            }
         }
         Ok(())
     }

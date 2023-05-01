@@ -8,10 +8,32 @@ use parse_int::parse;
 use probe_rs_cli_util::rtt;
 use schemafy::schemafy;
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
+use std::{convert::TryFrom, fmt::Display};
 
 // Convert the MSDAP `debugAdaptor.json` file into Rust types.
-schemafy!(root: debugserver_types "src/debug_adapter/debugProtocol.json");
+schemafy!(root: debugserver_types "src/debug_adapter/dap/debugProtocol.json");
+
+/// Memory addresses come in as strings, but we want to use them as u64s.
+pub struct MemoryAddress(pub u64);
+
+impl TryFrom<&str> for MemoryAddress {
+    type Error = DebuggerError;
+    /// Convert either a decimal or hexadecimal string into a `MemoryAddress(u64)`.
+    fn try_from(string_address: &str) -> Result<Self, Self::Error> {
+        Ok(MemoryAddress(
+            if string_address[..2].eq_ignore_ascii_case("0x") {
+                u64::from_str_radix(&string_address[2..], 16)
+            } else {
+                string_address.parse()
+            }
+            .map_err(|error| {
+                DebuggerError::UserMessage(format!(
+                    "Invalid memory address: {string_address:?}: {error:?}"
+                ))
+            })?,
+        ))
+    }
+}
 
 /// Custom 'quit' request, so that VSCode can tell the `probe-rs-debugger` to terminate its own process.
 #[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
@@ -109,6 +131,34 @@ impl TryFrom<&serde_json::Value> for WriteMemoryArguments {
             offset: None,
             allow_partial: Some(false),
         })
+    }
+}
+
+impl Display for Source {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.name.as_deref().unwrap_or(""))
+    }
+}
+
+impl Display for DisassembledInstruction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(
+            f,
+            "{} : [{:<12}] {:<40}  {}",
+            self.address,
+            self.instruction_bytes.as_deref().unwrap_or(""),
+            self.instruction,
+            if let (Some(file), Some(line), Some(column)) = (
+                self.location.as_ref().map(|s| s.to_string()),
+                self.line,
+                self.column
+            ) {
+                format!("<{file}:{line}:{column}>")
+            } else {
+                "".to_string()
+            },
+        )?;
+        Ok(())
     }
 }
 

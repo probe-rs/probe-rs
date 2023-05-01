@@ -181,7 +181,8 @@ fn main_try(metadata: Arc<Mutex<Metadata>>, offset: UtcOffset) -> Result<()> {
 
     // Make sure we load the config given in the cli parameters.
     for cdp in &config.general.chip_descriptions {
-        probe_rs::config::add_target_from_yaml(Path::new(cdp))
+        let file = File::open(Path::new(cdp))?;
+        probe_rs::config::add_target_from_yaml(file)
             .with_context(|| format!("failed to load the chip description from {cdp}"))?;
     }
 

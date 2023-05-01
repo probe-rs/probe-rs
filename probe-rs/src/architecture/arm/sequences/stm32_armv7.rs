@@ -1,18 +1,27 @@
-//! Sequences for STM32F-series devices
+//! Sequences for most ARMv7 STM32s: STM32F1/2/3/4/7, STM32G4, STM32L1/4, STM32WB and STM32WL.
+//!
+//! This covers devices where DBGMCU is at 0xE0042000 and has the TRACE_MODE, TRACE_IOEN,
+//! DBG_STANDBY, DBG_STOP, and DBG_SLEEP bits, which is most STM32 devices with ARMv7 CPUs.
+//!
+//! It does _not_ include STM32F0, STM32G0, STM32L0, which are ARMv6 and have a simpler DBGMCU
+//! component at a different address which requires clock gating, or the STM32L5 or STM32U5 which
+//! are ARMv8, or the STM32H7 which is ARMv7 but has a more complicated DBGMCU at a different
+//! address.
 
 use std::sync::Arc;
 
+use probe_rs_target::CoreType;
+
 use super::ArmDebugSequence;
 use crate::architecture::arm::{
-    ap::MemoryAp, component::TraceSink, memory::CoresightComponent, ApAddress, ArmError,
-    ArmProbeInterface, DpAddress,
+    ap::MemoryAp, component::TraceSink, memory::CoresightComponent, ArmError, ArmProbeInterface,
 };
 
-/// Marker structure for STM32F-series devices.
-pub struct Stm32fSeries {}
+/// Marker structure for most ARMv7 STM32 devices.
+pub struct Stm32Armv7 {}
 
-impl Stm32fSeries {
-    /// Create the sequencer for the F-series family of parts.
+impl Stm32Armv7 {
+    /// Create the sequencer for most ARMv7 STM32 families.
     pub fn create() -> Arc<Self> {
         Arc::new(Self {})
     }
@@ -55,7 +64,7 @@ mod dbgmcu {
     }
 }
 
-impl ArmDebugSequence for Stm32fSeries {
+impl ArmDebugSequence for Stm32Armv7 {
     fn debug_device_unlock(
         &self,
         interface: &mut dyn ArmProbeInterface,
@@ -73,14 +82,13 @@ impl ArmDebugSequence for Stm32fSeries {
         Ok(())
     }
 
-    fn debug_core_stop(&self, interface: &mut dyn ArmProbeInterface) -> Result<(), ArmError> {
-        // Power down the debug components
-        let ap = MemoryAp::new(ApAddress {
-            dp: DpAddress::Default,
-            ap: 0,
-        });
-
-        let mut memory = interface.memory_interface(ap)?;
+    fn debug_core_stop(
+        &self,
+        interface: &mut dyn ArmProbeInterface,
+        core_ap: MemoryAp,
+        _core_type: CoreType,
+    ) -> Result<(), ArmError> {
+        let mut memory = interface.memory_interface(core_ap)?;
 
         let mut cr = dbgmcu::Control::read(&mut *memory)?;
         cr.enable_standby_debug(false);

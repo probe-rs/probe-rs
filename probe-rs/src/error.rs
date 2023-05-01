@@ -12,7 +12,7 @@ pub enum Error {
     #[error("An error with the usage of the probe occurred")]
     Probe(#[from] DebugProbeError),
     /// An ARM specific error occured.
-    #[error("A ARM specific error occured.")]
+    #[error("An ARM specific error occured.")]
     Arm(#[source] ArmError),
     /// A RISCV specific error occured.
     #[error("A RISCV specific error occured.")]
