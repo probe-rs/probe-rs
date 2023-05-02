@@ -34,7 +34,7 @@ gdb-server = { path = "gdb-server", version = "0.18.0" }
 log = "0.4.17"
 pretty_env_logger = "0.4.0"
 thiserror = "1.0"
-anyhow = "1.0.70"
+anyhow = "1.0.71"
 
 # Config for 'cargo dist'
 [workspace.metadata.dist]
