@@ -449,6 +449,19 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         Ok(initialized_interface)
     }
 
+    /// Reset the cached state of the debug port.
+    ///
+    /// probe-rs caches which DP/AP is currently selected, to avoid having to
+    /// select it multiple times when performing multiple operations on the same
+    /// DP/AP. This function clears this cache.
+    ///
+    /// This can be needed with some kinds of target reset, as the state of the
+    /// DP/AP might have been reset.
+    pub fn clear_state(&mut self) {
+        self.state.current_dp = None;
+        self.state.dps.clear();
+    }
+
     /// Inform the probe of the [`CoreStatus`] of the chip attached to the probe.
     pub fn core_status_notification(&mut self, state: CoreStatus) {
         self.probe.core_status_notification(state).ok();
