@@ -2,9 +2,9 @@
 
 use crate::{
     architecture::arm::{memory::adi_v5_memory_interface::ArmProbe, ArmError},
-    Error, MemoryMappedRegister, RegisterId,
+    core::RegisterId,
+    Error, MemoryMappedRegister,
 };
-
 use bitfield::bitfield;
 use std::time::{Duration, Instant};
 

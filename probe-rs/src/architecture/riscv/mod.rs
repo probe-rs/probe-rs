@@ -2,18 +2,18 @@
 
 #![allow(clippy::inconsistent_digit_grouping)]
 
-use crate::core::{Architecture, BreakpointCause};
-use crate::{CoreInterface, CoreType, InstructionSet};
+use crate::{
+    core::{
+        Architecture, BreakpointCause, CoreInformation, RegisterFile, RegisterId, RegisterValue,
+    },
+    memory::valid_32bit_address,
+    CoreInterface, CoreStatus, CoreType, Error, HaltReason, InstructionSet, MemoryInterface,
+};
 use anyhow::{anyhow, Result};
+use bitfield::bitfield;
 use communication_interface::{
     AbstractCommandErrorKind, DebugRegister, RiscvCommunicationInterface, RiscvError,
 };
-
-use crate::core::{CoreInformation, RegisterFile, RegisterValue};
-use crate::memory::valid_32bit_address;
-use crate::{CoreStatus, Error, HaltReason, MemoryInterface, RegisterId};
-
-use bitfield::bitfield;
 use register::RISCV_REGISTERS;
 use std::time::{Duration, Instant};
 
@@ -298,7 +298,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         Ok(CoreInformation { pc: pc.try_into()? })
     }
 
-    fn read_core_reg(&mut self, address: crate::RegisterId) -> Result<RegisterValue, crate::Error> {
+    fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, crate::Error> {
         self.read_csr(address.0)
             .map(|v| v.into())
             .map_err(|e| e.into())
@@ -306,7 +306,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
     fn write_core_reg(
         &mut self,
-        address: crate::RegisterId,
+        address: RegisterId,
         value: RegisterValue,
     ) -> Result<(), crate::Error> {
         let value: u32 = value.try_into()?;

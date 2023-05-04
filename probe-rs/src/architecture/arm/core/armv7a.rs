@@ -1,31 +1,31 @@
 //! Register types and the core interface for armv7-a
 
-use crate::architecture::arm::core::armv7a_debug_regs::*;
-use crate::architecture::arm::core::register;
-use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
-use crate::architecture::arm::sequences::ArmDebugSequence;
-use crate::architecture::arm::ArmError;
-use crate::core::{RegisterFile, RegisterValue};
-use crate::error::Error;
-use crate::memory::valid_32bit_address;
-use crate::CoreInterface;
-use crate::CoreStatus;
-use crate::MemoryInterface;
-use crate::RegisterId;
-use crate::{Architecture, CoreInformation, CoreType, InstructionSet};
-use anyhow::Result;
-
-use super::instructions::aarch32::{
-    build_bx, build_ldc, build_mcr, build_mov, build_mrc, build_mrs, build_stc, build_vmov,
-    build_vmrs,
+use super::{
+    instructions::aarch32::{
+        build_bx, build_ldc, build_mcr, build_mov, build_mrc, build_mrs, build_stc, build_vmov,
+        build_vmrs,
+    },
+    CortexAState, AARCH32_COMMON_REGS, AARCH32_FP_16_REGS, AARCH32_FP_32_REGS,
 };
-use super::CortexAState;
-use super::{AARCH32_COMMON_REGS, AARCH32_FP_16_REGS, AARCH32_FP_32_REGS};
-
-use std::mem::size_of;
-use std::sync::Arc;
-use std::time::Duration;
-use std::time::Instant;
+use crate::{
+    architecture::arm::{
+        core::{armv7a_debug_regs::*, register},
+        memory::adi_v5_memory_interface::ArmProbe,
+        sequences::ArmDebugSequence,
+        ArmError,
+    },
+    core::{RegisterFile, RegisterId, RegisterValue},
+    error::Error,
+    memory::valid_32bit_address,
+    Architecture, CoreInformation, CoreInterface, CoreStatus, CoreType, InstructionSet,
+    MemoryInterface,
+};
+use anyhow::Result;
+use std::{
+    mem::size_of,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 /// Errors for the ARMv7-A state machine
 #[derive(thiserror::Error, Debug)]

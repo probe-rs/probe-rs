@@ -8,17 +8,13 @@ use super::{
     dtm::{DmiOperation, DmiOperationStatus, Dtm},
     register, Dmcontrol, Dmstatus,
 };
-use crate::DebugProbeError;
 use crate::{
     architecture::riscv::*,
-    probe::{CommandResult, DeferredResultIndex},
+    core::RegisterId,
+    memory::valid_32bit_address,
+    probe::{CommandResult, DeferredResultIndex, JTAGAccess},
+    DebugProbeError, Error as ProbeRsError, MemoryInterface, Probe,
 };
-use crate::{MemoryInterface, Probe};
-
-use crate::{probe::JTAGAccess, Error as ProbeRsError, RegisterId};
-
-use crate::memory::valid_32bit_address;
-
 use bitfield::bitfield;
 use std::{
     collections::HashMap,

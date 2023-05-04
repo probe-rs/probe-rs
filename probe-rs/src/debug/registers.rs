@@ -1,6 +1,6 @@
 use crate::{
-    core::{Core, RegisterDataType, RegisterFile},
-    Error, RegisterId, RegisterValue,
+    core::{Core, RegisterDataType, RegisterFile, RegisterId, RegisterValue},
+    Error,
 };
 
 /// The group name of a register.

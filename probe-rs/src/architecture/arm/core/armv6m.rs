@@ -1,24 +1,24 @@
 //! Register types and the core interface for armv6-M
 
 use super::{CortexMState, Dfsr, CORTEX_M_COMMON_REGS};
-
-use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
-use crate::architecture::arm::sequences::ArmDebugSequence;
-use crate::architecture::arm::ArmError;
-use crate::core::{
-    RegisterDataType, RegisterDescription, RegisterFile, RegisterKind, RegisterValue,
-};
-use crate::error::Error;
-use crate::memory::valid_32bit_address;
 use crate::{
+    architecture::arm::{
+        memory::adi_v5_memory_interface::ArmProbe, sequences::ArmDebugSequence, ArmError,
+    },
+    core::{
+        RegisterDataType, RegisterDescription, RegisterFile, RegisterId, RegisterKind,
+        RegisterValue,
+    },
+    error::Error,
+    memory::valid_32bit_address,
     Architecture, CoreInformation, CoreInterface, CoreStatus, CoreType, DebugProbeError,
-    HaltReason, InstructionSet, MemoryInterface, MemoryMappedRegister, RegisterId,
+    HaltReason, InstructionSet, MemoryInterface, MemoryMappedRegister,
 };
 use anyhow::Result;
 use bitfield::bitfield;
-use std::sync::Arc;
 use std::{
     mem::size_of,
+    sync::Arc,
     time::{Duration, Instant},
 };
 

@@ -1,24 +1,22 @@
 //! Register types and the core interface for armv8-M
 
-use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
-use crate::architecture::arm::sequences::ArmDebugSequence;
-use crate::architecture::arm::ArmError;
-use crate::core::RegisterFile;
-use crate::error::Error;
-use crate::memory::valid_32bit_address;
-use crate::{architecture::arm::core::register, CoreStatus, HaltReason, MemoryInterface};
-use crate::{Architecture, CoreInformation};
-use crate::{CoreInterface, CoreType, InstructionSet, MemoryMappedRegister};
-use crate::{RegisterId, RegisterValue};
+use super::{cortex_m::Mvfr0, CortexMState, Dfsr, CORTEX_M_COMMON_REGS, CORTEX_M_WITH_FP_REGS};
+use crate::{
+    architecture::arm::{
+        core::register, memory::adi_v5_memory_interface::ArmProbe, sequences::ArmDebugSequence,
+        ArmError,
+    },
+    core::{RegisterFile, RegisterId, RegisterValue},
+    error::Error,
+    memory::valid_32bit_address,
+    Architecture, CoreInformation, CoreInterface, CoreStatus, CoreType, HaltReason, InstructionSet,
+    MemoryInterface, MemoryMappedRegister,
+};
 use anyhow::Result;
-
 use bitfield::bitfield;
-
-use super::cortex_m::Mvfr0;
-use super::{CortexMState, Dfsr, CORTEX_M_COMMON_REGS, CORTEX_M_WITH_FP_REGS};
-use std::sync::Arc;
 use std::{
     mem::size_of,
+    sync::Arc,
     time::{Duration, Instant},
 };
 

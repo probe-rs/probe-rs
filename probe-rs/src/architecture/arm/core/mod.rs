@@ -41,10 +41,7 @@ impl Dump {
 }
 
 pub(crate) mod register {
-    use crate::{
-        core::{RegisterDataType, RegisterDescription, RegisterKind},
-        RegisterId,
-    };
+    use crate::core::{RegisterDataType, RegisterDescription, RegisterId, RegisterKind};
 
     pub const PC: RegisterDescription = RegisterDescription {
         name: "PC",

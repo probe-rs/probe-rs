@@ -1,8 +1,4 @@
-use crate::core::RegisterDescription;
-use crate::{
-    core::{RegisterDataType, RegisterFile, RegisterKind},
-    RegisterId,
-};
+use crate::core::{RegisterDataType, RegisterDescription, RegisterFile, RegisterId, RegisterKind};
 
 macro_rules! data_register {
     ($(#[$outer:meta])* $i:ident, $addr:expr, $name:expr) => {
