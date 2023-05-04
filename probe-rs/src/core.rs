@@ -467,14 +467,3 @@ impl<'probe> Core<'probe> {
         self.inner.on_session_stop()
     }
 }
-
-/// The id of a breakpoint.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct BreakpointId(usize);
-
-impl BreakpointId {
-    /// Creates a new breakpoint ID from an `usize`.
-    pub fn new(id: usize) -> Self {
-        BreakpointId(id)
-    }
-}
