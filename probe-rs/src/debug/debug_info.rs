@@ -937,7 +937,7 @@ impl DebugInfo {
                         unwind_registers.0.iter_mut().filter(|platform_register| {
                             matches!(
                                 platform_register.group,
-                                RegisterGroup::Base | RegisterGroup::Singleton
+                                RegisterGroup::Base | RegisterGroup::Unspecified
                             )
                             // We include platform registers, as well as the singletons, because on RISCV, the program counter is separate from the platform_registers
                         })

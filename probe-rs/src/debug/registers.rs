@@ -15,7 +15,7 @@ pub enum RegisterGroup {
     /// Result Register
     Result,
     /// [`RegisterFile`] contains some register descriptions that are not part of an array, and may or may not have the same `RegisterId` as registers in other groups.
-    Singleton,
+    Unspecified,
 }
 
 /// The rule used to preserve the value of a register between function calls duing unwinding,
@@ -24,11 +24,11 @@ pub enum RegisterGroup {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PreserveRule {
     /// Callee-saved, a.k.a non-volatile registers, or call-preserved.
-    /// If there is DWARF unwind `RegisterRule` we will use apply it,
+    /// If there is DWARF unwind `RegisterRule` we will apply it,
     /// otherwise we assume it was untouched and preserve the current value.
     Preserve,
     /// Caller-saved, a.k.a. volatile registers, or call-clobbered.
-    /// If there is DWARF unwind `RegisterRule` we will use apply it,
+    /// If there is DWARF unwind `RegisterRule` we will apply it,
     /// otherwise we assume it was corrupted by the callee, and have a 'None' value for the register.
     Clear,
     /// Additional rules are required to determine the value of the register.
@@ -116,19 +116,19 @@ impl DebugRegisters {
                 register_file.result_registers.to_owned(),
             ),
             (
-                RegisterGroup::Singleton,
+                RegisterGroup::Unspecified,
                 [register_file.frame_pointer.to_owned()].to_vec(),
             ),
             (
-                RegisterGroup::Singleton,
+                RegisterGroup::Unspecified,
                 [register_file.program_counter.to_owned()].to_vec(),
             ),
             (
-                RegisterGroup::Singleton,
+                RegisterGroup::Unspecified,
                 [register_file.return_address.to_owned()].to_vec(),
             ),
             (
-                RegisterGroup::Singleton,
+                RegisterGroup::Unspecified,
                 [register_file.stack_pointer.to_owned()].to_vec(),
             ),
         ];
@@ -136,16 +136,22 @@ impl DebugRegisters {
         // Add additional registers required to unwind beyond the most recent signal handler.
         if let Some(psr_register) = register_file.psr {
             let mut psr = psr_register.to_owned();
-            all_registers.push((RegisterGroup::Singleton, [psr.clone()].to_vec()));
+            all_registers.push((RegisterGroup::Unspecified, [psr.clone()].to_vec()));
             psr.name = "PSR";
             // Add it a second time, so that can add the 'alias' when we populate `debug_registers`.
-            all_registers.push((RegisterGroup::Singleton, [psr].to_vec()));
+            all_registers.push((RegisterGroup::Unspecified, [psr].to_vec()));
         }
         if let Some(psp_register) = register_file.psp {
-            all_registers.push((RegisterGroup::Singleton, [psp_register.to_owned()].to_vec()));
+            all_registers.push((
+                RegisterGroup::Unspecified,
+                [psp_register.to_owned()].to_vec(),
+            ));
         }
         if let Some(msp_register) = register_file.msp {
-            all_registers.push((RegisterGroup::Singleton, [msp_register.to_owned()].to_vec()));
+            all_registers.push((
+                RegisterGroup::Unspecified,
+                [msp_register.to_owned()].to_vec(),
+            ));
         }
 
         for (register_group, register_group_members) in all_registers {
