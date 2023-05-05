@@ -1,9 +1,31 @@
 /// A memory mapped register, for instance ARM debug registers (DHCSR, etc).
 pub trait MemoryMappedRegister<T>: Clone + From<T> + Into<T> + Sized + std::fmt::Debug {
     /// The register's address in the target memory.
-    const ADDRESS: u64;
+    /// For some architectures (e.g. ARM Cortex-A) this address is offset from a base address.
+    /// For others (e.g. ARM Cortex-M, RISC-V) this address is absolute.
+    const ADDRESS_OFFSET: u64;
     /// The register's name.
     const NAME: &'static str;
+    /// Get the register's address in the memory map.
+    /// For some architectures (e.g. ARM Cortex-A) this address is offset from a base address.
+    /// For others (e.g. ARM Cortex-M, RISC-V) this address is absolute.
+    fn get_mmio_address(base_address: Option<u64>) -> u64 {
+        if let Some(base_address) = base_address {
+            if let Some(mmio_address) = base_address.checked_add(Self::ADDRESS_OFFSET) {
+                mmio_address
+            } else {
+                tracing::error!(
+                "Overflow while attempting to determine the MMIO address for register {} at offset {:#x} from address {:#x}",
+                Self::NAME,
+                Self::ADDRESS_OFFSET,
+                base_address
+            );
+                Self::ADDRESS_OFFSET
+            }
+        } else {
+            Self::ADDRESS_OFFSET
+        }
+    }
 }
 
 #[macro_export]

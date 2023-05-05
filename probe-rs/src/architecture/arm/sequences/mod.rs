@@ -319,7 +319,7 @@ fn armv8a_core_start(
 fn cortex_m_core_start(core: &mut dyn ArmProbe) -> Result<(), ArmError> {
     use crate::architecture::arm::core::armv7m::Dhcsr;
 
-    let current_dhcsr = Dhcsr(core.read_word_32(Dhcsr::ADDRESS)?);
+    let current_dhcsr = Dhcsr(core.read_word_32(Dhcsr::get_mmio_address(None))?);
 
     // Note: Manual addition for debugging, not part of the original DebugCoreStart function
     if current_dhcsr.c_debugen() {
@@ -332,7 +332,7 @@ fn cortex_m_core_start(core: &mut dyn ArmProbe) -> Result<(), ArmError> {
     dhcsr.set_c_debugen(true);
     dhcsr.enable_write();
 
-    core.write_word_32(Dhcsr::ADDRESS, dhcsr.into())?;
+    core.write_word_32(Dhcsr::get_mmio_address(None), dhcsr.into())?;
 
     Ok(())
 }
@@ -342,10 +342,10 @@ fn cortex_m_reset_catch_clear(core: &mut dyn ArmProbe) -> Result<(), ArmError> {
     use crate::architecture::arm::core::armv7m::Demcr;
 
     // Clear reset catch bit
-    let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
+    let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address(None))?);
     demcr.set_vc_corereset(false);
 
-    core.write_word_32(Demcr::ADDRESS, demcr.into())?;
+    core.write_word_32(Demcr::get_mmio_address(None), demcr.into())?;
     Ok(())
 }
 
@@ -354,13 +354,13 @@ fn cortex_m_reset_catch_set(core: &mut dyn ArmProbe) -> Result<(), ArmError> {
     use crate::architecture::arm::core::armv7m::{Demcr, Dhcsr};
 
     // Request halt after reset
-    let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
+    let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address(None))?);
     demcr.set_vc_corereset(true);
 
-    core.write_word_32(Demcr::ADDRESS, demcr.into())?;
+    core.write_word_32(Demcr::get_mmio_address(None), demcr.into())?;
 
     // Clear the status bits by reading from DHCSR
-    let _ = core.read_word_32(Dhcsr::ADDRESS)?;
+    let _ = core.read_word_32(Dhcsr::get_mmio_address(None))?;
 
     Ok(())
 }
@@ -373,12 +373,12 @@ fn cortex_m_reset_system(interface: &mut dyn ArmProbe) -> Result<(), ArmError> {
     aircr.vectkey();
     aircr.set_sysresetreq(true);
 
-    interface.write_word_32(Aircr::ADDRESS, aircr.into())?;
+    interface.write_word_32(Aircr::get_mmio_address(None), aircr.into())?;
 
     let start = Instant::now();
 
     while start.elapsed() < Duration::from_micros(50_0000) {
-        let dhcsr = match interface.read_word_32(Dhcsr::ADDRESS) {
+        let dhcsr = match interface.read_word_32(Dhcsr::get_mmio_address(None)) {
             Ok(val) => Dhcsr(val),
             // Some combinations of debug probe and target (in
             // particular, hs-probe and ATSAMD21) result in
@@ -735,11 +735,11 @@ pub trait ArmDebugSequence: Send + Sync {
             // Disable Core Debug via DHCSR
             let mut dhcsr = Dhcsr(0);
             dhcsr.enable_write();
-            memory_interface.write_word_32(Dhcsr::ADDRESS, dhcsr.0)?;
+            memory_interface.write_word_32(Dhcsr::get_mmio_address(None), dhcsr.0)?;
 
             // Disable DWT and ITM blocks, DebugMonitor handler,
             // halting debug traps, and Reset Vector Catch.
-            memory_interface.write_word_32(Demcr::ADDRESS, 0x0)?;
+            memory_interface.write_word_32(Demcr::get_mmio_address(None), 0x0)?;
         }
 
         Ok(())

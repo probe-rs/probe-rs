@@ -981,7 +981,7 @@ impl From<Dfsr> for u32 {
 }
 
 impl MemoryMappedRegister<u32> for Dfsr {
-    const ADDRESS: u64 = 0xE000_ED30;
+    const ADDRESS_OFFSET: u64 = 0xE000_ED30;
     const NAME: &'static str = "DFSR";
 }
 
