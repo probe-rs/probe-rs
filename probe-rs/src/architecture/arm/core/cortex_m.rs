@@ -49,7 +49,7 @@ impl From<Dhcsr> for u32 {
     }
 }
 
-impl MemoryMappedRegister for Dhcsr {
+impl MemoryMappedRegister<u32> for Dhcsr {
     const ADDRESS: u64 = 0xE000_EDF0;
     const NAME: &'static str = "DHCSR";
 }
@@ -75,7 +75,7 @@ impl From<Dcrsr> for u32 {
     }
 }
 
-impl MemoryMappedRegister for Dcrsr {
+impl MemoryMappedRegister<u32> for Dcrsr {
     const ADDRESS: u64 = 0xE000_EDF4;
     const NAME: &'static str = "DCRSR";
 }
@@ -95,7 +95,7 @@ impl From<Dcrdr> for u32 {
     }
 }
 
-impl MemoryMappedRegister for Dcrdr {
+impl MemoryMappedRegister<u32> for Dcrdr {
     const ADDRESS: u64 = 0xE000_EDF8;
     const NAME: &'static str = "DCRDR";
 }
@@ -126,7 +126,7 @@ impl From<Cpacr> for u32 {
     }
 }
 
-impl MemoryMappedRegister for Cpacr {
+impl MemoryMappedRegister<u32> for Cpacr {
     const ADDRESS: u64 = 0xE000_ED88;
     const NAME: &'static str = "CPACR";
 }
@@ -158,7 +158,7 @@ impl From<Mvfr0> for u32 {
     }
 }
 
-impl MemoryMappedRegister for Mvfr0 {
+impl MemoryMappedRegister<u32> for Mvfr0 {
     const ADDRESS: u64 = 0xE000_EF40;
     const NAME: &'static str = "MVFR0";
 }

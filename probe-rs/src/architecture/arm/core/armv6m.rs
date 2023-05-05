@@ -173,7 +173,7 @@ impl From<Dhcsr> for u32 {
     }
 }
 
-impl MemoryMappedRegister for Dhcsr {
+impl MemoryMappedRegister<u32> for Dhcsr {
     const ADDRESS: u64 = 0xE000_EDF0;
     const NAME: &'static str = "DHCSR";
 }
@@ -194,7 +194,7 @@ impl From<Dcrdr> for u32 {
     }
 }
 
-impl MemoryMappedRegister for Dcrdr {
+impl MemoryMappedRegister<u32> for Dcrdr {
     const ADDRESS: u64 = 0xE000_EDF8;
     const NAME: &'static str = "DCRDR";
 }
@@ -231,7 +231,7 @@ impl From<BpCtrl> for u32 {
     }
 }
 
-impl MemoryMappedRegister for BpCtrl {
+impl MemoryMappedRegister<u32> for BpCtrl {
     const ADDRESS: u64 = 0xE000_2000;
     const NAME: &'static str = "BP_CTRL";
 }
@@ -279,7 +279,7 @@ impl From<BpCompx> for u32 {
     }
 }
 
-impl MemoryMappedRegister for BpCompx {
+impl MemoryMappedRegister<u32> for BpCompx {
     const ADDRESS: u64 = 0xE000_2008;
     const NAME: &'static str = "BP_CTRL0";
 }
@@ -367,7 +367,7 @@ impl Aircr {
     }
 }
 
-impl MemoryMappedRegister for Aircr {
+impl MemoryMappedRegister<u32> for Aircr {
     const ADDRESS: u64 = 0xE000_ED0C;
     const NAME: &'static str = "AIRCR";
 }
@@ -403,7 +403,7 @@ impl From<Demcr> for u32 {
     }
 }
 
-impl MemoryMappedRegister for Demcr {
+impl MemoryMappedRegister<u32> for Demcr {
     const ADDRESS: u64 = 0xe000_edfc;
     const NAME: &'static str = "DEMCR";
 }
