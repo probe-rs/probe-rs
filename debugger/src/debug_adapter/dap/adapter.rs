@@ -1567,7 +1567,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         ) {
                             // The core is still running.
                         } else {
-                            // Some other error occured, so we have to send an error response.
+                            // Some other error occurred, so we have to send an error response.
                             return Err(wait_error.into());
                         }
                     }

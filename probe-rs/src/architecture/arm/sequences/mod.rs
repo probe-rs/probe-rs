@@ -49,8 +49,8 @@ pub enum ArmDebugSequenceError {
     #[error("Core access requries cti_base to be specified, but it is not")]
     CtiBaseNotSpecified,
 
-    /// An error occured in a debug sequence.
-    #[error("An error occured in a debug sequnce: {0}")]
+    /// An error occurred in a debug sequence.
+    #[error("An error occurred in a debug sequnce: {0}")]
     SequenceSpecific(#[from] Box<dyn Error + Send + Sync + 'static>),
 }
 
