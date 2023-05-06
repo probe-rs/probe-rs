@@ -40,8 +40,9 @@ gimli = { version = "0.27.2", default-features = false, features = [
     "read",
     "std",
 ] }
-hidapi = { version = "2.2.2", default-features = false, features = [
+hidapi = { version = "2.3.0" , default-features = false, features = [
     "linux-static-hidraw",
+    "illumos-static-libusb",
 ] }
 ihex = "3.0.0"
 jaylink = "0.3.0"
