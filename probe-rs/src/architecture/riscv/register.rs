@@ -1,53 +1,5 @@
 use crate::core::{RegisterDataType, RegisterDescription, RegisterFile, RegisterId, RegisterKind};
 
-macro_rules! data_register {
-    ($(#[$outer:meta])* $i:ident, $addr:expr, $name:expr) => {
-        $(#[$outer])*
-        #[derive(Debug, Copy, Clone)]
-        struct $i(u32);
-
-        impl DebugRegister for $i {
-            const ADDRESS: u8 = $addr;
-            const NAME: &'static str = $name;
-        }
-
-        impl From<$i> for u32 {
-            fn from(register: $i) -> Self {
-                register.0
-            }
-        }
-
-        impl From<u32> for $i {
-            fn from(value: u32) -> Self {
-                Self(value)
-            }
-        }
-    };
-
-    (pub $i:ident, $addr:expr, $name:expr) => {
-        #[derive(Debug, Copy, Clone)]
-        #[doc = concat!(stringify!($name), " register.")]
-        pub struct $i(u32);
-
-        impl DebugRegister for $i {
-            const ADDRESS: u8 = $addr;
-            const NAME: &'static str = $name;
-        }
-
-        impl From<$i> for u32 {
-            fn from(register: $i) -> Self {
-                register.0
-            }
-        }
-
-        impl From<u32> for $i {
-            fn from(value: u32) -> Self {
-                Self(value)
-            }
-        }
-    };
-}
-
 static PC: RegisterDescription = RegisterDescription {
     name: "pc",
     _kind: RegisterKind::PC,

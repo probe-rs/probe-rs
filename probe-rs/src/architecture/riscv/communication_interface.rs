@@ -12,8 +12,9 @@ use crate::{
     architecture::riscv::*,
     core::RegisterId,
     memory::valid_32bit_address,
+    memory_mapped_bitfield_register,
     probe::{CommandResult, DeferredResultIndex, JTAGAccess},
-    DebugProbeError, Error as ProbeRsError, MemoryInterface, Probe,
+    DebugProbeError, Error as ProbeRsError, MemoryInterface, MemoryMappedRegister, Probe,
 };
 use bitfield::bitfield;
 use std::{
@@ -475,15 +476,23 @@ impl RiscvCommunicationInterface {
         Ok(())
     }
 
-    pub(super) fn read_dm_register<R: DebugRegister>(&mut self) -> Result<R, RiscvError> {
-        tracing::debug!("Reading DM register '{}' at {:#010x}", R::NAME, R::ADDRESS);
+    pub(super) fn read_dm_register<R: MemoryMappedRegister<u32>>(
+        &mut self,
+    ) -> Result<R, RiscvError> {
+        tracing::debug!(
+            "Reading DM register '{}' at {:#010x}",
+            R::NAME,
+            R::get_mmio_address(None)
+        );
 
-        let register_value = self.read_dm_register_untyped(R::ADDRESS as u64)?.into();
+        let register_value = self
+            .read_dm_register_untyped(R::get_mmio_address(None))?
+            .into();
 
         tracing::debug!(
             "Read DM register '{}' at {:#010x} = {:x?}",
             R::NAME,
-            R::ADDRESS,
+            R::get_mmio_address(None),
             register_value
         );
 
@@ -503,7 +512,7 @@ impl RiscvCommunicationInterface {
             .dmi_register_access_with_timeout(0, 0, DmiOperation::NoOp, RISCV_TIMEOUT)
     }
 
-    pub(super) fn write_dm_register<R: DebugRegister>(
+    pub(super) fn write_dm_register<R: MemoryMappedRegister<u32>>(
         &mut self,
         register: R,
     ) -> Result<(), RiscvError> {
@@ -512,11 +521,11 @@ impl RiscvCommunicationInterface {
         tracing::debug!(
             "Write DM register '{}' at {:#010x} = {:x?}",
             R::NAME,
-            R::ADDRESS,
+            R::get_mmio_address(None),
             register
         );
 
-        self.write_dm_register_untyped(R::ADDRESS as u64, register.into())
+        self.write_dm_register_untyped(R::get_mmio_address(None), register.into())
     }
 
     /// Write to a DM register
@@ -1288,7 +1297,7 @@ impl RiscvCommunicationInterface {
         self.dtm.execute()
     }
 
-    pub(super) fn schedule_write_dm_register<R: DebugRegister>(
+    pub(super) fn schedule_write_dm_register<R: MemoryMappedRegister<u32>>(
         &mut self,
         register: R,
     ) -> Result<(), RiscvError> {
@@ -1297,11 +1306,11 @@ impl RiscvCommunicationInterface {
         tracing::debug!(
             "Write DM register '{}' at {:#010x} = {:x?}",
             R::NAME,
-            R::ADDRESS,
+            R::get_mmio_address(None),
             register
         );
 
-        self.schedule_write_dm_register_untyped(R::ADDRESS as u64, register.into())?;
+        self.schedule_write_dm_register_untyped(R::get_mmio_address(None), register.into())?;
         Ok(())
     }
 
@@ -1317,12 +1326,16 @@ impl RiscvCommunicationInterface {
             .schedule_dmi_register_access(address, value, DmiOperation::Write)
     }
 
-    pub(super) fn schedule_read_dm_register<R: DebugRegister>(
+    pub(super) fn schedule_read_dm_register<R: MemoryMappedRegister<u32>>(
         &mut self,
     ) -> Result<DeferredResultIndex, RiscvError> {
-        tracing::debug!("Reading DM register '{}' at {:#010x}", R::NAME, R::ADDRESS);
+        tracing::debug!(
+            "Reading DM register '{}' at {:#010x}",
+            R::NAME,
+            R::get_mmio_address(None)
+        );
 
-        self.schedule_read_dm_register_untyped(R::ADDRESS as u64)
+        self.schedule_read_dm_register_untyped(R::get_mmio_address(None))
     }
 
     /// Read from a DM register
@@ -1370,19 +1383,19 @@ pub(crate) trait LargeRegister {
 struct Sbdata {}
 
 impl LargeRegister for Sbdata {
-    const R0_ADDRESS: u8 = Sbdata0::ADDRESS;
-    const R1_ADDRESS: u8 = Sbdata1::ADDRESS;
-    const R2_ADDRESS: u8 = Sbdata2::ADDRESS;
-    const R3_ADDRESS: u8 = Sbdata3::ADDRESS;
+    const R0_ADDRESS: u8 = Sbdata0::ADDRESS_OFFSET as u8;
+    const R1_ADDRESS: u8 = Sbdata1::ADDRESS_OFFSET as u8;
+    const R2_ADDRESS: u8 = Sbdata2::ADDRESS_OFFSET as u8;
+    const R3_ADDRESS: u8 = Sbdata3::ADDRESS_OFFSET as u8;
 }
 
 struct Arg0 {}
 
 impl LargeRegister for Arg0 {
-    const R0_ADDRESS: u8 = Data0::ADDRESS;
-    const R1_ADDRESS: u8 = Data1::ADDRESS;
-    const R2_ADDRESS: u8 = Data2::ADDRESS;
-    const R3_ADDRESS: u8 = Data3::ADDRESS;
+    const R0_ADDRESS: u8 = Data0::ADDRESS_OFFSET as u8;
+    const R1_ADDRESS: u8 = Data1::ADDRESS_OFFSET as u8;
+    const R2_ADDRESS: u8 = Data2::ADDRESS_OFFSET as u8;
+    const R3_ADDRESS: u8 = Data3::ADDRESS_OFFSET as u8;
 }
 
 /// Helper trait, limited to RiscvValue no larger than 32 bits
@@ -1866,12 +1879,13 @@ enum MemoryAccessMethod {
     SystemBus,
 }
 
-bitfield! {
+memory_mapped_bitfield_register! {
     /// Abstract command register, located at address 0x17
     /// This is not for all commands, only for the ones
     /// from the debug spec.
     pub struct AccessRegisterCommand(u32);
-    impl Debug;
+    0x17, "command",
+    impl From;
     /// This is 0 to indicate Access Register Command.
     pub _, set_cmd_type: 31, 24;
     /// 2: Access the lowest 32 bits of the register.\
@@ -1908,33 +1922,11 @@ bitfield! {
     pub _, set_regno: 15, 0;
 }
 
-impl DebugRegister for AccessRegisterCommand {
-    const ADDRESS: u8 = 0x17;
-    const NAME: &'static str = "command";
-}
-
-impl From<AccessRegisterCommand> for u32 {
-    fn from(register: AccessRegisterCommand) -> Self {
-        register.0
-    }
-}
-
-impl From<u32> for AccessRegisterCommand {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-pub(super) trait DebugRegister: Into<u32> + From<u32> + std::fmt::Debug {
-    const ADDRESS: u8;
-    const NAME: &'static str;
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// System Bus Access Control and Status (see 3.12.18)
-    #[derive(Copy, Clone)]
     pub struct Sbcs(u32);
-    impl Debug;
+    0x38, "sbcs",
+    impl From;
     /// 0: The System Bus interface conforms to mainline
     /// drafts of this spec older than 1 January, 2018.\
     /// 1: The System Bus interface conforms to this version of the spec.
@@ -2004,22 +1996,12 @@ bitfield! {
     sbaccess8, _: 0;
 }
 
-impl DebugRegister for Sbcs {
-    const ADDRESS: u8 = 0x38;
-    const NAME: &'static str = "sbcs";
-}
-
-impl From<Sbcs> for u32 {
-    fn from(register: Sbcs) -> Self {
-        register.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// Abstract Command Autoexec (see 3.12.8)
-    #[derive(Copy, Clone, PartialEq, Eq)]
+    #[derive(Eq, PartialEq)]
     pub struct Abstractauto(u32);
-    impl Debug;
+    0x18, "abstractauto",
+    impl From;
     /// When a bit in this field is 1, read or write accesses to the corresponding progbuf word cause
     /// the command in command to be executed again.
     autoexecprogbuf, set_autoexecprogbuf: 31, 16;
@@ -2028,35 +2010,12 @@ bitfield! {
     autoexecdata, set_autoexecdata: 11, 0;
 }
 
-impl DebugRegister for Abstractauto {
-    const ADDRESS: u8 = 0x18;
-    const NAME: &'static str = "abstractauto";
-}
-
-impl From<Abstractauto> for u32 {
-    fn from(register: Abstractauto) -> Self {
-        register.0
-    }
-}
-
-impl From<u32> for Abstractauto {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<u32> for Sbcs {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// Abstract command register, located at address 0x17
     /// This is not for all commands, only for the ones
     /// from the debug spec. (see 3.6.1.3)
     pub struct AccessMemoryCommand(u32);
-    impl Debug;
+    0x17, "command",
     /// This is 2 to indicate Access Memory Command.
     _, set_cmd_type: 31, 24;
     /// An implementation does not have to implement
@@ -2087,11 +2046,6 @@ bitfield! {
     pub _, set_target_specific: 15, 14;
 }
 
-impl DebugRegister for AccessMemoryCommand {
-    const ADDRESS: u8 = 0x17;
-    const NAME: &'static str = "command";
-}
-
 impl From<AccessMemoryCommand> for u32 {
     fn from(register: AccessMemoryCommand) -> Self {
         let mut reg = register;
@@ -2106,17 +2060,17 @@ impl From<u32> for AccessMemoryCommand {
     }
 }
 
-data_register! { Sbaddress0, 0x39, "sbaddress0" }
-data_register! { Sbaddress1, 0x3a, "sbaddress1" }
-data_register! { Sbaddress2, 0x3b, "sbaddress2" }
-data_register! { Sbaddress3, 0x37, "sbaddress3" }
+memory_mapped_bitfield_register! { struct Sbaddress0(u32); 0x39, "sbaddress0", impl From; }
+memory_mapped_bitfield_register! { struct Sbaddress1(u32); 0x3a, "sbaddress1", impl From; }
+memory_mapped_bitfield_register! { struct Sbaddress2(u32); 0x3b, "sbaddress2", impl From; }
+memory_mapped_bitfield_register! { struct Sbaddress3(u32); 0x37, "sbaddress3", impl From; }
 
-data_register! { Sbdata0, 0x3c, "sbdata0" }
-data_register! { Sbdata1, 0x3d, "sbdata1" }
-data_register! { Sbdata2, 0x3e, "sbdata2" }
-data_register! { Sbdata3, 0x3f, "sbdata3" }
+memory_mapped_bitfield_register! { struct Sbdata0(u32); 0x3c, "sbdata0", impl From; }
+memory_mapped_bitfield_register! { struct Sbdata1(u32); 0x3d, "sbdata1", impl From; }
+memory_mapped_bitfield_register! { struct Sbdata2(u32); 0x3e, "sbdata2", impl From; }
+memory_mapped_bitfield_register! { struct Sbdata3(u32); 0x3f, "sbdata3", impl From; }
 
-data_register! { Confstrptr0, 0x19, "confstrptr0" }
-data_register! { Confstrptr1, 0x1a, "confstrptr1" }
-data_register! { Confstrptr2, 0x1b, "confstrptr2" }
-data_register! { Confstrptr3, 0x1c, "confstrptr3" }
+memory_mapped_bitfield_register! { struct Confstrptr0(u32); 0x19, "confstrptr0", impl From; }
+memory_mapped_bitfield_register! { struct Confstrptr1(u32); 0x1a, "confstrptr1", impl From; }
+memory_mapped_bitfield_register! { struct Confstrptr2(u32); 0x1b, "confstrptr2", impl From; }
+memory_mapped_bitfield_register! { struct Confstrptr3(u32); 0x1c, "confstrptr3", impl From; }

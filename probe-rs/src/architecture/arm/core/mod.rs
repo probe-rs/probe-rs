@@ -1,9 +1,9 @@
 use crate::{
     core::{
-        BreakpointCause, MemoryMappedRegister, RegisterDataType, RegisterDescription, RegisterFile,
-        RegisterId, RegisterKind, RegisterValue,
+        BreakpointCause, RegisterDataType, RegisterDescription, RegisterFile, RegisterId,
+        RegisterKind, RegisterValue,
     },
-    CoreStatus, HaltReason,
+    memory_mapped_bitfield_register, CoreStatus, HaltReason,
 };
 
 use bitfield::bitfield;
@@ -911,10 +911,9 @@ static CORTEX_M_WITH_FP_REGS: RegisterFile = RegisterFile {
     ..CORTEX_M_COMMON_REGS
 };
 
-bitfield! {
-    #[derive(Copy, Clone)]
+memory_mapped_bitfield_register! {
     pub struct Dfsr(u32);
-    impl Debug;
+    0xE000_ED30, "DFSR",
     pub external, set_external: 4;
     pub vcatch, set_vcatch: 3;
     pub dwttrap, set_dwttrap: 2;
@@ -978,11 +977,6 @@ impl From<Dfsr> for u32 {
     fn from(register: Dfsr) -> Self {
         register.0
     }
-}
-
-impl MemoryMappedRegister<u32> for Dfsr {
-    const ADDRESS_OFFSET: u64 = 0xE000_ED30;
-    const NAME: &'static str = "DFSR";
 }
 
 #[derive(Debug)]

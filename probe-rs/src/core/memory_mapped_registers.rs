@@ -15,7 +15,7 @@ pub trait MemoryMappedRegister<T>: Clone + From<T> + Into<T> + Sized + std::fmt:
                 mmio_address
             } else {
                 tracing::error!(
-                "Overflow while attempting to determine the MMIO address for register {} at offset {:#x} from address {:#x}",
+                "Overflow while attempting to determine the MMIO address for register {} at offset {:#x} from base address {:#x}",
                 Self::NAME,
                 Self::ADDRESS_OFFSET,
                 base_address
@@ -90,8 +90,8 @@ macro_rules! memory_mapped_bitfield_register {
         }
     }
 
-        impl MemoryMappedRegister<$reg_type> for $struct_name {
-            const ADDRESS: u64 = $addr;
+        impl $crate::MemoryMappedRegister<$reg_type> for $struct_name {
+            const ADDRESS_OFFSET: u64 = $addr;
             const NAME: &'static str = $reg_name;
         }
     };
