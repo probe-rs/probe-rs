@@ -28,7 +28,7 @@ goblin = { version = "0.6.1", default-features = false, features = [
 scroll = "0.11.0"
 serde_yaml = "^0.9.21"
 log = "0.4.17"
-zip = "0.6.4"
+zip = "0.6.5"
 clap = { version = "4.2", features = ["derive"] }
 colored = "2"
 base64 = "0.21.0"
