@@ -39,6 +39,6 @@ clap = { version = "4.2", features = ["derive"] }
 byte-unit = "4.0.19"
 goblin = "0.6.1"
 num-traits = "0.2.15"
-defmt-decoder = { version = "0.3.6", features = ["unstable"] }
+defmt-decoder = { version = "0.3.7", features = ["unstable"] }
 time = "0.3"
 is-terminal = "0.4.7"
