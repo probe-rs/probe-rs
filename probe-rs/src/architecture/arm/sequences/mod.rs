@@ -21,8 +21,7 @@ use std::{
 
 use probe_rs_target::CoreType;
 
-use crate::architecture::arm::core::armv7a_debug_regs::Armv7DebugRegister;
-use crate::{architecture::arm::ArmProbeInterface, core::MemoryMappedRegister, DebugProbeError};
+use crate::{architecture::arm::ArmProbeInterface, DebugProbeError, MemoryMappedRegister};
 
 use super::{
     ap::{AccessPortError, MemoryAp},
@@ -82,7 +81,7 @@ fn armv7a_reset_catch_set(
     let debug_base =
         debug_base.ok_or_else(|| ArmError::from(ArmDebugSequenceError::DebugBaseNotSpecified))?;
 
-    let address = Dbgprcr::get_mmio_address(debug_base);
+    let address = Dbgprcr::get_mmio_address(Some(debug_base));
     let mut dbgprcr = Dbgprcr(core.read_word_32(address)?);
 
     dbgprcr.set_hcwr(true);
@@ -102,7 +101,7 @@ fn armv7a_reset_catch_clear(
     let debug_base =
         debug_base.ok_or_else(|| ArmError::from(ArmDebugSequenceError::DebugBaseNotSpecified))?;
 
-    let address = Dbgprcr::get_mmio_address(debug_base);
+    let address = Dbgprcr::get_mmio_address(Some(debug_base));
     let mut dbgprcr = Dbgprcr(core.read_word_32(address)?);
 
     dbgprcr.set_hcwr(false);
@@ -122,7 +121,7 @@ fn armv7a_reset_system(
         debug_base.ok_or_else(|| ArmError::from(ArmDebugSequenceError::DebugBaseNotSpecified))?;
 
     // Request reset
-    let address = Dbgprcr::get_mmio_address(debug_base);
+    let address = Dbgprcr::get_mmio_address(Some(debug_base));
     let mut dbgprcr = Dbgprcr(interface.read_word_32(address)?);
 
     dbgprcr.set_cwrr(true);
@@ -130,7 +129,7 @@ fn armv7a_reset_system(
     interface.write_word_32(address, dbgprcr.into())?;
 
     // Wait until reset happens
-    let address = Dbgprsr::get_mmio_address(debug_base);
+    let address = Dbgprsr::get_mmio_address(Some(debug_base));
 
     loop {
         let dbgprsr = Dbgprsr(interface.read_word_32(address)?);
@@ -154,19 +153,19 @@ fn armv7a_core_start(core: &mut dyn ArmProbe, debug_base: Option<u64>) -> Result
     );
 
     // Lock OS register access to prevent race conditions
-    let address = Dbglar::get_mmio_address(debug_base);
+    let address = Dbglar::get_mmio_address(Some(debug_base));
     core.write_word_32(address, Dbglar(0).into())?;
 
     // Force write through / disable caching for debugger access
-    let address = Dbgdsccr::get_mmio_address(debug_base);
+    let address = Dbgdsccr::get_mmio_address(Some(debug_base));
     core.write_word_32(address, Dbgdsccr(0).into())?;
 
     // Disable TLB matching and updates for debugger operations
-    let address = Dbgdsmcr::get_mmio_address(debug_base);
+    let address = Dbgdsmcr::get_mmio_address(Some(debug_base));
     core.write_word_32(address, Dbgdsmcr(0).into())?;
 
     // Enable halting
-    let address = Dbgdscr::get_mmio_address(debug_base);
+    let address = Dbgdscr::get_mmio_address(Some(debug_base));
     let mut dbgdscr = Dbgdscr(core.read_word_32(address)?);
 
     if dbgdscr.hdbgen() {
@@ -185,12 +184,12 @@ fn armv8a_reset_catch_set(
     core: &mut dyn ArmProbe,
     debug_base: Option<u64>,
 ) -> Result<(), ArmError> {
-    use crate::architecture::arm::core::armv8a_debug_regs::{Armv8DebugRegister, Edecr};
+    use crate::architecture::arm::core::armv8a_debug_regs::Edecr;
 
     let debug_base =
         debug_base.ok_or_else(|| ArmError::from(ArmDebugSequenceError::DebugBaseNotSpecified))?;
 
-    let address = Edecr::get_mmio_address(debug_base);
+    let address = Edecr::get_mmio_address(Some(debug_base));
     let mut edecr = Edecr(core.read_word_32(address)?);
 
     edecr.set_rce(true);
@@ -205,12 +204,12 @@ fn armv8a_reset_catch_clear(
     core: &mut dyn ArmProbe,
     debug_base: Option<u64>,
 ) -> Result<(), ArmError> {
-    use crate::architecture::arm::core::armv8a_debug_regs::{Armv8DebugRegister, Edecr};
+    use crate::architecture::arm::core::armv8a_debug_regs::Edecr;
 
     let debug_base =
         debug_base.ok_or_else(|| ArmError::from(ArmDebugSequenceError::DebugBaseNotSpecified))?;
 
-    let address = Edecr::get_mmio_address(debug_base);
+    let address = Edecr::get_mmio_address(Some(debug_base));
     let mut edecr = Edecr(core.read_word_32(address)?);
 
     edecr.set_rce(false);
@@ -224,13 +223,13 @@ fn armv8a_reset_system(
     interface: &mut dyn ArmProbe,
     debug_base: Option<u64>,
 ) -> Result<(), ArmError> {
-    use crate::architecture::arm::core::armv8a_debug_regs::{Armv8DebugRegister, Edprcr, Edprsr};
+    use crate::architecture::arm::core::armv8a_debug_regs::{Edprcr, Edprsr};
 
     let debug_base =
         debug_base.ok_or_else(|| ArmError::from(ArmDebugSequenceError::DebugBaseNotSpecified))?;
 
     // Request reset
-    let address = Edprcr::get_mmio_address(debug_base);
+    let address = Edprcr::get_mmio_address(Some(debug_base));
     let mut edprcr = Edprcr(interface.read_word_32(address)?);
 
     edprcr.set_cwrr(true);
@@ -238,7 +237,7 @@ fn armv8a_reset_system(
     interface.write_word_32(address, edprcr.into())?;
 
     // Wait until reset happens
-    let address = Edprsr::get_mmio_address(debug_base);
+    let address = Edprsr::get_mmio_address(Some(debug_base));
 
     loop {
         let edprsr = Edprsr(interface.read_word_32(address)?);
@@ -257,7 +256,7 @@ fn armv8a_core_start(
     cti_base: Option<u64>,
 ) -> Result<(), ArmError> {
     use crate::architecture::arm::core::armv8a_debug_regs::{
-        Armv8DebugRegister, CtiControl, CtiGate, CtiOuten, Edlar, Edscr,
+        CtiControl, CtiGate, CtiOuten, Edlar, Edscr,
     };
 
     let debug_base =
@@ -271,18 +270,18 @@ fn armv8a_core_start(
     );
 
     // Lock OS register access to prevent race conditions
-    let address = Edlar::get_mmio_address(debug_base);
+    let address = Edlar::get_mmio_address(Some(debug_base));
     core.write_word_32(address, Edlar(0).into())?;
 
     // Configure CTI
     let mut cticontrol = CtiControl(0);
     cticontrol.set_glben(true);
 
-    let address = CtiControl::get_mmio_address(cti_base);
+    let address = CtiControl::get_mmio_address(Some(cti_base));
     core.write_word_32(address, cticontrol.into())?;
 
     // Gate all events by default
-    let address = CtiGate::get_mmio_address(cti_base);
+    let address = CtiGate::get_mmio_address(Some(cti_base));
     core.write_word_32(address, 0)?;
 
     // Configure output channels for halt and resume
@@ -290,18 +289,18 @@ fn armv8a_core_start(
     let mut ctiouten = CtiOuten(0);
     ctiouten.set_outen(0, 1);
 
-    let address = CtiOuten::get_mmio_address(cti_base);
+    let address = CtiOuten::get_mmio_address(Some(cti_base));
     core.write_word_32(address, ctiouten.into())?;
 
     // Channel 1 - resume requests
     let mut ctiouten = CtiOuten(0);
     ctiouten.set_outen(1, 1);
 
-    let address = CtiOuten::get_mmio_address(cti_base) + 4;
+    let address = CtiOuten::get_mmio_address(Some(cti_base)) + 4;
     core.write_word_32(address, ctiouten.into())?;
 
     // Enable halting
-    let address = Edscr::get_mmio_address(debug_base);
+    let address = Edscr::get_mmio_address(Some(debug_base));
     let mut edscr = Edscr(core.read_word_32(address)?);
 
     if edscr.hde() {

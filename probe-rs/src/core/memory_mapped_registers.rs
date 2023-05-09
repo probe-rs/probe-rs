@@ -81,7 +81,7 @@ macro_rules! memory_mapped_bitfield_register {
     ($(#[$outer:meta])* $vis_modifier:vis struct $struct_name:ident($reg_type:ty); $addr:expr, $reg_name:expr, $($rest:tt)*) => {
         // Using paste here, because as of bitfield = "0.14.0" they do not use the 'vis' specifier, and balks at being passed a visibility token.
         paste::paste!{
-        bitfield!{
+        bitfield::bitfield!{
             $(#[$outer])*
             #[doc= concat!("A [`bitfield::bitfield!`] register mapping for the register `",  $reg_name, "` located at address `", stringify!($addr), "`.")]
             #[derive(Copy, Clone)]

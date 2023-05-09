@@ -16,13 +16,12 @@ use crate::{
     probe::{CommandResult, DeferredResultIndex, JTAGAccess},
     DebugProbeError, Error as ProbeRsError, MemoryInterface, MemoryMappedRegister, Probe,
 };
-use bitfield::bitfield;
 use std::{
     collections::HashMap,
     time::{Duration, Instant},
 };
 
-/// Something error occurered when working with the RISC-V core.
+/// Some error occurered when working with the RISC-V core.
 #[derive(thiserror::Error, Debug)]
 pub enum RiscvError {
     /// An error during read/write of the DMI register happened.
