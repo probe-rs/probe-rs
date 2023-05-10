@@ -86,11 +86,11 @@ pub(crate) fn read_core_reg(memory: &mut dyn ArmProbe, addr: RegisterId) -> Resu
     dcrsr_val.set_regwnr(false); // Perform a read.
     dcrsr_val.set_regsel(addr.into()); // The address of the register to read.
 
-    memory.write_word_32(Dcrsr::get_mmio_address(None), dcrsr_val.into())?;
+    memory.write_word_32(Dcrsr::get_mmio_address(), dcrsr_val.into())?;
 
     wait_for_core_register_transfer(memory, Duration::from_millis(100))?;
 
-    let value = memory.read_word_32(Dcrdr::get_mmio_address(None))?;
+    let value = memory.read_word_32(Dcrdr::get_mmio_address())?;
 
     Ok(value)
 }
@@ -100,14 +100,14 @@ pub(crate) fn write_core_reg(
     addr: RegisterId,
     value: u32,
 ) -> Result<(), Error> {
-    memory.write_word_32(Dcrdr::get_mmio_address(None), value)?;
+    memory.write_word_32(Dcrdr::get_mmio_address(), value)?;
 
     // write the DCRSR value to select the register we want to write.
     let mut dcrsr_val = Dcrsr(0);
     dcrsr_val.set_regwnr(true); // Perform a write.
     dcrsr_val.set_regsel(addr.into()); // The address of the register to write.
 
-    memory.write_word_32(Dcrsr::get_mmio_address(None), dcrsr_val.into())?;
+    memory.write_word_32(Dcrsr::get_mmio_address(), dcrsr_val.into())?;
 
     wait_for_core_register_transfer(memory, Duration::from_millis(100))?;
 
@@ -123,7 +123,7 @@ fn wait_for_core_register_transfer(
     let start = Instant::now();
 
     while start.elapsed() < timeout {
-        let dhcsr_val = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address(None))?);
+        let dhcsr_val = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address())?);
 
         if dhcsr_val.s_regrdy() {
             return Ok(());

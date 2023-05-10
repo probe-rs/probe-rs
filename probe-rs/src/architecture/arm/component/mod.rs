@@ -375,16 +375,16 @@ pub fn remove_swv_data_trace(
 
 /// Sets TRCENA in DEMCR to begin trace generation.
 pub fn enable_tracing(core: &mut Core) -> Result<(), Error> {
-    let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address(None))?);
+    let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address())?);
     demcr.set_dwtena(true);
-    core.write_word_32(Demcr::get_mmio_address(None), demcr.into())?;
+    core.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
     Ok(())
 }
 
 /// Disables TRCENA in DEMCR to disable trace generation.
 pub fn disable_swv(core: &mut Core) -> Result<(), Error> {
-    let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address(None))?);
+    let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address())?);
     demcr.set_dwtena(false);
-    core.write_word_32(Demcr::get_mmio_address(None), demcr.into())?;
+    core.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
     Ok(())
 }

@@ -603,12 +603,12 @@ impl<'probe> Armv7m<'probe> {
     ) -> Result<Self, Error> {
         if !state.initialized() {
             // determine current state
-            let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address(None))?);
+            let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address())?);
 
             let core_state = if dhcsr.s_sleep() {
                 CoreStatus::Sleeping
             } else if dhcsr.s_halt() {
-                let dfsr = Dfsr(memory.read_word_32(Dfsr::get_mmio_address(None))?);
+                let dfsr = Dfsr(memory.read_word_32(Dfsr::get_mmio_address())?);
 
                 let reason = dfsr.halt_reason();
 
@@ -623,11 +623,10 @@ impl<'probe> Armv7m<'probe> {
             // so we clear them here to ensure that that none are set.
             let dfsr_clear = Dfsr::clear_all();
 
-            memory.write_word_32(Dfsr::get_mmio_address(None), dfsr_clear.into())?;
+            memory.write_word_32(Dfsr::get_mmio_address(), dfsr_clear.into())?;
 
             state.current_state = core_state;
-            state.fp_present =
-                Mvfr0(memory.read_word_32(Mvfr0::get_mmio_address(None))?).fp_present();
+            state.fp_present = Mvfr0(memory.read_word_32(Mvfr0::get_mmio_address())?).fp_present();
 
             state.initialize();
         }
@@ -665,7 +664,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
     }
 
     fn status(&mut self) -> Result<CoreStatus, Error> {
-        let dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address(None))?);
+        let dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
 
         if dhcsr.s_lockup() {
             tracing::error!(
@@ -689,13 +688,13 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         }
 
         if dhcsr.s_halt() {
-            let dfsr = Dfsr(self.memory.read_word_32(Dfsr::get_mmio_address(None))?);
+            let dfsr = Dfsr(self.memory.read_word_32(Dfsr::get_mmio_address())?);
 
             let reason = dfsr.halt_reason();
 
             // Clear bits from Dfsr register
             self.memory
-                .write_word_32(Dfsr::get_mmio_address(None), Dfsr::clear_all().into())?;
+                .write_word_32(Dfsr::get_mmio_address(), Dfsr::clear_all().into())?;
 
             // If the core was halted before, we cannot read the halt reason from the chip,
             // because we clear it directly after reading.
@@ -757,7 +756,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         value.enable_write();
 
         self.memory
-            .write_word_32(Dhcsr::get_mmio_address(None), value.into())?;
+            .write_word_32(Dhcsr::get_mmio_address(), value.into())?;
 
         self.wait_for_core_halted(timeout)?;
 
@@ -774,14 +773,14 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         // Before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction.
         self.step()?;
 
-        let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address(None))?);
+        let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
 
         // First disable the DHCSR->C_MASKINTS.
         if dhcsr.c_maskints() {
             dhcsr.set_c_maskints(false);
             dhcsr.enable_write();
             self.memory
-                .write_word_32(Dhcsr::get_mmio_address(None), dhcsr.into())?;
+                .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
             self.memory.flush()?;
         }
 
@@ -790,7 +789,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         dhcsr.set_c_halt(false);
         dhcsr.enable_write();
         self.memory
-            .write_word_32(Dhcsr::get_mmio_address(None), dhcsr.into())?;
+            .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
         self.memory.flush()?;
 
         // We assume that the core is running now
@@ -812,7 +811,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
             false
         };
 
-        let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address(None))?);
+        let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
 
         // Follow the rules of the ... ARMv7-M Architecture reference, C1.6 Debug System Registers - DHCSR, with respect to setting maskints
         if !dhcsr.c_debugen() {
@@ -822,7 +821,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
             dhcsr.set_c_maskints(true); // This must be reset to false when we run() again.
             dhcsr.enable_write();
             self.memory
-                .write_word_32(Dhcsr::get_mmio_address(None), dhcsr.into())?;
+                .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
             self.memory.flush()?;
         }
 
@@ -832,7 +831,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         dhcsr.set_c_halt(false);
         dhcsr.enable_write();
         self.memory
-            .write_word_32(Dhcsr::get_mmio_address(None), dhcsr.into())?;
+            .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
         self.memory.flush()?;
 
         self.wait_for_core_halted(Duration::from_millis(100))?;
@@ -850,7 +849,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
             {
                 tracing::debug!("Encountered a breakpoint instruction @ {}. We need to manually advance the program counter to the next instruction.", pc_after_step);
                 // Advance the program counter by the architecture specific byte size of the BKPT instruction.
-                pc_after_step.incremenet_address(2)?;
+                pc_after_step.increment_address(2)?;
                 self.write_core_reg(self.registers().program_counter().id, pc_after_step)?;
             }
             self.enable_breakpoints(true)?;
@@ -898,7 +897,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
     }
 
     fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
-        let raw_val = self.memory.read_word_32(FpCtrl::get_mmio_address(None))?;
+        let raw_val = self.memory.read_word_32(FpCtrl::get_mmio_address())?;
 
         let reg = FpCtrl::from(raw_val);
 
@@ -918,7 +917,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         val.set_enable(state);
 
         self.memory
-            .write_word_32(FpCtrl::get_mmio_address(None), val.into())?;
+            .write_word_32(FpCtrl::get_mmio_address(), val.into())?;
         self.memory.flush()?;
 
         self.state.hw_breakpoints_enabled = state;
@@ -937,7 +936,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
             )));
         }
 
-        let raw_val = self.memory.read_word_32(FpCtrl::get_mmio_address(None))?;
+        let raw_val = self.memory.read_word_32(FpCtrl::get_mmio_address())?;
         let ctrl_reg = FpCtrl::from(raw_val);
 
         let val: u32;
@@ -953,8 +952,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         // This is fine as FpRev1CompX and Rev2CompX are just two different
         // interpretations of the same memory region as Rev2 can handle bigger
         // address spaces than Rev1.
-        let reg_addr =
-            FpRev1CompX::get_mmio_address(None) + (bp_unit_index * size_of::<u32>()) as u64;
+        let reg_addr = FpRev1CompX::get_mmio_address() + (bp_unit_index * size_of::<u32>()) as u64;
 
         self.memory.write_word_32(reg_addr, val)?;
 
@@ -973,8 +971,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         let mut val = FpRev1CompX::from(0);
         val.set_enable(false);
 
-        let reg_addr =
-            FpRev1CompX::get_mmio_address(None) + (bp_unit_index * size_of::<u32>()) as u64;
+        let reg_addr = FpRev1CompX::get_mmio_address() + (bp_unit_index * size_of::<u32>()) as u64;
 
         self.memory.write_word_32(reg_addr, val.into())?;
 
@@ -1002,10 +999,10 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         let mut breakpoints = vec![];
         let num_hw_breakpoints = self.available_breakpoint_units()? as usize;
         { 0..num_hw_breakpoints }.try_for_each(|bp_unit_index| {
-            let raw_val = self.memory.read_word_32(FpCtrl::get_mmio_address(None))?;
+            let raw_val = self.memory.read_word_32(FpCtrl::get_mmio_address())?;
             let ctrl_reg = FpCtrl::from(raw_val);
             // FpRev1 and FpRev2 needs different decoding of the register value, but the location where we read from is the same ...
-            let reg_addr = FpRev1CompX::get_mmio_address(None) + (bp_unit_index * size_of::<u32>()) as u64;
+            let reg_addr = FpRev1CompX::get_mmio_address() + (bp_unit_index * size_of::<u32>()) as u64;
             // The raw breakpoint address as read from memory.
             let register_value = self.memory.read_word_32(reg_addr)?;
             // The breakpoint address after it has been adjusted for FpRev 1 or 2.

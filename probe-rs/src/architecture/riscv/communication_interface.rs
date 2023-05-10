@@ -481,17 +481,15 @@ impl RiscvCommunicationInterface {
         tracing::debug!(
             "Reading DM register '{}' at {:#010x}",
             R::NAME,
-            R::get_mmio_address(None)
+            R::get_mmio_address()
         );
 
-        let register_value = self
-            .read_dm_register_untyped(R::get_mmio_address(None))?
-            .into();
+        let register_value = self.read_dm_register_untyped(R::get_mmio_address())?.into();
 
         tracing::debug!(
             "Read DM register '{}' at {:#010x} = {:x?}",
             R::NAME,
-            R::get_mmio_address(None),
+            R::get_mmio_address(),
             register_value
         );
 
@@ -520,11 +518,11 @@ impl RiscvCommunicationInterface {
         tracing::debug!(
             "Write DM register '{}' at {:#010x} = {:x?}",
             R::NAME,
-            R::get_mmio_address(None),
+            R::get_mmio_address(),
             register
         );
 
-        self.write_dm_register_untyped(R::get_mmio_address(None), register.into())
+        self.write_dm_register_untyped(R::get_mmio_address(), register.into())
     }
 
     /// Write to a DM register
@@ -1305,11 +1303,11 @@ impl RiscvCommunicationInterface {
         tracing::debug!(
             "Write DM register '{}' at {:#010x} = {:x?}",
             R::NAME,
-            R::get_mmio_address(None),
+            R::get_mmio_address(),
             register
         );
 
-        self.schedule_write_dm_register_untyped(R::get_mmio_address(None), register.into())?;
+        self.schedule_write_dm_register_untyped(R::get_mmio_address(), register.into())?;
         Ok(())
     }
 
@@ -1331,10 +1329,10 @@ impl RiscvCommunicationInterface {
         tracing::debug!(
             "Reading DM register '{}' at {:#010x}",
             R::NAME,
-            R::get_mmio_address(None)
+            R::get_mmio_address()
         );
 
-        self.schedule_read_dm_register_untyped(R::get_mmio_address(None))
+        self.schedule_read_dm_register_untyped(R::get_mmio_address())
     }
 
     /// Read from a DM register

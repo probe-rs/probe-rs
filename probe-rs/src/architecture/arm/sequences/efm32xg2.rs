@@ -42,12 +42,12 @@ impl ArmDebugSequence for EFM32xG2 {
 
         if reset_vector == 0xffff_ffff {
             tracing::info!("Enable reset vector catch");
-            let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address(None))?);
+            let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address())?);
             demcr.set_vc_corereset(true);
-            core.write_word_32(Demcr::get_mmio_address(None), demcr.into())?;
+            core.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
         }
 
-        let _ = core.read_word_32(Dhcsr::get_mmio_address(None))?;
+        let _ = core.read_word_32(Dhcsr::get_mmio_address())?;
 
         Ok(())
     }
@@ -61,8 +61,8 @@ impl ArmDebugSequence for EFM32xG2 {
         core.write_word_32(0xE000_2008, 0x0)?;
         core.write_word_32(0xE000_2000, 0x2)?;
 
-        let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address(None))?);
+        let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address())?);
         demcr.set_vc_corereset(false);
-        core.write_word_32(Demcr::get_mmio_address(None), demcr.into())
+        core.write_word_32(Demcr::get_mmio_address(), demcr.into())
     }
 }

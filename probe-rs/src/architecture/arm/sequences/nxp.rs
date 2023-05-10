@@ -121,11 +121,11 @@ impl ArmDebugSequence for LPC55Sxx {
         _debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
         let mut reset_vector = 0xffff_ffff;
-        let mut demcr = Demcr(interface.read_word_32(Demcr::get_mmio_address(None))?);
+        let mut demcr = Demcr(interface.read_word_32(Demcr::get_mmio_address())?);
 
         demcr.set_vc_corereset(false);
 
-        interface.write_word_32(Demcr::get_mmio_address(None), demcr.into())?;
+        interface.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
 
         // Write some stuff
         interface.write_word_32(0x40034010, 0x00000000)?; // Program Flash Word Start Address to 0x0 to read reset vector (STARTA)
@@ -177,14 +177,14 @@ impl ArmDebugSequence for LPC55Sxx {
         if reset_vector == 0xffff_ffff {
             tracing::info!("Enable reset vector catch");
 
-            let mut demcr = Demcr(interface.read_word_32(Demcr::get_mmio_address(None))?);
+            let mut demcr = Demcr(interface.read_word_32(Demcr::get_mmio_address())?);
 
             demcr.set_vc_corereset(true);
 
-            interface.write_word_32(Demcr::get_mmio_address(None), demcr.into())?;
+            interface.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
         }
 
-        let _ = interface.read_word_32(Dhcsr::get_mmio_address(None))?;
+        let _ = interface.read_word_32(Dhcsr::get_mmio_address())?;
 
         tracing::debug!("reset_catch_set -- done");
 
@@ -200,11 +200,11 @@ impl ArmDebugSequence for LPC55Sxx {
         interface.write_word_32(0xE000_2008, 0x0)?;
         interface.write_word_32(0xE000_2000, 0x2)?;
 
-        let mut demcr = Demcr(interface.read_word_32(Demcr::get_mmio_address(None))?);
+        let mut demcr = Demcr(interface.read_word_32(Demcr::get_mmio_address())?);
 
         demcr.set_vc_corereset(false);
 
-        interface.write_word_32(Demcr::get_mmio_address(None), demcr.into())
+        interface.write_word_32(Demcr::get_mmio_address(), demcr.into())
     }
 
     fn reset_system(
@@ -217,7 +217,7 @@ impl ArmDebugSequence for LPC55Sxx {
         aircr.vectkey();
         aircr.set_sysresetreq(true);
 
-        let mut result = interface.write_word_32(Aircr::get_mmio_address(None), aircr.into());
+        let mut result = interface.write_word_32(Aircr::get_mmio_address(), aircr.into());
 
         if result.is_ok() {
             result = interface.flush();
@@ -251,7 +251,7 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmProbe) -> Result<(), ArmError> 
     tracing::info!("Polling for reset");
 
     while start.elapsed() < Duration::from_micros(50_0000) {
-        let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address(None))?);
+        let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address())?);
 
         if !dhcsr.s_reset_st() {
             timeout = false;
@@ -263,7 +263,7 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmProbe) -> Result<(), ArmError> 
         return Err(ArmError::Timeout);
     }
 
-    let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address(None))?);
+    let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address())?);
 
     if !dhcsr.s_halt() {
         let mut dhcsr = Dhcsr(0);
@@ -271,7 +271,7 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmProbe) -> Result<(), ArmError> 
         dhcsr.set_c_halt(true);
         dhcsr.set_c_debugen(true);
 
-        memory.write_word_32(Dhcsr::get_mmio_address(None), dhcsr.into())?;
+        memory.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
     }
 
     Ok(())
@@ -368,7 +368,7 @@ impl ArmDebugSequence for MIMXRT10xx {
         // Reset happens very quickly, and takes a bit. Ignore write and flush
         // errors that will occur due to the reset reaction.
         interface
-            .write_word_32(Aircr::get_mmio_address(None), aircr.into())
+            .write_word_32(Aircr::get_mmio_address(), aircr.into())
             .ok();
         interface.flush().ok();
 
@@ -377,7 +377,7 @@ impl ArmDebugSequence for MIMXRT10xx {
 
         let start = Instant::now();
         while start.elapsed() < Duration::from_micros(50_0000) {
-            let dhcsr = match interface.read_word_32(Dhcsr::get_mmio_address(None)) {
+            let dhcsr = match interface.read_word_32(Dhcsr::get_mmio_address()) {
                 Ok(val) => Dhcsr(val),
                 Err(ArmError::AccessPort {
                     source:
@@ -545,7 +545,7 @@ impl ArmDebugSequence for MIMXRT11xx {
         dhcsr.set_c_debugen(true);
         dhcsr.enable_write();
 
-        interface.write_word_32(Dhcsr::get_mmio_address(None), dhcsr.into())?;
+        interface.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
         std::thread::sleep(Duration::from_millis(100));
 
         // Initial testing showed that a SYSRESET (the default reset approach)
@@ -560,13 +560,13 @@ impl ArmDebugSequence for MIMXRT11xx {
         aircr.set_vectreset(true);
 
         interface
-            .write_word_32(Aircr::get_mmio_address(None), aircr.into())
+            .write_word_32(Aircr::get_mmio_address(), aircr.into())
             .ok();
         interface.flush().ok();
 
         std::thread::sleep(Duration::from_millis(100));
 
-        interface.read_word_32(Dhcsr::get_mmio_address(None))?;
+        interface.read_word_32(Dhcsr::get_mmio_address())?;
         Ok(())
     }
 }

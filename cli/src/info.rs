@@ -253,9 +253,9 @@ fn handle_memory_ap(
 ) -> Result<Tree<String>, anyhow::Error> {
     let component = {
         let mut memory = interface.memory_interface(access_port)?;
-        let mut demcr = Demcr(memory.read_word_32(Demcr::get_mmio_address(None))?);
+        let mut demcr = Demcr(memory.read_word_32(Demcr::get_mmio_address())?);
         demcr.set_dwtena(true);
-        memory.write_word_32(Demcr::get_mmio_address(None), demcr.into())?;
+        memory.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
         Component::try_parse(&mut *memory, base_address)?
     };
     let component_tree = coresight_component_tree(interface, component, access_port)?;

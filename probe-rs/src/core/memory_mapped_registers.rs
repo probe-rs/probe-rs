@@ -7,24 +7,20 @@ pub trait MemoryMappedRegister<T>: Clone + From<T> + Into<T> + Sized + std::fmt:
     /// The register's name.
     const NAME: &'static str;
     /// Get the register's address in the memory map.
-    /// For some architectures (e.g. ARM Cortex-A) this address is offset from a base address.
-    /// For others (e.g. ARM Cortex-M, RISC-V) this address is absolute.
-    fn get_mmio_address(base_address: Option<u64>) -> u64 {
-        if let Some(base_address) = base_address {
-            if let Some(mmio_address) = base_address.checked_add(Self::ADDRESS_OFFSET) {
-                mmio_address
-            } else {
-                tracing::error!(
-                "Overflow while attempting to determine the MMIO address for register {} at offset {:#x} from base address {:#x}",
-                Self::NAME,
-                Self::ADDRESS_OFFSET,
-                base_address
-            );
-                Self::ADDRESS_OFFSET
-            }
+    /// For architectures like ARM Cortex-A, this address is offset from a base address, which must be supplied when calling this method.
+    /// For others (e.g. ARM Cortex-M, RISC-V) where this address is a constant, please use [`MemoryMappedRegister::get_mmio_address`].
+    fn get_mmio_address_from_base(base_address: u64) -> Result<u64, anyhow::Error> {
+        if let Some(mmio_address) = base_address.checked_add(Self::ADDRESS_OFFSET) {
+            Ok(mmio_address)
         } else {
-            Self::ADDRESS_OFFSET
+            Err(anyhow::anyhow!("Overflow while attempting to determine the MMIO address for register {} at offset {:#x} from base address {:#x}", Self::NAME, Self::ADDRESS_OFFSET, base_address))
         }
+    }
+    /// Get the register's address in the memory map.
+    /// For architectures ARM Cortex-M and RISC-V, this address is constant value stored as part of [`MemoryMappedRegister::ADDRESS_OFFSET`].
+    /// For other architectures (e.g. ARM Cortex-A) where this address is offset from a base address, please use [`MemoryMappedRegister::get_mmio_address_from_base`].
+    fn get_mmio_address() -> u64 {
+        Self::ADDRESS_OFFSET
     }
 }
 

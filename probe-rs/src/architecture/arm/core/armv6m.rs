@@ -466,12 +466,12 @@ impl<'probe> Armv6m<'probe> {
     ) -> Result<Self, ArmError> {
         if !state.initialized() {
             // determine current state
-            let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address(None))?);
+            let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address())?);
 
             let core_state = if dhcsr.s_sleep() {
                 CoreStatus::Sleeping
             } else if dhcsr.s_halt() {
-                let dfsr = Dfsr(memory.read_word_32(Dfsr::get_mmio_address(None))?);
+                let dfsr = Dfsr(memory.read_word_32(Dfsr::get_mmio_address())?);
 
                 let reason = dfsr.halt_reason();
 
@@ -486,7 +486,7 @@ impl<'probe> Armv6m<'probe> {
             // so we clear them here to ensure that that none are set.
             let dfsr_clear = Dfsr::clear_all();
 
-            memory.write_word_32(Dfsr::get_mmio_address(None), dfsr_clear.into())?;
+            memory.write_word_32(Dfsr::get_mmio_address(), dfsr_clear.into())?;
 
             state.current_state = core_state;
             state.initialize();
@@ -537,7 +537,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         value.enable_write();
 
         self.memory
-            .write_word_32(Dhcsr::get_mmio_address(None), value.into())?;
+            .write_word_32(Dhcsr::get_mmio_address(), value.into())?;
 
         self.wait_for_core_halted(timeout)?;
 
@@ -560,7 +560,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         value.enable_write();
 
         self.memory
-            .write_word_32(Dhcsr::get_mmio_address(None), value.into())?;
+            .write_word_32(Dhcsr::get_mmio_address(), value.into())?;
         self.memory.flush()?;
 
         // We assume that the core is running now.
@@ -591,7 +591,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         value.enable_write();
 
         self.memory
-            .write_word_32(Dhcsr::get_mmio_address(None), value.into())?;
+            .write_word_32(Dhcsr::get_mmio_address(), value.into())?;
         self.memory.flush()?;
 
         self.wait_for_core_halted(Duration::from_millis(100))?;
@@ -609,7 +609,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
             {
                 tracing::debug!("Encountered a breakpoint instruction @ {}. We need to manually advance the program counter to the next instruction.", pc_after_step);
                 // Advance the program counter by the architecture specific byte size of the BKPT instruction.
-                pc_after_step.incremenet_address(2)?;
+                pc_after_step.increment_address(2)?;
                 self.write_core_reg(self.registers().program_counter().id, pc_after_step)?;
             }
             self.enable_breakpoints(true)?;
@@ -654,7 +654,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
     }
 
     fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
-        let result = self.memory.read_word_32(BpCtrl::get_mmio_address(None))?;
+        let result = self.memory.read_word_32(BpCtrl::get_mmio_address())?;
 
         let register = BpCtrl::from(result);
 
@@ -668,7 +668,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         value.set_enable(state);
 
         self.memory
-            .write_word_32(BpCtrl::get_mmio_address(None), value.into())?;
+            .write_word_32(BpCtrl::get_mmio_address(), value.into())?;
         self.memory.flush()?;
 
         self.state.hw_breakpoints_enabled = state;
@@ -699,7 +699,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         value.set_enable(true);
 
         let register_addr =
-            BpCompx::get_mmio_address(None) + (bp_register_index * size_of::<u32>()) as u64;
+            BpCompx::get_mmio_address() + (bp_register_index * size_of::<u32>()) as u64;
 
         self.memory.write_word_32(register_addr, value.into())?;
 
@@ -711,8 +711,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
     }
 
     fn clear_hw_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
-        let register_addr =
-            BpCompx::get_mmio_address(None) + (bp_unit_index * size_of::<u32>()) as u64;
+        let register_addr = BpCompx::get_mmio_address() + (bp_unit_index * size_of::<u32>()) as u64;
 
         let mut value = BpCompx::from(0);
         value.set_enable(false);
@@ -739,7 +738,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
     }
 
     fn status(&mut self) -> Result<crate::core::CoreStatus, Error> {
-        let dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address(None))?);
+        let dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
 
         if dhcsr.s_lockup() {
             tracing::warn!(
@@ -763,13 +762,13 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         // TODO: Handle lockup
 
         if dhcsr.s_halt() {
-            let dfsr = Dfsr(self.memory.read_word_32(Dfsr::get_mmio_address(None))?);
+            let dfsr = Dfsr(self.memory.read_word_32(Dfsr::get_mmio_address())?);
 
             let reason = dfsr.halt_reason();
 
             // Clear bits from Dfsr register
             self.memory
-                .write_word_32(Dfsr::get_mmio_address(None), Dfsr::clear_all().into())?;
+                .write_word_32(Dfsr::get_mmio_address(), Dfsr::clear_all().into())?;
 
             // If the core was halted before, we cannot read the halt reason from the chip,
             // because we clear it directly after reading.
@@ -827,8 +826,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         let mut breakpoints = vec![];
         let num_hw_breakpoints = self.available_breakpoint_units()? as usize;
         for bp_unit_index in 0..num_hw_breakpoints {
-            let reg_addr =
-                BpCompx::get_mmio_address(None) + (bp_unit_index * size_of::<u32>()) as u64;
+            let reg_addr = BpCompx::get_mmio_address() + (bp_unit_index * size_of::<u32>()) as u64;
             // The raw breakpoint address as read from memory
             let register_value = self.memory.read_word_32(reg_addr)?;
             if BpCompx::from(register_value).enable() {
