@@ -144,8 +144,8 @@ impl AlgorithmBinary {
 
         for section in sections {
             // Check if additional space is needed to ensure that the data is written to the correct location
-            if blob.len() < (section.start - addr_offset) as usize {
-                blob.resize((section.start - addr_offset) as usize, 0)
+            if blob.len() < (section.start.saturating_sub(addr_offset)) as usize {
+                blob.resize(section.start.saturating_sub(addr_offset) as usize, 0)
             }
 
             blob.extend(&section.data);
