@@ -77,7 +77,9 @@ pub fn extract_flash_algo(
     };
 
     if arch.is_none() {
-        return Err(anyhow!("Elf file is intended for unsupported machine architecture"));
+        return Err(anyhow!(
+            "Elf file is intended for unsupported machine architecture"
+        ));
     }
 
     let flash_device = extract_flash_device(&elf, &buffer).context(format!(
