@@ -128,12 +128,28 @@ impl AlgorithmBinary {
     }
 
     /// Assembles one huge binary blob as u8 values to write to RAM from the three sections.
-    pub(crate) fn blob(&self) -> Vec<u8> {
-        let mut blob = Vec::new();
+    pub(crate) fn blob(&self, arch: probe_rs_target::Architecture) -> Vec<u8> {
+        let mut blob = Vec::with_capacity(
+            (self.code_section.length + self.data_section.length + self.bss_section.length)
+                as usize,
+        );
 
-        blob.extend(&self.code_section.data);
-        blob.extend(&self.data_section.data);
-        blob.extend(&vec![0; self.bss_section.length as usize]);
+        let mut sections = [&self.code_section, &self.data_section, &self.bss_section];
+        sections.sort_by(|a, b| a.start.cmp(&b.start));
+
+        let addr_offset = match arch {
+            probe_rs_target::Architecture::Arm => 32, // The number of bytes in the ARM header
+            probe_rs_target::Architecture::Riscv => 8, // The number of bytes in the RISC-V header
+        };
+
+        for section in sections {
+            // Check if additional space is needed to ensure that the data is written to the correct location
+            if blob.len() < (section.start - addr_offset) as usize {
+                blob.resize((section.start - addr_offset) as usize, 0)
+            }
+
+            blob.extend(&section.data);
+        }
 
         blob
     }
