@@ -15,11 +15,24 @@ use anyhow::Result;
 use bitfield::bitfield;
 
 use super::cortex_m::Mvfr0;
+use super::register::{CPSR, MSPLIM_NS, MSPLIM_S, PSPLIM_NS, PSPLIM_S};
 use super::{CortexMState, Dfsr, CORTEX_M_COMMON_REGS, CORTEX_M_WITH_FP_REGS};
 use std::sync::Arc;
 use std::{
     mem::size_of,
     time::{Duration, Instant},
+};
+
+static CORTEX_V8_M_COMMON_REGS: RegisterFile = RegisterFile {
+    other: &[MSPLIM_NS, MSPLIM_S, PSPLIM_NS, PSPLIM_S, CPSR],
+
+    ..CORTEX_M_COMMON_REGS
+};
+
+static CORTEX_V8_M_WITH_FP_REGS: RegisterFile = RegisterFile {
+    other: &[MSPLIM_NS, MSPLIM_S, PSPLIM_NS, PSPLIM_S, CPSR],
+
+    ..CORTEX_M_WITH_FP_REGS
 };
 
 /// The state of a core that can be used to persist core state across calls to multiple different cores.
@@ -217,7 +230,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
             {
                 tracing::debug!("Encountered a breakpoint instruction @ {}. We need to manually advance the program counter to the next instruction.", pc_after_step);
                 // Advance the program counter by the architecture specific byte size of the BKPT instruction.
-                pc_after_step.incremenet_address(2)?;
+                pc_after_step.increment_address(2)?;
                 self.write_core_reg(self.registers().program_counter().id, pc_after_step)?;
             }
             self.enable_breakpoints(true)?;
@@ -287,9 +300,9 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
     fn registers(&self) -> &'static RegisterFile {
         if self.state.fp_present {
-            &CORTEX_M_WITH_FP_REGS
+            &CORTEX_V8_M_COMMON_REGS
         } else {
-            &CORTEX_M_COMMON_REGS
+            &CORTEX_V8_M_WITH_FP_REGS
         }
     }
 

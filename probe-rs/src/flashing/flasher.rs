@@ -1,4 +1,5 @@
-use probe_rs_target::{MemoryRegion, RawFlashAlgorithm};
+use anyhow::anyhow;
+use probe_rs_target::{CoreType, MemoryRegion, RawFlashAlgorithm};
 use tracing::Level;
 
 use super::{
@@ -6,6 +7,7 @@ use super::{
 };
 use crate::config::NvmRegion;
 use crate::memory::MemoryInterface;
+use crate::CoreStatus;
 use crate::{core::RegisterFile, session::Session, Core, InstructionSet};
 use std::time::Instant;
 use std::{fmt::Debug, time::Duration};
@@ -496,7 +498,7 @@ impl Debug for Registers {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{:08x}({:?}, {:?}, {:?}, {:?}",
+            "{:#010x}({:x?}, {:x?}, {:x?}, {:x?}",
             self.pc, self.r0, self.r1, self.r2, self.r3
         )
     }
@@ -599,7 +601,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
     }
 
     fn call_function(&mut self, registers: &Registers, init: bool) -> Result<(), FlashError> {
-        tracing::debug!("Calling routine {:?}, init={})", &registers, init);
+        tracing::debug!("Calling routine at {:?}, init={})", &registers, init);
 
         let algo = &self.flash_algorithm;
         let regs: &'static RegisterFile = self.core.registers();
@@ -621,7 +623,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
             (
                 regs.stack_pointer(),
                 if init {
-                    Some(into_reg(algo.begin_stack)?)
+                    Some(into_reg(algo.stack.start)?)
                 } else {
                     None
                 },
@@ -636,6 +638,15 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                     Some(into_reg(algo.load_address)?)
                 },
             ),
+            // ARMv8m chips are dependent on the MSPLIM register to avoid a UsageFault/HardFault
+            if self.core.core_type() == CoreType::Armv8m {
+                (
+                    regs.other_by_name("MSPLIM_S").unwrap(),
+                    Some(algo.stack.end as u32),
+                )
+            } else {
+                (regs.program_counter(), None)
+            },
         ];
 
         for (description, value) in &registers {
@@ -699,13 +710,22 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
 
         let mut timeout_ocurred = true;
         while start.elapsed() < timeout {
-            if self.core.core_halted()? {
-                timeout_ocurred = false;
-                // Once the core is halted we know for sure all RTT data is written
-                // so we can read all of it.
-                #[cfg(feature = "rtt")]
-                self.read_rtt()?;
-                break;
+            match self.core.status()? {
+                CoreStatus::Halted(_) => {
+                    timeout_ocurred = false;
+                    // Once the core is halted we know for sure all RTT data is written
+                    // so we can read all of it.
+                    #[cfg(feature = "rtt")]
+                    self.read_rtt()?;
+                    break;
+                }
+                CoreStatus::LockedUp => {
+                    // No use in looping any longer
+                    return Err(FlashError::Core(crate::Error::Other(anyhow!(
+                        "Core locked up"
+                    ))));
+                }
+                _ => {}
             }
 
             // Periodically read RTT.
@@ -716,6 +736,29 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         }
 
         if timeout_ocurred {
+            let regs = self.core.registers();
+
+            let pc = self.core.halt(Duration::from_millis(100))?.pc;
+            let sp: u32 = self.core.read_core_reg(regs.stack_pointer().id).unwrap();
+            let ra: u32 = self.core.read_core_reg(regs.return_address().id).unwrap();
+            let r0: u32 = self
+                .core
+                .read_core_reg(regs.platform_register(0).id)
+                .unwrap();
+            let r1: u32 = self
+                .core
+                .read_core_reg(regs.platform_register(1).id)
+                .unwrap();
+            let r2: u32 = self
+                .core
+                .read_core_reg(regs.platform_register(2).id)
+                .unwrap();
+            let r3: u32 = self
+                .core
+                .read_core_reg(regs.platform_register(3).id)
+                .unwrap();
+
+            tracing::error!("Register State: {{pc: {:#010x?}, sp: {:#010x?}, ret: {:#010x?}, r0: {:#010x?}, r1: {:#010x?}, r2: {:#010x?}, r3: {:#010x?}}}", pc, sp, ra, r0, r1, r2, r3);
             return Err(FlashError::Core(crate::Error::Timeout));
         }
 
@@ -750,6 +793,18 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
         let flasher = self;
         let algo = &flasher.flash_algorithm;
 
+        // This assumes that the `erase_sector_timeout` variable pertains to the largest declared sector
+        let max_sector_size = algo
+            .flash_properties
+            .sectors
+            .iter()
+            .map(|sector| sector.size)
+            .max()
+            .unwrap();
+        let num_sectors = (algo.flash_properties.address_range.end
+            - algo.flash_properties.address_range.start)
+            / max_sector_size;
+
         if let Some(pc_erase_all) = algo.pc_erase_all {
             let result = flasher
                 .call_function_and_wait(
@@ -761,7 +816,10 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
                         r3: None,
                     },
                     false,
-                    Duration::from_secs(30),
+                    Duration::from_millis(
+                        // This timeout will generally be way too large to be useful, but it gives an upper bound
+                        algo.flash_properties.erase_sector_timeout as u64 * num_sectors,
+                    ),
                 )
                 .map_err(|error| FlashError::ChipEraseFailed {
                     source: Box::new(error),

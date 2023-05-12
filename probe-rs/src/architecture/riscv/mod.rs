@@ -247,9 +247,9 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             let mut debug_pc = self.read_core_reg(RegisterId(0x7b1))?;
             // Advance the dpc by the size of the EBREAK (ebreak or c.ebreak) instruction.
             if matches!(self.instruction_set()?, InstructionSet::RV32C) {
-                debug_pc.incremenet_address(2)?;
+                debug_pc.increment_address(2)?;
             } else {
-                debug_pc.incremenet_address(4)?;
+                debug_pc.increment_address(4)?;
             }
 
             self.write_core_reg(RegisterId(0x7b1), debug_pc)?;

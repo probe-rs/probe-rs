@@ -70,6 +70,15 @@ pub fn extract_flash_algo(
     let mut algo = RawFlashAlgorithm::default();
 
     let elf = goblin::elf::Elf::parse(buffer.as_slice())?;
+    let arch = match elf.header.e_machine {
+        goblin::elf::header::EM_ARM => Some(probe_rs_target::Architecture::Arm),
+        goblin::elf::header::EM_RISCV => Some(probe_rs_target::Architecture::Riscv),
+        _ => None,
+    };
+
+    if arch.is_none() {
+        return Err(anyhow!("Elf file is intended for unsupported machine architecture"));
+    }
 
     let flash_device = extract_flash_device(&elf, &buffer).context(format!(
         "Failed to extract flash information from ELF file '{}'.",
@@ -78,12 +87,12 @@ pub fn extract_flash_algo(
 
     // Extract binary blob.
     let algorithm_binary = crate::algorithm_binary::AlgorithmBinary::new(&elf, &buffer)?;
-    algo.instructions = algorithm_binary.blob();
+    algo.instructions = algorithm_binary.blob(arch.unwrap());
 
     let code_section_offset = algorithm_binary.code_section.start;
 
     // Extract the function pointers,
-    // and check if a RTT szmbol is present.
+    // and check if a RTT symbol is present.
     for sym in elf.syms.iter() {
         let name = &elf.strtab[sym.st_name];
 
@@ -97,6 +106,7 @@ pub fn extract_flash_algo(
                 algo.rtt_location = Some(sym.st_value);
                 log::debug!("Found RTT control block at address {:#010x}", sym.st_value);
             }
+            "StackSize" => algo.stack_size = Some(sym.st_value as u32),
 
             _ => {}
         }
