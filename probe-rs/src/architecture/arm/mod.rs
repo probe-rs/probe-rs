@@ -37,13 +37,13 @@ pub use communication_interface::ArmProbeInterface;
 
 /// ARM-specific errors
 #[derive(Debug, thiserror::Error)]
-#[error("An ARM specific error occured.")]
+#[error("An ARM specific error occurred.")]
 pub enum ArmError {
     /// The operation requires a specific architecture.
     #[error("The operation requires one of the following architectures: {0:?}")]
     ArchitectureRequired(&'static [&'static str]),
-    /// A timeout occured during an operation
-    #[error("Timeout occured during operation.")]
+    /// A timeout occurred during an operation
+    #[error("Timeout occurred during operation.")]
     Timeout,
     /// The address is too large for the 32 bit address space.
     #[error("Address is not in 32 bit address space.")]
@@ -59,7 +59,7 @@ pub enum ArmError {
         /// Source of the error.
         source: AccessPortError,
     },
-    /// An error occured while using a debug port.
+    /// An error occurred while using a debug port.
     #[error("Error using a debug port.")]
     DebugPort(#[from] DebugPortError),
     /// The core has to be halted for the operation, but was not.
@@ -79,8 +79,8 @@ pub enum ArmError {
         core: Option<usize>,
     },
 
-    /// An error occured in the communication with an access port or debug port.
-    #[error("An error occured in the communication with an access port or debug port.")]
+    /// An error occurred in the communication with an access port or debug port.
+    #[error("An error occurred in the communication with an access port or debug port.")]
     Dap(#[from] DapError),
 
     /// The debug probe encountered an error.
@@ -114,13 +114,13 @@ pub enum ArmError {
     #[error("Unable to create a breakpoint at address {0:#010X}. Hardware breakpoints are only supported at addresses < 0x2000'0000.")]
     UnsupportedBreakpointAddress(u32),
 
-    /// ARMv8a specifc erorr occured.
+    /// ARMv8a specifc erorr occurred.
     Armv8a(#[from] Armv8aError),
 
-    /// ARMv7a specifc erorr occured.
+    /// ARMv7a specifc erorr occurred.
     Armv7a(#[from] Armv7aError),
 
-    /// Error occured in a debug sequence.
+    /// Error occurred in a debug sequence.
     DebugSequence(#[from] ArmDebugSequenceError),
 
     /// Tracing has not been configured.

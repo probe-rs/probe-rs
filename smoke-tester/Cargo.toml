@@ -11,7 +11,7 @@ publish = false
 [dependencies]
 probe-rs = { workspace = true }
 toml = "0.7.3"
-anyhow = "1.0.70"
+anyhow = "1.0.71"
 serde = { version = "1", features = ["derive"] }
 pretty_env_logger = "0.4.0"
 log = "0.4.17"

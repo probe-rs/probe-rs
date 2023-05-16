@@ -11,11 +11,11 @@ pub enum Error {
     /// An error in the probe driver occurred.
     #[error("An error with the usage of the probe occurred")]
     Probe(#[from] DebugProbeError),
-    /// An ARM specific error occured.
-    #[error("An ARM specific error occured.")]
+    /// An ARM specific error occurred.
+    #[error("An ARM specific error occurred.")]
     Arm(#[source] ArmError),
-    /// A RISCV specific error occured.
-    #[error("A RISCV specific error occured.")]
+    /// A RISCV specific error occurred.
+    #[error("A RISCV specific error occurred.")]
     Riscv(#[source] RiscvError),
     /// The probe could not be opened.
     #[error("Probe could not be opened: {0}")]
@@ -37,8 +37,8 @@ pub enum Error {
     Other(#[from] anyhow::Error),
 
     // TODO: Errors below should be core specific
-    /// A timeout occured during an operation
-    #[error("A timeout occured.")]
+    /// A timeout occurred during an operation
+    #[error("A timeout occurred.")]
     Timeout,
 
     /// Unaligned memory access

@@ -30,8 +30,8 @@ pub enum DebugPortError {
     #[error("A Debug Probe Error occurred")]
     DebugProbe(#[from] DebugProbeError),
 
-    /// A timeout occured.
-    #[error("Timeout occured")]
+    /// A timeout occurred.
+    #[error("Timeout occurred")]
     Timeout,
 
     /// Powerup of the target device failed.
@@ -42,8 +42,8 @@ pub enum DebugPortError {
     #[error("Debug port not supported: {0}")]
     Unsupported(String),
 
-    /// An error occured in the communication with an access port or debug port.
-    #[error("An error occured in the communication with an access port or debug port.")]
+    /// An error occurred in the communication with an access port or debug port.
+    #[error("An error occurred in the communication with an access port or debug port.")]
     Dap(#[from] DapError),
 }
 /// A typed interface to be implemented on drivers that can control a debug port.
