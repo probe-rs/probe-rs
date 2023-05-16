@@ -1,6 +1,5 @@
-use crate::RegisterValue;
-
 use super::*;
+use crate::core::RegisterValue;
 use std;
 
 /// A full stack frame with all its information contained.

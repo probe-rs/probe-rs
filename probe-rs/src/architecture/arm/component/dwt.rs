@@ -6,12 +6,10 @@
 //! See ARMv7-M architecture reference manual C1.8 for some additional
 //! info about this stuff.
 
-use bitfield::bitfield;
-
 use super::super::memory::romtable::CoresightComponent;
-use super::DebugRegister;
+use super::DebugComponentInterface;
 use crate::architecture::arm::{ArmError, ArmProbeInterface};
-use crate::Error;
+use crate::{memory_mapped_bitfield_register, Error};
 
 /// A struct representing a DWT unit on target.
 pub struct Dwt<'a> {
@@ -95,10 +93,10 @@ impl<'a> Dwt<'a> {
     }
 }
 
-bitfield! {
-    #[derive(Clone, Default)]
+memory_mapped_bitfield_register! {
     pub struct Ctrl(u32);
-    impl Debug;
+    0x00, "DWT/CTRL",
+    impl From;
     pub u8, numcomp, _: 31, 28;
     pub notrcpkt, _: 27;
     pub noexttrig, _: 26;
@@ -124,144 +122,48 @@ bitfield! {
 
 }
 
-impl From<u32> for Ctrl {
-    fn from(raw: u32) -> Self {
-        Ctrl(raw)
-    }
-}
+impl DebugComponentInterface for Ctrl {}
 
-impl From<Ctrl> for u32 {
-    fn from(raw: Ctrl) -> Self {
-        raw.0
-    }
-}
-
-impl DebugRegister for Ctrl {
-    const ADDRESS: u32 = 0x00;
-    const NAME: &'static str = "DWT/CTRL";
-}
-
-bitfield! {
-    #[derive(Clone, Default)]
+memory_mapped_bitfield_register! {
     pub struct Cyccnt(u32);
-    impl Debug;
+    0x04, "DWT/CYCCNT",
+    impl From;
 }
 
-impl From<u32> for Cyccnt {
-    fn from(raw: u32) -> Self {
-        Cyccnt(raw)
-    }
-}
-
-impl From<Cyccnt> for u32 {
-    fn from(raw: Cyccnt) -> Self {
-        raw.0
-    }
-}
-
-impl DebugRegister for Cyccnt {
-    const ADDRESS: u32 = 0x04;
-    const NAME: &'static str = "DWT/CYCCNT";
-}
-
-bitfield! {
-    #[derive(Clone, Default)]
+memory_mapped_bitfield_register! {
     pub struct Cpicnt(u32);
-    impl Debug;
+    0x08, "DWT/CPICNT",
+    impl From;
 }
 
-impl From<u32> for Cpicnt {
-    fn from(raw: u32) -> Self {
-        Cpicnt(raw)
-    }
-}
-
-impl From<Cpicnt> for u32 {
-    fn from(raw: Cpicnt) -> Self {
-        raw.0
-    }
-}
-
-impl DebugRegister for Cpicnt {
-    const ADDRESS: u32 = 0x08;
-    const NAME: &'static str = "DWT/CPICNT";
-}
-
-bitfield! {
-    #[derive(Clone, Default)]
+memory_mapped_bitfield_register! {
     pub struct Exccnt(u32);
-    impl Debug;
+    0x0C, "DWT/EXCCNT",
+    impl From;
 }
 
-impl From<u32> for Exccnt {
-    fn from(raw: u32) -> Self {
-        Exccnt(raw)
-    }
-}
-
-impl From<Exccnt> for u32 {
-    fn from(raw: Exccnt) -> Self {
-        raw.0
-    }
-}
-
-impl DebugRegister for Exccnt {
-    const ADDRESS: u32 = 0x0C;
-    const NAME: &'static str = "DWT/EXCCNT";
-}
-
-bitfield! {
-    #[derive(Clone, Default)]
+memory_mapped_bitfield_register! {
     pub struct Comp(u32);
-    impl Debug;
+    0x20, "DWT/COMP",
+    impl From;
     pub u32, comp, set_comp: 31, 0;
 }
 
-impl From<u32> for Comp {
-    fn from(raw: u32) -> Self {
-        Comp(raw)
-    }
-}
+impl DebugComponentInterface for Comp {}
 
-impl From<Comp> for u32 {
-    fn from(raw: Comp) -> Self {
-        raw.0
-    }
-}
-
-impl DebugRegister for Comp {
-    const ADDRESS: u32 = 0x20;
-    const NAME: &'static str = "DWT/COMP";
-}
-
-bitfield! {
-    #[derive(Clone, Default)]
+memory_mapped_bitfield_register! {
     pub struct Mask(u32);
-    impl Debug;
+    0x24, "DWT/MASK",
+    impl From;
     pub u32, mask, set_mask: 4, 0;
 }
 
-impl From<u32> for Mask {
-    fn from(raw: u32) -> Self {
-        Mask(raw)
-    }
-}
+impl DebugComponentInterface for Mask {}
 
-impl From<Mask> for u32 {
-    fn from(raw: Mask) -> Self {
-        raw.0
-    }
-}
-
-impl DebugRegister for Mask {
-    const ADDRESS: u32 = 0x24;
-    const NAME: &'static str = "DWT/MASK";
-}
-
-bitfield! {
-    #[derive(Clone, Default)]
+memory_mapped_bitfield_register! {
     pub struct Function(u32);
-    impl Debug;
+    0x28, "DWT/FUNCTION",
+    impl From;
     pub matched, _: 24;
     pub u8, datavaddr1, set_datavaddr1: 19, 16;
     pub u8, datavaddr0, set_datavaddr0: 15, 12;
@@ -276,19 +178,4 @@ bitfield! {
     pub function, set_function: 3, 0;
 }
 
-impl From<u32> for Function {
-    fn from(raw: u32) -> Self {
-        Function(raw)
-    }
-}
-
-impl From<Function> for u32 {
-    fn from(raw: Function) -> Self {
-        raw.0
-    }
-}
-
-impl DebugRegister for Function {
-    const ADDRESS: u32 = 0x28;
-    const NAME: &'static str = "DWT/FUNCTION";
-}
+impl DebugComponentInterface for Function {}

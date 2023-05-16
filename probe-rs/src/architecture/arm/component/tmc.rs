@@ -6,12 +6,10 @@ use core::iter::Iterator;
 
 use crate::{
     architecture::arm::{
-        component::DebugRegister, memory::CoresightComponent, ArmError, ArmProbeInterface,
+        component::DebugComponentInterface, memory::CoresightComponent, ArmError, ArmProbeInterface,
     },
-    Error,
+    memory_mapped_bitfield_register, Error,
 };
-
-use bitfield::bitfield;
 
 const REGISTER_OFFSET_RSZ: u32 = 0x04;
 const REGISTER_OFFSET_RRD: u32 = 0x10;
@@ -158,10 +156,10 @@ impl<'a> TraceMemoryController<'a> {
     }
 }
 
-bitfield! {
-    #[derive(Clone, Default)]
+memory_mapped_bitfield_register! {
     pub struct FormatFlushControl(u32);
-    impl Debug;
+    0x304, "ETF_FFCR",
+    impl From;
 
     pub drainbuf, set_drainbuf: 14;
     pub stpontrgev, set_stpontrgev: 13;
@@ -175,27 +173,12 @@ bitfield! {
     pub enft, set_enft: 0;
 }
 
-impl From<u32> for FormatFlushControl {
-    fn from(raw: u32) -> Self {
-        FormatFlushControl(raw)
-    }
-}
+impl DebugComponentInterface for FormatFlushControl {}
 
-impl From<FormatFlushControl> for u32 {
-    fn from(status: FormatFlushControl) -> u32 {
-        status.0
-    }
-}
-
-impl DebugRegister for FormatFlushControl {
-    const ADDRESS: u32 = 0x304;
-    const NAME: &'static str = "ETF_FFCR";
-}
-
-bitfield! {
-    #[derive(Clone, Default)]
+memory_mapped_bitfield_register! {
     pub struct Status(u32);
-    impl Debug;
+    0xC, "ETF_STS",
+    impl From;
 
     pub empty, _: 4;
     pub ftempty, _: 3;
@@ -204,48 +187,18 @@ bitfield! {
     pub full, _: 0;
 }
 
-impl From<u32> for Status {
-    fn from(raw: u32) -> Status {
-        Status(raw)
-    }
-}
+impl DebugComponentInterface for Status {}
 
-impl From<Status> for u32 {
-    fn from(status: Status) -> u32 {
-        status.0
-    }
-}
-
-impl DebugRegister for Status {
-    const ADDRESS: u32 = 0xC;
-    const NAME: &'static str = "ETF_STS";
-}
-
-bitfield! {
-    #[derive(Clone, Default)]
+memory_mapped_bitfield_register! {
     pub struct EtfMode(u32);
-    impl Debug;
+    0x28, "ETF_MODE",
+    impl From;
 
     // The Mode register configures the operational mode of the FIFO.
     pub u8, mode, set_mode: 1, 0;
 }
 
-impl From<u32> for EtfMode {
-    fn from(raw: u32) -> EtfMode {
-        EtfMode(raw)
-    }
-}
-
-impl From<EtfMode> for u32 {
-    fn from(mode: EtfMode) -> u32 {
-        mode.0
-    }
-}
-
-impl DebugRegister for EtfMode {
-    const ADDRESS: u32 = 0x28;
-    const NAME: &'static str = "ETF_MODE";
-}
+impl DebugComponentInterface for EtfMode {}
 
 /// Trace ID (a.k.a. ATID or trace source ID)
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]

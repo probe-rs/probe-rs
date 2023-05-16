@@ -1,28 +1,12 @@
 //! Debug register definitions
-use bitfield::bitfield;
-use std::mem::size_of;
 
-use crate::{core::BreakpointCause, HaltReason};
+use crate::{core::BreakpointCause, memory_mapped_bitfield_register, HaltReason};
 
-/// A debug register that is accessible to the external debugger
-pub trait Armv7DebugRegister {
-    /// Register number
-    const NUMBER: usize;
-
-    /// The register's name.
-    const NAME: &'static str;
-
-    /// Get the address in the memory map
-    fn get_mmio_address(base_address: u64) -> u64 {
-        base_address + (Self::NUMBER * size_of::<u32>()) as u64
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// DBGDSCR - Debug Status and Control Registers
-    #[derive(Copy, Clone)]
     pub struct Dbgdscr(u32);
-    impl Debug;
+    34, "DBGDSCR",
+    impl From;
 
     /// DBGDTRRX register full. The possible values of this bit are:
     ///
@@ -258,28 +242,11 @@ impl Dbgdscr {
     }
 }
 
-impl Armv7DebugRegister for Dbgdscr {
-    const NUMBER: usize = 34;
-    const NAME: &'static str = "DBGDSCR";
-}
-
-impl From<u32> for Dbgdscr {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Dbgdscr> for u32 {
-    fn from(value: Dbgdscr) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// DBGDIDR - Debug ID Register
-    #[derive(Copy, Clone)]
     pub struct Dbgdidr(u32);
-    impl Debug;
+    0, "DBGDIDR",
+    impl From;
 
     /// The number of watchpoints implemented. The number of implemented watchpoints is one more than the value of this field.
     pub wrps, _: 31, 28;
@@ -329,28 +296,11 @@ bitfield! {
     pub revision, _: 3, 0;
 }
 
-impl Armv7DebugRegister for Dbgdidr {
-    const NUMBER: usize = 0;
-    const NAME: &'static str = "DBGDIDR";
-}
-
-impl From<u32> for Dbgdidr {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Dbgdidr> for u32 {
-    fn from(value: Dbgdidr) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// DBGDRCR - Debug Run Control Register
-    #[derive(Copy, Clone)]
     pub struct Dbgdrcr(u32);
-    impl Debug;
+    36, "DBGDRCR",
+    impl From;
 
     /// Cancel Bus Requests Request
     pub cbrrq, set_cbrrq: 4;
@@ -368,55 +318,21 @@ bitfield! {
     pub hrq, set_hrq: 0;
 }
 
-impl Armv7DebugRegister for Dbgdrcr {
-    const NUMBER: usize = 36;
-    const NAME: &'static str = "DBGDRCR";
-}
-
-impl From<u32> for Dbgdrcr {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Dbgdrcr> for u32 {
-    fn from(value: Dbgdrcr) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// DBGBVR - Breakpoint Value Register
-    #[derive(Copy, Clone)]
     pub struct Dbgbvr(u32);
-    impl Debug;
+    64, "DBGBVR",
+    impl From;
 
     /// Breakpoint address
     pub value, set_value : 31, 0;
 }
 
-impl Armv7DebugRegister for Dbgbvr {
-    const NUMBER: usize = 64;
-    const NAME: &'static str = "DBGBVR";
-}
-
-impl From<u32> for Dbgbvr {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Dbgbvr> for u32 {
-    fn from(value: Dbgbvr) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// DBGBCR - Breakpoint Control Register
-    #[derive(Copy, Clone)]
     pub struct Dbgbcr(u32);
-    impl Debug;
+    80, "DBGBCR",
+    impl From;
 
     /// Address range mask. Whether masking is supported is implementation defined.
     pub mask, set_mask : 28, 24;
@@ -443,56 +359,22 @@ bitfield! {
     pub e, set_e: 0;
 }
 
-impl Armv7DebugRegister for Dbgbcr {
-    const NUMBER: usize = 80;
-    const NAME: &'static str = "DBGBCR";
-}
-
-impl From<u32> for Dbgbcr {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Dbgbcr> for u32 {
-    fn from(value: Dbgbcr) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// DBGLAR - Lock Access Register
-    #[derive(Copy, Clone)]
     pub struct Dbglar(u32);
-    impl Debug;
+    1004, "DBGLAR",
+    impl From;
 
     /// Lock value
     pub value, set_value : 31, 0;
 
 }
 
-impl Armv7DebugRegister for Dbglar {
-    const NUMBER: usize = 1004;
-    const NAME: &'static str = "DBGLAR";
-}
-
-impl From<u32> for Dbglar {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Dbglar> for u32 {
-    fn from(value: Dbglar) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// DBGDSCCR - State Cache Control Register
-    #[derive(Copy, Clone)]
     pub struct Dbgdsccr(u32);
-    impl Debug;
+    10, "DBGDSCCR",
+    impl From;
 
     /// Force Write-Through
     pub nwt, set_nwt: 2;
@@ -504,28 +386,11 @@ bitfield! {
     pub ndl, set_ndl: 0;
 }
 
-impl Armv7DebugRegister for Dbgdsccr {
-    const NUMBER: usize = 10;
-    const NAME: &'static str = "DBGDSCCR";
-}
-
-impl From<u32> for Dbgdsccr {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Dbgdsccr> for u32 {
-    fn from(value: Dbgdsccr) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// DBGDSMCR - Debug State MMU Control Register
-    #[derive(Copy, Clone)]
     pub struct Dbgdsmcr(u32);
-    impl Debug;
+    11, "DBGDSMCR",
+    impl From;
 
     /// Instruction TLB matching bit
     pub nium, set_nium: 3;
@@ -540,109 +405,41 @@ bitfield! {
     pub ndul, set_ndul: 0;
 }
 
-impl Armv7DebugRegister for Dbgdsmcr {
-    const NUMBER: usize = 11;
-    const NAME: &'static str = "DBGDSMCR";
-}
-
-impl From<u32> for Dbgdsmcr {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Dbgdsmcr> for u32 {
-    fn from(value: Dbgdsmcr) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// DBGITR - Instruction Transfer Register
-    #[derive(Copy, Clone)]
     pub struct Dbgitr(u32);
-    impl Debug;
+    33, "DBGITR",
+    impl From;
 
     /// Instruction value
     pub value, set_value: 31, 0;
 }
 
-impl Armv7DebugRegister for Dbgitr {
-    const NUMBER: usize = 33;
-    const NAME: &'static str = "DBGITR";
-}
-
-impl From<u32> for Dbgitr {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Dbgitr> for u32 {
-    fn from(value: Dbgitr) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// DBGDTRTX - Target to Host data transfer register
-    #[derive(Copy, Clone)]
     pub struct Dbgdtrtx(u32);
-    impl Debug;
+    35, "DBGDTRTX",
+    impl From;
 
     /// Value
     pub value, set_value: 31, 0;
 }
 
-impl Armv7DebugRegister for Dbgdtrtx {
-    const NUMBER: usize = 35;
-    const NAME: &'static str = "DBGDTRTX";
-}
-
-impl From<u32> for Dbgdtrtx {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Dbgdtrtx> for u32 {
-    fn from(value: Dbgdtrtx) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// DBGDTRRX - Host to Target data transfer register
-    #[derive(Copy, Clone)]
     pub struct Dbgdtrrx(u32);
-    impl Debug;
+    32, "DBGDTRRX",
+    impl From;
 
     /// Value
     pub value, set_value: 31, 0;
 }
 
-impl Armv7DebugRegister for Dbgdtrrx {
-    const NUMBER: usize = 32;
-    const NAME: &'static str = "DBGDTRRX";
-}
-
-impl From<u32> for Dbgdtrrx {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Dbgdtrrx> for u32 {
-    fn from(value: Dbgdtrrx) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// DBGPRCR - Powerdown and Reset Control Register
-    #[derive(Copy, Clone)]
     pub struct Dbgprcr(u32);
-    impl Debug;
+    196, "DBGPRCR",
+    impl From;
 
     /// Core powerup request
     pub corepurq, set_corepurq : 3;
@@ -657,28 +454,11 @@ bitfield! {
     pub corenpdrq, set_corenpdrq : 0;
 }
 
-impl Armv7DebugRegister for Dbgprcr {
-    const NUMBER: usize = 196;
-    const NAME: &'static str = "DBGPRCR";
-}
-
-impl From<u32> for Dbgprcr {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Dbgprcr> for u32 {
-    fn from(value: Dbgprcr) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// DBGPRSR - Powerdown and Reset Status Register
-    #[derive(Copy, Clone)]
     pub struct Dbgprsr(u32);
-    impl Debug;
+    197, "DBGPRSR",
+    impl From;
 
     /// OS Double Lock Status
     pub dlk, _ : 6;
@@ -700,21 +480,4 @@ bitfield! {
 
     /// Power up status
     pub pu, _ : 0;
-}
-
-impl Armv7DebugRegister for Dbgprsr {
-    const NUMBER: usize = 197;
-    const NAME: &'static str = "DBGPRSR";
-}
-
-impl From<u32> for Dbgprsr {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Dbgprsr> for u32 {
-    fn from(value: Dbgprsr) -> Self {
-        value.0
-    }
 }

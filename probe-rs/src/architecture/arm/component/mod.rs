@@ -49,19 +49,18 @@ pub enum ComponentError {
     NordicUnsupportedTPUICLKValue(u32),
 }
 
-/// A trait to be implemented on debug register types for debug component interfaces.
-pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug {
-    /// The address of the register.
-    const ADDRESS: u32;
-    /// The name of the register.
-    const NAME: &'static str;
-
+/// A trait to be implemented on memory mapped register types for debug component interfaces.
+pub trait DebugComponentInterface:
+    MemoryMappedRegister<u32> + Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug
+{
     /// Loads the register value from the given debug component via the given core.
     fn load(
         component: &CoresightComponent,
         interface: &mut dyn ArmProbeInterface,
     ) -> Result<Self, ArmError> {
-        Ok(Self::from(component.read_reg(interface, Self::ADDRESS)?))
+        Ok(Self::from(
+            component.read_reg(interface, Self::ADDRESS_OFFSET as u32)?,
+        ))
     }
 
     /// Loads the register value from the given component in given unit via the given core.
@@ -70,9 +69,10 @@ pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug
         interface: &mut dyn ArmProbeInterface,
         unit: usize,
     ) -> Result<Self, ArmError> {
-        Ok(Self::from(
-            component.read_reg(interface, Self::ADDRESS + 16 * unit as u32)?,
-        ))
+        Ok(Self::from(component.read_reg(
+            interface,
+            Self::ADDRESS_OFFSET as u32 + 16 * unit as u32,
+        )?))
     }
 
     /// Stores the register value to the given debug component via the given core.
@@ -81,7 +81,7 @@ pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug
         component: &CoresightComponent,
         interface: &mut dyn ArmProbeInterface,
     ) -> Result<(), ArmError> {
-        component.write_reg(interface, Self::ADDRESS, self.clone().into())
+        component.write_reg(interface, Self::ADDRESS_OFFSET as u32, self.clone().into())
     }
 
     /// Stores the register value to the given component in given unit via the given core.
@@ -93,7 +93,7 @@ pub trait DebugRegister: Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug
     ) -> Result<(), ArmError> {
         component.write_reg(
             interface,
-            Self::ADDRESS + 16 * unit as u32,
+            Self::ADDRESS_OFFSET as u32 + 16 * unit as u32,
             self.clone().into(),
         )
     }
@@ -375,16 +375,16 @@ pub fn remove_swv_data_trace(
 
 /// Sets TRCENA in DEMCR to begin trace generation.
 pub fn enable_tracing(core: &mut Core) -> Result<(), Error> {
-    let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
+    let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address())?);
     demcr.set_dwtena(true);
-    core.write_word_32(Demcr::ADDRESS, demcr.into())?;
+    core.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
     Ok(())
 }
 
 /// Disables TRCENA in DEMCR to disable trace generation.
 pub fn disable_swv(core: &mut Core) -> Result<(), Error> {
-    let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
+    let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address())?);
     demcr.set_dwtena(false);
-    core.write_word_32(Demcr::ADDRESS, demcr.into())?;
+    core.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
     Ok(())
 }

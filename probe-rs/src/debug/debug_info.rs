@@ -4,8 +4,9 @@ use super::{
 };
 use crate::{
     core::Core,
+    core::RegisterValue,
     debug::{registers, source_statement::SourceStatements},
-    MemoryInterface, RegisterValue,
+    MemoryInterface,
 };
 use ::gimli::{FileEntry, LineProgramHeader, UnwindContext};
 use gimli::{BaseAddresses, ColumnType, DebugFrame, UnwindSection};

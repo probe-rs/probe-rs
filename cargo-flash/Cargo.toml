@@ -24,9 +24,7 @@ sentry = ["probe-rs-cli-util/sentry"]
 env_logger = "0.10"
 colored = "2"
 probe-rs = { workspace = true }
-probe-rs-cli-util = { workspace = true, default-features = false, features = [
-    "anyhow",
-] }
+probe-rs-cli-util = { workspace = true, features = ["anyhow"] }
 anyhow = "1"
 bytesize = "1"
 thiserror = "1"

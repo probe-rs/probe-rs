@@ -20,9 +20,7 @@ sentry = ["probe-rs-cli-util/sentry"]
 [dependencies]
 probe-rs = { workspace = true }
 gdb-server = { workspace = true }
-probe-rs-cli-util = { workspace = true, default-features = false, features = [
-    "anyhow",
-] }
+probe-rs-cli-util = { workspace = true, features = ["anyhow"] }
 git-version = "0.3.5"
 env_logger = "0.10.0"
 log = { version = "0.4.17", features = ["serde"] }
