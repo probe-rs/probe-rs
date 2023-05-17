@@ -407,6 +407,12 @@ impl<D: StLinkUsb> StLink<D> {
         let mode = self.get_current_mode()?;
 
         match mode {
+            Mode::Jtag => self.device.write(
+                &[commands::JTAG_COMMAND, commands::JTAG_EXIT],
+                &[],
+                &mut [],
+                TIMEOUT,
+            ),
             Mode::Dfu => self.device.write(
                 &[commands::DFU_COMMAND, commands::DFU_EXIT],
                 &[],
