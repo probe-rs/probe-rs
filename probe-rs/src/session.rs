@@ -44,6 +44,7 @@ pub struct Session {
     interface: ArchitectureInterface,
     cores: Vec<(SpecificCoreState, CoreState)>,
     configured_trace_sink: Option<TraceSink>,
+    permissions: Permissions,
 }
 
 enum ArchitectureInterface {
@@ -274,6 +275,7 @@ impl Session {
                         interface: ArchitectureInterface::Arm(interface),
                         cores,
                         configured_trace_sink: None,
+                        permissions,
                     };
 
                     {
@@ -305,6 +307,7 @@ impl Session {
                         interface: ArchitectureInterface::Arm(interface),
                         cores,
                         configured_trace_sink: None,
+                        permissions,
                     }
                 }
             }
@@ -329,6 +332,7 @@ impl Session {
                     interface: ArchitectureInterface::Riscv(Box::new(interface)),
                     cores,
                     configured_trace_sink: None,
+                    permissions,
                 };
 
                 {
@@ -707,50 +711,52 @@ impl Drop for Session {
             tracing::warn!("Error during on_session_stop: {:?}", err);
         }
 
-        // Disable tracing for all Cortex-M cores.
-        if let Err(err) = { 0..self.cores.len() }.try_for_each(|i| {
-            let is_cortex_m = self.core(i)?.core_type().is_cortex_m();
-
-            if is_cortex_m {
-                self.disable_swv(i)
-            } else {
-                Ok(())
-            }
-        }) {
-            tracing::warn!("Could not stop core tracing: {:?}", err);
-        }
-
-        // Call any necessary deconfiguration/shutdown hooks.
-        if let DebugSequence::Arm(sequence) = &self.target.debug_sequence {
-            let sequence = sequence.clone();
-
+        if !self.permissions.dirty_detach() {
+            // Disable tracing for all Cortex-M cores.
             if let Err(err) = { 0..self.cores.len() }.try_for_each(|i| {
-                let core_type = self.target.cores[i].core_type;
+                let is_cortex_m = self.core(i)?.core_type().is_cortex_m();
 
-                let core_information = match &self.target.cores[i].core_access_options {
-                    CoreAccessOptions::Arm(arm) => arm,
-                    CoreAccessOptions::Riscv(_) => unreachable!(),
-                };
-
-                let ap = core_information.ap;
-                let dp = match core_information.psel {
-                    0 => DpAddress::Default,
-                    x => DpAddress::Multidrop(x),
-                };
-
-                // Note(unwrap): We already verified we're using an arm debug sequence, so we should
-                // always be able to access the arm probe interface.
-                let interface = self.get_arm_interface().unwrap();
-
-                let core_ap = MemoryAp::new(ApAddress { dp, ap });
-
-                let stop_span = tracing::debug_span!("debug_core_stop", core_id = i).entered();
-                sequence.debug_core_stop(interface, core_ap, core_type)?;
-                drop(stop_span);
-
-                Ok::<(), ArmError>(())
+                if is_cortex_m {
+                    self.disable_swv(i)
+                } else {
+                    Ok(())
+                }
             }) {
-                tracing::warn!("Failed to deconfigure device during shutdown: {err:?}");
+                tracing::warn!("Could not stop core tracing: {:?}", err);
+            }
+
+            // Call any necessary deconfiguration/shutdown hooks.
+            if let DebugSequence::Arm(sequence) = &self.target.debug_sequence {
+                let sequence = sequence.clone();
+
+                if let Err(err) = { 0..self.cores.len() }.try_for_each(|i| {
+                    let core_type = self.target.cores[i].core_type;
+
+                    let core_information = match &self.target.cores[i].core_access_options {
+                        CoreAccessOptions::Arm(arm) => arm,
+                        CoreAccessOptions::Riscv(_) => unreachable!(),
+                    };
+
+                    let ap = core_information.ap;
+                    let dp = match core_information.psel {
+                        0 => DpAddress::Default,
+                        x => DpAddress::Multidrop(x),
+                    };
+
+                    // Note(unwrap): We already verified we're using an arm debug sequence, so we should
+                    // always be able to access the arm probe interface.
+                    let interface = self.get_arm_interface().unwrap();
+
+                    let core_ap = MemoryAp::new(ApAddress { dp, ap });
+
+                    let stop_span = tracing::debug_span!("debug_core_stop", core_id = i).entered();
+                    sequence.debug_core_stop(interface, core_ap, core_type)?;
+                    drop(stop_span);
+
+                    Ok::<(), ArmError>(())
+                }) {
+                    tracing::warn!("Failed to deconfigure device during shutdown: {err:?}");
+                }
             }
         }
     }
@@ -859,6 +865,9 @@ fn get_target_from_selector(
 pub struct Permissions {
     /// When set to true, all memory of the chip may be erased or reset to factory default
     erase_all: bool,
+    /// When set to `true`, dropping the [Session] will not disable the debug
+    /// peripherals that are enabled when attaching
+    dirty_detach: bool,
 }
 
 impl Permissions {
@@ -886,6 +895,19 @@ impl Permissions {
         } else {
             Err(MissingPermissions("erase_all".into()))
         }
+    }
+
+    /// Skip disabling debug peripherals when dropping the [Session]
+    #[must_use]
+    pub fn allow_dirty_detach(self) -> Self {
+        Self {
+            dirty_detach: true,
+            ..self
+        }
+    }
+
+    fn dirty_detach(&self) -> bool {
+        self.dirty_detach
     }
 }
 
