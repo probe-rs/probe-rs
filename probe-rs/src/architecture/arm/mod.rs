@@ -75,7 +75,9 @@ pub enum ArmError {
     /// Then the correct permission needs to be given to automatically unlock the core to prevent accidental erases.
     #[error("An operation could not be performed because it lacked the permission to do so: {operation} (on core {core:?})")]
     MissingPermissions {
+        /// String which describes the operation
         operation: String,
+        /// Index of the core for which the permission was missing
         core: Option<usize>,
     },
 

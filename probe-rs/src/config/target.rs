@@ -217,6 +217,9 @@ impl Target {
         self.cores.iter().position(|c| c.name == name)
     }
 
+    /// Get the core index for a given selector
+    ///
+    /// If no core with the given selector can be found, `None` is returned.
     pub fn core_index_by_selector(&self, selector: &CoreSelector) -> Option<usize> {
         match selector {
             CoreSelector::Index(i) => {
