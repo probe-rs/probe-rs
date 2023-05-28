@@ -9,11 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - probe-rs-debugger: Show errors that happen before VSCode/DAP Client session initializion has completed (#1581).
 - probe-rs-cli-util: replace unwanted instance of `println` with `eprintln` (#1595, fixes #1593).
+- stlink: exit JTAG mode on idle to tristate debug interface (#1615).
 
 ### Added
 
 - Added support for the Olimex ARM-USB-TINY-H JTAG device (#1586).
 - Added support for propagating `CoreStatus` to the probe in use (#1588).
+- Added PY32F0xx series targets (#1619).
 
 ## [0.18.0]
 

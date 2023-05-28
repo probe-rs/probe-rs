@@ -2,18 +2,18 @@
 
 #![allow(clippy::inconsistent_digit_grouping)]
 
-use crate::core::{Architecture, BreakpointCause, CoreInterface};
-use crate::{CoreType, InstructionSet};
-use anyhow::{anyhow, Result};
-use communication_interface::{
-    AbstractCommandErrorKind, DebugRegister, RiscvCommunicationInterface, RiscvError,
+use crate::core::{
+    Architecture, BreakpointCause, CoreInformation, CoreInterface, RegisterFile, RegisterId,
+    RegisterValue,
 };
-
-use crate::core::{CoreInformation, RegisterFile, RegisterValue};
 use crate::memory::valid_32bit_address;
-use crate::{CoreStatus, Error, HaltReason, MemoryInterface, RegisterId};
-
+use crate::{
+    memory_mapped_bitfield_register, CoreStatus, CoreType, Error, HaltReason, InstructionSet,
+    MemoryInterface,
+};
+use anyhow::{anyhow, Result};
 use bitfield::bitfield;
+use communication_interface::{AbstractCommandErrorKind, RiscvCommunicationInterface, RiscvError};
 use register::RISCV_REGISTERS;
 use std::time::{Duration, Instant};
 
@@ -247,9 +247,9 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             let mut debug_pc = self.read_core_reg(RegisterId(0x7b1))?;
             // Advance the dpc by the size of the EBREAK (ebreak or c.ebreak) instruction.
             if matches!(self.instruction_set()?, InstructionSet::RV32C) {
-                debug_pc.incremenet_address(2)?;
+                debug_pc.increment_address(2)?;
             } else {
-                debug_pc.incremenet_address(4)?;
+                debug_pc.increment_address(4)?;
             }
 
             self.write_core_reg(RegisterId(0x7b1), debug_pc)?;
@@ -298,7 +298,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         Ok(CoreInformation { pc: pc.try_into()? })
     }
 
-    fn read_core_reg(&mut self, address: crate::RegisterId) -> Result<RegisterValue, crate::Error> {
+    fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, crate::Error> {
         self.read_csr(address.0)
             .map(|v| v.into())
             .map_err(|e| e.into())
@@ -306,7 +306,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
     fn write_core_reg(
         &mut self,
-        address: crate::RegisterId,
+        address: RegisterId,
         value: RegisterValue,
     ) -> Result<(), crate::Error> {
         let value: u32 = value.try_into()?;
@@ -691,13 +691,12 @@ impl RiscVState {
     }
 }
 
-bitfield! {
+memory_mapped_bitfield_register! {
     /// `dmcontrol` register, located at
     /// address 0x10
-    #[derive(Copy, Clone)]
     pub struct Dmcontrol(u32);
-    impl Debug;
-
+    0x10, "dmcontrol",
+    impl From;
     _, set_haltreq: 31;
     _, set_resumereq: 30;
     hartreset, set_hartreset: 29;
@@ -729,29 +728,13 @@ impl Dmcontrol {
     }
 }
 
-impl DebugRegister for Dmcontrol {
-    const ADDRESS: u8 = 0x10;
-    const NAME: &'static str = "dmcontrol";
-}
-
-impl From<Dmcontrol> for u32 {
-    fn from(register: Dmcontrol) -> Self {
-        register.0
-    }
-}
-
-impl From<u32> for Dmcontrol {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// Readonly `dmstatus` register.
     ///
     /// Located at address 0x11
     pub struct Dmstatus(u32);
-    impl Debug;
+    0x11, "dmstatus",
+    impl From;
     impebreak, _: 22;
     allhavereset, _: 19;
     anyhavereset, _: 18;
@@ -772,23 +755,6 @@ bitfield! {
     version, _: 3, 0;
 }
 
-impl DebugRegister for Dmstatus {
-    const ADDRESS: u8 = 0x11;
-    const NAME: &'static str = "dmstatus";
-}
-
-impl From<u32> for Dmstatus {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Dmstatus> for u32 {
-    fn from(register: Dmstatus) -> Self {
-        register.0
-    }
-}
-
 bitfield! {
         struct Dcsr(u32);
         impl Debug;
@@ -807,10 +773,11 @@ bitfield! {
         prv, set_prv: 1,0;
 }
 
-bitfield! {
+memory_mapped_bitfield_register! {
     /// Abstract Control and Status (see 3.12.6)
     pub struct Abstractcs(u32);
-    impl Debug;
+    0x16, "abstractcs",
+    impl From;
 
     progbufsize, _: 28, 24;
     busy, _: 12;
@@ -818,27 +785,11 @@ bitfield! {
     datacount, _: 3, 0;
 }
 
-impl DebugRegister for Abstractcs {
-    const ADDRESS: u8 = 0x16;
-    const NAME: &'static str = "abstractcs";
-}
-
-impl From<Abstractcs> for u32 {
-    fn from(register: Abstractcs) -> Self {
-        register.0
-    }
-}
-
-impl From<u32> for Abstractcs {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// Hart Info (see 3.12.3)
     pub struct Hartinfo(u32);
-    impl Debug;
+    0x12, "hartinfo",
+    impl From;
 
     nscratch, _: 23, 20;
     dataaccess, _: 16;
@@ -846,54 +797,37 @@ bitfield! {
     dataaddr, _: 11, 0;
 }
 
-impl DebugRegister for Hartinfo {
-    const ADDRESS: u8 = 0x12;
-    const NAME: &'static str = "hartinfo";
-}
+memory_mapped_bitfield_register! { pub struct Data0(u32); 0x04, "data0", impl From; }
+memory_mapped_bitfield_register! { pub struct Data1(u32); 0x05, "data1", impl From; }
+memory_mapped_bitfield_register! { pub struct Data2(u32); 0x06, "data2", impl From; }
+memory_mapped_bitfield_register! { pub struct Data3(u32); 0x07, "data3", impl From; }
+memory_mapped_bitfield_register! { pub struct Data4(u32); 0x08, "data4", impl From; }
+memory_mapped_bitfield_register! { pub struct Data5(u32); 0x09, "data5", impl From; }
+memory_mapped_bitfield_register! { pub struct Data6(u32); 0x0A, "data6", impl From; }
+memory_mapped_bitfield_register! { pub struct Data7(u32); 0x0B, "data7", impl From; }
+memory_mapped_bitfield_register! { pub struct Data8(u32); 0x0C, "data8", impl From; }
+memory_mapped_bitfield_register! { pub struct Data9(u32); 0x0D, "data9", impl From; }
+memory_mapped_bitfield_register! { pub struct Data10(u32); 0x0E, "data10", impl From; }
+memory_mapped_bitfield_register! { pub struct Data11(u32); 0x0f, "data11", impl From; }
 
-impl From<Hartinfo> for u32 {
-    fn from(register: Hartinfo) -> Self {
-        register.0
-    }
-}
+memory_mapped_bitfield_register! { struct Command(u32); 0x17, "command", impl From; }
 
-impl From<u32> for Hartinfo {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-data_register! { pub Data0, 0x04, "data0" }
-data_register! { pub Data1, 0x05, "data1" }
-data_register! { pub Data2, 0x06, "data2" }
-data_register! { pub Data3, 0x07, "data3" }
-data_register! { pub Data4, 0x08, "data4" }
-data_register! { pub Data5, 0x09, "data5" }
-data_register! { pub Data6, 0x0A, "data6" }
-data_register! { pub Data7, 0x0B, "data7" }
-data_register! { pub Data8, 0x0C, "data8" }
-data_register! { pub Data9, 0x0D, "data9" }
-data_register! { pub Data10, 0x0E, "data10" }
-data_register! { pub Data11, 0x0f, "data11" }
-
-data_register! { Command, 0x17, "command" }
-
-data_register! { pub Progbuf0, 0x20, "progbuf0" }
-data_register! { pub Progbuf1, 0x21, "progbuf1" }
-data_register! { pub Progbuf2, 0x22, "progbuf2" }
-data_register! { pub Progbuf3, 0x23, "progbuf3" }
-data_register! { pub Progbuf4, 0x24, "progbuf4" }
-data_register! { pub Progbuf5, 0x25, "progbuf5" }
-data_register! { pub Progbuf6, 0x26, "progbuf6" }
-data_register! { pub Progbuf7, 0x27, "progbuf7" }
-data_register! { pub Progbuf8, 0x28, "progbuf8" }
-data_register! { pub Progbuf9, 0x29, "progbuf9" }
-data_register! { pub Progbuf10, 0x2A, "progbuf10" }
-data_register! { pub Progbuf11, 0x2B, "progbuf11" }
-data_register! { pub Progbuf12, 0x2C, "progbuf12" }
-data_register! { pub Progbuf13, 0x2D, "progbuf13" }
-data_register! { pub Progbuf14, 0x2E, "progbuf14" }
-data_register! { pub Progbuf15, 0x2F, "progbuf15" }
+memory_mapped_bitfield_register! { pub struct Progbuf0(u32); 0x20, "progbuf0", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf1(u32); 0x21, "progbuf1", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf2(u32); 0x22, "progbuf2", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf3(u32); 0x23, "progbuf3", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf4(u32); 0x24, "progbuf4", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf5(u32); 0x25, "progbuf5", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf6(u32); 0x26, "progbuf6", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf7(u32); 0x27, "progbuf7", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf8(u32); 0x28, "progbuf8", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf9(u32); 0x29, "progbuf9", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf10(u32); 0x2A, "progbuf10", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf11(u32); 0x2B, "progbuf11", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf12(u32); 0x2C, "progbuf12", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf13(u32); 0x2D, "progbuf13", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf14(u32); 0x2E, "progbuf14", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf15(u32); 0x2F, "progbuf15", impl From; }
 
 bitfield! {
     struct Mcontrol(u32);

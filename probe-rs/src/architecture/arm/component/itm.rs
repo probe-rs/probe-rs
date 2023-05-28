@@ -3,9 +3,8 @@
 //! ITM = Instrumentation Trace Macrocell
 
 use super::super::memory::romtable::CoresightComponent;
-use super::DebugRegister;
 use crate::architecture::arm::ArmProbeInterface;
-use crate::Error;
+use crate::{Error, MemoryMappedRegister};
 
 pub const _ITM_PID: [u8; 8] = [0x1, 0xB0, 0x3b, 0x0, 0x4, 0x0, 0x0, 0x0];
 
@@ -77,7 +76,7 @@ impl<'a> Itm<'a> {
         // Enable all 32 channels.
         self.component.write_reg(
             self.interface,
-            register::ITM_TER::ADDRESS,
+            register::ITM_TER::ADDRESS_OFFSET as u32,
             register::ITM_TER::enable_all().into(),
         )?;
 
@@ -86,13 +85,14 @@ impl<'a> Itm<'a> {
 }
 
 mod register {
-    use super::super::DebugRegister;
+    use crate::memory_mapped_bitfield_register;
 
-    bitfield::bitfield! {
+    memory_mapped_bitfield_register! {
         #[allow(non_camel_case_types)]
-        #[derive(Copy, Clone)]
         pub struct ITM_TER(u32);
-        impl Debug;
+        0xE00,"ITM_TER",
+        impl From;
+        impl tpiu_continuous_formatting;
         pub stim31, set_stim31: 31;
         pub stim30, set_stim30: 30;
         pub stim29, set_stim29: 29;
@@ -135,22 +135,5 @@ mod register {
         pub fn disable_all() -> Self {
             Self(0x0000_0000)
         }
-    }
-
-    impl From<u32> for ITM_TER {
-        fn from(value: u32) -> Self {
-            Self(value)
-        }
-    }
-
-    impl From<ITM_TER> for u32 {
-        fn from(value: ITM_TER) -> Self {
-            value.0
-        }
-    }
-
-    impl DebugRegister for ITM_TER {
-        const ADDRESS: u32 = 0xE00;
-        const NAME: &'static str = "ITM_TER";
     }
 }

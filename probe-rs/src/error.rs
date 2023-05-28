@@ -32,6 +32,9 @@ pub enum Error {
     /// Then the correct permission needs to be given to automatically unlock the core to prevent accidental erases.
     #[error("An operation could not be performed because it lacked the permission to do so: {0}")]
     MissingPermissions(String),
+    /// An error that is not architecture specific occurred.
+    #[error("A generic core (not architecture specific) error occurred.")]
+    GenericCoreError(String),
     /// Any other error occurred.
     #[error(transparent)]
     Other(#[from] anyhow::Error),

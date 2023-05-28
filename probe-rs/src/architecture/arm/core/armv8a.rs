@@ -4,6 +4,7 @@ use crate::architecture::arm::core::armv8a_debug_regs::*;
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::architecture::arm::ArmError;
+use crate::core::memory_mapped_registers::MemoryMappedRegister;
 use crate::core::CoreInterface;
 use crate::core::{RegisterFile, RegisterValue};
 use crate::error::Error;
@@ -13,19 +14,15 @@ use crate::MemoryInterface;
 use crate::RegisterId;
 use crate::{Architecture, CoreInformation, CoreType, InstructionSet};
 use anyhow::Result;
-
-use super::armv8a_core_regs::AARCH64_REGISTER_FILE;
-use super::CortexAState;
-use super::AARCH32_FP_32_REGS;
-
-use super::instructions::aarch64;
-use super::instructions::thumb2::{
-    build_ldr, build_mcr, build_mrc, build_str, build_vmov, build_vmrs,
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
 };
 
-use std::sync::Arc;
-use std::time::Duration;
-use std::time::Instant;
+use super::armv8a_core_regs::AARCH64_REGISTER_FILE;
+use super::instructions::aarch32::{build_mcr, build_mrc, build_vmov, build_vmrs};
+use super::instructions::aarch64::{self, build_ldr, build_str};
+use super::{CortexAState, AARCH32_FP_32_REGS};
 
 /// Errors for the ARMv8-A state machine
 #[derive(thiserror::Error, Debug)]
@@ -73,7 +70,7 @@ impl<'probe> Armv8a<'probe> {
     ) -> Result<Self, Error> {
         if !state.initialized() {
             // determine current state
-            let address = Edscr::get_mmio_address(base_address);
+            let address = Edscr::get_mmio_address_from_base(base_address)?;
             let edscr = Edscr(memory.read_word_32(address)?);
 
             tracing::debug!("State when connecting: {:x?}", edscr);
@@ -125,11 +122,11 @@ impl<'probe> Armv8a<'probe> {
         }
 
         // Run instruction
-        let address = Editr::get_mmio_address(self.base_address);
+        let address = Editr::get_mmio_address_from_base(self.base_address)?;
         self.memory.write_word_32(address, final_instruction)?;
 
         // Wait for completion
-        let address = Edscr::get_mmio_address(self.base_address);
+        let address = Edscr::get_mmio_address_from_base(self.base_address)?;
         let mut edscr = Edscr(self.memory.read_word_32(address)?);
 
         while !edscr.ite() {
@@ -138,7 +135,7 @@ impl<'probe> Armv8a<'probe> {
 
         // Check if we had any aborts, if so clear them and fail
         if edscr.err() || edscr.a() {
-            let address = Edrcr::get_mmio_address(self.base_address);
+            let address = Edrcr::get_mmio_address_from_base(self.base_address)?;
             let mut edrcr = Edrcr(0);
             edrcr.set_cse(true);
 
@@ -157,12 +154,12 @@ impl<'probe> Armv8a<'probe> {
 
         // Wait for TXfull
         while !edscr.txfull() {
-            let address = Edscr::get_mmio_address(self.base_address);
+            let address = Edscr::get_mmio_address_from_base(self.base_address)?;
             edscr = Edscr(self.memory.read_word_32(address)?);
         }
 
         // Read result
-        let address = Dbgdtrtx::get_mmio_address(self.base_address);
+        let address = Dbgdtrtx::get_mmio_address_from_base(self.base_address)?;
         let result = self.memory.read_word_32(address)?;
 
         Ok(result)
@@ -175,15 +172,15 @@ impl<'probe> Armv8a<'probe> {
 
         // Wait for TXfull
         while !edscr.txfull() {
-            let address = Edscr::get_mmio_address(self.base_address);
+            let address = Edscr::get_mmio_address_from_base(self.base_address)?;
             edscr = Edscr(self.memory.read_word_32(address)?);
         }
 
         // Read result
-        let address = Dbgdtrrx::get_mmio_address(self.base_address);
+        let address = Dbgdtrrx::get_mmio_address_from_base(self.base_address)?;
         let mut result: u64 = (self.memory.read_word_32(address)? as u64) << 32;
 
-        let address = Dbgdtrtx::get_mmio_address(self.base_address);
+        let address = Dbgdtrtx::get_mmio_address_from_base(self.base_address)?;
         result |= self.memory.read_word_32(address)? as u64;
 
         Ok(result)
@@ -195,11 +192,11 @@ impl<'probe> Armv8a<'probe> {
         value: u32,
     ) -> Result<(), Error> {
         // Move value
-        let address = Dbgdtrrx::get_mmio_address(self.base_address);
+        let address = Dbgdtrrx::get_mmio_address_from_base(self.base_address)?;
         self.memory.write_word_32(address, value)?;
 
         // Wait for RXfull
-        let address = Edscr::get_mmio_address(self.base_address);
+        let address = Edscr::get_mmio_address_from_base(self.base_address)?;
         let mut edscr = Edscr(self.memory.read_word_32(address)?);
 
         while !edscr.rxfull() {
@@ -221,14 +218,14 @@ impl<'probe> Armv8a<'probe> {
         let high_word = (value >> 32) as u32;
         let low_word = (value & 0xFFFF_FFFF) as u32;
 
-        let address = Dbgdtrtx::get_mmio_address(self.base_address);
+        let address = Dbgdtrtx::get_mmio_address_from_base(self.base_address)?;
         self.memory.write_word_32(address, high_word)?;
 
-        let address = Dbgdtrrx::get_mmio_address(self.base_address);
+        let address = Dbgdtrrx::get_mmio_address_from_base(self.base_address)?;
         self.memory.write_word_32(address, low_word)?;
 
         // Wait for RXfull
-        let address = Edscr::get_mmio_address(self.base_address);
+        let address = Edscr::get_mmio_address_from_base(self.base_address)?;
         let mut edscr = Edscr(self.memory.read_word_32(address)?);
 
         while !edscr.rxfull() {
@@ -402,11 +399,11 @@ impl<'probe> Armv8a<'probe> {
         let mut ack = CtiIntack(0);
         ack.set_ack(0, 1);
 
-        let address = CtiIntack::get_mmio_address(self.cti_address);
+        let address = CtiIntack::get_mmio_address_from_base(self.cti_address)?;
         self.memory.write_word_32(address, ack.into())?;
 
         loop {
-            let address = CtiTrigoutstatus::get_mmio_address(self.cti_address);
+            let address = CtiTrigoutstatus::get_mmio_address_from_base(self.cti_address)?;
             let trig_status = CtiTrigoutstatus(self.memory.read_word_32(address)?);
 
             if trig_status.status(0) == 0 {
@@ -725,7 +722,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         // Wait until halted state is active again.
         let start = Instant::now();
 
-        let address = Edscr::get_mmio_address(self.base_address);
+        let address = Edscr::get_mmio_address_from_base(self.base_address)?;
 
         while start.elapsed() < timeout {
             let edscr = Edscr(self.memory.read_word_32(address)?);
@@ -738,7 +735,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
     }
 
     fn core_halted(&mut self) -> Result<bool, Error> {
-        let address = Edscr::get_mmio_address(self.base_address);
+        let address = Edscr::get_mmio_address_from_base(self.base_address)?;
         let edscr = Edscr(self.memory.read_word_32(address)?);
 
         Ok(edscr.halted())
@@ -750,14 +747,14 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
             let mut cti_gate = CtiGate(0);
             cti_gate.set_en(0, 1);
 
-            let address = CtiGate::get_mmio_address(self.cti_address);
+            let address = CtiGate::get_mmio_address_from_base(self.cti_address)?;
             self.memory.write_word_32(address, cti_gate.into())?;
 
             // Pulse it
             let mut pulse = CtiApppulse(0);
             pulse.set_apppulse(0, 1);
 
-            let address = CtiApppulse::get_mmio_address(self.cti_address);
+            let address = CtiApppulse::get_mmio_address_from_base(self.cti_address)?;
             self.memory.write_word_32(address, pulse.into())?;
 
             // Wait for halt
@@ -773,7 +770,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         // Gate halt channel
         let cti_gate = CtiGate(0);
 
-        let address = CtiGate::get_mmio_address(self.cti_address);
+        let address = CtiGate::get_mmio_address_from_base(self.cti_address)?;
         self.memory.write_word_32(address, cti_gate.into())?;
 
         // try to read the program counter
@@ -799,18 +796,18 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         let mut cti_gate = CtiGate(0);
         cti_gate.set_en(1, 1);
 
-        let address = CtiGate::get_mmio_address(self.cti_address);
+        let address = CtiGate::get_mmio_address_from_base(self.cti_address)?;
         self.memory.write_word_32(address, cti_gate.into())?;
 
         // Pulse it
         let mut pulse = CtiApppulse(0);
         pulse.set_apppulse(1, 1);
 
-        let address = CtiApppulse::get_mmio_address(self.cti_address);
+        let address = CtiApppulse::get_mmio_address_from_base(self.cti_address)?;
         self.memory.write_word_32(address, pulse.into())?;
 
         // Wait for ack
-        let address = Edprsr::get_mmio_address(self.base_address);
+        let address = Edprsr::get_mmio_address_from_base(self.base_address)?;
 
         loop {
             let edprsr = Edprsr(self.memory.read_word_32(address)?);
@@ -826,7 +823,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         // Gate restart channel
         let cti_gate = CtiGate(0);
 
-        let address = CtiGate::get_mmio_address(self.cti_address);
+        let address = CtiGate::get_mmio_address_from_base(self.cti_address)?;
         self.memory.write_word_32(address, cti_gate.into())?;
 
         Ok(())
@@ -883,7 +880,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
         // Load EDECR, set SS bit for step mode
-        let edecr_address = Edecr::get_mmio_address(self.base_address);
+        let edecr_address = Edecr::get_mmio_address_from_base(self.base_address)?;
         let mut edecr = Edecr(self.memory.read_word_32(edecr_address)?);
 
         edecr.set_ss(true);
@@ -949,7 +946,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
 
     fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
         if self.num_breakpoints.is_none() {
-            let address = Eddfr::get_mmio_address(self.base_address);
+            let address = Eddfr::get_mmio_address_from_base(self.base_address)?;
             let eddfr = Eddfr(self.memory.read_word_32(address)?);
 
             self.num_breakpoints = Some(eddfr.brps() + 1);
@@ -964,9 +961,9 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
 
     fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u64) -> Result<(), Error> {
         let bp_value_addr =
-            Dbgbvr::get_mmio_address(self.base_address) + (bp_unit_index * 16) as u64;
+            Dbgbvr::get_mmio_address_from_base(self.base_address)? + (bp_unit_index * 16) as u64;
         let bp_control_addr =
-            Dbgbcr::get_mmio_address(self.base_address) + (bp_unit_index * 16) as u64;
+            Dbgbcr::get_mmio_address_from_base(self.base_address)? + (bp_unit_index * 16) as u64;
         let mut bp_control = Dbgbcr(0);
 
         // Breakpoint type - address match
@@ -1000,9 +997,9 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
 
     fn clear_hw_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
         let bp_value_addr =
-            Dbgbvr::get_mmio_address(self.base_address) + (bp_unit_index * 16) as u64;
+            Dbgbvr::get_mmio_address_from_base(self.base_address)? + (bp_unit_index * 16) as u64;
         let bp_control_addr =
-            Dbgbcr::get_mmio_address(self.base_address) + (bp_unit_index * 16) as u64;
+            Dbgbcr::get_mmio_address_from_base(self.base_address)? + (bp_unit_index * 16) as u64;
 
         self.memory.write_word_32(bp_value_addr, 0)?;
         self.memory.write_word_32(bp_value_addr + 4, 0)?;
@@ -1039,7 +1036,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
 
     fn status(&mut self) -> Result<crate::core::CoreStatus, Error> {
         // determine current state
-        let address = Edscr::get_mmio_address(self.base_address);
+        let address = Edscr::get_mmio_address_from_base(self.base_address)?;
         let edscr = Edscr(self.memory.read_word_32(address)?);
 
         if edscr.halted() {
@@ -1066,13 +1063,13 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         let num_hw_breakpoints = self.available_breakpoint_units()? as usize;
 
         for bp_unit_index in 0..num_hw_breakpoints {
-            let bp_value_addr =
-                Dbgbvr::get_mmio_address(self.base_address) + (bp_unit_index * 16) as u64;
+            let bp_value_addr = Dbgbvr::get_mmio_address_from_base(self.base_address)?
+                + (bp_unit_index * 16) as u64;
             let mut bp_value = self.memory.read_word_32(bp_value_addr)? as u64;
             bp_value |= (self.memory.read_word_32(bp_value_addr + 4)? as u64) << 32;
 
-            let bp_control_addr =
-                Dbgbcr::get_mmio_address(self.base_address) + (bp_unit_index * 16) as u64;
+            let bp_control_addr = Dbgbcr::get_mmio_address_from_base(self.base_address)?
+                + (bp_unit_index * 16) as u64;
             let bp_control = Dbgbcr(self.memory.read_word_32(bp_control_addr)?);
 
             if bp_control.e() {
@@ -1424,37 +1421,52 @@ mod test {
         if probe.is_64_bit {
             edscr.set_rw(0b1111);
         }
-        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+        probe.expected_read(
+            Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            edscr.into(),
+        );
     }
 
     fn add_read_reg_expectations(probe: &mut MockProbe, reg: u16, value: u32) {
         probe.expected_write(
-            Editr::get_mmio_address(TEST_BASE_ADDRESS),
+            Editr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
             prep_instr_for_itr_32(build_mcr(14, 0, reg, 0, 5, 0)),
         );
         let mut edscr = Edscr(0);
         edscr.set_ite(true);
         edscr.set_txfull(true);
 
-        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
-        probe.expected_read(Dbgdtrtx::get_mmio_address(TEST_BASE_ADDRESS), value);
+        probe.expected_read(
+            Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            edscr.into(),
+        );
+        probe.expected_read(
+            Dbgdtrtx::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            value,
+        );
     }
 
     fn add_read_reg_64_expectations(probe: &mut MockProbe, reg: u16, value: u64) {
         probe.expected_write(
-            Editr::get_mmio_address(TEST_BASE_ADDRESS),
+            Editr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
             aarch64::build_msr(2, 3, 0, 4, 0, reg),
         );
         let mut edscr = Edscr(0);
         edscr.set_ite(true);
         edscr.set_txfull(true);
 
-        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
         probe.expected_read(
-            Dbgdtrrx::get_mmio_address(TEST_BASE_ADDRESS),
+            Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            edscr.into(),
+        );
+        probe.expected_read(
+            Dbgdtrrx::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
             (value >> 32) as u32,
         );
-        probe.expected_read(Dbgdtrtx::get_mmio_address(TEST_BASE_ADDRESS), value as u32);
+        probe.expected_read(
+            Dbgdtrtx::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            value as u32,
+        );
     }
 
     fn add_read_pc_expectations(probe: &mut MockProbe, value: u32) {
@@ -1463,10 +1475,13 @@ mod test {
         edscr.set_txfull(true);
 
         probe.expected_write(
-            Editr::get_mmio_address(TEST_BASE_ADDRESS),
+            Editr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
             prep_instr_for_itr_32(build_mrc(15, 3, 0, 4, 5, 1)),
         );
-        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+        probe.expected_read(
+            Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            edscr.into(),
+        );
         add_read_reg_expectations(probe, 0, value);
     }
 
@@ -1476,10 +1491,13 @@ mod test {
         edscr.set_txfull(true);
 
         probe.expected_write(
-            Editr::get_mmio_address(TEST_BASE_ADDRESS),
+            Editr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
             aarch64::build_mrs(3, 3, 4, 5, 1, 0),
         );
-        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+        probe.expected_read(
+            Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            edscr.into(),
+        );
         add_read_reg_64_expectations(probe, 0, value);
     }
 
@@ -1489,10 +1507,13 @@ mod test {
         edscr.set_txfull(true);
 
         probe.expected_write(
-            Editr::get_mmio_address(TEST_BASE_ADDRESS),
+            Editr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
             prep_instr_for_itr_32(build_mrc(15, 3, 0, 4, 5, 0)),
         );
-        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+        probe.expected_read(
+            Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            edscr.into(),
+        );
         add_read_reg_expectations(probe, 0, value);
     }
 
@@ -1502,10 +1523,13 @@ mod test {
         edscr.set_txfull(true);
 
         probe.expected_write(
-            Editr::get_mmio_address(TEST_BASE_ADDRESS),
+            Editr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
             aarch64::build_mrs(3, 3, 4, 5, 0, 0),
         );
-        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+        probe.expected_read(
+            Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            edscr.into(),
+        );
         add_read_reg_64_expectations(probe, 0, value.into());
     }
 
@@ -1513,13 +1537,16 @@ mod test {
         let mut cti_gate = CtiGate(0);
         cti_gate.set_en(0, 1);
 
-        probe.expected_write(CtiGate::get_mmio_address(TEST_CTI_ADDRESS), cti_gate.into());
+        probe.expected_write(
+            CtiGate::get_mmio_address_from_base(TEST_CTI_ADDRESS).unwrap(),
+            cti_gate.into(),
+        );
 
         let mut pulse = CtiApppulse(0);
         pulse.set_apppulse(0, 1);
 
         probe.expected_write(
-            CtiApppulse::get_mmio_address(TEST_CTI_ADDRESS),
+            CtiApppulse::get_mmio_address_from_base(TEST_CTI_ADDRESS).unwrap(),
             pulse.into(),
         );
     }
@@ -1527,46 +1554,64 @@ mod test {
     fn add_halt_cleanup_expectations(probe: &mut MockProbe) {
         let cti_gate = CtiGate(0);
 
-        probe.expected_write(CtiGate::get_mmio_address(TEST_CTI_ADDRESS), cti_gate.into());
+        probe.expected_write(
+            CtiGate::get_mmio_address_from_base(TEST_CTI_ADDRESS).unwrap(),
+            cti_gate.into(),
+        );
     }
 
     fn add_resume_expectations(probe: &mut MockProbe) {
         let mut ack = CtiIntack(0);
         ack.set_ack(0, 1);
 
-        probe.expected_write(CtiIntack::get_mmio_address(TEST_CTI_ADDRESS), ack.into());
+        probe.expected_write(
+            CtiIntack::get_mmio_address_from_base(TEST_CTI_ADDRESS).unwrap(),
+            ack.into(),
+        );
 
         let status = CtiTrigoutstatus(0);
         probe.expected_read(
-            CtiTrigoutstatus::get_mmio_address(TEST_CTI_ADDRESS),
+            CtiTrigoutstatus::get_mmio_address_from_base(TEST_CTI_ADDRESS).unwrap(),
             status.into(),
         );
 
         let mut cti_gate = CtiGate(0);
         cti_gate.set_en(1, 1);
-        probe.expected_write(CtiGate::get_mmio_address(TEST_CTI_ADDRESS), cti_gate.into());
+        probe.expected_write(
+            CtiGate::get_mmio_address_from_base(TEST_CTI_ADDRESS).unwrap(),
+            cti_gate.into(),
+        );
 
         let mut pulse = CtiApppulse(0);
         pulse.set_apppulse(1, 1);
         probe.expected_write(
-            CtiApppulse::get_mmio_address(TEST_CTI_ADDRESS),
+            CtiApppulse::get_mmio_address_from_base(TEST_CTI_ADDRESS).unwrap(),
             pulse.into(),
         );
 
         let mut edprsr = Edprsr(0);
         edprsr.set_sdr(true);
-        probe.expected_read(Edprsr::get_mmio_address(TEST_BASE_ADDRESS), edprsr.into());
+        probe.expected_read(
+            Edprsr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            edprsr.into(),
+        );
     }
 
     fn add_resume_cleanup_expectations(probe: &mut MockProbe) {
         let cti_gate = CtiGate(0);
-        probe.expected_write(CtiGate::get_mmio_address(TEST_CTI_ADDRESS), cti_gate.into());
+        probe.expected_write(
+            CtiGate::get_mmio_address_from_base(TEST_CTI_ADDRESS).unwrap(),
+            cti_gate.into(),
+        );
     }
 
     fn add_idr_expectations(probe: &mut MockProbe, bp_count: u32) {
         let mut eddfr = Eddfr(0);
         eddfr.set_brps(bp_count - 1);
-        probe.expected_read(Eddfr::get_mmio_address(TEST_BASE_ADDRESS), eddfr.into());
+        probe.expected_read(
+            Eddfr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            eddfr.into(),
+        );
     }
 
     fn add_set_r0_expectation(probe: &mut MockProbe, value: u32) {
@@ -1574,14 +1619,23 @@ mod test {
         edscr.set_ite(true);
         edscr.set_rxfull(true);
 
-        probe.expected_write(Dbgdtrrx::get_mmio_address(TEST_BASE_ADDRESS), value);
-        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+        probe.expected_write(
+            Dbgdtrrx::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            value,
+        );
+        probe.expected_read(
+            Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            edscr.into(),
+        );
 
         probe.expected_write(
-            Editr::get_mmio_address(TEST_BASE_ADDRESS),
+            Editr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
             prep_instr_for_itr_32(build_mrc(14, 0, 0, 0, 5, 0)),
         );
-        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+        probe.expected_read(
+            Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            edscr.into(),
+        );
     }
 
     fn add_set_x0_expectation(probe: &mut MockProbe, value: u64) {
@@ -1590,17 +1644,26 @@ mod test {
         edscr.set_rxfull(true);
 
         probe.expected_write(
-            Dbgdtrtx::get_mmio_address(TEST_BASE_ADDRESS),
+            Dbgdtrtx::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
             (value >> 32) as u32,
         );
-        probe.expected_write(Dbgdtrrx::get_mmio_address(TEST_BASE_ADDRESS), value as u32);
-        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+        probe.expected_write(
+            Dbgdtrrx::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            value as u32,
+        );
+        probe.expected_read(
+            Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            edscr.into(),
+        );
 
         probe.expected_write(
-            Editr::get_mmio_address(TEST_BASE_ADDRESS),
+            Editr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
             aarch64::build_mrs(2, 3, 0, 4, 0, 0),
         );
-        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+        probe.expected_read(
+            Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            edscr.into(),
+        );
     }
 
     fn add_read_memory_expectations(probe: &mut MockProbe, address: u64, value: u32) {
@@ -1611,17 +1674,26 @@ mod test {
         edscr.set_txfull(true);
 
         probe.expected_write(
-            Editr::get_mmio_address(TEST_BASE_ADDRESS),
+            Editr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
             prep_instr_for_itr_32(build_ldr(1, 0, 4)),
         );
-        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+        probe.expected_read(
+            Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            edscr.into(),
+        );
 
         probe.expected_write(
-            Editr::get_mmio_address(TEST_BASE_ADDRESS),
+            Editr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
             prep_instr_for_itr_32(build_mcr(14, 0, 1, 0, 5, 0)),
         );
-        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
-        probe.expected_read(Dbgdtrtx::get_mmio_address(TEST_BASE_ADDRESS), value);
+        probe.expected_read(
+            Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            edscr.into(),
+        );
+        probe.expected_read(
+            Dbgdtrtx::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            value,
+        );
     }
 
     fn add_read_memory_aarch64_expectations(probe: &mut MockProbe, address: u64, value: u32) {
@@ -1632,17 +1704,26 @@ mod test {
         edscr.set_txfull(true);
 
         probe.expected_write(
-            Editr::get_mmio_address(TEST_BASE_ADDRESS),
+            Editr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
             aarch64::build_ldrw(1, 0, 4),
         );
-        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+        probe.expected_read(
+            Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            edscr.into(),
+        );
 
         probe.expected_write(
-            Editr::get_mmio_address(TEST_BASE_ADDRESS),
+            Editr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
             aarch64::build_msr(2, 3, 0, 5, 0, 1),
         );
-        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
-        probe.expected_read(Dbgdtrtx::get_mmio_address(TEST_BASE_ADDRESS), value);
+        probe.expected_read(
+            Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            edscr.into(),
+        );
+        probe.expected_read(
+            Dbgdtrtx::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            value,
+        );
     }
 
     #[test]
@@ -1678,10 +1759,16 @@ mod test {
 
         let mut edscr = Edscr(0);
         edscr.set_status(0b000010);
-        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+        probe.expected_read(
+            Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            edscr.into(),
+        );
 
         edscr.set_status(0b010011);
-        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+        probe.expected_read(
+            Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            edscr.into(),
+        );
 
         let mock_mem = Box::new(probe) as _;
 
@@ -1709,10 +1796,16 @@ mod test {
 
         let mut edscr = Edscr(0);
         edscr.set_status(0b000010);
-        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+        probe.expected_read(
+            Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            edscr.into(),
+        );
 
         edscr.set_status(0b010011);
-        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+        probe.expected_read(
+            Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            edscr.into(),
+        );
 
         let mock_mem = Box::new(probe) as _;
 
@@ -1741,7 +1834,10 @@ mod test {
 
         let mut edscr = Edscr(0);
         edscr.set_status(0b000010);
-        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+        probe.expected_read(
+            Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            edscr.into(),
+        );
 
         let mock_mem = Box::new(probe) as _;
 
@@ -1767,7 +1863,10 @@ mod test {
 
         let mut edscr = Edscr(0);
         edscr.set_status(0b010011);
-        probe.expected_read(Edscr::get_mmio_address(TEST_BASE_ADDRESS), edscr.into());
+        probe.expected_read(
+            Edscr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            edscr.into(),
+        );
 
         let mock_mem = Box::new(probe) as _;
 
@@ -2125,27 +2224,57 @@ mod test {
         add_idr_expectations(&mut probe, BP_COUNT);
 
         // Read BP values and controls
-        probe.expected_read(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS), BP1 as u32);
-        probe.expected_read(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS) + 4, 0);
-        probe.expected_read(Dbgbcr::get_mmio_address(TEST_BASE_ADDRESS), 1);
-
-        probe.expected_read(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS) + 16, BP2 as u32);
-        probe.expected_read(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS) + 4 + 16, 0);
-        probe.expected_read(Dbgbcr::get_mmio_address(TEST_BASE_ADDRESS) + 16, 1);
-
-        probe.expected_read(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS) + (2 * 16), 0);
         probe.expected_read(
-            Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS) + 4 + (2 * 16),
+            Dbgbvr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            BP1 as u32,
+        );
+        probe.expected_read(
+            Dbgbvr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap() + 4,
             0,
         );
-        probe.expected_read(Dbgbcr::get_mmio_address(TEST_BASE_ADDRESS) + (2 * 16), 0);
-
-        probe.expected_read(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS) + (3 * 16), 0);
         probe.expected_read(
-            Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS) + 4 + (3 * 16),
+            Dbgbcr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            1,
+        );
+
+        probe.expected_read(
+            Dbgbvr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap() + 16,
+            BP2 as u32,
+        );
+        probe.expected_read(
+            Dbgbvr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap() + 4 + 16,
             0,
         );
-        probe.expected_read(Dbgbcr::get_mmio_address(TEST_BASE_ADDRESS) + (3 * 16), 0);
+        probe.expected_read(
+            Dbgbcr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap() + 16,
+            1,
+        );
+
+        probe.expected_read(
+            Dbgbvr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap() + (2 * 16),
+            0,
+        );
+        probe.expected_read(
+            Dbgbvr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap() + 4 + (2 * 16),
+            0,
+        );
+        probe.expected_read(
+            Dbgbcr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap() + (2 * 16),
+            0,
+        );
+
+        probe.expected_read(
+            Dbgbvr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap() + (3 * 16),
+            0,
+        );
+        probe.expected_read(
+            Dbgbvr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap() + 4 + (3 * 16),
+            0,
+        );
+        probe.expected_read(
+            Dbgbcr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap() + (3 * 16),
+            0,
+        );
 
         let mock_mem = Box::new(probe) as _;
 
@@ -2184,9 +2313,18 @@ mod test {
         // Enable
         dbgbcr.set_e(true);
 
-        probe.expected_write(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS), BP_VALUE as u32);
-        probe.expected_write(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS) + 4, 0);
-        probe.expected_write(Dbgbcr::get_mmio_address(TEST_BASE_ADDRESS), dbgbcr.into());
+        probe.expected_write(
+            Dbgbvr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            BP_VALUE as u32,
+        );
+        probe.expected_write(
+            Dbgbvr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap() + 4,
+            0,
+        );
+        probe.expected_write(
+            Dbgbcr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            dbgbcr.into(),
+        );
 
         let mock_mem = Box::new(probe) as _;
 
@@ -2211,9 +2349,18 @@ mod test {
         add_status_expectations(&mut probe, true);
 
         // Update BP value and control
-        probe.expected_write(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS), 0);
-        probe.expected_write(Dbgbvr::get_mmio_address(TEST_BASE_ADDRESS) + 4, 0);
-        probe.expected_write(Dbgbcr::get_mmio_address(TEST_BASE_ADDRESS), 0);
+        probe.expected_write(
+            Dbgbvr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            0,
+        );
+        probe.expected_write(
+            Dbgbvr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap() + 4,
+            0,
+        );
+        probe.expected_write(
+            Dbgbcr::get_mmio_address_from_base(TEST_BASE_ADDRESS).unwrap(),
+            0,
+        );
 
         let mock_mem = Box::new(probe) as _;
 

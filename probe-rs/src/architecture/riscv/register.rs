@@ -1,58 +1,6 @@
-use crate::core::RegisterDescription;
-use crate::{
-    core::{RegisterDataType, RegisterFile, RegisterKind},
-    RegisterId,
-};
+use crate::core::{RegisterDataType, RegisterDescription, RegisterFile, RegisterId, RegisterKind};
 
-macro_rules! data_register {
-    ($(#[$outer:meta])* $i:ident, $addr:expr, $name:expr) => {
-        $(#[$outer])*
-        #[derive(Debug, Copy, Clone)]
-        struct $i(u32);
-
-        impl DebugRegister for $i {
-            const ADDRESS: u8 = $addr;
-            const NAME: &'static str = $name;
-        }
-
-        impl From<$i> for u32 {
-            fn from(register: $i) -> Self {
-                register.0
-            }
-        }
-
-        impl From<u32> for $i {
-            fn from(value: u32) -> Self {
-                Self(value)
-            }
-        }
-    };
-
-    (pub $i:ident, $addr:expr, $name:expr) => {
-        #[derive(Debug, Copy, Clone)]
-        #[doc = concat!(stringify!($name), " register.")]
-        pub struct $i(u32);
-
-        impl DebugRegister for $i {
-            const ADDRESS: u8 = $addr;
-            const NAME: &'static str = $name;
-        }
-
-        impl From<$i> for u32 {
-            fn from(register: $i) -> Self {
-                register.0
-            }
-        }
-
-        impl From<u32> for $i {
-            fn from(value: u32) -> Self {
-                Self(value)
-            }
-        }
-    };
-}
-
-static PC: RegisterDescription = RegisterDescription {
+const PC: RegisterDescription = RegisterDescription {
     name: "pc",
     _kind: RegisterKind::PC,
     /// This is a CSR register
@@ -61,7 +9,7 @@ static PC: RegisterDescription = RegisterDescription {
     size_in_bits: 32,
 };
 
-static RA: RegisterDescription = RegisterDescription {
+const RA: RegisterDescription = RegisterDescription {
     name: "ra",
     _kind: RegisterKind::General,
     /// This is a CSR register
@@ -70,7 +18,7 @@ static RA: RegisterDescription = RegisterDescription {
     size_in_bits: 32,
 };
 
-static SP: RegisterDescription = RegisterDescription {
+const SP: RegisterDescription = RegisterDescription {
     name: "sp",
     _kind: RegisterKind::General,
     /// This is a CSR register
@@ -79,7 +27,7 @@ static SP: RegisterDescription = RegisterDescription {
     size_in_bits: 32,
 };
 
-static FP: RegisterDescription = RegisterDescription {
+const FP: RegisterDescription = RegisterDescription {
     name: "fp",
     _kind: RegisterKind::General,
     /// This is a CSR register
@@ -88,7 +36,7 @@ static FP: RegisterDescription = RegisterDescription {
     size_in_bits: 32,
 };
 
-pub static S0: RegisterDescription = RegisterDescription {
+pub const S0: RegisterDescription = RegisterDescription {
     name: "s0",
     _kind: RegisterKind::General,
     /// This is a CSR register
@@ -97,7 +45,7 @@ pub static S0: RegisterDescription = RegisterDescription {
     size_in_bits: 32,
 };
 
-pub static S1: RegisterDescription = RegisterDescription {
+pub const S1: RegisterDescription = RegisterDescription {
     name: "s1",
     _kind: RegisterKind::General,
     /// This is a CSR register
@@ -106,7 +54,7 @@ pub static S1: RegisterDescription = RegisterDescription {
     size_in_bits: 32,
 };
 
-pub(super) static RISCV_REGISTERS: RegisterFile = RegisterFile {
+pub(super) const RISCV_REGISTERS: RegisterFile = RegisterFile {
     platform_registers: &[
         RegisterDescription {
             name: "x0",
