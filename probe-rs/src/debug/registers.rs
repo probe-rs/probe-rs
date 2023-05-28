@@ -3,7 +3,7 @@ use crate::{
     CoreRegister, Error,
 };
 
-/// Stores the relevant information from [`RegisterDescription`](crate::core::RegisterDescription)
+/// Stores the relevant information from [`crate::core::CoreRegister`] for use in debug operations,
 /// as well as additional information required during debug.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DebugRegister {
@@ -51,7 +51,7 @@ impl DebugRegister {
 pub struct DebugRegisters(pub Vec<DebugRegister>);
 
 impl DebugRegisters {
-    /// Read all registers defined in [`RegisterFile`] from the given core.
+    /// Read all registers defined in [`crate::core::RegisterFile`] from the given core.
     pub fn from_core(core: &mut Core) -> Self {
         let mut debug_registers = Vec::<DebugRegister>::new();
 

@@ -1,4 +1,4 @@
-//! Core registers are represented by the [RegisterDescription] struct, and collected in a [RegisterFile] for each of the supported architectures.
+//! Core registers are represented by the `CoreRegister` struct, and collected in a `RegisterFile` for each of the supported architectures.
 
 use crate::Error;
 use anyhow::{anyhow, Result};
