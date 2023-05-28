@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Added support for the Olimex ARM-USB-TINY-H JTAG device (#1586).
 - Added support for propagating `CoreStatus` to the probe in use (#1588).
+- Added PY32F0xx series targets (#1619).
 
 ## [0.18.0]
 
