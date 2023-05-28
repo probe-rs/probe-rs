@@ -1,14 +1,11 @@
 //! Register types and the core interface for armv6-M
 
-use super::{CortexMState, Dfsr, CORTEX_M_COMMON_REGS};
+use super::{core_registers::cortex_m::*, CortexMState, Dfsr};
 use crate::{
     architecture::arm::{
         memory::adi_v5_memory_interface::ArmProbe, sequences::ArmDebugSequence, ArmError,
     },
-    core::{
-        RegisterDataType, RegisterDescription, RegisterFile, RegisterId, RegisterKind,
-        RegisterValue,
-    },
+    core::{RegisterFile, RegisterId, RegisterValue},
     error::Error,
     memory::valid_32bit_address,
     Architecture, CoreInformation, CoreInterface, CoreStatus, CoreType, DebugProbeError,
@@ -408,47 +405,6 @@ impl MemoryMappedRegister<u32> for Demcr {
     const NAME: &'static str = "DEMCR";
 }
 
-/*
-const REGISTERS: RegisterFile = RegisterFile {
-    registers:
-    R0: CoreRegisterAddress(0b0_0000),
-    R1: CoreRegisterAddress(0b0_0001),
-    R2: CoreRegisterAddress(0b0_0010),
-    R3: CoreRegisterAddress(0b0_0011),
-    R4: CoreRegisterAddress(0b0_0100),
-    R5: CoreRegisterAddress(0b0_0101),
-    R6: CoreRegisterAddress(0b0_0110),
-    R7: CoreRegisterAddress(0b0_0111),
-    R8: CoreRegisterAddress(0b0_1000),
-    R9: CoreRegisterAddress(0b0_1001),
-    PC: CoreRegisterAddress(0b0_1111),
-    SP: CoreRegisterAddress(0b0_1101),
-    LR: CoreRegisterAddress(0b0_1110),
-    XPSR: CoreRegisterAddress(0b1_0000),
-};
-*/
-
-/// The Main Stack Pointer
-pub const MSP: RegisterId = RegisterId(0b01001);
-/// The Process Stack Pointer ([only used with OSes](See ARMv6-M architecture manual B1.4.1 (The SP registers))
-pub const PSP: RegisterId = RegisterId(0b01010);
-
-const PC: RegisterDescription = RegisterDescription {
-    name: "PC",
-    _kind: RegisterKind::PC,
-    id: RegisterId(0b0_1111),
-    _type: RegisterDataType::UnsignedInteger,
-    size_in_bits: 32,
-};
-
-const XPSR: RegisterDescription = RegisterDescription {
-    name: "XPSR",
-    _kind: RegisterKind::General,
-    id: RegisterId(0b1_0000),
-    _type: RegisterDataType::UnsignedInteger,
-    size_in_bits: 32,
-};
-
 /// The state of a core that can be used to persist core state across calls to multiple different cores.
 pub(crate) struct Armv6m<'probe> {
     memory: Box<dyn ArmProbe + 'probe>,
@@ -542,7 +498,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         self.wait_for_core_halted(timeout)?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(PC.id)?;
+        let pc_value = self.read_core_reg(self.registers().program_counter()?.id)?;
 
         // get pc
         Ok(CoreInformation {
@@ -570,7 +526,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
         // First check if we stopped on a breakpoint, because this requires special handling before we can continue.
-        let pc_before_step = self.read_core_reg(self.registers().program_counter().id)?;
+        let pc_before_step = self.read_core_reg(self.registers().program_counter()?.id)?;
         let was_breakpoint = if matches!(
             self.state.current_state,
             CoreStatus::Halted(HaltReason::Breakpoint(_))
@@ -597,7 +553,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         self.wait_for_core_halted(Duration::from_millis(100))?;
 
         // Try to read the new program counter.
-        let mut pc_after_step = self.read_core_reg(self.registers().program_counter().id)?;
+        let mut pc_after_step = self.read_core_reg(self.registers().program_counter()?.id)?;
 
         // Re-enable breakpoints before we continue.
         if was_breakpoint {
@@ -610,7 +566,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
                 tracing::debug!("Encountered a breakpoint instruction @ {}. We need to manually advance the program counter to the next instruction.", pc_after_step);
                 // Advance the program counter by the architecture specific byte size of the BKPT instruction.
                 pc_after_step.increment_address(2)?;
-                self.write_core_reg(self.registers().program_counter().id, pc_after_step)?;
+                self.write_core_reg(self.registers().program_counter()?.id, pc_after_step)?;
             }
             self.enable_breakpoints(true)?;
         }
@@ -636,16 +592,16 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         let _ = self.status()?;
 
         const XPSR_THUMB: u32 = 1 << 24;
-        let xpsr_value: u32 = self.read_core_reg(XPSR.id)?.try_into()?;
+        let xpsr_value: u32 = self.read_core_reg(self.registers().psr()?.id)?.try_into()?;
         if xpsr_value & XPSR_THUMB == 0 {
-            self.write_core_reg(XPSR.id, (xpsr_value | XPSR_THUMB).into())?;
+            self.write_core_reg(self.registers().psr()?.id, (xpsr_value | XPSR_THUMB).into())?;
         }
 
         self.sequence
             .reset_catch_clear(&mut *self.memory, crate::CoreType::Armv6m, None)?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(PC.id)?;
+        let pc_value = self.read_core_reg(self.registers().program_counter()?.id)?;
 
         // get pc
         Ok(CoreInformation {

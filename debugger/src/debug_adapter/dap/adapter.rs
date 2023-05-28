@@ -925,7 +925,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 {
                     let program_counter = target_core
                         .core
-                        .read_core_reg(target_core.core.registers().program_counter())
+                        .read_core_reg(target_core.core.registers().program_counter()?.id())
                         .ok();
                     let event_body = Some(StoppedEventBody {
                         reason: current_core_status
@@ -992,7 +992,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // We only refresh the stacktrace when the `startFrame` is 0 and `levels` is 1.
         if levels == 1 && start_frame == 0 {
             let regs = target_core.core.registers();
-            let pc = match target_core.core.read_core_reg(regs.program_counter()) {
+            let pc = match target_core.core.read_core_reg(regs.program_counter()?.id()) {
                 Ok(pc) => pc,
                 Err(error) => {
                     return self.send_response::<()>(request, Err(DebuggerError::ProbeRs(error)))

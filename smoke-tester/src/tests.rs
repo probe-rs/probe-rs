@@ -20,7 +20,7 @@ pub fn test_register_access(tracker: &TestTracker, core: &mut Core) -> Result<()
 
     let mut test_value = 1;
 
-    for register in register.platform_registers() {
+    for register in register.core_registers() {
         // Skip register x0 on RISCV chips, it's hardwired to zero.
         if core.architecture() == Architecture::Riscv && register.name() == "x0" {
             continue;

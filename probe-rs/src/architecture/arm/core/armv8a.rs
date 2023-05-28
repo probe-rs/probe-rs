@@ -1,20 +1,21 @@
 //! Register types and the core interface for armv8-a
 
 use super::{
-    armv8a_core_regs::AARCH64_REGISTER_FILE,
+    core_registers::{aarch32::AARCH32_FP_32_REGS, aarch64::AARCH64_REGISTER_FILE},
     instructions::{
         aarch64,
         thumb2::{build_ldr, build_mcr, build_mrc, build_str, build_vmov, build_vmrs},
     },
-    CortexAState, AARCH32_FP_32_REGS,
+    CortexAState,
 };
-use crate::core::memory_mapped_registers::MemoryMappedRegister;
 use crate::{
     architecture::arm::{
         core::armv8a_debug_regs::*, memory::adi_v5_memory_interface::ArmProbe,
         sequences::ArmDebugSequence, ArmError,
     },
-    core::{RegisterFile, RegisterId, RegisterValue},
+    core::{
+        memory_mapped_registers::MemoryMappedRegister, RegisterFile, RegisterId, RegisterValue,
+    },
     error::Error,
     memory::valid_32bit_address,
     Architecture, CoreInformation, CoreInterface, CoreStatus, CoreType, InstructionSet,
@@ -776,7 +777,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         self.memory.write_word_32(address, cti_gate.into())?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(self.registers().program_counter().id)?;
+        let pc_value = self.read_core_reg(self.registers().program_counter()?.id)?;
 
         // get pc
         Ok(CoreInformation {
@@ -872,7 +873,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         self.reset_register_cache();
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(self.registers().program_counter().id)?;
+        let pc_value = self.read_core_reg(self.registers().program_counter()?.id)?;
 
         // get pc
         Ok(CoreInformation {
@@ -899,7 +900,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         self.memory.write_word_32(edecr_address, edecr.into())?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(self.registers().program_counter().id)?;
+        let pc_value = self.read_core_reg(self.registers().program_counter()?.id)?;
 
         // get pc
         Ok(CoreInformation {

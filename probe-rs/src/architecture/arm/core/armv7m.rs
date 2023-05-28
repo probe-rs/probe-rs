@@ -1,27 +1,29 @@
 //! Register types and the core interface for armv7-M
 
-use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
-use crate::architecture::arm::sequences::ArmDebugSequence;
-use crate::architecture::arm::ArmError;
-use crate::core::{
-    CoreInformation, CoreInterface, MemoryMappedRegister, RegisterFile, RegisterId, RegisterValue,
+use super::{
+    core_registers::cortex_m::{CORTEX_M_COMMON_REGS, CORTEX_M_WITH_FP_REGS},
+    cortex_m::Mvfr0,
+    CortexMState, Dfsr,
 };
-use crate::error::Error;
-use crate::memory::valid_32bit_address;
-use crate::{CoreType, DebugProbeError, InstructionSet};
-
-use super::cortex_m::Mvfr0;
-use super::{register, CortexMState, Dfsr, CORTEX_M_COMMON_REGS, CORTEX_M_WITH_FP_REGS};
 use crate::{
-    core::{Architecture, CoreStatus, HaltReason},
-    MemoryInterface,
+    architecture::arm::{
+        memory::adi_v5_memory_interface::ArmProbe, sequences::ArmDebugSequence, ArmError,
+    },
+    core::{
+        Architecture, CoreInformation, CoreInterface, CoreStatus, HaltReason, MemoryMappedRegister,
+        RegisterFile, RegisterId, RegisterValue,
+    },
+    error::Error,
+    memory::valid_32bit_address,
+    CoreType, DebugProbeError, InstructionSet, MemoryInterface,
 };
 use anyhow::{anyhow, Result};
-
 use bitfield::bitfield;
-use std::mem::size_of;
-use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::{
+    mem::size_of,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 bitfield! {
     /// Debug Halting Control and Status Register, DHCSR (see armv7-M Architecture Reference Manual C1.6.2)
@@ -581,11 +583,6 @@ impl FpRev2CompX {
     }
 }
 
-/// The Main Stack Pointer
-pub const MSP: RegisterId = RegisterId(0b000_1001);
-/// The Process Stack Pointer ([only used with OSes](See ARMv7-M architecture manual B1.4.1 (The SP registers))
-pub const PSP: RegisterId = RegisterId(0b000_1010);
-
 /// The state of a core that can be used to persist core state across calls to multiple different cores.
 pub struct Armv7m<'probe> {
     memory: Box<dyn ArmProbe + 'probe>,
@@ -761,7 +758,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         self.wait_for_core_halted(timeout)?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(register::PC.id)?;
+        let pc_value = self.read_core_reg(self.registers().program_counter()?.id)?;
 
         // get pc
         Ok(CoreInformation {
@@ -800,7 +797,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
         // First check if we stopped on a breakpoint, because this requires special handling before we can continue.
-        let pc_before_step = self.read_core_reg(self.registers().program_counter().id)?;
+        let pc_before_step = self.read_core_reg(self.registers().program_counter()?.id)?;
         let was_breakpoint = if matches!(
             self.state.current_state,
             CoreStatus::Halted(HaltReason::Breakpoint(_))
@@ -837,7 +834,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         self.wait_for_core_halted(Duration::from_millis(100))?;
 
         // Try to read the new program counter.
-        let mut pc_after_step = self.read_core_reg(self.registers().program_counter().id)?;
+        let mut pc_after_step = self.read_core_reg(self.registers().program_counter()?.id)?;
 
         // Re-enable breakpoints before we continue.
         if was_breakpoint {
@@ -850,7 +847,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
                 tracing::debug!("Encountered a breakpoint instruction @ {}. We need to manually advance the program counter to the next instruction.", pc_after_step);
                 // Advance the program counter by the architecture specific byte size of the BKPT instruction.
                 pc_after_step.increment_address(2)?;
-                self.write_core_reg(self.registers().program_counter().id, pc_after_step)?;
+                self.write_core_reg(self.registers().program_counter()?.id, pc_after_step)?;
             }
             self.enable_breakpoints(true)?;
         }
@@ -879,16 +876,16 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         let _ = self.status()?;
 
         const XPSR_THUMB: u32 = 1 << 24;
-        let xpsr_value: u32 = self.read_core_reg(register::XPSR.id)?.try_into()?;
+        let xpsr_value: u32 = self.read_core_reg(self.registers().psr()?.id)?.try_into()?;
         if xpsr_value & XPSR_THUMB == 0 {
-            self.write_core_reg(register::XPSR.id, (xpsr_value | XPSR_THUMB).into())?;
+            self.write_core_reg(self.registers().psr()?.id, (xpsr_value | XPSR_THUMB).into())?;
         }
 
         self.sequence
             .reset_catch_clear(&mut *self.memory, crate::CoreType::Armv7m, None)?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(register::PC.id)?;
+        let pc_value = self.read_core_reg(self.registers().program_counter()?.id)?;
 
         // get pc
         Ok(CoreInformation {

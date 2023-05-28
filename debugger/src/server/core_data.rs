@@ -97,7 +97,9 @@ impl<'p> CoreHandle<'p> {
                                 {
                                     let program_counter = self
                                         .core
-                                        .read_core_reg(self.core.registers().program_counter())
+                                        .read_core_reg(
+                                            self.core.registers().program_counter()?.id(),
+                                        )
                                         .ok();
                                     let event_body = Some(StoppedEventBody {
                                         reason: status

@@ -1,18 +1,17 @@
 //! Register types and the core interface for armv7-a
 
 use super::{
+    core_registers::aarch32::{AARCH32_COMMON_REGS, AARCH32_FP_16_REGS, AARCH32_FP_32_REGS},
     instructions::aarch32::{
         build_bx, build_ldc, build_mcr, build_mov, build_mrc, build_mrs, build_stc, build_vmov,
         build_vmrs,
     },
-    CortexAState, AARCH32_COMMON_REGS, AARCH32_FP_16_REGS, AARCH32_FP_32_REGS,
+    CortexAState,
 };
 use crate::{
     architecture::arm::{
-        core::{armv7a_debug_regs::*, register},
-        memory::adi_v5_memory_interface::ArmProbe,
-        sequences::ArmDebugSequence,
-        ArmError,
+        core::armv7a_debug_regs::*, memory::adi_v5_memory_interface::ArmProbe,
+        sequences::ArmDebugSequence, ArmError,
     },
     core::{MemoryMappedRegister, RegisterFile, RegisterId, RegisterValue},
     error::Error,
@@ -337,7 +336,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         let _ = self.status()?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(register::PC.id)?;
+        let pc_value = self.read_core_reg(self.registers().program_counter()?.id)?;
 
         // get pc
         Ok(CoreInformation {
@@ -424,7 +423,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         self.reset_register_cache();
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(register::PC.id)?;
+        let pc_value = self.read_core_reg(self.registers().program_counter()?.id)?;
 
         // get pc
         Ok(CoreInformation {
@@ -444,7 +443,9 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         let saved_bp_control = self.memory.read_word_32(bp_control_addr)?;
 
         // Set breakpoint for any change
-        let current_pc: u32 = self.read_core_reg(register::PC.id)?.try_into()?;
+        let current_pc: u32 = self
+            .read_core_reg(self.registers().program_counter()?.id)?
+            .try_into()?;
         let mut bp_control = Dbgbcr(0);
 
         // Breakpoint type - address mismatch
@@ -473,7 +474,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
             .write_word_32(bp_control_addr, saved_bp_control)?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(register::PC.id)?;
+        let pc_value = self.read_core_reg(self.registers().program_counter()?.id)?;
 
         // get pc
         Ok(CoreInformation {

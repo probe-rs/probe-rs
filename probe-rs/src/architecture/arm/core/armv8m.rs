@@ -1,10 +1,13 @@
 //! Register types and the core interface for armv8-M
 
-use super::{cortex_m::Mvfr0, CortexMState, Dfsr, CORTEX_M_COMMON_REGS, CORTEX_M_WITH_FP_REGS};
+use super::{
+    core_registers::cortex_m::{CORTEX_M_COMMON_REGS, CORTEX_M_WITH_FP_REGS},
+    cortex_m::Mvfr0,
+    CortexMState, Dfsr,
+};
 use crate::{
     architecture::arm::{
-        core::register, memory::adi_v5_memory_interface::ArmProbe, sequences::ArmDebugSequence,
-        ArmError,
+        memory::adi_v5_memory_interface::ArmProbe, sequences::ArmDebugSequence, ArmError,
     },
     core::{RegisterFile, RegisterId, RegisterValue},
     error::Error,
@@ -114,7 +117,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         let _ = self.status()?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(register::PC.id)?;
+        let pc_value = self.read_core_reg(self.registers().program_counter()?.id)?;
 
         // get pc
         Ok(CoreInformation {
@@ -160,16 +163,16 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         let _ = self.status()?;
 
         const XPSR_THUMB: u32 = 1 << 24;
-        let xpsr_value: u32 = self.read_core_reg(register::XPSR.id)?.try_into()?;
+        let xpsr_value: u32 = self.read_core_reg(self.registers().psr()?.id)?.try_into()?;
         if xpsr_value & XPSR_THUMB == 0 {
-            self.write_core_reg(register::XPSR.id, (xpsr_value | XPSR_THUMB).into())?;
+            self.write_core_reg(self.registers().psr()?.id, (xpsr_value | XPSR_THUMB).into())?;
         }
 
         self.sequence
             .reset_catch_clear(&mut *self.memory, crate::CoreType::Armv8m, None)?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(register::PC.id)?;
+        let pc_value = self.read_core_reg(self.registers().program_counter()?.id)?;
 
         // get pc
         Ok(CoreInformation {
@@ -179,7 +182,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
         // First check if we stopped on a breakpoint, because this requires special handling before we can continue.
-        let pc_before_step = self.read_core_reg(self.registers().program_counter().id)?;
+        let pc_before_step = self.read_core_reg(self.registers().program_counter()?.id)?;
         let was_breakpoint = if matches!(
             self.state.current_state,
             CoreStatus::Halted(HaltReason::Breakpoint(_))
@@ -206,7 +209,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         self.wait_for_core_halted(Duration::from_millis(100))?;
 
         // Try to read the new program counter.
-        let mut pc_after_step = self.read_core_reg(self.registers().program_counter().id)?;
+        let mut pc_after_step = self.read_core_reg(self.registers().program_counter()?.id)?;
 
         // Re-enable breakpoints before we continue.
         if was_breakpoint {
@@ -219,7 +222,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
                 tracing::debug!("Encountered a breakpoint instruction @ {}. We need to manually advance the program counter to the next instruction.", pc_after_step);
                 // Advance the program counter by the architecture specific byte size of the BKPT instruction.
                 pc_after_step.increment_address(2)?;
-                self.write_core_reg(self.registers().program_counter().id, pc_after_step)?;
+                self.write_core_reg(self.registers().program_counter()?.id, pc_after_step)?;
             }
             self.enable_breakpoints(true)?;
         }

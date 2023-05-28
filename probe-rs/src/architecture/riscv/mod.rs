@@ -13,11 +13,11 @@ use crate::{
 use anyhow::{anyhow, Result};
 use bitfield::bitfield;
 use communication_interface::{AbstractCommandErrorKind, RiscvCommunicationInterface, RiscvError};
-use register::RISCV_REGISTERS;
+use core_registers::RISCV_REGISTERS;
 use std::time::{Duration, Instant};
 
 #[macro_use]
-mod register;
+mod core_registers;
 pub(crate) mod assembly;
 mod dtm;
 
@@ -142,7 +142,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
         self.interface.write_dm_register(dmcontrol)?;
 
-        let pc = self.read_core_reg(register::RISCV_REGISTERS.program_counter.id)?;
+        let pc = self.read_core_reg(core_registers::RISCV_REGISTERS.program_counter()?.id)?;
 
         Ok(CoreInformation { pc: pc.try_into()? })
     }

@@ -605,13 +605,13 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         let regs: &'static RegisterFile = self.core.registers();
 
         let registers = [
-            (regs.program_counter(), Some(registers.pc)),
+            (regs.program_counter()?, Some(registers.pc)),
             (regs.argument_register(0), registers.r0),
             (regs.argument_register(1), registers.r1),
             (regs.argument_register(2), registers.r2),
             (regs.argument_register(3), registers.r3),
             (
-                regs.platform_register(9),
+                regs.core_register(9),
                 if init {
                     Some(into_reg(algo.static_base)?)
                 } else {
@@ -619,7 +619,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                 },
             ),
             (
-                regs.stack_pointer(),
+                regs.stack_pointer()?,
                 if init {
                     Some(into_reg(algo.begin_stack)?)
                 } else {
@@ -627,7 +627,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                 },
             ),
             (
-                regs.return_address(),
+                regs.return_address()?,
                 // For ARM Cortex-M cores, we have to add 1 to the return address,
                 // to ensure that we stay in Thumb mode.
                 if self.core.instruction_set()? == InstructionSet::Thumb2 {
@@ -719,7 +719,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
             return Err(FlashError::Core(crate::Error::Timeout));
         }
 
-        let r: u32 = self.core.read_core_reg(regs.result_register(0).id)?;
+        let r: u32 = self.core.read_core_reg(regs.argument_register(0).id)?;
         Ok(r)
     }
 

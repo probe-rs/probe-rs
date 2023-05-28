@@ -11,8 +11,7 @@ use probe_rs::{
     debug::{
         debug_info::DebugInfo, registers::DebugRegisters, stack_frame::StackFrame, VariableName,
     },
-    Core, CoreType, InstructionSet, MemoryInterface, RegisterDescription, RegisterId,
-    RegisterValue,
+    Core, CoreRegister, CoreType, InstructionSet, MemoryInterface, RegisterId, RegisterValue,
 };
 use std::fs::File;
 use std::{io::prelude::*, time::Duration};
@@ -140,7 +139,7 @@ impl DebugCli {
                 println!("Status: {:?}", &status);
 
                 if status.is_halted() {
-                    let pc_desc = cli_data.core.registers().program_counter();
+                    let pc_desc = cli_data.core.registers().program_counter()?;
                     let pc: u64 = cli_data
                         .core
                         .read_core_reg(pc_desc)?;
@@ -175,7 +174,7 @@ impl DebugCli {
                                             println!("Hard Fault!");
 
 
-                                            let return_address: u64 = cli_data.core.read_core_reg(cli_data.core.registers().return_address())?;
+                                            let return_address: u64 = cli_data.core.read_core_reg(cli_data.core.registers().return_address()?)?;
 
                                             println!("Return address (LR): {return_address:#010x}");
 
@@ -411,7 +410,7 @@ impl DebugCli {
                     DebugState::Halted(ref mut halted_state) => {
                         let regs = cli_data.core.registers();
                         let program_counter: u64 =
-                            cli_data.core.read_core_reg(regs.program_counter())?;
+                            cli_data.core.read_core_reg(regs.program_counter()?)?;
 
                         if let Some(di) = &mut cli_data.debug_info {
                             halted_state.stack_frames =
@@ -478,13 +477,12 @@ impl DebugCli {
             function: |cli_data, _args| {
                 let register_file = cli_data.core.registers();
 
-                let psr_iter: Box<dyn Iterator<Item = &RegisterDescription>> =
-                    match register_file.psr() {
-                        Some(psr) => Box::new(std::iter::once(psr)),
-                        None => Box::new(std::iter::empty::<&RegisterDescription>()),
-                    };
+                let psr_iter: Box<dyn Iterator<Item = &CoreRegister>> = match register_file.psr() {
+                    Ok(psr) => Box::new(std::iter::once(psr)),
+                    Err(_) => Box::new(std::iter::empty::<&CoreRegister>()),
+                };
 
-                let iter = register_file.platform_registers().chain(psr_iter);
+                let iter = register_file.core_registers().chain(psr_iter);
 
                 for register in iter {
                     let value: RegisterValue = cli_data.core.read_core_reg(register)?;
@@ -506,7 +504,8 @@ impl DebugCli {
                 } else {
                     let register_file = cli_data.core.registers();
 
-                    if let Some(registers) = register_file.fpu_registers() {
+                    let registers = register_file.fpu_registers();
+                    if let Some(registers) = registers {
                         for register in registers {
                             let value: RegisterValue = cli_data.core.read_core_reg(register)?;
 
@@ -671,8 +670,8 @@ impl DebugCli {
 
                 let regs = cli_data.core.registers();
 
-                let stack_bot: u32 = cli_data.core.read_core_reg(regs.stack_pointer())?;
-                let pc: u32 = cli_data.core.read_core_reg(regs.program_counter())?;
+                let stack_bot: u32 = cli_data.core.read_core_reg(regs.stack_pointer()?)?;
+                let pc: u32 = cli_data.core.read_core_reg(regs.program_counter()?)?;
 
                 let mut stack = vec![0u8; (stack_top - stack_bot) as usize];
 
@@ -686,7 +685,7 @@ impl DebugCli {
                 }
 
                 dump.regs[13] = stack_bot;
-                dump.regs[14] = cli_data.core.read_core_reg(regs.return_address())?;
+                dump.regs[14] = cli_data.core.read_core_reg(regs.return_address()?)?;
                 dump.regs[15] = pc;
 
                 let serialized = ron::ser::to_string(&dump).expect("Failed to serialize dump");
