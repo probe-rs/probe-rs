@@ -19,11 +19,13 @@ pub(crate) struct CombinedCoreState {
     pub(crate) core_state: CoreState,
 
     pub(crate) specific_state: SpecificCoreState,
+
+    pub(crate) id: usize,
 }
 
 impl CombinedCoreState {
     pub fn id(&self) -> usize {
-        self.core_state.id()
+        self.id
     }
 
     pub fn core_type(&self) -> CoreType {
@@ -53,31 +55,21 @@ impl CombinedCoreState {
         };
 
         Ok(match &mut self.specific_state {
-            SpecificCoreState::Armv6m(s) => {
-                Core::new(crate::architecture::arm::armv6m::Armv6m::new(
-                    memory,
-                    s,
-                    debug_sequence,
-                    self.core_state.id,
-                )?)
-            }
+            SpecificCoreState::Armv6m(s) => Core::new(
+                crate::architecture::arm::armv6m::Armv6m::new(memory, s, debug_sequence, self.id)?,
+            ),
             SpecificCoreState::Armv7a(s) => {
                 Core::new(crate::architecture::arm::armv7a::Armv7a::new(
                     memory,
                     s,
                     options.debug_base.expect("base_address not specified"),
                     debug_sequence,
-                    self.core_state.id,
+                    self.id,
                 )?)
             }
-            SpecificCoreState::Armv7m(s) | SpecificCoreState::Armv7em(s) => {
-                Core::new(crate::architecture::arm::armv7m::Armv7m::new(
-                    memory,
-                    s,
-                    debug_sequence,
-                    self.core_state.id,
-                )?)
-            }
+            SpecificCoreState::Armv7m(s) | SpecificCoreState::Armv7em(s) => Core::new(
+                crate::architecture::arm::armv7m::Armv7m::new(memory, s, debug_sequence, self.id)?,
+            ),
             SpecificCoreState::Armv8a(s) => {
                 Core::new(crate::architecture::arm::armv8a::Armv8a::new(
                     memory,
@@ -85,17 +77,12 @@ impl CombinedCoreState {
                     options.debug_base.expect("base_address not specified"),
                     options.cti_base.expect("cti_address not specified"),
                     debug_sequence,
-                    self.core_state.id,
+                    self.id,
                 )?)
             }
-            SpecificCoreState::Armv8m(s) => {
-                Core::new(crate::architecture::arm::armv8m::Armv8m::new(
-                    memory,
-                    s,
-                    debug_sequence,
-                    self.core_state.id,
-                )?)
-            }
+            SpecificCoreState::Armv8m(s) => Core::new(
+                crate::architecture::arm::armv8m::Armv8m::new(memory, s, debug_sequence, self.id)?,
+            ),
             _ => {
                 return Err(Error::UnableToOpenProbe(
                     "Core architecture and Probe mismatch.",
@@ -110,9 +97,7 @@ impl CombinedCoreState {
     ) -> Result<Core<'probe>, Error> {
         Ok(match &mut self.specific_state {
             SpecificCoreState::Riscv(s) => Core::new(crate::architecture::riscv::Riscv32::new(
-                interface,
-                s,
-                self.core_state.id,
+                interface, s, self.id,
             )),
             _ => {
                 return Err(Error::UnableToOpenProbe(
@@ -135,24 +120,16 @@ impl CombinedCoreState {
 /// A generic core state which caches the generic parts of the core state.
 #[derive(Debug)]
 pub struct CoreState {
-    id: usize,
-
     /// Information needed to access the core
     core_access_options: ResolvedCoreOptions,
 }
 
 impl CoreState {
     /// Creates a new core state from the core ID.
-    pub fn new(id: usize, core_access_options: ResolvedCoreOptions) -> Self {
+    pub fn new(core_access_options: ResolvedCoreOptions) -> Self {
         Self {
-            id,
             core_access_options,
         }
-    }
-
-    /// Returns the core ID.
-    pub fn id(&self) -> usize {
-        self.id
     }
 
     pub(crate) fn memory_ap(&self) -> MemoryAp {

@@ -231,16 +231,18 @@ impl<'probe> Core<'probe> {
                     ),
                 };
 
-                let core_state = CoreState::new(id, ResolvedCoreOptions::Arm { sequence, options });
+                let core_state = CoreState::new(ResolvedCoreOptions::Arm { sequence, options });
 
                 CombinedCoreState {
+                    id,
                     core_state,
                     specific_state,
                 }
             }
             CoreAccessOptions::Riscv(options) => {
-                let core_state = CoreState::new(id, ResolvedCoreOptions::Riscv { options });
+                let core_state = CoreState::new(ResolvedCoreOptions::Riscv { options });
                 CombinedCoreState {
+                    id,
                     core_state,
                     specific_state,
                 }
