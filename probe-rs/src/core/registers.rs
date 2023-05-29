@@ -22,8 +22,10 @@ pub enum RegisterDataType {
 /// while the [`CoreRegister::name`] will contain the architecture specific label of the register.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum RegisterRole {
-    /// Argument/Result registers like "A0", "a1", "r2", etc. (uses architecture specific names)
+    /// Argument registers like "A0", "a1", "r2", etc. (uses architecture specific names)
     Argument(&'static str),
+    /// Some argument registers can also be used as return value registers.
+    ArgumentAndResult(&'static str),
     ProgramCounter,
     FramePointer,
     StackPointer,
@@ -40,6 +42,7 @@ impl Display for RegisterRole {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             RegisterRole::Argument(name) => write!(f, "{}", name),
+            RegisterRole::ArgumentAndResult(name) => write!(f, "{}", name),
             RegisterRole::ProgramCounter => write!(f, "PC"),
             RegisterRole::FramePointer => write!(f, "FP"),
             RegisterRole::StackPointer => write!(f, "SP"),
@@ -73,6 +76,7 @@ impl Display for CoreRegister {
         match self.role {
             // These register roles have their own names assigned in their definition.
             Some(RegisterRole::Argument(name)) => write!(f, "{}", name),
+            Some(RegisterRole::ArgumentAndResult(name)) => write!(f, "{}", name),
             Some(RegisterRole::Other(name)) => write!(f, "{}", name),
             Some(RegisterRole::FloatingPoint) => write!(f, "{}", self.name),
             // The remainder roles get their name from the [`RegisterRole::Display`] implementation.
@@ -387,12 +391,8 @@ impl RegisterFile {
     }
 
     /// Returns the nth platform register if it is exists, `None` otherwise.
-    pub fn get_core_register(&self, index: usize) -> Result<&CoreRegister, Error> {
-        self.core_registers().nth(index).ok_or_else(|| {
-            Error::GenericCoreError(format!(
-                "Platform register {index:?} not found. Please report this as a bug."
-            ))
-        })
+    pub fn get_core_register(&self, index: usize) -> Option<&CoreRegister> {
+        self.core_registers().nth(index)
     }
 
     /// The frame pointer.
@@ -453,52 +453,54 @@ impl RegisterFile {
     }
 
     /// Returns the nth argument register if it is exists, `None` otherwise.
-    pub fn get_argument_register(&self, index: usize) -> Result<&CoreRegister, Error> {
+    pub fn get_argument_register(&self, index: usize) -> Option<&CoreRegister> {
         self.0
             .iter()
-            .filter(|r| matches!(r.role, Some(RegisterRole::Argument(_))))
-            .nth(index)
-            .ok_or_else(|| {
-                Error::GenericCoreError(format!(
-                    "Argument register {index:?} not found. Please report this as a bug."
-                ))
+            .filter(|r| {
+                matches!(
+                    r.role,
+                    Some(RegisterRole::ArgumentAndResult(_)) | Some(RegisterRole::Argument(_))
+                )
             })
+            .nth(index)
+    }
+
+    /// Returns the nth result register.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the register at given index does not exist.
+    pub fn result_register(&self, index: usize) -> &CoreRegister {
+        self.get_result_register(index).unwrap()
+    }
+
+    /// Returns the nth result register if it is exists, `None` otherwise.
+    pub fn get_result_register(&self, index: usize) -> Option<&CoreRegister> {
+        self.0
+            .iter()
+            .filter(|r| matches!(r.role, Some(RegisterRole::ArgumentAndResult(_))))
+            .nth(index)
     }
 
     /// The main stack pointer.
-    pub fn msp(&self) -> Result<&CoreRegister, Error> {
+    pub fn msp(&self) -> Option<&CoreRegister> {
         self.0
             .iter()
             .find(|r| r.role == Some(RegisterRole::MainStackPointer))
-            .ok_or_else(|| {
-                Error::GenericCoreError(
-                    "No main stack pointer found. Please report this as a bug.".to_string(),
-                )
-            })
     }
 
     /// The process stack pointer.
-    pub fn psp(&self) -> Result<&CoreRegister, Error> {
+    pub fn psp(&self) -> Option<&CoreRegister> {
         self.0
             .iter()
             .find(|r| r.role == Some(RegisterRole::ProcessStackPointer))
-            .ok_or_else(|| {
-                Error::GenericCoreError(
-                    "No process stack pointer found. Please report this as a bug.".to_string(),
-                )
-            })
     }
 
     /// The processor status register.
-    pub fn psr(&self) -> Result<&CoreRegister, Error> {
+    pub fn psr(&self) -> Option<&CoreRegister> {
         self.0
             .iter()
             .find(|r| r.role == Some(RegisterRole::ProcessorStatus))
-            .ok_or_else(|| {
-                Error::GenericCoreError(
-                    "No processor status register found. Please report this as a bug.".to_string(),
-                )
-            })
     }
 
     /// Other architecture specific registers
@@ -513,23 +515,14 @@ impl RegisterFile {
         self.0
             .iter()
             .find(|r| matches!(r.role, Some(RegisterRole::Other(other_name)) if other_name == name))
-            .ok_or_else(|| {
-                Error::GenericCoreError(format!(
-                    "Argument register {name:?} not found. Please report this as a bug."
-                ))
-            })
+            .ok_or_else(|| Error::GenericCoreError(format!("Argument register {name:?} not found")))
     }
 
     /// The fpu status register.
-    pub fn fpsr(&self) -> Result<&CoreRegister, Error> {
+    pub fn fpsr(&self) -> Option<&CoreRegister> {
         self.0
             .iter()
             .find(|r| r.role == Some(RegisterRole::FloatingPointStatus))
-            .ok_or_else(|| {
-                Error::GenericCoreError(
-                    "No FPU status register found. Please report this as a bug.".to_string(),
-                )
-            })
     }
 
     /// Returns an iterator over the descriptions of all the registers of this core.
@@ -556,15 +549,10 @@ impl RegisterFile {
     }
 
     /// Returns the nth fpu register if it is exists, `None` otherwise.
-    pub fn get_fpu_register(&self, index: usize) -> Result<&CoreRegister, Error> {
+    pub fn get_fpu_register(&self, index: usize) -> Option<&CoreRegister> {
         self.0
             .iter()
             .filter(|r| r.role == Some(RegisterRole::FloatingPoint))
             .nth(index)
-            .ok_or_else(|| {
-                Error::GenericCoreError(format!(
-                    "Argument register {index:?} not found. Please report this as a bug."
-                ))
-            })
     }
 }

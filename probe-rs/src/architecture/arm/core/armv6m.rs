@@ -593,11 +593,23 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
 
         const XPSR_THUMB: u32 = 1 << 24;
         let xpsr_value: u32 = self
-            .read_core_reg(self.registers().psr()?.id())?
+            .read_core_reg(
+                self.registers()
+                    .psr()
+                    .ok_or_else(|| {
+                        Error::Other(anyhow::anyhow!("Processor State Register not found."))
+                    })?
+                    .id(),
+            )?
             .try_into()?;
         if xpsr_value & XPSR_THUMB == 0 {
             self.write_core_reg(
-                self.registers().psr()?.id(),
+                self.registers()
+                    .psr()
+                    .ok_or_else(|| {
+                        Error::Other(anyhow::anyhow!("Processor State Register not found."))
+                    })?
+                    .id(),
                 (xpsr_value | XPSR_THUMB).into(),
             )?;
         }

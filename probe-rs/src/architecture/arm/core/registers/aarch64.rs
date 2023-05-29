@@ -12,14 +12,14 @@ pub static AARCH64_REGISTER_FILE_VEC: Lazy<Vec<CoreRegister>> = Lazy::new(|| {
     vec![
         CoreRegister {
             name: "X0",
-            role: Some(RegisterRole::Argument("a0")),
+            role: Some(RegisterRole::ArgumentAndResult("a0")),
             id: RegisterId(0),
             data_type: RegisterDataType::UnsignedInteger,
             size_in_bits: 64,
         },
         CoreRegister {
             name: "X1",
-            role: Some(RegisterRole::Argument("a1")),
+            role: Some(RegisterRole::ArgumentAndResult("a1")),
             id: RegisterId(1),
             data_type: RegisterDataType::UnsignedInteger,
             size_in_bits: 64,
@@ -68,7 +68,8 @@ pub static AARCH64_REGISTER_FILE_VEC: Lazy<Vec<CoreRegister>> = Lazy::new(|| {
         },
         CoreRegister {
             name: "X8",
-            role: None,
+            // Indirect result location register.
+            role: Some(RegisterRole::Other("XR")),
             id: RegisterId(8),
             data_type: RegisterDataType::UnsignedInteger,
             size_in_bits: 64,

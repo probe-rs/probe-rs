@@ -33,14 +33,14 @@ pub(super) static ARM32_COMMON_REGS_VEC: Lazy<Vec<CoreRegister>> = Lazy::new(|| 
     vec![
         CoreRegister {
             name: "R0",
-            role: Some(RegisterRole::Argument("a1")),
+            role: Some(RegisterRole::ArgumentAndResult("a1")),
             id: RegisterId(0),
             data_type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },
         CoreRegister {
             name: "R1",
-            role: Some(RegisterRole::Argument("a2")),
+            role: Some(RegisterRole::ArgumentAndResult("a2")),
             id: RegisterId(1),
             data_type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,

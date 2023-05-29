@@ -719,7 +719,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
             return Err(FlashError::Core(crate::Error::Timeout));
         }
 
-        let r: u32 = self.core.read_core_reg(regs.argument_register(0).id)?;
+        let r: u32 = self.core.read_core_reg(regs.result_register(0).id)?;
         Ok(r)
     }
 

@@ -100,14 +100,14 @@ static RISCV_REGISTERS_VEC: Lazy<Vec<CoreRegister>> = Lazy::new(|| {
         },
         CoreRegister {
             name: "x10",
-            role: Some(RegisterRole::Argument("a0")),
+            role: Some(RegisterRole::ArgumentAndResult("a0")),
             id: RegisterId(0x100A),
             data_type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,
         },
         CoreRegister {
             name: "x11",
-            role: Some(RegisterRole::Argument("a1")),
+            role: Some(RegisterRole::ArgumentAndResult("a1")),
             id: RegisterId(0x100B),
             data_type: RegisterDataType::UnsignedInteger,
             size_in_bits: 32,

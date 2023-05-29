@@ -260,7 +260,7 @@ fn build_aarch64_registers(desc: &mut TargetDescription, regs: &RegisterFile) {
     // Create the main register group
     desc.add_gdb_feature("org.gnu.gdb.aarch64.core");
     desc.add_registers(regs.core_registers());
-    if let Ok(psr) = regs.psr() {
+    if let Some(psr) = regs.psr() {
         desc.add_register(psr);
     }
 
@@ -281,18 +281,18 @@ fn build_cortex_a_registers(desc: &mut TargetDescription, regs: &RegisterFile) {
     // Create the main register group
     desc.add_gdb_feature("org.gnu.gdb.arm.core");
     desc.add_registers(regs.core_registers());
-    if let Ok(psr) = regs.psr() {
+    if let Some(psr) = regs.psr() {
         desc.add_register(psr);
     }
 
-    if regs.psp().is_ok() && regs.msp().is_ok() {
+    if regs.psp().is_some() && regs.msp().is_some() {
         // Optional m-system extension
         desc.add_gdb_feature("org.gnu.gdb.arm.m-system");
         desc.add_register(regs.msp().unwrap());
         desc.add_register(regs.psp().unwrap());
     }
 
-    if regs.fpsr().is_ok() && regs.fpu_registers().is_some() {
+    if regs.fpsr().is_some() && regs.fpu_registers().is_some() {
         desc.add_gdb_feature("org.gnu.gdb.arm.vfp");
         desc.add_registers(regs.fpu_registers().unwrap());
         desc.add_register(regs.fpsr().unwrap());
@@ -311,18 +311,18 @@ fn build_cortex_m_registers(desc: &mut TargetDescription, regs: &RegisterFile) {
     // Create the main register group
     desc.add_gdb_feature("org.gnu.gdb.arm.m-profile");
     desc.add_registers(regs.core_registers());
-    if let Ok(psr) = regs.psr() {
+    if let Some(psr) = regs.psr() {
         desc.add_register(psr);
     }
 
-    if regs.psp().is_ok() && regs.msp().is_ok() {
+    if regs.psp().is_some() && regs.msp().is_some() {
         // Optional m-system extension
         desc.add_gdb_feature("org.gnu.gdb.arm.m-system");
         desc.add_register(regs.msp().unwrap());
         desc.add_register(regs.psp().unwrap());
     }
 
-    if regs.fpsr().is_ok() && regs.fpu_registers().is_some() {
+    if regs.fpsr().is_some() && regs.fpu_registers().is_some() {
         desc.add_gdb_feature("org.gnu.gdb.arm.vfp");
         // probe-rs exposes the single word registers, s0-s31
         // GDB requires exposing the double word registers, d0-d16

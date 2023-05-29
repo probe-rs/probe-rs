@@ -478,8 +478,8 @@ impl DebugCli {
                 let register_file = cli_data.core.registers();
 
                 let psr_iter: Box<dyn Iterator<Item = &CoreRegister>> = match register_file.psr() {
-                    Ok(psr) => Box::new(std::iter::once(psr)),
-                    Err(_) => Box::new(std::iter::empty::<&CoreRegister>()),
+                    Some(psr) => Box::new(std::iter::once(psr)),
+                    None => Box::new(std::iter::empty::<&CoreRegister>()),
                 };
 
                 let iter = register_file.core_registers().chain(psr_iter);
