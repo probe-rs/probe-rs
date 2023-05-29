@@ -10,6 +10,7 @@ use std::time::{Duration, Instant};
 use crate::architecture::arm::{ArmError, RawDapAccess};
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::probe::common::bits_to_byte;
+use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
 use crate::{
     architecture::{
         arm::{
@@ -620,6 +621,20 @@ impl DebugProbe for JLink {
     fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
         // Convert the integer millivolts value from self.handle to volts as an f32.
         Ok(Some((self.handle.read_target_voltage()? as f32) / 1000f32))
+    }
+
+    fn try_get_xtensa_interface(
+        self: Box<Self>,
+    ) -> Result<XtensaCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
+        // This probe is intended for Xtensa.
+        match XtensaCommunicationInterface::new(self) {
+            Ok(interface) => Ok(interface),
+            Err((probe, err)) => Err((probe.into_probe(), err)),
+        }
+    }
+
+    fn has_xtensa_interface(&self) -> bool {
+        true
     }
 }
 

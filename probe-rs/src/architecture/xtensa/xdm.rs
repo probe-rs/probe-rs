@@ -152,11 +152,11 @@ impl Xdm {
         }
 
         let status = x.status().unwrap();
-        log::info!("DSR: {:?}", status);
+        tracing::info!("DSR: {:?}", status);
         status.is_ok().unwrap();
         // TODO check status and clear bits if required
 
-        log::info!("Found Xtensa device with OCDID: 0x{:08X}", device_id);
+        tracing::info!("Found Xtensa device with OCDID: 0x{:08X}", device_id);
         x.device_id = device_id;
 
         Ok(x)
@@ -172,7 +172,7 @@ impl Xdm {
         )?.is_ok()?;
 
         let res = self.probe.read_register(DEBUG_ADDR, XDM_REGISTER_WIDTH)?;
-        log::trace!("dbg_read response: {:?}", res);
+        tracing::trace!("dbg_read response: {:?}", res);
 
         Ok(u32::from_le_bytes((&res[..]).try_into().unwrap()))
     }
@@ -190,7 +190,7 @@ impl Xdm {
             self.probe
                 .write_register(DEBUG_ADDR, &value.to_le_bytes()[..], XDM_REGISTER_WIDTH)?;
 
-        log::trace!("dbg_write response: {:?}", res);
+        tracing::trace!("dbg_write response: {:?}", res);
 
         Ok(u32::from_le_bytes((&res[..]).try_into().unwrap()))
     }
@@ -200,7 +200,7 @@ impl Xdm {
             self.probe
                 .write_register(dev as u32, &[value], XDM_ADDRESS_REGISTER_WIDTH)?[0],
         )?;
-        log::trace!("pwr_write response: {:?}", res);
+        tracing::trace!("pwr_write response: {:?}", res);
 
         Ok(res)
     }
@@ -210,7 +210,7 @@ impl Xdm {
             self.probe
                 .read_register(dev as u32, XDM_ADDRESS_REGISTER_WIDTH)?[0],
         )?;
-        log::trace!("pwr_read response: {:?}", res);
+        tracing::trace!("pwr_read response: {:?}", res);
 
         Ok(res)
     }
@@ -226,10 +226,7 @@ impl Xdm {
 
 impl From<XtensaError> for crate::Error {
     fn from(err: XtensaError) -> Self {
-        match err {
-            XtensaError::DebugProbe(e) => e.into(),
-            other => crate::Error::ArchitectureSpecific(Box::new(other)),
-        }
+        crate::Error::Xtensa(err)
     }
 }
 

@@ -30,7 +30,7 @@ impl XtensaCommunicationInterface {
             XtensaError::DebugProbe(err) => (probe, err),
             other_error => (
                 probe,
-                DebugProbeError::ArchitectureSpecific(Box::new(other_error)),
+                DebugProbeError::Other(other_error.into()),
             ),
         })?;
 

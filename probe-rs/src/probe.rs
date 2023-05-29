@@ -13,6 +13,7 @@ pub(crate) mod wlink;
 
 use crate::architecture::arm::ArmError;
 use crate::architecture::riscv::communication_interface::RiscvError;
+use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
 use crate::error::Error;
 use crate::{
     architecture::arm::communication_interface::UninitializedArmProbe,
@@ -386,6 +387,29 @@ impl Probe {
     }
 
     /// Check if the probe has an interface to
+    /// debug Xtensa chips.
+    pub fn has_xtensa_interface(&self) -> bool {
+        self.inner.has_xtensa_interface()
+    }
+
+    /// Try to get a [`XtensaCommunicationInterface`], which can
+    /// can be used to communicate with chips using the Xtensa
+    /// architecture.
+    ///
+    /// If an error occurs while trying to connect, the probe is returned.
+    pub fn try_into_xtensa_interface(
+        self,
+    ) -> Result<XtensaCommunicationInterface, (Self, DebugProbeError)> {
+        if !self.attached {
+            Err((self, DebugProbeError::NotAttached))
+        } else {
+            self.inner
+                .try_get_xtensa_interface()
+                .map_err(|(probe, err)| (Probe::from_attached_probe(probe), err))
+        }
+    }
+
+    /// Check if the probe has an interface to
     /// debug ARM chips.
     pub fn has_arm_interface(&self) -> bool {
         self.inner.has_arm_interface()
@@ -571,6 +595,22 @@ pub trait DebugProbe: Send + fmt::Debug {
 
     /// Check if the probe offers an interface to debug RISC-V chips.
     fn has_riscv_interface(&self) -> bool {
+        false
+    }
+
+    /// Get the dedicated interface to debug RISCV chips. Ensure that the
+    /// probe actually supports this by calling [DebugProbe::has_xtensa_interface] first.
+    fn try_get_xtensa_interface(
+        self: Box<Self>,
+    ) -> Result<XtensaCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
+        Err((
+            self.into_probe(),
+            DebugProbeError::InterfaceNotAvailable("Xtensa"),
+        ))
+    }
+
+    /// Check if the probe offers an interface to debug RISCV chips.
+    fn has_xtensa_interface(&self) -> bool {
         false
     }
 
