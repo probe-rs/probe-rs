@@ -30,7 +30,7 @@ ftdi-vendored = ["libftdi1-sys/vendored", "libftdi1-sys/libusb1-sys"]
 
 [dependencies]
 anyhow = { workspace = true }
-base64 = "0.21.1"
+base64 = "0.21.2"
 bincode = "1.3.3"
 bitfield = "0.14.0"
 bitvec = "1.0"
