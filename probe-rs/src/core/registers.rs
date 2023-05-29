@@ -19,7 +19,7 @@ pub enum RegisterDataType {
 
 /// This is used to label the register with a specific role that it plays during program execution and exception handling.
 /// The intention here is to harmonize the actual purpose of a register (e.g. `return address`),
-/// while the [`CoreRegister::name`] will contain the architecture specific label of the register..
+/// while the [`CoreRegister::name`] will contain the architecture specific label of the register.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) enum RegisterRole {
     /// Argument/Result registers like "A0", "a1", "r2", etc. (uses architecture specific names)
