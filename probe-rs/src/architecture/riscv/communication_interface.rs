@@ -690,7 +690,7 @@ impl RiscvCommunicationInterface {
         // assemble
         //  lb s1, 0(s0)
 
-        // Backup register s0 is the same address asthe frame_pointer
+        // Backup register s0 is the same address as the frame_pointer.
         let s0 = self.abstract_cmd_register_read(&core_registers::S0)?;
 
         let lw_command: u32 = assembly::lw(0, 8, V::WIDTH as u8, 8);
