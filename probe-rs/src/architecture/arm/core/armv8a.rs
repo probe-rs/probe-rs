@@ -1,28 +1,30 @@
 //! Register types and the core interface for armv8-a
+//!
+use super::instructions::aarch64::{self, build_ldr, build_str};
+use super::{
+    armv8a_core_regs::AARCH64_REGISTER_FILE,
+    instructions::aarch32::{build_mcr, build_mrc, build_vmov, build_vmrs},
+};
+use super::{CortexAState, AARCH32_FP_32_REGS};
 
-use crate::architecture::arm::core::armv8a_debug_regs::*;
-use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
-use crate::architecture::arm::sequences::ArmDebugSequence;
-use crate::architecture::arm::ArmError;
-use crate::core::memory_mapped_registers::MemoryMappedRegister;
-use crate::core::CoreInterface;
-use crate::core::{RegisterFile, RegisterValue};
-use crate::error::Error;
-use crate::memory::valid_32bit_address;
-use crate::CoreStatus;
-use crate::MemoryInterface;
-use crate::RegisterId;
-use crate::{Architecture, CoreInformation, CoreType, InstructionSet};
+use crate::{
+    architecture::arm::{
+        core::armv8a_debug_regs::*, memory::adi_v5_memory_interface::ArmProbe,
+        sequences::ArmDebugSequence, ArmError,
+    },
+    core::{
+        memory_mapped_registers::MemoryMappedRegister, CoreInterface, RegisterFile, RegisterValue,
+    },
+    error::Error,
+    memory::valid_32bit_address,
+    Architecture, CoreInformation, CoreStatus, CoreType, InstructionSet, MemoryInterface,
+    RegisterId,
+};
 use anyhow::Result;
 use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
-
-use super::armv8a_core_regs::AARCH64_REGISTER_FILE;
-use super::instructions::aarch32::{build_mcr, build_mrc, build_vmov, build_vmrs};
-use super::instructions::aarch64::{self, build_ldr, build_str};
-use super::{CortexAState, AARCH32_FP_32_REGS};
 
 /// Errors for the ARMv8-A state machine
 #[derive(thiserror::Error, Debug)]

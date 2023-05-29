@@ -1,4 +1,4 @@
-use probe_rs_target::{ArmCoreAccessOptions, CoreAccessOptions};
+use probe_rs_target::ArmCoreAccessOptions;
 
 use crate::architecture::arm::component::get_arm_components;
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
@@ -52,7 +52,7 @@ pub struct Session {
     configured_trace_sink: Option<TraceSink>,
 }
 
-enum ArchitectureInterface {
+pub(crate) enum ArchitectureInterface {
     Arm(Box<dyn ArmProbeInterface + 'static>),
     Riscv(Box<RiscvCommunicationInterface>),
 }
@@ -144,18 +144,14 @@ impl Session {
     ) -> Result<Session, crate::Error> {
         let default_core = config.default_core(&target);
 
-        let cores: Vec<_> = target
+        let mut cores: Vec<_> = target
             .cores
             .iter()
             .enumerate()
-            .map(|(id, core)| {
-                let core_enabled = config.is_core_enabled(id);
-
-                CombinedCoreState {
-                    debug_enabled: core_enabled,
-                    core_state: Core::create_state(id, core.core_access_options.clone(), &target),
-                    specific_state: SpecificCoreState::from_core_type(core.core_type),
-                }
+            .map(|(id, core)| CombinedCoreState {
+                debug_enabled: false,
+                core_state: Core::create_state(id, core.core_access_options.clone(), &target),
+                specific_state: SpecificCoreState::from_core_type(core.core_type),
             })
             .collect();
 
@@ -193,7 +189,7 @@ impl Session {
             .initialize(sequence_handle.clone())
             .map_err(|(_interface, e)| e)?;
 
-        for core in cores.iter().filter(|c| c.debug_enabled) {
+        for core in cores.iter().filter(|c| config.is_core_enabled(c.id())) {
             let unlock_span =
                 tracing::debug_span!("debug_device_unlock", core_id = core.id()).entered();
 
@@ -217,17 +213,8 @@ impl Session {
         }
 
         // For each core, setup debugging
-        for core in cores.iter().filter(|c| c.debug_enabled) {
-            tracing::debug_span!("debug_core_start", core_id = core.id()).in_scope(|| {
-                // Enable debug mode
-                sequence_handle.debug_core_start(
-                    &mut *interface,
-                    core.arm_memory_ap(),
-                    core.core_type(),
-                    arm_core_access_options.debug_base,
-                    arm_core_access_options.cti_base,
-                )
-            })?;
+        for core in cores.iter_mut().filter(|c| config.is_core_enabled(c.id())) {
+            core.enable_arm_debug(&mut *interface)?;
         }
 
         if config.attach_method == AttachMethod::Normal {
@@ -368,6 +355,34 @@ impl Session {
         };
 
         self.core(core_index)
+    }
+
+    /// Enable a core for debugging
+    ///
+    /// This will enable debug power for the given core.
+    ///
+    /// If debug power is already enabled, nothing will be changed.
+    ///
+    /// ## Errors
+    /// If the core is not found, `Error::CoreNotFound` will be returned.
+    ///
+    pub fn enable_core(&mut self, core_index: usize) -> Result<(), Error> {
+        let combined_state = self
+            .cores
+            .get_mut(core_index)
+            .ok_or(Error::CoreNotFound(core_index))?;
+
+        combined_state.enable_debug(&mut self.interface)
+    }
+
+    /// Disable debug power on a core
+    pub fn disable_core(&mut self, core_index: usize) -> Result<(), Error> {
+        let combined_state = self
+            .cores
+            .get_mut(core_index)
+            .ok_or(Error::CoreNotFound(core_index))?;
+
+        combined_state.disable_debug(&mut self.interface)
     }
 
     /// Read available trace data from the specified data sink.
@@ -661,7 +676,6 @@ impl Session {
 // This test ensures that [Session] is fully [Send] + [Sync].
 static_assertions::assert_impl_all!(Session: Send);
 
-// TODO tiwalun: Enable again, after rework of Session::new is done.
 impl Drop for Session {
     #[tracing::instrument(name = "session_drop", skip(self))]
     fn drop(&mut self) {
@@ -700,37 +714,13 @@ impl Drop for Session {
             tracing::warn!("Could not stop core tracing: {:?}", err);
         }
 
-        // Call any necessary deconfiguration/shutdown hooks.
-        if let DebugSequence::Arm(sequence) = &self.target.debug_sequence {
-            let sequence = sequence.clone();
-
-            if let Err(err) = self.enabled_core_indices().iter().try_for_each(|i| {
-                let core_type = self.target.cores[*i].core_type;
-
-                let core_information = match &self.target.cores[*i].core_access_options {
-                    CoreAccessOptions::Arm(arm) => arm,
-                    CoreAccessOptions::Riscv(_) => unreachable!(),
-                };
-
-                let ap = core_information.ap;
-                let dp = match core_information.psel {
-                    0 => DpAddress::Default,
-                    x => DpAddress::Multidrop(x),
-                };
-
-                // Note(unwrap): We already verified we're using an arm debug sequence, so we should
-                // always be able to access the arm probe interface.
-                let interface = self.get_arm_interface().unwrap();
-
-                let core_ap = MemoryAp::new(ApAddress { dp, ap });
-
-                let stop_span = tracing::debug_span!("debug_core_stop", core_id = i).entered();
-                sequence.debug_core_stop(interface, core_ap, core_type)?;
-                drop(stop_span);
-
-                Ok::<(), ArmError>(())
-            }) {
-                tracing::warn!("Failed to deconfigure device during shutdown: {err:?}");
+        for core in &mut self.cores {
+            if let Err(err) = core.disable_debug(&mut self.interface) {
+                tracing::warn!(
+                    "Failed to disable debug power for core {}: {}",
+                    core.id(),
+                    err
+                );
             }
         }
     }

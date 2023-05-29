@@ -1,6 +1,7 @@
 use crate::architecture::arm::ap::MemoryAp;
 use crate::architecture::arm::sequences::ArmDebugSequence;
 use crate::architecture::arm::ArmProbeInterface;
+use crate::session::ArchitectureInterface;
 use crate::{CoreType, InstructionSet};
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
 use probe_rs_target::{ArmCoreAccessOptions, RiscvCoreAccessOptions};
@@ -249,6 +250,99 @@ impl CombinedCoreState {
     /// This function will panic if the core is not an ARM core and doesn't have a memory AP
     pub(crate) fn arm_memory_ap(&self) -> MemoryAp {
         self.core_state.memory_ap()
+    }
+
+    pub(crate) fn enable_debug(
+        &mut self,
+        interface: &mut ArchitectureInterface,
+    ) -> Result<(), crate::Error> {
+        match interface {
+            ArchitectureInterface::Arm(boxed_interface) => {
+                let interface: &mut dyn ArmProbeInterface = boxed_interface.as_mut();
+                self.enable_arm_debug(interface)
+            }
+            ArchitectureInterface::Riscv(interface) => self.enable_riscv_debug(interface),
+        }
+    }
+
+    pub(crate) fn enable_arm_debug(
+        &mut self,
+        interface: &mut dyn ArmProbeInterface,
+    ) -> Result<(), crate::Error> {
+        let (sequence_handle, arm_core_access_options) = match &self.core_state.core_access_options
+        {
+            crate::core::ResolvedCoreOptions::Arm { sequence, options } => (sequence, options),
+            crate::core::ResolvedCoreOptions::Riscv { .. } => todo!(),
+        };
+
+        if !self.debug_enabled {
+            tracing::debug_span!("debug_core_start", core_id = self.id()).in_scope(|| {
+                // Enable debug mode
+                sequence_handle.debug_core_start(
+                    interface,
+                    self.arm_memory_ap(),
+                    self.core_type(),
+                    arm_core_access_options.debug_base,
+                    arm_core_access_options.cti_base,
+                )
+            })?;
+
+            self.debug_enabled = true;
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn enable_riscv_debug(
+        &mut self,
+        _interface: &mut RiscvCommunicationInterface,
+    ) -> Result<(), crate::Error> {
+        todo!()
+    }
+
+    pub(crate) fn disable_debug(
+        &mut self,
+        interface: &mut ArchitectureInterface,
+    ) -> Result<(), Error> {
+        match interface {
+            ArchitectureInterface::Arm(boxed_interface) => {
+                let interface: &mut dyn ArmProbeInterface = boxed_interface.as_mut();
+                self.disable_arm_debug(interface)
+            }
+            ArchitectureInterface::Riscv(interface) => self.disable_riscv_debug(interface),
+        }
+    }
+
+    pub(crate) fn disable_arm_debug(
+        &mut self,
+        interface: &mut dyn ArmProbeInterface,
+    ) -> Result<(), crate::Error> {
+        let (sequence_handle, _arm_core_access_options) = match &self.core_state.core_access_options
+        {
+            crate::core::ResolvedCoreOptions::Arm { sequence, options } => (sequence, options),
+            crate::core::ResolvedCoreOptions::Riscv { .. } => todo!(),
+        };
+
+        if self.debug_enabled {
+            let ap = self.arm_memory_ap();
+
+            let core_type = self.core_type();
+
+            let stop_span = tracing::debug_span!("debug_core_stop", core_id = self.id()).entered();
+            sequence_handle.debug_core_stop(interface, ap, core_type)?;
+            drop(stop_span);
+
+            self.debug_enabled = false;
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn disable_riscv_debug(
+        &mut self,
+        _interface: &mut RiscvCommunicationInterface,
+    ) -> Result<(), crate::Error> {
+        todo!()
     }
 }
 
