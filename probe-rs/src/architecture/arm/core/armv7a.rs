@@ -1,11 +1,11 @@
 //! Register types and the core interface for armv7-a
 
 use super::{
-    core_registers::aarch32::{AARCH32_COMMON_REGS, AARCH32_FP_16_REGS, AARCH32_FP_32_REGS},
     instructions::aarch32::{
         build_bx, build_ldc, build_mcr, build_mov, build_mrc, build_mrs, build_stc, build_vmov,
         build_vmrs,
     },
+    registers::aarch32::{AARCH32_COMMON_REGS, AARCH32_FP_16_REGS, AARCH32_FP_32_REGS},
     CortexAState,
 };
 use crate::{
@@ -336,7 +336,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         let _ = self.status()?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(self.registers().program_counter()?.id)?;
+        let pc_value = self.read_core_reg(self.registers().program_counter()?.id())?;
 
         // get pc
         Ok(CoreInformation {
@@ -423,7 +423,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         self.reset_register_cache();
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(self.registers().program_counter()?.id)?;
+        let pc_value = self.read_core_reg(self.registers().program_counter()?.id())?;
 
         // get pc
         Ok(CoreInformation {
@@ -444,7 +444,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
 
         // Set breakpoint for any change
         let current_pc: u32 = self
-            .read_core_reg(self.registers().program_counter()?.id)?
+            .read_core_reg(self.registers().program_counter()?.id())?
             .try_into()?;
         let mut bp_control = Dbgbcr(0);
 
@@ -474,7 +474,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
             .write_word_32(bp_control_addr, saved_bp_control)?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(self.registers().program_counter()?.id)?;
+        let pc_value = self.read_core_reg(self.registers().program_counter()?.id())?;
 
         // get pc
         Ok(CoreInformation {

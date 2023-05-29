@@ -1,11 +1,11 @@
 //! Register types and the core interface for armv8-a
 
 use super::{
-    core_registers::{aarch32::AARCH32_FP_32_REGS, aarch64::AARCH64_REGISTER_FILE},
     instructions::{
         aarch64,
         thumb2::{build_ldr, build_mcr, build_mrc, build_str, build_vmov, build_vmrs},
     },
+    registers::{aarch32::AARCH32_FP_32_REGS, aarch64::AARCH64_REGISTER_FILE},
     CortexAState,
 };
 use crate::{
@@ -777,7 +777,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         self.memory.write_word_32(address, cti_gate.into())?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(self.registers().program_counter()?.id)?;
+        let pc_value = self.read_core_reg(self.registers().program_counter()?.id())?;
 
         // get pc
         Ok(CoreInformation {
@@ -873,7 +873,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         self.reset_register_cache();
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(self.registers().program_counter()?.id)?;
+        let pc_value = self.read_core_reg(self.registers().program_counter()?.id())?;
 
         // get pc
         Ok(CoreInformation {
@@ -900,7 +900,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         self.memory.write_word_32(edecr_address, edecr.into())?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(self.registers().program_counter()?.id)?;
+        let pc_value = self.read_core_reg(self.registers().program_counter()?.id())?;
 
         // get pc
         Ok(CoreInformation {
