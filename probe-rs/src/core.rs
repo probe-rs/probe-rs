@@ -1,7 +1,11 @@
-use crate::{error, CoreType, Error, InstructionSet, MemoryInterface};
+use crate::{
+    architecture::arm::sequences::ArmDebugSequence, error, CoreType, Error, InstructionSet,
+    MemoryInterface, Target,
+};
 use anyhow::{anyhow, Result};
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
-use std::time::Duration;
+use probe_rs_target::{ArmCoreAccessOptions, RiscvCoreAccessOptions};
+use std::{sync::Arc, time::Duration};
 
 pub mod core_state;
 pub mod core_status;
@@ -22,6 +26,8 @@ pub struct CoreInformation {
 
 /// A generic interface to control a MCU core.
 pub trait CoreInterface: MemoryInterface {
+    fn id(&self) -> usize;
+
     /// Wait until the core is halted. If the core does not halt on its own,
     /// a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) error will be returned.
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), error::Error>;
@@ -197,26 +203,54 @@ impl<'probe> MemoryInterface for Core<'probe> {
 /// to allow potential other shareholders of the session struct to grab a core handle too.
 pub struct Core<'probe> {
     inner: Box<dyn CoreInterface + 'probe>,
-    state: &'probe mut CoreState,
 }
 
 impl<'probe> Core<'probe> {
     /// Create a new [`Core`].
-    pub fn new(core: impl CoreInterface + 'probe, state: &'probe mut CoreState) -> Core<'probe> {
+    pub(crate) fn new(core: impl CoreInterface + 'probe) -> Core<'probe> {
         Self {
             inner: Box::new(core),
-            state,
         }
     }
 
     /// Creates a new [`CoreState`]
-    pub fn create_state(id: usize, options: CoreAccessOptions) -> CoreState {
-        CoreState::new(id, options)
+    pub(crate) fn create_state(
+        id: usize,
+        options: CoreAccessOptions,
+        target: &Target,
+        core_type: CoreType,
+    ) -> CombinedCoreState {
+        let specific_state = SpecificCoreState::from_core_type(core_type);
+
+        match options {
+            CoreAccessOptions::Arm(options) => {
+                let sequence = match &target.debug_sequence {
+                    crate::config::DebugSequence::Arm(seq) => seq.clone(),
+                    crate::config::DebugSequence::Riscv(_) => panic!(
+                        "Mismatch between sequence and core kind. This is a bug, please report it."
+                    ),
+                };
+
+                let core_state = CoreState::new(id, ResolvedCoreOptions::Arm { sequence, options });
+
+                CombinedCoreState {
+                    core_state,
+                    specific_state,
+                }
+            }
+            CoreAccessOptions::Riscv(options) => {
+                let core_state = CoreState::new(id, ResolvedCoreOptions::Riscv { options });
+                CombinedCoreState {
+                    core_state,
+                    specific_state,
+                }
+            }
+        }
     }
 
     /// Returns the ID of this core.
     pub fn id(&self) -> usize {
-        self.state.id()
+        self.inner.id()
     }
 
     /// Wait until the core is halted. If the core does not halt on its own,
@@ -465,5 +499,28 @@ impl<'probe> Core<'probe> {
     #[tracing::instrument(skip(self))]
     pub(crate) fn on_session_stop(&mut self) -> Result<(), Error> {
         self.inner.on_session_stop()
+    }
+}
+
+pub enum ResolvedCoreOptions {
+    Arm {
+        sequence: Arc<dyn ArmDebugSequence>,
+        options: ArmCoreAccessOptions,
+    },
+    Riscv {
+        options: RiscvCoreAccessOptions,
+    },
+}
+
+impl std::fmt::Debug for ResolvedCoreOptions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Arm { options, .. } => f
+                .debug_struct("Arm")
+                .field("sequence", &"<ArmDebugSequence>")
+                .field("options", options)
+                .finish(),
+            Self::Riscv { options } => f.debug_struct("Riscv").field("options", options).finish(),
+        }
     }
 }

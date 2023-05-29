@@ -28,6 +28,7 @@ pub mod sequences;
 pub struct Riscv32<'probe> {
     interface: &'probe mut RiscvCommunicationInterface,
     state: &'probe mut RiscVState,
+    id: usize,
 }
 
 impl<'probe> Riscv32<'probe> {
@@ -35,8 +36,13 @@ impl<'probe> Riscv32<'probe> {
     pub fn new(
         interface: &'probe mut RiscvCommunicationInterface,
         state: &'probe mut RiscVState,
+        id: usize,
     ) -> Self {
-        Self { interface, state }
+        Self {
+            interface,
+            state,
+            id,
+        }
     }
 
     fn read_csr(&mut self, address: u16) -> Result<u32, RiscvError> {
@@ -602,6 +608,10 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         dcsr.set_ebreaku(enabled);
 
         self.write_csr(0x7b0, dcsr.0).map_err(|e| e.into())
+    }
+
+    fn id(&self) -> usize {
+        self.id
     }
 }
 

@@ -5,7 +5,7 @@ use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
 use crate::architecture::arm::{ApAddress, ArmError, DpAddress};
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::config::{ChipInfo, RegistryError, Target, TargetSelector};
-use crate::core::{Architecture, CoreState, SpecificCoreState};
+use crate::core::{Architecture, CombinedCoreState};
 use crate::{
     architecture::{
         arm::{
@@ -42,7 +42,7 @@ use std::{fmt, sync::Arc, time::Duration};
 pub struct Session {
     target: Target,
     interface: ArchitectureInterface,
-    cores: Vec<(SpecificCoreState, CoreState)>,
+    cores: Vec<CombinedCoreState>,
     configured_trace_sink: Option<TraceSink>,
 }
 
@@ -75,37 +75,13 @@ impl From<ArchitectureInterface> for Architecture {
 impl ArchitectureInterface {
     fn attach<'probe, 'target: 'probe>(
         &'probe mut self,
-        core: &'probe mut SpecificCoreState,
-        core_state: &'probe mut CoreState,
-        target: &'target Target,
+        combined_state: &'probe mut CombinedCoreState,
     ) -> Result<Core<'probe>, Error> {
         match self {
-            ArchitectureInterface::Arm(state) => {
-                let config = target
-                    .cores
-                    .get(core_state.id())
-                    .ok_or_else(|| Error::CoreNotFound(core_state.id()))?;
-                let arm_core_access_options = match &config.core_access_options {
-                    probe_rs_target::CoreAccessOptions::Arm(opt) => opt,
-                    probe_rs_target::CoreAccessOptions::Riscv(_) => {
-                        unreachable!("This should never happen. Please file a bug if it does.")
-                    }
-                };
-
-                let dp = match arm_core_access_options.psel {
-                    0 => DpAddress::Default,
-                    x => DpAddress::Multidrop(x),
-                };
-
-                let ap = ApAddress {
-                    dp,
-                    ap: arm_core_access_options.ap,
-                };
-                let memory = state.memory_interface(MemoryAp::new(ap))?;
-
-                core.attach_arm(core_state, memory, target)
+            ArchitectureInterface::Arm(arm_interface) => combined_state.attach_arm(arm_interface),
+            ArchitectureInterface::Riscv(riscv_interface) => {
+                combined_state.attach_riscv(riscv_interface)
             }
-            ArchitectureInterface::Riscv(state) => core.attach_riscv(core_state, state),
         }
     }
 }
@@ -125,9 +101,11 @@ impl Session {
             .iter()
             .enumerate()
             .map(|(id, core)| {
-                (
-                    SpecificCoreState::from_core_type(core.core_type),
-                    Core::create_state(id, core.core_access_options.clone()),
+                Core::create_state(
+                    id,
+                    core.core_access_options.clone(),
+                    &target,
+                    core.core_type,
                 )
             })
             .collect();
@@ -370,11 +348,7 @@ impl Session {
 
     /// Lists the available cores with their number and their type.
     pub fn list_cores(&self) -> Vec<(usize, CoreType)> {
-        self.cores
-            .iter()
-            .map(|(t, _)| t.core_type())
-            .enumerate()
-            .collect()
+        self.cores.iter().map(|t| (t.id(), t.core_type())).collect()
     }
 
     /// Attaches to the core with the given number.
@@ -394,11 +368,11 @@ impl Session {
     ///
     #[tracing::instrument(skip(self), name = "attach_to_core")]
     pub fn core(&mut self, core_index: usize) -> Result<Core<'_>, Error> {
-        let (core, core_state) = self
+        let combined_state = self
             .cores
             .get_mut(core_index)
             .ok_or(Error::CoreNotFound(core_index))?;
-        self.interface.attach(core, core_state, &self.target)
+        self.interface.attach(combined_state)
     }
 
     /// Read available trace data from the specified data sink.

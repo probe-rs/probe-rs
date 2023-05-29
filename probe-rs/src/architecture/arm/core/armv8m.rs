@@ -27,6 +27,8 @@ pub struct Armv8m<'probe> {
     state: &'probe mut CortexMState,
 
     sequence: Arc<dyn ArmDebugSequence>,
+
+    id: usize,
 }
 
 impl<'probe> Armv8m<'probe> {
@@ -34,6 +36,7 @@ impl<'probe> Armv8m<'probe> {
         mut memory: Box<dyn ArmProbe + 'probe>,
         state: &'probe mut CortexMState,
         sequence: Arc<dyn ArmDebugSequence>,
+        id: usize,
     ) -> Result<Self, Error> {
         if !state.initialized() {
             // determine current state
@@ -71,6 +74,7 @@ impl<'probe> Armv8m<'probe> {
             memory,
             state,
             sequence,
+            id,
         })
     }
 
@@ -412,6 +416,10 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
     fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
         Ok(self.state.fp_present)
+    }
+
+    fn id(&self) -> usize {
+        self.id
     }
 }
 

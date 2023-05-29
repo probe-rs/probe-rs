@@ -56,6 +56,8 @@ pub struct Armv7a<'probe> {
     num_breakpoints: Option<u32>,
 
     itr_enabled: bool,
+
+    id: usize,
 }
 
 impl<'probe> Armv7a<'probe> {
@@ -64,6 +66,7 @@ impl<'probe> Armv7a<'probe> {
         state: &'probe mut CortexAState,
         base_address: u64,
         sequence: Arc<dyn ArmDebugSequence>,
+        id: usize,
     ) -> Result<Self, Error> {
         if !state.initialized() {
             // determine current state
@@ -92,6 +95,7 @@ impl<'probe> Armv7a<'probe> {
             sequence,
             num_breakpoints: None,
             itr_enabled: false,
+            id,
         };
 
         if !core.state.initialized() {
@@ -763,6 +767,10 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
             Ok(())
         }
     }
+
+    fn id(&self) -> usize {
+        self.id
+    }
 }
 
 impl<'probe> MemoryInterface for Armv7a<'probe> {
@@ -1252,6 +1260,7 @@ mod test {
             &mut CortexAState::new(),
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            0,
         )
         .unwrap();
     }
@@ -1287,6 +1296,7 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            0,
         )
         .unwrap();
 
@@ -1326,6 +1336,7 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            0,
         )
         .unwrap();
 
@@ -1360,6 +1371,7 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            0,
         )
         .unwrap();
 
@@ -1393,6 +1405,7 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            0,
         )
         .unwrap();
 
@@ -1426,6 +1439,7 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            0,
         )
         .unwrap();
 
@@ -1465,6 +1479,7 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            0,
         )
         .unwrap();
 
@@ -1504,6 +1519,7 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            0,
         )
         .unwrap();
 
@@ -1557,6 +1573,7 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            0,
         )
         .unwrap();
 
@@ -1602,6 +1619,7 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            0,
         )
         .unwrap();
 
@@ -1630,6 +1648,7 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            0,
         )
         .unwrap();
 
@@ -1697,6 +1716,7 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            0,
         )
         .unwrap();
 
@@ -1745,6 +1765,7 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            0,
         )
         .unwrap();
 
@@ -1779,6 +1800,7 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            0,
         )
         .unwrap();
 
@@ -1809,6 +1831,7 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            0,
         )
         .unwrap();
 
@@ -1840,6 +1863,7 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
+            0,
         )
         .unwrap();
 
