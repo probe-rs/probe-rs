@@ -5,7 +5,9 @@ use super::{
         build_bx, build_ldc, build_mcr, build_mov, build_mrc, build_mrs, build_stc, build_vmov,
         build_vmrs,
     },
-    registers::aarch32::{AARCH32_COMMON_REGS, AARCH32_FP_16_REGS, AARCH32_FP_32_REGS},
+    registers::aarch32::{
+        AARCH32_REGISTER_FILE, AARCH32_WITH_FP_16_REGISTER_FILE, AARCH32_WITH_FP_32_REGISTER_FILE,
+    },
     CortexAState,
 };
 use crate::{
@@ -662,9 +664,9 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
 
     fn registers(&self) -> &'static RegisterFile {
         match self.state.fp_reg_count {
-            Some(16) => &AARCH32_FP_16_REGS,
-            Some(32) => &AARCH32_FP_32_REGS,
-            _ => &AARCH32_COMMON_REGS,
+            Some(16) => &AARCH32_WITH_FP_16_REGISTER_FILE,
+            Some(32) => &AARCH32_WITH_FP_32_REGISTER_FILE,
+            _ => &AARCH32_REGISTER_FILE,
         }
     }
 

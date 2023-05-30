@@ -5,7 +5,7 @@ use super::{
         aarch64,
         thumb2::{build_ldr, build_mcr, build_mrc, build_str, build_vmov, build_vmrs},
     },
-    registers::{aarch32::AARCH32_FP_32_REGS, aarch64::AARCH64_REGISTER_FILE},
+    registers::{aarch32::AARCH32_WITH_FP_32_REGISTER_FILE, aarch64::AARCH64_REGISTER_FILE},
     CortexAState,
 };
 use crate::{
@@ -994,7 +994,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         if self.state.is_64_bit {
             &AARCH64_REGISTER_FILE
         } else {
-            &AARCH32_FP_32_REGS
+            &AARCH32_WITH_FP_32_REGISTER_FILE
         }
     }
 

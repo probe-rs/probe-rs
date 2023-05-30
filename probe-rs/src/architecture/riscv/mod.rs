@@ -13,11 +13,11 @@ use crate::{
 use anyhow::{anyhow, Result};
 use bitfield::bitfield;
 use communication_interface::{AbstractCommandErrorKind, RiscvCommunicationInterface, RiscvError};
-use registers::RISCV_REGISTERS;
+use registers::RISCV_REGISTER_FILE;
 use std::time::{Duration, Instant};
 
 #[macro_use]
-mod registers;
+pub(crate) mod registers;
 pub(crate) mod assembly;
 mod dtm;
 
@@ -142,7 +142,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
         self.interface.write_dm_register(dmcontrol)?;
 
-        let pc = self.read_core_reg(registers::RISCV_REGISTERS.program_counter()?.id())?;
+        let pc = self.read_core_reg(registers::RISCV_REGISTER_FILE.program_counter()?.id())?;
 
         Ok(CoreInformation { pc: pc.try_into()? })
     }
@@ -485,7 +485,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn registers(&self) -> &'static RegisterFile {
-        &RISCV_REGISTERS
+        &RISCV_REGISTER_FILE
     }
 
     fn hw_breakpoints_enabled(&self) -> bool {

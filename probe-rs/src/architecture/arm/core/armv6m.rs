@@ -680,7 +680,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
     }
 
     fn registers(&self) -> &'static RegisterFile {
-        &CORTEX_M_COMMON_REGS
+        &CORTEX_M_REGISTER_FILE
     }
 
     fn clear_hw_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {

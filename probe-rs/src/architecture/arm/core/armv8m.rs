@@ -2,7 +2,7 @@
 
 use super::{
     cortex_m::Mvfr0,
-    registers::cortex_m::{CORTEX_M_COMMON_REGS, CORTEX_M_WITH_FP_REGS},
+    registers::cortex_m::{CORTEX_M_REGISTER_FILE, CORTEX_M_WITH_FP_REGISTER_FILE},
     CortexMState, Dfsr,
 };
 use crate::{
@@ -309,9 +309,9 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
     fn registers(&self) -> &'static RegisterFile {
         if self.state.fp_present {
-            &CORTEX_M_WITH_FP_REGS
+            &CORTEX_M_WITH_FP_REGISTER_FILE
         } else {
-            &CORTEX_M_COMMON_REGS
+            &CORTEX_M_REGISTER_FILE
         }
     }
 

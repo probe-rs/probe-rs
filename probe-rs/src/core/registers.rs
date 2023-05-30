@@ -357,28 +357,26 @@ impl<T> RegisterValueResultExt<T> for Result<T, Infallible> {
 
 /// A static array of all the registers ([`CoreRegister`]).
 #[derive(Debug, PartialEq)]
-pub struct RegisterFile(Vec<CoreRegister>);
+pub struct RegisterFile(Vec<&'static CoreRegister>);
 
 impl RegisterFile {
-    /// Construct a new register file from a vector of [`CoreRegister`]s, and panics if it does not contain at least the essential entries.
-    pub fn new(core_registers: Vec<CoreRegister>) -> RegisterFile {
-        let register_file = RegisterFile(core_registers);
-        // Ensure we have the minimum required registers.
-        let _ = register_file.program_counter().unwrap();
-        let _ = register_file.stack_pointer().unwrap();
-        let _ = register_file.frame_pointer().unwrap();
-        let _ = register_file.return_address().unwrap();
-        register_file
+    /// Construct a new register file from a vector of &[`CoreRegister`]s.
+    /// The register file must contain at least the essential entries for program counter, stack pointer, frame pointer and return address registers.
+    pub fn new(core_registers: Vec<&'static CoreRegister>) -> RegisterFile {
+        RegisterFile(core_registers)
     }
 
     /// Returns an iterator over the descriptions of all the core registers (non-FPU) of this core.
     pub fn core_registers(&self) -> impl Iterator<Item = &CoreRegister> {
-        self.0.iter().filter(|r| {
-            !matches!(
-                r.role,
-                Some(RegisterRole::FloatingPoint) | Some(RegisterRole::FloatingPointStatus)
-            )
-        })
+        self.0
+            .iter()
+            .filter(|r| {
+                !matches!(
+                    r.role,
+                    Some(RegisterRole::FloatingPoint) | Some(RegisterRole::FloatingPointStatus)
+                )
+            })
+            .cloned()
     }
 
     /// Returns the nth platform register.
@@ -405,6 +403,7 @@ impl RegisterFile {
                     "No frame pointer found. Please report this as a bug.".to_string(),
                 )
             })
+            .cloned()
     }
 
     /// The program counter.
@@ -417,6 +416,7 @@ impl RegisterFile {
                     "No program counter found. Please report this as a bug.".to_string(),
                 )
             })
+            .cloned()
     }
 
     /// The stack pointer.
@@ -429,6 +429,7 @@ impl RegisterFile {
                     "No stack pointer found. Please report this as a bug.".to_string(),
                 )
             })
+            .cloned()
     }
 
     /// The link register.
@@ -441,6 +442,7 @@ impl RegisterFile {
                     "No return address found. Please report this as a bug.".to_string(),
                 )
             })
+            .cloned()
     }
 
     /// Returns the nth argument register.
@@ -462,6 +464,7 @@ impl RegisterFile {
                     Some(RegisterRole::ArgumentAndResult(_)) | Some(RegisterRole::Argument(_))
                 )
             })
+            .cloned()
             .nth(index)
     }
 
@@ -479,6 +482,7 @@ impl RegisterFile {
         self.0
             .iter()
             .filter(|r| matches!(r.role, Some(RegisterRole::ArgumentAndResult(_))))
+            .cloned()
             .nth(index)
     }
 
@@ -487,6 +491,7 @@ impl RegisterFile {
         self.0
             .iter()
             .find(|r| r.role == Some(RegisterRole::MainStackPointer))
+            .cloned()
     }
 
     /// The process stack pointer.
@@ -494,6 +499,7 @@ impl RegisterFile {
         self.0
             .iter()
             .find(|r| r.role == Some(RegisterRole::ProcessStackPointer))
+            .cloned()
     }
 
     /// The processor status register.
@@ -501,6 +507,7 @@ impl RegisterFile {
         self.0
             .iter()
             .find(|r| r.role == Some(RegisterRole::ProcessorStatus))
+            .cloned()
     }
 
     /// Other architecture specific registers
@@ -508,6 +515,7 @@ impl RegisterFile {
         self.0
             .iter()
             .filter(|r| matches!(r.role, Some(RegisterRole::Other(_))))
+            .cloned()
     }
 
     /// Find an architecture specific register by name
@@ -516,6 +524,7 @@ impl RegisterFile {
             .iter()
             .find(|r| matches!(r.role, Some(RegisterRole::Other(other_name)) if other_name == name))
             .ok_or_else(|| Error::GenericCoreError(format!("Argument register {name:?} not found")))
+            .cloned()
     }
 
     /// The fpu status register.
@@ -523,6 +532,7 @@ impl RegisterFile {
         self.0
             .iter()
             .find(|r| r.role == Some(RegisterRole::FloatingPointStatus))
+            .cloned()
     }
 
     /// Returns an iterator over the descriptions of all the registers of this core.
@@ -533,7 +543,7 @@ impl RegisterFile {
             .filter(|r| r.role == Some(RegisterRole::FloatingPoint))
             .peekable();
         if fpu_registers.peek().is_some() {
-            Some(fpu_registers)
+            Some(fpu_registers.cloned())
         } else {
             None
         }
@@ -553,6 +563,36 @@ impl RegisterFile {
         self.0
             .iter()
             .filter(|r| r.role == Some(RegisterRole::FloatingPoint))
+            .cloned()
             .nth(index)
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use crate::architecture::{
+        arm::core::registers::{aarch32::*, aarch64::*, cortex_m::*},
+        riscv::registers::RISCV_REGISTER_FILE,
+    };
+    #[test]
+    /// Enusure that the various static [`RegisterFile`]s contain the required registers.
+    fn validate_register_file_contents() {
+        for register_file in [
+            &CORTEX_M_REGISTER_FILE,
+            &CORTEX_M_WITH_FP_REGISTER_FILE,
+            &AARCH32_REGISTER_FILE,
+            &AARCH32_WITH_FP_16_REGISTER_FILE,
+            &AARCH32_WITH_FP_32_REGISTER_FILE,
+            &AARCH64_REGISTER_FILE,
+            &RISCV_REGISTER_FILE,
+        ]
+        .iter()
+        {
+            register_file.program_counter().unwrap();
+            register_file.stack_pointer().unwrap();
+            register_file.frame_pointer().unwrap();
+            register_file.return_address().unwrap();
+        }
     }
 }
