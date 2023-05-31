@@ -18,8 +18,7 @@ pub struct DebugRegister {
 impl DebugRegister {
     /// Test if this is a 32-bit unsigned integer register
     pub(crate) fn is_u32(&self) -> bool {
-        self.core_register.data_type == RegisterDataType::UnsignedInteger
-            && self.core_register.size_in_bits == 32
+        self.core_register.data_type == RegisterDataType::UnsignedInteger(32)
     }
 
     /// A helper function to determine if the contained register value is equal to the maximum value that can be stored in that datatype.
@@ -57,8 +56,7 @@ impl DebugRegisters {
 
         for (dwarf_id, core_register) in core.registers().core_registers().enumerate() {
             // Check to ensure the register type is compatible with u64.
-            if matches!(core_register.data_type(), RegisterDataType::UnsignedInteger)
-                && core_register.size_in_bits() <= 64
+            if matches!(core_register.data_type(), RegisterDataType::UnsignedInteger(size_in_bits) if size_in_bits <= 64)
             {
                 debug_registers.push(DebugRegister {
                     core_register,

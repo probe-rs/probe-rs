@@ -8,13 +8,13 @@ use std::{
     fmt::{Display, Formatter},
 };
 
-/// The type of data stored in a register
+/// The type of data stored in a register, with size in bits encapsulated in the enum.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RegisterDataType {
-    /// Unsigned integer data
-    UnsignedInteger,
-    /// Floating point data
-    FloatingPoint,
+    /// Unsigned integer data, with size in bits encapsulated.
+    UnsignedInteger(usize),
+    /// Floating point data, with size in bits encapsulated.
+    FloatingPoint(usize),
 }
 
 /// This is used to label the register with a specific role that it plays during program execution and exception handling.
@@ -68,7 +68,6 @@ pub struct CoreRegister {
     /// Otherwise, it will be `None` and the register is a general purpose register.
     pub(crate) role: Option<RegisterRole>,
     pub(crate) data_type: RegisterDataType,
-    pub(crate) size_in_bits: usize,
 }
 
 impl Display for CoreRegister {
@@ -105,13 +104,16 @@ impl CoreRegister {
 
     /// Get the size, in bits, of this register
     pub fn size_in_bits(&self) -> usize {
-        self.size_in_bits
+        match self.data_type() {
+            RegisterDataType::UnsignedInteger(size_in_bits) => size_in_bits,
+            RegisterDataType::FloatingPoint(size_in_bits) => size_in_bits,
+        }
     }
 
     /// Get the size, in bytes, of this register
     pub fn size_in_bytes(&self) -> usize {
         // Always round up
-        (self.size_in_bits + 7) / 8
+        (self.size_in_bits() + 7) / 8
     }
 
     /// Get the width to format this register as a hex string
