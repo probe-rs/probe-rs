@@ -177,7 +177,9 @@ fn main_try(metadata: Arc<Mutex<Metadata>>, offset: UtcOffset) -> Result<()> {
     let configs = config::Configs::new(work_dir.clone());
     let config = configs.select_defined(config_name)?;
 
-    logging::init(Some(config.general.log_level));
+    if config.general.log_level != log::LevelFilter::Off {
+        logging::init(config.general.log_level.to_level());
+    }
 
     // Make sure we load the config given in the cli parameters.
     for cdp in &config.general.chip_descriptions {
