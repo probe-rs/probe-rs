@@ -1,3 +1,7 @@
+//! Debug Transport Module (DTM) handling
+//!
+//! The DTM is responsible for access to the debug module.
+//! Currently, only JTAG is supported.
 use std::{
     convert::TryInto,
     time::{Duration, Instant},
@@ -10,11 +14,6 @@ use crate::{
     probe::{CommandResult, DeferredResultIndex, JTAGAccess, JtagWriteCommand},
     DebugProbeError,
 };
-
-///! Debug Transport Module (DTM) handling
-///!
-///! The DTM is responsible for access to the debug module.
-///! Currently, only JTAG is supported.
 
 /// Access to the Debug Transport Module (DTM),
 /// which is used to communicate with the RISCV debug module.

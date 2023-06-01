@@ -1,3 +1,8 @@
+//! # DUT Defintions
+//!
+//! This module handles the definition of the different devices under test (DUTs),
+//! which are used by the tester.
+
 use anyhow::{bail, ensure, Context, Result};
 use probe_rs::{
     config::{get_target_by_name, search_chips},
@@ -9,11 +14,6 @@ use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
 };
-///! # DUT Defintions
-///!
-///! This module handles the definition of the different devices under test (DUTs),
-///! which are used by the tester.
-///!
 
 #[derive(Deserialize)]
 struct RawDutDefinition {
