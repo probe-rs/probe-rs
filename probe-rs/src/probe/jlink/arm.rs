@@ -1,3 +1,4 @@
+//! Implementation of the SWD and JTAG protocols for the JLink probe.
 use std::{iter, time::Duration};
 
 use crate::{
@@ -122,8 +123,6 @@ impl ProbeStatistics {
         self.num_line_resets += 1;
     }
 }
-
-///! Implementation of the SWD and JTAG protocols for the JLink probe.
 
 // Constant to be written to ABORT
 const JTAG_ABORT_VALUE: u64 = 0x8;
