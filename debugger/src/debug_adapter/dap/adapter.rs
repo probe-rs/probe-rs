@@ -523,7 +523,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // - The `StackFrame.id` for register variables - we will warn the user that updating these are not yet supported.
         // - The `Variable.parent_key` for a local or static variable - If these are base data types, we will attempt to update their value, otherwise we will warn the user that updating complex / structure variables are not yet supported.
         let parent_key = arguments.variables_reference;
-        let new_value = arguments.value.clone();
+        let new_value = &arguments.value;
 
         //TODO: Check for, and prevent SVD Peripheral/Register/Field values from being updated, until such time as we can do it safely.
 
