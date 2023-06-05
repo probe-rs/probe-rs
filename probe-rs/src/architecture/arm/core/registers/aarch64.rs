@@ -1,6 +1,6 @@
 use crate::{
     core::{RegisterDataType, RegisterRole},
-    CoreRegister, RegisterFile, RegisterId,
+    CoreRegister, CoreRegisters, RegisterId,
 };
 use once_cell::sync::Lazy;
 
@@ -32,8 +32,8 @@ pub(crate) const RA: CoreRegister = CoreRegister {
     data_type: RegisterDataType::UnsignedInteger(64),
 };
 
-pub(crate) static AARCH64_REGISTER_FILE: Lazy<RegisterFile> =
-    Lazy::new(|| RegisterFile::new(AARCH64_REGISTER_FILE_SET.iter().collect()));
+pub(crate) static AARCH64_REGISTER_FILE: Lazy<CoreRegisters> =
+    Lazy::new(|| CoreRegisters::new(AARCH64_REGISTER_FILE_SET.iter().collect()));
 
 pub static AARCH64_REGISTER_FILE_SET: &[CoreRegister] = &[
     CoreRegister {

@@ -1,12 +1,12 @@
 use super::cortex_m::ARM32_COMMON_REGS_SET;
 use crate::{
     core::{RegisterDataType, RegisterRole},
-    CoreRegister, RegisterFile, RegisterId,
+    CoreRegister, CoreRegisters, RegisterId,
 };
 use once_cell::sync::Lazy;
 
-pub(crate) static AARCH32_REGISTER_FILE: Lazy<RegisterFile> = Lazy::new(|| {
-    RegisterFile::new(
+pub(crate) static AARCH32_REGISTER_FILE: Lazy<CoreRegisters> = Lazy::new(|| {
+    CoreRegisters::new(
         ARM32_COMMON_REGS_SET
             .iter()
             .chain(AARCH32_COMMON_REGS_SET)
@@ -14,8 +14,8 @@ pub(crate) static AARCH32_REGISTER_FILE: Lazy<RegisterFile> = Lazy::new(|| {
     )
 });
 
-pub(crate) static AARCH32_WITH_FP_16_REGISTER_FILE: Lazy<RegisterFile> = Lazy::new(|| {
-    RegisterFile::new(
+pub(crate) static AARCH32_WITH_FP_16_REGISTER_FILE: Lazy<CoreRegisters> = Lazy::new(|| {
+    CoreRegisters::new(
         ARM32_COMMON_REGS_SET
             .iter()
             .chain(AARCH32_COMMON_REGS_SET)
@@ -24,8 +24,8 @@ pub(crate) static AARCH32_WITH_FP_16_REGISTER_FILE: Lazy<RegisterFile> = Lazy::n
     )
 });
 
-pub(crate) static AARCH32_WITH_FP_32_REGISTER_FILE: Lazy<RegisterFile> = Lazy::new(|| {
-    RegisterFile::new(
+pub(crate) static AARCH32_WITH_FP_32_REGISTER_FILE: Lazy<CoreRegisters> = Lazy::new(|| {
+    CoreRegisters::new(
         ARM32_COMMON_REGS_SET
             .iter()
             .chain(AARCH32_COMMON_REGS_SET)

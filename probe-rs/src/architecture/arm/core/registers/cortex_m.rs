@@ -1,6 +1,6 @@
 use crate::{
     core::{RegisterDataType, RegisterRole},
-    CoreRegister, RegisterFile, RegisterId,
+    CoreRegister, CoreRegisters, RegisterId,
 };
 use once_cell::sync::Lazy;
 
@@ -32,8 +32,8 @@ pub(crate) const RA: CoreRegister = CoreRegister {
     data_type: RegisterDataType::UnsignedInteger(32),
 };
 
-pub(crate) static CORTEX_M_REGISTER_FILE: Lazy<RegisterFile> = Lazy::new(|| {
-    RegisterFile::new(
+pub(crate) static CORTEX_M_REGISTER_FILE: Lazy<CoreRegisters> = Lazy::new(|| {
+    CoreRegisters::new(
         ARM32_COMMON_REGS_SET
             .iter()
             .chain(CORTEX_M_COMMON_REGS_SET)
@@ -41,8 +41,8 @@ pub(crate) static CORTEX_M_REGISTER_FILE: Lazy<RegisterFile> = Lazy::new(|| {
     )
 });
 
-pub(crate) static CORTEX_M_WITH_FP_REGISTER_FILE: Lazy<RegisterFile> = Lazy::new(|| {
-    RegisterFile::new(
+pub(crate) static CORTEX_M_WITH_FP_REGISTER_FILE: Lazy<CoreRegisters> = Lazy::new(|| {
+    CoreRegisters::new(
         ARM32_COMMON_REGS_SET
             .iter()
             .chain(CORTEX_M_COMMON_REGS_SET)

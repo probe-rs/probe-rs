@@ -5,7 +5,7 @@
 use self::registers::*;
 use crate::{
     core::{
-        Architecture, BreakpointCause, CoreInformation, RegisterFile, RegisterId, RegisterValue,
+        Architecture, BreakpointCause, CoreInformation, CoreRegisters, RegisterId, RegisterValue,
     },
     memory::valid_32bit_address,
     memory_mapped_bitfield_register, CoreInterface, CoreRegister, CoreStatus, CoreType, Error,
@@ -562,7 +562,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         Ok(())
     }
 
-    fn registers(&self) -> &'static RegisterFile {
+    fn registers(&self) -> &'static CoreRegisters {
         &RISCV_REGISTER_FILE
     }
 

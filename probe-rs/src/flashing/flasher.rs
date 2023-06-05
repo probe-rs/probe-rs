@@ -6,7 +6,7 @@ use super::{
 };
 use crate::config::NvmRegion;
 use crate::memory::MemoryInterface;
-use crate::{core::RegisterFile, session::Session, Core, InstructionSet};
+use crate::{core::CoreRegisters, session::Session, Core, InstructionSet};
 use std::time::Instant;
 use std::{fmt::Debug, time::Duration};
 
@@ -602,7 +602,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         tracing::debug!("Calling routine {:?}, init={})", &registers, init);
 
         let algo = &self.flash_algorithm;
-        let regs: &'static RegisterFile = self.core.registers();
+        let regs: &'static CoreRegisters = self.core.registers();
 
         let registers = [
             (self.core.program_counter(), Some(registers.pc)),

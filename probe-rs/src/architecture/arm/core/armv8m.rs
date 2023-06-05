@@ -9,7 +9,7 @@ use crate::{
     architecture::arm::{
         memory::adi_v5_memory_interface::ArmProbe, sequences::ArmDebugSequence, ArmError,
     },
-    core::{RegisterFile, RegisterId, RegisterValue},
+    core::{CoreRegisters, RegisterId, RegisterValue},
     error::Error,
     memory::valid_32bit_address,
     Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType, HaltReason,
@@ -405,7 +405,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         Ok(())
     }
 
-    fn registers(&self) -> &'static RegisterFile {
+    fn registers(&self) -> &'static CoreRegisters {
         if self.state.fp_present {
             &CORTEX_M_WITH_FP_REGISTER_FILE
         } else {

@@ -19,7 +19,7 @@ use crate::{
         core::armv7a_debug_regs::*, memory::adi_v5_memory_interface::ArmProbe,
         sequences::ArmDebugSequence, ArmError,
     },
-    core::{MemoryMappedRegister, RegisterFile, RegisterId, RegisterValue},
+    core::{CoreRegisters, MemoryMappedRegister, RegisterId, RegisterValue},
     error::Error,
     memory::valid_32bit_address,
     Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType,
@@ -724,7 +724,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         Ok(())
     }
 
-    fn registers(&self) -> &'static RegisterFile {
+    fn registers(&self) -> &'static CoreRegisters {
         match self.state.fp_reg_count {
             Some(16) => &AARCH32_WITH_FP_16_REGISTER_FILE,
             Some(32) => &AARCH32_WITH_FP_32_REGISTER_FILE,

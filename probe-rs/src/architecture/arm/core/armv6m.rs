@@ -5,7 +5,7 @@ use crate::{
     architecture::arm::{
         memory::adi_v5_memory_interface::ArmProbe, sequences::ArmDebugSequence, ArmError,
     },
-    core::{RegisterFile, RegisterId, RegisterValue},
+    core::{CoreRegisters, RegisterId, RegisterValue},
     error::Error,
     memory::valid_32bit_address,
     Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType,
@@ -792,7 +792,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         Ok(())
     }
 
-    fn registers(&self) -> &'static RegisterFile {
+    fn registers(&self) -> &'static CoreRegisters {
         &CORTEX_M_REGISTER_FILE
     }
 

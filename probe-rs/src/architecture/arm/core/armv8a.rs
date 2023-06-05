@@ -14,7 +14,7 @@ use crate::{
         sequences::ArmDebugSequence, ArmError,
     },
     core::{
-        memory_mapped_registers::MemoryMappedRegister, RegisterFile, RegisterId, RegisterValue,
+        memory_mapped_registers::MemoryMappedRegister, CoreRegisters, RegisterId, RegisterValue,
     },
     error::Error,
     memory::valid_32bit_address,
@@ -1049,7 +1049,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         Ok(())
     }
 
-    fn registers(&self) -> &'static RegisterFile {
+    fn registers(&self) -> &'static CoreRegisters {
         if self.state.is_64_bit {
             &AARCH64_REGISTER_FILE
         } else {

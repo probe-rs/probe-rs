@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use probe_rs::{architecture, CoreRegister, CoreType, InstructionSet, RegisterFile, RegisterId};
+use probe_rs::{architecture, CoreRegister, CoreRegisters, CoreType, InstructionSet, RegisterId};
 use std::fmt::Write;
 
 /// A feature that will be sent to GDB
@@ -224,7 +224,7 @@ fn size_to_type(size: usize) -> &'static str {
 }
 
 pub fn build_target_description(
-    regs: &RegisterFile,
+    regs: &CoreRegisters,
     core_type: CoreType,
     isa: InstructionSet,
 ) -> TargetDescription {
@@ -247,7 +247,7 @@ pub fn build_target_description(
     desc
 }
 
-fn build_riscv_registers(desc: &mut TargetDescription, regs: &RegisterFile) {
+fn build_riscv_registers(desc: &mut TargetDescription, regs: &CoreRegisters) {
     // Create the main register group
     desc.add_gdb_feature("org.gnu.gdb.riscv.cpu");
     desc.add_registers(regs.core_registers());
@@ -256,7 +256,7 @@ fn build_riscv_registers(desc: &mut TargetDescription, regs: &RegisterFile) {
     desc.update_register_type("pc", "code_ptr");
 }
 
-fn build_aarch64_registers(desc: &mut TargetDescription, regs: &RegisterFile) {
+fn build_aarch64_registers(desc: &mut TargetDescription, regs: &CoreRegisters) {
     // Create the main register group
     desc.add_gdb_feature("org.gnu.gdb.aarch64.core");
     desc.add_registers(regs.core_registers());
@@ -277,7 +277,7 @@ fn build_aarch64_registers(desc: &mut TargetDescription, regs: &RegisterFile) {
     desc.update_register_type("PC", "code_ptr");
 }
 
-fn build_cortex_a_registers(desc: &mut TargetDescription, regs: &RegisterFile) {
+fn build_cortex_a_registers(desc: &mut TargetDescription, regs: &CoreRegisters) {
     // Create the main register group
     desc.add_gdb_feature("org.gnu.gdb.arm.core");
     desc.add_registers(regs.core_registers());
@@ -307,7 +307,7 @@ fn build_cortex_a_registers(desc: &mut TargetDescription, regs: &RegisterFile) {
     desc.update_register_type("PC", "code_ptr");
 }
 
-fn build_cortex_m_registers(desc: &mut TargetDescription, regs: &RegisterFile) {
+fn build_cortex_m_registers(desc: &mut TargetDescription, regs: &CoreRegisters) {
     // Create the main register group
     desc.add_gdb_feature("org.gnu.gdb.arm.m-profile");
     desc.add_registers(regs.core_registers());

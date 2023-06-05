@@ -357,15 +357,15 @@ impl<T> RegisterValueResultExt<T> for Result<T, Infallible> {
     }
 }
 
-/// A static array of all the registers ([`CoreRegister`]).
+/// A static array of all the registers ([`CoreRegister`]) that apply to a specific architecture.
 #[derive(Debug, PartialEq)]
-pub struct RegisterFile(Vec<&'static CoreRegister>);
+pub struct CoreRegisters(Vec<&'static CoreRegister>);
 
-impl RegisterFile {
+impl CoreRegisters {
     /// Construct a new register file from a vector of &[`CoreRegister`]s.
     /// The register file must contain at least the essential entries for program counter, stack pointer, frame pointer and return address registers.
-    pub fn new(core_registers: Vec<&'static CoreRegister>) -> RegisterFile {
-        RegisterFile(core_registers)
+    pub fn new(core_registers: Vec<&'static CoreRegister>) -> CoreRegisters {
+        CoreRegisters(core_registers)
     }
 
     /// Returns an iterator over the descriptions of all the core registers (non-FPU) of this core.

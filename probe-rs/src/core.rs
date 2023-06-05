@@ -86,7 +86,7 @@ pub trait CoreInterface: MemoryInterface {
     fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), error::Error>;
 
     /// Returns a list of all the registers of this core.
-    fn registers(&self) -> &'static registers::RegisterFile;
+    fn registers(&self) -> &'static registers::CoreRegisters;
 
     /// Returns the program counter register.
     fn program_counter(&self) -> &'static CoreRegister;
@@ -355,7 +355,7 @@ impl<'probe> Core<'probe> {
     }
 
     /// Returns a list of all the registers of this core.
-    pub fn registers(&self) -> &'static registers::RegisterFile {
+    pub fn registers(&self) -> &'static registers::CoreRegisters {
         self.inner.registers()
     }
 
