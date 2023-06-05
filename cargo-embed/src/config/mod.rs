@@ -67,7 +67,7 @@ pub struct Reset {
 pub struct General {
     pub chip: Option<String>,
     pub chip_descriptions: Vec<String>,
-    pub log_level: log::Level,
+    pub log_level: log::LevelFilter,
     pub derives: Option<String>,
     /// Use this flag to assert the nreset & ntrst pins during attaching the probe to the chip.
     pub connect_under_reset: bool,

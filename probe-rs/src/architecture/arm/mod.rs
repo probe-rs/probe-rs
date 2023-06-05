@@ -131,6 +131,9 @@ pub enum ArmError {
 
     /// Failed to erase chip
     ChipEraseFailed,
+
+    /// Any other error occurred.
+    Other(#[from] anyhow::Error),
 }
 
 impl ArmError {

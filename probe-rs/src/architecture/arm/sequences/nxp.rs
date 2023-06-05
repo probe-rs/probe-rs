@@ -124,11 +124,11 @@ impl ArmDebugSequence for LPC55Sxx {
         _debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
         let mut reset_vector = 0xffff_ffff;
-        let mut demcr = armv7m::Demcr(interface.read_word_32(armv7m::Demcr::ADDRESS)?);
+        let mut demcr = armv8m::Demcr(interface.read_word_32(armv8m::Demcr::get_mmio_address())?);
 
         demcr.set_vc_corereset(false);
 
-        interface.write_word_32(armv7m::Demcr::ADDRESS, demcr.into())?;
+        interface.write_word_32(armv8m::Demcr::get_mmio_address(), demcr.into())?;
 
         // Write some stuff
         interface.write_word_32(0x40034010, 0x00000000)?; // Program Flash Word Start Address to 0x0 to read reset vector (STARTA)
@@ -180,14 +180,15 @@ impl ArmDebugSequence for LPC55Sxx {
         if reset_vector == 0xffff_ffff {
             tracing::info!("Enable reset vector catch");
 
-            let mut demcr = armv7m::Demcr(interface.read_word_32(armv7m::Demcr::ADDRESS)?);
+            let mut demcr =
+                armv8m::Demcr(interface.read_word_32(armv8m::Demcr::get_mmio_address())?);
 
             demcr.set_vc_corereset(true);
 
-            interface.write_word_32(armv7m::Demcr::ADDRESS, demcr.into())?;
+            interface.write_word_32(armv8m::Demcr::get_mmio_address(), demcr.into())?;
         }
 
-        let _ = interface.read_word_32(armv7m::Dhcsr::ADDRESS)?;
+        let _ = interface.read_word_32(armv8m::Dhcsr::get_mmio_address())?;
 
         tracing::debug!("reset_catch_set -- done");
 
@@ -203,11 +204,11 @@ impl ArmDebugSequence for LPC55Sxx {
         interface.write_word_32(0xE000_2008, 0x0)?;
         interface.write_word_32(0xE000_2000, 0x2)?;
 
-        let mut demcr = armv7m::Demcr(interface.read_word_32(armv7m::Demcr::ADDRESS)?);
+        let mut demcr = armv8m::Demcr(interface.read_word_32(armv8m::Demcr::get_mmio_address())?);
 
         demcr.set_vc_corereset(false);
 
-        interface.write_word_32(armv7m::Demcr::ADDRESS, demcr.into())
+        interface.write_word_32(armv8m::Demcr::get_mmio_address(), demcr.into())
     }
 
     fn reset_system(
@@ -220,7 +221,7 @@ impl ArmDebugSequence for LPC55Sxx {
         aircr.vectkey();
         aircr.set_sysresetreq(true);
 
-        let mut result = interface.write_word_32(armv7m::Aircr::ADDRESS, aircr.into());
+        let mut result = interface.write_word_32(armv8m::Aircr::get_mmio_address(), aircr.into());
 
         if result.is_ok() {
             result = interface.flush();
@@ -254,7 +255,7 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmProbe) -> Result<(), ArmError> 
     tracing::info!("Polling for reset");
 
     while start.elapsed() < Duration::from_micros(50_0000) {
-        let dhcsr = armv7m::Dhcsr(memory.read_word_32(armv7m::Dhcsr::ADDRESS)?);
+        let dhcsr = armv7m::Dhcsr(memory.read_word_32(armv7m::Dhcsr::get_mmio_address())?);
 
         if !dhcsr.s_reset_st() {
             timeout = false;
@@ -266,7 +267,7 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmProbe) -> Result<(), ArmError> 
         return Err(ArmError::Timeout);
     }
 
-    let dhcsr = armv7m::Dhcsr(memory.read_word_32(armv7m::Dhcsr::ADDRESS)?);
+    let dhcsr = armv7m::Dhcsr(memory.read_word_32(armv7m::Dhcsr::get_mmio_address())?);
 
     if !dhcsr.s_halt() {
         let mut dhcsr = armv7m::Dhcsr(0);
@@ -274,7 +275,7 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmProbe) -> Result<(), ArmError> 
         dhcsr.set_c_halt(true);
         dhcsr.set_c_debugen(true);
 
-        memory.write_word_32(armv7m::Dhcsr::ADDRESS, dhcsr.into())?;
+        memory.write_word_32(armv7m::Dhcsr::get_mmio_address(), dhcsr.into())?;
     }
 
     Ok(())
@@ -371,7 +372,7 @@ impl ArmDebugSequence for MIMXRT10xx {
         // Reset happens very quickly, and takes a bit. Ignore write and flush
         // errors that will occur due to the reset reaction.
         interface
-            .write_word_32(armv7m::Aircr::ADDRESS, aircr.into())
+            .write_word_32(armv7m::Aircr::get_mmio_address(), aircr.into())
             .ok();
         interface.flush().ok();
 
@@ -380,7 +381,7 @@ impl ArmDebugSequence for MIMXRT10xx {
 
         let start = Instant::now();
         while start.elapsed() < Duration::from_micros(50_0000) {
-            let dhcsr = match interface.read_word_32(armv7m::Dhcsr::ADDRESS) {
+            let dhcsr = match interface.read_word_32(armv7m::Dhcsr::get_mmio_address()) {
                 Ok(val) => armv7m::Dhcsr(val),
                 Err(ArmError::AccessPort {
                     source:
@@ -548,7 +549,7 @@ impl ArmDebugSequence for MIMXRT11xx {
         dhcsr.set_c_debugen(true);
         dhcsr.enable_write();
 
-        interface.write_word_32(armv7m::Dhcsr::ADDRESS, dhcsr.into())?;
+        interface.write_word_32(armv7m::Dhcsr::get_mmio_address(), dhcsr.into())?;
         std::thread::sleep(Duration::from_millis(100));
 
         // Initial testing showed that a SYSRESET (the default reset approach)
@@ -563,13 +564,13 @@ impl ArmDebugSequence for MIMXRT11xx {
         aircr.set_vectreset(true);
 
         interface
-            .write_word_32(armv7m::Aircr::ADDRESS, aircr.into())
+            .write_word_32(armv7m::Aircr::get_mmio_address(), aircr.into())
             .ok();
         interface.flush().ok();
 
         std::thread::sleep(Duration::from_millis(100));
 
-        interface.read_word_32(armv7m::Dhcsr::ADDRESS)?;
+        interface.read_word_32(armv7m::Dhcsr::get_mmio_address())?;
         Ok(())
     }
 }
@@ -680,7 +681,7 @@ impl MIMXRT6xx {
         self.enable_debug_mailbox(memory.get_arm_communication_interface()?, dp, ap)?;
 
         // Halt the core in case it didn't stop at a breakpiont.
-        memory.write_word_32(armv8m::Dhcsr::ADDRESS, dhcsr.into())?;
+        memory.write_word_32(armv8m::Dhcsr::get_mmio_address(), dhcsr.into())?;
 
         // Clear watch point
         memory.write_word_32(0xE0001020, 0x0)?;
@@ -722,14 +723,14 @@ impl ArmDebugSequence for MIMXRT6xx {
 
         //Halt the core
         let dhcsr = armv8m::Dhcsr(0xA05F0003);
-        interface.write_word_32(armv8m::Dhcsr::ADDRESS, dhcsr.into())?;
+        interface.write_word_32(armv8m::Dhcsr::get_mmio_address(), dhcsr.into())?;
 
         //clear VECTOR CATCH and set TRCENA
-        let tmp = interface.read_word_32(armv8m::Demcr::ADDRESS)?;
+        let tmp = interface.read_word_32(armv8m::Demcr::get_mmio_address())?;
         let mut demcr = armv8m::Demcr(tmp);
         demcr.set_trcena(true);
         demcr.set_vc_corereset(false);
-        interface.write_word_32(armv8m::Demcr::ADDRESS, demcr.into())?;
+        interface.write_word_32(armv8m::Demcr::get_mmio_address(), demcr.into())?;
 
         self.reset_flash(interface)?;
 
@@ -745,7 +746,7 @@ impl ArmDebugSequence for MIMXRT6xx {
         // This means that errors should be ignored in this region
         #[allow(unused_must_use)]
         {
-            interface.write_word_32(armv8m::Aircr::ADDRESS, aircr.into());
+            interface.write_word_32(armv8m::Aircr::get_mmio_address(), aircr.into());
             interface.flush();
 
             self.wait_for_stop_after_reset(interface);
