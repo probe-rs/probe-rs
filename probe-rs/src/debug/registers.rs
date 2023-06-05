@@ -50,7 +50,7 @@ impl DebugRegister {
 pub struct DebugRegisters(pub Vec<DebugRegister>);
 
 impl DebugRegisters {
-    /// Read all registers defined in [`crate::core::RegisterFile`] from the given core.
+    /// Read all registers defined in [`crate::core::CoreRegisters`] from the given core.
     pub fn from_core(core: &mut Core) -> Self {
         let mut debug_registers = Vec::<DebugRegister>::new();
 
