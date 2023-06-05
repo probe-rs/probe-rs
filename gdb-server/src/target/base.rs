@@ -21,7 +21,7 @@ impl MultiThreadBase for RuntimeTarget<'_> {
         let mut core = session.core(tid.get() - 1).into_target_result()?;
 
         regs.pc = core
-            .read_core_reg(core.registers().program_counter())
+            .read_core_reg(core.program_counter())
             .into_target_result()?;
 
         let mut reg_buffer = Vec::<u8>::new();
@@ -51,7 +51,7 @@ impl MultiThreadBase for RuntimeTarget<'_> {
         let mut session = self.session.lock().unwrap();
         let mut core = session.core(tid.get() - 1).into_target_result()?;
 
-        core.write_core_reg(core.registers().program_counter().into(), regs.pc)
+        core.write_core_reg(core.program_counter(), regs.pc)
             .into_target_result()?;
 
         let mut current_regval_offset = 0;

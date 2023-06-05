@@ -6,7 +6,7 @@
 
 use super::{
     dtm::{DmiOperation, DmiOperationStatus, Dtm},
-    register, Dmcontrol, Dmstatus,
+    registers, Dmcontrol, Dmstatus,
 };
 use crate::{
     architecture::riscv::*,
@@ -689,8 +689,7 @@ impl RiscvCommunicationInterface {
         // assemble
         //  lb s1, 0(s0)
 
-        // Backup register s0
-        let s0 = self.abstract_cmd_register_read(&register::S0)?;
+        let s0 = self.abstract_cmd_register_read(&registers::S0)?;
 
         let lw_command: u32 = assembly::lw(0, 8, V::WIDTH as u8, 8);
 
@@ -709,7 +708,7 @@ impl RiscvCommunicationInterface {
         command.set_postexec(true);
 
         // register s0, ie. 0x1008
-        command.set_regno((register::S0).id.0 as u32);
+        command.set_regno((registers::S0).id.0 as u32);
 
         self.write_dm_register(command)?;
 
@@ -722,10 +721,10 @@ impl RiscvCommunicationInterface {
         }
 
         // Read back s0
-        let value = self.abstract_cmd_register_read(&register::S0)?;
+        let value = self.abstract_cmd_register_read(&registers::S0)?;
 
         // Restore s0 register
-        self.abstract_cmd_register_write(&register::S0, s0)?;
+        self.abstract_cmd_register_write(&registers::S0, s0)?;
 
         Ok(V::from_register_value(value))
     }
@@ -736,8 +735,8 @@ impl RiscvCommunicationInterface {
         data: &mut [V],
     ) -> Result<(), RiscvError> {
         // Backup registers s0 and s1
-        let s0 = self.abstract_cmd_register_read(&register::S0)?;
-        let s1 = self.abstract_cmd_register_read(&register::S1)?;
+        let s0 = self.abstract_cmd_register_read(&registers::S0)?;
+        let s1 = self.abstract_cmd_register_read(&registers::S1)?;
 
         // Load a word from address in register 8 (S0), with offset 0, into register 9 (S9)
         let lw_command: u32 = assembly::lw(0, 8, V::WIDTH as u8, 9);
@@ -760,7 +759,7 @@ impl RiscvCommunicationInterface {
         command.set_postexec(true);
 
         // register s0, ie. 0x1008
-        command.set_regno((register::S0).id.0 as u32);
+        command.set_regno((registers::S0).id.0 as u32);
 
         self.write_dm_register(command)?;
 
@@ -776,7 +775,7 @@ impl RiscvCommunicationInterface {
             command.set_aarsize(RiscvBusAccess::A32);
             command.set_postexec(true);
 
-            command.set_regno((register::S1).id.0 as u32);
+            command.set_regno((registers::S1).id.0 as u32);
 
             self.write_dm_register(command)?;
 
@@ -786,7 +785,7 @@ impl RiscvCommunicationInterface {
             *word = V::from_register_value(value.0);
         }
 
-        let last_value = self.abstract_cmd_register_read(&register::S1)?;
+        let last_value = self.abstract_cmd_register_read(&registers::S1)?;
 
         data[data.len() - 1] = V::from_register_value(last_value);
 
@@ -798,8 +797,8 @@ impl RiscvCommunicationInterface {
             ));
         }
 
-        self.abstract_cmd_register_write(&register::S0, s0)?;
-        self.abstract_cmd_register_write(&register::S1, s1)?;
+        self.abstract_cmd_register_write(&registers::S0, s0)?;
+        self.abstract_cmd_register_write(&registers::S1, s1)?;
 
         Ok(())
     }
@@ -858,15 +857,15 @@ impl RiscvCommunicationInterface {
         );
 
         // Backup registers s0 and s1
-        let s0 = self.abstract_cmd_register_read(&register::S0)?;
-        let s1 = self.abstract_cmd_register_read(&register::S1)?;
+        let s0 = self.abstract_cmd_register_read(&registers::S0)?;
+        let s1 = self.abstract_cmd_register_read(&registers::S1)?;
 
         let sw_command = assembly::sw(0, 8, V::WIDTH as u32, 9);
 
         self.setup_program_buffer(&[sw_command])?;
 
         // write address into s0
-        self.abstract_cmd_register_write(&register::S0, address)?;
+        self.abstract_cmd_register_write(&registers::S0, address)?;
 
         // write data into data 0
         self.write_dm_register(Data0(data.into()))?;
@@ -882,7 +881,7 @@ impl RiscvCommunicationInterface {
         command.set_postexec(true);
 
         // register s1, ie. 0x1009
-        command.set_regno((register::S1).id.0 as u32);
+        command.set_regno((registers::S1).id.0 as u32);
 
         self.write_dm_register(command)?;
 
@@ -902,8 +901,8 @@ impl RiscvCommunicationInterface {
 
         // Restore register s0 and s1
 
-        self.abstract_cmd_register_write(&register::S0, s0)?;
-        self.abstract_cmd_register_write(&register::S1, s1)?;
+        self.abstract_cmd_register_write(&registers::S0, s0)?;
+        self.abstract_cmd_register_write(&registers::S1, s1)?;
 
         Ok(())
     }
@@ -915,8 +914,8 @@ impl RiscvCommunicationInterface {
         address: u32,
         data: &[V],
     ) -> Result<(), RiscvError> {
-        let s0 = self.abstract_cmd_register_read(&register::S0)?;
-        let s1 = self.abstract_cmd_register_read(&register::S1)?;
+        let s0 = self.abstract_cmd_register_read(&registers::S0)?;
+        let s1 = self.abstract_cmd_register_read(&registers::S1)?;
 
         // Setup program buffer for multiple writes
         // Store value from register s9 into memory,
@@ -929,7 +928,7 @@ impl RiscvCommunicationInterface {
         ])?;
 
         // write address into s0
-        self.abstract_cmd_register_write(&register::S0, address)?;
+        self.abstract_cmd_register_write(&registers::S0, address)?;
 
         for value in data {
             // write address into data 0
@@ -946,7 +945,7 @@ impl RiscvCommunicationInterface {
             command.set_postexec(true);
 
             // register s1
-            command.set_regno((register::S1).id.0 as u32);
+            command.set_regno((registers::S1).id.0 as u32);
 
             self.write_dm_register(command)?;
         }
@@ -968,8 +967,8 @@ impl RiscvCommunicationInterface {
 
         // Restore register s0 and s1
 
-        self.abstract_cmd_register_write(&register::S0, s0)?;
-        self.abstract_cmd_register_write(&register::S1, s1)?;
+        self.abstract_cmd_register_write(&registers::S0, s0)?;
+        self.abstract_cmd_register_write(&registers::S1, s1)?;
 
         Ok(())
     }
@@ -1149,7 +1148,7 @@ impl RiscvCommunicationInterface {
             return Err(RiscvError::UnsupportedCsrAddress(address));
         }
 
-        let s0 = self.abstract_cmd_register_read(&register::S0)?;
+        let s0 = self.abstract_cmd_register_read(&registers::S0)?;
 
         // Read csr value into register 8 (s0)
         let csrr_cmd = assembly::csrr(8, address);
@@ -1163,10 +1162,10 @@ impl RiscvCommunicationInterface {
         self.execute_abstract_command(postexec_cmd.0)?;
 
         // read the s0 value
-        let reg_value = self.abstract_cmd_register_read(&register::S0)?;
+        let reg_value = self.abstract_cmd_register_read(&registers::S0)?;
 
         // restore original value in s0
-        self.abstract_cmd_register_write(&register::S0, s0)?;
+        self.abstract_cmd_register_write(&registers::S0, s0)?;
 
         Ok(reg_value)
     }
@@ -1181,10 +1180,10 @@ impl RiscvCommunicationInterface {
         }
 
         // Backup register s0
-        let s0 = self.abstract_cmd_register_read(&register::S0)?;
+        let s0 = self.abstract_cmd_register_read(&registers::S0)?;
 
         // Write value into s0
-        self.abstract_cmd_register_write(&register::S0, value)?;
+        self.abstract_cmd_register_write(&registers::S0, value)?;
 
         // Built the CSRW command to write into the program buffer
         let csrw_cmd = assembly::csrw(address, 8);
@@ -1198,7 +1197,7 @@ impl RiscvCommunicationInterface {
 
         // command: transfer, regno = 0x1008
         // restore original value in s0
-        self.abstract_cmd_register_write(&register::S0, s0)?;
+        self.abstract_cmd_register_write(&registers::S0, s0)?;
 
         Ok(())
     }
