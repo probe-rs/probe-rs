@@ -134,18 +134,24 @@ impl AlgorithmBinary {
                 as usize,
         );
 
+        // When flashing a target a specific blob will be prepended to this blob.
+        // This needs to be accounted for in the linking of the binary if it is not position independent
+        // Additionally, the sections might not be contigious due to memory limitations of the platform
+
         let mut sections = [&self.code_section, &self.data_section, &self.bss_section];
         sections.sort_by(|a, b| a.start.cmp(&b.start));
 
-        let addr_offset = match arch {
-            probe_rs_target::Architecture::Arm => 32, // The number of bytes in the ARM header
-            probe_rs_target::Architecture::Riscv => 8, // The number of bytes in the RISC-V header
-        };
+        // The address at which the blob will be written to
+        let start_address = sections[0].start
+            + match arch {
+                probe_rs_target::Architecture::Arm => 32, // The number of bytes in the ARM header
+                probe_rs_target::Architecture::Riscv => 8, // The number of bytes in the RISC-V header
+            };
 
         for section in sections {
             // Check if additional space is needed to ensure that the data is written to the correct location
-            if blob.len() < (section.start.saturating_sub(addr_offset)) as usize {
-                blob.resize(section.start.saturating_sub(addr_offset) as usize, 0)
+            if blob.len() < (section.start.saturating_sub(start_address)) as usize {
+                blob.resize(section.start.saturating_sub(start_address) as usize, 0)
             }
 
             blob.extend(&section.data);
@@ -161,9 +167,11 @@ impl AlgorithmBinary {
     /// since it depends on the linker in this case. If the code *is* position independent,
     /// it can be freely rearranged, and this is not an issue.
     pub(crate) fn is_continuous_in_ram(&self) -> bool {
-        (self.code_section.load_address + self.code_section.length
-            == self.data_section.load_address)
-            && (self.data_section.load_address + self.data_section.length
-                == self.bss_section.load_address)
+        let mut sections = [&self.code_section, &self.data_section, &self.bss_section];
+        sections.sort_by(|a, b| a.start.cmp(&b.start));
+
+        sections
+            .windows(2)
+            .all(|window| (window[0].load_address + window[0].length) == window[1].load_address)
     }
 }
