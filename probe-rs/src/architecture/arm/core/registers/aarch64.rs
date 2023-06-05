@@ -4,6 +4,34 @@ use crate::{
 };
 use once_cell::sync::Lazy;
 
+pub(crate) const PC: CoreRegister = CoreRegister {
+    name: "PC",
+    role: Some(RegisterRole::ProgramCounter),
+    id: RegisterId(32),
+    data_type: RegisterDataType::UnsignedInteger(64),
+};
+
+pub(crate) const FP: CoreRegister = CoreRegister {
+    name: "X29",
+    role: Some(RegisterRole::FramePointer),
+    id: RegisterId(29),
+    data_type: RegisterDataType::UnsignedInteger(64),
+};
+
+pub(crate) const SP: CoreRegister = CoreRegister {
+    name: "SP",
+    role: Some(RegisterRole::StackPointer),
+    id: RegisterId(31),
+    data_type: RegisterDataType::UnsignedInteger(64),
+};
+
+pub(crate) const RA: CoreRegister = CoreRegister {
+    name: "X30",
+    role: Some(RegisterRole::ReturnAddress),
+    id: RegisterId(30),
+    data_type: RegisterDataType::UnsignedInteger(64),
+};
+
 pub(crate) static AARCH64_REGISTER_FILE: Lazy<RegisterFile> =
     Lazy::new(|| RegisterFile::new(AARCH64_REGISTER_FILE_SET.iter().collect()));
 
@@ -183,30 +211,10 @@ pub static AARCH64_REGISTER_FILE_SET: &[CoreRegister] = &[
         id: RegisterId(28),
         data_type: RegisterDataType::UnsignedInteger(64),
     },
-    CoreRegister {
-        name: "X29",
-        role: Some(RegisterRole::FramePointer),
-        id: RegisterId(29),
-        data_type: RegisterDataType::UnsignedInteger(64),
-    },
-    CoreRegister {
-        name: "X30",
-        role: Some(RegisterRole::ReturnAddress),
-        id: RegisterId(30),
-        data_type: RegisterDataType::UnsignedInteger(64),
-    },
-    CoreRegister {
-        name: "SP",
-        role: Some(RegisterRole::StackPointer),
-        id: RegisterId(31),
-        data_type: RegisterDataType::UnsignedInteger(64),
-    },
-    CoreRegister {
-        name: "PC",
-        role: Some(RegisterRole::ProgramCounter),
-        id: RegisterId(32),
-        data_type: RegisterDataType::UnsignedInteger(64),
-    },
+    FP,
+    RA,
+    SP,
+    PC,
     CoreRegister {
         name: "PSTATE",
         role: Some(RegisterRole::ProcessorStatus),

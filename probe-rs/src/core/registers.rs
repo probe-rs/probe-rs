@@ -395,58 +395,6 @@ impl RegisterFile {
         self.core_registers().nth(index)
     }
 
-    /// The frame pointer.
-    pub fn frame_pointer(&self) -> Result<&CoreRegister, Error> {
-        self.0
-            .iter()
-            .find(|r| r.role == Some(RegisterRole::FramePointer))
-            .ok_or_else(|| {
-                Error::GenericCoreError(
-                    "No frame pointer found. Please report this as a bug.".to_string(),
-                )
-            })
-            .cloned()
-    }
-
-    /// The program counter.
-    pub fn program_counter(&self) -> Result<&CoreRegister, Error> {
-        self.0
-            .iter()
-            .find(|r| r.role == Some(RegisterRole::ProgramCounter))
-            .ok_or_else(|| {
-                Error::GenericCoreError(
-                    "No program counter found. Please report this as a bug.".to_string(),
-                )
-            })
-            .cloned()
-    }
-
-    /// The stack pointer.
-    pub fn stack_pointer(&self) -> Result<&CoreRegister, Error> {
-        self.0
-            .iter()
-            .find(|r| r.role == Some(RegisterRole::StackPointer))
-            .ok_or_else(|| {
-                Error::GenericCoreError(
-                    "No stack pointer found. Please report this as a bug.".to_string(),
-                )
-            })
-            .cloned()
-    }
-
-    /// The link register.
-    pub fn return_address(&self) -> Result<&CoreRegister, Error> {
-        self.0
-            .iter()
-            .find(|r| r.role == Some(RegisterRole::ReturnAddress))
-            .ok_or_else(|| {
-                Error::GenericCoreError(
-                    "No return address found. Please report this as a bug.".to_string(),
-                )
-            })
-            .cloned()
-    }
-
     /// Returns the nth argument register.
     ///
     /// # Panics
@@ -567,34 +515,5 @@ impl RegisterFile {
             .filter(|r| r.role == Some(RegisterRole::FloatingPoint))
             .cloned()
             .nth(index)
-    }
-}
-
-#[cfg(test)]
-mod test {
-
-    use crate::architecture::{
-        arm::core::registers::{aarch32::*, aarch64::*, cortex_m::*},
-        riscv::registers::RISCV_REGISTER_FILE,
-    };
-    #[test]
-    /// Enusure that the various static [`RegisterFile`]s contain the required registers.
-    fn validate_register_file_contents() {
-        for register_file in [
-            &CORTEX_M_REGISTER_FILE,
-            &CORTEX_M_WITH_FP_REGISTER_FILE,
-            &AARCH32_REGISTER_FILE,
-            &AARCH32_WITH_FP_16_REGISTER_FILE,
-            &AARCH32_WITH_FP_32_REGISTER_FILE,
-            &AARCH64_REGISTER_FILE,
-            &RISCV_REGISTER_FILE,
-        ]
-        .iter()
-        {
-            register_file.program_counter().unwrap();
-            register_file.stack_pointer().unwrap();
-            register_file.frame_pointer().unwrap();
-            register_file.return_address().unwrap();
-        }
     }
 }

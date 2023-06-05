@@ -45,9 +45,7 @@ impl SteppingMode {
             .status()
             .map_err(|error| DebugError::Other(anyhow::anyhow!(error)))?;
         let mut program_counter = match core_status {
-            CoreStatus::Halted(_) => {
-                core.read_core_reg(core.registers().program_counter()?.id())?
-            }
+            CoreStatus::Halted(_) => core.read_core_reg(core.program_counter())?,
             _ => {
                 return Err(DebugError::Other(anyhow::anyhow!(
                     "Core must be halted before stepping."
@@ -55,7 +53,7 @@ impl SteppingMode {
             }
         };
         let origin_program_counter = program_counter;
-        let mut return_address = core.read_core_reg(core.registers().return_address()?.id())?;
+        let mut return_address = core.read_core_reg(core.return_address())?;
 
         // Sometimes the target program_counter is at a location where the debug_info program row data does not contain valid statements for halt points.
         // When DebugError::NoValidHaltLocation happens, we will step to the next instruction and try again(until we can reasonably expect to have passed out of an epilogue), before giving up.
@@ -85,8 +83,7 @@ impl SteppingMode {
                 Ok((post_step_target_address, _)) => {
                     target_address = post_step_target_address;
                     // Re-read the program_counter, because it may have changed during the `get_halt_location` call.
-                    program_counter =
-                        core.read_core_reg(core.registers().program_counter()?.id())?;
+                    program_counter = core.read_core_reg(core.program_counter())?;
                     break;
                 }
                 Err(error) => match error {
@@ -101,14 +98,12 @@ impl SteppingMode {
                             message
                         );
                         program_counter = core.step()?.pc;
-                        return_address =
-                            core.read_core_reg(core.registers().return_address()?.id())?;
+                        return_address = core.read_core_reg(core.return_address())?;
                         continue;
                     }
                     other_error => {
                         core_status = core.status()?;
-                        program_counter =
-                            core.read_core_reg(core.registers().program_counter()?.id())?;
+                        program_counter = core.read_core_reg(core.program_counter())?;
                         tracing::error!("Error during step ({:?}): {}", self, other_error);
                         return Ok((core_status, program_counter));
                     }
@@ -397,10 +392,7 @@ fn run_to_address(
         });
     } else if target_address == program_counter {
         // No need to step further. e.g. For inline functions we have already stepped to the best available target address..
-        (
-            core.status()?,
-            core.read_core_reg(core.registers().program_counter()?.id())?,
-        )
+        (core.status()?, core.read_core_reg(core.program_counter())?)
     } else if core.set_hw_breakpoint(target_address).is_ok() {
         core.run()?;
         // It is possible that we are stepping over long running instructions.
@@ -410,10 +402,7 @@ fn run_to_address(
                 // NOTE: It is conceivable that the core has halted, but we have not yet stepped to the target address. (e.g. the user tries to step out of a function, but there is another breakpoint active before the end of the function.)
                 //       This is a legitimate situation, so we clear the breakpoint at the target address, and pass control back to the user
                 core.clear_hw_breakpoint(target_address)?;
-                (
-                    core.status()?,
-                    core.read_core_reg(core.registers().program_counter()?.id())?,
-                )
+                (core.status()?, core.read_core_reg(core.program_counter())?)
             }
             Err(error) => {
                 program_counter = core.halt(Duration::from_millis(500))?.pc;
@@ -469,16 +458,13 @@ fn step_to_address(
                     break;
                 }
                 // This is a recoverable error kind, and can be reported to the user higher up in the call stack.
-                other_halt_reason => return Err(DebugError::NoValidHaltLocation{message: format!("Target halted unexpectedly before we reached the destination address of a step operation: {other_halt_reason:?}"), pc_at_error: core.read_core_reg(core.registers().program_counter()?.id())?}),
+                other_halt_reason => return Err(DebugError::NoValidHaltLocation{message: format!("Target halted unexpectedly before we reached the destination address of a step operation: {other_halt_reason:?}"), pc_at_error: core.read_core_reg(core.program_counter())?}),
             },
             // This is not a recoverable error, and will result in the debug session ending (we have no predicatable way of successfully continuing the session)
             other_status => return Err(DebugError::Other(anyhow::anyhow!("Target failed to reach the destination address of a step operation: {:?}", other_status))),
         }
     }
-    Ok((
-        core.status()?,
-        core.read_core_reg(core.registers().program_counter()?.id())?,
-    ))
+    Ok((core.status()?, core.read_core_reg(core.program_counter())?))
 }
 
 /// Find the compile unit at the current address.

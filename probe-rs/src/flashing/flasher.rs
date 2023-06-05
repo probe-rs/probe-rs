@@ -605,7 +605,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         let regs: &'static RegisterFile = self.core.registers();
 
         let registers = [
-            (regs.program_counter()?, Some(registers.pc)),
+            (self.core.program_counter(), Some(registers.pc)),
             (regs.argument_register(0), registers.r0),
             (regs.argument_register(1), registers.r1),
             (regs.argument_register(2), registers.r2),
@@ -619,7 +619,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                 },
             ),
             (
-                regs.stack_pointer()?,
+                self.core.stack_pointer(),
                 if init {
                     Some(into_reg(algo.begin_stack)?)
                 } else {
@@ -627,7 +627,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                 },
             ),
             (
-                regs.return_address()?,
+                self.core.return_address(),
                 // For ARM Cortex-M cores, we have to add 1 to the return address,
                 // to ensure that we stay in Thumb mode.
                 if self.core.instruction_set()? == InstructionSet::Thumb2 {
@@ -643,7 +643,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                 self.core.write_core_reg(description.id, *v)?;
 
                 if tracing::enabled!(Level::DEBUG) {
-                    let value: u32 = self.core.read_core_reg(description.id)?;
+                    let value: u32 = self.core.read_core_reg(*description)?;
 
                     tracing::debug!(
                         "content of {} {:#x}: 0x{:08x} should be: 0x{:08x}",

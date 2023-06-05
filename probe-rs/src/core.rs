@@ -88,6 +88,18 @@ pub trait CoreInterface: MemoryInterface {
     /// Returns a list of all the registers of this core.
     fn registers(&self) -> &'static registers::RegisterFile;
 
+    /// Returns the program counter register.
+    fn program_counter(&self) -> &'static CoreRegister;
+
+    /// Returns the stack pointer register.
+    fn frame_pointer(&self) -> &'static CoreRegister;
+
+    /// Returns the frame pointer register.
+    fn stack_pointer(&self) -> &'static CoreRegister;
+
+    /// Returns the return address register, a.k.a. link register.
+    fn return_address(&self) -> &'static CoreRegister;
+
     /// Returns `true` if hwardware breakpoints are enabled, `false` otherwise.
     fn hw_breakpoints_enabled(&self) -> bool;
 
@@ -312,15 +324,17 @@ impl<'probe> Core<'probe> {
     /// # Errors
     ///
     /// If T is too large to write to the target register an error will be raised.
-    #[tracing::instrument(skip(self, value))]
+    #[tracing::instrument(skip(self, address, value))]
     pub fn write_core_reg<T>(
         &mut self,
-        address: registers::RegisterId,
+        address: impl Into<registers::RegisterId>,
         value: T,
     ) -> Result<(), error::Error>
     where
         T: Into<registers::RegisterValue>,
     {
+        let address = address.into();
+
         self.inner.write_core_reg(address, value.into())
     }
 
@@ -343,6 +357,26 @@ impl<'probe> Core<'probe> {
     /// Returns a list of all the registers of this core.
     pub fn registers(&self) -> &'static registers::RegisterFile {
         self.inner.registers()
+    }
+
+    /// Returns the program counter register.
+    pub fn program_counter(&self) -> &'static CoreRegister {
+        self.inner.program_counter()
+    }
+
+    /// Returns the stack pointer register.
+    pub fn frame_pointer(&self) -> &'static CoreRegister {
+        self.inner.frame_pointer()
+    }
+
+    /// Returns the frame pointer register.
+    pub fn stack_pointer(&self) -> &'static CoreRegister {
+        self.inner.stack_pointer()
+    }
+
+    /// Returns the return address register, a.k.a. link register.
+    pub fn return_address(&self) -> &'static CoreRegister {
+        self.inner.return_address()
     }
 
     /// Find the index of the next available HW breakpoint comparator.

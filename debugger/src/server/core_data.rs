@@ -95,12 +95,8 @@ impl<'p> CoreHandle<'p> {
                                 if self.core_data.last_known_status
                                     != CoreStatus::Halted(HaltReason::Step)
                                 {
-                                    let program_counter = self
-                                        .core
-                                        .read_core_reg(
-                                            self.core.registers().program_counter()?.id(),
-                                        )
-                                        .ok();
+                                    let program_counter =
+                                        self.core.read_core_reg(self.core.program_counter()).ok();
                                     let event_body = Some(StoppedEventBody {
                                         reason: status
                                             .short_long_status(program_counter)

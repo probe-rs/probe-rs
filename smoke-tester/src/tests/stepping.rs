@@ -35,7 +35,7 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
 
     let registers = core.registers();
 
-    core.write_core_reg(registers.program_counter()?.into(), code_load_address)?;
+    core.write_core_reg(core.program_counter(), code_load_address)?;
 
     let core_information = core.step()?;
 
@@ -68,7 +68,7 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
             println!("Core did not halt after timeout!");
             core.halt(Duration::from_millis(100))?;
 
-            let pc: u64 = core.read_core_reg(registers.program_counter()?)?;
+            let pc: u64 = core.read_core_reg(core.program_counter())?;
 
             println!("Core stopped at: {pc:#08x}");
 
@@ -89,14 +89,14 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
             | CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Unknown))
     ));
 
-    let pc: u64 = core.read_core_reg(registers.program_counter()?)?;
+    let pc: u64 = core.read_core_reg(core.program_counter())?;
 
     assert_eq!(pc, break_address);
 
     println!("Core halted at {pc:#08x}, now trying to run...");
 
     // Increase PC by 2 to skip breakpoint.
-    core.write_core_reg(registers.program_counter()?.id(), pc + 2)?;
+    core.write_core_reg(core.program_counter(), pc + 2)?;
 
     println!("Run core again, with pc = {:#010x}", pc + 2);
 
@@ -113,7 +113,7 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
             println!("Core did not halt after timeout!");
             core.halt(Duration::from_millis(100))?;
 
-            let pc: u64 = core.read_core_reg(registers.program_counter()?)?;
+            let pc: u64 = core.read_core_reg(core.program_counter())?;
 
             println!("Core stopped at: {pc:#08x}");
 
@@ -132,7 +132,7 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
             | CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Unknown))
     ));
 
-    let pc: u64 = core.read_core_reg(registers.program_counter()?)?;
+    let pc: u64 = core.read_core_reg(core.program_counter())?;
 
     assert_eq!(pc, break_address, "{pc:#08x} != {break_address:#08x}");
 

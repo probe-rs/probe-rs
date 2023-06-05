@@ -4,6 +4,34 @@ use crate::{
 };
 use once_cell::sync::Lazy;
 
+pub(crate) const PC: CoreRegister = CoreRegister {
+    name: "R15",
+    role: Some(RegisterRole::ProgramCounter),
+    id: RegisterId(15),
+    data_type: RegisterDataType::UnsignedInteger(32),
+};
+
+pub(crate) const FP: CoreRegister = CoreRegister {
+    name: "R7",
+    role: Some(RegisterRole::FramePointer),
+    id: RegisterId(7),
+    data_type: RegisterDataType::UnsignedInteger(32),
+};
+
+pub(crate) const SP: CoreRegister = CoreRegister {
+    name: "R13",
+    role: Some(RegisterRole::StackPointer),
+    id: RegisterId(13),
+    data_type: RegisterDataType::UnsignedInteger(32),
+};
+
+pub(crate) const RA: CoreRegister = CoreRegister {
+    name: "R14",
+    role: Some(RegisterRole::ReturnAddress),
+    id: RegisterId(14),
+    data_type: RegisterDataType::UnsignedInteger(32),
+};
+
 pub(crate) static CORTEX_M_REGISTER_FILE: Lazy<RegisterFile> = Lazy::new(|| {
     RegisterFile::new(
         ARM32_COMMON_REGS_SET
@@ -66,12 +94,7 @@ pub(super) static ARM32_COMMON_REGS_SET: &[CoreRegister] = &[
         id: RegisterId(6),
         data_type: RegisterDataType::UnsignedInteger(32),
     },
-    CoreRegister {
-        name: "R7",
-        role: Some(RegisterRole::FramePointer),
-        id: RegisterId(7),
-        data_type: RegisterDataType::UnsignedInteger(32),
-    },
+    FP,
     CoreRegister {
         name: "R8",
         role: None,
@@ -102,24 +125,9 @@ pub(super) static ARM32_COMMON_REGS_SET: &[CoreRegister] = &[
         id: RegisterId(12),
         data_type: RegisterDataType::UnsignedInteger(32),
     },
-    CoreRegister {
-        name: "R13",
-        role: Some(RegisterRole::StackPointer),
-        id: RegisterId(13),
-        data_type: RegisterDataType::UnsignedInteger(32),
-    },
-    CoreRegister {
-        name: "R14",
-        role: Some(RegisterRole::ReturnAddress),
-        id: RegisterId(14),
-        data_type: RegisterDataType::UnsignedInteger(32),
-    },
-    CoreRegister {
-        name: "R15",
-        role: Some(RegisterRole::ProgramCounter),
-        id: RegisterId(15),
-        data_type: RegisterDataType::UnsignedInteger(32),
-    },
+    SP,
+    RA,
+    PC,
 ];
 
 static CORTEX_M_COMMON_REGS_SET: &[CoreRegister] = &[

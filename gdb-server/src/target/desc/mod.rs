@@ -72,7 +72,7 @@ fn gdb_memory_map(
 ) -> Result<String, probe_rs::Error> {
     let (virtual_addressing, address_size) = {
         let core = session.core(primary_core_id)?;
-        let address_size = core.registers().program_counter()?.size_in_bits();
+        let address_size = core.program_counter().size_in_bits();
 
         (
             // Cortex-A cores use virtual addressing

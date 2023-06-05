@@ -20,6 +20,36 @@ pub const S1: CoreRegister = CoreRegister {
     data_type: RegisterDataType::UnsignedInteger(32),
 };
 
+/// The program counter register.
+pub const PC: CoreRegister = CoreRegister {
+    name: "pc",
+    role: Some(RegisterRole::ProgramCounter),
+    /// This is a CSR register
+    id: RegisterId(0x7b1),
+    data_type: RegisterDataType::UnsignedInteger(32),
+};
+
+pub(crate) const FP: CoreRegister = CoreRegister {
+    name: "x8",
+    role: Some(RegisterRole::FramePointer),
+    id: RegisterId(0x1008),
+    data_type: RegisterDataType::UnsignedInteger(32),
+};
+
+pub(crate) const SP: CoreRegister = CoreRegister {
+    name: "x2",
+    role: Some(RegisterRole::StackPointer),
+    id: RegisterId(0x1002),
+    data_type: RegisterDataType::UnsignedInteger(32),
+};
+
+pub(crate) const RA: CoreRegister = CoreRegister {
+    name: "x1",
+    role: Some(RegisterRole::ReturnAddress),
+    id: RegisterId(0x1001),
+    data_type: RegisterDataType::UnsignedInteger(32),
+};
+
 pub(crate) static RISCV_REGISTER_FILE: Lazy<RegisterFile> =
     Lazy::new(|| RegisterFile::new(RISCV_REGISTERS_SET.iter().collect()));
 
@@ -30,18 +60,8 @@ static RISCV_REGISTERS_SET: &[CoreRegister] = &[
         id: RegisterId(0x1000),
         data_type: RegisterDataType::UnsignedInteger(32),
     },
-    CoreRegister {
-        name: "x1",
-        role: Some(RegisterRole::ReturnAddress),
-        id: RegisterId(0x1001),
-        data_type: RegisterDataType::UnsignedInteger(32),
-    },
-    CoreRegister {
-        name: "x2",
-        role: Some(RegisterRole::StackPointer),
-        id: RegisterId(0x1002),
-        data_type: RegisterDataType::UnsignedInteger(32),
-    },
+    RA,
+    SP,
     CoreRegister {
         name: "x3",
         role: Some(RegisterRole::Other("gp")),
@@ -72,12 +92,7 @@ static RISCV_REGISTERS_SET: &[CoreRegister] = &[
         id: RegisterId(0x1007),
         data_type: RegisterDataType::UnsignedInteger(32),
     },
-    CoreRegister {
-        name: "x8",
-        role: Some(RegisterRole::FramePointer),
-        id: RegisterId(0x1008),
-        data_type: RegisterDataType::UnsignedInteger(32),
-    },
+    FP,
     CoreRegister {
         name: "x9",
         role: Some(RegisterRole::Other("s1")),
@@ -216,12 +231,6 @@ static RISCV_REGISTERS_SET: &[CoreRegister] = &[
         id: RegisterId(0x101F),
         data_type: RegisterDataType::UnsignedInteger(32),
     },
-    CoreRegister {
-        name: "pc",
-        role: Some(RegisterRole::ProgramCounter),
-        /// This is a CSR register
-        id: RegisterId(0x7b1),
-        data_type: RegisterDataType::UnsignedInteger(32),
-    },
+    PC,
     // TODO: Add FPU registers
 ];

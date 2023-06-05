@@ -28,7 +28,7 @@ pub fn test_register_access(tracker: &TestTracker, core: &mut Core) -> Result<()
 
         // Write new value
 
-        core.write_core_reg(register.into(), test_value)?;
+        core.write_core_reg(register, test_value)?;
 
         let readback: u64 = core.read_core_reg(register)?;
 

@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use probe_rs::{CoreRegister, CoreType, InstructionSet, RegisterFile, RegisterId};
+use probe_rs::{architecture, CoreRegister, CoreType, InstructionSet, RegisterFile, RegisterId};
 use std::fmt::Write;
 
 /// A feature that will be sent to GDB
@@ -251,7 +251,7 @@ fn build_riscv_registers(desc: &mut TargetDescription, regs: &RegisterFile) {
     // Create the main register group
     desc.add_gdb_feature("org.gnu.gdb.riscv.cpu");
     desc.add_registers(regs.core_registers());
-    desc.add_register(regs.program_counter().unwrap());
+    desc.add_register(&architecture::riscv::PC);
 
     desc.update_register_type("pc", "code_ptr");
 }
