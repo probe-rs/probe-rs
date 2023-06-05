@@ -14,7 +14,7 @@ use crate::{
 use anyhow::{anyhow, Result};
 use bitfield::bitfield;
 use communication_interface::{AbstractCommandErrorKind, RiscvCommunicationInterface, RiscvError};
-use registers::RISCV_REGISTER_FILE;
+use registers::RISCV_CORE_REGSISTERS;
 use std::time::{Duration, Instant};
 
 #[macro_use]
@@ -563,7 +563,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn registers(&self) -> &'static CoreRegisters {
-        &RISCV_REGISTER_FILE
+        &RISCV_CORE_REGSISTERS
     }
 
     fn program_counter(&self) -> &'static CoreRegister {

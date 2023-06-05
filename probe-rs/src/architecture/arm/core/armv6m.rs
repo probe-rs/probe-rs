@@ -793,7 +793,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
     }
 
     fn registers(&self) -> &'static CoreRegisters {
-        &CORTEX_M_REGISTER_FILE
+        &CORTEX_M_CORE_REGSISTERS
     }
 
     fn program_counter(&self) -> &'static CoreRegister {

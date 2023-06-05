@@ -50,7 +50,7 @@ pub(crate) const RA: CoreRegister = CoreRegister {
     data_type: RegisterDataType::UnsignedInteger(32),
 };
 
-pub(crate) static RISCV_REGISTER_FILE: Lazy<CoreRegisters> =
+pub(crate) static RISCV_CORE_REGSISTERS: Lazy<CoreRegisters> =
     Lazy::new(|| CoreRegisters::new(RISCV_REGISTERS_SET.iter().collect()));
 
 static RISCV_REGISTERS_SET: &[CoreRegister] = &[

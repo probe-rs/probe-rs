@@ -5,7 +5,7 @@ use crate::{
 };
 use once_cell::sync::Lazy;
 
-pub(crate) static AARCH32_REGISTER_FILE: Lazy<CoreRegisters> = Lazy::new(|| {
+pub(crate) static AARCH32_CORE_REGSISTERS: Lazy<CoreRegisters> = Lazy::new(|| {
     CoreRegisters::new(
         ARM32_COMMON_REGS_SET
             .iter()
@@ -14,7 +14,7 @@ pub(crate) static AARCH32_REGISTER_FILE: Lazy<CoreRegisters> = Lazy::new(|| {
     )
 });
 
-pub(crate) static AARCH32_WITH_FP_16_REGISTER_FILE: Lazy<CoreRegisters> = Lazy::new(|| {
+pub(crate) static AARCH32_WITH_FP_16_CORE_REGSISTERS: Lazy<CoreRegisters> = Lazy::new(|| {
     CoreRegisters::new(
         ARM32_COMMON_REGS_SET
             .iter()
@@ -24,7 +24,7 @@ pub(crate) static AARCH32_WITH_FP_16_REGISTER_FILE: Lazy<CoreRegisters> = Lazy::
     )
 });
 
-pub(crate) static AARCH32_WITH_FP_32_REGISTER_FILE: Lazy<CoreRegisters> = Lazy::new(|| {
+pub(crate) static AARCH32_WITH_FP_32_CORE_REGSISTERS: Lazy<CoreRegisters> = Lazy::new(|| {
     CoreRegisters::new(
         ARM32_COMMON_REGS_SET
             .iter()
