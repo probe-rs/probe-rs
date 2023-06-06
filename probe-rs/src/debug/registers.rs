@@ -101,35 +101,35 @@ impl DebugRegisters {
     /// [DWARF](https://dwarfstd.org)
     pub fn get_frame_pointer(&self) -> Option<&DebugRegister> {
         self.0.iter().find(|debug_register| {
-            debug_register.core_register.role == Some(RegisterRole::FramePointer)
+            debug_register.core_register.roles == Some(RegisterRole::FramePointer)
         })
     }
 
     /// Get the program counter.
     pub fn get_program_counter(&self) -> Option<&DebugRegister> {
         self.0.iter().find(|debug_register| {
-            debug_register.core_register.role == Some(RegisterRole::ProgramCounter)
+            debug_register.core_register.roles == Some(RegisterRole::ProgramCounter)
         })
     }
 
     /// Get a mutable reference to the program counter.
     pub fn get_program_counter_mut(&mut self) -> Option<&mut DebugRegister> {
         self.0.iter_mut().find(|debug_register| {
-            debug_register.core_register.role == Some(RegisterRole::ProgramCounter)
+            debug_register.core_register.roles == Some(RegisterRole::ProgramCounter)
         })
     }
 
     /// Get the stack pointer.
     pub fn get_stack_pointer(&self) -> Option<&DebugRegister> {
         self.0.iter().find(|debug_register| {
-            debug_register.core_register.role == Some(RegisterRole::StackPointer)
+            debug_register.core_register.roles == Some(RegisterRole::StackPointer)
         })
     }
 
     /// Get the return address.
     pub fn get_return_address(&self) -> Option<&DebugRegister> {
         self.0.iter().find(|debug_register| {
-            debug_register.core_register.role == Some(RegisterRole::StackPointer)
+            debug_register.core_register.roles == Some(RegisterRole::StackPointer)
         })
     }
 
@@ -175,7 +175,7 @@ impl DebugRegisters {
                     || matches!(
                         debug_register
                             .core_register
-                            .role,
+                            .roles,
                         Some(RegisterRole::Argument(role_name)) |
                         Some(RegisterRole::Other(role_name)) if role_name == register_name
                     )
