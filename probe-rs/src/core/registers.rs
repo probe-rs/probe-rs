@@ -22,9 +22,9 @@ pub enum RegisterDataType {
 /// while the [`CoreRegister::name`] will contain the architecture specific label of the register.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum RegisterRole {
-    /// Argument registers like "A0", "a1", "r2", etc. (uses architecture specific names)
+    /// Function Argument registers like "A0", "a1", etc. (uses architecture specific names)
     Argument(&'static str),
-    /// Some argument registers can also be used as return value registers.
+    /// Function Return value registers like "R0", "r1", etc. (uses architecture specific names)
     Return(&'static str),
     ProgramCounter,
     FramePointer,
