@@ -21,11 +21,11 @@ pub enum RegisterDataType {
 /// This denotes the purpose of a register (e.g. `return address`),
 /// while the [`CoreRegister::name`] will contain the architecture specific label of the register.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) enum RegisterRole {
+pub enum RegisterRole {
     /// Argument registers like "A0", "a1", "r2", etc. (uses architecture specific names)
     Argument(&'static str),
     /// Some argument registers can also be used as return value registers.
-    ArgumentAndResult(&'static str),
+    Return(&'static str),
     ProgramCounter,
     FramePointer,
     StackPointer,
@@ -43,7 +43,7 @@ impl Display for RegisterRole {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             RegisterRole::Argument(name) => write!(f, "{}", name),
-            RegisterRole::ArgumentAndResult(name) => write!(f, "{}", name),
+            RegisterRole::Return(name) => write!(f, "{}", name),
             RegisterRole::ProgramCounter => write!(f, "PC"),
             RegisterRole::FramePointer => write!(f, "FP"),
             RegisterRole::StackPointer => write!(f, "SP"),
@@ -76,15 +76,15 @@ pub struct CoreRegister {
 
 impl Display for CoreRegister {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: ", self.name);
+        let primary_name = self.name;
+        write!(f, "{}", primary_name)?;
         if let Some(role_list) = self.roles {
-            if role_list.len() > 0 {
-                write!(f, " [")?;
-                write!(f, "{}", role_list[0])?;
-                for role in &role_list[1..] {
-                    write!(f, "/{}", role)?;
+            if !role_list.is_empty() {
+                for role in role_list {
+                    if primary_name != role_list[0].to_string() {
+                        write!(f, "/{}", role)?;
+                    }
                 }
-                write!(f, "]")?;
             }
         }
         Ok(())
@@ -125,6 +125,18 @@ impl CoreRegister {
     /// Assumes a format string like `{:#0<width>x}`
     pub fn format_hex_width(&self) -> usize {
         (self.size_in_bytes() * 2) + 2
+    }
+
+    /// Helper method to identify registers that have a specific role in its definition.
+    pub fn register_has_role(&self, role: RegisterRole) -> bool {
+        if let Some(role_list) = self.roles {
+            for r in role_list {
+                if r == &role {
+                    return true;
+                }
+            }
+        }
+        false
     }
 }
 
@@ -428,10 +440,7 @@ impl CoreRegisters {
                 if let Some(role_list) = r.roles {
                     let mut is_argument_register = false;
                     for role in role_list {
-                        if matches!(
-                            role,
-                            RegisterRole::ArgumentAndResult(_) | RegisterRole::Argument(_)
-                        ) {
+                        if matches!(role, RegisterRole::Return(_) | RegisterRole::Argument(_)) {
                             is_argument_register = true;
                             break;
                         }
@@ -462,7 +471,7 @@ impl CoreRegisters {
                 if let Some(role_list) = r.roles {
                     let mut is_result_register = false;
                     for role in role_list {
-                        if matches!(role, RegisterRole::ArgumentAndResult(_)) {
+                        if matches!(role, RegisterRole::Return(_)) {
                             is_result_register = true;
                             break;
                         }
@@ -480,7 +489,7 @@ impl CoreRegisters {
     pub fn msp(&self) -> Option<&CoreRegister> {
         self.0
             .iter()
-            .find(|r| register_has_role(r, RegisterRole::MainStackPointer))
+            .find(|r| r.register_has_role(RegisterRole::MainStackPointer))
             .cloned()
     }
 
@@ -488,7 +497,7 @@ impl CoreRegisters {
     pub fn psp(&self) -> Option<&CoreRegister> {
         self.0
             .iter()
-            .find(|r| register_has_role(r, RegisterRole::ProcessStackPointer))
+            .find(|r| r.register_has_role(RegisterRole::ProcessStackPointer))
             .cloned()
     }
 
@@ -496,7 +505,7 @@ impl CoreRegisters {
     pub fn psr(&self) -> Option<&CoreRegister> {
         self.0
             .iter()
-            .find(|r| register_has_role(r, RegisterRole::ProcessorStatus))
+            .find(|r| r.register_has_role(RegisterRole::ProcessorStatus))
             .cloned()
     }
 
@@ -522,10 +531,10 @@ impl CoreRegisters {
     }
 
     /// Find an architecture specific register by name
-    pub fn other_by_name(&self, name: &str) -> Result<&CoreRegister, Error> {
+    pub fn other_by_name(&self, name: &'static str) -> Result<&CoreRegister, Error> {
         self.0
             .iter()
-            .find(|r| register_has_role(r, RegisterRole::Other(name)))
+            .find(|r| r.register_has_role(RegisterRole::Other(name)))
             .ok_or_else(|| Error::GenericCoreError(format!("Argument register {name:?} not found")))
             .cloned()
     }
@@ -534,7 +543,7 @@ impl CoreRegisters {
     pub fn fpsr(&self) -> Option<&CoreRegister> {
         self.0
             .iter()
-            .find(|r| register_has_role(r, RegisterRole::FloatingPointStatus))
+            .find(|r| r.register_has_role(RegisterRole::FloatingPointStatus))
             .cloned()
     }
 
@@ -543,7 +552,7 @@ impl CoreRegisters {
         let mut fpu_registers = self
             .0
             .iter()
-            .filter(|r| register_has_role(r, RegisterRole::FloatingPoint))
+            .filter(|r| r.register_has_role(RegisterRole::FloatingPoint))
             .peekable();
         if fpu_registers.peek().is_some() {
             Some(fpu_registers.cloned())
@@ -565,20 +574,8 @@ impl CoreRegisters {
     pub fn get_fpu_register(&self, index: usize) -> Option<&CoreRegister> {
         self.0
             .iter()
-            .filter(|r| register_has_role(r, RegisterRole::FloatingPoint))
+            .filter(|r| r.register_has_role(RegisterRole::FloatingPoint))
             .cloned()
             .nth(index)
     }
-}
-
-/// Helper function to identify registers that have a specific role in the register file.
-fn register_has_role(register: &CoreRegister, role: RegisterRole) -> bool {
-    if let Some(role_list) = register.roles {
-        for r in role_list {
-            if r == &role {
-                return true;
-            }
-        }
-    }
-    false
 }
