@@ -8,6 +8,7 @@ use std::{ffi::OsString, fs::File, path::PathBuf};
 
 use anyhow::{Context, Result};
 use clap::Parser;
+use probe_rs::flashing::{BinOptions, Format, IdfOptions};
 use time::{OffsetDateTime, UtcOffset};
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::{
@@ -70,6 +71,57 @@ enum Subcommand {
 pub(crate) struct CoreOptions {
     #[clap(long, default_value = "0")]
     core: usize,
+}
+
+#[derive(clap::Parser)]
+pub(crate) struct FormatOptions {
+    #[clap(value_enum, ignore_case = true, default_value = "elf", long)]
+    format: Format,
+    /// The address in memory where the binary will be put at.
+    #[clap(long)]
+    pub base_address: Option<u64>,
+    /// The number of bytes to skip at the start of the binary file.
+    #[clap(long, default_value = "0")]
+    pub skip: u32,
+    /// The idf bootloader path
+    #[clap(long)]
+    pub idf_bootloader: Option<PathBuf>,
+    /// The idf partition table path
+    #[clap(long)]
+    pub idf_partition_table: Option<PathBuf>,
+}
+
+impl FormatOptions {
+    pub fn into_format(self) -> anyhow::Result<Format> {
+        Ok(match self.format {
+            Format::Bin(_) => Format::Bin(BinOptions {
+                base_address: self.base_address,
+                skip: self.skip,
+            }),
+            Format::Hex => Format::Hex,
+            Format::Elf => Format::Elf,
+            Format::Idf(_) => {
+                let bootloader = if let Some(path) = self.idf_bootloader {
+                    Some(std::fs::read(path)?)
+                } else {
+                    None
+                };
+
+                let partition_table = if let Some(path) = self.idf_partition_table {
+                    Some(esp_idf_part::PartitionTable::try_from(std::fs::read(
+                        path,
+                    )?)?)
+                } else {
+                    None
+                };
+
+                Format::Idf(IdfOptions {
+                    bootloader,
+                    partition_table,
+                })
+            }
+        })
+    }
 }
 
 /// Determine the default location for the logfile

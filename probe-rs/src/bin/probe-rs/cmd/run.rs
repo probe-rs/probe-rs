@@ -4,12 +4,13 @@ use std::path::Path;
 use std::time::Duration;
 
 use anyhow::Context;
-use probe_rs::flashing::FileDownloadError;
+use probe_rs::flashing::{FileDownloadError, Format};
 use time::UtcOffset;
 
 use crate::util::common_options::{CargoOptions, FlashOptions, ProbeOptions};
 use crate::util::flash::run_flash_download;
 use crate::util::rtt;
+use crate::FormatOptions;
 
 #[derive(clap::Parser)]
 pub struct Cmd {
@@ -26,6 +27,9 @@ pub struct Cmd {
     /// Disable double-buffering when downloading flash.  If downloading times out, try this option.
     #[clap(long = "disable-double-buffering")]
     disable_double_buffering: bool,
+
+    #[clap(flatten)]
+    format_options: FormatOptions,
 }
 
 impl Cmd {
@@ -38,7 +42,14 @@ impl Cmd {
         };
 
         let mut loader = session.target().flash_loader();
-        loader.load_elf_data(&mut file)?;
+
+        let format = self.format_options.into_format()?;
+        match format {
+            Format::Bin(options) => loader.load_bin_data(&mut file, options),
+            Format::Elf => loader.load_elf_data(&mut file),
+            Format::Hex => loader.load_hex_data(&mut file),
+            Format::Idf(options) => loader.load_idf_data(&mut session, &mut file, options),
+        }?;
 
         run_flash_download(
             &mut session,
