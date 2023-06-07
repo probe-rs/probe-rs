@@ -509,7 +509,7 @@ impl CoreRegisters {
             .cloned()
     }
 
-    /// Return an iterator over all the other ([`RegisterRole::Other`] ) architecture specific registers
+    /// Return an iterator over all the architecture specific registers which do not have a specific role.
     pub fn other(&self) -> impl Iterator<Item = &CoreRegister> {
         self.0
             .iter()
