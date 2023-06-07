@@ -139,7 +139,7 @@ impl DebugRegisters {
         self.0.iter().find(|debug_register| {
             debug_register
                 .core_register
-                .register_has_role(RegisterRole::StackPointer)
+                .register_has_role(RegisterRole::ReturnAddress)
         })
     }
 
