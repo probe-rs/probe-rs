@@ -384,17 +384,12 @@ impl CoreRegisters {
         self.0
             .iter()
             .filter(|r| {
-                let mut is_core_register = true;
-                for role in r.roles {
-                    if matches!(
+                !r.roles.iter().any(|role| {
+                    matches!(
                         role,
                         RegisterRole::FloatingPoint | RegisterRole::FloatingPointStatus
-                    ) {
-                        is_core_register = false;
-                        break;
-                    }
-                }
-                is_core_register
+                    )
+                })
             })
             .cloned()
     }
@@ -427,14 +422,9 @@ impl CoreRegisters {
         self.0
             .iter()
             .filter(|r| {
-                let mut is_argument_register = false;
-                for role in r.roles {
-                    if matches!(role, RegisterRole::Argument(_)) {
-                        is_argument_register = true;
-                        break;
-                    }
-                }
-                is_argument_register
+                r.roles
+                    .iter()
+                    .any(|role| matches!(role, RegisterRole::Argument(_)))
             })
             .cloned()
             .nth(index)
@@ -454,14 +444,9 @@ impl CoreRegisters {
         self.0
             .iter()
             .filter(|r| {
-                let mut is_result_register = false;
-                for role in r.roles {
-                    if matches!(role, RegisterRole::Return(_)) {
-                        is_result_register = true;
-                        break;
-                    }
-                }
-                is_result_register
+                r.roles
+                    .iter()
+                    .any(|role| matches!(role, RegisterRole::Return(_)))
             })
             .cloned()
             .nth(index)
@@ -491,29 +476,15 @@ impl CoreRegisters {
             .cloned()
     }
 
-    /// Return an iterator over all the registers that have a `RegisterRole::Other`.
-    pub fn other(&self) -> impl Iterator<Item = &CoreRegister> {
-        self.0
-            .iter()
-            .filter(|r| {
-                let mut is_other_register = false;
-                for role in r.roles {
-                    if matches!(role, RegisterRole::Other(_)) {
-                        is_other_register = true;
-                        break;
-                    }
-                }
-                is_other_register
-            })
-            .cloned()
-    }
-
     /// Find any register that have a `RegisterRole::Other` and the specified name.
-    pub fn other_by_name(&self, name: &'static str) -> Result<&CoreRegister, Error> {
+    pub fn other_by_name(&self, name: &str) -> Option<&CoreRegister> {
         self.0
             .iter()
-            .find(|r| r.register_has_role(RegisterRole::Other(name)))
-            .ok_or_else(|| Error::GenericCoreError(format!("Argument register {name:?} not found")))
+            .find(|r| {
+                r.roles
+                    .iter()
+                    .any(|role| matches!(role, RegisterRole::Other(n) if *n == name))
+            })
             .cloned()
     }
 
