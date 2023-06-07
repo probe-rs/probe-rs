@@ -65,7 +65,6 @@ pub struct CoreRegister {
     /// The architecture specific name of the register. This may be identical, or similar to [`RegisterRole`].
     pub(crate) name: &'static str,
     // /// Some architectures have multiple names for the same register, depending on the context and the role of the register.
-    // /// This field contains a list of aliases or synonyms for the register.
     pub(crate) id: RegisterId,
     /// If the register plays a special role (one or more) during program execution and exception handling, this array will contain the appropriate [`RegisterRole`] entry/entries.
     pub(crate) roles: &'static [RegisterRole],
