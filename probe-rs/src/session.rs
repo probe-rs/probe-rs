@@ -94,7 +94,7 @@ impl Session {
         attach_method: AttachMethod,
         permissions: Permissions,
     ) -> Result<Self, Error> {
-        let (mut probe, target) = get_target_from_selector(target, attach_method, probe)?;
+        let (probe, target) = get_target_from_selector(target, attach_method, probe)?;
 
         let cores = target
             .cores
@@ -112,217 +112,185 @@ impl Session {
 
         let mut session = match target.architecture() {
             Architecture::Arm => {
-                let config = target.cores[0].clone();
-                let arm_core_access_options = match config.core_access_options {
-                    probe_rs_target::CoreAccessOptions::Arm(opt) => opt,
-                    probe_rs_target::CoreAccessOptions::Riscv(_) => {
-                        unreachable!("This should never happen. Please file a bug if it does.")
-                    }
-                };
-
-                let default_memory_ap = MemoryAp::new(ApAddress {
-                    dp: match arm_core_access_options.psel {
-                        0 => DpAddress::Default,
-                        x => DpAddress::Multidrop(x),
-                    },
-                    ap: arm_core_access_options.ap,
-                });
-
-                let sequence_handle = match &target.debug_sequence {
-                    DebugSequence::Arm(sequence) => sequence.clone(),
-                    DebugSequence::Riscv(_) => {
-                        panic!("Mismatch between architecture and sequence type!")
-                    }
-                };
-
-                if AttachMethod::UnderReset == attach_method {
-                    let span = tracing::debug_span!("Asserting hardware assert");
-                    let _enter = span.enter();
-
-                    if let Some(dap_probe) = probe.try_as_dap_probe() {
-                        sequence_handle.reset_hardware_assert(dap_probe)?;
-                    } else {
-                        tracing::info!(
-                            "Custom reset sequences are not supported on {}.",
-                            probe.get_name()
-                        );
-                        tracing::info!("Falling back to standard probe reset.");
-                        probe.target_reset_assert()?;
-                    }
-                }
-
-                probe.inner_attach()?;
-
-                let interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
-
-                let mut interface = interface
-                    .initialize(sequence_handle.clone())
-                    .map_err(|(_interface, e)| e)?;
-
-                let unlock_span = tracing::debug_span!("debug_device_unlock").entered();
-
-                // Enable debug mode
-                let unlock_res = sequence_handle.debug_device_unlock(
-                    &mut *interface,
-                    default_memory_ap,
-                    &permissions,
-                );
-                drop(unlock_span);
-
-                match unlock_res {
-                    Ok(()) => (),
-                    // In case this happens after unlock. Try to re-attach the probe once.
-                    Err(ArmError::ReAttachRequired) => {
-                        Self::reattach_arm_interface(&mut interface, &sequence_handle)?;
-                    }
-                    Err(e) => return Err(Error::Arm(e)),
-                }
-
-                {
-                    // For each core, setup debugging
-                    for (id, core) in target.cores.iter().enumerate() {
-                        let core_span = tracing::debug_span!("debug_setup", core_id = id).entered();
-
-                        let arm_core_access_options = match &core.core_access_options {
-                            probe_rs_target::CoreAccessOptions::Arm(opt) => opt,
-                            probe_rs_target::CoreAccessOptions::Riscv(_) => {
-                                unreachable!(
-                                    "This should never happen. Please file a bug if it does."
-                                )
-                            }
-                        };
-
-                        let mem_ap = MemoryAp::new(ApAddress {
-                            dp: match arm_core_access_options.psel {
-                                0 => DpAddress::Default,
-                                x => DpAddress::Multidrop(x),
-                            },
-                            ap: arm_core_access_options.ap,
-                        });
-
-                        let core_start_sequence =
-                            tracing::debug_span!("debug_core_start").entered();
-                        // Enable debug mode
-                        sequence_handle.debug_core_start(
-                            &mut *interface,
-                            mem_ap,
-                            config.core_type,
-                            arm_core_access_options.debug_base,
-                            arm_core_access_options.cti_base,
-                        )?;
-                        drop(core_start_sequence);
-
-                        drop(core_span);
-                    }
-                }
-
-                if attach_method == AttachMethod::UnderReset {
-                    {
-                        let mut memory_interface = interface.memory_interface(default_memory_ap)?;
-
-                        let reset_catch_span = tracing::debug_span!("reset_catch_set").entered();
-                        // we need to halt the chip here
-                        sequence_handle.reset_catch_set(
-                            &mut *memory_interface,
-                            config.core_type,
-                            arm_core_access_options.debug_base,
-                        )?;
-
-                        drop(reset_catch_span);
-
-                        let reset_hardware_deassert =
-                            tracing::debug_span!("reset_hardware_deassert").entered();
-
-                        // TODO: A timeout here indicates that the reset pin is probably not properly
-                        //       connected.
-                        if let Err(e) =
-                            sequence_handle.reset_hardware_deassert(&mut *memory_interface)
-                        {
-                            if matches!(e, ArmError::Timeout) {
-                                tracing::warn!("Timeout while deasserting hardware reset pin. This indicates that the reset pin is not properly connected. Please check your hardware setup.");
-                            }
-
-                            return Err(e.into());
-                        }
-                        drop(reset_hardware_deassert);
-                    }
-
-                    let mut session = Session {
-                        target,
-                        interface: ArchitectureInterface::Arm(interface),
-                        cores,
-                        configured_trace_sink: None,
-                    };
-
-                    {
-                        // Wait for the core to be halted. The core should be
-                        // halted because we set the `reset_catch` earlier, which
-                        // means that the core should stop when coming out of reset.
-                        let mut core = session.core(0)?;
-                        core.wait_for_core_halted(Duration::from_millis(100))?;
-                    }
-
-                    {
-                        let interface = session.get_arm_interface()?;
-                        let mut memory_interface = interface.memory_interface(default_memory_ap)?;
-
-                        // Clear the reset_catch bit which was set earlier.
-                        let reset_catch_span = tracing::debug_span!("reset_catch_clear").entered();
-                        sequence_handle.reset_catch_clear(
-                            &mut *memory_interface,
-                            config.core_type,
-                            arm_core_access_options.debug_base,
-                        )?;
-                        drop(reset_catch_span);
-                    }
-
-                    session
-                } else {
-                    Session {
-                        target,
-                        interface: ArchitectureInterface::Arm(interface),
-                        cores,
-                        configured_trace_sink: None,
-                    }
-                }
+                Self::attach_arm(probe, target, attach_method, permissions, cores)?
             }
             Architecture::Riscv => {
-                // TODO: Handle attach under reset
-
-                let sequence_handle = match &target.debug_sequence {
-                    DebugSequence::Riscv(sequence) => sequence.clone(),
-                    DebugSequence::Arm(_) => {
-                        panic!("Mismatch between architecture and sequence type!")
-                    }
-                };
-
-                probe.inner_attach()?;
-
-                let interface = probe
-                    .try_into_riscv_interface()
-                    .map_err(|(_probe, err)| err)?;
-
-                let mut session = Session {
-                    target,
-                    interface: ArchitectureInterface::Riscv(Box::new(interface)),
-                    cores,
-                    configured_trace_sink: None,
-                };
-
-                {
-                    // Todo: Add multicore support. How to deal with any cores that are not active and won't respond?
-                    let mut core = session.core(0)?;
-
-                    core.halt(Duration::from_millis(100))?;
-                }
-
-                sequence_handle.on_connect(session.get_riscv_interface()?)?;
-
-                session
+                Self::attach_riscv(probe, target, attach_method, permissions, cores)?
             }
         };
 
         session.clear_all_hw_breakpoints()?;
+
+        Ok(session)
+    }
+
+    fn attach_arm(
+        mut probe: Probe,
+        target: Target,
+        attach_method: AttachMethod,
+        permissions: Permissions,
+        cores: Vec<CombinedCoreState>,
+    ) -> Result<Self, Error> {
+        let config = target.cores[0].clone();
+        let arm_core_access_options = match config.core_access_options {
+            probe_rs_target::CoreAccessOptions::Arm(opt) => opt,
+            probe_rs_target::CoreAccessOptions::Riscv(_) => {
+                unreachable!("This should never happen. Please file a bug if it does.")
+            }
+        };
+
+        let default_memory_ap = MemoryAp::new(ApAddress {
+            dp: match arm_core_access_options.psel {
+                0 => DpAddress::Default,
+                x => DpAddress::Multidrop(x),
+            },
+            ap: arm_core_access_options.ap,
+        });
+
+        let sequence_handle = match &target.debug_sequence {
+            DebugSequence::Arm(sequence) => sequence.clone(),
+            DebugSequence::Riscv(_) => {
+                panic!("Mismatch between architecture and sequence type!")
+            }
+        };
+
+        if AttachMethod::UnderReset == attach_method {
+            let span = tracing::debug_span!("Asserting hardware assert");
+            let _enter = span.enter();
+
+            if let Some(dap_probe) = probe.try_as_dap_probe() {
+                sequence_handle.reset_hardware_assert(dap_probe)?;
+            } else {
+                tracing::info!(
+                    "Custom reset sequences are not supported on {}.",
+                    probe.get_name()
+                );
+                tracing::info!("Falling back to standard probe reset.");
+                probe.target_reset_assert()?;
+            }
+        }
+
+        probe.inner_attach()?;
+
+        let interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
+
+        let mut interface = interface
+            .initialize(sequence_handle.clone())
+            .map_err(|(_interface, e)| e)?;
+
+        let unlock_span = tracing::debug_span!("debug_device_unlock").entered();
+
+        // Enable debug mode
+        let unlock_res =
+            sequence_handle.debug_device_unlock(&mut *interface, default_memory_ap, &permissions);
+        drop(unlock_span);
+
+        match unlock_res {
+            Ok(()) => (),
+            // In case this happens after unlock. Try to re-attach the probe once.
+            Err(ArmError::ReAttachRequired) => {
+                Self::reattach_arm_interface(&mut interface, &sequence_handle)?;
+            }
+            Err(e) => return Err(Error::Arm(e)),
+        }
+
+        // For each core, setup debugging
+        for core in &cores {
+            core.enable_arm_debug(&mut *interface)?;
+        }
+
+        if attach_method == AttachMethod::UnderReset {
+            {
+                for core in &cores {
+                    core.reset_catch_set(&mut *interface)?;
+                }
+
+                let reset_hardware_deassert =
+                    tracing::debug_span!("reset_hardware_deassert").entered();
+
+                let mut memory_interface = interface.memory_interface(default_memory_ap)?;
+
+                // TODO: A timeout here indicates that the reset pin is probably not properly
+                //       connected.
+                if let Err(e) = sequence_handle.reset_hardware_deassert(&mut *memory_interface) {
+                    if matches!(e, ArmError::Timeout) {
+                        tracing::warn!("Timeout while deasserting hardware reset pin. This indicates that the reset pin is not properly connected. Please check your hardware setup.");
+                    }
+
+                    return Err(e.into());
+                }
+                drop(reset_hardware_deassert);
+            }
+
+            let mut session = Session {
+                target,
+                interface: ArchitectureInterface::Arm(interface),
+                cores,
+                configured_trace_sink: None,
+            };
+
+            {
+                // Wait for the core to be halted. The core should be
+                // halted because we set the `reset_catch` earlier, which
+                // means that the core should stop when coming out of reset.
+
+                for core_id in 0..session.cores.len() {
+                    let mut core = session.core(core_id)?;
+
+                    core.wait_for_core_halted(Duration::from_millis(100))?;
+
+                    core.reset_catch_clear()?;
+                }
+            }
+
+            Ok(session)
+        } else {
+            Ok(Session {
+                target,
+                interface: ArchitectureInterface::Arm(interface),
+                cores,
+                configured_trace_sink: None,
+            })
+        }
+    }
+
+    fn attach_riscv(
+        mut probe: Probe,
+        target: Target,
+        _attach_method: AttachMethod,
+        _permissions: Permissions,
+        cores: Vec<CombinedCoreState>,
+    ) -> Result<Self, Error> {
+        // TODO: Handle attach under reset
+
+        let sequence_handle = match &target.debug_sequence {
+            DebugSequence::Riscv(sequence) => sequence.clone(),
+            DebugSequence::Arm(_) => {
+                panic!("Mismatch between architecture and sequence type!")
+            }
+        };
+
+        probe.inner_attach()?;
+
+        let interface = probe
+            .try_into_riscv_interface()
+            .map_err(|(_probe, err)| err)?;
+
+        let mut session = Session {
+            target,
+            interface: ArchitectureInterface::Riscv(Box::new(interface)),
+            cores,
+            configured_trace_sink: None,
+        };
+
+        {
+            // Todo: Add multicore support. How to deal with any cores that are not active and won't respond?
+            let mut core = session.core(0)?;
+
+            core.halt(Duration::from_millis(100))?;
+        }
+
+        sequence_handle.on_connect(session.get_riscv_interface()?)?;
 
         Ok(session)
     }

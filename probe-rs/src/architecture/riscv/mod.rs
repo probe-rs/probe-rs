@@ -630,6 +630,14 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     fn id(&self) -> usize {
         self.id
     }
+
+    fn reset_catch_set(&mut self) -> Result<(), Error> {
+        todo!()
+    }
+
+    fn reset_catch_clear(&mut self) -> Result<(), Error> {
+        todo!()
+    }
 }
 
 impl<'probe> MemoryInterface for Riscv32<'probe> {

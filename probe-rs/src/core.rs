@@ -135,6 +135,10 @@ pub trait CoreInterface: MemoryInterface {
     fn on_session_stop(&mut self) -> Result<(), Error> {
         Ok(())
     }
+
+    fn reset_catch_set(&mut self) -> Result<(), Error>;
+
+    fn reset_catch_clear(&mut self) -> Result<(), Error>;
 }
 
 impl<'probe> MemoryInterface for Core<'probe> {
@@ -535,6 +539,14 @@ impl<'probe> Core<'probe> {
     #[tracing::instrument(skip(self))]
     pub(crate) fn on_session_stop(&mut self) -> Result<(), Error> {
         self.inner.on_session_stop()
+    }
+
+    pub(crate) fn reset_catch_set(&mut self) -> Result<(), Error> {
+        self.inner.reset_catch_set()
+    }
+
+    pub(crate) fn reset_catch_clear(&mut self) -> Result<(), Error> {
+        self.inner.reset_catch_clear()
     }
 }
 

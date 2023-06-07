@@ -91,6 +91,58 @@ impl CombinedCoreState {
         })
     }
 
+    pub(crate) fn enable_arm_debug(
+        &self,
+        interface: &mut dyn ArmProbeInterface,
+    ) -> Result<(), Error> {
+        let (sequence_handle, arm_core_access_options) = match &self.core_state.core_access_options
+        {
+            ResolvedCoreOptions::Arm { sequence, options } => (sequence, options),
+            ResolvedCoreOptions::Riscv { .. } => {
+                todo!()
+            }
+        };
+
+        tracing::debug_span!("debug_core_start", id = self.id()).in_scope(|| {
+            // Enable debug mode
+            sequence_handle.debug_core_start(
+                interface,
+                self.arm_memory_ap(),
+                self.core_type(),
+                arm_core_access_options.debug_base,
+                arm_core_access_options.cti_base,
+            )
+        })?;
+
+        Ok(())
+    }
+
+    pub(crate) fn reset_catch_set(
+        &self,
+        interface: &mut dyn ArmProbeInterface,
+    ) -> Result<(), Error> {
+        let (sequence_handle, arm_core_access_options) = match &self.core_state.core_access_options
+        {
+            ResolvedCoreOptions::Arm { sequence, options } => (sequence, options),
+            ResolvedCoreOptions::Riscv { .. } => {
+                todo!()
+            }
+        };
+
+        let mut memory_interface = interface.memory_interface(self.arm_memory_ap())?;
+
+        let reset_catch_span = tracing::debug_span!("reset_catch_set", id = self.id()).entered();
+        sequence_handle.reset_catch_set(
+            &mut *memory_interface,
+            self.core_type(),
+            arm_core_access_options.debug_base,
+        )?;
+
+        drop(reset_catch_span);
+
+        Ok(())
+    }
+
     pub(crate) fn attach_riscv<'probe>(
         &'probe mut self,
         interface: &'probe mut RiscvCommunicationInterface,

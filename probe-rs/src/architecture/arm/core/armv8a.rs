@@ -1137,6 +1137,34 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
     fn id(&self) -> usize {
         self.id
     }
+
+    fn reset_catch_set(&mut self) -> Result<(), Error> {
+        // Clear the reset_catch bit which was set earlier.
+        let reset_catch_span = tracing::debug_span!("reset_catch_set").entered();
+
+        self.sequence.reset_catch_set(
+            &mut *self.memory,
+            CoreType::Armv8a,
+            Some(self.base_address),
+        )?;
+        drop(reset_catch_span);
+
+        Ok(())
+    }
+
+    fn reset_catch_clear(&mut self) -> Result<(), Error> {
+        // Clear the reset_catch bit which was set earlier.
+        let reset_catch_span = tracing::debug_span!("reset_catch_clear").entered();
+
+        self.sequence.reset_catch_clear(
+            &mut *self.memory,
+            CoreType::Armv8a,
+            Some(self.base_address),
+        )?;
+        drop(reset_catch_span);
+
+        Ok(())
+    }
 }
 
 impl<'probe> MemoryInterface for Armv8a<'probe> {
