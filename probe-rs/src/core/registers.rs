@@ -491,7 +491,7 @@ impl CoreRegisters {
             .cloned()
     }
 
-    /// Return an iterator over all the architecture specific registers which do not have a specific role.
+    /// Return an iterator over all the registers that have a `RegisterRole::Other`.
     pub fn other(&self) -> impl Iterator<Item = &CoreRegister> {
         self.0
             .iter()
@@ -508,7 +508,7 @@ impl CoreRegisters {
             .cloned()
     }
 
-    /// Find an architecture specific register by name
+    /// Find any register that have a `RegisterRole::Other` and the specified name.
     pub fn other_by_name(&self, name: &'static str) -> Result<&CoreRegister, Error> {
         self.0
             .iter()
