@@ -4,22 +4,6 @@ use crate::{
 };
 use once_cell::sync::Lazy;
 
-pub const S0: CoreRegister = CoreRegister {
-    name: "s0",
-    roles: None,
-    /// This is a CSR register
-    id: RegisterId(0x1008),
-    data_type: RegisterDataType::UnsignedInteger(32),
-};
-
-pub const S1: CoreRegister = CoreRegister {
-    name: "s1",
-    roles: None,
-    /// This is a CSR register
-    id: RegisterId(0x1009),
-    data_type: RegisterDataType::UnsignedInteger(32),
-};
-
 /// The program counter register.
 pub const PC: CoreRegister = CoreRegister {
     name: "pc",
@@ -31,7 +15,7 @@ pub const PC: CoreRegister = CoreRegister {
 
 pub(crate) const FP: CoreRegister = CoreRegister {
     name: "x8",
-    roles: Some(&[RegisterRole::FramePointer]),
+    roles: Some(&[RegisterRole::FramePointer, RegisterRole::Other("s0")]),
     id: RegisterId(0x1008),
     data_type: RegisterDataType::UnsignedInteger(32),
 };
@@ -47,6 +31,15 @@ pub(crate) const RA: CoreRegister = CoreRegister {
     name: "x1",
     roles: Some(&[RegisterRole::ReturnAddress]),
     id: RegisterId(0x1001),
+    data_type: RegisterDataType::UnsignedInteger(32),
+};
+
+// S0 and S1 need to be referenceable as constants in other parts of the architecture specific code.
+pub const S0: CoreRegister = FP;
+pub const S1: CoreRegister = CoreRegister {
+    name: "x9",
+    roles: Some(&[RegisterRole::Other("s1")]),
+    id: RegisterId(0x1009),
     data_type: RegisterDataType::UnsignedInteger(32),
 };
 
@@ -93,12 +86,7 @@ static RISCV_REGISTERS_SET: &[CoreRegister] = &[
         data_type: RegisterDataType::UnsignedInteger(32),
     },
     FP,
-    CoreRegister {
-        name: "x9",
-        roles: Some(&[RegisterRole::Other("s1")]),
-        id: RegisterId(0x1009),
-        data_type: RegisterDataType::UnsignedInteger(32),
-    },
+    S1,
     CoreRegister {
         name: "x10",
         roles: Some(&[RegisterRole::Argument("a0"), RegisterRole::Return("r0")]),
