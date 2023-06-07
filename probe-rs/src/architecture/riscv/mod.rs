@@ -2,22 +2,24 @@
 
 #![allow(clippy::inconsistent_digit_grouping)]
 
+use self::registers::*;
 use crate::{
     core::{
-        Architecture, BreakpointCause, CoreInformation, RegisterFile, RegisterId, RegisterValue,
+        Architecture, BreakpointCause, CoreInformation, CoreRegisters, RegisterId, RegisterValue,
     },
     memory::valid_32bit_address,
-    memory_mapped_bitfield_register, CoreInterface, CoreStatus, CoreType, Error, HaltReason,
-    InstructionSet, MemoryInterface,
+    memory_mapped_bitfield_register, CoreInterface, CoreRegister, CoreStatus, CoreType, Error,
+    HaltReason, InstructionSet, MemoryInterface,
 };
 use anyhow::{anyhow, Result};
 use bitfield::bitfield;
 use communication_interface::{AbstractCommandErrorKind, RiscvCommunicationInterface, RiscvError};
-use register::RISCV_REGISTERS;
+use registers::RISCV_CORE_REGSISTERS;
 use std::time::{Duration, Instant};
 
 #[macro_use]
-mod register;
+pub(crate) mod registers;
+pub use registers::PC;
 pub(crate) mod assembly;
 mod dtm;
 
@@ -123,6 +125,42 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         Ok(dmstatus.allhalted())
     }
 
+    fn status(&mut self) -> Result<crate::core::CoreStatus, crate::Error> {
+        // TODO: We should use hartsum to determine if any hart is halted
+        //       quickly
+
+        let status: Dmstatus = self.interface.read_dm_register()?;
+
+        if status.allhalted() {
+            // determine reason for halt
+            let dcsr = Dcsr(self.read_core_reg(RegisterId::from(0x7b0))?.try_into()?);
+
+            let reason = match dcsr.cause() {
+                // An ebreak instruction was hit
+                1 => HaltReason::Breakpoint(BreakpointCause::Software),
+                // Trigger module caused halt
+                2 => HaltReason::Breakpoint(BreakpointCause::Hardware),
+                // Debugger requested a halt
+                3 => HaltReason::Request,
+                // Core halted after single step
+                4 => HaltReason::Step,
+                // Core halted directly after reset
+                5 => HaltReason::Exception,
+                // Reserved for future use in specification
+                _ => HaltReason::Unknown,
+            };
+
+            Ok(CoreStatus::Halted(reason))
+        } else if status.allrunning() {
+            Ok(CoreStatus::Running)
+        } else {
+            Err(
+                anyhow!("Some cores are running while some are halted, this should not happen.")
+                    .into(),
+            )
+        }
+    }
+
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, crate::Error> {
         // write 1 to the haltreq register, which is part
         // of the dmcontrol register
@@ -148,11 +186,10 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
         self.interface.write_dm_register(dmcontrol)?;
 
-        let pc = self.read_core_reg(register::RISCV_REGISTERS.program_counter.id)?;
+        let pc = self.read_core_reg(self.program_counter().into())?;
 
         Ok(CoreInformation { pc: pc.try_into()? })
     }
-
     fn run(&mut self) -> Result<(), crate::Error> {
         // Before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction.
         self.step()?;
@@ -389,6 +426,47 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         Ok(tselect_index)
     }
 
+    /// See docs on the [`CoreInterface::hw_breakpoints`] trait
+    /// NOTE: For riscv, this assumes that only execution breakpoints are used.
+    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
+        let tselect = 0x7a0;
+        let tdata1 = 0x7a1;
+        let tdata2 = 0x7a2;
+
+        let mut breakpoints = vec![];
+        let num_hw_breakpoints = self.available_breakpoint_units()? as usize;
+        for bp_unit_index in 0..num_hw_breakpoints {
+            // Select the trigger.
+            self.write_csr(tselect, bp_unit_index as u32)?;
+
+            // Read the trigger "configuration" data.
+            let tdata_value = Mcontrol(self.read_csr(tdata1)?);
+
+            tracing::warn!("Breakpoint {}: {:?}", bp_unit_index, tdata_value);
+
+            // The trigger must be active in at least a single mode
+            let trigger_any_mode_active = tdata_value.m() || tdata_value.s() || tdata_value.u();
+
+            let trigger_any_action_enabled =
+                tdata_value.execute() || tdata_value.store() || tdata_value.load();
+
+            // Only return if the trigger if it is for an execution debug action in all modes.
+            if tdata_value.type_() == 0b10
+                && tdata_value.action() == 1
+                && tdata_value.match_() == 0
+                && trigger_any_mode_active
+                && trigger_any_action_enabled
+            {
+                let breakpoint = self.read_csr(tdata2)?;
+                breakpoints.push(Some(breakpoint as u64));
+            } else {
+                breakpoints.push(None);
+            }
+        }
+
+        Ok(breakpoints)
+    }
+
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), crate::Error> {
         // Loop through all triggers, and enable/disable them.
         let tselect = 0x7a0;
@@ -490,12 +568,38 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         Ok(())
     }
 
-    fn registers(&self) -> &'static RegisterFile {
-        &RISCV_REGISTERS
+    fn registers(&self) -> &'static CoreRegisters {
+        &RISCV_CORE_REGSISTERS
+    }
+
+    fn program_counter(&self) -> &'static CoreRegister {
+        &PC
+    }
+
+    fn frame_pointer(&self) -> &'static CoreRegister {
+        &FP
+    }
+
+    fn stack_pointer(&self) -> &'static CoreRegister {
+        &SP
+    }
+
+    fn return_address(&self) -> &'static CoreRegister {
+        &RA
     }
 
     fn hw_breakpoints_enabled(&self) -> bool {
         self.state.hw_breakpoints_enabled
+    }
+
+    fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), crate::error::Error> {
+        let mut dcsr = Dcsr(self.read_core_reg(RegisterId(0x7b0))?.try_into()?);
+
+        dcsr.set_ebreakm(enabled);
+        dcsr.set_ebreaks(enabled);
+        dcsr.set_ebreaku(enabled);
+
+        self.write_csr(0x7b0, dcsr.0).map_err(|e| e.into())
     }
 
     fn architecture(&self) -> Architecture {
@@ -517,97 +621,10 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         }
     }
 
-    fn status(&mut self) -> Result<crate::core::CoreStatus, crate::Error> {
-        // TODO: We should use hartsum to determine if any hart is halted
-        //       quickly
-
-        let status: Dmstatus = self.interface.read_dm_register()?;
-
-        if status.allhalted() {
-            // determine reason for halt
-            let dcsr = Dcsr(self.read_core_reg(RegisterId::from(0x7b0))?.try_into()?);
-
-            let reason = match dcsr.cause() {
-                // An ebreak instruction was hit
-                1 => HaltReason::Breakpoint(BreakpointCause::Software),
-                // Trigger module caused halt
-                2 => HaltReason::Breakpoint(BreakpointCause::Hardware),
-                // Debugger requested a halt
-                3 => HaltReason::Request,
-                // Core halted after single step
-                4 => HaltReason::Step,
-                // Core halted directly after reset
-                5 => HaltReason::Exception,
-                // Reserved for future use in specification
-                _ => HaltReason::Unknown,
-            };
-
-            Ok(CoreStatus::Halted(reason))
-        } else if status.allrunning() {
-            Ok(CoreStatus::Running)
-        } else {
-            Err(
-                anyhow!("Some cores are running while some are halted, this should not happen.")
-                    .into(),
-            )
-        }
-    }
-
-    /// See docs on the [`CoreInterface::hw_breakpoints`] trait
-    /// NOTE: For riscv, this assumes that only execution breakpoints are used.
-    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
-        let tselect = 0x7a0;
-        let tdata1 = 0x7a1;
-        let tdata2 = 0x7a2;
-
-        let mut breakpoints = vec![];
-        let num_hw_breakpoints = self.available_breakpoint_units()? as usize;
-        for bp_unit_index in 0..num_hw_breakpoints {
-            // Select the trigger.
-            self.write_csr(tselect, bp_unit_index as u32)?;
-
-            // Read the trigger "configuration" data.
-            let tdata_value = Mcontrol(self.read_csr(tdata1)?);
-
-            tracing::warn!("Breakpoint {}: {:?}", bp_unit_index, tdata_value);
-
-            // The trigger must be active in at least a single mode
-            let trigger_any_mode_active = tdata_value.m() || tdata_value.s() || tdata_value.u();
-
-            let trigger_any_action_enabled =
-                tdata_value.execute() || tdata_value.store() || tdata_value.load();
-
-            // Only return if the trigger if it is for an execution debug action in all modes.
-            if tdata_value.type_() == 0b10
-                && tdata_value.action() == 1
-                && tdata_value.match_() == 0
-                && trigger_any_mode_active
-                && trigger_any_action_enabled
-            {
-                let breakpoint = self.read_csr(tdata2)?;
-                breakpoints.push(Some(breakpoint as u64));
-            } else {
-                breakpoints.push(None);
-            }
-        }
-
-        Ok(breakpoints)
-    }
-
     fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
         Err(crate::error::Error::Other(anyhow::anyhow!(
             "Fpu detection not yet implemented"
         )))
-    }
-
-    fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), crate::error::Error> {
-        let mut dcsr = Dcsr(self.read_core_reg(RegisterId(0x7b0))?.try_into()?);
-
-        dcsr.set_ebreakm(enabled);
-        dcsr.set_ebreaks(enabled);
-        dcsr.set_ebreaku(enabled);
-
-        self.write_csr(0x7b0, dcsr.0).map_err(|e| e.into())
     }
 
     fn id(&self) -> usize {

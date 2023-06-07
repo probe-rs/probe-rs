@@ -354,7 +354,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                 } else {
                     target_core
                         .core
-                        .read_core_reg(target_core.core.registers().program_counter())?
+                        .read_core_reg(target_core.core.program_counter())?
                 }
             }
 

@@ -248,14 +248,14 @@ impl FlashAlgorithm {
             addr_load = raw
                 .load_address
                 .map(|a| {
-                    a.checked_sub((header.len() * size_of::<u32>()) as u64) // adjust the raw load address to account for the algo header
+                    a.checked_sub(std::mem::size_of_val(header) as u64) // adjust the raw load address to account for the algo header
                         .ok_or(FlashError::InvalidFlashAlgorithmLoadAddress { address: addr_load })
                 })
                 .unwrap_or(Ok(ram_region.range.start))?;
             if addr_load < ram_region.range.start {
                 return Err(FlashError::InvalidFlashAlgorithmLoadAddress { address: addr_load });
             }
-            offset += (header.len() * size_of::<u32>()) as u64;
+            offset += (std::mem::size_of_val(header)) as u64;
             code_start = addr_load + offset;
             offset += (instructions.len() * size_of::<u32>()) as u64;
 

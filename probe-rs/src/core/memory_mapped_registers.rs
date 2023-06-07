@@ -30,7 +30,7 @@ pub trait MemoryMappedRegister<T>: Clone + From<T> + Into<T> + Sized + std::fmt:
 /// - Includes a `bitfield!` mapping for bitfield access to optionally defined fields.
 /// When no bitfields are defined, the default `.0` field must be used.
 ///
-///! # Example
+/// # Example
 /// ```
 /// use bitfield::bitfield;
 /// use probe_rs::memory_mapped_bitfield_register;
