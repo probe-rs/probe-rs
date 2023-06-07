@@ -66,11 +66,9 @@ pub struct CoreRegister {
     pub(crate) name: &'static str,
     // /// Some architectures have multiple names for the same register, depending on the context and the role of the register.
     // /// This field contains a list of aliases or synonyms for the register.
-    // pub(crate) aliases: Option<&'static [&'static str]>,
     pub(crate) id: RegisterId,
-    /// If the register plays a special role during program execution and exception handling, this field will be set to the role.
-    /// Otherwise, it will be `None` and the register is a general purpose register.
-    pub(crate) roles: Option<&'static [RegisterRole]>,
+    /// If the register plays a special role (one or more) during program execution and exception handling, this array will contain the appropriate [`RegisterRole`] entry/entries.
+    pub(crate) roles: &'static [RegisterRole],
     pub(crate) data_type: RegisterDataType,
 }
 
@@ -78,12 +76,10 @@ impl Display for CoreRegister {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let primary_name = self.name;
         write!(f, "{}", primary_name)?;
-        if let Some(role_list) = self.roles {
-            if !role_list.is_empty() {
-                for role in role_list {
-                    if primary_name != role_list[0].to_string() {
-                        write!(f, "/{}", role)?;
-                    }
+        if !self.roles.is_empty() {
+            for role in self.roles {
+                if primary_name != role.to_string() {
+                    write!(f, "/{}", role)?;
                 }
             }
         }
@@ -129,11 +125,9 @@ impl CoreRegister {
 
     /// Helper method to identify registers that have a specific role in its definition.
     pub fn register_has_role(&self, role: RegisterRole) -> bool {
-        if let Some(role_list) = self.roles {
-            for r in role_list {
-                if r == &role {
-                    return true;
-                }
+        for r in self.roles {
+            if r == &role {
+                return true;
             }
         }
         false
@@ -390,21 +384,17 @@ impl CoreRegisters {
         self.0
             .iter()
             .filter(|r| {
-                if let Some(role_list) = r.roles {
-                    let mut is_core_register = true;
-                    for role in role_list {
-                        if matches!(
-                            role,
-                            RegisterRole::FloatingPoint | RegisterRole::FloatingPointStatus
-                        ) {
-                            is_core_register = false;
-                            break;
-                        }
+                let mut is_core_register = true;
+                for role in r.roles {
+                    if matches!(
+                        role,
+                        RegisterRole::FloatingPoint | RegisterRole::FloatingPointStatus
+                    ) {
+                        is_core_register = false;
+                        break;
                     }
-                    is_core_register
-                } else {
-                    true
                 }
+                is_core_register
             })
             .cloned()
     }
@@ -437,18 +427,14 @@ impl CoreRegisters {
         self.0
             .iter()
             .filter(|r| {
-                if let Some(role_list) = r.roles {
-                    let mut is_argument_register = false;
-                    for role in role_list {
-                        if matches!(role, RegisterRole::Return(_) | RegisterRole::Argument(_)) {
-                            is_argument_register = true;
-                            break;
-                        }
+                let mut is_argument_register = false;
+                for role in r.roles {
+                    if matches!(role, RegisterRole::Argument(_)) {
+                        is_argument_register = true;
+                        break;
                     }
-                    is_argument_register
-                } else {
-                    false
                 }
+                is_argument_register
             })
             .cloned()
             .nth(index)
@@ -468,18 +454,14 @@ impl CoreRegisters {
         self.0
             .iter()
             .filter(|r| {
-                if let Some(role_list) = r.roles {
-                    let mut is_result_register = false;
-                    for role in role_list {
-                        if matches!(role, RegisterRole::Return(_)) {
-                            is_result_register = true;
-                            break;
-                        }
+                let mut is_result_register = false;
+                for role in r.roles {
+                    if matches!(role, RegisterRole::Return(_)) {
+                        is_result_register = true;
+                        break;
                     }
-                    is_result_register
-                } else {
-                    false
                 }
+                is_result_register
             })
             .cloned()
             .nth(index)
@@ -514,18 +496,14 @@ impl CoreRegisters {
         self.0
             .iter()
             .filter(|r| {
-                if let Some(role_list) = r.roles {
-                    let mut is_other_register = false;
-                    for role in role_list {
-                        if matches!(role, RegisterRole::Other(_)) {
-                            is_other_register = true;
-                            break;
-                        }
+                let mut is_other_register = false;
+                for role in r.roles {
+                    if matches!(role, RegisterRole::Other(_)) {
+                        is_other_register = true;
+                        break;
                     }
-                    is_other_register
-                } else {
-                    false
                 }
+                is_other_register
             })
             .cloned()
     }

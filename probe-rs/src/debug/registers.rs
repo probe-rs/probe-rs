@@ -182,18 +182,15 @@ impl DebugRegisters {
         self.0
             .iter()
             .find(|&debug_register| {
-                debug_register.core_register.name == register_name ||
-                if let Some(role_list) = debug_register.core_register.roles {
+                debug_register.core_register.name == register_name || {
                     let mut register_name_matches = false;
-                    for role in role_list {
+                    for role in debug_register.core_register.roles {
                         if matches!(role, RegisterRole::Argument(role_name) | RegisterRole::Return(role_name)  | RegisterRole::Other(role_name) if *role_name == register_name) {
                             register_name_matches = true;
                             break;
                         }
                     }
                     register_name_matches
-                } else {
-                    false
                 }
             })
             .cloned()
