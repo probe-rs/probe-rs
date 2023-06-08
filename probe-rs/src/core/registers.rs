@@ -21,11 +21,11 @@ pub enum RegisterDataType {
 /// This denotes the purpose of a register (e.g. `return address`),
 /// while the [`CoreRegister::name`] will contain the architecture specific label of the register.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) enum RegisterRole {
-    /// Argument registers like "A0", "a1", "r2", etc. (uses architecture specific names)
+pub enum RegisterRole {
+    /// Function Argument registers like "A0", "a1", etc. (uses architecture specific names)
     Argument(&'static str),
-    /// Some argument registers can also be used as return value registers.
-    ArgumentAndResult(&'static str),
+    /// Function Return value registers like "R0", "r1", etc. (uses architecture specific names)
+    Return(&'static str),
     ProgramCounter,
     FramePointer,
     StackPointer,
@@ -35,6 +35,7 @@ pub(crate) enum RegisterRole {
     ReturnAddress,
     FloatingPoint,
     FloatingPointStatus,
+    /// Other architecture specific roles, e.g. "saved", "temporary", "variable", etc.
     Other(&'static str),
 }
 
@@ -42,7 +43,7 @@ impl Display for RegisterRole {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             RegisterRole::Argument(name) => write!(f, "{}", name),
-            RegisterRole::ArgumentAndResult(name) => write!(f, "{}", name),
+            RegisterRole::Return(name) => write!(f, "{}", name),
             RegisterRole::ProgramCounter => write!(f, "PC"),
             RegisterRole::FramePointer => write!(f, "FP"),
             RegisterRole::StackPointer => write!(f, "SP"),
@@ -63,26 +64,25 @@ impl Display for RegisterRole {
 pub struct CoreRegister {
     /// The architecture specific name of the register. This may be identical, or similar to [`RegisterRole`].
     pub(crate) name: &'static str,
+    // /// Some architectures have multiple names for the same register, depending on the context and the role of the register.
     pub(crate) id: RegisterId,
-    /// If the register plays a special role during program execution and exception handling, this field will be set to the role.
-    /// Otherwise, it will be `None` and the register is a general purpose register.
-    pub(crate) role: Option<RegisterRole>,
+    /// If the register plays a special role (one or more) during program execution and exception handling, this array will contain the appropriate [`RegisterRole`] entry/entries.
+    pub(crate) roles: &'static [RegisterRole],
     pub(crate) data_type: RegisterDataType,
 }
 
 impl Display for CoreRegister {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self.role {
-            // These register roles have their own names assigned in their definition.
-            Some(RegisterRole::Argument(name)) => write!(f, "{}", name),
-            Some(RegisterRole::ArgumentAndResult(name)) => write!(f, "{}", name),
-            Some(RegisterRole::Other(name)) => write!(f, "{}", name),
-            Some(RegisterRole::FloatingPoint) => write!(f, "{}", self.name),
-            // The remainder roles get their name from the [`RegisterRole::Display`] implementation.
-            Some(other_role) => write!(f, "{}", other_role),
-            // If there is no role, use the name of the register.
-            None => write!(f, "{}", self.name),
+        let primary_name = self.name;
+        write!(f, "{}", primary_name)?;
+        if !self.roles.is_empty() {
+            for role in self.roles {
+                if primary_name != role.to_string() {
+                    write!(f, "/{}", role)?;
+                }
+            }
         }
+        Ok(())
     }
 }
 
@@ -120,6 +120,16 @@ impl CoreRegister {
     /// Assumes a format string like `{:#0<width>x}`
     pub fn format_hex_width(&self) -> usize {
         (self.size_in_bytes() * 2) + 2
+    }
+
+    /// Helper method to identify registers that have a specific role in its definition.
+    pub fn register_has_role(&self, role: RegisterRole) -> bool {
+        for r in self.roles {
+            if r == &role {
+                return true;
+            }
+        }
+        false
     }
 }
 
@@ -373,10 +383,12 @@ impl CoreRegisters {
         self.0
             .iter()
             .filter(|r| {
-                !matches!(
-                    r.role,
-                    Some(RegisterRole::FloatingPoint) | Some(RegisterRole::FloatingPointStatus)
-                )
+                !r.roles.iter().any(|role| {
+                    matches!(
+                        role,
+                        RegisterRole::FloatingPoint | RegisterRole::FloatingPointStatus
+                    )
+                })
             })
             .cloned()
     }
@@ -409,10 +421,9 @@ impl CoreRegisters {
         self.0
             .iter()
             .filter(|r| {
-                matches!(
-                    r.role,
-                    Some(RegisterRole::ArgumentAndResult(_)) | Some(RegisterRole::Argument(_))
-                )
+                r.roles
+                    .iter()
+                    .any(|role| matches!(role, RegisterRole::Argument(_)))
             })
             .cloned()
             .nth(index)
@@ -431,7 +442,11 @@ impl CoreRegisters {
     pub fn get_result_register(&self, index: usize) -> Option<&CoreRegister> {
         self.0
             .iter()
-            .filter(|r| matches!(r.role, Some(RegisterRole::ArgumentAndResult(_))))
+            .filter(|r| {
+                r.roles
+                    .iter()
+                    .any(|role| matches!(role, RegisterRole::Return(_)))
+            })
             .cloned()
             .nth(index)
     }
@@ -440,7 +455,7 @@ impl CoreRegisters {
     pub fn msp(&self) -> Option<&CoreRegister> {
         self.0
             .iter()
-            .find(|r| r.role == Some(RegisterRole::MainStackPointer))
+            .find(|r| r.register_has_role(RegisterRole::MainStackPointer))
             .cloned()
     }
 
@@ -448,7 +463,7 @@ impl CoreRegisters {
     pub fn psp(&self) -> Option<&CoreRegister> {
         self.0
             .iter()
-            .find(|r| r.role == Some(RegisterRole::ProcessStackPointer))
+            .find(|r| r.register_has_role(RegisterRole::ProcessStackPointer))
             .cloned()
     }
 
@@ -456,24 +471,19 @@ impl CoreRegisters {
     pub fn psr(&self) -> Option<&CoreRegister> {
         self.0
             .iter()
-            .find(|r| r.role == Some(RegisterRole::ProcessorStatus))
+            .find(|r| r.register_has_role(RegisterRole::ProcessorStatus))
             .cloned()
     }
 
-    /// Other architecture specific registers
-    pub fn other(&self) -> impl Iterator<Item = &CoreRegister> {
+    /// Find any register that have a `RegisterRole::Other` and the specified name.
+    pub fn other_by_name(&self, name: &str) -> Option<&CoreRegister> {
         self.0
             .iter()
-            .filter(|r| matches!(r.role, Some(RegisterRole::Other(_))))
-            .cloned()
-    }
-
-    /// Find an architecture specific register by name
-    pub fn other_by_name(&self, name: &str) -> Result<&CoreRegister, Error> {
-        self.0
-            .iter()
-            .find(|r| matches!(r.role, Some(RegisterRole::Other(other_name)) if other_name == name))
-            .ok_or_else(|| Error::GenericCoreError(format!("Argument register {name:?} not found")))
+            .find(|r| {
+                r.roles
+                    .iter()
+                    .any(|role| matches!(role, RegisterRole::Other(n) if *n == name))
+            })
             .cloned()
     }
 
@@ -481,7 +491,7 @@ impl CoreRegisters {
     pub fn fpsr(&self) -> Option<&CoreRegister> {
         self.0
             .iter()
-            .find(|r| r.role == Some(RegisterRole::FloatingPointStatus))
+            .find(|r| r.register_has_role(RegisterRole::FloatingPointStatus))
             .cloned()
     }
 
@@ -490,7 +500,7 @@ impl CoreRegisters {
         let mut fpu_registers = self
             .0
             .iter()
-            .filter(|r| r.role == Some(RegisterRole::FloatingPoint))
+            .filter(|r| r.register_has_role(RegisterRole::FloatingPoint))
             .peekable();
         if fpu_registers.peek().is_some() {
             Some(fpu_registers.cloned())
@@ -512,7 +522,7 @@ impl CoreRegisters {
     pub fn get_fpu_register(&self, index: usize) -> Option<&CoreRegister> {
         self.0
             .iter()
-            .filter(|r| r.role == Some(RegisterRole::FloatingPoint))
+            .filter(|r| r.register_has_role(RegisterRole::FloatingPoint))
             .cloned()
             .nth(index)
     }
