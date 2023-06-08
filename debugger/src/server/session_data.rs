@@ -25,7 +25,7 @@ pub enum BreakpointType {
     InstructionBreakpoint,
     /// A breakpoint was requested using a source location, and usually a result of a user requesting a
     /// breakpoint while in a 'source' view.
-    SourceBreakpoint(Source, SourceLocation),
+    SourceBreakpoint(Source, Option<SourceLocation>),
 }
 
 /// Provide the storage and methods to handle various [`BreakpointType`]
