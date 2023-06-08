@@ -767,7 +767,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         let mut created_breakpoints: Vec<Breakpoint> = Vec::new(); // For returning in the Response
 
-        if let Some(source_path) = args.source.clone().path.as_ref().map(Path::new) {
+        if let Some(source_path) = args.source.path.as_ref().map(Path::new) {
             // Always clear existing breakpoints for the specified `[crate::debug_adapter::dap_types::Source]` before setting new ones.
             // The DAP Specification doesn't make allowances for deleting and setting individual breakpoints for a specific `Source`.
             match target_core
