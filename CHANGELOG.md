@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - probe-rs-debugger: Show errors that happen before VSCode/DAP Client session initializion has completed (#1581).
 - probe-rs-cli-util: replace unwanted instance of `println` with `eprintln` (#1595, fixes #1593).
 - stlink: exit JTAG mode on idle to tristate debug interface (#1615).
+- probe-rs-debugger: The MS DAP Request `setBreapoints` clears existing breakpoints for the specified `Source`, and not for all `Source` 's (#1630)
 
 ### Added
 
