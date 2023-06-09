@@ -288,7 +288,7 @@ impl<'p> CoreHandle<'p> {
                  || matches!(
                         &target_breakpoint.breakpoint_type,
                         BreakpointType::SourceBreakpoint{source: breakpoint_source, location: _}
-                            if matches!(&breakpoint_type, BreakpointType::SourceBreakpoint{source: clear_breakpoint_source, location:_}
+                            if matches!(&breakpoint_type, BreakpointType::SourceBreakpoint{source: clear_breakpoint_source, ..}
                                 if clear_breakpoint_source == breakpoint_source)
                     )
             })
