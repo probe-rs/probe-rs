@@ -9,6 +9,7 @@ use crate::architecture::arm::sequences::{
     nrf53::Nrf5340,
     nrf91::Nrf9160,
     nxp::{LPC55Sxx, MIMXRT10xx, MIMXRT11xx},
+    rp2040::Rp2040,
     stm32_armv6::{Stm32Armv6, Stm32Armv6Family},
     stm32_armv7::Stm32Armv7,
     stm32h7::Stm32h7,
@@ -165,6 +166,12 @@ impl Target {
         } else if chip.name.starts_with("XMC4") {
             tracing::warn!("Using custom sequence for XMC4000");
             debug_sequence = DebugSequence::Arm(XMC4000::create());
+        } else if chip.name == "RP2040" {
+            // exact match to not include RP2040_SELFDEBUG
+            // since in that case we really want to reset core0 only,
+            // not both (which is what the sequence does).
+            tracing::warn!("Using custom sequence for RP2040");
+            debug_sequence = DebugSequence::Arm(Rp2040::create());
         }
 
         Ok(Target {
