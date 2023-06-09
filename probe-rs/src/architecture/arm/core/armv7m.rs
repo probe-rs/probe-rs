@@ -9,7 +9,8 @@ use super::{
 };
 use crate::{
     architecture::arm::{
-        memory::adi_v5_memory_interface::ArmProbe, sequences::ArmDebugSequence, ArmError,
+        core::registers::cortex_m::XPSR, memory::adi_v5_memory_interface::ArmProbe,
+        sequences::ArmDebugSequence, ArmError,
     },
     core::{
         Architecture, CoreInformation, CoreInterface, CoreRegisters, CoreStatus, HaltReason,
@@ -592,6 +593,8 @@ pub struct Armv7m<'probe> {
     state: &'probe mut CortexMState,
 
     sequence: Arc<dyn ArmDebugSequence>,
+
+    id: usize,
 }
 
 impl<'probe> Armv7m<'probe> {
@@ -599,6 +602,7 @@ impl<'probe> Armv7m<'probe> {
         mut memory: Box<dyn ArmProbe + 'probe>,
         state: &'probe mut CortexMState,
         sequence: Arc<dyn ArmDebugSequence>,
+        id: usize,
     ) -> Result<Self, Error> {
         if !state.initialized() {
             // determine current state
@@ -634,6 +638,7 @@ impl<'probe> Armv7m<'probe> {
             memory,
             state,
             sequence,
+            id,
         })
     }
 
@@ -787,9 +792,8 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
     fn reset_and_halt(&mut self, _timeout: Duration) -> Result<CoreInformation, Error> {
         // Set the vc_corereset bit in the DEMCR register.
         // This will halt the core after reset.
+        self.reset_catch_set()?;
 
-        self.sequence
-            .reset_catch_set(&mut *self.memory, crate::CoreType::Armv7m, None)?;
         self.sequence
             .reset_system(&mut *self.memory, crate::CoreType::Armv7m, None)?;
 
@@ -797,30 +801,13 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         let _ = self.status()?;
 
         const XPSR_THUMB: u32 = 1 << 24;
-        let xpsr_value: u32 = self
-            .read_core_reg(
-                self.registers()
-                    .psr()
-                    .ok_or_else(|| {
-                        Error::Other(anyhow::anyhow!("Processor State Register not found."))
-                    })?
-                    .id(),
-            )?
-            .try_into()?;
+
+        let xpsr_value: u32 = self.read_core_reg(XPSR.id())?.try_into()?;
         if xpsr_value & XPSR_THUMB == 0 {
-            self.write_core_reg(
-                self.registers()
-                    .psr()
-                    .ok_or_else(|| {
-                        Error::Other(anyhow::anyhow!("Processor State Register not found."))
-                    })?
-                    .id(),
-                (xpsr_value | XPSR_THUMB).into(),
-            )?;
+            self.write_core_reg(XPSR.id(), (xpsr_value | XPSR_THUMB).into())?;
         }
 
-        self.sequence
-            .reset_catch_clear(&mut *self.memory, crate::CoreType::Armv7m, None)?;
+        self.reset_catch_set()?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(self.program_counter().into())?;
@@ -1059,6 +1046,34 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
 
     fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
         Ok(self.state.fp_present)
+    }
+
+    fn id(&self) -> usize {
+        self.id
+    }
+
+    #[tracing::instrument(skip(self))]
+    fn reset_catch_set(&mut self) -> Result<(), Error> {
+        self.sequence
+            .reset_catch_set(&mut *self.memory, CoreType::Armv7m, None)?;
+
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self))]
+    fn reset_catch_clear(&mut self) -> Result<(), Error> {
+        self.sequence
+            .reset_catch_clear(&mut *self.memory, CoreType::Armv7m, None)?;
+
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self))]
+    fn debug_core_stop(&mut self) -> Result<(), Error> {
+        self.sequence
+            .debug_core_stop(&mut *self.memory, CoreType::Armv7m)?;
+
+        Ok(())
     }
 }
 

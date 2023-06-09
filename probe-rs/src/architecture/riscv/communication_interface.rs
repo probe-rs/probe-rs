@@ -66,6 +66,9 @@ pub enum RiscvError {
     /// The connected target is not a RISCV device.
     #[error("Connected target is not a RISCV device.")]
     NoRiscvTarget,
+    /// The target does not support halt after reset.
+    #[error("The target does not support halt after reset.")]
+    ResetHaltRequestNotSupported,
 }
 
 impl From<RiscvError> for ProbeRsError {

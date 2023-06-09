@@ -32,6 +32,13 @@ pub(crate) const RA: CoreRegister = CoreRegister {
     data_type: RegisterDataType::UnsignedInteger(32),
 };
 
+pub(crate) const XPSR: CoreRegister = CoreRegister {
+    name: "XPSR",
+    roles: &[RegisterRole::ProcessorStatus],
+    id: RegisterId(0b1_0000),
+    data_type: RegisterDataType::UnsignedInteger(32),
+};
+
 pub(crate) static CORTEX_M_CORE_REGSISTERS: Lazy<CoreRegisters> = Lazy::new(|| {
     CoreRegisters::new(
         ARM32_COMMON_REGS_SET
@@ -143,12 +150,7 @@ static CORTEX_M_COMMON_REGS_SET: &[CoreRegister] = &[
         id: RegisterId(0b10010),
         data_type: RegisterDataType::UnsignedInteger(32),
     },
-    CoreRegister {
-        name: "XPSR",
-        roles: &[RegisterRole::ProcessorStatus],
-        id: RegisterId(0b1_0000),
-        data_type: RegisterDataType::UnsignedInteger(32),
-    },
+    XPSR,
     // CONTROL bits [31:24], FAULTMASK bits [23:16],
     // BASEPRI bits [15:8], and PRIMASK bits [7:0]
     CoreRegister {

@@ -723,22 +723,19 @@ pub trait ArmDebugSequence: Send + Sync {
     #[doc(alias = "DebugCoreStop")]
     fn debug_core_stop(
         &self,
-        interface: &mut dyn ArmProbeInterface,
-        core_ap: MemoryAp,
+        interface: &mut dyn ArmProbe,
         core_type: CoreType,
     ) -> Result<(), ArmError> {
         if core_type.is_cortex_m() {
-            let mut memory_interface = interface.memory_interface(core_ap)?;
-
             // System Control Space (SCS) offset as defined in Armv6-M/Armv7-M.
             // Disable Core Debug via DHCSR
             let mut dhcsr = Dhcsr(0);
             dhcsr.enable_write();
-            memory_interface.write_word_32(Dhcsr::get_mmio_address(), dhcsr.0)?;
+            interface.write_word_32(Dhcsr::get_mmio_address(), dhcsr.0)?;
 
             // Disable DWT and ITM blocks, DebugMonitor handler,
             // halting debug traps, and Reset Vector Catch.
-            memory_interface.write_word_32(Demcr::get_mmio_address(), 0x0)?;
+            interface.write_word_32(Demcr::get_mmio_address(), 0x0)?;
         }
 
         Ok(())
