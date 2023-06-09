@@ -19,18 +19,28 @@ use time::UtcOffset;
 
 /// The supported breakpoint types
 #[derive(Clone, Debug, PartialEq)]
-pub enum BreakpointType {
+pub(crate) enum BreakpointType {
     /// A breakpoint was requested using an instruction address, and usually a result of a user requesting a
     /// breakpoint while in a 'disassembly' view.
     InstructionBreakpoint,
-    /// A breakpoint was requested using a source location, and usually a result of a user requesting a
-    /// breakpoint while in a 'source' view.
-    SourceBreakpoint(Source, SourceLocation),
+    /// A breakpoint that has a Source, and usually a result of a user requesting a breakpoint while in a 'source' view.
+    SourceBreakpoint {
+        source: Source,
+        location: SourceLocationScope,
+    },
+}
+
+/// Breakpoint requests will either be refer to a specific SourceLcoation, or unspecified, in which case it will refer to
+/// all breakpoints for the Source.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum SourceLocationScope {
+    All,
+    Specific(SourceLocation),
 }
 
 /// Provide the storage and methods to handle various [`BreakpointType`]
 #[derive(Clone, Debug)]
-pub struct ActiveBreakpoint {
+pub(crate) struct ActiveBreakpoint {
     pub(crate) breakpoint_type: BreakpointType,
     pub(crate) address: u64,
 }
@@ -38,7 +48,7 @@ pub struct ActiveBreakpoint {
 /// SessionData is designed to be similar to [probe_rs::Session], in as much that it provides handles to the [CoreHandle] instances for each of the available [probe_rs::Core] involved in the debug session.
 /// To get access to the [CoreHandle] for a specific [probe_rs::Core], the
 /// TODO: Adjust [SessionConfig] to allow multiple cores (and if appropriate, their binaries) to be specified.
-pub struct SessionData {
+pub(crate) struct SessionData {
     pub(crate) session: Session,
     /// [SessionData] will manage one [CoreData] per target core, that is also present in [SessionConfig::core_configs]
     pub(crate) core_data: Vec<CoreData>,

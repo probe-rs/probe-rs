@@ -1,6 +1,6 @@
 use std::{fs::File, path::Path};
 
-use super::session_data::{self, ActiveBreakpoint, BreakpointType};
+use super::session_data::{self, ActiveBreakpoint, BreakpointType, SourceLocationScope};
 use crate::{
     debug_adapter::{
         dap::{
@@ -274,24 +274,23 @@ impl<'p> CoreHandle<'p> {
 
     /// Clear all breakpoints of a specified [`super::session_data::BreakpointType`].
     /// Affects target configuration as well as [`CoreData::breakpoints`].
-    /// If `breakpoint_type` is `None`, all breakpoints of type [`super::session_data::BreakpointType::SourceBreakpoint`] will be cleared.
+    /// If `breakpoint_type` is of type [`super::session_data::BreakpointType::SourceBreakpoint`], then all breakpoints for the contained [`Source`] will be cleared.
     pub(crate) fn clear_breakpoints(
         &mut self,
-        breakpoint_type: Option<session_data::BreakpointType>,
+        breakpoint_type: session_data::BreakpointType,
     ) -> Result<()> {
         let target_breakpoints = self
             .core_data
             .breakpoints
             .iter()
-            .filter(|breakpoint| {
-                if let Some(breakpoint_type) = breakpoint_type.as_ref() {
-                    breakpoint.breakpoint_type == *breakpoint_type
-                } else {
-                    matches!(
-                        breakpoint.breakpoint_type,
-                        BreakpointType::SourceBreakpoint(_, _)
+            .filter(|target_breakpoint| {
+                target_breakpoint.breakpoint_type == breakpoint_type
+                 || matches!(
+                        &target_breakpoint.breakpoint_type,
+                        BreakpointType::SourceBreakpoint{source: breakpoint_source, location: _}
+                            if matches!(&breakpoint_type, BreakpointType::SourceBreakpoint{source: clear_breakpoint_source, ..}
+                                if clear_breakpoint_source == breakpoint_source)
                     )
-                }
             })
             .map(|breakpoint| breakpoint.address)
             .collect::<Vec<u64>>();
@@ -326,7 +325,10 @@ impl<'p> CoreHandle<'p> {
                 DebuggerError::Other(anyhow!("Cannot set breakpoint here. Try reducing compile time-, and link time-, optimization in your build configuration, or choose a different source location: {debug_error}")))?;
         self.set_breakpoint(
             address,
-            BreakpointType::SourceBreakpoint(requested_source.clone(), source_location.clone()),
+            BreakpointType::SourceBreakpoint {
+                source: requested_source.clone(),
+                location: SourceLocationScope::Specific(source_location.clone()),
+            },
         )?;
         Ok(VerifiedBreakpoint {
             address,
@@ -346,13 +348,15 @@ impl<'p> CoreHandle<'p> {
             .filter(|breakpoint| {
                 matches!(
                     breakpoint.breakpoint_type,
-                    BreakpointType::SourceBreakpoint(..)
+                    BreakpointType::SourceBreakpoint { .. }
                 )
             })
         {
             self.clear_breakpoint(breakpoint.address)?;
-            if let BreakpointType::SourceBreakpoint(source, source_location) =
-                breakpoint.breakpoint_type
+            if let BreakpointType::SourceBreakpoint {
+                source,
+                location: SourceLocationScope::Specific(source_location),
+            } = breakpoint.breakpoint_type
             {
                 if let Err(breakpoint_error) =
                     source_location
