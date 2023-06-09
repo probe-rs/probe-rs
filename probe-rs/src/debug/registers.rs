@@ -101,35 +101,45 @@ impl DebugRegisters {
     /// [DWARF](https://dwarfstd.org)
     pub fn get_frame_pointer(&self) -> Option<&DebugRegister> {
         self.0.iter().find(|debug_register| {
-            debug_register.core_register.role == Some(RegisterRole::FramePointer)
+            debug_register
+                .core_register
+                .register_has_role(RegisterRole::FramePointer)
         })
     }
 
     /// Get the program counter.
     pub fn get_program_counter(&self) -> Option<&DebugRegister> {
         self.0.iter().find(|debug_register| {
-            debug_register.core_register.role == Some(RegisterRole::ProgramCounter)
+            debug_register
+                .core_register
+                .register_has_role(RegisterRole::ProgramCounter)
         })
     }
 
     /// Get a mutable reference to the program counter.
     pub fn get_program_counter_mut(&mut self) -> Option<&mut DebugRegister> {
         self.0.iter_mut().find(|debug_register| {
-            debug_register.core_register.role == Some(RegisterRole::ProgramCounter)
+            debug_register
+                .core_register
+                .register_has_role(RegisterRole::ProgramCounter)
         })
     }
 
     /// Get the stack pointer.
     pub fn get_stack_pointer(&self) -> Option<&DebugRegister> {
         self.0.iter().find(|debug_register| {
-            debug_register.core_register.role == Some(RegisterRole::StackPointer)
+            debug_register
+                .core_register
+                .register_has_role(RegisterRole::StackPointer)
         })
     }
 
     /// Get the return address.
     pub fn get_return_address(&self) -> Option<&DebugRegister> {
         self.0.iter().find(|debug_register| {
-            debug_register.core_register.role == Some(RegisterRole::StackPointer)
+            debug_register
+                .core_register
+                .register_has_role(RegisterRole::ReturnAddress)
         })
     }
 
@@ -167,18 +177,21 @@ impl DebugRegisters {
     /// Retrieve a register by searching against either the name or the role name.
     /// Use this for registers that have platform specific names like "t1", or "s9", etc.,
     /// and cannot efficiently be accessed through any of the other methods.
+    // TODO: Investigate if this can leverate the function of the same name on `CoreRegisters`
     pub fn get_register_by_name(&self, register_name: &str) -> Option<DebugRegister> {
         self.0
             .iter()
             .find(|&debug_register| {
-                debug_register.core_register.name == register_name
-                    || matches!(
-                        debug_register
-                            .core_register
-                            .role,
-                        Some(RegisterRole::Argument(role_name)) |
-                        Some(RegisterRole::Other(role_name)) if role_name == register_name
-                    )
+                debug_register.core_register.name == register_name || {
+                    let mut register_name_matches = false;
+                    for role in debug_register.core_register.roles {
+                        if matches!(role, RegisterRole::Argument(role_name) | RegisterRole::Return(role_name)  | RegisterRole::Other(role_name) if *role_name == register_name) {
+                            register_name_matches = true;
+                            break;
+                        }
+                    }
+                    register_name_matches
+                }
             })
             .cloned()
     }

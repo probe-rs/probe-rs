@@ -2126,11 +2126,11 @@
 				},
 				"start": {
 					"type": "integer",
-					"description": "The index of the first variable to return; if omitted children start at 0."
+					"description": "The index of the first variable to return; if omitted children start at 0.\nThe attribute is only honored by a debug adapter if the corresponding capability `supportsVariablePaging` is true."
 				},
 				"count": {
 					"type": "integer",
-					"description": "The number of variables to return. If count is missing or 0, all variables are returned."
+					"description": "The number of variables to return. If count is missing or 0, all variables are returned.\nThe attribute is only honored by a debug adapter if the corresponding capability `supportsVariablePaging` is true."
 				},
 				"format": {
 					"$ref": "#/definitions/ValueFormat",
@@ -3374,20 +3374,6 @@
 				}
 			},
 			"required": [ "attributeName", "label"]
-		},
-
-		"ModulesViewDescriptor": {
-			"type": "object",
-			"description": "The ModulesViewDescriptor is the container for all declarative configuration options of a module view.\nFor now it only specifies the columns to be shown in the modules view.",
-			"properties": {
-				"columns": {
-					"type": "array",
-					"items": {
-						"$ref": "#/definitions/ColumnDescriptor"
-					}
-				}
-			},
-			"required": [ "columns" ]
 		},
 
 		"Thread": {

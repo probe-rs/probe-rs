@@ -1204,13 +1204,19 @@ fn unwind_register(
         Undefined => {
             // In many cases, the DWARF has `Undefined` rules for variables like frame pointer, program counter, etc., so we hard-code some rules here to make sure unwinding can continue. If there is a valid rule, it will bypass these hardcoded ones.
             match &debug_register {
-                fp if fp.core_register.role == Some(RegisterRole::FramePointer) => {
+                fp if fp
+                    .core_register
+                    .register_has_role(RegisterRole::FramePointer) =>
+                {
                     register_rule_string = "FP=CFA (dwarf Undefined)".to_string();
                     callee_frame_registers
                         .get_frame_pointer()
                         .and_then(|fp| fp.value)
                 }
-                sp if sp.core_register.role == Some(RegisterRole::StackPointer) => {
+                sp if sp
+                    .core_register
+                    .register_has_role(RegisterRole::StackPointer) =>
+                {
                     // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section B.1.4.1: Treat bits [1:0] as `Should be Zero or Preserved`
                     // - Applying this logic to RISCV has no adverse effects, since all incoming addresses are already 32-bit aligned.
                     register_rule_string = "SP=CFA (dwarf Undefined)".to_string();
@@ -1222,13 +1228,19 @@ fn unwind_register(
                         }
                     })
                 }
-                lr if lr.core_register.role == Some(RegisterRole::ReturnAddress) => {
+                lr if lr
+                    .core_register
+                    .register_has_role(RegisterRole::ReturnAddress) =>
+                {
                     // This value is can only be used to determine the Undefined PC value. We have no way of inferring the previous frames LR until we have the PC.
                     register_rule_string = "LR=Unknown (dwarf Undefined)".to_string();
                     *unwound_return_address = lr.value;
                     None
                 }
-                pc if pc.core_register.role == Some(RegisterRole::ProgramCounter) => {
+                pc if pc
+                    .core_register
+                    .register_has_role(RegisterRole::ProgramCounter) =>
+                {
                     // NOTE: PC = Value of the unwound LR, i.e. the first instruction after the one that called this function.
                     register_rule_string = "PC=(unwound LR) (dwarf Undefined)".to_string();
                     unwound_return_address.and_then(|return_address| {
@@ -1294,7 +1306,10 @@ fn unwind_register(
 
                 match result {
                     Ok(register_value) => {
-                        if debug_register.core_register.role == Some(RegisterRole::ReturnAddress) {
+                        if debug_register
+                            .core_register
+                            .register_has_role(RegisterRole::ReturnAddress)
+                        {
                             // We need to store this value to be used by the calculation of the PC.
                             *unwound_return_address = Some(register_value);
                         }
