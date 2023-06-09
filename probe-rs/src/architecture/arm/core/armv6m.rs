@@ -861,6 +861,14 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
 
         Ok(())
     }
+
+    #[tracing::instrument(skip(self))]
+    fn debug_core_stop(&mut self) -> Result<(), Error> {
+        self.sequence
+            .debug_core_stop(&mut *self.memory, CoreType::Armv6m)?;
+
+        Ok(())
+    }
 }
 
 impl<'probe> MemoryInterface for Armv6m<'probe> {

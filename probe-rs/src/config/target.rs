@@ -1,18 +1,22 @@
 use probe_rs_target::{Architecture, ChipFamily};
 
 use super::{Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource};
-use crate::architecture::arm::sequences::{
-    atsame5x::AtSAME5x,
-    efm32xg2::EFM32xG2,
-    infineon::XMC4000,
-    nrf52::Nrf52,
-    nrf53::Nrf5340,
-    nrf91::Nrf9160,
-    nxp::{LPC55Sxx, MIMXRT10xx, MIMXRT11xx},
-    stm32_armv6::{Stm32Armv6, Stm32Armv6Family},
-    stm32_armv7::Stm32Armv7,
-    stm32h7::Stm32h7,
-    ArmDebugSequence,
+use crate::architecture::arm::{
+    ap::MemoryAp,
+    sequences::{
+        atsame5x::AtSAME5x,
+        efm32xg2::EFM32xG2,
+        infineon::XMC4000,
+        nrf52::Nrf52,
+        nrf53::Nrf5340,
+        nrf91::Nrf9160,
+        nxp::{LPC55Sxx, MIMXRT10xx, MIMXRT11xx},
+        stm32_armv6::{Stm32Armv6, Stm32Armv6Family},
+        stm32_armv7::Stm32Armv7,
+        stm32h7::Stm32h7,
+        ArmDebugSequence,
+    },
+    ApAddress, DpAddress,
 };
 use crate::architecture::riscv::sequences::{esp32c3::ESP32C3, esp32c6::ESP32C6};
 use crate::architecture::riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence};
@@ -193,6 +197,15 @@ impl Target {
         target_arch
     }
 
+    /// Return the default core of the target, usually the first core.
+    ///
+    /// This core should be used for operations such as debug_unlock,
+    /// when nothing else is specified.
+    pub fn default_core(&self) -> &Core {
+        // TODO: Check if this is specified in the target description.
+        &self.cores[0]
+    }
+
     /// Source description of this target.
     pub fn source(&self) -> &TargetDescriptionSource {
         &self.source
@@ -280,4 +293,25 @@ pub enum DebugSequence {
     Arm(Arc<dyn ArmDebugSequence>),
     /// A RISC-V debug sequence.
     Riscv(Arc<dyn RiscvDebugSequence>),
+}
+
+pub(crate) trait CoreExt {
+    // Retrieve the Coresight MemoryAP which should be used to
+    // access the core, if available.
+    fn memory_ap(&self) -> Option<MemoryAp>;
+}
+
+impl CoreExt for Core {
+    fn memory_ap(&self) -> Option<MemoryAp> {
+        match &self.core_access_options {
+            probe_rs_target::CoreAccessOptions::Arm(options) => Some(MemoryAp::new(ApAddress {
+                dp: match options.psel {
+                    0 => DpAddress::Default,
+                    x => DpAddress::Multidrop(x),
+                },
+                ap: options.ap,
+            })),
+            probe_rs_target::CoreAccessOptions::Riscv(_) => None,
+        }
+    }
 }

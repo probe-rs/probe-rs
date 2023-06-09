@@ -480,6 +480,14 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
         Ok(())
     }
+
+    #[tracing::instrument(skip(self))]
+    fn debug_core_stop(&mut self) -> Result<(), Error> {
+        self.sequence
+            .debug_core_stop(&mut *self.memory, CoreType::Armv8m)?;
+
+        Ok(())
+    }
 }
 
 impl<'probe> MemoryInterface for Armv8m<'probe> {

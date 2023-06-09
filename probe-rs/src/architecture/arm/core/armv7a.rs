@@ -780,16 +780,6 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         )))
     }
 
-    fn on_session_stop(&mut self) -> Result<(), Error> {
-        if matches!(self.state.current_state, CoreStatus::Halted(_)) {
-            // We may have clobbered registers we wrote during debugging
-            // Best effort attempt to put them back before we exit
-            self.writeback_registers()
-        } else {
-            Ok(())
-        }
-    }
-
     fn id(&self) -> usize {
         self.id
     }
@@ -818,6 +808,20 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
             Some(self.base_address),
         )?;
         drop(reset_catch_span);
+
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self))]
+    fn debug_core_stop(&mut self) -> Result<(), Error> {
+        if matches!(self.state.current_state, CoreStatus::Halted(_)) {
+            // We may have clobbered registers we wrote during debugging
+            // Best effort attempt to put them back before we exit debug mode
+            self.writeback_registers()?;
+        }
+
+        self.sequence
+            .debug_core_stop(&mut *self.memory, CoreType::Armv7a)?;
 
         Ok(())
     }

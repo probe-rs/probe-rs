@@ -1090,6 +1090,14 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
 
         Ok(())
     }
+
+    #[tracing::instrument(skip(self))]
+    fn debug_core_stop(&mut self) -> Result<(), Error> {
+        self.sequence
+            .debug_core_stop(&mut *self.memory, CoreType::Armv7m)?;
+
+        Ok(())
+    }
 }
 
 impl<'probe> MemoryInterface for Armv7m<'probe> {

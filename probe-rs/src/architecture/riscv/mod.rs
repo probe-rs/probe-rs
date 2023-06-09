@@ -638,6 +638,11 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     fn reset_catch_clear(&mut self) -> Result<(), Error> {
         todo!()
     }
+
+    fn debug_core_stop(&mut self) -> Result<(), Error> {
+        self.debug_on_sw_breakpoint(false)?;
+        Ok(())
+    }
 }
 
 impl<'probe> MemoryInterface for Riscv32<'probe> {

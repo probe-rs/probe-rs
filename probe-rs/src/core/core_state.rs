@@ -3,7 +3,6 @@ use crate::{
         arm::{
             ap::MemoryAp,
             core::{CortexAState, CortexMState},
-            memory::adi_v5_memory_interface::ArmProbe,
             ApAddress, ArmProbeInterface, DpAddress,
         },
         riscv::{communication_interface::RiscvCommunicationInterface, RiscVState},
@@ -38,13 +37,6 @@ impl CombinedCoreState {
     ) -> Result<Core<'probe>, Error> {
         let memory = arm_interface.memory_interface(self.arm_memory_ap())?;
 
-        self.attach_arm_v2(memory)
-    }
-
-    pub(crate) fn attach_arm_v2<'probe, 'target: 'probe>(
-        &'probe mut self,
-        memory: Box<dyn ArmProbe + 'probe>,
-    ) -> Result<Core<'probe>, Error> {
         let (options, debug_sequence) = match &self.core_state.core_access_options {
             ResolvedCoreOptions::Arm { options, sequence } => (options, sequence.clone()),
             ResolvedCoreOptions::Riscv { .. } => {
@@ -117,7 +109,7 @@ impl CombinedCoreState {
         Ok(())
     }
 
-    pub(crate) fn reset_catch_set(
+    pub(crate) fn arm_reset_catch_set(
         &self,
         interface: &mut dyn ArmProbeInterface,
     ) -> Result<(), Error> {

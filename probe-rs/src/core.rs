@@ -26,6 +26,7 @@ pub struct CoreInformation {
 
 /// A generic interface to control a MCU core.
 pub trait CoreInterface: MemoryInterface {
+    /// Numerical ID of the core. Can be used as an argument to `Session::core()`.
     fn id(&self) -> usize;
 
     /// Wait until the core is halted. If the core does not halt on its own,
@@ -131,14 +132,20 @@ pub trait CoreInterface: MemoryInterface {
     /// decision for some core types.
     fn fpu_support(&mut self) -> Result<bool, error::Error>;
 
-    /// Called during session stop to do any pending cleanup
-    fn on_session_stop(&mut self) -> Result<(), Error> {
-        Ok(())
-    }
-
+    /// Set the reset catch setting.
+    ///
+    /// This configures the core to halt after a reset.
+    ///
+    /// use `reset_catch_clear` to clear the setting again.
     fn reset_catch_set(&mut self) -> Result<(), Error>;
 
+    /// Clear the reset catch setting.
+    ///
+    /// This will reset the changes done by `reset_catch_set`.
     fn reset_catch_clear(&mut self) -> Result<(), Error>;
+
+    /// Called when we stop debugging a core.
+    fn debug_core_stop(&mut self) -> Result<(), Error>;
 }
 
 impl<'probe> MemoryInterface for Core<'probe> {
@@ -535,18 +542,12 @@ impl<'probe> Core<'probe> {
         self.inner.fpu_support()
     }
 
-    /// Called during session tear down to do any pending cleanup
-    #[tracing::instrument(skip(self))]
-    pub(crate) fn on_session_stop(&mut self) -> Result<(), Error> {
-        self.inner.on_session_stop()
-    }
-
-    pub(crate) fn reset_catch_set(&mut self) -> Result<(), Error> {
-        self.inner.reset_catch_set()
-    }
-
     pub(crate) fn reset_catch_clear(&mut self) -> Result<(), Error> {
         self.inner.reset_catch_clear()
+    }
+
+    pub(crate) fn debug_core_stop(&mut self) -> Result<(), Error> {
+        self.inner.debug_core_stop()
     }
 }
 

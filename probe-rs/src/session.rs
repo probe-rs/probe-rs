@@ -1,15 +1,13 @@
-use probe_rs_target::CoreAccessOptions;
-
 use crate::architecture::arm::component::get_arm_components;
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
-use crate::architecture::arm::{ApAddress, ArmError, DpAddress};
+use crate::architecture::arm::{ArmError, DpAddress};
 use crate::architecture::riscv::communication_interface::RiscvError;
-use crate::config::{ChipInfo, RegistryError, Target, TargetSelector};
+use crate::config::{ChipInfo, CoreExt, RegistryError, Target, TargetSelector};
 use crate::core::{Architecture, CombinedCoreState};
 use crate::{
     architecture::{
         arm::{
-            ap::MemoryAp, communication_interface::ArmProbeInterface, component::TraceSink,
+            communication_interface::ArmProbeInterface, component::TraceSink,
             memory::CoresightComponent, SwoReader,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
@@ -46,7 +44,7 @@ pub struct Session {
     configured_trace_sink: Option<TraceSink>,
 }
 
-enum ArchitectureInterface {
+pub(crate) enum ArchitectureInterface {
     Arm(Box<dyn ArmProbeInterface + 'static>),
     Riscv(Box<RiscvCommunicationInterface>),
 }
@@ -131,21 +129,13 @@ impl Session {
         permissions: Permissions,
         cores: Vec<CombinedCoreState>,
     ) -> Result<Self, Error> {
-        let config = target.cores[0].clone();
-        let arm_core_access_options = match config.core_access_options {
-            probe_rs_target::CoreAccessOptions::Arm(opt) => opt,
-            probe_rs_target::CoreAccessOptions::Riscv(_) => {
-                unreachable!("This should never happen. Please file a bug if it does.")
-            }
-        };
+        let default_core = target.default_core();
 
-        let default_memory_ap = MemoryAp::new(ApAddress {
-            dp: match arm_core_access_options.psel {
-                0 => DpAddress::Default,
-                x => DpAddress::Multidrop(x),
-            },
-            ap: arm_core_access_options.ap,
-        });
+        let default_memory_ap = default_core.memory_ap().ok_or_else(|| {
+            Error::Other(anyhow::anyhow!(
+                "Unable to connect to core {default_core:?}, no memory AP configured"
+            ))
+        })?;
 
         let sequence_handle = match &target.debug_sequence {
             DebugSequence::Arm(sequence) => sequence.clone(),
@@ -202,7 +192,7 @@ impl Session {
         if attach_method == AttachMethod::UnderReset {
             {
                 for core in &cores {
-                    core.reset_catch_set(&mut *interface)?;
+                    core.arm_reset_catch_set(&mut *interface)?;
                 }
 
                 let reset_hardware_deassert =
@@ -456,68 +446,44 @@ impl Session {
     /// NotImplemented if no custom erase sequence exists
     /// Err(e) if the custom erase sequence failed
     pub fn sequence_erase_all(&mut self) -> Result<(), Error> {
-        match &mut self.interface {
-            ArchitectureInterface::Arm(interface) => {
-                let debug_sequence = match &self.target.debug_sequence {
-                    DebugSequence::Arm(seq) => seq.clone(),
-                    DebugSequence::Riscv(_) => {
-                        unreachable!("This should never happen. Please file a bug if it does.")
-                    }
-                };
+        let interface = match &mut self.interface {
+            ArchitectureInterface::Arm(interface) => interface,
+            ArchitectureInterface::Riscv(_) => {
+                return Err(Error::Probe(crate::DebugProbeError::NotImplemented(
+                    "Debug Erase Sequence",
+                )))
+            }
+        };
 
-                if let Some(erase_sequence) = debug_sequence.debug_erase_sequence() {
-                    tracing::info!("Trying Debug Erase Sequence");
-                    let erase_res = erase_sequence.erase_all(interface.deref_mut());
+        let debug_sequence = match &self.target.debug_sequence {
+            DebugSequence::Arm(seq) => seq.clone(),
+            DebugSequence::Riscv(_) => {
+                unreachable!("This should never happen. Please file a bug if it does.")
+            }
+        };
 
-                    match erase_res {
-                        Ok(()) => (),
-                        // In case this happens after unlock. Try to re-attach the probe once.
-                        Err(ArmError::ReAttachRequired) => {
-                            Self::reattach_arm_interface(interface, &debug_sequence)?;
-                            // For re-setup debugging on all cores
-                            for i in 0..self.target.cores.len() {
-                                let config = self.target.cores[i].clone();
-                                let arm_core_access_options = match config.core_access_options {
-                                    probe_rs_target::CoreAccessOptions::Arm(opt) => opt,
-                                    probe_rs_target::CoreAccessOptions::Riscv(_) => {
-                                        unreachable!(
-                                    "This should never happen. Please file a bug if it does."
-                                )
-                                    }
-                                };
+        let Some(erase_sequence) = debug_sequence.debug_erase_sequence() else {
+            return Err(Error::Probe(crate::DebugProbeError::NotImplemented(
+                "Debug Erase Sequence",
+        )))};
 
-                                let mem_ap = MemoryAp::new(ApAddress {
-                                    dp: match arm_core_access_options.psel {
-                                        0 => DpAddress::Default,
-                                        x => DpAddress::Multidrop(x),
-                                    },
-                                    ap: arm_core_access_options.ap,
-                                });
+        tracing::info!("Trying Debug Erase Sequence");
+        let erase_result = erase_sequence.erase_all(interface.deref_mut());
 
-                                // Enable debug mode
-                                debug_sequence.debug_core_start(
-                                    &mut **interface,
-                                    mem_ap,
-                                    config.core_type,
-                                    arm_core_access_options.debug_base,
-                                    arm_core_access_options.cti_base,
-                                )?;
-                            }
-                        }
-                        Err(e) => return Err(Error::Arm(e)),
-                    }
-                    tracing::info!("Device Erased Successfully");
-                    Ok(())
-                } else {
-                    Err(Error::Probe(crate::DebugProbeError::NotImplemented(
-                        "Debug Erase Sequence",
-                    )))
+        match erase_result {
+            Ok(()) => (),
+            // In case this happens after unlock. Try to re-attach the probe once.
+            Err(ArmError::ReAttachRequired) => {
+                Self::reattach_arm_interface(interface, &debug_sequence)?;
+                // For re-setup debugging on all cores
+                for core_state in &self.cores {
+                    core_state.enable_arm_debug(interface.deref_mut())?;
                 }
             }
-            ArchitectureInterface::Riscv(_) => Err(Error::Probe(
-                crate::DebugProbeError::NotImplemented("Debug Erase Sequence"),
-            )),
+            Err(e) => return Err(Error::Arm(e)),
         }
+        tracing::info!("Device Erased Successfully");
+        Ok(())
     }
 
     /// Reads all the available ARM CoresightComponents of the currently attached target.
@@ -636,64 +602,11 @@ impl Drop for Session {
             tracing::warn!("Could not clear all hardware breakpoints: {:?}", err);
         }
 
-        if let Err(err) = { 0..self.cores.len() }.try_for_each(|i| {
-            self.core(i)
-                .and_then(|mut core| core.debug_on_sw_breakpoint(false))
-        }) {
-            tracing::warn!("Could not reset software breakpoint behaviour: {:?}", err);
-        }
-
-        if let Err(err) = { 0..self.cores.len() }
-            .try_for_each(|i| self.core(i).and_then(|mut core| core.on_session_stop()))
-        {
-            tracing::warn!("Error during on_session_stop: {:?}", err);
-        }
-
-        // Disable tracing for all Cortex-M cores.
-        if let Err(err) = { 0..self.cores.len() }.try_for_each(|i| {
-            let is_cortex_m = self.core(i)?.core_type().is_cortex_m();
-
-            if is_cortex_m {
-                self.disable_swv(i)
-            } else {
-                Ok(())
-            }
-        }) {
-            tracing::warn!("Could not stop core tracing: {:?}", err);
-        }
-
         // Call any necessary deconfiguration/shutdown hooks.
-        if let DebugSequence::Arm(sequence) = &self.target.debug_sequence {
-            let sequence = sequence.clone();
-
-            if let Err(err) = { 0..self.cores.len() }.try_for_each(|i| {
-                let core_type = self.target.cores[i].core_type;
-
-                let core_information = match &self.target.cores[i].core_access_options {
-                    CoreAccessOptions::Arm(arm) => arm,
-                    CoreAccessOptions::Riscv(_) => unreachable!(),
-                };
-
-                let ap = core_information.ap;
-                let dp = match core_information.psel {
-                    0 => DpAddress::Default,
-                    x => DpAddress::Multidrop(x),
-                };
-
-                // Note(unwrap): We already verified we're using an arm debug sequence, so we should
-                // always be able to access the arm probe interface.
-                let interface = self.get_arm_interface().unwrap();
-
-                let core_ap = MemoryAp::new(ApAddress { dp, ap });
-
-                let stop_span = tracing::debug_span!("debug_core_stop", core_id = i).entered();
-                sequence.debug_core_stop(interface, core_ap, core_type)?;
-                drop(stop_span);
-
-                Ok::<(), ArmError>(())
-            }) {
-                tracing::warn!("Failed to deconfigure device during shutdown: {err:?}");
-            }
+        if let Err(err) = { 0..self.cores.len() }
+            .try_for_each(|i| self.core(i).and_then(|mut core| core.debug_core_stop()))
+        {
+            tracing::warn!("Failed to deconfigure device during shutdown: {err:?}");
         }
     }
 }
