@@ -91,7 +91,7 @@ impl CombinedCoreState {
         {
             ResolvedCoreOptions::Arm { sequence, options } => (sequence, options),
             ResolvedCoreOptions::Riscv { .. } => {
-                todo!()
+                panic!("This should never happen. Please file a bug if it does.");
             }
         };
 
@@ -117,7 +117,7 @@ impl CombinedCoreState {
         {
             ResolvedCoreOptions::Arm { sequence, options } => (sequence, options),
             ResolvedCoreOptions::Riscv { .. } => {
-                todo!()
+                panic!("This should never happen. Please file a bug if it does.");
             }
         };
 
