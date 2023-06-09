@@ -601,8 +601,8 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
     }
 
     fn reset_and_halt(&mut self, _timeout: Duration) -> Result<CoreInformation, Error> {
-        self.sequence
-            .reset_catch_set(&mut *self.memory, crate::CoreType::Armv6m, None)?;
+        self.reset_catch_set()?;
+
         self.sequence
             .reset_system(&mut *self.memory, crate::CoreType::Armv6m, None)?;
 
@@ -610,30 +610,19 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         let _ = self.status()?;
 
         const XPSR_THUMB: u32 = 1 << 24;
-        let xpsr_value: u32 = self
-            .read_core_reg(
-                self.registers()
-                    .psr()
-                    .ok_or_else(|| {
-                        Error::Other(anyhow::anyhow!("Processor State Register not found."))
-                    })?
-                    .id(),
-            )?
-            .try_into()?;
+
+        let xpsr_addr = self
+            .registers()
+            .psr()
+            .expect("XPSR register not specified. This is a bug, please report it.")
+            .id();
+
+        let xpsr_value: u32 = self.read_core_reg(xpsr_addr)?.try_into()?;
         if xpsr_value & XPSR_THUMB == 0 {
-            self.write_core_reg(
-                self.registers()
-                    .psr()
-                    .ok_or_else(|| {
-                        Error::Other(anyhow::anyhow!("Processor State Register not found."))
-                    })?
-                    .id(),
-                (xpsr_value | XPSR_THUMB).into(),
-            )?;
+            self.write_core_reg(xpsr_addr, (xpsr_value | XPSR_THUMB).into())?;
         }
 
-        self.sequence
-            .reset_catch_clear(&mut *self.memory, crate::CoreType::Armv6m, None)?;
+        self.reset_catch_clear()?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(self.program_counter().into())?;
@@ -840,24 +829,20 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         self.id
     }
 
+    #[tracing::instrument(skip(self))]
     fn reset_catch_set(&mut self) -> Result<(), Error> {
-        // Clear the reset_catch bit which was set earlier.
-        let reset_catch_span = tracing::debug_span!("reset_catch_set").entered();
+        // Set the reset_catch bit.
 
         self.sequence
             .reset_catch_set(&mut *self.memory, CoreType::Armv6m, None)?;
-        drop(reset_catch_span);
 
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
     fn reset_catch_clear(&mut self) -> Result<(), Error> {
-        // Clear the reset_catch bit which was set earlier.
-        let reset_catch_span = tracing::debug_span!("reset_catch_clear").entered();
-
         self.sequence
             .reset_catch_clear(&mut *self.memory, CoreType::Armv6m, None)?;
-        drop(reset_catch_span);
 
         Ok(())
     }
