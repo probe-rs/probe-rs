@@ -13,7 +13,11 @@ use crate::{
         },
         protocol::ProtocolAdapter,
     },
-    server::{configuration::ConsoleLog, core_data::CoreHandle, session_data::BreakpointType},
+    server::{
+        configuration::ConsoleLog,
+        core_data::CoreHandle,
+        session_data::{BreakpointType, SourceLocationScope},
+    },
     DebuggerError,
 };
 use anyhow::{anyhow, Result};
@@ -770,9 +774,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         if let Some(source_path) = args.source.path.as_ref().map(Path::new) {
             // Always clear existing breakpoints for the specified `[crate::debug_adapter::dap_types::Source]` before setting new ones.
             // The DAP Specification doesn't make allowances for deleting and setting individual breakpoints for a specific `Source`.
-            match target_core
-                .clear_breakpoints(BreakpointType::SourceBreakpoint(args.source.clone(), None))
-            {
+            match target_core.clear_breakpoints(BreakpointType::SourceBreakpoint {
+                source: args.source.clone(),
+                location: SourceLocationScope::All,
+            }) {
                 Ok(_) => {}
                 Err(error) => {
                     return self.send_response::<()>(

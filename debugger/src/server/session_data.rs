@@ -23,10 +23,19 @@ pub(crate) enum BreakpointType {
     /// A breakpoint was requested using an instruction address, and usually a result of a user requesting a
     /// breakpoint while in a 'disassembly' view.
     InstructionBreakpoint,
-    /// A breakpoint was requested using a source location, and usually a result of a user requesting a
-    /// breakpoint while in a 'source' view.
-    /// Note: SourceLocation is optional, and when `None`, can be used to identify all breakpoints for a `Source`, as is required by MS DAP `setBreakPoints` request.
-    SourceBreakpoint(Source, Option<SourceLocation>),
+    /// A breakpoint that has a Source, and usually a result of a user requesting a breakpoint while in a 'source' view.
+    SourceBreakpoint {
+        source: Source,
+        location: SourceLocationScope,
+    },
+}
+
+/// Breakpoint requests will either be refer to a specific SourceLcoation, or unspecified, in which case it will refer to
+/// all breakpoints for the Source.
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum SourceLocationScope {
+    All,
+    Specific(SourceLocation),
 }
 
 /// Provide the storage and methods to handle various [`BreakpointType`]

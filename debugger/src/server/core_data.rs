@@ -1,6 +1,6 @@
 use std::{fs::File, path::Path};
 
-use super::session_data::{self, ActiveBreakpoint, BreakpointType};
+use super::session_data::{self, ActiveBreakpoint, BreakpointType, SourceLocationScope};
 use crate::{
     debug_adapter::{
         dap::{
@@ -287,8 +287,8 @@ impl<'p> CoreHandle<'p> {
                 target_breakpoint.breakpoint_type == breakpoint_type
                  || matches!(
                         &target_breakpoint.breakpoint_type,
-                        BreakpointType::SourceBreakpoint(breakpoint_source, _)
-                            if matches!(&breakpoint_type, BreakpointType::SourceBreakpoint(clear_breakpoint_source, _)
+                        BreakpointType::SourceBreakpoint{source: breakpoint_source, location: _}
+                            if matches!(&breakpoint_type, BreakpointType::SourceBreakpoint{source: clear_breakpoint_source, location:_}
                                 if clear_breakpoint_source == breakpoint_source)
                     )
             })
@@ -325,10 +325,10 @@ impl<'p> CoreHandle<'p> {
                 DebuggerError::Other(anyhow!("Cannot set breakpoint here. Try reducing compile time-, and link time-, optimization in your build configuration, or choose a different source location: {debug_error}")))?;
         self.set_breakpoint(
             address,
-            BreakpointType::SourceBreakpoint(
-                requested_source.clone(),
-                Some(source_location.clone()),
-            ),
+            BreakpointType::SourceBreakpoint {
+                source: requested_source.clone(),
+                location: SourceLocationScope::Specific(source_location.clone()),
+            },
         )?;
         Ok(VerifiedBreakpoint {
             address,
@@ -348,13 +348,15 @@ impl<'p> CoreHandle<'p> {
             .filter(|breakpoint| {
                 matches!(
                     breakpoint.breakpoint_type,
-                    BreakpointType::SourceBreakpoint(..)
+                    BreakpointType::SourceBreakpoint { .. }
                 )
             })
         {
             self.clear_breakpoint(breakpoint.address)?;
-            if let BreakpointType::SourceBreakpoint(source, Some(source_location)) =
-                breakpoint.breakpoint_type
+            if let BreakpointType::SourceBreakpoint {
+                source,
+                location: SourceLocationScope::Specific(source_location),
+            } = breakpoint.breakpoint_type
             {
                 if let Err(breakpoint_error) =
                     source_location
