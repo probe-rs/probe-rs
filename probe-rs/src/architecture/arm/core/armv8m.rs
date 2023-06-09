@@ -9,7 +9,8 @@ use super::{
 };
 use crate::{
     architecture::arm::{
-        memory::adi_v5_memory_interface::ArmProbe, sequences::ArmDebugSequence, ArmError,
+        core::registers::cortex_m::XPSR, memory::adi_v5_memory_interface::ArmProbe,
+        sequences::ArmDebugSequence, ArmError,
     },
     core::{CoreRegisters, RegisterId, RegisterValue},
     error::Error,
@@ -235,15 +236,10 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         let _ = self.status()?;
 
         const XPSR_THUMB: u32 = 1 << 24;
-        let xpsr_addr = self
-            .registers()
-            .psr()
-            .expect("XPSR register not specified. This is a bug, please report it.")
-            .id();
 
-        let xpsr_value: u32 = self.read_core_reg(xpsr_addr)?.try_into()?;
+        let xpsr_value: u32 = self.read_core_reg(XPSR.id())?.try_into()?;
         if xpsr_value & XPSR_THUMB == 0 {
-            self.write_core_reg(xpsr_addr, (xpsr_value | XPSR_THUMB).into())?;
+            self.write_core_reg(XPSR.id(), (xpsr_value | XPSR_THUMB).into())?;
         }
 
         self.reset_catch_clear()?;
