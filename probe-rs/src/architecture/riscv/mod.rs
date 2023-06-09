@@ -100,6 +100,22 @@ impl<'probe> Riscv32<'probe> {
 
         Ok(())
     }
+
+    /// Check if the connected device supports halt after reset.
+    ///
+    /// Returns a cached value if available, otherwise queries the
+    /// `hasresethaltreq` bit in the `dmstatus` register.
+    fn supports_reset_halt_req(&mut self) -> Result<bool, crate::Error> {
+        if let Some(has_reset_halt_req) = self.state.hasresethaltreq {
+            Ok(has_reset_halt_req)
+        } else {
+            let dmstatus: Dmstatus = self.interface.read_dm_register()?;
+
+            self.state.hasresethaltreq = Some(dmstatus.hasresethaltreq());
+
+            Ok(dmstatus.hasresethaltreq())
+        }
+    }
 }
 
 impl<'probe> CoreInterface for Riscv32<'probe> {
@@ -219,6 +235,8 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     ) -> Result<crate::core::CoreInformation, crate::Error> {
         tracing::debug!("Resetting core, setting hartreset bit");
 
+        self.reset_catch_set()?;
+
         let mut dmcontrol = Dmcontrol(0);
         dmcontrol.set_dmactive(true);
         dmcontrol.set_hartreset(true);
@@ -232,9 +250,8 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         if readback.hartreset() {
             tracing::debug!("Clearing hartreset bit");
             // Reset is performed by setting the bit high, and then low again
-            let mut dmcontrol = Dmcontrol(0);
+            let mut dmcontrol = readback;
             dmcontrol.set_dmactive(true);
-            dmcontrol.set_haltreq(true);
             dmcontrol.set_hartreset(false);
 
             self.interface.write_dm_register(dmcontrol)?;
@@ -272,6 +289,8 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         dmcontrol.set_ackhavereset(true);
 
         self.interface.write_dm_register(dmcontrol)?;
+
+        self.reset_catch_clear()?;
 
         let pc = self.read_core_reg(RegisterId(0x7b1))?;
 
@@ -632,11 +651,31 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn reset_catch_set(&mut self) -> Result<(), Error> {
-        todo!()
+        if !self.supports_reset_halt_req()? {
+            return Err(Error::Riscv(RiscvError::ResetHaltRequestNotSupported));
+        }
+
+        let mut dmcontrol: Dmcontrol = self.interface.read_dm_register()?;
+
+        dmcontrol.set_resethaltreq(true);
+
+        self.interface.write_dm_register(dmcontrol)?;
+
+        Ok(())
     }
 
     fn reset_catch_clear(&mut self) -> Result<(), Error> {
-        todo!()
+        if !self.supports_reset_halt_req()? {
+            return Err(Error::Riscv(RiscvError::ResetHaltRequestNotSupported));
+        }
+
+        let mut dmcontrol: Dmcontrol = self.interface.read_dm_register()?;
+
+        dmcontrol.set_clrresethaltreq(true);
+
+        self.interface.write_dm_register(dmcontrol)?;
+
+        Ok(())
     }
 
     fn debug_core_stop(&mut self) -> Result<(), Error> {
@@ -716,12 +755,16 @@ impl<'probe> MemoryInterface for Riscv32<'probe> {
 pub struct RiscVState {
     /// A flag to remember whether we want to use hw_breakpoints during stepping of the core.
     hw_breakpoints_enabled: bool,
+
+    /// Store the value of the `hasresethaltreq` bit of the `dmcstatus` register.
+    hasresethaltreq: Option<bool>,
 }
 
 impl RiscVState {
     pub(crate) fn new() -> Self {
         Self {
             hw_breakpoints_enabled: false,
+            hasresethaltreq: None,
         }
     }
 }
