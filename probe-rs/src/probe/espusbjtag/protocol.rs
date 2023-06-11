@@ -44,6 +44,10 @@ pub(super) struct ProtocolHandler {
 
     ep_out: u8,
     ep_in: u8,
+
+    pub(crate) base_speed_khz: u32,
+    pub(crate) div_min: u16,
+    pub(crate) div_max: u16,
 }
 
 impl Debug for ProtocolHandler {
@@ -54,6 +58,9 @@ impl Debug for ProtocolHandler {
             .field("input_buffers", &self.input_buffers)
             .field("ep_out", &self.ep_out)
             .field("ep_in", &self.ep_in)
+            .field("base_speed_khz", &self.base_speed_khz)
+            .field("div_min", &self.div_min)
+            .field("div_max", &self.div_max)
             .finish()
     }
 }
@@ -164,10 +171,9 @@ impl ProtocolHandler {
             USB_TIMEOUT,
         )?;
 
-        // TODO:
-        // let mut base_speed_khz = 1000;
-        // let mut div_min = 1;
-        // let mut div_max = 1;
+        let mut base_speed_khz = 1000;
+        let mut div_min = 1;
+        let mut div_max = 1;
 
         let protocol_version = buffer[0];
         tracing::debug!("{:?}", &buffer[..20]);
@@ -186,10 +192,11 @@ impl ProtocolHandler {
             let length = buffer[p + 1];
 
             if typ == JTAG_PROTOCOL_CAPABILITIES_SPEED_APB_TYPE {
-                // TODO:
-                // base_speed_khz = (((buffer[p + 3] as u16) << 8) | buffer[p + 2] as u16) * 10 / 2;
-                // div_min = ((buffer[p + 5] as u16) << 8) | buffer[p + 4] as u16;
-                // div_max = ((buffer[p + 7] as u16) << 8) | buffer[p + 6] as u16;
+                base_speed_khz =
+                    ((((buffer[p + 3] as u16) << 8) | buffer[p + 2] as u16) as u64 * 10 / 2) as u32;
+                div_min = ((buffer[p + 5] as u16) << 8) | buffer[p + 4] as u16;
+                div_max = ((buffer[p + 7] as u16) << 8) | buffer[p + 6] as u16;
+                tracing::info!("Found ESP USB JTAG adapter, base speed is {base_speed_khz}khz. Available dividers: ({div_min}..{div_max})");
             } else {
                 tracing::warn!("Unknown capabilities type {:01X?}", typ);
             }
@@ -208,6 +215,10 @@ impl ProtocolHandler {
             ep_out: ep_out.expect("This is a bug. Please report it."),
             ep_in: ep_in.expect("This is a bug. Please report it."),
             pending_in_bits: 0,
+
+            base_speed_khz,
+            div_min,
+            div_max,
         })
     }
 

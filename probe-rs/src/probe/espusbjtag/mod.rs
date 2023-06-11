@@ -33,8 +33,6 @@ pub(crate) struct EspUsbJtag {
     jtag_idle_cycles: u8,
 
     current_ir_reg: u32,
-
-    speed_khz: u32,
 }
 
 impl EspUsbJtag {
@@ -244,7 +242,6 @@ impl EspUsbJtag {
 
         let tdi_enter_idle = [false, false];
 
-        // TODO: TDI data
         let mut tdi =
             Vec::with_capacity(tdi_enter_shift.len() + tdi_enter_idle.len() + register_bits);
 
@@ -442,7 +439,6 @@ impl DebugProbe for EspUsbJtag {
             protocol,
             jtag_idle_cycles: 0,
             current_ir_reg: 1,
-            speed_khz: 0,
         }))
     }
 
@@ -463,11 +459,12 @@ impl DebugProbe for EspUsbJtag {
     }
 
     fn speed_khz(&self) -> u32 {
-        self.speed_khz
+        self.protocol.base_speed_khz / self.protocol.div_min as u32
     }
 
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
         // TODO:
+        // can only go lower, base speed it max of 40000khz
 
         Ok(speed_khz)
     }
