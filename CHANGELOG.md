@@ -333,6 +333,7 @@ Released 2023-01-13
 - Added FPU register support for Cortex-A cores (#1154)
 - GDB now reports the core name in `info threads` (#1158)
 - Added a recover sequence for the nRF9160 (#1169)
+- Added support for `JTAGAccess::write_register_batch` the esp-serial-jtag probe (#1633)
 
 ### Changed
 
