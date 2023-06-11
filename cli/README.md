@@ -26,5 +26,5 @@ cargo install probe-rs-cli
 You can discover the available functionality
 
 ```bash
-probe-rs-cli help
+probe-rs help
 ```

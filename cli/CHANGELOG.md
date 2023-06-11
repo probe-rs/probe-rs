@@ -5,6 +5,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Rename the cli binary from `probe-rs-cli` to `probe-rs` (#1635)
+
 ## [0.18.0]
 
 Released 2023-03-31
