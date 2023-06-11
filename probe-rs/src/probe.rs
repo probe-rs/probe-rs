@@ -842,6 +842,7 @@ pub trait JTAGAccess: DebugProbe {
         &mut self,
         writes: &[JtagWriteCommand],
     ) -> Result<Vec<CommandResult>, BatchExecutionError> {
+        tracing::warn!("Using default `JTAGAccess::write_register_batch` this will hurt performance. Please implement proper batching for this probe.");
         let mut results = Vec::new();
 
         for write in writes {
