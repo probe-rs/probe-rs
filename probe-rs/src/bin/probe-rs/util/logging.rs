@@ -1,9 +1,9 @@
 use colored::*;
-use env_logger::{Builder, Logger};
 use indicatif::ProgressBar;
 use is_terminal::IsTerminal;
 use log::{Level, LevelFilter, Log, Record};
 use once_cell::sync::Lazy;
+use pretty_env_logger::env_logger::{Builder, Logger};
 #[cfg(feature = "sentry")]
 use sentry::{
     integrations::panic::PanicIntegration,

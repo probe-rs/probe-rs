@@ -11,13 +11,8 @@ license = "MIT OR Apache-2.0"
 
 [workspace]
 members = [
-    "cargo-embed",
-    "cli",
-    "cargo-flash",
-    "debugger",
     "probe-rs",
     "probe-rs-target",
-    "probe-rs-cli-util",
     "rtthost",
     "smoke-tester",
     "xtask",

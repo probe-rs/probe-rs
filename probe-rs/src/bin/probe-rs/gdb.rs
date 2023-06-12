@@ -1,7 +1,7 @@
 use std::sync::Mutex;
 use std::time::Duration;
 
-use probe_rs_cli_util::common_options::ProbeOptions;
+use crate::util::common_options::ProbeOptions;
 
 pub fn run_gdb_server(
     common: ProbeOptions,

@@ -5,29 +5,22 @@ mod gdb;
 mod info;
 mod run;
 mod trace;
+mod util;
 
 include!(concat!(env!("OUT_DIR"), "/meta.rs"));
 
-use benchmark::{benchmark, BenchmarkOptions};
-use debugger::CliState;
-
+use anyhow::{Context, Result};
+use clap::Parser;
 use probe_rs::{
     architecture::arm::{component::TraceSink, swo::SwoConfig},
     debug::debug_info::DebugInfo,
     flashing::{erase_all, BinOptions, FileDownloadError, Format},
     MemoryInterface, Probe,
 };
-
-use probe_rs_cli_util::{
-    clap,
-    clap::Parser,
-    common_options::{print_chip_info, print_families, CargoOptions, FlashOptions, ProbeOptions},
-    flash::run_flash_download,
-};
-
 use rustyline::DefaultEditor;
-
-use anyhow::{Context, Result};
+use std::{fs::File, path::PathBuf};
+use std::{io, time::Instant};
+use std::{num::ParseIntError, path::Path};
 use time::{OffsetDateTime, UtcOffset};
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::{
@@ -35,9 +28,12 @@ use tracing_subscriber::{
     EnvFilter, Layer,
 };
 
-use std::{fs::File, path::PathBuf};
-use std::{io, time::Instant};
-use std::{num::ParseIntError, path::Path};
+use crate::benchmark::{benchmark, BenchmarkOptions};
+use crate::debugger::CliState;
+use crate::util::{
+    common_options::{print_chip_info, print_families, CargoOptions, FlashOptions, ProbeOptions},
+    flash::run_flash_download,
+};
 
 #[derive(clap::Parser)]
 #[clap(

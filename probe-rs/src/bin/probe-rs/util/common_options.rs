@@ -5,7 +5,7 @@
 //! Example usage:
 //! ```no_run
 //! use clap::Parser;
-//! use probe_rs_cli_util::common_options::FlashOptions;
+//! use crate::util::common_options::FlashOptions;
 //!
 //! #[derive(clap::Parser)]
 //! struct Opts {
@@ -31,7 +31,7 @@
 //!     // ...
 //! }
 //! ```
-use crate::ArtifactError;
+use super::ArtifactError;
 
 use std::{fs::File, io::Write, path::Path, path::PathBuf};
 
@@ -353,8 +353,8 @@ impl CargoOptions {
     /// Generates a suitable help string to append to your program's
     /// --help. Example usage:
     /// ```no_run
-    /// use probe_rs_cli_util::common_options::{FlashOptions, CargoOptions};
-    /// use probe_rs_cli_util::clap::{Parser, CommandFactory, FromArgMatches};
+    /// use crate::util::common_options::{FlashOptions, CargoOptions};
+    /// use crate::util::clap::{Parser, CommandFactory, FromArgMatches};
     ///
     /// let help_message = CargoOptions::help_message("cargo flash");
     ///

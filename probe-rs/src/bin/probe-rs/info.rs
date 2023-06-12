@@ -17,8 +17,8 @@ use probe_rs::{
     MemoryMappedRegister, Probe, WireProtocol,
 };
 
+use crate::util::common_options::ProbeOptions;
 use anyhow::Result;
-use probe_rs_cli_util::common_options::ProbeOptions;
 use termtree::Tree;
 
 pub(crate) fn show_info_of_device(common: &ProbeOptions) -> Result<()> {

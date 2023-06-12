@@ -24,7 +24,7 @@ pub fn attach_to_rtt(
     elf_file: &Path,
     rtt_config: &RttConfig,
     timestamp_offset: UtcOffset,
-) -> Result<crate::rtt::RttActiveTarget, anyhow::Error> {
+) -> Result<RttActiveTarget, anyhow::Error> {
     log::info!("Initializing RTT");
     let rtt_header_address = if let Ok(mut file) = File::open(elf_file) {
         if let Some(address) = RttActiveTarget::get_rtt_symbol(&mut file) {

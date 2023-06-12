@@ -5,9 +5,9 @@ use std::{
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
+use crate::util::common_options::ProbeOptions;
 use anyhow::Context;
 use probe_rs::MemoryInterface;
-use probe_rs_cli_util::{clap, common_options::ProbeOptions};
 
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};

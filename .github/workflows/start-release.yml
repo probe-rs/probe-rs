@@ -79,8 +79,6 @@ jobs:
 
           - probe-rs
           - probe-rs-target
-          - probe-rs-cli-util
-          - probe-rs-cli
           - probe-rs-debugger
           - target-gen
           - rtthost

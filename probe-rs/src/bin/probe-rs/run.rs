@@ -1,8 +1,8 @@
+use crate::util::common_options::{CargoOptions, FlashOptions, ProbeOptions};
+use crate::util::flash::run_flash_download;
+use crate::util::rtt;
 use anyhow::{Context, Result};
 use probe_rs::flashing::FileDownloadError;
-use probe_rs_cli_util::common_options::{CargoOptions, FlashOptions, ProbeOptions};
-use probe_rs_cli_util::flash::run_flash_download;
-use probe_rs_cli_util::rtt;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
