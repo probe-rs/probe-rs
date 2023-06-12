@@ -12,9 +12,12 @@
 pub mod debug_info;
 /// Stepping through a program during debug, at various granularities.
 pub mod debug_step;
+/// Stack unwinding during exception handling requires additional information about the exception handling process.
+/// This handling is specific to the target architecture, and is implemented in this module.
+pub mod exception_handling;
 /// References to the DIE (debug information entry) of functions.
 pub mod function_die;
-/// Target Register definitions.
+/// Target Register definitions, expanded from [`core::registers::CoreRegister`] to include unwind specific information.
 pub mod registers;
 /// The source statement information used while identifying haltpoints for debug stepping and breakpoints.
 pub(crate) mod source_statement;
