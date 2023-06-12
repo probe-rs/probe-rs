@@ -2,12 +2,20 @@ mod config;
 mod error;
 mod rttui;
 
-include!(concat!(env!("OUT_DIR"), "/meta.rs"));
-
 use anyhow::{anyhow, Context, Result};
+use clap::Parser;
 use colored::*;
+use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
+use probe_rs::gdb_server::GdbInstanceConfiguration;
+use probe_rs::rtt::{Rtt, ScanRegion};
+use probe_rs::{
+    config::TargetSelector,
+    flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
+    DebugProbeSelector, Permissions, Probe, Session,
+};
+use std::ffi::OsString;
 use std::{
-    env, fs,
+    fs,
     fs::File,
     io::Write,
     panic,
@@ -18,34 +26,16 @@ use std::{
 };
 use time::{OffsetDateTime, UtcOffset};
 
-use probe_rs::{
-    config::TargetSelector,
-    flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
-    DebugProbeSelector, Permissions, Probe, Session,
-};
+use crate::cargo_embed::rttui::channel::DataFormat;
 #[cfg(feature = "sentry")]
-use probe_rs_cli_util::logging::{ask_to_log_crash, capture_anyhow, capture_panic};
-
-use probe_rs_cli_util::{
+use crate::util::logging::{ask_to_log_crash, capture_anyhow, capture_panic};
+use crate::util::{
     build_artifact,
-    clap::{self, Parser},
     common_options::CargoOptions,
-    indicatif::{MultiProgress, ProgressBar, ProgressStyle},
     logging::{self, Metadata},
 };
 
-use probe_rs::gdb_server::GdbInstanceConfiguration;
-use probe_rs::rtt::{Rtt, ScanRegion};
-
-use crate::rttui::channel::DataFormat;
-
 #[derive(Debug, clap::Parser)]
-#[clap(
-    name = "cargo embed",
-    author = "Noah Hüsser <yatekii@yatekii.ch> / Dominik Böhi <dominik.boehi@gmail.ch>",
-    version = meta::CARGO_VERSION,
-    long_version = meta::LONG_VERSION
-)]
 struct Opt {
     #[clap(name = "config")]
     config: Option<String>,
@@ -68,7 +58,7 @@ struct Opt {
     cargo_options: CargoOptions,
 }
 
-fn main() {
+pub fn main(args: Vec<OsString>) {
     // Determine the local offset as early as possible to avoid potential
     // issues with multiple threads and getting the offset.
     let offset = match UtcOffset::current_local_offset() {
@@ -81,11 +71,11 @@ fn main() {
     };
 
     let metadata: Arc<Mutex<Metadata>> = Arc::new(Mutex::new(Metadata {
-        release: meta::CARGO_VERSION.to_string(),
+        release: crate::meta::CARGO_VERSION.to_string(),
+        commit: crate::meta::GIT_VERSION.to_string(),
         chip: None,
         probe: None,
         speed: None,
-        commit: meta::GIT_VERSION.to_string(),
     }));
 
     let metadata_panic = metadata.clone();
@@ -101,7 +91,7 @@ fn main() {
         next(info);
     }));
 
-    match main_try(metadata.clone(), offset) {
+    match main_try(args, metadata.clone(), offset) {
         Ok(_) => (),
         Err(e) => {
             // Ensure stderr is flushed before calling proces::exit,
@@ -143,19 +133,16 @@ fn main() {
     }
 }
 
-fn main_try(metadata: Arc<Mutex<Metadata>>, offset: UtcOffset) -> Result<()> {
-    let mut args = std::env::args();
-
-    // When called by Cargo, the first argument after the binary name will be `embed`. If that's the
-    // case, remove one argument (`Opt::from_iter` will remove the binary name by itself).
-    if env::args().nth(1) == Some("embed".to_string()) {
-        log::debug!("Running as cargo subcommand.");
-        args.next();
-    } else {
-        log::debug!("Running freestanding, not as cargo subcomman.");
+fn main_try(
+    mut args: Vec<OsString>,
+    metadata: Arc<Mutex<Metadata>>,
+    offset: UtcOffset,
+) -> Result<()> {
+    // When called by Cargo, the first argument after the binary name will be `flash`.
+    // If that's the case, remove it.
+    if args.get(1).and_then(|t| t.to_str()) == Some("embed") {
+        args.remove(1);
     }
-
-    let mut args: Vec<_> = args.collect();
 
     // Get commandline options.
     let opt = Opt::parse_from(&args);

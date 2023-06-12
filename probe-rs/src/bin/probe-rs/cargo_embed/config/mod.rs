@@ -1,4 +1,4 @@
-use crate::rttui::channel::ChannelConfig;
+use crate::cargo_embed::rttui::channel::ChannelConfig;
 use anyhow::bail;
 use figment::{
     providers::{Format, Json, Toml, Yaml},

@@ -1,28 +1,27 @@
 mod diagnostics;
 
-include!(concat!(env!("OUT_DIR"), "/meta.rs"));
-
 use colored::*;
 use diagnostics::render_diagnostics;
-use std::{env, path::PathBuf, process, sync::Arc};
+use std::ffi::OsString;
 use std::{panic, sync::Mutex};
+use std::{path::PathBuf, process, sync::Arc};
 
-use probe_rs_cli_util::clap::{CommandFactory, FromArgMatches};
-use probe_rs_cli_util::common_options::{CargoOptions, FlashOptions, OperationError};
-use probe_rs_cli_util::flash;
+use crate::util::common_options::{CargoOptions, FlashOptions, OperationError};
+use crate::util::flash;
+use clap::{CommandFactory, FromArgMatches};
 
 #[cfg(feature = "sentry")]
-use probe_rs_cli_util::logging::{ask_to_log_crash, capture_panic};
+use crate::util::logging::{ask_to_log_crash, capture_panic};
 
-use probe_rs_cli_util::{build_artifact, log, logging, logging::Metadata};
+use crate::util::{build_artifact, logging, logging::Metadata};
 
-fn main() {
+pub fn main(args: Vec<OsString>) {
     let metadata: Arc<Mutex<Metadata>> = Arc::new(Mutex::new(Metadata {
-        release: meta::CARGO_VERSION.to_string(),
+        release: crate::meta::CARGO_VERSION.to_string(),
+        commit: crate::meta::GIT_VERSION.to_string(),
         chip: None,
         probe: None,
         speed: None,
-        commit: git_version::git_version!(fallback = "crates.io").to_string(),
     }));
 
     let metadata_panic = metadata.clone();
@@ -41,7 +40,7 @@ fn main() {
     #[cfg(not(feature = "sentry"))]
     let metadata_log = metadata.clone();
 
-    match main_try(metadata) {
+    match main_try(args, metadata) {
         Ok(_) => (),
         Err(e) => {
             #[cfg(not(feature = "sentry"))]
@@ -59,16 +58,10 @@ fn main() {
     }
 }
 
-fn main_try(metadata: Arc<Mutex<Metadata>>) -> Result<(), OperationError> {
-    let args = std::env::args();
-
-    // Make sure to collect all the args into a vector so we can manipulate it
-    // and pass the filtered arguments to cargo.
-    let mut args: Vec<_> = args.collect();
-
+fn main_try(mut args: Vec<OsString>, metadata: Arc<Mutex<Metadata>>) -> Result<(), OperationError> {
     // When called by Cargo, the first argument after the binary name will be `flash`. If that's the
     // case, remove one argument (`Opt::from_iter` will remove the binary name by itself).
-    if args.get(1) == Some(&"flash".to_string()) {
+    if args.get(1).and_then(|t| t.to_str()) == Some("flash") {
         args.remove(1);
     }
 
@@ -78,8 +71,8 @@ fn main_try(metadata: Arc<Mutex<Metadata>>) -> Result<(), OperationError> {
             .bin_name("cargo flash")
             .display_name("cargo-flash")
             .after_help(CargoOptions::help_message("cargo flash"))
-            .version(meta::CARGO_VERSION)
-            .long_version(meta::LONG_VERSION)
+            .version(crate::meta::CARGO_VERSION)
+            .long_version(crate::meta::LONG_VERSION)
             .get_matches_from(&args);
 
         FlashOptions::from_arg_matches(&matches)?

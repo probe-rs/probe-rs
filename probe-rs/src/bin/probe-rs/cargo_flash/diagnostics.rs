@@ -12,9 +12,8 @@ use probe_rs::{
     Error as ProbeRsError, Target,
 };
 
-use probe_rs_cli_util::common_options::OperationError;
-use probe_rs_cli_util::log;
-use probe_rs_cli_util::ArtifactError;
+use crate::util::common_options::OperationError;
+use crate::util::ArtifactError;
 
 pub(crate) fn render_diagnostics(error: OperationError) {
     let (selected_error, hints) = match &error {

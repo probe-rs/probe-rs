@@ -1,4 +1,6 @@
 mod benchmark;
+mod cargo_embed;
+mod cargo_flash;
 mod common;
 mod dap_server;
 mod debugger;
@@ -19,7 +21,7 @@ use probe_rs::{
     MemoryInterface, Probe,
 };
 use rustyline::DefaultEditor;
-use std::{fs::File, path::PathBuf};
+use std::{ffi::OsString, fs::File, path::PathBuf};
 use std::{io, time::Instant};
 use std::{num::ParseIntError, path::Path};
 use time::{OffsetDateTime, UtcOffset};
@@ -278,12 +280,39 @@ fn default_logfile_location() -> Result<PathBuf> {
     Ok(log_path)
 }
 
+fn multicall_check(args: &[OsString], want: &str) -> Option<Vec<OsString>> {
+    let argv0 = Path::new(&args[0]);
+    if let Some(command) = argv0.file_stem().and_then(|f| f.to_str()) {
+        if command == want {
+            return Some(args.to_vec());
+        }
+    }
+
+    if let Some(command) = args.get(1).and_then(|f| f.to_str()) {
+        if command == want {
+            return Some(args[1..].to_vec());
+        }
+    }
+
+    None
+}
+
 fn main() -> Result<()> {
+    let args: Vec<_> = std::env::args_os().collect();
+    if let Some(args) = multicall_check(&args, "cargo-flash") {
+        cargo_flash::main(args);
+        return Ok(());
+    }
+    if let Some(args) = multicall_check(&args, "cargo-embed") {
+        cargo_embed::main(args);
+        return Ok(());
+    }
+
     let utc_offset = UtcOffset::current_local_offset()
         .context("Failed to determine local time for timestamps")?;
 
     // Parse the commandline options.
-    let matches = Cli::parse();
+    let matches = Cli::parse_from(args);
 
     // the DAP server has special logging requirements. Run it before initializing logging,
     // so it can do its own special init.

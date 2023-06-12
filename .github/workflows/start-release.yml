@@ -80,8 +80,6 @@ jobs:
           - probe-rs
           - probe-rs-target
           - target-gen
-          - rtthost
-          - cargo-embed
-          - cargo-flash"
+          - rtthost"
         env:
             GITHUB_TOKEN: ${{ secrets.GH_PAT }}

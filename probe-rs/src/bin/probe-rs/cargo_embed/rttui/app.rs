@@ -20,7 +20,7 @@ use tui::{
     Terminal,
 };
 
-use crate::DefmtInformation;
+use crate::cargo_embed::DefmtInformation;
 
 use super::{
     channel::{ChannelState, DataFormat},
@@ -52,7 +52,7 @@ fn pull_channel<C: RttChannel>(channels: &mut Vec<C>, n: usize) -> Option<C> {
 impl App {
     pub fn new(
         mut rtt: probe_rs::rtt::Rtt,
-        config: &crate::config::Config,
+        config: &crate::cargo_embed::config::Config,
         logname: String,
     ) -> Result<Self> {
         let mut tabs = Vec::new();
