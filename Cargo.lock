@@ -3,6 +3,16 @@
 version = 3
 
 [[package]]
+name = "Inflector"
+version = "0.11.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe438c63458706e03479442743baae6c88256498e6431708f6dfc520a26515d3"
+dependencies = [
+ "lazy_static",
+ "regex",
+]
+
+[[package]]
 name = "addr2line"
 version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2038,6 +2048,7 @@ dependencies = [
  "rusb",
  "rustyline",
  "sanitize-filename",
+ "schemafy",
  "scroll",
  "sentry",
  "serde",
@@ -2045,6 +2056,7 @@ dependencies = [
  "serde_yaml",
  "simplelog",
  "static_assertions",
+ "svd-parser",
  "svg",
  "terminal_size",
  "termtree",
@@ -2282,6 +2294,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "roxmltree"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "921904a62e410e37e215c40381b7117f830d9d89ba60ab5236170541dd25646b"
+dependencies = [
+ "xmlparser",
+]
+
+[[package]]
 name = "rtthost"
 version = "0.18.0"
 dependencies = [
@@ -2429,6 +2450,49 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "713cfb06c7059f3588fb8044c0fad1d09e3c01d225e25b9220dbfdcf16dbb1b3"
 dependencies = [
  "windows-sys 0.42.0",
+]
+
+[[package]]
+name = "schemafy"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9725c16a64e85972fcb3630677be83fef699a1cd8e4bfbdcf3b3c6675f838a19"
+dependencies = [
+ "Inflector",
+ "schemafy_core",
+ "schemafy_lib",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "serde_repr",
+ "syn 1.0.109",
+]
+
+[[package]]
+name = "schemafy_core"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bec29dddcfe60f92f3c0d422707b8b56473983ef0481df8d5236ed3ab8fdf24"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "schemafy_lib"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af3d87f1df246a9b7e2bfd1f4ee5f88e48b11ef9cfc62e63f0dead255b1a6f5f"
+dependencies = [
+ "Inflector",
+ "proc-macro2",
+ "quote",
+ "schemafy_core",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "syn 1.0.109",
+ "uriparse",
 ]
 
 [[package]]
@@ -2651,6 +2715,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_repr"
+version = "0.1.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bcec881020c684085e55a25f7fd888954d56609ef363479dc5a1305eb0d40cab"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.10",
+]
+
+[[package]]
 name = "serde_spanned"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2806,6 +2881,29 @@ name = "subtle"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
+
+[[package]]
+name = "svd-parser"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3e93e3a9aafae32a19b9c07470b628d2dd71192a34e01147852a54087bf41694"
+dependencies = [
+ "anyhow",
+ "roxmltree",
+ "svd-rs",
+ "thiserror",
+]
+
+[[package]]
+name = "svd-rs"
+version = "0.14.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d08273bc4ca66b632299903960efa8a306aac61dc6381bcf07450c20b1a5443c"
+dependencies = [
+ "once_cell",
+ "regex",
+ "thiserror",
+]
 
 [[package]]
 name = "svg"
@@ -3285,6 +3383,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "uriparse"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0200d0fc04d809396c2ad43f3c95da3582a2556eba8d453c1087f4120ee352ff"
+dependencies = [
+ "fnv",
+ "lazy_static",
+]
+
+[[package]]
 name = "url"
 version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3690,6 +3798,12 @@ checksum = "05f360fc0b24296329c78fda852a1e9ae82de9cf7b27dae4b7f62f118f77b9ed"
 dependencies = [
  "tap",
 ]
+
+[[package]]
+name = "xmlparser"
+version = "0.13.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d25c75bf9ea12c4040a97f829154768bbbce366287e2dc044af160cd79a13fd"
 
 [[package]]
 name = "xshell"

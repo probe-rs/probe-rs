@@ -1,18 +1,14 @@
 use super::{
     core_status::DapStatus,
+    dap_types,
+    repl_commands_helpers::{build_expanded_commands, command_completions},
     request_helpers::{
         disassemble_target_memory, get_dap_source, get_variable_reference,
         set_instruction_breakpoint,
     },
 };
-use crate::{
-    debug_adapter::{
-        dap::{
-            dap_types,
-            repl_commands_helpers::{build_expanded_commands, command_completions},
-        },
-        protocol::ProtocolAdapter,
-    },
+use crate::dap_server::{
+    debug_adapter::protocol::ProtocolAdapter,
     server::{
         configuration::ConsoleLog,
         core_data::CoreHandle,
@@ -20,6 +16,7 @@ use crate::{
     },
     DebuggerError,
 };
+use crate::util::rtt;
 use anyhow::{anyhow, Result};
 use base64::{engine::general_purpose as base64_engine, Engine as _};
 use dap_types::*;
@@ -34,7 +31,6 @@ use probe_rs::{
     Architecture::Riscv,
     CoreStatus, Error, HaltReason, MemoryInterface, RegisterValue,
 };
-use probe_rs_cli_util::rtt;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{convert::TryInto, path::Path, str, string::ToString, time::Duration};
 
@@ -1881,7 +1877,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 pub fn get_arguments<T: DeserializeOwned, P: ProtocolAdapter>(
     debug_adapter: &mut DebugAdapter<P>,
     req: &Request,
-) -> Result<T, crate::DebuggerError> {
+) -> Result<T, DebuggerError> {
     let Some(raw_arguments) = &req.arguments else {
         debug_adapter.send_response::<()>(req, Err(DebuggerError::InvalidRequest))?;
         return Err(DebuggerError::Other(anyhow!(

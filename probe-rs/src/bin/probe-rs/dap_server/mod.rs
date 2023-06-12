@@ -6,7 +6,6 @@ mod peripherals;
 mod server;
 
 use anyhow::{Context, Result};
-use clap::{crate_authors, crate_description, crate_name, crate_version, Parser};
 use probe_rs::{
     architecture::arm::ap::AccessPortError, flashing::FileDownloadError, DebugProbeError, Error,
 };
@@ -65,16 +64,10 @@ pub enum DebuggerError {
 }
 
 /// CliCommands enum contains the list of supported commands that can be invoked from the command line.
-#[derive(clap::Parser)]
-#[clap(
-    name = crate_name!(),
-    about = crate_description!(),
-    author = crate_authors!(),
-    version = crate_version!()
-)]
-
+///
 /// There are only 3 command line options for the debugger.
-enum CliCommands {
+#[derive(clap::Subcommand)]
+pub enum CliCommands {
     /// List all connected debug probes
     List {},
     /// List all probe-rs supported chips
@@ -93,13 +86,8 @@ enum CliCommands {
     },
 }
 
-fn main() -> Result<()> {
-    let time_offset = UtcOffset::current_local_offset()
-        .context("Failed to determine local time offset for timestamps")?;
-
+pub fn run(matches: CliCommands, time_offset: UtcOffset) -> Result<()> {
     let log_info_message = setup_logging(time_offset)?;
-
-    let matches = CliCommands::parse();
 
     match matches {
         CliCommands::List {} => list_connected_devices()?,

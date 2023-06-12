@@ -1,4 +1,4 @@
-use crate::{
+use crate::dap_server::{
     debug_adapter::dap::dap_types::{
         ErrorResponse, ErrorResponseBody, Event, Message, MessageSeverity, OutputEventBody,
         ProtocolMessage, Request, Response, ShowMessageEventBody,
@@ -442,9 +442,7 @@ fn get_content_len(header: &str) -> Option<usize> {
 mod test {
     use std::io::{self, ErrorKind, Read};
 
-    use crate::debug_adapter::protocol::{get_content_len, ProtocolAdapter};
-
-    use super::DapAdapter;
+    use super::*;
 
     struct TestReader {
         response: Option<io::Result<usize>>,

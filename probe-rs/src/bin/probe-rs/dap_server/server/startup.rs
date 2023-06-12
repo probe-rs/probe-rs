@@ -1,5 +1,5 @@
 use super::debugger::{DebugSessionStatus, Debugger};
-use crate::debug_adapter::{dap::adapter::*, protocol::DapAdapter};
+use crate::dap_server::debug_adapter::{dap::adapter::*, protocol::DapAdapter};
 use anyhow::{anyhow, Context, Result};
 use probe_rs::Probe;
 use serde::Deserialize;

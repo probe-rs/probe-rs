@@ -1,7 +1,7 @@
-use crate::DebuggerError;
+use crate::dap_server::DebuggerError;
+use crate::util::rtt;
 use anyhow::{anyhow, Result};
 use probe_rs::{DebugProbeSelector, WireProtocol};
-use probe_rs_cli_util::rtt;
 use serde::Deserialize;
 use std::{env::current_dir, path::PathBuf};
 

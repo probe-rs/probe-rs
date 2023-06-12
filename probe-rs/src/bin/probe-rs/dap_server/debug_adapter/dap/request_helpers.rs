@@ -1,4 +1,4 @@
-use crate::{
+use crate::dap_server::{
     debug_adapter::dap::dap_types::{DisassembledInstruction, Source},
     server::{core_data::CoreHandle, session_data::BreakpointType},
     DebuggerError,

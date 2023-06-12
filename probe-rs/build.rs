@@ -93,7 +93,7 @@ fn visit_dirs(dir: &Path, targets: &mut Vec<PathBuf>) -> io::Result<()> {
 /// # Examples
 ///
 /// ```no_run
-/// probe_rs_cli_util::meta::generate_meta();
+/// crate::util::meta::generate_meta();
 /// println!("cargo:rerun-if-changed=build.rs");
 /// ```
 #[cfg(feature = "cli")]

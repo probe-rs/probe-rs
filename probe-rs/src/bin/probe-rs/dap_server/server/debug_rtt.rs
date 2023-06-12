@@ -1,9 +1,9 @@
-use crate::{
+use crate::dap_server::{
     debug_adapter::{dap::adapter::*, protocol::ProtocolAdapter},
     DebuggerError,
 };
+use crate::util::rtt;
 use probe_rs::Core;
-use probe_rs_cli_util::rtt;
 
 /// Manage the active RTT target for a specific SessionData, as well as provide methods to reliably move RTT from target, through the debug_adapter, to the client.
 pub(crate) struct RttConnection {

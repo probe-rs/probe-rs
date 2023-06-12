@@ -1,7 +1,7 @@
 use std::{fs::File, path::Path};
 
 use super::session_data::{self, ActiveBreakpoint, BreakpointType, SourceLocationScope};
-use crate::{
+use crate::dap_server::{
     debug_adapter::{
         dap::{
             adapter::DebugAdapter,
@@ -14,13 +14,13 @@ use crate::{
     server::debug_rtt,
     DebuggerError,
 };
+use crate::util::rtt::{self, ChannelMode, DataFormat, RttActiveTarget};
 use anyhow::{anyhow, Result};
 use probe_rs::{
     debug::{debug_info::DebugInfo, ColumnType, VerifiedBreakpoint},
     rtt::{Rtt, ScanRegion},
     Core, CoreStatus, Error, HaltReason,
 };
-use probe_rs_cli_util::rtt::{self, ChannelMode, DataFormat, RttActiveTarget};
 use time::UtcOffset;
 
 /// [CoreData] is used to cache data needed by the debugger, on a per-core basis.

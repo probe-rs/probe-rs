@@ -1,6 +1,6 @@
 use probe_rs::{debug::VariableName, MemoryInterface};
 
-use crate::{server::core_data::CoreHandle, DebuggerError};
+use crate::dap_server::{server::core_data::CoreHandle, DebuggerError};
 
 use super::{
     dap_types::{

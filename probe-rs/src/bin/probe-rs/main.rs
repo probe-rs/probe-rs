@@ -1,5 +1,6 @@
 mod benchmark;
 mod common;
+mod dap_server;
 mod debugger;
 mod gdb;
 mod info;
@@ -37,9 +38,8 @@ use crate::util::{
 
 #[derive(clap::Parser)]
 #[clap(
-    name = "probe-rs CLI",
-    about = "A CLI for on top of the debug probe capabilities provided by probe-rs",
-    author = "Noah Hüsser <yatekii@yatekii.ch> / Dominik Böhi <dominik.boehi@gmail.ch>",
+    name = "probe-rs",
+    about = "The probe-rs CLI",
     version = meta::CARGO_VERSION,
     long_version = meta::LONG_VERSION
 )]
@@ -55,6 +55,11 @@ struct Cli {
 
 #[derive(clap::Subcommand)]
 enum Subcommand {
+    /// Debug Adapter Protocol (DAP) server. See https://probe.rs/docs/tools/vscode/
+    DapServer {
+        #[clap(subcommand)]
+        cmd: dap_server::CliCommands,
+    },
     /// List all connected debug probes
     List {},
     /// Gets infos about the selected debug probe and connected target
@@ -277,8 +282,14 @@ fn main() -> Result<()> {
     let utc_offset = UtcOffset::current_local_offset()
         .context("Failed to determine local time for timestamps")?;
 
-    // Parse the commandline options with structopt.
+    // Parse the commandline options.
     let matches = Cli::parse();
+
+    // the DAP server has special logging requirements. Run it before initializing logging,
+    // so it can do its own special init.
+    if let Subcommand::DapServer { cmd } = matches.subcommand {
+        return dap_server::run(cmd, utc_offset);
+    }
 
     let log_path = if let Some(location) = matches.log_file {
         location
@@ -312,6 +323,7 @@ fn main() -> Result<()> {
     tracing::info!("Writing log to {:?}", log_path);
 
     let result = match matches.subcommand {
+        Subcommand::DapServer { .. } => unreachable!(), // handled above.
         Subcommand::List {} => list_connected_devices(),
         Subcommand::Info { common } => crate::info::show_info_of_device(&common),
         Subcommand::Gdb {

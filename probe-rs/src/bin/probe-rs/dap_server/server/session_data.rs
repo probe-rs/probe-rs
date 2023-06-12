@@ -2,7 +2,7 @@ use super::{
     configuration::{self, CoreConfig, SessionConfig},
     core_data::{CoreData, CoreHandle},
 };
-use crate::{
+use crate::dap_server::{
     debug_adapter::{
         dap::adapter::DebugAdapter, dap::dap_types::Source, protocol::ProtocolAdapter,
     },

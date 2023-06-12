@@ -4,6 +4,7 @@ version.workspace = true
 authors = [
     "Noah Hüsser <yatekii@yatekii.ch>",
     "Dominik Boehi <dominik.boehi@gmail.ch>",
+    "Jack Noppe <noppej@hotmail.com>",
 ]
 edition.workspace = true
 description = "A collection of on chip debugging tools to communicate with microchips."
@@ -55,6 +56,9 @@ cli = [
     "dep:time",
     "dep:tracing-subscriber",
     "dep:git-version",
+    "dep:serde_json",
+    "dep:schemafy",
+    "dep:svd-parser",
 ]
 
 vendored-libusb = ["rusb/vendored"]
@@ -140,6 +144,9 @@ terminal_size = { version = "0.2.6", optional = true }
 termtree = { version = "0.4.1", optional = true }
 time = { version = "0.3", default-features = false, features = [ "alloc", "formatting", "large-dates", "macros" ], optional = true }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json" ], optional = true }
+serde_json = { version = "1", optional = true }
+schemafy = { version = "0.6", optional = true }
+svd-parser = { version = "0.14.1", features = ["expand"], optional = true }
 
 [build-dependencies]
 bincode = "1.3.3"

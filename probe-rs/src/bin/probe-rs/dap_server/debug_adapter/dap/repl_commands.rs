@@ -7,7 +7,7 @@ use super::{
     repl_types::*,
     request_helpers::set_instruction_breakpoint,
 };
-use crate::{server::core_data::CoreHandle, DebuggerError};
+use crate::dap_server::{server::core_data::CoreHandle, DebuggerError};
 use probe_rs::{debug::VariableName, CoreStatus, HaltReason};
 use std::{fmt::Display, str::FromStr, time::Duration};
 

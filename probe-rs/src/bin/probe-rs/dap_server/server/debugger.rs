@@ -3,7 +3,7 @@ use super::{
     session_data::SessionData,
     startup::{get_file_timestamp, TargetSessionType},
 };
-use crate::{
+use crate::dap_server::{
     debug_adapter::{
         dap::{
             adapter::{get_arguments, DebugAdapter},

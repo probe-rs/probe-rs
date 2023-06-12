@@ -1,4 +1,4 @@
-use crate::{
+use crate::dap_server::{
     debug_adapter::{dap::adapter::DebugAdapter, protocol::ProtocolAdapter},
     DebuggerError,
 };

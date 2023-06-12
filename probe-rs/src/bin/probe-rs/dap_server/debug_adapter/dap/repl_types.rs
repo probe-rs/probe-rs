@@ -1,4 +1,4 @@
-use crate::DebuggerError;
+use crate::dap_server::DebuggerError;
 use std::{fmt::Display, str::FromStr};
 
 pub(crate) enum ReplCommandArgs {
