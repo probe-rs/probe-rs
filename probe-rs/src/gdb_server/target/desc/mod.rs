@@ -1,5 +1,5 @@
 use super::{GdbErrorExt, RuntimeTarget};
-use crate::target::utils::copy_range_to_buf;
+use crate::gdb_server::target::utils::copy_range_to_buf;
 
 mod data;
 
@@ -11,8 +11,8 @@ use gdbstub::target::ext::memory_map::MemoryMap;
 use gdbstub::target::ext::target_description_xml_override::TargetDescriptionXmlOverride;
 use gdbstub::target::TargetError;
 
-use probe_rs::config::MemoryRegion;
-use probe_rs::{CoreType, Session};
+use crate::config::MemoryRegion;
+use crate::{CoreType, Session};
 
 pub(crate) use data::{GdbRegisterSource, TargetDescription};
 
@@ -39,7 +39,7 @@ impl TargetDescriptionXmlOverride for RuntimeTarget<'_> {
 }
 
 impl RuntimeTarget<'_> {
-    pub(crate) fn load_target_desc(&mut self) -> Result<(), probe_rs::Error> {
+    pub(crate) fn load_target_desc(&mut self) -> Result<(), crate::Error> {
         let mut session = self.session.lock().unwrap();
         let mut core = session.core(self.cores[0])?;
 
@@ -66,10 +66,7 @@ impl MemoryMap for RuntimeTarget<'_> {
 }
 
 /// Compute GDB memory map for a session and primary core
-fn gdb_memory_map(
-    session: &mut Session,
-    primary_core_id: usize,
-) -> Result<String, probe_rs::Error> {
+fn gdb_memory_map(session: &mut Session, primary_core_id: usize) -> Result<String, crate::Error> {
     let (virtual_addressing, address_size) = {
         let core = session.core(primary_core_id)?;
         let address_size = core.program_counter().size_in_bits();

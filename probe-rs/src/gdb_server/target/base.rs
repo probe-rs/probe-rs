@@ -1,7 +1,7 @@
 use super::desc::GdbRegisterSource;
 use super::{GdbErrorExt, RuntimeTarget};
-use crate::arch::{RuntimeRegId, RuntimeRegisters};
-
+use crate::gdb_server::arch::{RuntimeRegId, RuntimeRegisters};
+use crate::{Core, Error, MemoryInterface};
 use gdbstub::common::Tid;
 use gdbstub::target::ext::base::multithread::MultiThreadBase;
 use gdbstub::target::ext::base::multithread::MultiThreadResumeOps;
@@ -9,7 +9,6 @@ use gdbstub::target::ext::base::single_register_access::SingleRegisterAccess;
 use gdbstub::target::ext::base::single_register_access::SingleRegisterAccessOps;
 use gdbstub::target::ext::thread_extra_info::ThreadExtraInfoOps;
 use gdbstub::target::TargetError;
-use probe_rs::{Core, Error, MemoryInterface};
 
 impl MultiThreadBase for RuntimeTarget<'_> {
     fn read_registers(
@@ -63,7 +62,7 @@ impl MultiThreadBase for RuntimeTarget<'_> {
 
             if current_regval_end > regs.regs.len() {
                 // Supplied write general registers command argument length not valid, tell GDB
-                log::error!(
+                tracing::error!(
                     "Unable to write register {:#?}, because supplied register value length was too short",
                     reg.source()
                 );

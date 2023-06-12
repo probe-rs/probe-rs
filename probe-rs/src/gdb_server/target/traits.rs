@@ -1,5 +1,5 @@
 use super::RuntimeTarget;
-use probe_rs::Error;
+use crate::Error;
 
 use gdbstub::stub::GdbStubError;
 use gdbstub::target::{TargetError, TargetResult};
@@ -44,12 +44,12 @@ impl<T> GdbErrorExt<T> for Result<T, Error> {
         match self {
             Ok(v) => Ok(v),
             Err(Error::Arm(e)) => {
-                log::debug!("Error: {:#}", e);
+                tracing::debug!("Error: {:#}", e);
                 // EIO
                 Err(TargetError::Errno(122))
             }
             Err(Error::Riscv(e)) => {
-                log::debug!("Error: {:#}", e);
+                tracing::debug!("Error: {:#}", e);
                 // EIO
                 Err(TargetError::Errno(122))
             }

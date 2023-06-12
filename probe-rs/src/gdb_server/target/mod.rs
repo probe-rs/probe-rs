@@ -8,8 +8,8 @@ mod traits;
 mod utils;
 
 use super::arch::RuntimeArch;
+use crate::{BreakpointCause, CoreStatus, Error, HaltReason, Session};
 use gdbstub::stub::state_machine::GdbStubStateMachine;
-use probe_rs::{BreakpointCause, CoreStatus, Error, HaltReason, Session};
 
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::num::NonZeroUsize;
@@ -88,7 +88,7 @@ impl<'a> RuntimeTarget<'a> {
             // See if we have a connection
             match self.listener.accept() {
                 Ok((s, addr)) => {
-                    log::info!("New connection from {:#?}", addr);
+                    tracing::info!("New connection from {:#?}", addr);
 
                     for i in 0..self.cores.len() {
                         let core_id = self.cores[i];
@@ -226,7 +226,7 @@ impl<'a> RuntimeTarget<'a> {
                     )
                 }
                 GdbStubStateMachine::Disconnected(state) => {
-                    log::info!("GDB client disconnected: {:?}", state.get_reason());
+                    tracing::info!("GDB client disconnected: {:?}", state.get_reason());
 
                     None
                 }

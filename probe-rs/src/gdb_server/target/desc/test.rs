@@ -1,4 +1,4 @@
-use probe_rs::{CoreType, InstructionSet};
+use crate::{CoreType, InstructionSet};
 
 use super::TargetDescription;
 

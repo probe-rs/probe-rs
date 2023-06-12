@@ -77,6 +77,8 @@ pub mod debug;
 mod error;
 #[warn(missing_docs)]
 pub mod flashing;
+#[cfg(feature = "gdb-server")]
+pub mod gdb_server;
 #[warn(missing_docs)]
 mod memory;
 #[warn(missing_docs)]

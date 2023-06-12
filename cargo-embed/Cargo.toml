@@ -18,8 +18,7 @@ ftdi = ["probe-rs/ftdi"]
 sentry = ["probe-rs-cli-util/sentry"]
 
 [dependencies]
-probe-rs = { workspace = true }
-gdb-server = { workspace = true }
+probe-rs = { workspace = true, features = ["gdb-server"] }
 probe-rs-cli-util = { workspace = true, features = ["anyhow"] }
 git-version = "0.3.5"
 env_logger = "0.10.0"

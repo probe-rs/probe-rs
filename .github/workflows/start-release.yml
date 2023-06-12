@@ -82,7 +82,6 @@ jobs:
           - probe-rs-cli-util
           - probe-rs-cli
           - probe-rs-debugger
-          - gdb-server
           - target-gen
           - rtthost
           - cargo-embed

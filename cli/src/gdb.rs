@@ -18,7 +18,7 @@ pub fn run_gdb_server(
 
     let gdb_connection_string = connection_string.unwrap_or("localhost:1337");
 
-    let instances = probe_rs_gdb_server::GdbInstanceConfiguration::from_session(
+    let instances = probe_rs::gdb_server::GdbInstanceConfiguration::from_session(
         &session,
         Some(gdb_connection_string.to_owned()),
     );
@@ -32,7 +32,7 @@ pub fn run_gdb_server(
 
     let session = Mutex::new(session);
 
-    if let Err(e) = probe_rs_gdb_server::run(&session, instances.iter()) {
+    if let Err(e) = probe_rs::gdb_server::run(&session, instances.iter()) {
         eprintln!("During the execution of GDB an error was encountered:");
         eprintln!("{e:?}");
     }

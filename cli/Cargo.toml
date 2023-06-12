@@ -19,9 +19,8 @@ license.workspace = true
 ftdi = ["probe-rs/ftdi"]
 
 [dependencies]
-probe-rs = { workspace = true }
+probe-rs = { workspace = true, features = ["gdb-server"] }
 probe-rs-cli-util = { workspace = true }
-gdb-server = { workspace = true }
 
 pretty_env_logger = { workspace = true }
 log = { workspace = true }

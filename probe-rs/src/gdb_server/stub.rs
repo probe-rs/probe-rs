@@ -1,5 +1,5 @@
+use crate::{CoreType, Error, Session};
 use anyhow::Result;
-use probe_rs::{CoreType, Error, Session};
 
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::Mutex;

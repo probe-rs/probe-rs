@@ -401,7 +401,6 @@ dependencies = [
  "defmt-decoder",
  "env_logger",
  "figment",
- "gdb-server",
  "git-version",
  "goblin",
  "log",
@@ -1115,18 +1114,6 @@ dependencies = [
  "pin-project-lite",
  "pin-utils",
  "slab",
-]
-
-[[package]]
-name = "gdb-server"
-version = "0.18.0"
-dependencies = [
- "anyhow",
- "gdbstub",
- "insta",
- "itertools 0.10.5",
- "log",
- "probe-rs",
 ]
 
 [[package]]
@@ -2170,10 +2157,13 @@ dependencies = [
  "bitvec",
  "clap",
  "enum-primitive-derive",
+ "gdbstub",
  "gimli",
  "hexdump",
  "hidapi",
  "ihex",
+ "insta",
+ "itertools 0.10.5",
  "itm",
  "jaylink",
  "jep106",
@@ -2206,7 +2196,6 @@ dependencies = [
  "capstone",
  "colored",
  "directories",
- "gdb-server",
  "git-version",
  "ihex",
  "itm",

@@ -1,3 +1,5 @@
+//! GDB server
+
 mod arch;
 mod stub;
 mod target;

@@ -34,9 +34,8 @@ use probe_rs_cli_util::{
     logging::{self, Metadata},
 };
 
+use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::rtt::{Rtt, ScanRegion};
-
-use probe_rs_gdb_server::GdbInstanceConfiguration;
 
 use crate::rttui::channel::DataFormat;
 
@@ -371,7 +370,7 @@ fn main_try(metadata: Arc<Mutex<Metadata>>, offset: UtcOffset) -> Result<()> {
                 GdbInstanceConfiguration::from_session(&session, Some(gdb_connection_string))
             };
 
-            if let Err(e) = probe_rs_gdb_server::run(&session, instances.iter()) {
+            if let Err(e) = probe_rs::gdb_server::run(&session, instances.iter()) {
                 logging::eprintln("During the execution of GDB an error was encountered:");
                 logging::eprintln(format!("{e:?}"));
             }
