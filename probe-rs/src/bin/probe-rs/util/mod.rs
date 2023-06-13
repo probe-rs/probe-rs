@@ -3,8 +3,6 @@ pub mod flash;
 pub mod logging;
 pub mod rtt;
 
-use cargo_toml::Manifest;
-use serde::Deserialize;
 use thiserror::Error;
 
 use cargo_metadata::Message;
@@ -23,42 +21,12 @@ pub enum ArtifactError {
     },
     #[error("An IO error occurred during the execution of 'cargo build'.")]
     Io(#[source] std::io::Error),
-    #[error("Unable to read the Cargo.toml at '{path}'.")]
-    CargoToml {
-        #[source]
-        source: std::io::Error,
-        path: String,
-    },
     #[error("Failed to run cargo build: exit code = {0:?}.")]
     CargoBuild(Option<i32>),
     #[error("Multiple binary artifacts were found.")]
     MultipleArtifacts,
     #[error("No binary artifacts were found.")]
     NoArtifacts,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
-pub struct Meta {
-    pub chip: Option<String>,
-}
-
-/// Read chip information from Cargo.toml metadata
-pub fn read_metadata(work_dir: &Path) -> Result<Meta, ArtifactError> {
-    let cargo_toml = work_dir.join("Cargo.toml");
-
-    let cargo_toml_content = std::fs::read(&cargo_toml).map_err(|e| ArtifactError::CargoToml {
-        source: e,
-        path: format!("{}", cargo_toml.display()),
-    })?;
-
-    let meta = match Manifest::<Meta>::from_slice_with_metadata(&cargo_toml_content) {
-        Ok(m) => m.package.and_then(|p| p.metadata),
-        Err(_e) => None,
-    };
-
-    Ok(Meta {
-        chip: meta.and_then(|m| m.chip),
-    })
 }
 
 /// Represents compiled code that the compiler emitted during compilation.
@@ -74,6 +42,7 @@ impl Artifact {
     }
 
     /// If `true`, then the artifact was unchanged during compilation.
+    #[allow(unused)]
     pub fn fresh(&self) -> bool {
         self.fresh
     }
@@ -165,18 +134,6 @@ pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<Artifact, Arti
 #[cfg(test)]
 mod test {
     use super::*;
-
-    // Test reading metadata from
-    // the [package.metadata] section of
-    // Cargo.toml
-    #[test]
-    fn read_chip_metadata() {
-        let work_dir = test_project_dir("binary_project");
-
-        let metadata = read_metadata(&work_dir).expect("Failed to read metadata.");
-
-        assert_eq!(metadata.chip, Some("nrf51822".to_owned()));
-    }
 
     #[test]
     fn get_binary_artifact() {

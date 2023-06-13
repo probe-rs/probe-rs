@@ -445,24 +445,6 @@ impl RttActiveTarget {
     }
 
     /// Polls the RTT target on all channels and returns available data.
-    /// Errors on any channel will be ignored and the data (even if incomplete) from the other channels will be returned.
-    #[deprecated(
-        since = "0.14.0",
-        note = "This function is deprecated and will be removed in a future version. Please use `poll_rtt_fallible` instead."
-    )]
-    pub fn poll_rtt(&mut self, core: &mut Core) -> HashMap<String, String> {
-        let defmt_state = self.defmt_state.as_ref();
-        self.active_channels
-            .iter_mut()
-            .filter_map(|active_channel| {
-                active_channel
-                    .get_rtt_data(core, defmt_state)
-                    .unwrap_or_default()
-            })
-            .collect::<HashMap<_, _>>()
-    }
-
-    /// Polls the RTT target on all channels and returns available data.
     /// An error on any channel will return an error instead of incomplete data.
     pub fn poll_rtt_fallible(
         &mut self,

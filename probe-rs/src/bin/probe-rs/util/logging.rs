@@ -12,7 +12,7 @@ use sentry::{
 };
 use simplelog::{CombinedLogger, SharedLogger};
 #[cfg(feature = "sentry")]
-use std::{borrow::Cow, error::Error, panic::PanicInfo, str::FromStr};
+use std::{borrow::Cow, panic::PanicInfo, str::FromStr};
 use std::{
     fmt::{self},
     io::Write,
@@ -300,19 +300,6 @@ fn print_uuid(uuid: Uuid) {
     } else {
         print!("{SENTRY_HINT}");
     }
-}
-
-#[cfg(feature = "sentry")]
-/// Captures an std::error::Error with sentry and sends all previously captured logs.
-pub fn capture_error<E>(metadata: &Metadata, error: &E)
-where
-    E: Error + ?Sized,
-{
-    let _guard = sentry::init(sentry_config(metadata.release.clone()));
-    set_metadata(metadata);
-    send_logs();
-    let uuid = sentry::capture_error(error);
-    print_uuid(uuid);
 }
 
 #[cfg(feature = "sentry")]

@@ -513,8 +513,6 @@ pub enum OperationError {
     TargetResetHaltFailed(#[source] probe_rs::Error),
     #[error("Failed to write to file")]
     IOError(#[source] std::io::Error),
-    #[error("probe-rs API was called in the wrong order.")]
-    InvalidAPIOrder,
     #[error("Failed to parse CLI arguments.")]
     CliArgument(#[from] clap::Error),
 }

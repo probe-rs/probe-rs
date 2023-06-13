@@ -36,8 +36,6 @@ pub enum DebuggerError {
     InvalidRequest,
     #[error("Command requires a value for argument '{argument_name}'")]
     MissingArgument { argument_name: String },
-    #[error("Missing session for interaction with probe")]
-    MissingSession,
     #[error(transparent)]
     Other(#[from] anyhow::Error),
     #[error(transparent)]
@@ -48,11 +46,6 @@ pub enum DebuggerError {
     UserMessage(String),
     #[error("Serialiazation error")]
     SerdeError(#[from] serde_json::Error),
-    #[error("Failed to open source file '{source_file_name}'.")]
-    ReadSourceError {
-        source_file_name: String,
-        original_error: std::io::Error,
-    },
     #[error("IO error: '{original_error}'.")]
     NonBlockingReadError { original_error: std::io::Error },
     #[error(transparent)]

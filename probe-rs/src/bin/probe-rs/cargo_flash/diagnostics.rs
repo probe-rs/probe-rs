@@ -17,10 +17,6 @@ use crate::util::ArtifactError;
 
 pub(crate) fn render_diagnostics(error: OperationError) {
     let (selected_error, hints) = match &error {
-        OperationError::InvalidAPIOrder => (
-            error.to_string(),
-            vec![],
-        ),
         OperationError::IOError(_e) => (
             error.to_string(),
             vec![],
