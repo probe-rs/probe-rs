@@ -744,13 +744,10 @@ impl ArmDebugSequence for MIMXRT6xx {
 
         // __errorcontrol = 1;
         // This means that errors should be ignored in this region
-        #[allow(unused_must_use)]
-        {
-            interface.write_word_32(armv8m::Aircr::get_mmio_address(), aircr.into());
-            interface.flush();
+        interface.write_word_32(armv8m::Aircr::get_mmio_address(), aircr.into())?;
+        interface.flush()?;
 
-            self.wait_for_stop_after_reset(interface);
-        }
+        self.wait_for_stop_after_reset(interface)?;
         // __errorcontrol = 0;
 
         Ok(())

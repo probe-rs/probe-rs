@@ -3,8 +3,7 @@
 use super::{
     cortex_m::Mvfr0,
     registers::cortex_m::{
-        CORTEX_M_CORE_REGSISTERS, CORTEX_M_WITH_FP_CORE_REGSISTERS,
-        FP, PC, RA, SP,
+        CORTEX_M_CORE_REGSISTERS, CORTEX_M_WITH_FP_CORE_REGSISTERS, FP, PC, RA, SP,
     },
     CortexMState, Dfsr,
 };
@@ -13,7 +12,7 @@ use crate::{
         core::registers::cortex_m::XPSR, memory::adi_v5_memory_interface::ArmProbe,
         sequences::ArmDebugSequence, ArmError,
     },
-    core::{CoreRegisters, RegisterId, RegisterValue, RegisterRole, RegisterDataType},
+    core::{CoreRegisters, RegisterDataType, RegisterId, RegisterRole, RegisterValue},
     error::Error,
     memory::valid_32bit_address,
     Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType, HaltReason,
@@ -57,19 +56,23 @@ pub(crate) const PSPLIM_S: CoreRegister = CoreRegister {
     data_type: RegisterDataType::UnsignedInteger(32),
 };
 
-static CORTEX_V8_M_CORE_REGISTERS: Lazy<CoreRegisters> = Lazy::new(||
+static CORTEX_V8_M_CORE_REGISTERS: Lazy<CoreRegisters> = Lazy::new(|| {
     CoreRegisters::new(
-        CORTEX_M_CORE_REGSISTERS.core_registers()
-        .chain(&[MSPLIM_NS, MSPLIM_S, PSPLIM_NS, PSPLIM_S]).collect()
+        CORTEX_M_CORE_REGSISTERS
+            .core_registers()
+            .chain(&[MSPLIM_NS, MSPLIM_S, PSPLIM_NS, PSPLIM_S])
+            .collect(),
     )
-);
+});
 
-static CORTEX_V8_M_WITH_FP_CORE_REGSISTERS: Lazy<CoreRegisters> = Lazy::new(||
+static CORTEX_V8_M_WITH_FP_CORE_REGSISTERS: Lazy<CoreRegisters> = Lazy::new(|| {
     CoreRegisters::new(
-        CORTEX_M_WITH_FP_CORE_REGSISTERS.core_registers()
-        .chain(&[MSPLIM_NS, MSPLIM_S, PSPLIM_NS, PSPLIM_S]).collect()
+        CORTEX_M_WITH_FP_CORE_REGSISTERS
+            .core_registers()
+            .chain(&[MSPLIM_NS, MSPLIM_S, PSPLIM_NS, PSPLIM_S])
+            .collect(),
     )
-);
+});
 
 /// The state of a core that can be used to persist core state across calls to multiple different cores.
 pub struct Armv8m<'probe> {

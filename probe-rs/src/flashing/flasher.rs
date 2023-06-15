@@ -6,6 +6,7 @@ use super::{
     FlashAlgorithm, FlashBuilder, FlashError, FlashFill, FlashLayout, FlashPage, FlashProgress,
 };
 use crate::config::NvmRegion;
+use crate::core::CoreStatus;
 use crate::memory::MemoryInterface;
 use crate::{core::CoreRegisters, session::Session, Core, InstructionSet};
 use std::time::Instant;
@@ -644,7 +645,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                     Some(algo.stack.end as u32),
                 )
             } else {
-                (regs.program_counter(), None)
+                (self.core.program_counter(), None)
             },
         ];
 
@@ -735,29 +736,24 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         }
 
         if timeout_ocurred {
-            let regs = self.core.registers();
-
             let pc = self.core.halt(Duration::from_millis(100))?.pc;
-            let sp: u32 = self.core.read_core_reg(regs.stack_pointer().id).unwrap();
-            let ra: u32 = self.core.read_core_reg(regs.return_address().id).unwrap();
-            let r0: u32 = self
-                .core
-                .read_core_reg(regs.platform_register(0).id)
-                .unwrap();
-            let r1: u32 = self
-                .core
-                .read_core_reg(regs.platform_register(1).id)
-                .unwrap();
-            let r2: u32 = self
-                .core
-                .read_core_reg(regs.platform_register(2).id)
-                .unwrap();
-            let r3: u32 = self
-                .core
-                .read_core_reg(regs.platform_register(3).id)
-                .unwrap();
+            let sp = self.core.read_core_reg::<u32>(self.core.frame_pointer())?;
+            let lr = self.core.read_core_reg::<u32>(self.core.return_address())?;
 
-            tracing::error!("Register State: {{pc: {:#010x?}, sp: {:#010x?}, ret: {:#010x?}, r0: {:#010x?}, r1: {:#010x?}, r2: {:#010x?}, r3: {:#010x?}}}", pc, sp, ra, r0, r1, r2, r3);
+            let r0 = self
+                .core
+                .read_core_reg::<u32>(self.core.registers().core_register(0))?;
+            let r1 = self
+                .core
+                .read_core_reg::<u32>(self.core.registers().core_register(1))?;
+            let r2 = self
+                .core
+                .read_core_reg::<u32>(self.core.registers().core_register(2))?;
+            let r3 = self
+                .core
+                .read_core_reg::<u32>(self.core.registers().core_register(3))?;
+
+            tracing::error!("Register State: {{pc: {:#010x?}, sp: {:#010x?}, ret: {:#010x?}, r0: {:#010x?}, r1: {:#010x?}, r2: {:#010x?}, r3: {:#010x?}}}", pc, sp, lr, r0, r1, r2, r3);
             return Err(FlashError::Core(crate::Error::Timeout));
         }
 
