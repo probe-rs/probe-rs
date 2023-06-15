@@ -1,7 +1,11 @@
-use crate::{error, CoreType, Error, InstructionSet, MemoryInterface};
+use crate::{
+    architecture::arm::sequences::ArmDebugSequence, error, CoreType, Error, InstructionSet,
+    MemoryInterface, Target,
+};
 use anyhow::{anyhow, Result};
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
-use std::time::Duration;
+use probe_rs_target::{ArmCoreAccessOptions, RiscvCoreAccessOptions};
+use std::{sync::Arc, time::Duration};
 
 pub mod core_state;
 pub mod core_status;
@@ -22,6 +26,9 @@ pub struct CoreInformation {
 
 /// A generic interface to control a MCU core.
 pub trait CoreInterface: MemoryInterface {
+    /// Numerical ID of the core. Can be used as an argument to `Session::core()`.
+    fn id(&self) -> usize;
+
     /// Wait until the core is halted. If the core does not halt on its own,
     /// a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) error will be returned.
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), error::Error>;
@@ -86,7 +93,19 @@ pub trait CoreInterface: MemoryInterface {
     fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), error::Error>;
 
     /// Returns a list of all the registers of this core.
-    fn registers(&self) -> &'static registers::RegisterFile;
+    fn registers(&self) -> &'static registers::CoreRegisters;
+
+    /// Returns the program counter register.
+    fn program_counter(&self) -> &'static CoreRegister;
+
+    /// Returns the stack pointer register.
+    fn frame_pointer(&self) -> &'static CoreRegister;
+
+    /// Returns the frame pointer register.
+    fn stack_pointer(&self) -> &'static CoreRegister;
+
+    /// Returns the return address register, a.k.a. link register.
+    fn return_address(&self) -> &'static CoreRegister;
 
     /// Returns `true` if hwardware breakpoints are enabled, `false` otherwise.
     fn hw_breakpoints_enabled(&self) -> bool;
@@ -113,10 +132,20 @@ pub trait CoreInterface: MemoryInterface {
     /// decision for some core types.
     fn fpu_support(&mut self) -> Result<bool, error::Error>;
 
-    /// Called during session stop to do any pending cleanup
-    fn on_session_stop(&mut self) -> Result<(), Error> {
-        Ok(())
-    }
+    /// Set the reset catch setting.
+    ///
+    /// This configures the core to halt after a reset.
+    ///
+    /// use `reset_catch_clear` to clear the setting again.
+    fn reset_catch_set(&mut self) -> Result<(), Error>;
+
+    /// Clear the reset catch setting.
+    ///
+    /// This will reset the changes done by `reset_catch_set`.
+    fn reset_catch_clear(&mut self) -> Result<(), Error>;
+
+    /// Called when we stop debugging a core.
+    fn debug_core_stop(&mut self) -> Result<(), Error>;
 }
 
 impl<'probe> MemoryInterface for Core<'probe> {
@@ -197,26 +226,56 @@ impl<'probe> MemoryInterface for Core<'probe> {
 /// to allow potential other shareholders of the session struct to grab a core handle too.
 pub struct Core<'probe> {
     inner: Box<dyn CoreInterface + 'probe>,
-    state: &'probe mut CoreState,
 }
 
 impl<'probe> Core<'probe> {
     /// Create a new [`Core`].
-    pub fn new(core: impl CoreInterface + 'probe, state: &'probe mut CoreState) -> Core<'probe> {
+    pub(crate) fn new(core: impl CoreInterface + 'probe) -> Core<'probe> {
         Self {
             inner: Box::new(core),
-            state,
         }
     }
 
     /// Creates a new [`CoreState`]
-    pub fn create_state(id: usize, options: CoreAccessOptions) -> CoreState {
-        CoreState::new(id, options)
+    pub(crate) fn create_state(
+        id: usize,
+        options: CoreAccessOptions,
+        target: &Target,
+        core_type: CoreType,
+    ) -> CombinedCoreState {
+        let specific_state = SpecificCoreState::from_core_type(core_type);
+
+        match options {
+            CoreAccessOptions::Arm(options) => {
+                let sequence = match &target.debug_sequence {
+                    crate::config::DebugSequence::Arm(seq) => seq.clone(),
+                    crate::config::DebugSequence::Riscv(_) => panic!(
+                        "Mismatch between sequence and core kind. This is a bug, please report it."
+                    ),
+                };
+
+                let core_state = CoreState::new(ResolvedCoreOptions::Arm { sequence, options });
+
+                CombinedCoreState {
+                    id,
+                    core_state,
+                    specific_state,
+                }
+            }
+            CoreAccessOptions::Riscv(options) => {
+                let core_state = CoreState::new(ResolvedCoreOptions::Riscv { options });
+                CombinedCoreState {
+                    id,
+                    core_state,
+                    specific_state,
+                }
+            }
+        }
     }
 
     /// Returns the ID of this core.
     pub fn id(&self) -> usize {
-        self.state.id()
+        self.inner.id()
     }
 
     /// Wait until the core is halted. If the core does not halt on its own,
@@ -312,15 +371,17 @@ impl<'probe> Core<'probe> {
     /// # Errors
     ///
     /// If T is too large to write to the target register an error will be raised.
-    #[tracing::instrument(skip(self, value))]
+    #[tracing::instrument(skip(self, address, value))]
     pub fn write_core_reg<T>(
         &mut self,
-        address: registers::RegisterId,
+        address: impl Into<registers::RegisterId>,
         value: T,
     ) -> Result<(), error::Error>
     where
         T: Into<registers::RegisterValue>,
     {
+        let address = address.into();
+
         self.inner.write_core_reg(address, value.into())
     }
 
@@ -341,8 +402,28 @@ impl<'probe> Core<'probe> {
     }
 
     /// Returns a list of all the registers of this core.
-    pub fn registers(&self) -> &'static registers::RegisterFile {
+    pub fn registers(&self) -> &'static registers::CoreRegisters {
         self.inner.registers()
+    }
+
+    /// Returns the program counter register.
+    pub fn program_counter(&self) -> &'static CoreRegister {
+        self.inner.program_counter()
+    }
+
+    /// Returns the stack pointer register.
+    pub fn frame_pointer(&self) -> &'static CoreRegister {
+        self.inner.frame_pointer()
+    }
+
+    /// Returns the frame pointer register.
+    pub fn stack_pointer(&self) -> &'static CoreRegister {
+        self.inner.stack_pointer()
+    }
+
+    /// Returns the return address register, a.k.a. link register.
+    pub fn return_address(&self) -> &'static CoreRegister {
+        self.inner.return_address()
     }
 
     /// Find the index of the next available HW breakpoint comparator.
@@ -461,9 +542,34 @@ impl<'probe> Core<'probe> {
         self.inner.fpu_support()
     }
 
-    /// Called during session tear down to do any pending cleanup
-    #[tracing::instrument(skip(self))]
-    pub(crate) fn on_session_stop(&mut self) -> Result<(), Error> {
-        self.inner.on_session_stop()
+    pub(crate) fn reset_catch_clear(&mut self) -> Result<(), Error> {
+        self.inner.reset_catch_clear()
+    }
+
+    pub(crate) fn debug_core_stop(&mut self) -> Result<(), Error> {
+        self.inner.debug_core_stop()
+    }
+}
+
+pub enum ResolvedCoreOptions {
+    Arm {
+        sequence: Arc<dyn ArmDebugSequence>,
+        options: ArmCoreAccessOptions,
+    },
+    Riscv {
+        options: RiscvCoreAccessOptions,
+    },
+}
+
+impl std::fmt::Debug for ResolvedCoreOptions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Arm { options, .. } => f
+                .debug_struct("Arm")
+                .field("sequence", &"<ArmDebugSequence>")
+                .field("options", options)
+                .finish(),
+            Self::Riscv { options } => f.debug_struct("Riscv").field("options", options).finish(),
+        }
     }
 }

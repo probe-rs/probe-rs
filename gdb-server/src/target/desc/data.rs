@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use probe_rs::{CoreType, InstructionSet, RegisterDescription, RegisterFile, RegisterId};
+use probe_rs::{architecture, CoreRegister, CoreRegisters, CoreType, InstructionSet, RegisterId};
 use std::fmt::Write;
 
 /// A feature that will be sent to GDB
@@ -133,7 +133,7 @@ impl TargetDescription {
     }
 
     /// Add a register to the current GDB feature
-    pub fn add_register(&mut self, reg: &RegisterDescription) {
+    pub fn add_register(&mut self, reg: &CoreRegister) {
         let id: RegisterId = reg.into();
 
         self.add_register_from_details(reg.name().to_owned(), reg.size_in_bits(), id);
@@ -157,7 +157,7 @@ impl TargetDescription {
     }
 
     /// Add a collection of registers to the current GDB feature
-    pub fn add_registers<'a>(&mut self, regs: impl Iterator<Item = &'a RegisterDescription>) {
+    pub fn add_registers<'a>(&mut self, regs: impl Iterator<Item = &'a CoreRegister>) {
         for reg in regs {
             self.add_register(reg);
         }
@@ -169,7 +169,7 @@ impl TargetDescription {
     /// For example - s0,s1,s2,s3 becomes d0(s0,s1), d1(s2,s3)
     pub fn add_two_word_registers<'a>(
         &mut self,
-        regs: impl Iterator<Item = &'a RegisterDescription>,
+        regs: impl Iterator<Item = &'a CoreRegister>,
         name_pattern: &'static str,
         reg_type: &'static str,
     ) {
@@ -224,7 +224,7 @@ fn size_to_type(size: usize) -> &'static str {
 }
 
 pub fn build_target_description(
-    regs: &RegisterFile,
+    regs: &CoreRegisters,
     core_type: CoreType,
     isa: InstructionSet,
 ) -> TargetDescription {
@@ -247,19 +247,19 @@ pub fn build_target_description(
     desc
 }
 
-fn build_riscv_registers(desc: &mut TargetDescription, regs: &RegisterFile) {
+fn build_riscv_registers(desc: &mut TargetDescription, regs: &CoreRegisters) {
     // Create the main register group
     desc.add_gdb_feature("org.gnu.gdb.riscv.cpu");
-    desc.add_registers(regs.platform_registers());
-    desc.add_register(regs.program_counter());
+    desc.add_registers(regs.core_registers());
+    desc.add_register(&architecture::riscv::PC);
 
     desc.update_register_type("pc", "code_ptr");
 }
 
-fn build_aarch64_registers(desc: &mut TargetDescription, regs: &RegisterFile) {
+fn build_aarch64_registers(desc: &mut TargetDescription, regs: &CoreRegisters) {
     // Create the main register group
     desc.add_gdb_feature("org.gnu.gdb.aarch64.core");
-    desc.add_registers(regs.platform_registers());
+    desc.add_registers(regs.core_registers());
     if let Some(psr) = regs.psr() {
         desc.add_register(psr);
     }
@@ -268,7 +268,7 @@ fn build_aarch64_registers(desc: &mut TargetDescription, regs: &RegisterFile) {
     desc.add_gdb_feature("org.gnu.gdb.aarch64.fpu");
     desc.add_registers(regs.fpu_registers().unwrap());
     desc.add_register(regs.other_by_name("FPCR").unwrap());
-    desc.add_register(regs.fpscr().unwrap());
+    desc.add_register(regs.fpsr().unwrap());
 
     // GDB expects PSTATE to be called CPSR, even though that's the old v7 name
     desc.update_register_name("PSTATE", "CPSR");
@@ -277,10 +277,10 @@ fn build_aarch64_registers(desc: &mut TargetDescription, regs: &RegisterFile) {
     desc.update_register_type("PC", "code_ptr");
 }
 
-fn build_cortex_a_registers(desc: &mut TargetDescription, regs: &RegisterFile) {
+fn build_cortex_a_registers(desc: &mut TargetDescription, regs: &CoreRegisters) {
     // Create the main register group
     desc.add_gdb_feature("org.gnu.gdb.arm.core");
-    desc.add_registers(regs.platform_registers());
+    desc.add_registers(regs.core_registers());
     if let Some(psr) = regs.psr() {
         desc.add_register(psr);
     }
@@ -292,10 +292,10 @@ fn build_cortex_a_registers(desc: &mut TargetDescription, regs: &RegisterFile) {
         desc.add_register(regs.psp().unwrap());
     }
 
-    if regs.fpscr().is_some() && regs.fpu_registers().is_some() {
+    if regs.fpsr().is_some() && regs.fpu_registers().is_some() {
         desc.add_gdb_feature("org.gnu.gdb.arm.vfp");
         desc.add_registers(regs.fpu_registers().unwrap());
-        desc.add_register(regs.fpscr().unwrap());
+        desc.add_register(regs.fpsr().unwrap());
     }
 
     // Fix up register names to match what GDB expects
@@ -307,10 +307,10 @@ fn build_cortex_a_registers(desc: &mut TargetDescription, regs: &RegisterFile) {
     desc.update_register_type("PC", "code_ptr");
 }
 
-fn build_cortex_m_registers(desc: &mut TargetDescription, regs: &RegisterFile) {
+fn build_cortex_m_registers(desc: &mut TargetDescription, regs: &CoreRegisters) {
     // Create the main register group
     desc.add_gdb_feature("org.gnu.gdb.arm.m-profile");
-    desc.add_registers(regs.platform_registers());
+    desc.add_registers(regs.core_registers());
     if let Some(psr) = regs.psr() {
         desc.add_register(psr);
     }
@@ -322,13 +322,13 @@ fn build_cortex_m_registers(desc: &mut TargetDescription, regs: &RegisterFile) {
         desc.add_register(regs.psp().unwrap());
     }
 
-    if regs.fpscr().is_some() && regs.fpu_registers().is_some() {
+    if regs.fpsr().is_some() && regs.fpu_registers().is_some() {
         desc.add_gdb_feature("org.gnu.gdb.arm.vfp");
         // probe-rs exposes the single word registers, s0-s31
         // GDB requires exposing the double word registers, d0-d16
         // Each d value is made up of the two consecutive s registers
         desc.add_two_word_registers(regs.fpu_registers().unwrap(), "d", "ieee_double");
-        desc.add_register(regs.fpscr().unwrap());
+        desc.add_register(regs.fpsr().unwrap());
     }
 
     // Fix up register names to match what GDB expects

@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{
     core::Core,
-    core::RegisterValue,
+    core::{RegisterRole, RegisterValue},
     debug::{registers, source_statement::SourceStatements},
     MemoryInterface,
 };
@@ -12,7 +12,6 @@ use ::gimli::{FileEntry, LineProgramHeader, UnwindContext};
 use gimli::{BaseAddresses, ColumnType, DebugFrame, UnwindSection};
 use object::read::{Object, ObjectSection};
 use probe_rs_target::InstructionSet;
-use registers::RegisterGroup;
 use std::{
     borrow,
     cmp::Ordering,
@@ -822,15 +821,7 @@ impl DebugInfo {
                     // PART 2-c: Unwind registers for the "previous/calling" frame.
                     // We sometimes need to keep a copy of the LR value to calculate the PC. For both ARM, and RISCV, The LR will be unwound before the PC, so we can reference it safely.
                     let mut unwound_return_address: Option<RegisterValue> = None;
-                    for debug_register in
-                        unwind_registers.0.iter_mut().filter(|platform_register| {
-                            matches!(
-                                platform_register.group,
-                                RegisterGroup::Base | RegisterGroup::Singleton
-                            )
-                            // We include platform registers, as well as the singletons, because on RISCV, the program counter is separate from the platform_registers
-                        })
-                    {
+                    for debug_register in unwind_registers.0.iter_mut() {
                         if unwind_register(
                             debug_register,
                             &callee_frame_registers,
@@ -1213,13 +1204,19 @@ fn unwind_register(
         Undefined => {
             // In many cases, the DWARF has `Undefined` rules for variables like frame pointer, program counter, etc., so we hard-code some rules here to make sure unwinding can continue. If there is a valid rule, it will bypass these hardcoded ones.
             match &debug_register {
-                fp if fp.id == fp.register_file.frame_pointer.id => {
+                fp if fp
+                    .core_register
+                    .register_has_role(RegisterRole::FramePointer) =>
+                {
                     register_rule_string = "FP=CFA (dwarf Undefined)".to_string();
                     callee_frame_registers
                         .get_frame_pointer()
                         .and_then(|fp| fp.value)
                 }
-                sp if sp.id == sp.register_file.stack_pointer.id => {
+                sp if sp
+                    .core_register
+                    .register_has_role(RegisterRole::StackPointer) =>
+                {
                     // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section B.1.4.1: Treat bits [1:0] as `Should be Zero or Preserved`
                     // - Applying this logic to RISCV has no adverse effects, since all incoming addresses are already 32-bit aligned.
                     register_rule_string = "SP=CFA (dwarf Undefined)".to_string();
@@ -1231,13 +1228,19 @@ fn unwind_register(
                         }
                     })
                 }
-                lr if lr.id == lr.register_file.return_address.id => {
+                lr if lr
+                    .core_register
+                    .register_has_role(RegisterRole::ReturnAddress) =>
+                {
                     // This value is can only be used to determine the Undefined PC value. We have no way of inferring the previous frames LR until we have the PC.
                     register_rule_string = "LR=Unknown (dwarf Undefined)".to_string();
                     *unwound_return_address = lr.value;
                     None
                 }
-                pc if pc.id == pc.register_file.program_counter.id => {
+                pc if pc
+                    .core_register
+                    .register_has_role(RegisterRole::ProgramCounter) =>
+                {
                     // NOTE: PC = Value of the unwound LR, i.e. the first instruction after the one that called this function.
                     register_rule_string = "PC=(unwound LR) (dwarf Undefined)".to_string();
                     unwound_return_address.and_then(|return_address| {
@@ -1273,7 +1276,7 @@ fn unwind_register(
             }
         }
         SameValue => callee_frame_registers
-            .get_register(debug_register.id)
+            .get_register(debug_register.core_register.id)
             .and_then(|reg| reg.value),
         Offset(address_offset) => {
             // "The previous value of this register is saved at the address CFA+N where CFA is the current CFA value and N is a signed offset"
@@ -1303,7 +1306,10 @@ fn unwind_register(
 
                 match result {
                     Ok(register_value) => {
-                        if debug_register.id == debug_register.register_file.return_address.id {
+                        if debug_register
+                            .core_register
+                            .register_has_role(RegisterRole::ReturnAddress)
+                        {
                             // We need to store this value to be used by the calculation of the PC.
                             *unwound_return_address = Some(register_value);
                         }
@@ -1312,7 +1318,7 @@ fn unwind_register(
                     Err(error) => {
                         tracing::error!(
                             "UNWIND: Failed to read value for register {} from address {} ({} bytes): {}",
-                            debug_register.name,
+                            debug_register.get_register_name(),
                             RegisterValue::from(previous_frame_register_address),
                             4,
                             error
@@ -1340,7 +1346,7 @@ fn unwind_register(
         debug_register.get_register_name(),
         debug_register.value.unwrap_or_default(),
         callee_frame_registers
-            .get_register(debug_register.id)
+            .get_register(debug_register.core_register.id)
             .and_then(|reg| reg.value)
             .unwrap_or_default(),
         register_rule_string,

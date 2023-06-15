@@ -13,7 +13,11 @@ use crate::{
         },
         protocol::ProtocolAdapter,
     },
-    server::{configuration::ConsoleLog, core_data::CoreHandle, session_data::BreakpointType},
+    server::{
+        configuration::ConsoleLog,
+        core_data::CoreHandle,
+        session_data::{BreakpointType, SourceLocationScope},
+    },
     DebuggerError,
 };
 use anyhow::{anyhow, Result};
@@ -770,7 +774,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         if let Some(source_path) = args.source.path.as_ref().map(Path::new) {
             // Always clear existing breakpoints for the specified `[crate::debug_adapter::dap_types::Source]` before setting new ones.
             // The DAP Specification doesn't make allowances for deleting and setting individual breakpoints for a specific `Source`.
-            match target_core.clear_breakpoints(None) {
+            match target_core.clear_breakpoints(BreakpointType::SourceBreakpoint {
+                source: args.source.clone(),
+                location: SourceLocationScope::All,
+            }) {
                 Ok(_) => {}
                 Err(error) => {
                     return self.send_response::<()>(
@@ -822,7 +829,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             message: Some(format!(
                                 "Source breakpoint at memory address: {address:#010X}"
                             )),
-                            source: None,
+                            source: Some(args.source.clone()),
                             instruction_reference: Some(format!("{address:#010X}")),
                             offset: None,
                             verified: true,
@@ -865,7 +872,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let arguments: SetInstructionBreakpointsArguments = get_arguments(self, request)?;
 
         // Always clear existing breakpoints before setting new ones.
-        match target_core.clear_breakpoints(Some(BreakpointType::InstructionBreakpoint)) {
+        match target_core.clear_breakpoints(BreakpointType::InstructionBreakpoint) {
             Ok(_) => {}
             Err(error) => tracing::warn!("Failed to clear instruction breakpoints. {}", error),
         }
@@ -925,7 +932,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 {
                     let program_counter = target_core
                         .core
-                        .read_core_reg(target_core.core.registers().program_counter())
+                        .read_core_reg(target_core.core.program_counter())
                         .ok();
                     let event_body = Some(StoppedEventBody {
                         reason: current_core_status
@@ -991,8 +998,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // VSCode sends multiple StackTrace requests, which lead to out of synch frame_id numbers.
         // We only refresh the stacktrace when the `startFrame` is 0 and `levels` is 1.
         if levels == 1 && start_frame == 0 {
-            let regs = target_core.core.registers();
-            let pc = match target_core.core.read_core_reg(regs.program_counter()) {
+            let pc = match target_core
+                .core
+                .read_core_reg(target_core.core.program_counter())
+            {
                 Ok(pc) => pc,
                 Err(error) => {
                     return self.send_response::<()>(request, Err(DebuggerError::ProbeRs(error)))
