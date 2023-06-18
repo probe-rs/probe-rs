@@ -7,7 +7,7 @@ use std::ops::Range;
 pub enum FlashError {
     /// No flash memory contains the entire requested memory range.
     #[error(
-        "No flash memory contains the entire requested memory range {start:#010x}..{end:#10x}."
+        "No flash memory contains the entire requested memory range {start:#010x}..{end:#010x}."
     )]
     NoSuitableNvm {
         /// The start of the requested memory range.
