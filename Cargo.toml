@@ -31,7 +31,7 @@ probe-rs-cli-util = { path = "probe-rs-cli-util", version = "0.18.0" }
 probe-rs-target = { path = "probe-rs-target", version = "0.18.0" }
 gdb-server = { path = "gdb-server", version = "0.18.0" }
 
-log = "0.4.18"
+log = "0.4.19"
 pretty_env_logger = "0.5.0"
 thiserror = "1.0"
 anyhow = "1.0.71"

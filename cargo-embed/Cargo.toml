@@ -23,19 +23,19 @@ gdb-server = { workspace = true }
 probe-rs-cli-util = { workspace = true, features = ["anyhow"] }
 git-version = "0.3.5"
 env_logger = "0.10.0"
-log = { version = "0.4.18", features = ["serde"] }
+log = { version = "0.4.19", features = ["serde"] }
 colored = "2.0.0"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0.96" }
+serde_json = { version = "1.0.97" }
 figment = { version = "0.10", features = ["toml", "json", "yaml", "env"] }
 crossterm = "<= 0.26.1"
-goblin = "0.6.1"
+goblin = "0.7.1"
 tui = { version = "0.19.0", default-features = false, features = ["crossterm"] }
 anyhow = "1.0.71"
 textwrap = "0.16.0"
 defmt-decoder = { version = "0.3.7", features = ["unstable"] }
 sanitize-filename = "0.4"
-time = { version = "0.3.21", features = ["local-offset"] }
+time = { version = "0.3.22", features = ["local-offset"] }
 
 [build-dependencies]
 git-version = "0.3.5"
