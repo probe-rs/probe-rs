@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Support for EFM32 Happy Gecko MCUs (#1747)
 - Added RA4M1 series target, R7FA4M1AB. (#1706)
+- Support for NXP i.MX RT500 series chips: MIMXRT595S, MIMXRT555S, MIMXRT533S (#1642)
 - Added --no-location option to the CLI run command, which suppresses the filename and line number
   information from the rtt log (#1704)
 - target-gen: Add new `--test-address` option to the `target-gen test` subcommand. (#1708)
