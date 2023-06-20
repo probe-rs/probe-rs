@@ -5,6 +5,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Merged `probe-rs-cli`, `probe-rs-debugger`, `cargo-embed`, `cargo-flash` binaries into the `probe-rs` crate. 
+  - `probe-rs-cli` is now available in `probe-rs`.
+  - `probe-rs-debugger` is now available as `probe-rs dap-server`.
+  - `cargo-embed` and `cargo-flash` functionality is unchanged, but they are now small shim binaries that invoke `probe-rs`.
+  - Running `cargo install probe-rs` installs the `probe-rs`, `cargo-embed` and `cargo-flash` binaries.
+- Merged the `gdb-server` crate into `probe-rs`. It's now available under `probe_rs::gdb_server`, and requires enabling the `gdb-server` Cargo feature.
+
 ### Fixed
 
 - probe-rs-debugger: Show errors that happen before VSCode/DAP Client session initializion has completed (#1581).
