@@ -174,12 +174,9 @@ dependencies = [
 
 [[package]]
 name = "atomic"
-version = "0.5.1"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b88d82667eca772c4aa12f0f1348b3ae643424c8876448f3f7bd5787032e234c"
-dependencies = [
- "autocfg",
-]
+checksum = "c59bdb34bc650a32731b31bd8f0829cc15d24a708ee31559e0bb34f2bc320cba"
 
 [[package]]
 name = "atty"
@@ -392,48 +389,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cargo-embed"
-version = "0.18.0"
-dependencies = [
- "anyhow",
- "colored",
- "crossterm",
- "defmt-decoder",
- "env_logger",
- "figment",
- "gdb-server",
- "git-version",
- "goblin",
- "log",
- "probe-rs",
- "probe-rs-cli-util",
- "sanitize-filename",
- "serde",
- "serde_json",
- "textwrap",
- "time",
- "tui",
-]
-
-[[package]]
-name = "cargo-flash"
-version = "0.18.0"
-dependencies = [
- "anyhow",
- "assert_cmd",
- "bytesize",
- "clap",
- "colored",
- "dunce",
- "env_logger",
- "git-version",
- "predicates",
- "probe-rs",
- "probe-rs-cli-util",
- "thiserror",
-]
-
-[[package]]
 name = "cargo-platform"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -463,7 +418,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "599aa35200ffff8f04c1925aa1acc92fa2e08874379ef42e210a80e527e60838"
 dependencies = [
  "serde",
- "toml 0.7.4",
+ "toml",
 ]
 
 [[package]]
@@ -518,7 +473,6 @@ dependencies = [
  "anstyle",
  "bitflags",
  "clap_lex",
- "once_cell",
  "strsim",
 ]
 
@@ -664,10 +618,26 @@ dependencies = [
 ]
 
 [[package]]
-name = "crossterm_winapi"
-version = "0.9.0"
+name = "crossterm"
+version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2ae1b35a484aa10e07fe0638d02301c5ad24de82d310ccbd2f3693da5f09bf1c"
+checksum = "a84cda67535339806297f1b331d6dd6320470d2a0fe65381e79ee9e156dd3d13"
+dependencies = [
+ "bitflags",
+ "crossterm_winapi",
+ "libc",
+ "mio",
+ "parking_lot",
+ "signal-hook",
+ "signal-hook-mio",
+ "winapi",
+]
+
+[[package]]
+name = "crossterm_winapi"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "acdd7c62a3665c7f6830a51635d9ac9b23ed385797f70a83bb8bafe9c572ab2b"
 dependencies = [
  "winapi",
 ]
@@ -936,27 +906,27 @@ dependencies = [
 
 [[package]]
 name = "fd-lock"
-version = "3.0.10"
+version = "3.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ef1a30ae415c3a691a4f41afddc2dbcd6d70baf338368d85ebc1e8ed92cedb9"
+checksum = "39ae6b3d9530211fb3b12a95374b8b0823be812f53d09e18c5675c0146b09642"
 dependencies = [
  "cfg-if",
- "rustix 0.36.9",
- "windows-sys 0.45.0",
+ "rustix 0.37.3",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
 name = "figment"
-version = "0.10.8"
+version = "0.10.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e56602b469b2201400dec66a66aec5a9b8761ee97cd1b8c96ab2483fcc16cc9"
+checksum = "4547e226f4c9ab860571e070a9034192b3175580ecea38da34fcdb53a018c9a5"
 dependencies = [
  "atomic",
  "pear",
  "serde",
  "serde_json",
  "serde_yaml",
- "toml 0.5.11",
+ "toml",
  "uncased",
  "version_check",
 ]
@@ -1115,18 +1085,6 @@ dependencies = [
  "pin-project-lite",
  "pin-utils",
  "slab",
-]
-
-[[package]]
-name = "gdb-server"
-version = "0.18.0"
-dependencies = [
- "anyhow",
- "gdbstub",
- "insta",
- "itertools 0.10.5",
- "log",
- "probe-rs",
 ]
 
 [[package]]
@@ -2055,9 +2013,9 @@ dependencies = [
 
 [[package]]
 name = "pear"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15e44241c5e4c868e3eaa78b7c1848cadd6344ed4f54d029832d32b415a58702"
+checksum = "0ec95680a7087503575284e5063e14b694b7a9c0b065e5dceec661e0497127e8"
 dependencies = [
  "inlinable_string",
  "pear_codegen",
@@ -2066,14 +2024,14 @@ dependencies = [
 
 [[package]]
 name = "pear_codegen"
-version = "0.2.3"
+version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82a5ca643c2303ecb740d506539deba189e16f2754040a42901cd8105d0282d0"
+checksum = "9661a3a53f93f09f2ea882018e4d7c88f6ff2956d809a276060476fd8c879d3c"
 dependencies = [
  "proc-macro2",
  "proc-macro2-diagnostics",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.10",
 ]
 
 [[package]]
@@ -2168,123 +2126,67 @@ dependencies = [
  "bincode",
  "bitfield",
  "bitvec",
+ "byte-unit",
+ "bytesize",
+ "capstone",
+ "cargo_metadata",
+ "cargo_toml",
  "clap",
+ "colored",
+ "crossterm 0.26.1",
+ "defmt-decoder",
+ "directories",
+ "dunce",
  "enum-primitive-derive",
+ "figment",
+ "gdbstub",
  "gimli",
+ "git-version",
+ "goblin",
  "hexdump",
  "hidapi",
  "ihex",
+ "indicatif",
+ "insta",
+ "is-terminal",
+ "itertools 0.10.5",
  "itm",
  "jaylink",
  "jep106",
  "kmp",
  "libftdi1-sys",
+ "log",
  "num-traits",
  "object 0.31.1",
  "once_cell",
+ "parse_int",
  "paste",
  "pretty_env_logger",
  "probe-rs-target",
  "rand",
- "rusb",
- "scroll",
- "serde",
- "serde_json",
- "serde_yaml",
- "static_assertions",
- "svg",
- "thiserror",
- "tracing",
-]
-
-[[package]]
-name = "probe-rs-cli"
-version = "0.18.0"
-dependencies = [
- "anyhow",
- "bitfield",
- "capstone",
- "colored",
- "directories",
- "gdb-server",
- "git-version",
- "ihex",
- "itm",
- "jep106",
- "log",
- "num-traits",
- "parse_int",
- "pretty_env_logger",
- "probe-rs",
- "probe-rs-cli-util",
- "rand",
  "reqwest",
  "ron",
+ "rusb",
  "rustyline",
- "sanitize-filename",
- "scroll",
- "serde",
- "termtree",
- "thiserror",
- "time",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "probe-rs-cli-util"
-version = "0.18.0"
-dependencies = [
- "anyhow",
- "byte-unit",
- "cargo_metadata",
- "cargo_toml",
- "clap",
- "colored",
- "defmt-decoder",
- "dunce",
- "env_logger",
- "goblin",
- "indicatif",
- "is-terminal",
- "log",
- "num-traits",
- "once_cell",
- "probe-rs",
- "sentry",
- "serde",
- "simplelog",
- "terminal_size",
- "thiserror",
- "time",
-]
-
-[[package]]
-name = "probe-rs-debugger"
-version = "0.18.0"
-dependencies = [
- "anyhow",
- "base64 0.21.2",
- "bitfield",
- "capstone",
- "clap",
- "directories",
- "goblin",
- "insta",
- "num-traits",
- "parse_int",
- "probe-rs",
- "probe-rs-cli-util",
  "sanitize-filename",
  "schemafy",
  "scroll",
+ "sentry",
  "serde",
  "serde_json",
+ "serde_yaml",
+ "simplelog",
+ "static_assertions",
  "svd-parser",
+ "svg",
+ "terminal_size",
+ "termtree",
+ "textwrap",
  "thiserror",
  "time",
  "tracing",
  "tracing-subscriber",
+ "tui",
 ]
 
 [[package]]
@@ -2313,13 +2215,13 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2-diagnostics"
-version = "0.9.1"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4bf29726d67464d49fa6224a1d07936a8c08bb3fba727c7493f6cf1616fdaada"
+checksum = "606c4ba35817e2922a308af55ad51bab3645b59eae5c570d4a6cf07e36bd493b"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.10",
  "version_check",
  "yansi",
 ]
@@ -2950,13 +2852,13 @@ dependencies = [
 
 [[package]]
 name = "serde_repr"
-version = "0.1.10"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a5ec9fa74a20ebbe5d9ac23dac1fc96ba0ecfe9f50f2843b52e537b10fbcb4e"
+checksum = "bcec881020c684085e55a25f7fd888954d56609ef363479dc5a1305eb0d40cab"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.10",
 ]
 
 [[package]]
@@ -3103,7 +3005,7 @@ dependencies = [
  "pretty_env_logger",
  "probe-rs",
  "serde",
- "toml 0.7.4",
+ "toml",
 ]
 
 [[package]]
@@ -3166,9 +3068,9 @@ dependencies = [
 
 [[package]]
 name = "svd-rs"
-version = "0.14.1"
+version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b71b720c7939c8b91c54ffd313444c29b1421e8d8ffe12a2a4e8c6b4aac05b43"
+checksum = "d08273bc4ca66b632299903960efa8a306aac61dc6381bcf07450c20b1a5443c"
 dependencies = [
  "once_cell",
  "regex",
@@ -3425,15 +3327,6 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.5.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4f7f0dd8d50a853a531c426359045b1998f04219d88799810762cd4ad314234"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "toml"
 version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6135d499e69981f9ff0ef2167955a5333c35e36f6937d382974566b3d5b94ec"
@@ -3607,7 +3500,7 @@ checksum = "ccdd26cbd674007e649a272da4475fb666d3aa0ad0531da7136db6fab0e5bad1"
 dependencies = [
  "bitflags",
  "cassowary",
- "crossterm",
+ "crossterm 0.25.0",
  "unicode-segmentation",
  "unicode-width",
 ]
@@ -3629,9 +3522,9 @@ dependencies = [
 
 [[package]]
 name = "uncased"
-version = "0.9.7"
+version = "0.9.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "09b01702b0fd0b3fadcf98e098780badda8742d4f4a7676615cad90e8ac73622"
+checksum = "9b9bc53168a4be7402ab86c3aad243a84dd7381d09be0eddc81280c1da95ca68"
 dependencies = [
  "version_check",
 ]

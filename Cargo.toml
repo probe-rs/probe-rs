@@ -11,14 +11,8 @@ license = "MIT OR Apache-2.0"
 
 [workspace]
 members = [
-    "cargo-embed",
-    "cli",
-    "cargo-flash",
-    "debugger",
-    "gdb-server",
     "probe-rs",
     "probe-rs-target",
-    "probe-rs-cli-util",
     "rtthost",
     "smoke-tester",
     "xtask",
@@ -29,7 +23,6 @@ members = [
 probe-rs = { path = "probe-rs", version = "0.18.0" }
 probe-rs-cli-util = { path = "probe-rs-cli-util", version = "0.18.0" }
 probe-rs-target = { path = "probe-rs-target", version = "0.18.0" }
-gdb-server = { path = "gdb-server", version = "0.18.0" }
 
 log = "0.4.19"
 pretty_env_logger = "0.5.0"
