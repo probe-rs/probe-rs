@@ -19,6 +19,9 @@ fn main() {
         Err(e) => e,
     };
 
-    eprintln!("Error: {}", err);
+    eprintln!("Error launching `probe-rs`: {}", err);
+    eprintln!("Note: the `cargo-flash` binary is a small shim that launches `probe-rs`.");
+    eprintln!("Make sure `probe-rs` is installed and available in $PATH.");
+
     exit(99);
 }
