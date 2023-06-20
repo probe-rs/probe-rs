@@ -58,6 +58,12 @@ pub enum FlashError {
         /// The error code the called routine returned.
         error_code: u32,
     },
+    /// The core entered an unexpected status while executing a flashing operation.
+    #[error("The core entered an unexpected status: {status:?}.")]
+    UnexpectedCoreStatus {
+        /// The status that the core entered.
+        status: crate::CoreStatus,
+    },
     /// The given address was not contained in the given NVM region.
     #[error("{address:#010x} is not contained in {region:?}")]
     AddressNotInRegion {

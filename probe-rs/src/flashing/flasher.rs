@@ -699,13 +699,23 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
 
         let mut timeout_ocurred = true;
         while start.elapsed() < timeout {
-            if self.core.core_halted()? {
-                timeout_ocurred = false;
-                // Once the core is halted we know for sure all RTT data is written
-                // so we can read all of it.
-                #[cfg(feature = "rtt")]
-                self.read_rtt()?;
-                break;
+            match self.core.status()? {
+                crate::CoreStatus::Halted(_) => {
+                    timeout_ocurred = false;
+                    // Once the core is halted we know for sure all RTT data is written
+                    // so we can read all of it.
+                    #[cfg(feature = "rtt")]
+                    self.read_rtt()?;
+                    break;
+                }
+                crate::CoreStatus::LockedUp => {
+                    return Err(FlashError::UnexpectedCoreStatus {
+                        status: crate::CoreStatus::LockedUp,
+                    });
+                }
+                _ => {
+                    // All other statuses are okay: we'll just keep polling.
+                }
             }
 
             // Periodically read RTT.
