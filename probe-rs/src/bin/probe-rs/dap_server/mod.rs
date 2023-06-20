@@ -9,7 +9,7 @@ use anyhow::{Context, Result};
 use probe_rs::{
     architecture::arm::ap::AccessPortError, flashing::FileDownloadError, DebugProbeError, Error,
 };
-use server::startup::{debug, list_connected_devices, list_supported_chips};
+use server::startup::debug;
 use std::{env::var, fs::File, io::stderr};
 use time::{OffsetDateTime, UtcOffset};
 use tracing::metadata::LevelFilter;
@@ -56,38 +56,23 @@ pub enum DebuggerError {
     Unimplemented,
 }
 
-/// CliCommands enum contains the list of supported commands that can be invoked from the command line.
-///
-/// There are only 3 command line options for the debugger.
-#[derive(clap::Subcommand)]
-pub enum CliCommands {
-    /// List all connected debug probes
-    List {},
-    /// List all probe-rs supported chips
-    #[clap(name = "list-chips")]
-    ListChips {},
-    /// Open target in debug mode and accept debug commands.
-    /// This only works as a [debug_adapter::protocol::DapAdapter] and uses DAP Protocol debug commands (enables connections from clients such as Microsoft Visual Studio Code).
-    Debug {
-        /// IP port number to listen for incoming DAP connections, e.g. "50000"
-        #[clap(long)]
-        port: u16,
+/// Open target in debug mode and accept debug commands.
+/// This only works as a [debug_adapter::protocol::DapAdapter] and uses DAP Protocol debug commands (enables connections from clients such as Microsoft Visual Studio Code).
+#[derive(clap::Parser)]
+pub struct CliCommand {
+    /// IP port number to listen for incoming DAP connections, e.g. "50000"
+    #[clap(long)]
+    port: u16,
 
-        /// The debug adapter processed was launched by VSCode, and should terminate itself at the end of every debug session (when receiving `Disconnect` or `Terminate` Request from VSCode). The "false"(default) state of this option implies that the process was launched (and will be managed) by the user.
-        #[clap(long, hide = true)]
-        vscode: bool,
-    },
+    /// The debug adapter processed was launched by VSCode, and should terminate itself at the end of every debug session (when receiving `Disconnect` or `Terminate` Request from VSCode). The "false"(default) state of this option implies that the process was launched (and will be managed) by the user.
+    #[clap(long, hide = true)]
+    vscode: bool,
 }
 
-pub fn run(matches: CliCommands, time_offset: UtcOffset) -> Result<()> {
+pub fn run(cmd: CliCommand, time_offset: UtcOffset) -> Result<()> {
     let log_info_message = setup_logging(time_offset)?;
 
-    match matches {
-        CliCommands::List {} => list_connected_devices()?,
-        CliCommands::ListChips {} => list_supported_chips()?,
-        CliCommands::Debug { port, vscode } => debug(port, vscode, &log_info_message, time_offset)?,
-    }
-    Ok(())
+    debug(cmd.port, cmd.vscode, &log_info_message, time_offset)
 }
 
 /// Setup logging, according to the following rules.

@@ -13,6 +13,7 @@ mod util;
 include!(concat!(env!("OUT_DIR"), "/meta.rs"));
 
 use anyhow::{Context, Result};
+use byte_unit::Byte;
 use clap::Parser;
 use probe_rs::{
     architecture::arm::{component::TraceSink, swo::SwoConfig},
@@ -21,8 +22,8 @@ use probe_rs::{
     MemoryInterface, Probe,
 };
 use rustyline::DefaultEditor;
+use std::time::Instant;
 use std::{ffi::OsString, fs::File, path::PathBuf};
-use std::{io, time::Instant};
 use std::{num::ParseIntError, path::Path};
 use time::{OffsetDateTime, UtcOffset};
 use tracing::metadata::LevelFilter;
@@ -34,7 +35,7 @@ use tracing_subscriber::{
 use crate::benchmark::{benchmark, BenchmarkOptions};
 use crate::debugger::CliState;
 use crate::util::{
-    common_options::{print_chip_info, print_families, CargoOptions, FlashOptions, ProbeOptions},
+    common_options::{CargoOptions, FlashOptions, ProbeOptions},
     flash::run_flash_download,
 };
 
@@ -58,10 +59,7 @@ struct Cli {
 #[derive(clap::Subcommand)]
 enum Subcommand {
     /// Debug Adapter Protocol (DAP) server. See https://probe.rs/docs/tools/vscode/
-    DapServer {
-        #[clap(subcommand)]
-        cmd: dap_server::CliCommands,
-    },
+    DapServer(dap_server::CliCommand),
     /// List all connected debug probes
     List {},
     /// Gets infos about the selected debug probe and connected target
@@ -316,7 +314,7 @@ fn main() -> Result<()> {
 
     // the DAP server has special logging requirements. Run it before initializing logging,
     // so it can do its own special init.
-    if let Subcommand::DapServer { cmd } = matches.subcommand {
+    if let Subcommand::DapServer(cmd) = matches.subcommand {
         return dap_server::run(cmd, utc_offset);
     }
 
@@ -353,7 +351,7 @@ fn main() -> Result<()> {
 
     let result = match matches.subcommand {
         Subcommand::DapServer { .. } => unreachable!(), // handled above.
-        Subcommand::List {} => list_connected_devices(),
+        Subcommand::List {} => list_connected_probes(),
         Subcommand::Info { common } => crate::info::show_info_of_device(&common),
         Subcommand::Gdb {
             gdb_connection_string,
@@ -428,8 +426,8 @@ fn main() -> Result<()> {
                 std::time::Duration::from_millis(duration_ms),
             )
         }
-        Subcommand::Chip(Chip::List) => print_families(io::stdout()).map_err(Into::into),
-        Subcommand::Chip(Chip::Info { name }) => print_chip_info(name, io::stdout()),
+        Subcommand::Chip(Chip::List) => print_families().map_err(Into::into),
+        Subcommand::Chip(Chip::Info { name }) => print_chip_info(name),
         Subcommand::Benchmark { common, options } => benchmark(common, options),
     };
 
@@ -438,19 +436,72 @@ fn main() -> Result<()> {
     result
 }
 
-fn list_connected_devices() -> Result<()> {
-    let links = Probe::list_all();
+/// Lists all connected debug probes.
+pub fn list_connected_probes() -> Result<()> {
+    let probes = Probe::list_all();
 
-    if !links.is_empty() {
-        println!("The following devices were found:");
-        links
-            .iter()
-            .enumerate()
-            .for_each(|(num, link)| println!("[{num}]: {link:?}"));
+    if !probes.is_empty() {
+        println!("The following debug probes were found:");
+        for (num, link) in probes.iter().enumerate() {
+            println!("[{num}]: {link:?}");
+        }
     } else {
-        println!("No devices were found.");
+        println!("No debug probes were found.");
+    }
+    Ok(())
+}
+
+/// Print all the available families and their contained chips to the
+/// commandline.
+pub fn print_families() -> Result<()> {
+    println!("Available chips:");
+    for family in probe_rs::config::families()? {
+        println!("{}", &family.name);
+        println!("    Variants:");
+        for variant in family.variants() {
+            println!("        {}", variant.name);
+        }
+    }
+    Ok(())
+}
+
+/// Print all the available families and their contained chips to the
+/// commandline.
+pub fn print_chip_info(name: impl AsRef<str>) -> Result<()> {
+    println!("{}", name.as_ref());
+    let target = probe_rs::config::get_target_by_name(name)?;
+    println!("Cores ({}):", target.cores.len());
+    for core in target.cores {
+        println!(
+            "    - {} ({:?})",
+            core.name.to_ascii_lowercase(),
+            core.core_type
+        );
     }
 
+    fn get_range_len(range: &std::ops::Range<u64>) -> u64 {
+        range.end - range.start
+    }
+
+    for memory in target.memory_map {
+        match memory {
+            probe_rs::config::MemoryRegion::Ram(region) => println!(
+                "RAM: {:#010x?} ({})",
+                &region.range,
+                Byte::from_bytes(get_range_len(&region.range) as u128).get_appropriate_unit(true)
+            ),
+            probe_rs::config::MemoryRegion::Generic(region) => println!(
+                "Generic: {:#010x?} ({})",
+                &region.range,
+                Byte::from_bytes(get_range_len(&region.range) as u128).get_appropriate_unit(true)
+            ),
+            probe_rs::config::MemoryRegion::Nvm(region) => println!(
+                "NVM: {:#010x?} ({})",
+                &region.range,
+                Byte::from_bytes(get_range_len(&region.range) as u128).get_appropriate_unit(true)
+            ),
+        };
+    }
     Ok(())
 }
 
@@ -516,8 +567,6 @@ fn download_program_fast(
         &mut session,
         Path::new(path),
         &FlashOptions {
-            list_chips: false,
-            list_probes: false,
             disable_progressbars,
             disable_double_buffering,
             reset_halt: false,

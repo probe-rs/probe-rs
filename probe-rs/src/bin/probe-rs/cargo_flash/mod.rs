@@ -87,11 +87,6 @@ fn main_try(mut args: Vec<OsString>, metadata: Arc<Mutex<Metadata>>) -> Result<(
     // Load the target description, if given in the cli parameters.
     opt.probe_options.maybe_load_chip_desc()?;
 
-    // handle --list-{chips,probes}
-    if opt.early_exit(std::io::stdout())? {
-        return Ok(());
-    }
-
     // Store the chip name in the metadata stuct so we can print it as debug information when cargo-flash crashes.
     if let Some(ref chip) = opt.probe_options.chip {
         metadata.lock().unwrap().chip = Some(format!("{chip:?}"));

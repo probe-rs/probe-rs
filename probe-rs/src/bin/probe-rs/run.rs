@@ -30,8 +30,6 @@ pub fn run(
         &mut session,
         Path::new(path),
         &FlashOptions {
-            list_chips: false,
-            list_probes: false,
             disable_progressbars: false,
             disable_double_buffering,
             reset_halt: false,
