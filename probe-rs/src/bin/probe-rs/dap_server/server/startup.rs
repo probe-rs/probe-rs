@@ -1,7 +1,6 @@
 use super::debugger::{DebugSessionStatus, Debugger};
 use crate::dap_server::debug_adapter::{dap::adapter::*, protocol::DapAdapter};
-use anyhow::{anyhow, Context, Result};
-use probe_rs::Probe;
+use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::{
     fs,
@@ -29,36 +28,6 @@ impl std::str::FromStr for TargetSessionType {
             )),
         }
     }
-}
-
-pub fn list_connected_devices() -> Result<()> {
-    let connected_devices = Probe::list_all();
-
-    if !connected_devices.is_empty() {
-        println!("The following devices were found:");
-        connected_devices
-            .iter()
-            .enumerate()
-            .for_each(|(num, device)| println!("[{num}]: {device:?}"));
-    } else {
-        println!("No devices were found.");
-    }
-    Ok(())
-}
-
-pub fn list_supported_chips() -> Result<()> {
-    println!("Available chips:");
-    for family in
-        probe_rs::config::families().map_err(|e| anyhow!("Families could not be read: {:?}", e))?
-    {
-        println!("{}", &family.name);
-        println!("    Variants:");
-        for variant in family.variants() {
-            println!("        {}", variant.name);
-        }
-    }
-
-    Ok(())
 }
 
 pub fn debug(

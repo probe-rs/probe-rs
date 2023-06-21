@@ -47,8 +47,6 @@ struct Opt {
         Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one probe with the same VID:PID."
     )]
     probe_selector: Option<DebugProbeSelector>,
-    #[clap(name = "list-chips", long = "list-chips")]
-    list_chips: bool,
     #[clap(name = "disable-progressbars", long = "disable-progressbars")]
     disable_progressbars: bool,
     /// Work directory for the command.
@@ -174,16 +172,12 @@ fn main_try(
             .with_context(|| format!("failed to load the chip description from {cdp}"))?;
     }
 
-    let chip = if opt.list_chips {
-        print_families()?;
-        std::process::exit(0);
-    } else {
-        opt.chip
-            .as_ref()
-            .or(config.general.chip.as_ref())
-            .map(|chip| chip.into())
-            .unwrap_or(TargetSelector::Auto)
-    };
+    let chip = opt
+        .chip
+        .as_ref()
+        .or(config.general.chip.as_ref())
+        .map(|chip| chip.into())
+        .unwrap_or(TargetSelector::Auto);
 
     metadata.lock().unwrap().chip = Some(format!("{chip:?}"));
 
@@ -722,19 +716,5 @@ fn flash(
         "Finished".green().bold(),
         elapsed.as_millis() as f32 / 1000.0,
     ));
-    Ok(())
-}
-
-fn print_families() -> Result<()> {
-    logging::println("Available chips:");
-    for family in
-        probe_rs::config::families().map_err(|e| anyhow!("Families could not be read: {:?}", e))?
-    {
-        logging::println(&family.name);
-        logging::println("    Variants:");
-        for variant in family.variants() {
-            logging::println(format!("        {}", variant.name));
-        }
-    }
     Ok(())
 }

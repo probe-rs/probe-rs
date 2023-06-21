@@ -29,10 +29,6 @@ pub(crate) fn render_diagnostics(error: OperationError) {
                 "For a guide on how to set up your probes, see https://probe.rs/docs/getting-started/probe-setup".into(),
             ],
         ),
-        OperationError::FailedToReadFamilies(_e) => (
-            error.to_string(),
-            vec![],
-        ),
         OperationError::FailedToOpenElf { source, path } => (
             error.to_string(),
             match source.kind() {
@@ -149,7 +145,7 @@ pub(crate) fn render_diagnostics(error: OperationError) {
                     "Did you spell the name of your chip correctly? Capitalization does not matter."
                         .into(),
                     "Maybe your chip is not supported yet. You could add it yourself with our tool here: https://github.com/probe-rs/target-gen.".into(),
-                    "You can list all the available chips by passing the `--list-chips` argument.".into(),
+                    "You can list all the available chips by running `probe-rs chip list`.".into(),
                 ],
             ),
             _ => (
@@ -172,7 +168,7 @@ pub(crate) fn render_diagnostics(error: OperationError) {
                 error.to_string(),
                 vec![
                     "Try specifying your chip with the `--chip` argument.".into(),
-                    "You can list all the available chips by passing the `--list-chips` argument.".into(),
+                    "You can list all the available chips by running `probe-rs chip list`.".into(),
                 ],
             ),
             _ => if !connect_under_reset {
@@ -250,7 +246,7 @@ fn generate_flash_error_hints(
                         error.to_string(),
                         vec![
                             "A generic chip was selected as the target. For flashing, it is necessary to specify a concrete chip.\n\
-                            Use `--list-chips` to see all available chips.".to_owned()
+                            You can list all the available chips by running `probe-rs chip list`.".to_owned()
                         ]
                     );
                 }
