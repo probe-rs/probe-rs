@@ -27,8 +27,6 @@ use std::{
 use time::{OffsetDateTime, UtcOffset};
 
 use crate::cargo_embed::rttui::channel::DataFormat;
-#[cfg(feature = "sentry")]
-use crate::util::logging::{ask_to_log_crash, capture_anyhow, capture_panic};
 use crate::util::{
     build_artifact,
     common_options::CargoOptions,
@@ -76,19 +74,6 @@ pub fn main(args: Vec<OsString>) {
         speed: None,
     }));
 
-    let metadata_panic = metadata.clone();
-
-    let next = panic::take_hook();
-    panic::set_hook(Box::new(move |info| {
-        #[cfg(feature = "sentry")]
-        if ask_to_log_crash() {
-            capture_panic(&metadata_panic.lock().unwrap(), info)
-        }
-        #[cfg(not(feature = "sentry"))]
-        log::info!("{:#?}", &metadata_panic.lock().unwrap());
-        next(info);
-    }));
-
     match main_try(args, metadata.clone(), offset) {
         Ok(_) => (),
         Err(e) => {
@@ -119,11 +104,6 @@ pub fn main(args: Vec<OsString>) {
 
             let _ = stderr.flush();
 
-            #[cfg(feature = "sentry")]
-            if ask_to_log_crash() {
-                capture_anyhow(&metadata.lock().unwrap(), &e)
-            }
-            #[cfg(not(feature = "sentry"))]
             log::info!("{:#?}", &metadata.lock().unwrap());
 
             process::exit(1);
