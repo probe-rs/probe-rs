@@ -157,14 +157,10 @@ impl SessionData {
             .core_configs
             .iter()
             .filter(|&core_config| {
-                matches!(
-                        target_session
-                            .list_cores()
-                            .iter()
-                            .find(|(target_core_index, _)| *target_core_index
-                                == core_config.core_index),
-                        Some(_)
-                    )
+                target_session
+                    .list_cores()
+                    .iter()
+                    .any(|(target_core_index, _)| *target_core_index == core_config.core_index)
             })
             .cloned()
             .collect::<Vec<CoreConfig>>();
