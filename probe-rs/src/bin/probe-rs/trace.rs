@@ -1,42 +1,66 @@
-//! Provides ITM tracing capabilities.
+use std::time::Instant;
 
-use super::{CoreOptions, ProbeOptions};
-use probe_rs::architecture::arm::component::TraceSink;
+use probe_rs::MemoryInterface;
 
-/// Trace the application using ITM.
-///
-/// # Args
-/// * `shared_options` - Specifies information about which core to trace.
-/// * `common` - Specifies information about the probe to use for tracing.
-/// * `sink` - Specifies the destination for trace data.
-/// * `duration` - Specifies the duration to trace for.
-/// * `output_file` - An optionally specified filename to write ITM binary data into.
-pub(crate) fn itm_trace(
-    shared_options: &CoreOptions,
-    common: &ProbeOptions,
-    sink: TraceSink,
-    duration: std::time::Duration,
-) -> anyhow::Result<()> {
-    let mut session = common.simple_attach()?;
+use crate::util::{common_options::ProbeOptions, parse_u64};
+use crate::CoreOptions;
 
-    session.setup_tracing(shared_options.core, sink)?;
+#[derive(clap::Parser)]
+pub struct Cmd {
+    #[clap(flatten)]
+    shared: CoreOptions,
 
-    let decoder = itm::Decoder::new(
-        session.swo_reader()?,
-        itm::DecoderOptions { ignore_eof: true },
-    );
+    #[clap(flatten)]
+    common: ProbeOptions,
 
-    let start = std::time::Instant::now();
-    let iter = decoder.singles();
+    /// The address of the memory to dump from the target.
+    #[clap(value_parser = parse_u64)]
+    loc: u64,
+}
 
-    // Decode and print the ITM data for display.
-    for packet in iter {
-        if start.elapsed() > duration {
-            return Ok(());
+impl Cmd {
+    pub fn run(self) -> anyhow::Result<()> {
+        use std::io::prelude::*;
+        use std::thread::sleep;
+        use std::time::Duration;
+
+        use scroll::{Pwrite, LE};
+
+        let mut xs = vec![];
+        let mut ys = vec![];
+
+        let start = Instant::now();
+
+        let mut session = self.common.simple_attach()?;
+
+        let mut core = session.core(self.shared.core)?;
+
+        loop {
+            // Prepare read.
+            let elapsed = start.elapsed();
+            let instant = elapsed.as_secs() * 1000 + u64::from(elapsed.subsec_millis());
+
+            // Read data.
+            let value: u32 = core.read_word_32(self.loc)?;
+
+            xs.push(instant);
+            ys.push(value);
+
+            // Send value to plot.py.
+            let mut buf = [0_u8; 8];
+            // Unwrap is safe!
+            buf.pwrite_with(instant, 0, LE).unwrap();
+            buf.pwrite_with(value, 4, LE).unwrap();
+            std::io::stdout().write_all(&buf)?;
+
+            std::io::stdout().flush()?;
+
+            // Schedule next read.
+            let elapsed = start.elapsed();
+            let instant = elapsed.as_secs() * 1000 + u64::from(elapsed.subsec_millis());
+            let poll_every_ms = 50;
+            let time_to_wait = poll_every_ms - instant % poll_every_ms;
+            sleep(Duration::from_millis(time_to_wait));
         }
-
-        println!("{packet:?}");
     }
-
-    Ok(())
 }

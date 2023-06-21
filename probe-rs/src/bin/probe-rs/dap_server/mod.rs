@@ -59,7 +59,7 @@ pub enum DebuggerError {
 /// Open target in debug mode and accept debug commands.
 /// This only works as a [debug_adapter::protocol::DapAdapter] and uses DAP Protocol debug commands (enables connections from clients such as Microsoft Visual Studio Code).
 #[derive(clap::Parser)]
-pub struct CliCommand {
+pub struct Cmd {
     /// IP port number to listen for incoming DAP connections, e.g. "50000"
     #[clap(long)]
     port: u16,
@@ -69,7 +69,7 @@ pub struct CliCommand {
     vscode: bool,
 }
 
-pub fn run(cmd: CliCommand, time_offset: UtcOffset) -> Result<()> {
+pub fn run(cmd: Cmd, time_offset: UtcOffset) -> Result<()> {
     let log_info_message = setup_logging(time_offset)?;
 
     debug(cmd.port, cmd.vscode, &log_info_message, time_offset)

@@ -1,6 +1,7 @@
 use std::error::Error;
 use std::fmt::Write;
 
+use anyhow::Result;
 use probe_rs::{
     architecture::{
         arm::{
@@ -16,38 +17,46 @@ use probe_rs::{
     },
     MemoryMappedRegister, Probe, WireProtocol,
 };
-
-use crate::util::common_options::ProbeOptions;
-use anyhow::Result;
 use termtree::Tree;
 
-pub(crate) fn show_info_of_device(common: &ProbeOptions) -> Result<()> {
-    let mut probe = common.attach_probe()?;
+use crate::util::common_options::ProbeOptions;
 
-    let protocols = if let Some(protocol) = common.protocol {
-        vec![protocol]
-    } else {
-        vec![WireProtocol::Jtag, WireProtocol::Swd]
-    };
+#[derive(clap::Parser)]
+pub struct Cmd {
+    #[clap(flatten)]
+    common: ProbeOptions,
+}
 
-    for protocol in protocols {
-        println!("Probing target via {protocol}");
-        println!();
+impl Cmd {
+    pub fn run(self) -> anyhow::Result<()> {
+        let mut probe = self.common.attach_probe()?;
 
-        let (new_probe, result) = try_show_info(probe, protocol, common.connect_under_reset);
+        let protocols = if let Some(protocol) = self.common.protocol {
+            vec![protocol]
+        } else {
+            vec![WireProtocol::Jtag, WireProtocol::Swd]
+        };
 
-        probe = new_probe;
+        for protocol in protocols {
+            println!("Probing target via {protocol}");
+            println!();
 
-        probe.detach()?;
+            let (new_probe, result) =
+                try_show_info(probe, protocol, self.common.connect_under_reset);
 
-        if let Err(e) = result {
-            println!("Error identifying target using protocol {protocol}: {e}");
+            probe = new_probe;
+
+            probe.detach()?;
+
+            if let Err(e) = result {
+                println!("Error identifying target using protocol {protocol}: {e}");
+            }
+
+            println!();
         }
 
-        println!();
+        Ok(())
     }
-
-    Ok(())
 }
 
 fn try_show_info(

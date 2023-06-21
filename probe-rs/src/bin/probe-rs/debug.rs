@@ -1,4 +1,5 @@
-use crate::common::CliError;
+use std::{fs::File, path::PathBuf};
+use std::{io::prelude::*, time::Duration};
 
 use anyhow::anyhow;
 use capstone::{
@@ -6,6 +7,7 @@ use capstone::{
     arch::riscv::ArchMode as riscvArchMode, prelude::*, Capstone, Endian,
 };
 use num_traits::Num;
+use parse_int::parse;
 use probe_rs::{
     architecture::arm::Dump,
     debug::{
@@ -13,10 +15,74 @@ use probe_rs::{
     },
     Core, CoreRegister, CoreType, InstructionSet, MemoryInterface, RegisterId, RegisterValue,
 };
-use std::fs::File;
-use std::{io::prelude::*, time::Duration};
+use rustyline::DefaultEditor;
 
-use parse_int::parse;
+use crate::{common::CliError, util::common_options::ProbeOptions, CoreOptions};
+
+#[derive(clap::Parser)]
+pub struct Cmd {
+    #[clap(flatten)]
+    shared: CoreOptions,
+
+    #[clap(flatten)]
+    common: ProbeOptions,
+
+    #[clap(long, value_parser)]
+    /// Binary to debug
+    exe: Option<PathBuf>,
+}
+
+impl Cmd {
+    pub fn run(self) -> anyhow::Result<()> {
+        let mut session = self.common.simple_attach()?;
+
+        let di = self
+            .exe
+            .as_ref()
+            .and_then(|path| DebugInfo::from_file(path).ok());
+
+        let cli = DebugCli::new();
+
+        let core = session.core(self.shared.core)?;
+
+        let mut cli_data = CliData::new(core, di)?;
+
+        let mut rl = DefaultEditor::new()?;
+
+        loop {
+            cli_data.print_state()?;
+
+            let readline = rl.readline(">> ");
+            match readline {
+                Ok(line) => {
+                    let history_entry: &str = line.as_ref();
+                    rl.add_history_entry(history_entry)?;
+                    let cli_state = cli.handle_line(&line, &mut cli_data)?;
+
+                    match cli_state {
+                        CliState::Continue => (),
+                        CliState::Stop => break,
+                    }
+                }
+                Err(e) => {
+                    use rustyline::error::ReadlineError;
+
+                    match e {
+                        // For end of file and ctrl-c, we just quit
+                        ReadlineError::Eof | ReadlineError::Interrupted => return Ok(()),
+                        actual_error => {
+                            // Show error message and quit
+                            println!("Error handling input: {actual_error:?}");
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
 
 pub struct DebugCli {
     commands: Vec<Command>,

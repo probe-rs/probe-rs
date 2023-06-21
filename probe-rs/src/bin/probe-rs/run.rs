@@ -1,85 +1,100 @@
-use crate::util::common_options::{CargoOptions, FlashOptions, ProbeOptions};
-use crate::util::flash::run_flash_download;
-use crate::util::rtt;
-use anyhow::{Context, Result};
-use probe_rs::flashing::FileDownloadError;
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::time::Duration;
+
+use anyhow::Context;
+use probe_rs::flashing::FileDownloadError;
 use time::UtcOffset;
 
-pub fn run(
+use crate::util::common_options::{CargoOptions, FlashOptions, ProbeOptions};
+use crate::util::flash::run_flash_download;
+use crate::util::rtt;
+
+#[derive(clap::Parser)]
+pub struct Cmd {
+    #[clap(flatten)]
     common: ProbeOptions,
-    path: &str,
+
+    /// The path to the ELF file to flash and run
+    path: String,
+
+    /// Whether to erase the entire chip before downloading
+    #[clap(long)]
     chip_erase: bool,
+
+    /// Disable double-buffering when downloading flash.  If downloading times out, try this option.
+    #[clap(long = "disable-double-buffering")]
     disable_double_buffering: bool,
-    timestamp_offset: UtcOffset,
-) -> Result<()> {
-    let mut session = common.simple_attach()?;
+}
 
-    let mut file = match File::open(path) {
-        Ok(file) => file,
-        Err(e) => return Err(FileDownloadError::IO(e)).context("Failed to open binary file."),
-    };
+impl Cmd {
+    pub fn run(self, timestamp_offset: UtcOffset) -> anyhow::Result<()> {
+        let mut session = self.common.simple_attach()?;
 
-    let mut loader = session.target().flash_loader();
-    loader.load_elf_data(&mut file)?;
+        let mut file = match File::open(&self.path) {
+            Ok(file) => file,
+            Err(e) => return Err(FileDownloadError::IO(e)).context("Failed to open binary file."),
+        };
 
-    run_flash_download(
-        &mut session,
-        Path::new(path),
-        &FlashOptions {
-            disable_progressbars: false,
-            disable_double_buffering,
-            reset_halt: false,
-            log: None,
-            restore_unwritten: false,
-            flash_layout_output_path: None,
-            elf: None,
-            work_dir: None,
-            cargo_options: CargoOptions::default(),
-            probe_options: common,
-        },
-        loader,
-        chip_erase,
-    )?;
+        let mut loader = session.target().flash_loader();
+        loader.load_elf_data(&mut file)?;
 
-    let rtt_config = rtt::RttConfig::default();
+        run_flash_download(
+            &mut session,
+            Path::new(&self.path),
+            &FlashOptions {
+                disable_progressbars: false,
+                disable_double_buffering: self.disable_double_buffering,
+                reset_halt: false,
+                log: None,
+                restore_unwritten: false,
+                flash_layout_output_path: None,
+                elf: None,
+                work_dir: None,
+                cargo_options: CargoOptions::default(),
+                probe_options: self.common,
+            },
+            loader,
+            self.chip_erase,
+        )?;
 
-    let memory_map = session.target().memory_map.clone();
+        let rtt_config = rtt::RttConfig::default();
 
-    let mut core = session.core(0)?;
-    core.reset()?;
+        let memory_map = session.target().memory_map.clone();
 
-    let mut rtta = match rtt::attach_to_rtt(
-        &mut core,
-        &memory_map,
-        Path::new(path),
-        &rtt_config,
-        timestamp_offset,
-    ) {
-        Ok(target_rtt) => Some(target_rtt),
-        Err(error) => {
-            log::error!("{:?} Continuing without RTT... ", error);
-            None
-        }
-    };
+        let mut core = session.core(0)?;
+        core.reset()?;
 
-    if let Some(rtta) = &mut rtta {
-        let mut stdout = std::io::stdout();
-        loop {
-            for (_ch, data) in rtta.poll_rtt_fallible(&mut core)? {
-                stdout.write_all(data.as_bytes())?;
+        let mut rtta = match rtt::attach_to_rtt(
+            &mut core,
+            &memory_map,
+            Path::new(&self.path),
+            &rtt_config,
+            timestamp_offset,
+        ) {
+            Ok(target_rtt) => Some(target_rtt),
+            Err(error) => {
+                log::error!("{:?} Continuing without RTT... ", error);
+                None
             }
+        };
 
-            // Poll RTT with a frequency of 10 Hz
-            //
-            // If the polling frequency is too high,
-            // the USB connection to the probe can become unstable.
-            std::thread::sleep(Duration::from_millis(100));
+        if let Some(rtta) = &mut rtta {
+            let mut stdout = std::io::stdout();
+            loop {
+                for (_ch, data) in rtta.poll_rtt_fallible(&mut core)? {
+                    stdout.write_all(data.as_bytes())?;
+                }
+
+                // Poll RTT with a frequency of 10 Hz
+                //
+                // If the polling frequency is too high,
+                // the USB connection to the probe can become unstable.
+                std::thread::sleep(Duration::from_millis(100));
+            }
         }
-    }
 
-    Ok(())
+        Ok(())
+    }
 }
