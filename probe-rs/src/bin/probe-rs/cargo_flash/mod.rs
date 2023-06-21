@@ -3,15 +3,12 @@ mod diagnostics;
 use colored::*;
 use diagnostics::render_diagnostics;
 use std::ffi::OsString;
-use std::{panic, sync::Mutex};
+use std::sync::Mutex;
 use std::{path::PathBuf, process, sync::Arc};
 
 use crate::util::common_options::{CargoOptions, FlashOptions, OperationError};
 use crate::util::flash;
 use clap::{CommandFactory, FromArgMatches};
-
-#[cfg(feature = "sentry")]
-use crate::util::logging::{ask_to_log_crash, capture_panic};
 
 use crate::util::{build_artifact, logging, logging::Metadata};
 
@@ -24,26 +21,11 @@ pub fn main(args: Vec<OsString>) {
         speed: None,
     }));
 
-    let metadata_panic = metadata.clone();
-
-    let next = panic::take_hook();
-    panic::set_hook(Box::new(move |info| {
-        #[cfg(feature = "sentry")]
-        if ask_to_log_crash() {
-            capture_panic(&metadata_panic.lock().unwrap(), info)
-        }
-        #[cfg(not(feature = "sentry"))]
-        log::info!("{:#?}", &metadata_panic.lock().unwrap());
-        next(info);
-    }));
-
-    #[cfg(not(feature = "sentry"))]
     let metadata_log = metadata.clone();
 
     match main_try(args, metadata) {
         Ok(_) => (),
         Err(e) => {
-            #[cfg(not(feature = "sentry"))]
             log::info!("{:#?}", &metadata_log.lock().unwrap());
 
             // Ensure stderr is flushed before calling process::exit,
