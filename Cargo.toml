@@ -10,6 +10,7 @@ license = "MIT OR Apache-2.0"
 
 
 [workspace]
+resolver = "2"
 members = [
     "probe-rs",
     "probe-rs-target",
