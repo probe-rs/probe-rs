@@ -52,7 +52,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install Rust
-        run: rustup update 1.68.2 --no-self-update && rustup default 1.68.2
+        run: rustup update 1.70.0 --no-self-update && rustup default 1.70.0
       - name: Install cargo-dist
         run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.0.5/cargo-dist-v0.0.5-installer.sh | sh
       - id: create-release
@@ -101,7 +101,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Install Rust
-        run: rustup update 1.68.2 --no-self-update && rustup default 1.68.2
+        run: rustup update 1.70.0 --no-self-update && rustup default 1.70.0
       # Manual addition of build deps
       - name: Install libusb, libudev (linux)
         run: |
