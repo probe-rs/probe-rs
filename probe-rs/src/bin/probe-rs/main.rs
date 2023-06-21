@@ -1,5 +1,4 @@
 mod cmd;
-mod common;
 mod util;
 
 include!(concat!(env!("OUT_DIR"), "/meta.rs"));

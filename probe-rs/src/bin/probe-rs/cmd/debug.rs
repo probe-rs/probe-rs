@@ -8,6 +8,9 @@ use capstone::{
 };
 use num_traits::Num;
 use parse_int::parse;
+use probe_rs::architecture::arm::ap::AccessPortError;
+use probe_rs::flashing::FileDownloadError;
+use probe_rs::DebugProbeError;
 use probe_rs::{
     architecture::arm::Dump,
     debug::{
@@ -17,7 +20,7 @@ use probe_rs::{
 };
 use rustyline::DefaultEditor;
 
-use crate::{common::CliError, util::common_options::ProbeOptions, CoreOptions};
+use crate::{util::common_options::ProbeOptions, CoreOptions};
 
 #[derive(clap::Parser)]
 pub struct Cmd {
@@ -84,6 +87,30 @@ impl Cmd {
     }
 }
 
+#[derive(Debug, thiserror::Error)]
+enum CliError {
+    #[error(transparent)]
+    DebugProbe(#[from] DebugProbeError),
+    #[error(transparent)]
+    AccessPort(#[from] AccessPortError),
+    #[error(transparent)]
+    StdIO(#[from] std::io::Error),
+    #[error(transparent)]
+    FileDownload(#[from] FileDownloadError),
+    #[error("Command expected more arguments.")]
+    MissingArgument,
+    #[error("Failed to parse argument '{argument}'.")]
+    ArgumentParseError {
+        argument_index: usize,
+        argument: String,
+        source: anyhow::Error,
+    },
+    #[error(transparent)]
+    ProbeRs(#[from] probe_rs::Error),
+    #[error(transparent)]
+    Other(#[from] anyhow::Error),
+}
+
 pub struct DebugCli {
     commands: Vec<Command>,
 }
@@ -103,7 +130,7 @@ where
 }
 
 impl DebugCli {
-    pub fn new() -> DebugCli {
+    fn new() -> DebugCli {
         let mut cli = DebugCli {
             commands: Vec::new(),
         };
@@ -788,7 +815,7 @@ impl DebugCli {
         self.commands.push(command)
     }
 
-    pub fn handle_line(&self, line: &str, cli_data: &mut CliData) -> Result<CliState, CliError> {
+    fn handle_line(&self, line: &str, cli_data: &mut CliData) -> Result<CliState, CliError> {
         let mut command_parts = line.split_whitespace();
 
         match command_parts.next() {
@@ -857,7 +884,7 @@ pub struct CliData<'p> {
 }
 
 impl<'p> CliData<'p> {
-    pub fn new(core: Core<'p>, debug_info: Option<DebugInfo>) -> Result<CliData, CliError> {
+    fn new(core: Core<'p>, debug_info: Option<DebugInfo>) -> Result<CliData, CliError> {
         let mut cli_data = CliData {
             core,
             debug_info,
@@ -894,7 +921,7 @@ impl<'p> CliData<'p> {
         Ok(())
     }
 
-    pub fn print_state(&mut self) -> Result<(), CliError> {
+    fn print_state(&mut self) -> Result<(), CliError> {
         match self.state {
             DebugState::Running => println!("Core is running."),
             DebugState::Halted(ref mut halted_state) => {
