@@ -1,20 +1,5 @@
-mod benchmark;
-mod cargo_embed;
-mod cargo_flash;
-mod chip;
+mod cmd;
 mod common;
-mod dap_server;
-mod debug;
-mod download;
-mod dump;
-mod erase;
-mod gdb;
-mod info;
-mod itm;
-mod list;
-mod reset;
-mod run;
-mod trace;
 mod util;
 
 include!(concat!(env!("OUT_DIR"), "/meta.rs"));
@@ -51,34 +36,34 @@ struct Cli {
 #[derive(clap::Subcommand)]
 enum Subcommand {
     /// Debug Adapter Protocol (DAP) server. See https://probe.rs/docs/tools/vscode/
-    DapServer(dap_server::Cmd),
+    DapServer(cmd::dap_server::Cmd),
     /// List all connected debug probes
-    List(list::Cmd),
+    List(cmd::list::Cmd),
     /// Gets info about the selected debug probe and connected target
-    Info(info::Cmd),
+    Info(cmd::info::Cmd),
     /// Resets the target attached to the selected debug probe
-    Reset(reset::Cmd),
+    Reset(cmd::reset::Cmd),
     /// Run a GDB server
-    Gdb(gdb::Cmd),
+    Gdb(cmd::gdb::Cmd),
     /// Basic command line debugger
-    Debug(debug::Cmd),
+    Debug(cmd::debug::Cmd),
     /// Dump memory from attached target
-    Dump(dump::Cmd),
+    Dump(cmd::dump::Cmd),
     /// Download memory to attached target
-    Download(download::Cmd),
+    Download(cmd::download::Cmd),
     /// Erase all nonvolatile memory of attached target
-    Erase(erase::Cmd),
+    Erase(cmd::erase::Cmd),
     /// Flash and run an ELF program
     #[clap(name = "run")]
-    Run(run::Cmd),
+    Run(cmd::run::Cmd),
     /// Trace a memory location on the target
     #[clap(name = "trace")]
-    Trace(trace::Cmd),
+    Trace(cmd::trace::Cmd),
     /// Configure and monitor ITM trace packets from the target.
     #[clap(name = "itm")]
-    Itm(itm::Cmd),
-    Chip(chip::Cmd),
-    Benchmark(benchmark::Cmd),
+    Itm(cmd::itm::Cmd),
+    Chip(cmd::chip::Cmd),
+    Benchmark(cmd::benchmark::Cmd),
 }
 
 /// Shared options for core selection, shared between commands
@@ -133,11 +118,11 @@ fn multicall_check(args: &[OsString], want: &str) -> Option<Vec<OsString>> {
 fn main() -> Result<()> {
     let args: Vec<_> = std::env::args_os().collect();
     if let Some(args) = multicall_check(&args, "cargo-flash") {
-        cargo_flash::main(args);
+        cmd::cargo_flash::main(args);
         return Ok(());
     }
     if let Some(args) = multicall_check(&args, "cargo-embed") {
-        cargo_embed::main(args);
+        cmd::cargo_embed::main(args);
         return Ok(());
     }
 
@@ -150,7 +135,7 @@ fn main() -> Result<()> {
     // the DAP server has special logging requirements. Run it before initializing logging,
     // so it can do its own special init.
     if let Subcommand::DapServer(cmd) = matches.subcommand {
-        return dap_server::run(cmd, utc_offset);
+        return cmd::dap_server::run(cmd, utc_offset);
     }
 
     let log_path = if let Some(location) = matches.log_file {
