@@ -3,31 +3,18 @@ mod diagnostics;
 use colored::*;
 use diagnostics::render_diagnostics;
 use std::ffi::OsString;
-use std::sync::Mutex;
-use std::{path::PathBuf, process, sync::Arc};
+use std::{path::PathBuf, process};
 
 use crate::util::common_options::{CargoOptions, FlashOptions, OperationError};
 use crate::util::flash;
 use clap::{CommandFactory, FromArgMatches};
 
-use crate::util::{build_artifact, logging, logging::Metadata};
+use crate::util::{build_artifact, logging};
 
 pub fn main(args: Vec<OsString>) {
-    let metadata: Arc<Mutex<Metadata>> = Arc::new(Mutex::new(Metadata {
-        release: crate::meta::CARGO_VERSION.to_string(),
-        commit: crate::meta::GIT_VERSION.to_string(),
-        chip: None,
-        probe: None,
-        speed: None,
-    }));
-
-    let metadata_log = metadata.clone();
-
-    match main_try(args, metadata) {
+    match main_try(args) {
         Ok(_) => (),
         Err(e) => {
-            log::info!("{:#?}", &metadata_log.lock().unwrap());
-
             // Ensure stderr is flushed before calling process::exit,
             // otherwise the process might panic, because it tries
             // to access stderr during shutdown.
@@ -40,7 +27,7 @@ pub fn main(args: Vec<OsString>) {
     }
 }
 
-fn main_try(mut args: Vec<OsString>, metadata: Arc<Mutex<Metadata>>) -> Result<(), OperationError> {
+fn main_try(mut args: Vec<OsString>) -> Result<(), OperationError> {
     // When called by Cargo, the first argument after the binary name will be `flash`. If that's the
     // case, remove one argument (`Opt::from_iter` will remove the binary name by itself).
     if args.get(1).and_then(|t| t.to_str()) == Some("flash") {
@@ -68,11 +55,6 @@ fn main_try(mut args: Vec<OsString>, metadata: Arc<Mutex<Metadata>>) -> Result<(
 
     // Load the target description, if given in the cli parameters.
     opt.probe_options.maybe_load_chip_desc()?;
-
-    // Store the chip name in the metadata stuct so we can print it as debug information when cargo-flash crashes.
-    if let Some(ref chip) = opt.probe_options.chip {
-        metadata.lock().unwrap().chip = Some(format!("{chip:?}"));
-    }
 
     // Change the work dir if the user asked to do so.
     std::env::set_current_dir(&work_dir).map_err(|error| {
@@ -115,7 +97,7 @@ fn main_try(mut args: Vec<OsString>, metadata: Arc<Mutex<Metadata>>) -> Result<(
     // Deduce the target to attach to
     let target_selector = opt.probe_options.get_target_selector()?;
 
-    // Attach to specified probe and record metadata
+    // Attach to specified probe
     let probe = opt.probe_options.attach_probe()?;
     {
         let protocol_speed = probe.speed_khz();
@@ -128,11 +110,6 @@ fn main_try(mut args: Vec<OsString>, metadata: Arc<Mutex<Metadata>>) -> Result<(
                 );
             }
         }
-
-        // Store probe speed and name in the metadata struct to be able to
-        // print it in case of a crash.
-        metadata.lock().unwrap().speed = Some(format!("{protocol_speed:?}"));
-        metadata.lock().unwrap().probe = Some(probe.get_name());
 
         log::info!("Protocol speed {} kHz", protocol_speed);
     }

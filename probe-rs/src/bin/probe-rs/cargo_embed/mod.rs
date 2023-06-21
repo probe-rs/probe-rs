@@ -27,11 +27,7 @@ use std::{
 use time::{OffsetDateTime, UtcOffset};
 
 use crate::cargo_embed::rttui::channel::DataFormat;
-use crate::util::{
-    build_artifact,
-    common_options::CargoOptions,
-    logging::{self, Metadata},
-};
+use crate::util::{build_artifact, common_options::CargoOptions, logging};
 
 #[derive(Debug, clap::Parser)]
 struct Opt {
@@ -66,15 +62,7 @@ pub fn main(args: Vec<OsString>) {
         }
     };
 
-    let metadata: Arc<Mutex<Metadata>> = Arc::new(Mutex::new(Metadata {
-        release: crate::meta::CARGO_VERSION.to_string(),
-        commit: crate::meta::GIT_VERSION.to_string(),
-        chip: None,
-        probe: None,
-        speed: None,
-    }));
-
-    match main_try(args, metadata.clone(), offset) {
+    match main_try(args, offset) {
         Ok(_) => (),
         Err(e) => {
             // Ensure stderr is flushed before calling proces::exit,
@@ -104,18 +92,12 @@ pub fn main(args: Vec<OsString>) {
 
             let _ = stderr.flush();
 
-            log::info!("{:#?}", &metadata.lock().unwrap());
-
             process::exit(1);
         }
     }
 }
 
-fn main_try(
-    mut args: Vec<OsString>,
-    metadata: Arc<Mutex<Metadata>>,
-    offset: UtcOffset,
-) -> Result<()> {
+fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
     // When called by Cargo, the first argument after the binary name will be `flash`.
     // If that's the case, remove it.
     if args.get(1).and_then(|t| t.to_str()) == Some("embed") {
@@ -158,8 +140,6 @@ fn main_try(
         .or(config.general.chip.as_ref())
         .map(|chip| chip.into())
         .unwrap_or(TargetSelector::Auto);
-
-    metadata.lock().unwrap().chip = Some(format!("{chip:?}"));
 
     // Remove executable name from the arguments list.
     args.remove(0);
@@ -228,10 +208,6 @@ fn main_try(
                 }
                 Probe::open(
                     list.first()
-                        .map(|info| {
-                            metadata.lock().unwrap().probe = Some(format!("{:?}", info.probe_type));
-                            info
-                        })
                         .ok_or_else(|| anyhow!("No supported probe was found"))?,
                 )?
             }
@@ -257,8 +233,6 @@ fn main_try(
     } else {
         probe.speed_khz()
     };
-
-    metadata.lock().unwrap().speed = Some(format!("{protocol_speed:?}"));
 
     log::info!("Protocol speed {} kHz", protocol_speed);
 

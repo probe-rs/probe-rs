@@ -164,15 +164,6 @@ pub fn clear_progress_bar() {
     *guard = None;
 }
 
-#[derive(Clone, Debug)]
-pub struct Metadata {
-    pub chip: Option<String>,
-    pub probe: Option<String>,
-    pub speed: Option<String>,
-    pub release: String,
-    pub commit: String,
-}
-
 /// Writes an error to stderr.
 /// This function respects the progress bars of the CLI that might be displayed and displays the message above it if any are.
 pub fn eprintln(message: impl AsRef<str>) {
