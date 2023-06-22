@@ -33,9 +33,8 @@
 //! ```
 use super::ArtifactError;
 
-use std::{fs::File, io::Write, path::Path, path::PathBuf};
+use std::{fs::File, path::Path, path::PathBuf};
 
-use byte_unit::Byte;
 use clap;
 use probe_rs::{
     config::{RegistryError, TargetSelector},
@@ -47,15 +46,6 @@ use probe_rs::{
 /// Common options when flashing a target device.
 #[derive(Debug, clap::Parser)]
 pub struct FlashOptions {
-    #[clap(name = "list-chips", long = "list-chips")]
-    pub list_chips: bool,
-    #[clap(
-        name = "list-probes",
-        long = "list-probes",
-        help = "Lists all the connected probes that can be seen.\n\
-        If udev rules or permissions are wrong, some probes might not be listed."
-    )]
-    pub list_probes: bool,
     #[clap(name = "disable-progressbars", long = "disable-progressbars")]
     pub disable_progressbars: bool,
     #[clap(
@@ -107,28 +97,6 @@ pub struct FlashOptions {
     #[clap(flatten)]
     /// Argument relating to probe/chip selection/configuration.
     pub probe_options: ProbeOptions,
-}
-
-impl FlashOptions {
-    /// Whether calling program should exit prematurely. Effectively
-    /// handles --list-{probes,chips}.
-    ///
-    /// If `Ok(false)` is returned, calling program should continue executing.
-    ///
-    /// Note: [ProbeOptions::maybe_load_chip_desc] should be called before this function.
-    pub fn early_exit(&self, f: impl Write) -> Result<bool, OperationError> {
-        if self.list_probes {
-            list_connected_probes(f)?;
-            return Ok(true);
-        }
-
-        if self.list_chips {
-            print_families(f)?;
-            return Ok(true);
-        }
-
-        Ok(false)
-    }
 }
 
 /// Common options and logic when interfacing with a [Probe].
@@ -439,8 +407,6 @@ CARGO BUILD OPTIONS:
 pub enum OperationError {
     #[error("No connected probes were found.")]
     NoProbesFound,
-    #[error("Failed to list the target descriptions.")]
-    FailedToReadFamilies(#[source] RegistryError),
     #[error("Failed to open the ELF file '{path}' for flashing.")]
     FailedToOpenElf {
         #[source]
@@ -521,79 +487,6 @@ impl From<std::io::Error> for OperationError {
     fn from(e: std::io::Error) -> Self {
         OperationError::IOError(e)
     }
-}
-
-/// Lists all connected debug probes.
-pub fn list_connected_probes(mut f: impl Write) -> Result<(), std::io::Error> {
-    let probes = Probe::list_all();
-
-    if !probes.is_empty() {
-        writeln!(f, "The following debug probes were found:")?;
-        for (num, link) in probes.iter().enumerate() {
-            writeln!(f, "[{num}]: {link:?}")?;
-        }
-    } else {
-        writeln!(f, "No debug probes were found.")?;
-    }
-
-    Ok(())
-}
-
-/// Print all the available families and their contained chips to the
-/// commandline.
-pub fn print_families(mut f: impl Write) -> Result<(), OperationError> {
-    writeln!(f, "Available chips:")?;
-    for family in probe_rs::config::families().map_err(OperationError::FailedToReadFamilies)? {
-        writeln!(f, "{}", &family.name)?;
-        writeln!(f, "    Variants:")?;
-        for variant in family.variants() {
-            writeln!(f, "        {}", variant.name)?;
-        }
-    }
-    Ok(())
-}
-
-fn get_range_len(range: &std::ops::Range<u64>) -> u64 {
-    range.end - range.start
-}
-
-/// Print all the available families and their contained chips to the
-/// commandline.
-pub fn print_chip_info(name: impl AsRef<str>, mut f: impl Write) -> anyhow::Result<()> {
-    writeln!(f, "{}", name.as_ref())?;
-    let target = probe_rs::config::get_target_by_name(name)?;
-    writeln!(f, "Cores ({}):", target.cores.len())?;
-    for core in target.cores {
-        writeln!(
-            f,
-            "    - {} ({:?})",
-            core.name.to_ascii_lowercase(),
-            core.core_type
-        )?;
-    }
-    for memory in target.memory_map {
-        match memory {
-            probe_rs::config::MemoryRegion::Ram(region) => writeln!(
-                f,
-                "RAM: {:#010x?} ({})",
-                &region.range,
-                Byte::from_bytes(get_range_len(&region.range) as u128).get_appropriate_unit(true)
-            )?,
-            probe_rs::config::MemoryRegion::Generic(region) => writeln!(
-                f,
-                "Generic: {:#010x?} ({})",
-                &region.range,
-                Byte::from_bytes(get_range_len(&region.range) as u128).get_appropriate_unit(true)
-            )?,
-            probe_rs::config::MemoryRegion::Nvm(region) => writeln!(
-                f,
-                "NVM: {:#010x?} ({})",
-                &region.range,
-                Byte::from_bytes(get_range_len(&region.range) as u128).get_appropriate_unit(true)
-            )?,
-        };
-    }
-    Ok(())
 }
 
 #[cfg(test)]

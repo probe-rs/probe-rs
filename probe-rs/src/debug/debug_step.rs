@@ -315,7 +315,7 @@ impl SteppingMode {
                     program_unit.get_function_dies(program_counter, None, true)
                 {
                     // We want the first qualifying (PC is in range) function from the back of this list, to access the 'innermost' functions first.
-                    if let Some(function) = function_dies.iter().rev().next() {
+                    if let Some(function) = function_dies.iter().next_back() {
                         tracing::trace!(
                             "Step Out target: Evaluating function {:?}, low_pc={:?}, high_pc={:?}",
                             function.function_name(),

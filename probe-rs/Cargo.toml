@@ -57,7 +57,6 @@ cli = [
     "dep:ron",
     "dep:rustyline",
     "dep:sanitize-filename",
-    "dep:simplelog",
     "dep:terminal_size",
     "dep:termtree",
     "dep:time",
@@ -129,7 +128,7 @@ gdbstub = { version = "0.6.6", optional = true }
 itertools = { version = "0.10.5", optional = true }
 
 # CLI-only
-log = { version = "0.4.18", optional = true }
+log = { version = "0.4.19", optional = true }
 byte-unit = { version = "4.0.19", optional = true }
 capstone = { version = "0.11.0", optional = true }
 cargo_metadata = { version = "0.15.4", optional = true }
@@ -150,11 +149,9 @@ reqwest = { version = "0.11.18", features = ["blocking", "json" ], optional = tr
 ron = { version = "0.8.0", optional = true }
 rustyline = { version = "11.0.0", optional = true }
 sanitize-filename = { version = "0.4", optional = true }
-sentry = { version = "0.31.3", features = ["anyhow"], optional = true }
-simplelog = { version = "0.12.1", optional = true }
 terminal_size = { version = "0.2.6", optional = true }
 termtree = { version = "0.4.1", optional = true }
-time = { version = "0.3", default-features = false, features = [ "alloc", "formatting", "large-dates", "macros" ], optional = true }
+time = { version = "0.3", default-features = false, features = [ "alloc", "formatting", "large-dates", "macros", "local-offset" ], optional = true }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter", "json" ], optional = true }
 serde_json = { version = "1", optional = true }
 schemafy = { version = "0.6", optional = true }
