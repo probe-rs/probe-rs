@@ -75,8 +75,16 @@ impl<'session> Flasher<'session> {
                 _ => None,
             })
             .find(|ram| {
-                // The RAM must be accessible from the core we're going to run the algo on.
-                ram.cores.contains(core_name)
+                if let Some(load_addr) = raw_flash_algorithm.load_address {
+                    // The RAM must contain the forced load address _and_
+                    // be accessible from the core we're going to run the
+                    // algorithm on.
+                    ram.range.contains(&load_addr) && ram.cores.contains(core_name)
+                } else {
+                    // Any RAM is okay as long as it's accessible to the core;
+                    // the algorithm is presumably position-independent.
+                    ram.cores.contains(core_name)
+                }
             })
             .ok_or(FlashError::NoRamDefined {
                 name: session.target().name.clone(),
