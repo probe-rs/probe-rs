@@ -3,13 +3,23 @@ pub mod flash;
 pub mod logging;
 pub mod rtt;
 
-use thiserror::Error;
+use anyhow::Result;
 
 use cargo_metadata::Message;
-use std::{
-    path::{Path, PathBuf},
-    process::{Command, Stdio},
-};
+
+use std::process::{Command, Stdio};
+
+use std::path::PathBuf;
+use std::{num::ParseIntError, path::Path};
+use thiserror::Error;
+
+pub fn parse_u32(input: &str) -> Result<u32, ParseIntError> {
+    parse_int::parse(input)
+}
+
+pub fn parse_u64(input: &str) -> Result<u64, ParseIntError> {
+    parse_int::parse(input)
+}
 
 #[derive(Debug, Error)]
 pub enum ArtifactError {
