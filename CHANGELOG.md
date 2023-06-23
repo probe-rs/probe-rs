@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - probe-rs-debugger: The MS DAP Request `setBreapoints` clears existing breakpoints for the specified `Source`, and not for all `Source`'s (#1630)
 - probe-rs/flashing: Inconsistent address formatting in the "No flash memory contains the entire requested memory range" (`FlashError::NoSuitableNvm`) error message (#1644)
 - probe-rs/flashing: For targets whose flash algorithms require a fixed load address, always select a RAM region containing that address. (#1646)
+- probe-rs: Add support for the esp-idf binary format (#1629)
 
 ### Added
 

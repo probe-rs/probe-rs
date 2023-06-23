@@ -3,42 +3,19 @@ use std::path::Path;
 
 use anyhow::Context;
 use probe_rs::flashing::FileDownloadError;
-use probe_rs::flashing::{BinOptions, Format};
+use probe_rs::flashing::Format;
 
 use crate::util::common_options::ProbeOptions;
 use crate::util::common_options::{CargoOptions, FlashOptions};
 use crate::util::flash::run_flash_download;
 use crate::util::parse_u32;
 use crate::util::parse_u64;
-
-#[derive(clap::ValueEnum, Debug, Clone, Copy)]
-enum DownloadFileType {
-    Elf,
-    Hex,
-    Bin,
-}
-
-impl DownloadFileType {
-    fn into(self, base_address: Option<u64>, skip: Option<u32>) -> Format {
-        match self {
-            DownloadFileType::Elf => Format::Elf,
-            DownloadFileType::Hex => Format::Hex,
-            DownloadFileType::Bin => Format::Bin(BinOptions {
-                base_address,
-                skip: skip.unwrap_or(0),
-            }),
-        }
-    }
-}
+use crate::FormatOptions;
 
 #[derive(clap::Parser)]
 pub struct Cmd {
     #[clap(flatten)]
     common: ProbeOptions,
-
-    /// Format of the file to be downloaded to the flash. Possible values are case-insensitive.
-    #[clap(value_enum, ignore_case = true, default_value = "elf", long)]
-    format: DownloadFileType,
 
     /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
     #[clap(long, value_parser = parse_u64)]
@@ -61,6 +38,9 @@ pub struct Cmd {
     /// Disable double-buffering when downloading flash.  If downloading times out, try this option.
     #[clap(long = "disable-double-buffering")]
     disable_double_buffering: bool,
+
+    #[clap(flatten)]
+    format_options: FormatOptions,
 }
 
 impl Cmd {
@@ -74,11 +54,12 @@ impl Cmd {
 
         let mut loader = session.target().flash_loader();
 
-        let format = self.format.into(self.base_address, self.skip_bytes);
+        let format = self.format_options.into_format()?;
         match format {
             Format::Bin(options) => loader.load_bin_data(&mut file, options),
             Format::Elf => loader.load_elf_data(&mut file),
             Format::Hex => loader.load_hex_data(&mut file),
+            Format::Idf(options) => loader.load_idf_data(&mut session, &mut file, options),
         }?;
 
         run_flash_download(
