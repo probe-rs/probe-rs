@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::Write;
+use std::ops::Range;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -9,7 +10,6 @@ use anyhow::{Context, Result};
 use probe_rs::debug::DebugInfo;
 use probe_rs::flashing::{FileDownloadError, Format};
 use probe_rs::{Core, VectorCatchCondition};
-use probe_rs_target::MemoryRegion;
 use signal_hook::consts::signal;
 use time::UtcOffset;
 
@@ -80,7 +80,7 @@ impl Cmd {
             )?;
         }
 
-        let memory_map = session.target().memory_map.clone();
+        let rtt_scan_regions = session.target().rtt_scan_regions.clone();
         let mut core = session.core(0)?;
 
         if run_download {
@@ -93,7 +93,7 @@ impl Cmd {
 
         run_loop(
             &mut core,
-            &memory_map,
+            &rtt_scan_regions,
             path,
             timestamp_offset,
             self.always_print_stacktrace,
@@ -108,7 +108,7 @@ impl Cmd {
 /// or when ctrl + c is pressed.
 fn run_loop(
     core: &mut Core<'_>,
-    memory_map: &[MemoryRegion],
+    rtt_scan_regions: &[Range<u64>],
     path: &Path,
     timestamp_offset: UtcOffset,
     always_print_stacktrace: bool,
@@ -121,7 +121,7 @@ fn run_loop(
         ..Default::default()
     });
 
-    let mut rtta = attach_to_rtt(core, memory_map, path, rtt_config, timestamp_offset);
+    let mut rtta = attach_to_rtt(core, rtt_scan_regions, path, rtt_config, timestamp_offset);
 
     let exit = Arc::new(AtomicBool::new(false));
     let sig_id = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
@@ -246,13 +246,13 @@ fn poll_rtt(
 /// Attach to the RTT buffers.
 fn attach_to_rtt(
     core: &mut Core<'_>,
-    memory_map: &[MemoryRegion],
+    scan_regions: &[Range<u64>],
     path: &Path,
     rtt_config: RttConfig,
     timestamp_offset: UtcOffset,
 ) -> Option<rtt::RttActiveTarget> {
     for _ in 0..RTT_RETRIES {
-        match rtt::attach_to_rtt(core, memory_map, path, &rtt_config, timestamp_offset) {
+        match rtt::attach_to_rtt(core, scan_regions, path, &rtt_config, timestamp_offset) {
             Ok(target_rtt) => return Some(target_rtt),
             Err(error) => {
                 log::debug!("{:?} RTT attach error", error);

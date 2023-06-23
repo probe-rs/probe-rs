@@ -145,6 +145,7 @@ where
             cores,
             memory_map: get_mem_map(&device),
             flash_algorithms: flash_algorithm_names,
+            rtt_scan_ranges: None,
         });
     }
 

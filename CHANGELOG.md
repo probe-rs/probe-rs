@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `cli`: Ignore errors from `enable_vector_catch` (#1714).
 - `cli`: Retry RTT attach before continuing (#1722).
 - `cli`: Clean clap attributes (#xxxx)
+- Target definitions can now constrain the RTT automatic scanning ranges to just a subset of all available RAM, to support targets that have large amounts of RAM that would take a long time to scan. (#xxx)
 
 ## [0.20.0]
 

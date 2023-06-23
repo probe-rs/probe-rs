@@ -37,6 +37,9 @@ pub enum RegistryError {
     /// An invalid [`ChipFamily`] was encountered.
     #[error("Invalid chip family definition ({})", .0.name)]
     InvalidChipFamilyDefinition(Box<ChipFamily>, String),
+    /// One of the RTT scan ranges is not enclosed in exactly one RAM region.
+    #[error("Chip's RTT scan region {:#010x}..{:#010x} is not enclosed by any single RAM region.", .0.start, .0.end)]
+    InvalidRttScanRange(std::ops::Range<u64>),
 }
 
 fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
@@ -105,6 +108,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 }],
                 memory_map: vec![],
                 flash_algorithms: vec![],
+                rtt_scan_ranges: None,
             }],
             flash_algorithms: vec![],
             source: TargetDescriptionSource::Generic,
