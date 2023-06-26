@@ -25,12 +25,12 @@
           "kind": "bin"
         }
       },
-      "args": ["dap-server", "debug", "--port", "50001"],
+      "args": ["dap-server", "--port", "50001"],
       // "env": {
       //     "RUST_LOG": "error",
       //     "DEFMT_LOG": "info"
       // },
-      "cwd": "${workspaceFolder}/probe-rs/src/bin/probe-rs/dap_server"
+      "cwd": "${workspaceFolder}/probe-rs/src/bin/probe-rs/cmd/dap_server"
     },
     {
       "type": "lldb",
