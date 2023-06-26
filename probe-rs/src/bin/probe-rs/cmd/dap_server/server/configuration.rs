@@ -1,5 +1,5 @@
-use crate::cmd::dap_server::DebuggerError;
 use crate::util::rtt;
+use crate::{cmd::dap_server::DebuggerError, FormatOptions};
 use anyhow::{anyhow, Result};
 use probe_rs::{DebugProbeSelector, WireProtocol};
 use serde::Deserialize;
@@ -167,6 +167,10 @@ pub struct FlashingConfig {
     /// Restore erased bytes that will not be rewritten from ELF
     #[serde(default)]
     pub(crate) restore_unwritten_bytes: bool,
+
+    /// [`FormatOptions`] to control the flashing operation, depending on the type of binary ( [`probe_rs::flashing::Format`] ) to be flashed.
+    #[serde(default)]
+    pub(crate) format_options: FormatOptions,
 }
 
 /// Configuration options for all core level configuration.

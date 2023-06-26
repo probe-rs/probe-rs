@@ -9,6 +9,7 @@ use std::{ffi::OsString, fs::File, path::PathBuf};
 use anyhow::{Context, Result};
 use clap::Parser;
 use probe_rs::flashing::{BinOptions, Format, IdfOptions};
+use serde::Deserialize;
 use time::{OffsetDateTime, UtcOffset};
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::{
@@ -73,7 +74,7 @@ pub(crate) struct CoreOptions {
     core: usize,
 }
 
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Clone, Deserialize, Debug, Default)]
 pub(crate) struct FormatOptions {
     #[clap(value_enum, ignore_case = true, default_value = "elf", long)]
     format: Format,

@@ -20,7 +20,7 @@ use crate::cmd::dap_server::{
 };
 use anyhow::{anyhow, Context};
 use probe_rs::{
-    flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format},
+    flashing::{download_file_with_options, DownloadOptions, FlashProgress},
     Architecture, CoreStatus,
 };
 use std::{
@@ -733,7 +733,11 @@ impl Debugger {
         let flash_result = download_file_with_options(
             &mut session_data.session,
             path_to_elf,
-            Format::Elf,
+            self.config
+                .flashing_config
+                .format_options
+                .clone()
+                .into_format()?,
             download_options,
         );
 
