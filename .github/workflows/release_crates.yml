@@ -60,8 +60,8 @@ jobs:
         run: |
           git checkout master
           cargo login ${{ secrets.CARGO_REGISTRY_TOKEN }}
-          cargo publish --no-confirm --execute
-          cargo tag --no-confirm --execute --sign-tag
-          cargo push --no-confirm --execute
+          cargo release publish --no-confirm --execute
+          cargo release tag --no-confirm --execute --sign-tag
+          cargo release push --no-confirm --execute
         env:
           SSH_AUTH_SOCK: /tmp/ssh_agent.sock
