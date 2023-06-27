@@ -5,12 +5,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Merged `probe-rs-cli`, `probe-rs-debugger`, `cargo-embed`, `cargo-flash` binaries into the `probe-rs` crate. 
+  - `probe-rs-cli` is now available in `probe-rs`.
+  - `probe-rs-debugger` is now available as `probe-rs dap-server`.
+  - `cargo-embed` and `cargo-flash` functionality is unchanged, but they are now small shim binaries that invoke `probe-rs`.
+  - Running `cargo install probe-rs` installs the `probe-rs`, `cargo-embed` and `cargo-flash` binaries.
+- Merged the `gdb-server` crate into `probe-rs`. It's now available under `probe_rs::gdb_server`, and requires enabling the `gdb-server` Cargo feature.
+
 ### Fixed
 
 - probe-rs-debugger: Show errors that happen before VSCode/DAP Client session initializion has completed (#1581).
 - probe-rs-cli-util: replace unwanted instance of `println` with `eprintln` (#1595, fixes #1593).
 - stlink: exit JTAG mode on idle to tristate debug interface (#1615).
 - probe-rs-debugger: The MS DAP Request `setBreapoints` clears existing breakpoints for the specified `Source`, and not for all `Source`'s (#1630)
+- probe-rs/flashing: Inconsistent address formatting in the "No flash memory contains the entire requested memory range" (`FlashError::NoSuitableNvm`) error message (#1644)
+- probe-rs/flashing: For targets whose flash algorithms require a fixed load address, always select a RAM region containing that address. (#1646)
+- probe-rs: Add support for the esp-idf binary format (#1629)
 
 ### Added
 
@@ -18,6 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for propagating `CoreStatus` to the probe in use (#1588).
 - Added support for the NXP MIMXRT685S eval kit (#1612).
 - Added PY32F0xx series targets (#1619).
+- Flashing process can now detect and report if the flashing algorithm locks up the core that it's running on. (#1645)
+
+### Removed
+
+- Removed Sentry integration in the CLI tools.
 
 ## [0.18.0]
 

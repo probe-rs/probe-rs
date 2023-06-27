@@ -5,10 +5,12 @@ use probe_rs_target::{
 use std::collections::HashMap;
 use std::io::{Read, Seek, SeekFrom};
 use std::ops::Range;
+use std::str::FromStr;
 
 use super::builder::FlashBuilder;
 use super::{
     extract_from_elf, BinOptions, DownloadOptions, FileDownloadError, FlashError, Flasher,
+    IdfOptions,
 };
 use crate::memory::MemoryInterface;
 use crate::session::Session;
@@ -112,6 +114,44 @@ impl FlashLoader {
             },
             &buf,
         )?;
+
+        Ok(())
+    }
+
+    /// Loads an esp-idf application into the loader by converting the main application to the esp-idf bootloader format,
+    /// appending it to the loader along with the bootloader and partition table.
+    ///
+    /// This does not create and flash loader instructions yet.
+    pub fn load_idf_data<T: Read>(
+        &mut self,
+        session: &mut Session,
+        file: &mut T,
+        options: IdfOptions,
+    ) -> Result<(), FileDownloadError> {
+        let target = session.target();
+        let chip = espflash::targets::Chip::from_str(&target.name)
+            .map_err(|_| FileDownloadError::IdfUnsupported(target.name.clone()))?
+            .into_target();
+
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf)?;
+
+        let firmware = espflash::elf::ElfFirmwareImage::try_from(&buf[..])?;
+        let image = chip.get_flash_image(
+            &firmware,
+            options.bootloader,
+            options.partition_table,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )?;
+        let parts: Vec<_> = image.flash_segments().collect();
+
+        for data in parts {
+            self.add_data(data.addr.into(), &data.data)?;
+        }
 
         Ok(())
     }

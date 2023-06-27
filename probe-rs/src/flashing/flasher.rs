@@ -77,8 +77,16 @@ impl<'session> Flasher<'session> {
                 _ => None,
             })
             .find(|ram| {
-                // The RAM must be accessible from the core we're going to run the algo on.
-                ram.cores.contains(core_name)
+                if let Some(load_addr) = raw_flash_algorithm.load_address {
+                    // The RAM must contain the forced load address _and_
+                    // be accessible from the core we're going to run the
+                    // algorithm on.
+                    ram.range.contains(&load_addr) && ram.cores.contains(core_name)
+                } else {
+                    // Any RAM is okay as long as it's accessible to the core;
+                    // the algorithm is presumably position-independent.
+                    ram.cores.contains(core_name)
+                }
             })
             .ok_or(FlashError::NoRamDefined {
                 name: session.target().name.clone(),
@@ -711,7 +719,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         let mut timeout_ocurred = true;
         while start.elapsed() < timeout {
             match self.core.status()? {
-                CoreStatus::Halted(_) => {
+                crate::CoreStatus::Halted(_) => {
                     timeout_ocurred = false;
                     // Once the core is halted we know for sure all RTT data is written
                     // so we can read all of it.
@@ -719,13 +727,14 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                     self.read_rtt()?;
                     break;
                 }
-                CoreStatus::LockedUp => {
-                    // No use in looping any longer
-                    return Err(FlashError::Core(crate::Error::Other(anyhow!(
-                        "Core locked up"
-                    ))));
+                crate::CoreStatus::LockedUp => {
+                    return Err(FlashError::UnexpectedCoreStatus {
+                        status: crate::CoreStatus::LockedUp,
+                    });
                 }
-                _ => {}
+                _ => {
+                    // All other statuses are okay: we'll just keep polling.
+                }
             }
 
             // Periodically read RTT.
