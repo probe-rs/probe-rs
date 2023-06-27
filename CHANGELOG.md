@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `dap-server`: In addition to `Elf` format, this adds support for binary formats `Bin`, `Hex`, and `Idf` (#1656).
+- Added PAC55XX series targets (#1655)
 
 ## [0.19.0]
 
