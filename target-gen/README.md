@@ -43,3 +43,7 @@ Running
 
 will create a target description containing the extracted flash algorithm. The values
 for the chip description itself have to be adjusted manually in the generated Yaml file.
+
+### Notes for custom flash algorithms
+
+Writing a custom flash algorithm is also possible. This allows you to add functionality to the flashing that manufacturers haven't (like RTT). Such an application would still follow the convention of ARM CMSIS flash algorithms meaning that it needs to have an `Init`, `UnInit`, ect. Additionally, a symbol such as `StackSize` can be used to denote how much stack size probe-rs should allocate when running that algorithm.
