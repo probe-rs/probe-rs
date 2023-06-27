@@ -708,22 +708,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "crossterm"
-version = "0.26.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a84cda67535339806297f1b331d6dd6320470d2a0fe65381e79ee9e156dd3d13"
-dependencies = [
- "bitflags 1.3.2",
- "crossterm_winapi",
- "libc",
- "mio",
- "parking_lot",
- "signal-hook",
- "signal-hook-mio",
- "winapi",
-]
-
-[[package]]
 name = "crossterm_winapi"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2425,7 +2409,7 @@ dependencies = [
 
 [[package]]
 name = "probe-rs"
-version = "0.18.0"
+version = "0.19.0"
 dependencies = [
  "anyhow",
  "base64 0.21.2",
@@ -2439,7 +2423,7 @@ dependencies = [
  "cargo_toml",
  "clap",
  "colored",
- "crossterm 0.26.1",
+ "crossterm",
  "defmt-decoder",
  "directories",
  "dunce",
@@ -2497,7 +2481,7 @@ dependencies = [
 
 [[package]]
 name = "probe-rs-target"
-version = "0.18.0"
+version = "0.19.0"
 dependencies = [
  "base64 0.21.2",
  "jep106",
@@ -2765,7 +2749,7 @@ dependencies = [
 
 [[package]]
 name = "rtthost"
-version = "0.18.0"
+version = "0.19.0"
 dependencies = [
  "clap",
  "pretty_env_logger",
@@ -3215,7 +3199,7 @@ checksum = "f67ad224767faa3c7d8b6d91985b78e70a1324408abcb1cfcc2be4c06bc06043"
 
 [[package]]
 name = "smoke_tester"
-version = "0.18.0"
+version = "0.19.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -3401,7 +3385,7 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "target-gen"
-version = "0.18.0"
+version = "0.19.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -3810,7 +3794,7 @@ checksum = "ccdd26cbd674007e649a272da4475fb666d3aa0ad0531da7136db6fab0e5bad1"
 dependencies = [
  "bitflags 1.3.2",
  "cassowary",
- "crossterm 0.25.0",
+ "crossterm",
  "unicode-segmentation",
  "unicode-width",
 ]
@@ -4331,7 +4315,7 @@ checksum = "1dbabb1cbd15a1d6d12d9ed6b35cc6777d4af87ab3ba155ea37215f20beab80c"
 
 [[package]]
 name = "xtask"
-version = "0.18.0"
+version = "0.19.0"
 dependencies = [
  "clap",
  "regex",
