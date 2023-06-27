@@ -34,7 +34,7 @@ jobs:
 
       - name: Install SSH
         run: |
-          apt-get update -y && apt-get install openssh-client -y
+          sudo apt-get update -y && sudo apt-get install openssh-client -y
           eval $(ssh-agent -s -a $SSH_AUTH_SOCK)
           echo "$SSH_SIGNING_KEY" | tr -d '\r' | ssh-add -
           mkdir -p ~/.ssh
