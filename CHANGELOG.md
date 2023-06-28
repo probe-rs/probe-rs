@@ -5,13 +5,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `dap-server`: In addition to `Elf` format, this adds support for binary formats `Bin`, `Hex`, and `Idf` (#1656).
+
 ## [0.19.0]
 
 Released 2023-06-27
 
 ### Changed
 
-- Merged `probe-rs-cli`, `probe-rs-debugger`, `cargo-embed`, `cargo-flash` binaries into the `probe-rs` crate. 
+- Merged `probe-rs-cli`, `probe-rs-debugger`, `cargo-embed`, `cargo-flash` binaries into the `probe-rs` crate.
   - `probe-rs-cli` is now available in `probe-rs`.
   - `probe-rs-debugger` is now available as `probe-rs dap-server`.
   - `cargo-embed` and `cargo-flash` functionality is unchanged, but they are now small shim binaries that invoke `probe-rs`.
