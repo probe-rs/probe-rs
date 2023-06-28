@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use probe_rs_target::{CoreType, MemoryRegion, RawFlashAlgorithm};
 use tracing::Level;
 
@@ -6,7 +5,6 @@ use super::{
     FlashAlgorithm, FlashBuilder, FlashError, FlashFill, FlashLayout, FlashPage, FlashProgress,
 };
 use crate::config::NvmRegion;
-use crate::core::CoreStatus;
 use crate::memory::MemoryInterface;
 use crate::{core::CoreRegisters, session::Session, Core, InstructionSet};
 use std::time::Instant;
