@@ -4,12 +4,14 @@ mod util;
 include!(concat!(env!("OUT_DIR"), "/meta.rs"));
 
 use std::path::Path;
+use std::str::FromStr;
 use std::{ffi::OsString, fs::File, path::PathBuf};
 
 use anyhow::{Context, Result};
 use clap::Parser;
 use probe_rs::flashing::{BinOptions, Format, IdfOptions};
-use serde::Deserialize;
+use serde::{de::Error, Deserialize, Deserializer};
+use serde_json::Value;
 use time::{OffsetDateTime, UtcOffset};
 use tracing::metadata::LevelFilter;
 use tracing_subscriber::{
@@ -74,9 +76,22 @@ pub(crate) struct CoreOptions {
     core: usize,
 }
 
+/// A helper function to deserialize a default [`Format`] from a string.
+fn format_from_str<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Format, D::Error> {
+    match Value::deserialize(deserializer)? {
+        Value::String(s) => match Format::from_str(s.as_str()) {
+            Ok(format) => Ok(format),
+            Err(e) => Err(D::Error::custom(e)),
+        },
+        _ => Err(D::Error::custom("invalid format")),
+    }
+}
+
 #[derive(clap::Parser, Clone, Deserialize, Debug, Default)]
+#[serde(default)]
 pub(crate) struct FormatOptions {
     #[clap(value_enum, ignore_case = true, default_value = "elf", long)]
+    #[serde(deserialize_with = "format_from_str")]
     format: Format,
     /// The address in memory where the binary will be put at.
     #[clap(long)]
