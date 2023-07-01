@@ -53,7 +53,7 @@ Released 2023-01-13
   - Tracing on M4 architectures utilize the TPIU for all hardware tracing (#1182)
 - ITM tracing can now be completed using the probe-rs CLI (#1180)
 - Added support for MIMXRT10xx targets (#1174)
-- Added support for JTAG commands via CMSIS-DAP protocol
+- Added support for JTAG commands via CMSIS-DAP protocol (#1462)
 - Added support for the Cortex M7 of MIMXRT11xx targets (#1250)
 - Added support for in-line (column specific) breakpoints where multiple statements (potential breakpoints) are on the same line of source code. (#1156)
 - Added support for MSP432P4XX targets (#1201)
