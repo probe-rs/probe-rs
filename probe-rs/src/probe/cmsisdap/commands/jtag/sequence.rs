@@ -3,12 +3,6 @@
 use super::super::{CmsisDapError, CommandId, Request, SendError, Status};
 
 #[derive(Clone, Copy, Debug)]
-pub enum SequenceData {
-    TMS(u8),
-    TDI(u8),
-}
-
-#[derive(Clone, Copy, Debug)]
 pub struct Sequence {
     /// Number of TCK cycles: 1..64 (64 encoded as 0)
     tck_cycles: u8,
@@ -30,7 +24,7 @@ impl Sequence {
         tms: bool,
         data: [u8; 8],
     ) -> Result<Self, CmsisDapError> {
-        if (tck_cycles > 64) {
+        if tck_cycles > 64 {
             return Err(CmsisDapError::JTAGSequenceTooManyClockSequences);
         }
         Ok(Self {

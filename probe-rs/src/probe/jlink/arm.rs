@@ -1346,8 +1346,30 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         self
     }
 
-    fn jtag_sequence(&mut self, cycles: u8, tms: bool, tdi: u64) -> Result<(), DebugProbeError> {
-        todo!()
+    fn jtag_sequence(
+        &mut self,
+        bit_len: u8,
+        tms: bool,
+        mut bits: u64,
+    ) -> Result<(), DebugProbeError> {
+        let protocol = self.active_protocol().expect("No protocol set");
+        assert_eq!(
+            protocol,
+            crate::WireProtocol::Jtag,
+            "Expected protocol to be JTAG"
+        );
+
+        let mut io_bits = Vec::with_capacity(bit_len as usize);
+        for _ in 0..bit_len {
+            io_bits.push(bits & 1 == 1);
+
+            bits >>= 1;
+        }
+
+        let tms_bits = iter::repeat(tms).take(bit_len as usize);
+        self.jtag_io(tms_bits, io_bits)?;
+
+        Ok(())
     }
 
     fn swj_sequence(&mut self, bit_len: u8, mut bits: u64) -> Result<(), DebugProbeError> {
@@ -1366,6 +1388,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
 
         match protocol {
             crate::WireProtocol::Jtag => {
+                // TODO: aren't these two arguments reversed?
                 self.jtag_io(
                     io_sequence.io_bits().to_owned(),
                     iter::repeat(false).take(bit_len.into()),

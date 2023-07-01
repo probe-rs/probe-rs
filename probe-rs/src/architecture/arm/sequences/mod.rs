@@ -470,8 +470,8 @@ pub trait ArmDebugSequence: Send + Sync {
                 // Enter Run-Test-Idle state, as required by the DAP_Transfer command when using JTAG
                 interface.jtag_sequence(1, false, 0x01)?;
 
-                // Configure JTAG IR lengths
-                interface.blah()?;
+                // Configure JTAG IR lengths in probe
+                interface.configure_jtag()?;
             }
             Some(crate::WireProtocol::Swd) => {
                 // Execute SWJ-DP Switch Sequence JTAG to SWD (0xE79E).

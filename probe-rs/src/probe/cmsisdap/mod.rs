@@ -15,7 +15,7 @@ use crate::{
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
             CmsisDapError,
         },
-        BatchCommand, JtagWriteCommand,
+        BatchCommand,
     },
     DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
 };
@@ -54,7 +54,7 @@ use commands::{
 
 use std::{result::Result, time::Duration};
 
-use self::commands::jtag;
+use bitvec::prelude::*;
 
 pub struct CmsisDap {
     pub device: CmsisDapDevice,
@@ -76,10 +76,60 @@ pub struct CmsisDap {
     batch: Vec<BatchCommand>,
 }
 
-#[derive(Debug, Clone)]
-struct JtagChainItem {
-    idcode: u32,
-    irlen: usize,
+/// Stores information about a JTAG scan chain,
+/// including detected IDCODEs and IR lengths.
+struct JTAGChain {
+    #[allow(dead_code)]
+    pub idcodes: Vec<Option<IDCODE>>,
+    pub irlens: Vec<usize>,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub struct IDCODE(pub u32);
+
+impl std::fmt::Display for IDCODE {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(mfn) = self.manufacturer_name() {
+            write!(f, "0x{:08X} ({})", self.0, mfn)
+        } else {
+            write!(f, "0x{:08X}", self.0)
+        }
+    }
+}
+
+impl IDCODE {
+    pub fn valid(&self) -> bool {
+        // Check LSbit is 1 and Manufacturer field is not the reserved value.
+        (self.0 & 1 == 1) && (self.0 & 0b1111_1111_1110 != 0b0000_1111_1110)
+    }
+
+    #[allow(dead_code)]
+    /// Extract the manufacturer ID, which is an 11-bit field in bits 1-11.
+    pub fn manufacturer(&self) -> u16 {
+        ((self.0 >> 1) & 0x7FF) as u16
+    }
+
+    /// Return the manufacturer name, if available.
+    pub fn manufacturer_name(&self) -> Option<&'static str> {
+        let cc = ((self.0 >> 8) & 0x0F) as u8;
+        if cc >= 11 {
+            return None;
+        }
+        let id = ((self.0 >> 1) & 0x7F) as u8;
+        jep106::JEP106Code::new(cc, id).get()
+    }
+
+    #[allow(dead_code)]
+    /// Extract the part number, which is a 16-bit field in bits 12-27.
+    pub fn part_number(&self) -> u16 {
+        ((self.0 >> 12) & 0xFFFF) as u16
+    }
+
+    #[allow(dead_code)]
+    /// Extract the IDCODE version, which is a 4-bit field in bits 28-31.
+    pub fn version(&self) -> u8 {
+        ((self.0 >> 28) & 0xF) as u8
+    }
 }
 
 impl std::fmt::Debug for CmsisDap {
@@ -202,35 +252,269 @@ impl CmsisDap {
         Ok(())
     }
 
-    fn jtag_scan(&mut self) -> Result<Vec<JtagChainItem>, CmsisDapError> {
-        let num_targets = self.jtag_detect_num_targets()?;
-        let mut targets = vec![
-            JtagChainItem {
-                idcode: 0,
-                irlen: 0
-            };
-            num_targets
-        ];
+    fn extract_idcodes(mut dr: &BitSlice<u8>) -> Result<Vec<Option<IDCODE>>, CmsisDapError> {
+        let mut idcodes = Vec::new();
 
-        if targets.len() == 0 {
-            return Ok(targets);
+        while !dr.is_empty() {
+            if dr[0] {
+                if dr.len() < 32 {
+                    tracing::error!("Truncated IDCODE: {dr:02X?}");
+                    return Err(CmsisDapError::ErrorResponse); // TODO: InvalidIDCODE
+                }
+
+                let idcode = dr.load::<u32>();
+                let idcode = IDCODE(idcode);
+
+                if !idcode.valid() {
+                    tracing::error!("Invalid IDCODE: {:08X}", idcode.0);
+                    return Err(CmsisDapError::ErrorResponse); // TODO: InvalidIDCODE
+                }
+                tracing::debug!("Found IDCODE: {idcode}");
+                idcodes.push(Some(idcode));
+                dr = &dr[32..];
+            } else {
+                idcodes.push(None);
+                tracing::debug!("Found bypass TAP");
+                dr = &dr[1..];
+            }
         }
+        Ok(idcodes)
+    }
 
-        const CAPTURE: bool = true;
-        const NO_CAPTURE: bool = false;
+    /// Convert a list of start positions to a list of lengths.
+    fn starts_to_lens(starts: &[usize], total: usize) -> Vec<usize> {
+        let mut lens: Vec<usize> = starts.windows(2).map(|w| w[1] - w[0]).collect();
+        lens.push(total - lens.iter().sum::<usize>());
+        lens
+    }
+
+    /// Best-effort extraction of IR lengths from a test-logic-reset IR chain `ir`,
+    /// which is known to contain `n_taps` TAPs (as discovered by scanning DR for IDCODEs).
+    ///
+    /// If expected IR lengths are provided, specify them in `expected`, and they are
+    /// verified against the IR scan and then returned.
+    ///
+    /// Valid IRs in the capture must start with `10` (a 1 in the last-significant,
+    /// and therefore first, bit). However, IRs may contain `10` in other positions, so we
+    /// can only find a superset of all possible start positions. If this happens to match
+    /// the number of taps, or there is only one tap, we can find all IR lengths. Otherwise,
+    /// they must be provided, and are then checked.
+    ///
+    /// This implementation is a port of the algorithm from:
+    /// https://github.com/GlasgowEmbedded/glasgow/blob/30dc11b2/
+    /// /software/glasgow/applet/interface/jtag_probe/__init__.py#L712
+    ///
+    /// Returns Vec<usize>, with an entry for each TAP.
+    fn extract_ir_lengths(
+        ir: &BitSlice<u8>,
+        n_taps: usize,
+        expected: Option<&[usize]>,
+    ) -> Result<Vec<usize>, CmsisDapError> {
+        // Find all `10` patterns which indicate potential IR start positions.
+        let starts = ir
+            .windows(2)
+            .enumerate()
+            .filter(|(_, w)| w[0] && !w[1])
+            .map(|(i, _)| i)
+            .collect::<Vec<usize>>();
+        tracing::trace!("Possible IR start positions: {starts:?}");
+
+        if n_taps == 0 {
+            tracing::error!("Cannot scan IR without at least one TAP");
+            Err(CmsisDapError::ErrorResponse) // TODO: InvalidIR
+        } else if n_taps > starts.len() {
+            // We must have at least as many `10` patterns as TAPs.
+            tracing::error!("Fewer IRs detected than TAPs");
+            Err(CmsisDapError::ErrorResponse) // TODO: InvalidIR
+        } else if starts[0] != 0 {
+            // The chain must begin with a possible start location.
+            tracing::error!("IR chain does not begin with a valid start pattern");
+            Err(CmsisDapError::ErrorResponse) // TODO: InvalidIR
+        } else if let Some(expected) = expected {
+            // If expected lengths are available, verify and return them.
+            if expected.len() != n_taps {
+                tracing::error!(
+                    "Number of provided IR lengths ({}) does not match \
+                         number of detected TAPs ({n_taps})",
+                    expected.len()
+                );
+
+                Err(CmsisDapError::ErrorResponse) // TODO: InvalidIR
+            } else if expected.iter().sum::<usize>() != ir.len() {
+                tracing::error!(
+                    "Sum of provided IR lengths ({}) does not match \
+                         length of IR scan ({} bits)",
+                    expected.iter().sum::<usize>(),
+                    ir.len()
+                );
+                Err(CmsisDapError::ErrorResponse) // TODO: InvalidIR
+            } else {
+                let exp_starts = expected
+                    .iter()
+                    .scan(0, |a, &x| {
+                        let b = *a;
+                        *a += x;
+                        Some(b)
+                    })
+                    .collect::<Vec<usize>>();
+                tracing::trace!("Provided IR start positions: {exp_starts:?}");
+                let unsupported = exp_starts.iter().filter(|s| !starts.contains(s)).count();
+                if unsupported > 0 {
+                    tracing::error!(
+                        "Provided IR lengths imply an IR start position \
+                             which is not supported by the IR scan"
+                    );
+                    Err(CmsisDapError::ErrorResponse) // TODO: InvalidIR
+                } else {
+                    tracing::debug!("Verified provided IR lengths against IR scan");
+                    Ok(Self::starts_to_lens(&exp_starts, ir.len()))
+                }
+            }
+        } else if n_taps == 1 {
+            // If there's only one TAP, this is easy.
+            tracing::info!("Only one TAP detected, IR length {}", ir.len());
+            Ok(vec![ir.len()])
+        } else if n_taps == starts.len() {
+            // If the number of possible starts matches the number of TAPs,
+            // we can unambiguously find all lengths.
+            let irlens = Self::starts_to_lens(&starts, ir.len());
+            tracing::info!("IR lengths are unambiguous: {irlens:?}");
+            Ok(irlens)
+        } else {
+            tracing::error!("IR lengths are ambiguous and must be explicitly configured.");
+            Err(CmsisDapError::ErrorResponse) // TODO: InvalidIR
+        }
+    }
+
+    /// Scan JTAG chain, detecting TAPs and their IDCODEs and IR lengths.
+    ///
+    /// If IR lengths for each TAP are known, provide them in `ir_lengths`.
+    ///
+    /// Returns a new JTAGChain.
+    fn jtag_scan(&mut self, ir_lengths: Option<&[usize]>) -> Result<JTAGChain, CmsisDapError> {
+        let (ir, dr) = self.jtag_reset_scan()?;
+        let idcodes = Self::extract_idcodes(&dr)?;
+        let irlens = Self::extract_ir_lengths(&ir, idcodes.len(), ir_lengths)?;
+
+        let chain = JTAGChain { idcodes, irlens };
+
+        Ok(chain)
+    }
+
+    /// Capture the power-up scan chain values, including all IDCODEs.
+    ///
+    /// Returns the IR and DR results as (IR, DR).
+    fn jtag_reset_scan(&mut self) -> Result<(BitVec<u8>, BitVec<u8>), CmsisDapError> {
+        let dr = self.jtag_scan_dr()?;
+        let ir = self.jtag_scan_ir()?;
+
+        // Return to Run-Test/Idle, so the probe is ready for DAP_Transfer commands again.
+        self.jtag_ensure_run_test_idle()?;
+
+        Ok((ir, dr))
+    }
+
+    /// Detect the IR chain length and return its current contents.
+    ///
+    /// Replaces the current contents with all 1s (BYPASS) and enters
+    /// the Run-Test/Idle state.
+    fn jtag_scan_ir(&mut self) -> Result<BitVec<u8>, CmsisDapError> {
+        self.jtag_ensure_shift_ir()?;
+        let data = self.jtag_scan_inner("IR")?;
+        Ok(data)
+    }
+
+    /// Detect the DR chain length and return its contents.
+    ///
+    /// Replaces the current contents with all 1s and enters
+    /// the Run-Test/Idle state.
+    fn jtag_scan_dr(&mut self) -> Result<BitVec<u8>, CmsisDapError> {
+        self.jtag_ensure_shift_dr()?;
+        let data = self.jtag_scan_inner("DR")?;
+        Ok(data)
+    }
+
+    /// Detect current chain length and return its contents.
+    /// Must already be in either Shift-IR or Shift-DR state.
+    fn jtag_scan_inner(&mut self, name: &'static str) -> Result<BitVec<u8>, CmsisDapError> {
+        /// Max scan chain length (in bits) to attempt to detect.
+        const MAX_LENGTH: usize = 128;
+
         const TDI_ZEROES: [u8; 8] = [0x00; 8];
         const TDI_ONES: [u8; 8] = [!0x00; 8];
+        const TMS_LOW: bool = false;
+        const CAPTURE: bool = true;
+
+        const ITERATIONS: usize = (MAX_LENGTH + 127) / 128;
+
+        // Completely fill xR with 0s (128 bits at a time), capture result.
+        let mut tdo_bytes: Vec<u8> = Vec::with_capacity(ITERATIONS * 16); // 128 bits = 16 u8s
+        for _ in 0..ITERATIONS {
+            let sequences = vec![
+                JtagSequence::new(64, CAPTURE, TMS_LOW, TDI_ZEROES)?,
+                JtagSequence::new(64, CAPTURE, TMS_LOW, TDI_ZEROES)?,
+            ];
+
+            tdo_bytes.extend(
+                self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?
+                    .iter(),
+            );
+        }
+        let d0 = tdo_bytes.view_bits::<Lsb0>();
+
+        // Completely fill xR with 1s, capture result.
+        let mut tdo_bytes: Vec<u8> = Vec::with_capacity(ITERATIONS * 16); // 128 bits = 16 u8s
+        for _ in 0..ITERATIONS {
+            let sequences = vec![
+                JtagSequence::new(64, CAPTURE, TMS_LOW, TDI_ONES)?,
+                JtagSequence::new(64, CAPTURE, TMS_LOW, TDI_ONES)?,
+            ];
+
+            tdo_bytes.extend(
+                self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?
+                    .iter(),
+            );
+        }
+        let d1 = tdo_bytes.view_bits::<Lsb0>();
+
+        // Find first 1 in d1, which indicates length of register.
+        let n = match d1.first_one() {
+            Some(n) => {
+                tracing::debug!("JTAG {name} scan chain detected as {n} bits long");
+                n
+            }
+            None => {
+                tracing::error!(
+                    "JTAG {name} scan chain either broken or too long: did not detect 1"
+                );
+                return Err(CmsisDapError::ErrorResponse);
+            }
+        };
+
+        // Check at least one register is detected in the scan chain.
+        if n == 0 {
+            tracing::error!("JTAG {name} scan chain is empty");
+            return Err(CmsisDapError::ErrorResponse);
+        }
+
+        // Check d0[n..] are all 0.
+        if d0[n..].any() {
+            tracing::error!("JTAG {name} scan chain either broken or too long: did not detect 0");
+            return Err(CmsisDapError::ErrorResponse);
+        }
+
+        // Extract d0[..n] as the initial scan chain contents.
+        let data = d0[..n].to_bitvec();
+        return Ok(data);
+    }
+
+    fn jtag_ensure_shift_dr(&mut self) -> Result<(), CmsisDapError> {
+        const NO_CAPTURE: bool = false;
+        const TDI_ZEROES: [u8; 8] = [0x00; 8];
         const TMS_LOW: bool = false;
         const TMS_HIGH: bool = true;
 
         // Transition to Test-Logic-Reset.
-        // This will set IR to IDCODE instruction for all connected devices,
-        // except for those that don't support it (in which case they will set IR to BYPASS).
-        //
-        // TODO: handle the BYPASS scenario.
-        // In this case, we can take advantage of the fact that by spec all IDCODEs have 1 as
-        // the least-significant-bit; because entering BYPASS implies an initial 0 in its DR,
-        // they can be discerned from IDCODE devices when shifting out.
         self.jtag_ensure_test_logic_reset()?;
 
         // Transition to Shift-DR
@@ -241,89 +525,16 @@ impl CmsisDap {
         ];
         self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
 
-        // Gather all IDCODEs
-        for target in targets.iter_mut() {
-            let sequences = vec![JtagSequence::new(32, CAPTURE, TMS_LOW, TDI_ZEROES)?];
-            let idcode = self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
-            target.idcode = u32::from_le_bytes(idcode.try_into().unwrap());
-        }
-
-        // Transition to Shift-IR
-        let sequences = vec![
-            JtagSequence::new(4, NO_CAPTURE, TMS_HIGH, TDI_ZEROES)?,
-            JtagSequence::new(2, NO_CAPTURE, TMS_LOW, TDI_ZEROES)?,
-        ];
-        self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
-
-        // Now we try to determine the IR length of each device.
-        if targets.len() == 1 {
-            // Assume IR len will be at most 16 bits.
-            let sequences = vec![
-                JtagSequence::new(16, NO_CAPTURE, TMS_LOW, TDI_ONES)?,
-                JtagSequence::new(16, CAPTURE, TMS_LOW, TDI_ZEROES)?,
-            ];
-            let tdo = self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
-            let bits = u16::from_le_bytes(tdo.try_into().unwrap());
-            targets[0].irlen = bits.trailing_zeros() as usize;
-        } else {
-            // When going through Capture-IR, many devices will fill the IR scan chain
-            // with all zeros, save for the LSB which will be set to 1
-            // (e.g. 0b0001).
-            //
-            // For ARM, see section B3.2.3 The Debug TAP State Machine (DBGTAPSM) of
-            // "Arm® Debug Interface Architecture Specification ADIv5.0 to ADIv5.2"
-            //
-            // We will assume this is the case for all devices.
-            // We will also assume the IR len will be at most 16 bits.
-            let mut r = Vec::with_capacity(2 * targets.len());
-
-            // Shift out IR in 128 bit chunks
-            for _ in 0..(r.capacity() + 15) / 16 {
-                let sequences = vec![
-                    JtagSequence::new(64, CAPTURE, TMS_LOW, TDI_ONES)?,
-                    JtagSequence::new(64, CAPTURE, TMS_LOW, TDI_ONES)?,
-                ];
-                r.extend(self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?);
-            }
-
-            // Stolen from the ftdi module
-            let mut ir: u32 = 0;
-            let mut irbits: u32 = 0;
-            for (i, target) in targets.iter_mut().enumerate() {
-                if (!r.is_empty()) && irbits < 8 {
-                    let byte = r[0];
-                    r.remove(0);
-                    ir |= (byte as u32) << irbits;
-                    irbits += 8;
-                }
-                if ir & 0b11 == 0b01 {
-                    ir &= !1;
-                    let irlen = ir.trailing_zeros();
-                    ir >>= irlen;
-                    irbits -= irlen;
-                    tracing::debug!("tap {} irlen: {}", i, irlen);
-                    target.irlen = irlen as usize;
-                } else {
-                    tracing::debug!("invalid irlen for tap {}", i);
-                    // TODO: what error to return here?
-                    return Err(CmsisDapError::ErrorResponse);
-                }
-            }
-        }
-
-        Ok(targets)
+        Ok(())
     }
 
-    /// Detect number of connected TAPs in chain.
-    fn jtag_detect_num_targets(&mut self) -> Result<usize, CmsisDapError> {
-        const TMS_LOW: bool = false;
-        const TMS_HIGH: bool = true;
-        const CAPTURE: bool = true;
+    fn jtag_ensure_shift_ir(&mut self) -> Result<(), CmsisDapError> {
         const NO_CAPTURE: bool = false;
         const TDI_ZEROES: [u8; 8] = [0x00; 8];
-        const TDI_ONES: [u8; 8] = [!0x00; 8];
+        const TMS_LOW: bool = false;
+        const TMS_HIGH: bool = true;
 
-        // Start at Test-Logic-Reset
+        // Transition to Test-Logic-Reset.
         self.jtag_ensure_test_logic_reset()?;
 
         // Transition to Shift-IR
@@ -334,55 +545,7 @@ impl CmsisDap {
         ];
         self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
 
-        // Shift 2560 ones into the IR register(s), 256 bits at a time.
-        // This ensures the device(s) are in BYPASS.
-        let sequences = vec![
-            JtagSequence::new(64, NO_CAPTURE, TMS_LOW, TDI_ONES)?,
-            JtagSequence::new(64, NO_CAPTURE, TMS_LOW, TDI_ONES)?,
-            JtagSequence::new(64, NO_CAPTURE, TMS_LOW, TDI_ONES)?,
-            JtagSequence::new(64, NO_CAPTURE, TMS_LOW, TDI_ONES)?,
-        ];
-        for _ in 0..10 {
-            self.send_jtag_sequences(JtagSequenceRequest::new(sequences.clone())?)?;
-        }
-
-        // Transition to Shift-DR (we're still in Shift-IR, so need TDI=1 on first cycle)
-        let sequences = vec![
-            JtagSequence::new(3, NO_CAPTURE, TMS_HIGH, 1u64.to_le_bytes())?,
-            JtagSequence::new(2, NO_CAPTURE, TMS_LOW, TDI_ZEROES)?,
-        ];
-        self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
-
-        // Flush DR register(s) with zeroes.
-        // As DAP_Transfer only supports targeting 256 devices (the DAP index param is a single byte),
-        // we'll make the simplifying assumption that (at most) we will need to shift in 256 ones.
-        let sequences = vec![
-            JtagSequence::new(64, NO_CAPTURE, TMS_LOW, TDI_ZEROES)?,
-            JtagSequence::new(64, NO_CAPTURE, TMS_LOW, TDI_ZEROES)?,
-        ];
-        for _ in 0..2 {
-            self.send_jtag_sequences(JtagSequenceRequest::new(sequences.clone())?)?;
-        }
-
-        // Now shift in ones until we get a one out of TDO
-        let sequences = vec![
-            JtagSequence::new(64, CAPTURE, TMS_LOW, TDI_ONES)?,
-            JtagSequence::new(64, CAPTURE, TMS_LOW, TDI_ONES)?,
-        ];
-        let mut num_devices: usize = 0;
-        'outer: for _ in 0..2 {
-            let tdo = self.send_jtag_sequences(JtagSequenceRequest::new(sequences.clone())?)?;
-            for bits in tdo {
-                if bits == 0 {
-                    num_devices += 8;
-                } else {
-                    num_devices += bits.trailing_zeros() as usize;
-                    break 'outer;
-                }
-            }
-        }
-
-        Ok(num_devices)
+        Ok(())
     }
 
     fn send_jtag_configure(&mut self, request: JtagConfigureRequest) -> Result<(), CmsisDapError> {
@@ -402,7 +565,7 @@ impl CmsisDap {
             .map_err(CmsisDapError::from)
             .and_then(|v| match v {
                 JtagSequenceResponse(Status::DAPOk, tdo) => Ok(tdo),
-                JtagSequenceResponse(Status::DAPError, tdo) => Err(CmsisDapError::ErrorResponse),
+                JtagSequenceResponse(Status::DAPError, _) => Err(CmsisDapError::ErrorResponse),
             })
     }
 
@@ -717,12 +880,9 @@ impl DebugProbe for CmsisDap {
             match_retry: 0,
         })?;
 
-        match self.active_protocol() {
-            Some(WireProtocol::Jtag) => {}
-            Some(WireProtocol::Swd) => {
-                self.configure_swd(swd::configure::ConfigureRequest {})?;
-            }
-            None => todo!(),
+        if self.active_protocol() == Some(WireProtocol::Jtag) {
+        } else {
+            self.configure_swd(swd::configure::ConfigureRequest {})?;
         }
 
         // Tell the probe we are connected so it can turn on an LED.
@@ -990,9 +1150,10 @@ impl RawDapAccess for CmsisDap {
         self
     }
 
-    // :)
-    fn blah(&mut self) -> Result<(), DebugProbeError> {
-        let ir_lengths = vec![4, 5];
+    fn configure_jtag(&mut self) -> Result<(), DebugProbeError> {
+        // TODO: allow user to specify expected IR lengths
+        let chain = self.jtag_scan(None)?;
+        let ir_lengths = chain.irlens.iter().map(|len| *len as u8).collect();
         self.send_jtag_configure(JtagConfigureRequest::new(ir_lengths)?)?;
 
         return Ok(());

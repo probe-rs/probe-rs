@@ -1,11 +1,12 @@
 /// Implementation of the DAP_JTAG_IDCODE command
-use super::super::{CmsisDapError, CommandId, Request, SendError, Status};
+use super::super::{CommandId, Request, SendError, Status};
 #[derive(Clone, Copy, Debug)]
 pub struct IDCODERequest {
     index: u8,
 }
 
 impl IDCODERequest {
+    #[allow(dead_code)]
     pub(crate) fn new(index: u8) -> IDCODERequest {
         IDCODERequest { index }
     }
@@ -40,6 +41,8 @@ impl Request for IDCODERequest {
 
 #[derive(Clone, Copy, Debug)]
 pub struct IDCODEResponse {
+    #[allow(dead_code)]
     pub(crate) status: Status,
+    #[allow(dead_code)]
     pub(crate) idcode: u32,
 }
