@@ -253,6 +253,15 @@ impl CmsisDap {
         Ok(())
     }
 
+    /// Extract all IDCODEs from a test-logic-reset DR chain `dr`.
+    ///
+    /// Valid IDCODEs have a '1' in the least significant (first) bit,
+    /// and are 32 bits long. DRs in BYPASS always have a single 0 bit.
+    ///
+    /// We can therefore unambiguously scan through the DR capture to find
+    /// all IDCODEs and TAPs in BYPASS.
+    ///
+    /// Returns Vec<Option<u32>>, with None for TAPs in BYPASS.
     fn extract_idcodes(mut dr: &BitSlice<u8>) -> Result<Vec<Option<IDCODE>>, CmsisDapError> {
         let mut idcodes = Vec::new();
 
