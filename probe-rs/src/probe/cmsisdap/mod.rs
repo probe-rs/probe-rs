@@ -269,7 +269,7 @@ impl CmsisDap {
             if dr[0] {
                 if dr.len() < 32 {
                     tracing::error!("Truncated IDCODE: {dr:02X?}");
-                    return Err(CmsisDapError::ErrorResponse); // TODO: InvalidIDCODE
+                    return Err(CmsisDapError::InvalidIDCODE);
                 }
 
                 let idcode = dr.load::<u32>();
@@ -277,7 +277,7 @@ impl CmsisDap {
 
                 if !idcode.valid() {
                     tracing::error!("Invalid IDCODE: {:08X}", idcode.0);
-                    return Err(CmsisDapError::ErrorResponse); // TODO: InvalidIDCODE
+                    return Err(CmsisDapError::InvalidIDCODE);
                 }
                 tracing::debug!("Found IDCODE: {idcode}");
                 idcodes.push(Some(idcode));
@@ -331,15 +331,15 @@ impl CmsisDap {
 
         if n_taps == 0 {
             tracing::error!("Cannot scan IR without at least one TAP");
-            Err(CmsisDapError::ErrorResponse) // TODO: InvalidIR
+            Err(CmsisDapError::InvalidIR)
         } else if n_taps > starts.len() {
             // We must have at least as many `10` patterns as TAPs.
             tracing::error!("Fewer IRs detected than TAPs");
-            Err(CmsisDapError::ErrorResponse) // TODO: InvalidIR
+            Err(CmsisDapError::InvalidIR)
         } else if starts[0] != 0 {
             // The chain must begin with a possible start location.
             tracing::error!("IR chain does not begin with a valid start pattern");
-            Err(CmsisDapError::ErrorResponse) // TODO: InvalidIR
+            Err(CmsisDapError::InvalidIR)
         } else if let Some(expected) = expected {
             // If expected lengths are available, verify and return them.
             if expected.len() != n_taps {
@@ -349,7 +349,7 @@ impl CmsisDap {
                     expected.len()
                 );
 
-                Err(CmsisDapError::ErrorResponse) // TODO: InvalidIR
+                Err(CmsisDapError::InvalidIR)
             } else if expected.iter().sum::<usize>() != ir.len() {
                 tracing::error!(
                     "Sum of provided IR lengths ({}) does not match \
@@ -357,7 +357,7 @@ impl CmsisDap {
                     expected.iter().sum::<usize>(),
                     ir.len()
                 );
-                Err(CmsisDapError::ErrorResponse) // TODO: InvalidIR
+                Err(CmsisDapError::InvalidIR)
             } else {
                 let exp_starts = expected
                     .iter()
@@ -374,7 +374,7 @@ impl CmsisDap {
                         "Provided IR lengths imply an IR start position \
                              which is not supported by the IR scan"
                     );
-                    Err(CmsisDapError::ErrorResponse) // TODO: InvalidIR
+                    Err(CmsisDapError::InvalidIR)
                 } else {
                     tracing::debug!("Verified provided IR lengths against IR scan");
                     Ok(Self::starts_to_lens(&exp_starts, ir.len()))
@@ -392,7 +392,7 @@ impl CmsisDap {
             Ok(irlens)
         } else {
             tracing::error!("IR lengths are ambiguous and must be explicitly configured.");
-            Err(CmsisDapError::ErrorResponse) // TODO: InvalidIR
+            Err(CmsisDapError::InvalidIR)
         }
     }
 
