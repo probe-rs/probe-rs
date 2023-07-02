@@ -70,9 +70,9 @@ impl Request for SequenceRequest {
             let tck_cycles = if tck_cycles == 0 { 64 } else { tck_cycles };
 
             let mut sequence_info = 0;
-            sequence_info = sequence_info | (if tck_cycles == 64 { 0 } else { tck_cycles });
-            sequence_info = sequence_info | ((sequence.tms as u8) << 6);
-            sequence_info = sequence_info | ((sequence.tdo_capture as u8) << 7);
+            sequence_info |= if tck_cycles == 64 { 0 } else { tck_cycles };
+            sequence_info |= (sequence.tms as u8) << 6;
+            sequence_info |= (sequence.tdo_capture as u8) << 7;
             buffer[transfer_len_bytes] = sequence_info;
             transfer_len_bytes += 1;
 

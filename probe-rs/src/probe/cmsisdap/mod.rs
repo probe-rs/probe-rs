@@ -84,6 +84,7 @@ struct JTAGChain {
     pub irlens: Vec<usize>,
 }
 
+#[allow(clippy::upper_case_acronyms)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct IDCODE(pub u32);
 
@@ -505,7 +506,8 @@ impl CmsisDap {
 
         // Extract d0[..n] as the initial scan chain contents.
         let data = d0[..n].to_bitvec();
-        return Ok(data);
+
+        Ok(data)
     }
 
     fn jtag_ensure_shift_dr(&mut self) -> Result<(), CmsisDapError> {
@@ -1156,7 +1158,7 @@ impl RawDapAccess for CmsisDap {
         let ir_lengths = chain.irlens.iter().map(|len| *len as u8).collect();
         self.send_jtag_configure(JtagConfigureRequest::new(ir_lengths)?)?;
 
-        return Ok(());
+        Ok(())
     }
 
     fn jtag_sequence(&mut self, cycles: u8, tms: bool, tdi: u64) -> Result<(), DebugProbeError> {
