@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `dap-server`: In addition to `Elf` format, this adds support for binary formats `Bin`, `Hex`, and `Idf` (#1656).
 - Added PAC55XX series targets (#1655)
+- Added support for JTAG commands via CMSIS-DAP protocol (#1462)
 
 ## [0.19.0]
 
@@ -230,7 +231,6 @@ Released 2023-01-13
   - Tracing on M4 architectures utilize the TPIU for all hardware tracing (#1182)
 - ITM tracing can now be completed using the probe-rs CLI (#1180)
 - Added support for MIMXRT10xx targets (#1174)
-- Added support for JTAG commands via CMSIS-DAP protocol (#1462)
 - Added support for the Cortex M7 of MIMXRT11xx targets (#1250)
 - Added support for in-line (column specific) breakpoints where multiple statements (potential breakpoints) are on the same line of source code. (#1156)
 - Added support for MSP432P4XX targets (#1201)
