@@ -968,10 +968,6 @@ impl DebugProbe for CmsisDap {
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         match protocol {
             WireProtocol::Jtag => {
-                // tracing::warn!(
-                //     "Support for JTAG protocol is not yet implemented for CMSIS-DAP based probes."
-                // );
-                // Err(DebugProbeError::UnsupportedProtocol(WireProtocol::Jtag))
                 self.protocol = Some(WireProtocol::Jtag);
                 Ok(())
             }
