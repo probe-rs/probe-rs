@@ -511,11 +511,6 @@ impl CmsisDap {
     }
 
     fn jtag_ensure_shift_dr(&mut self) -> Result<(), CmsisDapError> {
-        const NO_CAPTURE: bool = false;
-        const TDI_ZEROES: [u8; 8] = [0x00; 8];
-        const TMS_LOW: bool = false;
-        const TMS_HIGH: bool = true;
-
         // Transition to Test-Logic-Reset.
         self.jtag_ensure_test_logic_reset()?;
 
