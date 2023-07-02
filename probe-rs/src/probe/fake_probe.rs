@@ -193,6 +193,10 @@ impl RawDapAccess for FakeProbe {
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
         self
     }
+
+    fn core_status_notification(&mut self, _: crate::CoreStatus) -> Result<(), DebugProbeError> {
+        Ok(())
+    }
 }
 
 #[derive(Debug)]

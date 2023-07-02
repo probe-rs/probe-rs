@@ -1,4 +1,4 @@
-use crate::{DebugProbe, DebugProbeError};
+use crate::{CoreStatus, DebugProbe, DebugProbeError};
 
 use super::ArmError;
 
@@ -159,6 +159,9 @@ pub trait RawDapAccess {
 
     /// Cast this interface into a generic [`DebugProbe`].
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
+
+    /// Inform the probe of the [`CoreStatus`] of the chip attached to the probe.
+    fn core_status_notification(&mut self, state: CoreStatus) -> Result<(), DebugProbeError>;
 }
 
 /// High-level DAP register access.

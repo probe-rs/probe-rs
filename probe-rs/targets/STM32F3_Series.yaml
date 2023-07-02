@@ -1,28 +1,30 @@
 name: STM32F3 Series
+generated_from_pack: true
+pack_file_release: 2.2.2
 variants:
   - name: STM32F301C6Tx
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20003000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20003000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8008000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -30,25 +32,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -56,25 +58,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -82,25 +84,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20003000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20003000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8008000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -108,25 +110,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -134,25 +136,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -160,25 +162,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20003000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20003000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8008000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -186,25 +188,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -212,25 +214,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20003000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20003000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8008000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -238,25 +240,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -264,25 +266,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -290,25 +292,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20006000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20006000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8020000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -316,25 +318,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20008000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20008000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8040000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8040000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -342,25 +344,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20003000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20003000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8008000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -368,25 +370,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -394,25 +396,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20003000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20003000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8008000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -420,25 +422,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -446,25 +448,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20006000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20006000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8020000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -472,25 +474,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20008000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20008000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8040000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8040000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -498,25 +500,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20010000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20010000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8060000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8060000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
@@ -524,25 +526,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20010000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20010000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8080000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8080000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
@@ -550,25 +552,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20006000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20006000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8020000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -576,25 +578,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20008000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20008000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8040000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8040000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -602,25 +604,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20008000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20008000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8040000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8040000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -628,25 +630,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20010000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20010000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8060000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8060000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
@@ -654,25 +656,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20010000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20010000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8060000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8060000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
@@ -680,25 +682,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20010000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20010000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8080000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8080000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
@@ -706,25 +708,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20010000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20010000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8080000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8080000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
@@ -732,25 +734,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20010000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20010000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8060000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8060000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
@@ -758,25 +760,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20010000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20010000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8080000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8080000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
@@ -784,25 +786,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20003000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20003000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8008000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -810,25 +812,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20003000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20003000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -836,25 +838,32 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x10000000
-            end: 0x10002000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x2000a000
+        cores:
+          - main
+      - !Ram
+        name: IRAM2
+        range:
+          start: 0x10000000
+          end: 0x10002000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8020000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -862,25 +871,32 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x2000c000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x2000c000
+        cores:
+          - main
+      - !Ram
+        name: IRAM2
+        range:
+          start: 0x10000000
+          end: 0x10002000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8040000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8040000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -888,25 +904,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20003000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20003000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8008000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -914,25 +930,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20003000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20003000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8008000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -940,25 +956,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20003000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20003000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -966,25 +982,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20003000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20003000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -992,25 +1008,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20003000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20003000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8008000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1018,25 +1034,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20003000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20003000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1044,25 +1060,32 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x10000000
-            end: 0x10002000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x2000a000
+        cores:
+          - main
+      - !Ram
+        name: IRAM2
+        range:
+          start: 0x10000000
+          end: 0x10002000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8020000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1070,25 +1093,32 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x10000000
-            end: 0x10002000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x2000c000
+        cores:
+          - main
+      - !Ram
+        name: IRAM2
+        range:
+          start: 0x10000000
+          end: 0x10002000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8040000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8040000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1096,25 +1126,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20010000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20010000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8060000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8060000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
@@ -1122,25 +1152,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20010000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20010000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8080000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8080000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
@@ -1148,25 +1178,32 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x10000000
-            end: 0x10002000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x2000a000
+        cores:
+          - main
+      - !Ram
+        name: IRAM2
+        range:
+          start: 0x10000000
+          end: 0x10002000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8020000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1174,25 +1211,32 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x10000000
-            end: 0x10002000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x2000c000
+        cores:
+          - main
+      - !Ram
+        name: IRAM2
+        range:
+          start: 0x10000000
+          end: 0x10002000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8040000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8040000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1200,25 +1244,32 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x2000c000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x2000c000
+        cores:
+          - main
+      - !Ram
+        name: IRAM2
+        range:
+          start: 0x10000000
+          end: 0x10002000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8040000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8040000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1226,25 +1277,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20010000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20010000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8060000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8060000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
@@ -1252,25 +1303,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20010000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20010000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8060000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8060000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
@@ -1278,25 +1329,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20010000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20010000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8080000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8080000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
@@ -1304,25 +1355,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20010000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20010000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8080000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8080000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
@@ -1330,25 +1381,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20010000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20010000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8080000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8080000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
@@ -1356,25 +1407,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20010000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20010000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8060000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8060000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
@@ -1382,25 +1433,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20010000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20010000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8080000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8080000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
@@ -1408,25 +1459,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1434,25 +1485,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1460,25 +1511,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1486,25 +1537,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1512,25 +1563,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8004000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8004000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1538,25 +1589,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8008000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1564,25 +1615,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1590,25 +1641,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1616,18 +1667,18 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8004000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8004000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1635,18 +1686,18 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8004000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8004000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1654,25 +1705,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8008000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1680,25 +1731,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8008000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1706,25 +1757,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1732,25 +1783,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1758,25 +1809,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8008000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8008000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1784,25 +1835,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1810,25 +1861,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x2000a000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x2000a000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8040000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8040000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1836,25 +1887,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x2000a000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x2000a000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8040000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8040000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1862,25 +1913,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x2000a000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x2000a000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8040000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8040000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1888,25 +1939,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1914,25 +1965,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20006000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20006000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8020000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1940,25 +1991,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20008000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20008000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8040000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8040000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1966,25 +2017,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -1992,25 +2043,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20006000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20006000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8020000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -2018,25 +2069,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20008000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20008000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8040000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8040000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -2044,25 +2095,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -2070,25 +2121,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20004000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20004000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8010000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8010000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -2096,25 +2147,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20006000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20006000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8020000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -2122,25 +2173,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20006000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20006000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8020000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8020000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -2148,25 +2199,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20008000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20008000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8040000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8040000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -2174,25 +2225,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20008000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20008000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8040000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8040000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -2200,25 +2251,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20008000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20008000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8040000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8040000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -2226,25 +2277,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20008000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20008000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8040000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8040000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -2252,25 +2303,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20008000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20008000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8040000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8040000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -2278,25 +2329,25 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20008000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20008000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8040000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8040000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_256
       - stm32f3xx_opt
@@ -2304,33 +2355,31 @@ variants:
     cores:
       - name: main
         type: armv7em
-        core_access_options:
-          !Arm
-            ap: 0x0
-            psel: 0x0
+        core_access_options: !Arm
+          ap: 0
+          psel: 0
     memory_map:
       - !Ram
-          range:
-            start: 0x20000000
-            end: 0x20010000
-          is_boot_memory: false
-          cores:
-            - main
+        name: IRAM1
+        range:
+          start: 0x20000000
+          end: 0x20010000
+        cores:
+          - main
       - !Nvm
-          range:
-            start: 0x8000000
-            end: 0x8080000
-          is_boot_memory: true
-          cores:
-            - main
+        name: IROM1
+        range:
+          start: 0x8000000
+          end: 0x8080000
+        is_boot_memory: true
+        cores:
+          - main
     flash_algorithms:
       - stm32f3xx_512
       - stm32f3xx_opt
 flash_algorithms:
   - name: stm32f3xx_256
     description: STM32F3xx Flash
-    cores:
-      - main
     default: true
     instructions: N0g2SUFgN0lBYAAhAWDBaBQiEUPBYMBpwAUG1DNIMkkBYAYhQWAySYFgACBwRyxIAWmAIhFDAWEAIHBHELUoSAFpBCQhQwFhAWlAIhFDAWEoSSZKAOARYMNo2wf70QFpoUMBYQAgEL0QtR1JCmkCJCJDCmFIYQhpQCIQQwhhHUgaSgDgEGDLaNsH+9EIaaBDCGEAIBC9cLVJHEkISQAUJg9NASMW4CxpHEMsYRSIBIDsaOQH/NEsaWQIZAAsYexoNEIE0OhoMEPoYAEgcL2AHJIciR4AKebRACBwvSMBZ0UAIAJAq4nvzVVVAAAAMABA/w8AAKqqAAAAAAAA
     pc_init: 0x1
@@ -2345,15 +2394,33 @@ flash_algorithms:
         end: 0x8040000
       page_size: 0x400
       erased_byte_value: 0xff
-      program_page_timeout: 0x64
-      erase_sector_timeout: 0x1770
+      program_page_timeout: 100
+      erase_sector_timeout: 6000
       sectors:
         - size: 0x800
           address: 0x0
+  - name: stm32f3xx_opt
+    description: STM32F3xx Flash Options
+    instructions: S0hKSkJgS0lBYIJggWAAIQFgwWgUIhFDwWDAacAFBtRGSEVJAWAGIUFgRUmBYAAgcEc/SAFpQhWRQwFhAWmAIhFDAWEAIHBHcLU5SMFoFCMZQ8FgAWkgJCFDAWEBaUAiEUMBYTdJNUoA4BFgxWjtB/vRBWmlQwVhBWkQJCVDBWEtTTFOVTU1gADgEWDFaO0H+9EBaaFDAWHBaBlCBNDBaBlDwWABIHC9ACBwvRC1IEgBaSAkIUMBYQFpQCIRQwFhIEkeSgDgEWDDaNsH+9EBaaFDAWEAIBC9ASBwR/C1SRxJCEkAEk0QJhZLGuAsaTRDLGEUiASAEUwA4CNg72j/B/vRLGm0Qyxh7GgUJzxCBdDpaBQgAUPpYAEg8L2AHJIciR4AKeLRACDwvQAAIwFnRQAgAkCrie/NVVUAAAAwAED/DwAAqqoAAAD4/x8AAAAA
+    pc_init: 0x1
+    pc_uninit: 0x33
+    pc_program_page: 0xdd
+    pc_erase_sector: 0xad
+    pc_erase_all: 0x49
+    data_section_offset: 0x14c
+    flash_properties:
+      address_range:
+        start: 0x1ffff800
+        end: 0x1ffff810
+      page_size: 0x10
+      erased_byte_value: 0xff
+      program_page_timeout: 3000
+      erase_sector_timeout: 3000
+      sectors:
+        - size: 0x10
+          address: 0x0
   - name: stm32f3xx_512
     description: STM32F3xx 512KB Flash
-    cores:
-      - main
     default: true
     instructions: N0g2SUFgN0lBYAAhAWDBaBQiEUPBYMBpwAUG1DNIMkkBYAYhQWAySYFgACBwRyxIAWmAIhFDAWEAIHBHELUoSAFpBCQhQwFhAWlAIhFDAWEoSSZKAOARYMNo2wf70QFpoUMBYQAgEL0QtR1JCmkCJCJDCmFIYQhpQCIQQwhhHUgaSgDgEGDLaNsH+9EIaaBDCGEAIBC9cLVJHEkISQAUJg9NASMW4CxpHEMsYRSIBIDsaOQH/NEsaWQIZAAsYexoNEIE0OhoMEPoYAEgcL2AHIkekhwAKebRACBwvSMBZ0UAIAJAq4nvzVVVAAAAMABA/w8AAKqqAAAAAAAA
     pc_init: 0x1
@@ -2368,31 +2435,8 @@ flash_algorithms:
         end: 0x8080000
       page_size: 0x400
       erased_byte_value: 0xff
-      program_page_timeout: 0x64
-      erase_sector_timeout: 0x1770
+      program_page_timeout: 100
+      erase_sector_timeout: 6000
       sectors:
         - size: 0x800
-          address: 0x0
-  - name: stm32f3xx_opt
-    description: STM32F3xx Flash Options
-    cores:
-      - main
-    default: false
-    instructions: S0hKSkJgS0lBYIJggWAAIQFgwWgUIhFDwWDAacAFBtRGSEVJAWAGIUFgRUmBYAAgcEc/SAFpQhWRQwFhAWmAIhFDAWEAIHBHcLU5SMFoFCMZQ8FgAWkgJCFDAWEBaUAiEUMBYTdJNUoA4BFgxWjtB/vRBWmlQwVhBWkQJCVDBWEtTTFOVTU1gADgEWDFaO0H+9EBaaFDAWHBaBlCBNDBaBlDwWABIHC9ACBwvRC1IEgBaSAkIUMBYQFpQCIRQwFhIEkeSgDgEWDDaNsH+9EBaaFDAWEAIBC9ASBwR/C1SRxJCEkAEk0QJhZLGuAsaTRDLGEUiASAEUwA4CNg72j/B/vRLGm0Qyxh7GgUJzxCBdDpaBQgAUPpYAEg8L2AHJIciR4AKeLRACDwvQAAIwFnRQAgAkCrie/NVVUAAAAwAED/DwAAqqoAAAD4/x8AAAAA
-    pc_init: 0x1
-    pc_uninit: 0x33
-    pc_program_page: 0xdd
-    pc_erase_sector: 0xad
-    pc_erase_all: 0x49
-    data_section_offset: 0x14c
-    flash_properties:
-      address_range:
-        start: 0x1ffff800
-        end: 0x1ffff810
-      page_size: 0x10
-      erased_byte_value: 0xff
-      program_page_timeout: 0xbb8
-      erase_sector_timeout: 0xbb8
-      sectors:
-        - size: 0x10
           address: 0x0

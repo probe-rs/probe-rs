@@ -38,7 +38,7 @@ const STLINK_MAX_WRITE_LEN: usize = 0xFFFC;
 const DP_PORT: u16 = 0xFFFF;
 
 #[derive(Debug)]
-pub struct StLink<D: StLinkUsb> {
+pub(crate) struct StLink<D: StLinkUsb> {
     device: D,
     name: String,
     hw_version: u8,
@@ -138,8 +138,8 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
         }
     }
 
+    #[tracing::instrument(skip(self))]
     fn attach(&mut self) -> Result<(), DebugProbeError> {
-        tracing::debug!("attach({:?})", self.protocol);
         self.enter_idle()?;
 
         let param = match self.protocol {
@@ -198,7 +198,8 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
         if self.swo_enabled {
             self.disable_swo().map_err(crate::Error::Arm)?;
         }
-        self.enter_idle().map_err(crate::Error::Probe)
+        self.enter_idle()
+            .map_err(|e| DebugProbeError::from(e).into())
     }
 
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
@@ -212,7 +213,9 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
             &[],
             &mut buf,
             TIMEOUT,
-        )
+        )?;
+
+        Ok(())
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
@@ -226,7 +229,9 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
             &[],
             &mut buf,
             TIMEOUT,
-        )
+        )?;
+
+        Ok(())
     }
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
@@ -240,7 +245,9 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
             &[],
             &mut buf,
             TIMEOUT,
-        )
+        )?;
+
+        Ok(())
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
@@ -290,9 +297,10 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
                     Ok(Some(2. * (a1 as f32) * 1.2 / (a0 as f32)))
                 } else {
                     // Should never happen
-                    Err(StlinkError::VoltageDivisionByZero.into())
+                    Err(StlinkError::VoltageDivisionByZero)
                 }
             })
+            .map_err(|e| e.into())
     }
 }
 
@@ -357,8 +365,14 @@ impl<D: StLinkUsb> StLink<D> {
     /// Firmware version that adds multiple AP support.
     const MIN_JTAG_VERSION_MULTI_AP: u8 = 28;
 
+    /// Firmware version which supports banked DP registers.
+    ///
+    /// This only applies to HW version 2, for version 3 we only support
+    /// FW versions where this is supported.
+    const MIN_JTAG_VERSION_DP_BANK_SEL: u8 = 32;
+
     /// Get the current mode of the ST-Link
-    fn get_current_mode(&mut self) -> Result<Mode, DebugProbeError> {
+    fn get_current_mode(&mut self) -> Result<Mode, StlinkError> {
         tracing::trace!("Getting current mode of device...");
         let mut buf = [0; 2];
         self.device
@@ -371,7 +385,7 @@ impl<D: StLinkUsb> StLink<D> {
             1 => MassStorage,
             2 => Jtag,
             3 => Swim,
-            _ => return Err(StlinkError::UnknownMode.into()),
+            _ => return Err(StlinkError::UnknownMode),
         };
 
         tracing::debug!("Current device mode: {:?}", mode);
@@ -379,12 +393,26 @@ impl<D: StLinkUsb> StLink<D> {
         Ok(mode)
     }
 
+    /// Check if selecting different banks in the DP is supported.
+    ///
+    /// If this is not supported, some DP registers cannot be accessed.
+    fn supports_dp_bank_selection(&self) -> bool {
+        (self.hw_version == 2 && self.jtag_version >= Self::MIN_JTAG_VERSION_DP_BANK_SEL)
+            || self.hw_version == 3
+    }
+
     /// Commands the ST-Link to enter idle mode.
     /// Internal helper.
-    fn enter_idle(&mut self) -> Result<(), DebugProbeError> {
+    fn enter_idle(&mut self) -> Result<(), StlinkError> {
         let mode = self.get_current_mode()?;
 
         match mode {
+            Mode::Jtag => self.device.write(
+                &[commands::JTAG_COMMAND, commands::JTAG_EXIT],
+                &[],
+                &mut [],
+                TIMEOUT,
+            ),
             Mode::Dfu => self.device.write(
                 &[commands::DFU_COMMAND, commands::DFU_EXIT],
                 &[],
@@ -464,14 +492,14 @@ impl<D: StLinkUsb> StLink<D> {
 
         if let Err(e) = self.enter_idle() {
             match e {
-                DebugProbeError::Usb(_) => {
+                StlinkError::Usb(_) => {
                     // Reset the device, and try to enter idle mode again
                     self.device.reset()?;
 
                     self.enter_idle()?;
                 }
                 // Other error occurred, return it
-                _ => return Err(e),
+                _ => return Err(e.into()),
             }
         }
 
@@ -504,7 +532,9 @@ impl<D: StLinkUsb> StLink<D> {
             &[],
             &mut buf,
             TIMEOUT,
-        )
+        )?;
+
+        Ok(())
     }
 
     /// Sets the JTAG frequency.
@@ -522,7 +552,9 @@ impl<D: StLinkUsb> StLink<D> {
             &[],
             &mut buf,
             TIMEOUT,
-        )
+        )?;
+
+        Ok(())
     }
 
     /// Sets the communication frequency (V3 only)
@@ -546,7 +578,9 @@ impl<D: StLinkUsb> StLink<D> {
         command.extend_from_slice(&frequency_khz.to_le_bytes());
 
         let mut buf = [0; 8];
-        self.send_jtag_command(&command, &[], &mut buf, TIMEOUT)
+        self.send_jtag_command(&command, &[], &mut buf, TIMEOUT)?;
+
+        Ok(())
     }
 
     /// Returns the current and available communication frequencies (V3 only)
@@ -604,6 +638,8 @@ impl<D: StLinkUsb> StLink<D> {
             tracing::debug!("Opening AP {}", ap);
             self.open_ap(ap)?;
             self.opened_aps.push(ap);
+        } else {
+            tracing::trace!("AP {} already open.", ap);
         }
 
         Ok(())
@@ -628,7 +664,9 @@ impl<D: StLinkUsb> StLink<D> {
                 &mut buf,
                 TIMEOUT,
             )
-        })
+        })?;
+
+        Ok(())
     }
 
     /// Close a specific AP, which was opened with `open_ap`.
@@ -650,7 +688,9 @@ impl<D: StLinkUsb> StLink<D> {
                 &mut buf,
                 TIMEOUT,
             )
-        })
+        })?;
+
+        Ok(())
     }
 
     fn send_jtag_command(
@@ -659,13 +699,13 @@ impl<D: StLinkUsb> StLink<D> {
         write_data: &[u8],
         read_data: &mut [u8],
         timeout: Duration,
-    ) -> Result<(), DebugProbeError> {
+    ) -> Result<(), StlinkError> {
         self.device.write(cmd, write_data, read_data, timeout)?;
         match Status::from(read_data[0]) {
             Status::JtagOk => Ok(()),
             status => {
                 tracing::warn!("send_jtag_command {} failed: {:?}", cmd[0], status);
-                Err(StlinkError::CommandFailed(status).into())
+                Err(StlinkError::CommandFailed(status))
             }
         }
     }
@@ -725,19 +765,24 @@ impl<D: StLinkUsb> StLink<D> {
         Ok(buf)
     }
 
-    fn get_last_rw_status(&mut self) -> Result<(), DebugProbeError> {
+    #[tracing::instrument(skip(self))]
+    fn get_last_rw_status(&mut self) -> Result<(), StlinkError> {
         let mut receive_buffer = [0u8; 12];
+
         self.send_jtag_command(
             &[commands::JTAG_COMMAND, commands::JTAG_GETLASTRWSTATUS2],
             &[],
             &mut receive_buffer,
             TIMEOUT,
-        )
+        )?;
+
+        Ok(())
     }
 
     /// Reads the DAP register on the specified port and address.
     fn read_register(&mut self, port: u16, addr: u8) -> Result<u32, DebugProbeError> {
-        if port == DP_PORT && addr & 0xf0 != 0 {
+        if port == DP_PORT && addr & 0xf0 != 0 && !self.supports_dp_bank_selection() {
+            tracing::warn!("Trying to access DP register at address {addr:#x}, which is not supported on ST-Links.");
             return Err(StlinkError::BanksNotAllowedOnDPRegister.into());
         }
 
@@ -763,7 +808,8 @@ impl<D: StLinkUsb> StLink<D> {
 
     /// Writes a value to the DAP register on the specified port and address.
     fn write_register(&mut self, port: u16, addr: u8, value: u32) -> Result<(), DebugProbeError> {
-        if port == DP_PORT && addr & 0xf0 != 0 {
+        if port == DP_PORT && addr & 0xf0 != 0 && !self.supports_dp_bank_selection() {
+            tracing::warn!("Trying to access DP register at address {addr:#x}, which is not supported on ST-Links.");
             return Err(StlinkError::BanksNotAllowedOnDPRegister.into());
         }
 
@@ -788,9 +834,12 @@ impl<D: StLinkUsb> StLink<D> {
         ];
         let mut buf = [0; 2];
 
-        retry_on_wait(|| self.send_jtag_command(cmd, &[], &mut buf, TIMEOUT))
+        retry_on_wait(|| self.send_jtag_command(cmd, &[], &mut buf, TIMEOUT))?;
+
+        Ok(())
     }
 
+    #[tracing::instrument(skip(self, data, apsel), fields(ap=apsel, length= data.len()))]
     fn read_mem_32bit(
         &mut self,
         address: u32,
@@ -798,12 +847,6 @@ impl<D: StLinkUsb> StLink<D> {
         apsel: u8,
     ) -> Result<(), DebugProbeError> {
         self.select_ap(apsel)?;
-
-        tracing::debug!(
-            "Read mem 32 bit, address={:08x}, length={}",
-            address,
-            data.len()
-        );
 
         // Ensure maximum read length is not exceeded.
         assert!(
@@ -843,7 +886,11 @@ impl<D: StLinkUsb> StLink<D> {
             )?;
 
             self.get_last_rw_status()
-        })
+        })?;
+
+        tracing::debug!("Read ok");
+
+        Ok(())
     }
 
     fn read_mem_8bit(
@@ -958,7 +1005,9 @@ impl<D: StLinkUsb> StLink<D> {
             )?;
 
             self.get_last_rw_status()
-        })
+        })?;
+
+        Ok(())
     }
 
     fn write_mem_8bit(
@@ -1005,7 +1054,9 @@ impl<D: StLinkUsb> StLink<D> {
             )?;
 
             self.get_last_rw_status()
-        })
+        })?;
+
+        Ok(())
     }
 
     fn _read_debug_reg(&mut self, address: u32) -> Result<u32, DebugProbeError> {
@@ -1041,7 +1092,9 @@ impl<D: StLinkUsb> StLink<D> {
         cmd.pwrite_with(address, 2, LE).unwrap();
         cmd.pwrite_with(value, 6, LE).unwrap();
 
-        self.send_jtag_command(&cmd, &[], &mut buff, TIMEOUT)
+        self.send_jtag_command(&cmd, &[], &mut buff, TIMEOUT)?;
+
+        Ok(())
     }
 }
 
@@ -1074,9 +1127,12 @@ impl<D: StLinkUsb> SwoAccess for StLink<D> {
 pub(crate) enum StlinkError {
     #[error("Invalid voltage values returned by probe.")]
     VoltageDivisionByZero,
-    #[error("Probe is an unknown mode.")]
+    #[error("Probe is in an unknown mode.")]
     UnknownMode,
-    #[error("STLink does not support accessing banked DP registers.")]
+    #[error(
+        "Current version of the STLink firmware does not support accessing banked DP registers. \
+         Upgrading the firmware to the newest version might fix this."
+    )]
     BanksNotAllowedOnDPRegister,
     #[error("Not enough bytes written.")]
     NotEnoughBytesWritten { is: usize, should: usize },
@@ -1092,6 +1148,8 @@ pub(crate) enum StlinkError {
     MultidropNotSupported,
     #[error("Unaligned")]
     UnalignedAddress,
+    #[error("USB")]
+    Usb(#[from] rusb::Error),
 }
 
 impl From<StlinkError> for DebugProbeError {
@@ -1112,6 +1170,7 @@ struct UninitializedStLink {
 }
 
 impl UninitializedArmProbe for UninitializedStLink {
+    #[tracing::instrument(skip(self, _sequence))]
     fn initialize(
         self: Box<Self>,
         _sequence: Arc<dyn ArmDebugSequence>,
@@ -1186,14 +1245,21 @@ impl StlinkArmDebug {
 }
 
 impl DapAccess for StlinkArmDebug {
+    #[tracing::instrument(skip(self), fields(value))]
     fn read_raw_dp_register(&mut self, dp: DpAddress, address: u8) -> Result<u32, ArmError> {
         if dp != DpAddress::Default {
             return Err(DebugProbeError::from(StlinkError::MultidropNotSupported).into());
         }
         let result = self.probe.read_register(DP_PORT, address)?;
+
+        tracing::Span::current().record("value", result);
+
+        tracing::debug!("Read succesful");
+
         Ok(result)
     }
 
+    #[tracing::instrument(skip(self))]
     fn write_raw_dp_register(
         &mut self,
         dp: DpAddress,
@@ -1247,6 +1313,7 @@ impl ArmProbeInterface for StlinkArmDebug {
         Ok(Box::new(interface) as _)
     }
 
+    #[tracing::instrument(skip(self))]
     fn ap_information(
         &mut self,
         access_port: crate::architecture::arm::ap::GenericAp,
@@ -1587,22 +1654,14 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
     }
 }
 
-fn is_wait_error(e: &DebugProbeError) -> bool {
-    if let DebugProbeError::ProbeSpecific(e) = e {
-        matches!(
-            e.downcast_ref(),
-            Some(StlinkError::CommandFailed(
-                Status::SwdDpWait | Status::SwdApWait
-            ))
-        )
-    } else {
-        false
-    }
+fn is_wait_error(e: &StlinkError) -> bool {
+    matches!(
+        e,
+        StlinkError::CommandFailed(Status::SwdDpWait | Status::SwdApWait)
+    )
 }
 
-fn retry_on_wait<R>(
-    mut f: impl FnMut() -> Result<R, DebugProbeError>,
-) -> Result<R, DebugProbeError> {
+fn retry_on_wait<R>(mut f: impl FnMut() -> Result<R, StlinkError>) -> Result<R, StlinkError> {
     let mut last_err = None;
     for attempt in 0..13 {
         match f() {
@@ -1667,7 +1726,7 @@ mod test {
             _write_data: &[u8],
             read_data: &mut [u8],
             _timeout: std::time::Duration,
-        ) -> Result<(), crate::DebugProbeError> {
+        ) -> Result<(), StlinkError> {
             match cmd[0] {
                 commands::GET_VERSION => {
                     // GET_VERSION response structure:
@@ -1789,20 +1848,15 @@ mod test {
 
     #[test]
     fn test_is_wait_error() {
-        assert!(!is_wait_error(&DebugProbeError::InterfaceNotAvailable(
-            "foo"
+        assert!(!is_wait_error(&StlinkError::BanksNotAllowedOnDPRegister));
+        assert!(!is_wait_error(&StlinkError::CommandFailed(
+            Status::JtagFreqNotSupported
         )));
-        assert!(!is_wait_error(
-            &StlinkError::BanksNotAllowedOnDPRegister.into()
-        ));
-        assert!(!is_wait_error(
-            &StlinkError::CommandFailed(Status::JtagFreqNotSupported).into()
-        ));
-        assert!(is_wait_error(
-            &StlinkError::CommandFailed(Status::SwdDpWait).into()
-        ));
-        assert!(is_wait_error(
-            &StlinkError::CommandFailed(Status::SwdApWait).into()
-        ));
+        assert!(is_wait_error(&StlinkError::CommandFailed(
+            Status::SwdDpWait
+        )));
+        assert!(is_wait_error(&StlinkError::CommandFailed(
+            Status::SwdApWait
+        )));
     }
 }

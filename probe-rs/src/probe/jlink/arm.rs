@@ -1,3 +1,4 @@
+//! Implementation of the SWD and JTAG protocols for the JLink probe.
 use std::{iter, time::Duration};
 
 use crate::{
@@ -122,8 +123,6 @@ impl ProbeStatistics {
         self.num_line_resets += 1;
     }
 }
-
-///! Implementation of the SWD and JTAG protocols for the JLink probe.
 
 // Constant to be written to ABORT
 const JTAG_ABORT_VALUE: u64 = 0x8;
@@ -375,6 +374,10 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
 
     let mut final_transfers: Vec<DapTransfer> = Vec::new();
 
+    struct OriginalTransfer {
+        index: usize,
+        response_in_next: bool,
+    }
     let mut result_indices = Vec::new();
 
     let mut num_transfers = 0;
@@ -442,16 +445,14 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
             && !(matches!(transfer.port, PortType::DebugPort)
                 && transfer.address == Abort::ADDRESS);
 
-        // If the response is returned in the next transfer, we push the correct index
+        // Track whether the response is returned in the next transfer.
         // SWD only, with JTAG we always get responses in a predictable fashion so it's
         // handled by perform_jtag_transfers
-        if probe.active_protocol().unwrap() == crate::WireProtocol::Swd
-            && (need_ap_read || write_response_pending)
-        {
-            result_indices.push(num_transfers + 1);
-        } else {
-            result_indices.push(num_transfers);
-        }
+        result_indices.push(OriginalTransfer {
+            index: num_transfers,
+            response_in_next: probe.active_protocol().unwrap() == crate::WireProtocol::Swd
+                && (need_ap_read || write_response_pending),
+        });
 
         if transfer.is_write() {
             tracing::trace!("Adding {} idle cycles after transfer!", idle_cycles);
@@ -499,10 +500,17 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
     }
 
     // Retrieve the results
-    for (transfer, index) in transfers.iter_mut().zip(result_indices) {
-        transfer.status = final_transfers[index].status.clone();
+    for (transfer, orig) in transfers.iter_mut().zip(result_indices) {
+        // if the original transfer caused two transfers, return the first non-OK status.
+        // This is important if the first fails with WAIT and the second with FAULT. We need to
+        // return WAIT so that higher layers know they have to retry.
+        transfer.status = final_transfers[orig.index].status.clone();
+        if orig.response_in_next && transfer.status == TransferStatus::Ok {
+            transfer.status = final_transfers[orig.index + 1].status.clone();
+        }
+
         if transfer.direction == TransferDirection::Read {
-            transfer.value = final_transfers[index].value;
+            transfer.value = final_transfers[orig.index + orig.response_in_next as usize].value;
         }
     }
 
@@ -1402,6 +1410,10 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
             }
         }
 
+        Ok(())
+    }
+
+    fn core_status_notification(&mut self, _: crate::CoreStatus) -> Result<(), DebugProbeError> {
         Ok(())
     }
 }

@@ -77,17 +77,22 @@ pub mod debug;
 mod error;
 #[warn(missing_docs)]
 pub mod flashing;
+#[cfg(feature = "gdb-server")]
+pub mod gdb_server;
 #[warn(missing_docs)]
 mod memory;
 #[warn(missing_docs)]
 mod probe;
 #[warn(missing_docs)]
+#[cfg(feature = "rtt")]
+pub mod rtt;
+#[warn(missing_docs)]
 mod session;
 
 pub use crate::config::{CoreType, InstructionSet, Target};
 pub use crate::core::{
-    Architecture, BreakpointCause, BreakpointId, Core, CoreInformation, CoreInterface, CoreState,
-    CoreStatus, HaltReason, MemoryMappedRegister, RegisterDescription, RegisterFile, RegisterId,
+    Architecture, BreakpointCause, Core, CoreInformation, CoreInterface, CoreRegister,
+    CoreRegisters, CoreState, CoreStatus, HaltReason, MemoryMappedRegister, RegisterId,
     RegisterValue, SpecificCoreState,
 };
 pub use crate::error::Error;

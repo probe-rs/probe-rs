@@ -2,10 +2,10 @@
 //!
 //! # Description
 //! This module provides access and control of the trace funnel CoreSight component block.
-use super::DebugRegister;
+use super::DebugComponentInterface;
 use crate::architecture::arm::memory::romtable::CoresightComponent;
 use crate::architecture::arm::{ArmError, ArmProbeInterface};
-use bitfield::bitfield;
+use crate::memory_mapped_bitfield_register;
 
 const REGISTER_OFFSET_ACCESS: u32 = 0xFB0;
 
@@ -47,12 +47,13 @@ impl<'a> TraceFunnel<'a> {
     }
 }
 
-bitfield! {
+memory_mapped_bitfield_register! {
     /// The control register is described in "DDI0314H CoreSight Components Technical Reference
     /// Manual" on page 7-5.
-    #[derive(Clone, Default)]
+    #[derive(Default)]
     pub struct Control(u32);
-    impl Debug;
+    0x00, "CSTF/CTRL",
+    impl From;
 
     /// The minimum hold time specifics the number of transactions that the arbiter of the funnel
     /// will perform on individual active input before muxing to the next port. The arbiter uses a
@@ -64,19 +65,4 @@ bitfield! {
     pub u8, enable_slave_port, set_slave_enable: 7, 0;
 }
 
-impl DebugRegister for Control {
-    const ADDRESS: u32 = 0x00;
-    const NAME: &'static str = "CSTF/CTRL";
-}
-
-impl From<u32> for Control {
-    fn from(raw: u32) -> Control {
-        Control(raw)
-    }
-}
-
-impl From<Control> for u32 {
-    fn from(control: Control) -> u32 {
-        control.0
-    }
-}
+impl DebugComponentInterface for Control {}

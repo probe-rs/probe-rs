@@ -18,7 +18,7 @@
 //!
 //! ## Adding targets at runtime
 //!
-//! To add a target at runtime, the [add_target_from_yaml] file can
+//! To add a target at runtime, the [add_target_from_yaml] function can
 //! be used to read targets from a YAML file.
 //!
 
@@ -40,3 +40,4 @@ pub use target::{DebugSequence, Target, TargetParseError, TargetSelector};
 // Crate-internal API
 pub(crate) use chip_info::ChipInfo;
 pub(crate) use registry::get_target_by_chip_info;
+pub(crate) use target::CoreExt;

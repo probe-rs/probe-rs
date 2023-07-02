@@ -64,7 +64,7 @@ jobs:
 
       - name: Check semver compliance
         run: |
-          cargo semver-checks check-release -p probe-rs -p probe-rs-target -p probe-rs-rtt -p probe-rs-cli-util
+          cargo semver-checks check-release -p probe-rs -p probe-rs-targets
 
       - name: Push branch
         run: |
@@ -73,24 +73,13 @@ jobs:
       - name: create pull request
         run: |
           gh pr create -B master -H "${BRANCH_NAME}"\
-            --title "Release ${BRANCH_NAME}"\
+            --title "Release ${{ inputs.version }}"\
             --label "release"\
-            --body "This is the release PR for **${{ inputs.version }}**.
-          ---
-          It releases:
+            --body "Released packages are:
 
           - probe-rs
           - probe-rs-target
-          - probe-rs-rtt
-          - probe-rs-cli-util
-          - probe-rs-cli
-          - probe-rs-debugger
-          - gdb-server
           - target-gen
-          - rtthost
-          - cargo-embed
-          - cargo-flash
-          ---
-          Use \`bors r+\` to merge."
+          - rtthost"
         env:
             GITHUB_TOKEN: ${{ secrets.GH_PAT }}

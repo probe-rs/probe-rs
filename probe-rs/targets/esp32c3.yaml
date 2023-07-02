@@ -1,0 +1,73 @@
+---
+name: esp32c3
+manufacturer: ~
+variants:
+  - name: esp32c3
+    part: ~
+    cores:
+      - name: main
+        type: riscv
+        core_access_options: !Riscv {}
+    memory_map: # From ESP32-C3 Technical Reference Manual, Table 3.2/3.3 Internal/External Memory Address Mapping
+      - !Nvm
+        range: #16 Mb Max addressable Flash size
+          start: 0x0
+          end: 0x01000000
+        is_boot_memory: true
+        cores:
+          - main
+      - !Ram
+        range: # 384 Kb SRAM on Instruction Bus
+          start: 0x40380000
+          end: 0x403e0000
+        is_boot_memory: false
+        cores:
+          - main
+      - !Ram
+        range: # 384 Kb SRAM on Data Bus
+          start: 0x3fc80000
+          end: 0x3fc90000
+        is_boot_memory: false
+        cores:
+          - main
+      - !Nvm
+        range: # External Flash on Instruction Bus (Read Only)
+          start: 0x42000000
+          end: 0x42800000
+        is_boot_memory: false
+        cores:
+          - main
+      - !Nvm
+        range: # External Flash on Data Bus (Read Only)
+          start: 0x3c000000
+          end: 0x3c800000
+        is_boot_memory: false
+        cores:
+          - main
+    flash_algorithms:
+      - esp32c3-flashloader
+flash_algorithms:
+  - name: esp32c3-flashloader
+    description: A flash loader for the esp32c3.
+    default: true
+    instructions: QREGxjcFOUADRQUHGcEBRS2glwDH/+eAoHCBRZcAx//ngIAUlwDH/+eAwBEZ5QFFtwU5QAVGI4jFBrJAQQGCgDGBFwPH/2cAYw4XA8f/ZwBjDRN3NgABxxMFoAqCgK6GsoU2hhcDx/9nAIMMAUWCgAAAAAA=
+    load_address: 0x40390000 # See discussion at https://github.com/probe-rs/probe-rs/pull/1209/#issuecomment-1218430338
+    pc_init: 0
+    pc_uninit: 108
+    pc_program_page: 82
+    pc_erase_sector: 64
+    pc_erase_all: 74
+    data_section_offset: 116
+    flash_properties:
+      address_range: #16 Mb Max addressable Flash size
+        start: 0x0
+        end: 0x1000000
+      page_size: 2048
+      erased_byte_value: 255
+      program_page_timeout: 1000
+      erase_sector_timeout: 2000
+      sectors:
+        - size: 4096
+          address: 0
+    cores:
+      - main

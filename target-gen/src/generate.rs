@@ -181,6 +181,7 @@ fn core_to_probe_core(value: &Core) -> Result<CoreType, Error> {
         Core::CortexM23 => CoreType::Armv8m,
         Core::CortexM33 => CoreType::Armv8m,
         Core::CortexM7 => CoreType::Armv7em,
+        Core::StarMC1 => CoreType::Armv8m,
         c => {
             bail!("Core '{:?}' is not yet supported for target generation.", c);
         }

@@ -1,6 +1,5 @@
 use super::{unit_info::UnitInfo, DebugError, DebugInfo};
 use gimli::{ColumnType, LineSequence};
-use num_traits::Zero;
 use std::{
     fmt::{Debug, Formatter},
     num::NonZeroU64,
@@ -37,6 +36,7 @@ impl SourceStatements {
         let (complete_line_program, active_sequence) =
             get_program_info_at_pc(debug_info, program_unit, program_counter)?;
         let mut sequence_rows = complete_line_program.resume_from(&active_sequence);
+        let program_language = program_unit.get_language();
         let mut prologue_completed = false;
         let mut source_statement: Option<SourceStatement> = None;
         while let Ok(Some((_, row))) = sequence_rows.next_row() {
@@ -57,6 +57,25 @@ impl SourceStatements {
             // Don't do anything until we are at least at the prologue_end() of a function.
             if row.prologue_end() {
                 prologue_completed = true;
+            }
+            // For GNU C, it is known that the `DW_LNS_set_prologue_end` is not set, so we employ the same heuristic as GDB to determine when the prologue is complete.
+            // For other C compilers in the C99/11/17 standard, they will either set the `DW_LNS_set_prologue_end` or they will trigger this heuristic also.
+            // See https://gcc.gnu.org/legacy-ml/gcc-patches/2011-03/msg02106.html
+            if !prologue_completed
+                && matches!(
+                    program_language,
+                    gimli::DW_LANG_C99 | gimli::DW_LANG_C11 | gimli::DW_LANG_C17
+                )
+            {
+                if let Some(source_row) = source_statement.as_mut() {
+                    if row.end_sequence()
+                        || (row.is_stmt()
+                            && (row.file_index() == source_row.file_index
+                                && (row.line() != source_row.line || row.line().is_none())))
+                    {
+                        prologue_completed = true;
+                    }
+                }
             }
 
             if !prologue_completed {
@@ -100,7 +119,7 @@ impl SourceStatements {
             }
         }
 
-        if source_statements.len().is_zero() {
+        if source_statements.len() == 0 {
             Err(DebugError::NoValidHaltLocation{
                 message: "Could not find valid source statements for this address. Consider using instruction level stepping.".to_string(),
                 pc_at_error: program_counter,

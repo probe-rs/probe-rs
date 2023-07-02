@@ -109,6 +109,8 @@ fn main() -> Result<(), probe_rs::Error> {
 
 Don't hesitate to [file an issue](https://github.com/probe-rs/probe-rs/issues/new), ask questions on [Matrix](https://matrix.to/#/#probe-rs:matrix.org), or contact [@Yatekii](https://github.com/Yatekii) via e-mail.
 
+There is also a [trouble-shooting section](https://probe.rs/docs/knowledge-base/troubleshooting/) on the [project page](https://probe.rs/).
+
 ### How can I help?
 
 Please have a look at the issues or open one if you feel that something is needed.
@@ -150,6 +152,11 @@ See [the vcpkg crate documentation](https://docs.rs/vcpkg/) for more information
 
 Target files are generated using [target-gen](https://github.com/probe-rs/probe-rs/tree/master/target-gen) from CMSIS packs provided [here](https://developer.arm.com/tools-and-software/embedded/cmsis/cmsis-search).
 Generated files are then placed in `probe-rs/targets` for inclusion in the probe-rs project.
+
+### Writing new flash algorithms
+
+If there is no CMSIS-Pack with a flash algorithm available, it is necessary to write a target definition and a flash algorithm by oneself.
+You can use our [template](https://github.com/probe-rs/flash-algorithm-template) for writing an algorithm. Please follow the instructions in the `README.md` in that repo.
 
 ## Acknowledgements
 

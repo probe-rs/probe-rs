@@ -4,14 +4,14 @@ use super::{
 };
 use crate::{
     core::Core,
+    core::{RegisterRole, RegisterValue},
     debug::{registers, source_statement::SourceStatements},
-    MemoryInterface, RegisterValue,
+    MemoryInterface,
 };
 use ::gimli::{FileEntry, LineProgramHeader, UnwindContext};
 use gimli::{BaseAddresses, ColumnType, DebugFrame, UnwindSection};
 use object::read::{Object, ObjectSection};
 use probe_rs_target::InstructionSet;
-use registers::RegisterGroup;
 use std::{
     borrow,
     cmp::Ordering,
@@ -28,6 +28,18 @@ pub(crate) type GimliReader = gimli::EndianReader<gimli::LittleEndian, std::rc::
 pub(crate) type GimliAttribute = gimli::Attribute<GimliReader>;
 
 pub(crate) type DwarfReader = gimli::read::EndianRcSlice<gimli::LittleEndian>;
+
+/// Capture the required information when a breakpoint is set based on a requested source location.
+/// It is possible that the requested source location cannot be resolved to a valid instruction address,
+/// in which case the first 'valid' instruction address will be used, and the source location will be
+/// updated to reflect the actual source location, not the requested source location.
+#[derive(Clone, Debug)]
+pub struct VerifiedBreakpoint {
+    /// The address in target memory, where the breakpoint was set.
+    pub address: u64,
+    /// If the breakpoint request was for a specific source location, then this field will contain the resolved source location.
+    pub source_location: SourceLocation,
+}
 
 /// Debug information which is parsed from DWARF debugging information.
 pub struct DebugInfo {
@@ -332,9 +344,10 @@ impl DebugInfo {
             // Do nothing. The parent_variable.get_value() will already report back the debug_error value.
             return Ok(());
         }
+
         match parent_variable.variable_node_type {
             VariableNodeType::ReferenceOffset(reference_offset) => {
-                // Only attempt this part if the parent is a pointer and we have not yet resolved the referenced children.
+                // Only attempt this part if we have not yet resolved the referenced children.
                 if !cache.has_children(parent_variable)? {
                     if let Some(header_offset) = parent_variable.unit_header_offset {
                         let unit_header =
@@ -371,48 +384,19 @@ impl DebugInfo {
                                 other => referenced_variable.name = VariableName::Named(format!("Error: Unable to generate name, parent variable does not have a name but is special variable {other:?}")),
                             }
 
-                        match &parent_variable.memory_location {
-                            VariableLocation::Address(address) => {
-                                // Now, retrieve the location by reading the adddress pointed to by the parent variable.
-                                referenced_variable.memory_location = match core
-                                    .read_word_32(*address)
-                                {
-                                    Ok(memory_location) => {
-                                        VariableLocation::Address(memory_location as u64)
-                                    }
-                                    Err(error) => {
-                                        tracing::error!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location , error);
-                                        VariableLocation::Error(format!("Failed to read referenced variable address from memory location {} : {}.", parent_variable.memory_location, error))
-                                    }
-                                };
-                            }
-                            other => {
-                                referenced_variable.memory_location =
-                                    VariableLocation::Unsupported(format!(
-                                        "Location {other:?} not supported for referenced variables."
-                                    ));
-                            }
-                        }
-
-                        referenced_variable = cache.cache_variable(
-                            referenced_variable.parent_key,
+                        referenced_variable = unit_info.extract_type(
+                            referenced_node,
+                            parent_variable,
                             referenced_variable,
                             core,
+                            stack_frame_registers,
+                            frame_base,
+                            cache,
                         )?;
 
                         if referenced_variable.type_name == VariableType::Base("()".to_owned()) {
                             // Only use this, if it is NOT a unit datatype.
                             cache.remove_cache_entry(referenced_variable.variable_key)?;
-                        } else {
-                            unit_info.extract_type(
-                                referenced_node,
-                                parent_variable,
-                                referenced_variable,
-                                core,
-                                stack_frame_registers,
-                                frame_base,
-                                cache,
-                            )?;
                         }
                     }
                 }
@@ -837,15 +821,7 @@ impl DebugInfo {
                     // PART 2-c: Unwind registers for the "previous/calling" frame.
                     // We sometimes need to keep a copy of the LR value to calculate the PC. For both ARM, and RISCV, The LR will be unwound before the PC, so we can reference it safely.
                     let mut unwound_return_address: Option<RegisterValue> = None;
-                    for debug_register in
-                        unwind_registers.0.iter_mut().filter(|platform_register| {
-                            matches!(
-                                platform_register.group,
-                                RegisterGroup::Base | RegisterGroup::Singleton
-                            )
-                            // We include platform registers, as well as the singletons, because on RISCV, the program counter is separate from the platform_registers
-                        })
-                    {
+                    for debug_register in unwind_registers.0.iter_mut() {
                         if unwind_register(
                             debug_register,
                             &callee_frame_registers,
@@ -914,7 +890,7 @@ impl DebugInfo {
         path: &Path,
         line: u64,
         column: Option<u64>,
-    ) -> Result<(Option<u64>, Option<SourceLocation>), DebugError> {
+    ) -> Result<VerifiedBreakpoint, DebugError> {
         tracing::debug!(
             "Looking for breakpoint location for {}:{}:{}",
             path.display(),
@@ -934,8 +910,10 @@ impl DebugInfo {
 
                 for file_name in header.file_names() {
                     let combined_path = self.get_path(unit, header, file_name);
-
-                    if combined_path.map(|p| p == path).unwrap_or(false) {
+                    if combined_path
+                        .map(|p| canonical_path_eq(path, &p))
+                        .unwrap_or(false)
+                    {
                         let mut rows = line_program.clone().rows();
 
                         while let Some((header, row)) = rows.next_row()? {
@@ -943,7 +921,10 @@ impl DebugInfo {
                                 .file(header)
                                 .and_then(|file_entry| self.get_path(unit, header, file_entry));
 
-                            if row_path.map(|p| p != path).unwrap_or(true) {
+                            if row_path
+                                .map(|p| !canonical_path_eq(path, &p))
+                                .unwrap_or(true)
+                            {
                                 continue;
                             }
 
@@ -955,58 +936,21 @@ impl DebugInfo {
                                     let source_statements =
                                         SourceStatements::new(self, &unit_header, row.address())?
                                             .statements;
-                                    if let Some((halt_address, halt_location)) = source_statements
-                                        .iter()
-                                        .find(|statement| {
-                                            statement.line == Some(cur_line)
-                                                && column
-                                                    .and_then(NonZeroU64::new)
-                                                    .map(ColumnType::Column)
-                                                    .map_or(false, |col| col == statement.column)
-                                        })
-                                        .map(|source_statement| {
-                                            (
-                                                Some(source_statement.low_pc()),
-                                                line_program
-                                                    .header()
-                                                    .file(source_statement.file_index)
-                                                    .and_then(|file_entry| {
-                                                        self.find_file_and_directory(
-                                                            &unit_header.unit,
-                                                            line_program.header(),
-                                                            file_entry,
-                                                        )
-                                                        .map(|(file, directory)| SourceLocation {
-                                                            line: source_statement
-                                                                .line
-                                                                .map(std::num::NonZeroU64::get),
-                                                            column: Some(
-                                                                source_statement.column.into(),
-                                                            ),
-                                                            file,
-                                                            directory,
-                                                            low_pc: Some(
-                                                                source_statement.low_pc() as u32
-                                                            ),
-                                                            high_pc: Some(
-                                                                source_statement
-                                                                    .instruction_range
-                                                                    .end
-                                                                    as u32,
-                                                            ),
-                                                        })
-                                                    }),
-                                            )
-                                        })
-                                    {
-                                        return Ok((halt_address, halt_location));
-                                    } else if let Some((halt_address, halt_location)) =
+                                    if let Some((halt_address, Some(halt_location))) =
                                         source_statements
                                             .iter()
-                                            .find(|statement| statement.line == Some(cur_line))
+                                            .find(|statement| {
+                                                statement.line == Some(cur_line)
+                                                    && column
+                                                        .and_then(NonZeroU64::new)
+                                                        .map(ColumnType::Column)
+                                                        .map_or(false, |col| {
+                                                            col == statement.column
+                                                        })
+                                            })
                                             .map(|source_statement| {
                                                 (
-                                                    Some(source_statement.low_pc()),
+                                                    source_statement.low_pc(),
                                                     line_program
                                                         .header()
                                                         .file(source_statement.file_index)
@@ -1046,7 +990,60 @@ impl DebugInfo {
                                                 )
                                             })
                                     {
-                                        return Ok((halt_address, halt_location));
+                                        return Ok(VerifiedBreakpoint {
+                                            address: halt_address,
+                                            source_location: halt_location,
+                                        });
+                                    } else if let Some((halt_address, Some(halt_location))) =
+                                        source_statements
+                                            .iter()
+                                            .find(|statement| statement.line == Some(cur_line))
+                                            .map(|source_statement| {
+                                                (
+                                                    source_statement.low_pc(),
+                                                    line_program
+                                                        .header()
+                                                        .file(source_statement.file_index)
+                                                        .and_then(|file_entry| {
+                                                            self.find_file_and_directory(
+                                                                &unit_header.unit,
+                                                                line_program.header(),
+                                                                file_entry,
+                                                            )
+                                                            .map(|(file, directory)| {
+                                                                SourceLocation {
+                                                                    line: source_statement
+                                                                        .line
+                                                                        .map(
+                                                                        std::num::NonZeroU64::get,
+                                                                    ),
+                                                                    column: Some(
+                                                                        source_statement
+                                                                            .column
+                                                                            .into(),
+                                                                    ),
+                                                                    file,
+                                                                    directory,
+                                                                    low_pc: Some(
+                                                                        source_statement.low_pc()
+                                                                            as u32,
+                                                                    ),
+                                                                    high_pc: Some(
+                                                                        source_statement
+                                                                            .instruction_range
+                                                                            .end
+                                                                            as u32,
+                                                                    ),
+                                                                }
+                                                            })
+                                                        }),
+                                                )
+                                            })
+                                    {
+                                        return Ok(VerifiedBreakpoint {
+                                            address: halt_address,
+                                            source_location: halt_location,
+                                        });
                                     }
                                 }
                             }
@@ -1063,7 +1060,8 @@ impl DebugInfo {
         )))
     }
 
-    /// Get the absolute path for an entry in a line program header
+    /// Get the path for an entry in a line program header, using the compilation unit's directory and file entries.
+    // TODO: Determine if it is necessary to navigate the include directories to find the file absolute path for C files.
     pub(crate) fn get_path(
         &self,
         unit: &gimli::read::Unit<DwarfReader>,
@@ -1076,7 +1074,6 @@ impl DebugInfo {
             .and_then(|dir| self.dwarf.attr_string(unit, dir).ok());
 
         let name_path = Path::new(from_utf8(&file_name_attr_string).ok()?);
-
         let dir_path =
             dir_name_attr_string.and_then(|dir_name| from_utf8(&dir_name).ok().map(PathBuf::from));
 
@@ -1093,7 +1090,6 @@ impl DebugInfo {
                 .transpose()
                 .ok()?
                 .map(PathBuf::from);
-
             if let Some(comp_dir) = comp_dir {
                 combined_path = comp_dir.join(&combined_path);
             }
@@ -1118,6 +1114,33 @@ impl DebugInfo {
 
         Some((file_name, directory))
     }
+}
+
+/// Uses the [std::fs::canonicalize] function to canonicalize both paths before applying the [std::path::PathBuf::eq]
+/// to test if the secondary path is equal or a suffix of the primary path.
+/// If for some reason (e.g., the paths don't exist) the canonicalization fails, the original equality check is used.
+/// We do this to maximize the chances of finding a match where the secondary path can be given as
+/// an absolute, relative, or partial path.
+pub(crate) fn canonical_path_eq(primary_path: &Path, secondary_path: &Path) -> bool {
+    primary_path
+        .canonicalize()
+        .ok()
+        .and_then(|canonical_primary_path| {
+            secondary_path
+                .canonicalize()
+                .ok()
+                .map(|canonical_secondary_path| {
+                    tracing::debug!(
+                        "Canonical path equality: Using `{canonical_primary_path:?}.eq({canonical_secondary_path:?})` to compare paths.");
+                    canonical_primary_path.eq(&canonical_secondary_path)
+                })
+        })
+        .unwrap_or_else(|| {
+            // If for some reason we can't canonicalize the paths, fall back to the original equality check.
+            tracing::debug!(
+                "Original path equality: Using `{primary_path:?}.eq({secondary_path:?})` to compare paths.");
+            primary_path.eq(secondary_path)
+        })
 }
 
 /// Get a handle to the [`gimli::UnwindTableRow`] for this call frame, so that we can reference it to unwind register values.
@@ -1181,13 +1204,19 @@ fn unwind_register(
         Undefined => {
             // In many cases, the DWARF has `Undefined` rules for variables like frame pointer, program counter, etc., so we hard-code some rules here to make sure unwinding can continue. If there is a valid rule, it will bypass these hardcoded ones.
             match &debug_register {
-                fp if fp.id == fp.register_file.frame_pointer.id => {
+                fp if fp
+                    .core_register
+                    .register_has_role(RegisterRole::FramePointer) =>
+                {
                     register_rule_string = "FP=CFA (dwarf Undefined)".to_string();
                     callee_frame_registers
                         .get_frame_pointer()
                         .and_then(|fp| fp.value)
                 }
-                sp if sp.id == sp.register_file.stack_pointer.id => {
+                sp if sp
+                    .core_register
+                    .register_has_role(RegisterRole::StackPointer) =>
+                {
                     // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section B.1.4.1: Treat bits [1:0] as `Should be Zero or Preserved`
                     // - Applying this logic to RISCV has no adverse effects, since all incoming addresses are already 32-bit aligned.
                     register_rule_string = "SP=CFA (dwarf Undefined)".to_string();
@@ -1199,13 +1228,19 @@ fn unwind_register(
                         }
                     })
                 }
-                lr if lr.id == lr.register_file.return_address.id => {
+                lr if lr
+                    .core_register
+                    .register_has_role(RegisterRole::ReturnAddress) =>
+                {
                     // This value is can only be used to determine the Undefined PC value. We have no way of inferring the previous frames LR until we have the PC.
                     register_rule_string = "LR=Unknown (dwarf Undefined)".to_string();
                     *unwound_return_address = lr.value;
                     None
                 }
-                pc if pc.id == pc.register_file.program_counter.id => {
+                pc if pc
+                    .core_register
+                    .register_has_role(RegisterRole::ProgramCounter) =>
+                {
                     // NOTE: PC = Value of the unwound LR, i.e. the first instruction after the one that called this function.
                     register_rule_string = "PC=(unwound LR) (dwarf Undefined)".to_string();
                     unwound_return_address.and_then(|return_address| {
@@ -1241,7 +1276,7 @@ fn unwind_register(
             }
         }
         SameValue => callee_frame_registers
-            .get_register(debug_register.id)
+            .get_register(debug_register.core_register.id)
             .and_then(|reg| reg.value),
         Offset(address_offset) => {
             // "The previous value of this register is saved at the address CFA+N where CFA is the current CFA value and N is a signed offset"
@@ -1271,7 +1306,10 @@ fn unwind_register(
 
                 match result {
                     Ok(register_value) => {
-                        if debug_register.id == debug_register.register_file.return_address.id {
+                        if debug_register
+                            .core_register
+                            .register_has_role(RegisterRole::ReturnAddress)
+                        {
                             // We need to store this value to be used by the calculation of the PC.
                             *unwound_return_address = Some(register_value);
                         }
@@ -1280,7 +1318,7 @@ fn unwind_register(
                     Err(error) => {
                         tracing::error!(
                             "UNWIND: Failed to read value for register {} from address {} ({} bytes): {}",
-                            debug_register.name,
+                            debug_register.get_register_name(),
                             RegisterValue::from(previous_frame_register_address),
                             4,
                             error
@@ -1308,7 +1346,7 @@ fn unwind_register(
         debug_register.get_register_name(),
         debug_register.value.unwrap_or_default(),
         callee_frame_registers
-            .get_register(debug_register.id)
+            .get_register(debug_register.core_register.id)
             .and_then(|reg| reg.value)
             .unwrap_or_default(),
         register_rule_string,

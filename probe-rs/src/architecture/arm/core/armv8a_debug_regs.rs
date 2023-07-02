@@ -1,28 +1,12 @@
 //! Debug register definitions for ARMv8-A
-use bitfield::bitfield;
-use std::mem::size_of;
 
-use crate::{core::BreakpointCause, HaltReason};
+use crate::{core::BreakpointCause, memory_mapped_bitfield_register, HaltReason};
 
-/// A debug register that is accessible to the external debugger
-pub trait Armv8DebugRegister {
-    /// Register number
-    const NUMBER: usize;
-
-    /// The register's name.
-    const NAME: &'static str;
-
-    /// Get the address in the memory map
-    fn get_mmio_address(base_address: u64) -> u64 {
-        base_address + (Self::NUMBER * size_of::<u32>()) as u64
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// EDSCR - Debug Status and Control Register
-    #[derive(Copy, Clone)]
     pub struct Edscr(u32);
-    impl Debug;
+    34, "EDSCR",
+    impl From;
 
     /// Trace Filter Override. Overrides the Trace Filter controls allowing the external debugger to trace any visible Exception level.
     pub tfo, set_tfo: 31;
@@ -161,83 +145,32 @@ impl Edscr {
     }
 }
 
-impl Armv8DebugRegister for Edscr {
-    const NUMBER: usize = 34;
-    const NAME: &'static str = "EDSCR";
-}
-
-impl From<u32> for Edscr {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Edscr> for u32 {
-    fn from(value: Edscr) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// EDLAR - Lock Access Register
-    #[derive(Copy, Clone)]
     pub struct Edlar(u32);
-    impl Debug;
+    1004,"EDLAR",
+    impl From;
 
     /// Lock value
     pub value, set_value : 31, 0;
 
 }
 
-impl Armv8DebugRegister for Edlar {
-    const NUMBER: usize = 1004;
-    const NAME: &'static str = "EDLAR";
-}
-
-impl From<u32> for Edlar {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Edlar> for u32 {
-    fn from(value: Edlar) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// DBGBVR - Breakpoint Value Register
-    #[derive(Copy, Clone)]
     pub struct Dbgbvr(u32);
-    impl Debug;
+    256, "DBGBVR",
+    impl From;
 
     /// Breakpoint address
     pub value, set_value : 31, 0;
 }
 
-impl Armv8DebugRegister for Dbgbvr {
-    const NUMBER: usize = 256;
-    const NAME: &'static str = "DBGBVR";
-}
-
-impl From<u32> for Dbgbvr {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Dbgbvr> for u32 {
-    fn from(value: Dbgbvr) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// DBGBCR - Breakpoint Control Register
-    #[derive(Copy, Clone)]
     pub struct Dbgbcr(u32);
-    impl Debug;
+    258, "DBGBCR",
+    impl From;
 
     /// Breakpoint type
     pub bt, set_bt : 23, 20;
@@ -261,28 +194,11 @@ bitfield! {
     pub e, set_e: 0;
 }
 
-impl Armv8DebugRegister for Dbgbcr {
-    const NUMBER: usize = 258;
-    const NAME: &'static str = "DBGBCR";
-}
-
-impl From<u32> for Dbgbcr {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Dbgbcr> for u32 {
-    fn from(value: Dbgbcr) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// EDDFR - External Debug Feature Register
-    #[derive(Copy, Clone)]
     pub struct Eddfr(u32);
-    impl Debug;
+    842, "EDDFR",
+    impl From;
 
     /// Number of breakpoints that are context-aware, minus 1.
     pub ctx_cmps, _: 31, 28;
@@ -300,55 +216,21 @@ bitfield! {
     pub tracever, _: 7, 4;
 }
 
-impl Armv8DebugRegister for Eddfr {
-    const NUMBER: usize = 842;
-    const NAME: &'static str = "EDDFR";
-}
-
-impl From<u32> for Eddfr {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Eddfr> for u32 {
-    fn from(value: Eddfr) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// EDITR - External Debug Instruction Transfer Register
-    #[derive(Copy, Clone)]
     pub struct Editr(u32);
-    impl Debug;
+    33, "EDITR",
+    impl From;
 
     /// Instruction value
     pub value, set_value: 31, 0;
 }
 
-impl Armv8DebugRegister for Editr {
-    const NUMBER: usize = 33;
-    const NAME: &'static str = "EDITR";
-}
-
-impl From<u32> for Editr {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Editr> for u32 {
-    fn from(value: Editr) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// EDRCR - External Debug Reserve Control Register
-    #[derive(Copy, Clone)]
     pub struct Edrcr(u32);
-    impl Debug;
+    36, "EDRCR",
+    impl From;
 
     /// Allow imprecise entry to Debug state.
     pub cbrrq, set_cbrrq: 4;
@@ -360,28 +242,11 @@ bitfield! {
     pub cse, set_cse: 2;
 }
 
-impl Armv8DebugRegister for Edrcr {
-    const NUMBER: usize = 36;
-    const NAME: &'static str = "EDRCR";
-}
-
-impl From<u32> for Edrcr {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Edrcr> for u32 {
-    fn from(value: Edrcr) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// EDECR - External Debug Execution Control Register
-    #[derive(Copy, Clone)]
     pub struct Edecr(u32);
-    impl Debug;
+    9, "EDECR",
+    impl From;
 
     /// Halting step enable.
     pub ss, set_ss : 2;
@@ -393,28 +258,11 @@ bitfield! {
     pub osuce, set_osuce : 0;
 }
 
-impl Armv8DebugRegister for Edecr {
-    const NUMBER: usize = 9;
-    const NAME: &'static str = "EDECR";
-}
-
-impl From<u32> for Edecr {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Edecr> for u32 {
-    fn from(value: Edecr) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// EDPRCR - External Debug Power/Reset Control Register
-    #[derive(Copy, Clone)]
     pub struct Edprcr(u32);
-    impl Debug;
+    196, "EDPRCR",
+    impl From;
 
     /// COREPURQ
     pub corepurq, set_corepurq : 3;
@@ -426,82 +274,31 @@ bitfield! {
     pub corenpdrq, set_corenpdrq : 0;
 }
 
-impl Armv8DebugRegister for Edprcr {
-    const NUMBER: usize = 196;
-    const NAME: &'static str = "EDPRCR";
-}
-
-impl From<u32> for Edprcr {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Edprcr> for u32 {
-    fn from(value: Edprcr) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
-    /// DBGDTRTX - Debug Data Transfer Register, Transmi
-    #[derive(Copy, Clone)]
+memory_mapped_bitfield_register! {
+    /// DBGDTRTX - Debug Data Transfer Register, Transmit
     pub struct Dbgdtrtx(u32);
-    impl Debug;
+    35, "DBGDTRTX",
+    impl From;
 
     /// Instruction value
     pub value, set_value: 31, 0;
 }
 
-impl Armv8DebugRegister for Dbgdtrtx {
-    const NUMBER: usize = 35;
-    const NAME: &'static str = "DBGDTRTX";
-}
-
-impl From<u32> for Dbgdtrtx {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Dbgdtrtx> for u32 {
-    fn from(value: Dbgdtrtx) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// DBGDTRRX - Debug Data Transfer Register, Receive
-    #[derive(Copy, Clone)]
     pub struct Dbgdtrrx(u32);
-    impl Debug;
+    32, "DBGDTRRX",
+    impl From;
 
     /// Instruction value
     pub value, set_value: 31, 0;
 }
 
-impl Armv8DebugRegister for Dbgdtrrx {
-    const NUMBER: usize = 32;
-    const NAME: &'static str = "DBGDTRRX";
-}
-
-impl From<u32> for Dbgdtrrx {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Dbgdtrrx> for u32 {
-    fn from(value: Dbgdtrrx) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// EDPRSR - External Debug Processor Status Register
-    #[derive(Copy, Clone)]
     pub struct Edprsr(u32);
-    impl Debug;
+    197, "EDPRSR",
+    impl From;
 
     /// Sticky Debug Restart.
     pub sdr, set_sdr: 11;
@@ -540,181 +337,62 @@ bitfield! {
     pub pu, _: 0;
 }
 
-impl Armv8DebugRegister for Edprsr {
-    const NUMBER: usize = 197;
-    const NAME: &'static str = "EDPRSR";
-}
-
-impl From<u32> for Edprsr {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Edprsr> for u32 {
-    fn from(value: Edprsr) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// CTICONTROL - CTI control register
-    #[derive(Copy, Clone)]
     pub struct CtiControl(u32);
-    impl Debug;
+    0, "CTICONTROL",
+    impl From;
 
     /// Enables or disables the CTI mapping functions.
     pub glben, set_glben : 0;
 }
 
-impl Armv8DebugRegister for CtiControl {
-    const NUMBER: usize = 0;
-    const NAME: &'static str = "CTICONTROL";
-}
-
-impl From<u32> for CtiControl {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<CtiControl> for u32 {
-    fn from(value: CtiControl) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// CTIGATE - CTI gate register
-    #[derive(Copy, Clone)]
     pub struct CtiGate(u32);
-    impl Debug;
+    80, "CTIGATE",
+    impl From;
 
     /// Enables or disables the CTI mapping functions.
     pub en, set_en : 0, 0, 32;
 }
 
-impl Armv8DebugRegister for CtiGate {
-    const NUMBER: usize = 80;
-    const NAME: &'static str = "CTIGATE";
-}
-
-impl From<u32> for CtiGate {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<CtiGate> for u32 {
-    fn from(value: CtiGate) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// CTIOUTEN<n> - CTI output enable register
-    #[derive(Copy, Clone)]
     pub struct CtiOuten(u32);
-    impl Debug;
+    40, "CTIOUTEN",
+    impl From;
 
     /// Enables or disables input <n> generating this output
     pub outen, set_outen : 0, 0, 32;
 }
 
-impl Armv8DebugRegister for CtiOuten {
-    const NUMBER: usize = 40;
-    const NAME: &'static str = "CTIOUTEN";
-}
-
-impl From<u32> for CtiOuten {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<CtiOuten> for u32 {
-    fn from(value: CtiOuten) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// CTIAPPPULSE - CTI application pulse register
-    #[derive(Copy, Clone)]
     pub struct CtiApppulse(u32);
-    impl Debug;
+    7, "CTIAPPPULSE",
+    impl From;
 
     /// Generate a pulse on channel N
     pub apppulse, set_apppulse : 0, 0, 32;
 }
 
-impl Armv8DebugRegister for CtiApppulse {
-    const NUMBER: usize = 7;
-    const NAME: &'static str = "CTIAPPPULSE";
-}
-
-impl From<u32> for CtiApppulse {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<CtiApppulse> for u32 {
-    fn from(value: CtiApppulse) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// CTIINTACK - CTI Output Trigger Acknowledge register
-    #[derive(Copy, Clone)]
     pub struct CtiIntack(u32);
-    impl Debug;
+    4, "CTIINTACK",
+    impl From;
 
     /// Ack trigger on channel N
     pub ack, set_ack : 0, 0, 32;
 }
 
-impl Armv8DebugRegister for CtiIntack {
-    const NUMBER: usize = 4;
-    const NAME: &'static str = "CTIINTACK";
-}
-
-impl From<u32> for CtiIntack {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<CtiIntack> for u32 {
-    fn from(value: CtiIntack) -> Self {
-        value.0
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// CTITRIGOUTSTATUS - CTI Trigger Out Status register
-    #[derive(Copy, Clone)]
     pub struct CtiTrigoutstatus(u32);
-    impl Debug;
+    77, "CTITRIGOUTSTATUS",
+    impl From;
 
     /// Status on channel N
     pub status, _ : 0, 0, 32;
-}
-
-impl Armv8DebugRegister for CtiTrigoutstatus {
-    const NUMBER: usize = 77;
-    const NAME: &'static str = "CTITRIGOUTSTATUS";
-}
-
-impl From<u32> for CtiTrigoutstatus {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<CtiTrigoutstatus> for u32 {
-    fn from(value: CtiTrigoutstatus) -> Self {
-        value.0
-    }
 }

@@ -33,7 +33,6 @@ pub use self::{
 };
 use crate::{core::Core, MemoryInterface};
 use gimli::DebuggingInformationEntry;
-
 use std::{
     io,
     path::PathBuf,
@@ -129,6 +128,27 @@ pub struct SourceLocation {
     pub high_pc: Option<u32>,
 }
 
+impl SourceLocation {
+    /// The full path of the source file, combining the `directory` and `file` fields.
+    /// If the path does not resolve to an existing file, and error is returned.
+    pub fn combined_path(&self) -> Result<PathBuf, DebugError> {
+        if let Some(valid_path) = self.directory.as_ref().and_then(|dir| {
+            self.file
+                .as_ref()
+                .map(|file| dir.join(file))
+                .filter(|path| path.exists())
+        }) {
+            Ok(valid_path)
+        } else {
+            Err(DebugError::Other(anyhow::anyhow!(
+                "Unable to find source file for directory {:?} and file {:?}",
+                self.directory,
+                self.file
+            )))
+        }
+    }
+}
+
 /// If file information is available, it returns `Some(directory:PathBuf, file_name:String)`, otherwise `None`.
 fn extract_file(
     debug_info: &DebugInfo,
@@ -164,29 +184,26 @@ fn extract_file(
     }
 }
 
-/// If a DW_AT_byte_size attribute exists, return the u64 value, otherwise (including errors) return 0
-fn extract_byte_size(
-    _debug_info: &DebugInfo,
-    di_entry: &DebuggingInformationEntry<GimliReader>,
-) -> u64 {
-    match di_entry.attr(gimli::DW_AT_byte_size) {
+/// If a DW_AT_byte_size attribute exists, return the u64 value, otherwise (including errors) return None
+fn extract_byte_size(node_die: &DebuggingInformationEntry<GimliReader>) -> Option<u64> {
+    match node_die.attr(gimli::DW_AT_byte_size) {
         Ok(optional_byte_size_attr) => match optional_byte_size_attr {
             Some(byte_size_attr) => match byte_size_attr.value() {
-                gimli::AttributeValue::Udata(byte_size) => byte_size,
+                gimli::AttributeValue::Udata(byte_size) => Some(byte_size),
                 other => {
                     tracing::warn!("Unimplemented: DW_AT_byte_size value: {:?} ", other);
-                    0
+                    None
                 }
             },
-            None => 0,
+            None => None,
         },
         Err(error) => {
             tracing::warn!(
                 "Failed to extract byte_size: {:?} for debug_entry {:?}",
                 error,
-                di_entry.tag().static_string()
+                node_die.tag().static_string()
             );
-            0
+            None
         }
     }
 }

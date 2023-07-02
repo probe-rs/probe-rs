@@ -7,6 +7,7 @@ pub(crate) mod jlink;
 pub(crate) mod stlink;
 
 use self::espusbjtag::list_espjtag_devices;
+use crate::architecture::arm::ArmError;
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::error::Error;
 use crate::Session;
@@ -97,7 +98,7 @@ pub enum DebugProbeError {
     Usb(#[source] Option<Box<dyn std::error::Error + Send + Sync>>),
     /// The firmware of the probe is outdated. This error is especially prominent with ST-Links.
     /// You can use their official updater utility to update your probe firmware.
-    #[error("The firmware on the probe is outdated")]
+    #[error("The firmware on the probe is outdated, and not supported by probe-rs.")]
     ProbeFirmwareOutdated,
     /// An error which is specific to the debug probe in use occurred.
     #[error("An error specific to a probe type occurred")]
@@ -348,9 +349,9 @@ impl Probe {
         self.attached = true;
         // The session will de-assert reset after connecting to the debug interface.
         Session::new(self, target.into(), AttachMethod::UnderReset, permissions).map_err(|e| {
-            if matches!(e, Error::Timeout) {
+            if matches!(e, Error::Arm(ArmError::Timeout) | Error::Riscv(RiscvError::Timeout)) {
                 Error::Other(
-                anyhow::anyhow!("Timeout while attaching to target under reset. This can happen if the target is not responding to the reset sequence. Ensure the chip's reset pin is connected, or try attaching without reset."))
+                anyhow::anyhow!("Timeout while attaching to target under reset. This can happen if the target is not responding to the reset sequence. Ensure the chip's reset pin is connected, or try attaching without reset (`connectUnderReset = false` for DAP Clients, or remove `connect-under-reset` option from CLI options.)."))
             } else {
                 e
             }
@@ -714,15 +715,22 @@ pub enum DebugProbeSelectorParseError {
 
 /// A struct to describe the way a probe should be selected.
 ///
-/// Construct this from a set of info or from a string.
+/// Construct this from a set of info or from a string. The
+/// string has to be in the format "VID:PID:SERIALNUMBER",
+/// where the serialnumber is optional, and VID and PID are
+/// parsed as hexadecimal numbers.
 ///
-/// Example:
+/// ## Example:
+///
 /// ```
 /// use std::convert::TryInto;
-/// let selector: probe_rs::DebugProbeSelector = "1337:1337:SERIAL".try_into().unwrap();
+/// let selector: probe_rs::DebugProbeSelector = "1942:1337:SERIAL".try_into().unwrap();
+///
+/// assert_eq!(selector.vendor_id, 0x1942);
+/// assert_eq!(selector.product_id, 0x1337);
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
-// We need this so that serde will first convert from the string `PID:VID:<Serial>` to a struct before deserializing.
+// We need this so that serde will first convert from the string `VID:PID:<Serial>` to a struct before deserializing.
 #[serde(try_from = "String")]
 pub struct DebugProbeSelector {
     /// The the USB vendor id of the debug probe to be used.

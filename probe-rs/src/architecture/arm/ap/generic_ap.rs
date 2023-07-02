@@ -6,9 +6,10 @@ use enum_primitive_derive::Primitive;
 use num_traits::cast::{FromPrimitive, ToPrimitive};
 
 /// Describes the class of an access port defined in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification.
-#[derive(Debug, Primitive, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Primitive, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ApClass {
     /// This describes a custom AP that is vendor defined and not defined by ARM
+    #[default]
     Undefined = 0b0000,
     /// The standard ARM COM-AP defined in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification.
     ComAp = 0b0001,
@@ -16,18 +17,13 @@ pub enum ApClass {
     MemAp = 0b1000,
 }
 
-impl Default for ApClass {
-    fn default() -> Self {
-        ApClass::Undefined
-    }
-}
-
 /// The type of AP defined in the [`ARM Debug Interface v5.2`](https://developer.arm.com/documentation/ihi0031/f/?lang=en) specification.
 /// The different types correspond to the different access/memory buses of ARM cores.
 #[allow(non_camel_case_types)]
-#[derive(Debug, Primitive, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Primitive, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ApType {
     /// This is the most basic AP that is included in most MCUs and uses SWD or JTAG as an access bus.
+    #[default]
     JtagComAp = 0x0,
     /// A AMBA based AHB3 AP (see E1.5).
     AmbaAhb3 = 0x1,
@@ -43,12 +39,6 @@ pub enum ApType {
     AmbaAxi5 = 0x7,
     /// A AMBA based protected AHB5 AP (see E1.7).
     AmbaAhb5Hprot = 0x8,
-}
-
-impl Default for ApType {
-    fn default() -> Self {
-        ApType::JtagComAp
-    }
 }
 
 define_ap!(

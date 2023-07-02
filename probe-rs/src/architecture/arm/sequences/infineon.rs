@@ -196,8 +196,8 @@ impl ArmDebugSequence for XMC4000 {
         let application_entry = core.read_word_32(0x0C000004)? - 1;
 
         // Read FP state so we can restore it later
-        let fp_ctrl = FpCtrl(core.read_word_32(FpCtrl::ADDRESS)?);
-        let fpcomp0 = core.read_word_32(FpRev1CompX::ADDRESS)?;
+        let fp_ctrl = FpCtrl(core.read_word_32(FpCtrl::get_mmio_address())?);
+        let fpcomp0 = core.read_word_32(FpRev1CompX::get_mmio_address())?;
 
         // Indicate we're in the midst of a warm reset
         self.reset_state
@@ -214,7 +214,7 @@ impl ArmDebugSequence for XMC4000 {
         let mut fp_ctrl = FpCtrl(0);
         fp_ctrl.set_enable(true);
         fp_ctrl.set_key(true);
-        core.write_word_32(FpCtrl::ADDRESS, fp_ctrl.into())?;
+        core.write_word_32(FpCtrl::get_mmio_address(), fp_ctrl.into())?;
 
         // Set a breakpoint at application_entry
         let val = if fp_ctrl.rev() == 0 {
@@ -228,7 +228,7 @@ impl ArmDebugSequence for XMC4000 {
             ))
             .into());
         };
-        core.write_word_32(FpRev1CompX::ADDRESS, val)?;
+        core.write_word_32(FpRev1CompX::get_mmio_address(), val)?;
         tracing::debug!("Set a breakpoint at {:08x}", application_entry);
 
         core.flush()?;
@@ -260,10 +260,10 @@ impl ArmDebugSequence for XMC4000 {
                 let mut fpctrl = FpCtrl::from(0);
                 fpctrl.set_key(true);
                 fpctrl.set_enable(fpctrl_enabled);
-                core.write_word_32(FpCtrl::ADDRESS, fpctrl.into())?;
+                core.write_word_32(FpCtrl::get_mmio_address(), fpctrl.into())?;
 
                 // Put FPCOMP0 back
-                core.write_word_32(FpRev1CompX::ADDRESS, fpcomp0)?;
+                core.write_word_32(FpRev1CompX::get_mmio_address(), fpcomp0)?;
             }
             ResetState::Cold { .. } => {
                 // No op
@@ -302,13 +302,13 @@ impl ArmDebugSequence for XMC4000 {
         let mut aircr = Aircr(0);
         aircr.vectkey();
         aircr.set_sysresetreq(true);
-        core.write_word_32(Aircr::ADDRESS, aircr.into())?;
+        core.write_word_32(Aircr::get_mmio_address(), aircr.into())?;
         tracing::debug!("Resetting via AIRCR.SYSRESETREQ");
 
         // Spin until CoreSight indicates the reset was processed
         let start = Instant::now();
         loop {
-            let dhcsr = Dhcsr(core.read_word_32(Dhcsr::ADDRESS)?);
+            let dhcsr = Dhcsr(core.read_word_32(Dhcsr::get_mmio_address())?);
 
             // Wait until the S_RESET_ST bit is cleared on a read
             if !dhcsr.s_reset_st() {
@@ -429,7 +429,7 @@ impl ArmDebugSequence for XMC4000 {
 fn spin_until_core_is_halted(core: &mut dyn ArmProbe, timeout: Duration) -> Result<(), ArmError> {
     let start = Instant::now();
     loop {
-        let dhcsr = Dhcsr(core.read_word_32(Dhcsr::ADDRESS)?);
+        let dhcsr = Dhcsr(core.read_word_32(Dhcsr::get_mmio_address())?);
         if dhcsr.s_halt() {
             tracing::debug!("Halted after reset");
             return Ok(());

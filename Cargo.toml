@@ -1,5 +1,5 @@
 [workspace.package]
-version = "0.14.2"
+version = "0.19.0"
 edition = "2021"
 
 documentation = "https://docs.rs/probe-rs/"
@@ -10,16 +10,10 @@ license = "MIT OR Apache-2.0"
 
 
 [workspace]
+resolver = "2"
 members = [
-    "cargo-embed",
-    "cli",
-    "cargo-flash",
-    "debugger",
-    "gdb-server",
     "probe-rs",
     "probe-rs-target",
-    "probe-rs-cli-util",
-    "rtt",
     "rtthost",
     "smoke-tester",
     "xtask",
@@ -27,13 +21,31 @@ members = [
 ]
 
 [workspace.dependencies]
-probe-rs = { path = "probe-rs", version = "0.14.2" }
-probe-rs-cli-util = { path = "probe-rs-cli-util", version = "0.14.2" }
-probe-rs-rtt = { path = "rtt", version = "0.14.2" }
-probe-rs-target = { path = "probe-rs-target", version = "0.14.2" }
-gdb-server = { path = "gdb-server", version = "0.14.2" }
+probe-rs = { path = "probe-rs", version = "0.19.0" }
+probe-rs-target = { path = "probe-rs-target", version = "0.19.0" }
 
-log = "0.4.6"
-pretty_env_logger = "0.4.0"
+log = "0.4.19"
+pretty_env_logger = "0.5.0"
 thiserror = "1.0"
-anyhow = "1.0.34"
+anyhow = "1.0.71"
+
+# Config for 'cargo dist'
+[workspace.metadata.dist]
+# The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
+cargo-dist-version = "0.0.5"
+# The preferred Rust toolchain to use in CI (rustup toolchain syntax)
+rust-toolchain-version = "1.70.0"
+# CI backends to support (see 'cargo dist generate-ci')
+ci = ["github"]
+# Target platforms to build apps for (Rust target-triple syntax)
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "aarch64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+]
+
+# The profile that 'cargo dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
