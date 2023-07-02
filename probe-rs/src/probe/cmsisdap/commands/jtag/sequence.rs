@@ -2,6 +2,8 @@
 ///
 use super::super::{CmsisDapError, CommandId, Request, SendError, Status};
 
+use bitvec::prelude::*;
+
 #[derive(Clone, Copy, Debug)]
 pub struct Sequence {
     /// Number of TCK cycles: 1..64 (64 encoded as 0)
@@ -30,6 +32,42 @@ impl Sequence {
         Ok(Self {
             tck_cycles,
             tdo_capture,
+            tms,
+            data,
+        })
+    }
+
+    pub(crate) fn capture(tms: bool, tdi: &BitVec<u8>) -> Result<Self, CmsisDapError> {
+        let tck_cycles = tdi.len();
+        if tck_cycles > 64 {
+            return Err(CmsisDapError::JTAGSequenceTooManyClockSequences);
+        }
+
+        let num_bytes = (tdi.len() + 7) / 8;
+        let mut data: [u8; 8] = [0; 8];
+        data[0..num_bytes].copy_from_slice(&tdi.as_raw_slice()[0..num_bytes]);
+
+        Ok(Self {
+            tck_cycles: tck_cycles as u8,
+            tdo_capture: true,
+            tms,
+            data,
+        })
+    }
+
+    pub(crate) fn no_capture(tms: bool, tdi: &BitVec<u8>) -> Result<Self, CmsisDapError> {
+        let tck_cycles = tdi.len();
+        if tck_cycles > 64 {
+            return Err(CmsisDapError::JTAGSequenceTooManyClockSequences);
+        }
+
+        let num_bytes = (tdi.len() + 7) / 8;
+        let mut data: [u8; 8] = [0; 8];
+        data[0..num_bytes].copy_from_slice(&tdi.as_raw_slice()[0..num_bytes]);
+
+        Ok(Self {
+            tck_cycles: tck_cycles as u8,
+            tdo_capture: false,
             tms,
             data,
         })
