@@ -447,19 +447,22 @@ impl CmsisDap {
     /// Detect current chain length and return its contents.
     /// Must already be in either Shift-IR or Shift-DR state.
     fn jtag_scan_inner(&mut self, name: &'static str) -> Result<BitVec<u8>, CmsisDapError> {
-        /// Max scan chain length (in bits) to attempt to detect.
-        const MAX_LENGTH: usize = 128;
-
         const TDI_ZEROES: [u8; 8] = [0x00; 8];
         const TDI_ONES: [u8; 8] = [!0x00; 8];
         const TMS_LOW: bool = false;
         const CAPTURE: bool = true;
 
-        const ITERATIONS: usize = (MAX_LENGTH + 127) / 128;
+        // Max scan chain length (in bits) to attempt to detect.
+        const MAX_LENGTH: usize = 128;
+        // How many bytes to write out / read in per request.
+        const BYTES_PER_REQUEST: usize = 16;
+        // How many requests are needed to read/write at least MAX_LENGTH bits.
+        const REQUESTS: usize =
+            (MAX_LENGTH + (BYTES_PER_REQUEST * 8 - 1)) / (BYTES_PER_REQUEST * 8);
 
-        // Completely fill xR with 0s (128 bits at a time), capture result.
-        let mut tdo_bytes: Vec<u8> = Vec::with_capacity(ITERATIONS * 16); // 128 bits = 16 u8s
-        for _ in 0..ITERATIONS {
+        // Completely fill xR with 0s, capture result.
+        let mut tdo_bytes: Vec<u8> = Vec::with_capacity(REQUESTS * BYTES_PER_REQUEST);
+        for _ in 0..REQUESTS {
             let sequences = vec![
                 JtagSequence::new(64, CAPTURE, TMS_LOW, TDI_ZEROES)?,
                 JtagSequence::new(64, CAPTURE, TMS_LOW, TDI_ZEROES)?,
@@ -473,8 +476,8 @@ impl CmsisDap {
         let d0 = tdo_bytes.view_bits::<Lsb0>();
 
         // Completely fill xR with 1s, capture result.
-        let mut tdo_bytes: Vec<u8> = Vec::with_capacity(ITERATIONS * 16); // 128 bits = 16 u8s
-        for _ in 0..ITERATIONS {
+        let mut tdo_bytes: Vec<u8> = Vec::with_capacity(REQUESTS * BYTES_PER_REQUEST);
+        for _ in 0..REQUESTS {
             let sequences = vec![
                 JtagSequence::new(64, CAPTURE, TMS_LOW, TDI_ONES)?,
                 JtagSequence::new(64, CAPTURE, TMS_LOW, TDI_ONES)?,
