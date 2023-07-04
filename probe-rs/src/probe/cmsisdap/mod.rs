@@ -929,6 +929,11 @@ impl DebugProbe for CmsisDap {
         })?;
 
         if self.active_protocol() == Some(WireProtocol::Jtag) {
+            // no-op: we configure JTAG in debug_port_setup,
+            // becuase that is where we execute the SWJ-DP Switch Sequence
+            // to ensure the debug port is ready for JTAG signals,
+            // at which point we can interrogate the scan chain
+            // and configure the probe with the given IR lengths.
         } else {
             self.configure_swd(swd::configure::ConfigureRequest {})?;
         }
