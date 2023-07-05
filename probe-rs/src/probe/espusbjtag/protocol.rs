@@ -11,7 +11,7 @@ const JTAG_PROTOCOL_CAPABILITIES_VERSION: u8 = 1;
 const JTAG_PROTOCOL_CAPABILITIES_SPEED_APB_TYPE: u8 = 1;
 const MAX_COMMAND_REPETITIONS: usize = 1024;
 const OUT_BUFFER_SIZE: usize = OUT_EP_BUFFER_SIZE * 32;
-const OUT_EP_BUFFER_SIZE: usize = 64;
+const OUT_EP_BUFFER_SIZE: usize = 128;
 const IN_EP_BUFFER_SIZE: usize = 64;
 const HW_FIFO_SIZE: usize = 4;
 const USB_TIMEOUT: Duration = Duration::from_millis(5000);
@@ -352,13 +352,13 @@ impl ProtocolHandler {
         self.output_buffer.push(command);
 
         // If we reach a maximal size of the output buffer, we flush.
-        if self.output_buffer.len() == (OUT_BUFFER_SIZE * 2) {
+        if self.output_buffer.len() == OUT_BUFFER_SIZE {
             self.send_buffer()?;
         }
 
         // Undocumented condition to flush buffer.
-        // First check, as the output buff suitable for flushing? it should be modulo of the EP buffer size
-        if self.output_buffer.len() % (OUT_EP_BUFFER_SIZE * 2) == 0 {
+        // First check, whether the output buffer is suitable for flushing? it should be modulo of the EP buffer size
+        if self.output_buffer.len() % OUT_EP_BUFFER_SIZE == 0 {
             // Second check, if it is suitable, is there enough to flush
             if self.pending_in_bits > (IN_EP_BUFFER_SIZE + HW_FIFO_SIZE) * 8 {
                 self.send_buffer()?;
