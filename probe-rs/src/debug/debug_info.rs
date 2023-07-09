@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{
     core::Core,
-    core::{RegisterRole, RegisterValue},
+    core::{ExceptionInfo, ExceptionInterface, RegisterRole, RegisterValue},
     debug::{registers, source_statement::SourceStatements},
     MemoryInterface,
 };
@@ -12,6 +12,7 @@ use ::gimli::{FileEntry, LineProgramHeader, UnwindContext};
 use gimli::{BaseAddresses, ColumnType, DebugFrame, UnwindSection};
 use object::read::{Object, ObjectSection};
 use probe_rs_target::InstructionSet;
+use registers::UnwindRule;
 use std::{
     borrow,
     cmp::Ordering,
@@ -497,15 +498,20 @@ impl DebugInfo {
         &self,
         core: &mut Core<'_>,
         address: u64,
+        exception_info: &Option<ExceptionInfo>,
         unwind_registers: &registers::DebugRegisters,
     ) -> Result<Vec<StackFrame>, DebugError> {
         let mut units = self.get_units();
 
-        let unknown_function = format!(
-            "<unknown function @ {:#0width$x}>",
-            address,
-            width = (unwind_registers.get_address_size_bytes() * 2 + 2)
-        );
+        let unknown_function = if let Some(exception_info) = exception_info {
+            exception_info.reason.to_string()
+        } else {
+            format!(
+                "<unknown function @ {:#0width$x}>",
+                address,
+                width = (unwind_registers.get_address_size_bytes() * 2 + 2)
+            )
+        };
         let stack_frame_registers = unwind_registers.clone();
 
         let mut frames = Vec::new();
@@ -692,7 +698,6 @@ impl DebugInfo {
     /// The unwind loop will continue until we meet one of the following conditions:
     /// - We can no longer unwind a valid PC value to be used for the next frame.
     /// - We encounter a LR register value of 0x0 or 0xFFFFFFFF(Arm 'Reset' value for that register).
-    /// - TODO: Catch the situation where the PC value indicates a hard-fault or other non-recoverable exception
     /// - We can not intelligently calculate a valid LR register value from the other registers, or the gimli::RegisterRule result is a value of 0x0. Note: [DWARF](https://dwarfstd.org) 6.4.4 - CIE defines the return register address used in the `gimli::RegisterRule` tables for unwind operations. Theoretically, if we encounter a function that has `Undefined` `gimli::RegisterRule` for the return register address, it means we have reached the bottom of the stack OR the function is a 'no return' type of function. I have found actual examples (e.g. local functions) where we get `Undefined` for register rule when we cannot apply this logic. Example 1: local functions in main.rs will have LR rule as `Undefined`. Example 2: main()-> ! that is called from a trampoline will have a valid LR rule.
     /// - Similarly, certain error conditions encountered in `StackFrameIterator` will also break out of the unwind loop.
     /// Note: In addition to populating the `StackFrame`s, this function will also populate the `DebugInfo::VariableCache` with `Variable`s for available Registers as well as static and function variables.
@@ -716,6 +721,27 @@ impl DebugInfo {
             .get_program_counter()
             .and_then(|pc| pc.value)
         {
+            // PART 0: The first step is to determine the exception context for the current PC.
+            // - If we are at an exception hanlder frame, we need to overwrite the unwind registers with the exception context.
+            // - If for some reason we cannot determine the exception context, we silently continue with the rest of the unwind.
+            // At worst, the unwind will be able to unwind the stack to the frame of the most recent exception handler.
+            let exception_info = match core.get_exception_info(&unwind_registers) {
+                Ok(Some(exception_info)) => {
+                    tracing::trace!("UNWIND: Found exception context: {}", exception_info.reason);
+                    Some(exception_info)
+                }
+                Ok(None) => {
+                    tracing::trace!(
+                        "UNWIND: No exception context found. Stack unwind will continue."
+                    );
+                    None
+                }
+                Err(e) => {
+                    tracing::warn!("UNWIND: Error while checking for exception context. Unwinding will stop at the first exception handler. : {}", e);
+                    None
+                }
+            };
+
             // PART 1: Construct the `StackFrame` for the current pc.
             let frame_pc = frame_pc_register_value
                 .try_into()
@@ -725,9 +751,13 @@ impl DebugInfo {
                 frame_pc,
             );
 
-            //
             // PART 1-a: Prepare the `StackFrame` that holds the current frame information.
-            let return_frame = match self.get_stackframe_info(core, frame_pc, &unwind_registers) {
+            let return_frame = match self.get_stackframe_info(
+                core,
+                frame_pc,
+                &exception_info,
+                &unwind_registers,
+            ) {
                 Ok(mut cached_stack_frames) => {
                     while cached_stack_frames.len() > 1 {
                         // If we encountered INLINED functions (all `StackFrames`s in this Vec, except for the last one, which is the containing NON-INLINED function), these are simply added to the list of stack_frames we return.
@@ -759,13 +789,40 @@ impl DebugInfo {
             };
 
             // Part 1-b: Check LR values to determine if we can continue unwinding.
-            // TODO: ARM has special ranges of LR addresses to indicate fault conditions. We should check those also.
             if let Some(check_return_address) = unwind_registers.get_return_address() {
                 if check_return_address.is_max_value() || check_return_address.is_zero() {
                     // When we encounter the starting (after reset) return address, we've reached the bottom of the stack, so no more unwinding after this.
                     stack_frames.push(return_frame);
                     tracing::trace!("UNWIND: Stack unwind complete - Reached the 'Reset' value of the LR register.");
                     break;
+                } else {
+                    // Part 1-c: If the target current frame is an exception handler, we need to update the `unwind_registers` to match the frame that invoked the exception handler.
+                    if let Some(exception_info) = exception_info {
+                        tracing::trace!(
+                            "UNWIND: Stack unwind reached an exception handler {}",
+                            exception_info.reason
+                        );
+                        if let Some(exception_info) = core.get_exception_info(&unwind_registers)? {
+                            tracing::trace!(
+                                "UNWIND: Found exception context: {}",
+                                exception_info.reason
+                            );
+                            // If we are at an exception hanlder frame, we need to overwrite the unwind registers.
+                            // This will allow us to continue unwinding from the exception handler frame.
+                            unwind_registers = exception_info.calling_frame_registers;
+
+                            // Now that we've optionally updated the `unwind_registers` to match the exception handler, we can continue.
+                            stack_frames.push(return_frame);
+                            tracing::trace!(
+                                    "UNWIND: Stack unwind will attempt to unwind the frame that invoked {}.", exception_info.reason
+                                );
+                            continue;
+                        } else {
+                            tracing::trace!(
+                                "UNWIND: No exception context found. Stack unwind will continue."
+                            )
+                        }
+                    }
                 }
             } else {
                 // If the debug info rules result in a None return address, we cannot continue unwinding.
@@ -1269,9 +1326,30 @@ fn unwind_register(
                         }
                     })
                 }
-                _ => {
-                    // This will result in the register value being cleared for the previous frame.
-                    None
+                other_register => {
+                    // If the the register rule was not specified, then we either carry the previous value forward,
+                    // or we clear the register value, depending on the architecture and register type.
+                    match other_register.preserve_rule {
+                        UnwindRule::Preserve => {
+                            register_rule_string = "Preserve (dwarf Undefined)".to_string();
+                            callee_frame_registers
+                                .get_register(other_register.core_register.id)
+                                .and_then(|reg| reg.value)
+                        }
+                        UnwindRule::Clear => {
+                            register_rule_string = "Clear (dwarf Undefined)".to_string();
+                            None
+                        }
+                        UnwindRule::SpecialRule => {
+                            // In theory, these should all be handled above, so flag it if we get here,
+                            // but continue the unwind.
+                            tracing::error!(
+                                "Register rule required for register {:?}",
+                                other_register.core_register.name
+                            );
+                            None
+                        }
+                    }
                 }
             }
         }

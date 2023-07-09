@@ -12,6 +12,7 @@ pub mod armv8m;
 pub(crate) mod armv7a_debug_regs;
 pub(crate) mod armv8a_debug_regs;
 pub(crate) mod cortex_m;
+pub(crate) mod exceptions;
 pub(crate) mod instructions;
 pub(crate) mod registers;
 

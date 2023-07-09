@@ -21,9 +21,9 @@ use std::time::{Duration, Instant};
 pub(crate) mod registers;
 pub use registers::PC;
 pub(crate) mod assembly;
-mod dtm;
-
 pub mod communication_interface;
+mod dtm;
+pub(crate) mod exceptions;
 pub mod sequences;
 
 /// A interface to operate RISC-V cores.

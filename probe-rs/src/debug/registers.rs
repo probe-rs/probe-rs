@@ -203,6 +203,20 @@ impl DebugRegisters {
             .unwrap_or_else(|| "unknown register".to_string())
     }
 
+    /// Retrieve a mutable refererence to a register by searching against an exact match of the [`RegisterRole`].
+    pub fn get_register_mut_by_role(
+        &mut self,
+        register_role: RegisterRole,
+    ) -> Option<&mut DebugRegister> {
+        self.0.iter_mut().find(|debug_register| {
+            debug_register
+                .core_register
+                .roles
+                .iter()
+                .any(|&role| role == register_role)
+        })
+    }
+
     /// Retrieve a register by searching against either the name or the role name.
     /// Use this for registers that have platform specific names like "t1", or "s9", etc.,
     /// and cannot efficiently be accessed through any of the other methods.
@@ -223,6 +237,34 @@ impl DebugRegisters {
             })
             .cloned()
     }
+
+    /// Update the `RegisterValue` of a register, identified by searching against either the name or the alias.
+    pub fn update_register_value_by_name(
+        &mut self,
+        register_name: &str,
+        new_value: RegisterValue,
+    ) -> Result<(), Error> {
+        if let Some(register) = self.0.iter_mut().find(|debug_register| {
+            debug_register.core_register.name == register_name
+                ||  {
+                    let mut register_name_matches = false;
+                    for role in debug_register.core_register.roles {
+                        if matches!(role, RegisterRole::Argument(role_name) | RegisterRole::Return(role_name)  | RegisterRole::Other(role_name) if *role_name == register_name) {
+                            register_name_matches = true;
+                            break;
+                        }
+                    }
+                    register_name_matches
+                }
+        }) {
+            register.value = Some(new_value);
+            Ok(())
+        } else {
+            Err(Error::Other(anyhow::anyhow!(format!(
+                "Failed to update register {register_name}. Register not found."
+            ))))
+        }
+    }
 }
 
 /// Determine the [`PreserveRule`] for a [`CoreRegister`], based on the [`CoreType`].
@@ -241,11 +283,11 @@ fn register_preserve_rule(core_register: &CoreRegister, core_type: CoreType) -> 
                 // r8 is callee-saved
                 8 => UnwindRule::Preserve,
                 // r9 is platform specific, so using a general rule is not possible.
-                9 => UnwindRule::SpecialRule,
+                9 => UnwindRule::Clear, //SpecialRule,
                 // r10-r11 are callee-saved
                 10..=11 => UnwindRule::Preserve,
                 // r12 is platform specific
-                12 => UnwindRule::SpecialRule,
+                12 => UnwindRule::Clear, //SpecialRule,
                 // r13-r14 are callee-saved
                 13..=14 => UnwindRule::Preserve,
                 // r15 is the program counter
