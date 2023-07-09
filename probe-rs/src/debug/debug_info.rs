@@ -1345,7 +1345,7 @@ fn unwind_register(
                             // but continue the unwind.
                             tracing::error!(
                                 "Register rule required for register {:?}",
-                                other_register.core_register.name
+                                other_register.core_register.name()
                             );
                             None
                         }

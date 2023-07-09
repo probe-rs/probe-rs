@@ -22,6 +22,8 @@ pub enum RegisterDataType {
 /// while the [`CoreRegister::name`] will contain the architecture specific label of the register.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum RegisterRole {
+    /// The default role for a register, with the name as defined by the architecture.
+    Core(&'static str),
     /// Function Argument registers like "A0", "a1", etc. (uses architecture specific names)
     Argument(&'static str),
     /// Function Return value registers like "R0", "r1", etc. (uses architecture specific names)
@@ -62,8 +64,6 @@ impl Display for RegisterRole {
 /// Each architecture will have a set of general purpose registers, and potentially some special purpose registers. It also happens that some general purpose registers can be used for special purposes. For instance, some ARM variants allows the `LR` (link register / return address) to be used as general purpose register `R14`."
 #[derive(Debug, Clone, PartialEq)]
 pub struct CoreRegister {
-    /// The architecture specific name of the register. This may be identical, or similar to [`RegisterRole`].
-    pub(crate) name: &'static str,
     // /// Some architectures have multiple names for the same register, depending on the context and the role of the register.
     pub(crate) id: RegisterId,
     /// If the register plays a special role (one or more) during program execution and exception handling, this array will contain the appropriate [`RegisterRole`] entry/entries.
@@ -73,7 +73,7 @@ pub struct CoreRegister {
 
 impl Display for CoreRegister {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let primary_name = self.name;
+        let primary_name = self.name();
         write!(f, "{}", primary_name)?;
         if !self.roles.is_empty() {
             for role in self.roles {
@@ -87,9 +87,15 @@ impl Display for CoreRegister {
 }
 
 impl CoreRegister {
-    /// Get the display name of this register
+    /// Get the primary display name (As defined by `RegisterRole::Core()` of this register
     pub fn name(&self) -> &'static str {
-        self.name
+        self.roles
+            .iter()
+            .find_map(|role| match role {
+                RegisterRole::Core(name) => Some(*name),
+                _ => None,
+            })
+            .unwrap_or("Unknown")
     }
 
     /// Get the id of this register

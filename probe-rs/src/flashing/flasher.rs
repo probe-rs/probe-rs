@@ -655,7 +655,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
 
                     tracing::debug!(
                         "content of {} {:#x}: 0x{:08x} should be: 0x{:08x}",
-                        description.name,
+                        description.name(),
                         description.id.0,
                         value,
                         *v

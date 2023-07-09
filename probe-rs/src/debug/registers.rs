@@ -224,46 +224,16 @@ impl DebugRegisters {
         self.0
             .iter()
             .find(|&debug_register| {
-                debug_register.core_register.name == register_name || {
-                    let mut register_name_matches = false;
-                    for role in debug_register.core_register.roles {
-                        if matches!(role, RegisterRole::Argument(role_name) | RegisterRole::Return(role_name)  | RegisterRole::Other(role_name) if *role_name == register_name) {
-                            register_name_matches = true;
-                            break;
-                        }
+                let mut register_name_matches = false;
+                for role in debug_register.core_register.roles {
+                    if matches!(role, RegisterRole::Core(role_name) | RegisterRole::Argument(role_name) | RegisterRole::Return(role_name)  | RegisterRole::Other(role_name) if *role_name == register_name) {
+                        register_name_matches = true;
+                        break;
                     }
-                    register_name_matches
                 }
+                register_name_matches
             })
             .cloned()
-    }
-
-    /// Update the `RegisterValue` of a register, identified by searching against either the name or the alias.
-    pub fn update_register_value_by_name(
-        &mut self,
-        register_name: &str,
-        new_value: RegisterValue,
-    ) -> Result<(), Error> {
-        if let Some(register) = self.0.iter_mut().find(|debug_register| {
-            debug_register.core_register.name == register_name
-                ||  {
-                    let mut register_name_matches = false;
-                    for role in debug_register.core_register.roles {
-                        if matches!(role, RegisterRole::Argument(role_name) | RegisterRole::Return(role_name)  | RegisterRole::Other(role_name) if *role_name == register_name) {
-                            register_name_matches = true;
-                            break;
-                        }
-                    }
-                    register_name_matches
-                }
-        }) {
-            register.value = Some(new_value);
-            Ok(())
-        } else {
-            Err(Error::Other(anyhow::anyhow!(format!(
-                "Failed to update register {register_name}. Register not found."
-            ))))
-        }
     }
 }
 
