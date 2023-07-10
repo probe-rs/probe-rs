@@ -4,7 +4,11 @@ use std::path::Path;
 use std::time::Duration;
 
 use anyhow::Context;
-use probe_rs::flashing::{FileDownloadError, Format};
+use itm::TracePacket;
+use probe_rs::{
+    architecture::arm::{component::{TraceSink, Dwt, find_component}, SwoConfig, DpAddress, memory::PeripheralType},
+    flashing::{FileDownloadError, Format},
+};
 use time::Instant;
 
 use addr2line::{
@@ -36,16 +40,25 @@ pub struct Cmd {
     /// Limit the number of entries to output
     #[clap(long, default_value_t = 25)]
     limit: usize,
-    #[clap(long, default_value_t = ProfileMethod::Naive)]
     /// Profile Method
+    #[clap(subcommand)]
     method: ProfileMethod,
 }
 
-#[derive(clap::ValueEnum, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(clap::Subcommand, Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum ProfileMethod {
     /// Naive, Halt -> Read PC -> Resume profiler
+    #[clap(name = "naive")]
     Naive,
+    /// Use the Itm port to profile the chip (ARM only)
+    #[clap(name = "itm")]
+    Itm {
+        /// The speed of the clock feeding the TPIU/SWO module in Hz.
+        clk: u32,
+        /// The desired baud rate of the SWO output.
+        baud: u32,
+    },
 }
 
 impl core::fmt::Display for ProfileMethod {
@@ -98,30 +111,69 @@ impl Cmd {
             )?;
         }
 
-        let mut core = session.core(self.core)?;
-        info!("Attached to Core {}", self.core);
-        core.reset()?;
-
         let start = Instant::now();
         let mut reads = 0;
         let mut samples: HashMap<u32, u64> = HashMap::with_capacity(256 * (self.duration as usize));
         let duration = Duration::from_secs(self.duration);
-        let pc_reg = core.program_counter();
         info!("Profiling...");
-        loop {
-            core.halt(std::time::Duration::from_millis(10))?;
-            let pc: u32 = core.read_core_reg(pc_reg)?;
-            *samples.entry(pc).or_insert(1) += 1;
-            reads += 1;
-            core.run()?;
-            if Instant::now() - start > duration {
-                break;
+
+        match self.method {
+            ProfileMethod::Naive => {
+                let mut core = session.core(self.core)?;
+                info!("Attached to Core {}", self.core);
+                core.reset()?;
+                let pc_reg = core.program_counter();
+
+                loop {
+                    core.halt(std::time::Duration::from_millis(10))?;
+                    let pc: u32 = core.read_core_reg(pc_reg)?;
+                    *samples.entry(pc).or_insert(1) += 1;
+                    reads += 1;
+                    core.run()?;
+                    if Instant::now() - start > duration {
+                        break;
+                    }
+                }
+            }
+            ProfileMethod::Itm { clk, baud } => {
+                let sink = TraceSink::Swo(SwoConfig::new(clk).set_baud(baud));
+                session.setup_tracing(self.core, sink)?;
+
+                let components = session.get_arm_components(DpAddress::Default)?;
+                let component = find_component(&components, PeripheralType::Dwt)?;
+                let interface = session.get_arm_interface()?;
+                let mut dwt = Dwt::new(interface, component);
+                dwt.enable_pc_sampling()?;
+
+                let decoder = itm::Decoder::new(
+                    session.swo_reader()?,
+                    itm::DecoderOptions { ignore_eof: true },
+                );
+
+                let iter = decoder.singles();
+
+                for packet in iter {
+                    match packet? {
+                        TracePacket::PCSample { pc } => {
+                            if let Some(pc) = pc {
+                                *samples.entry(pc).or_insert(1) += 1;
+                                reads += 1;
+                            }
+                        }
+                        _ => {}, // ignore other packets
+                    }
+                    if Instant::now() - start > duration {
+                        break;
+                    }
+                }
             }
         }
 
         let mut v = Vec::from_iter(samples);
         // sort by frequency
         v.sort_by(|&(_, a), &(_, b)| b.cmp(&a));
+
+        println!("Samples {}", reads);
 
         for (address, count) in v.into_iter().take(self.limit) {
             let name = symbols
