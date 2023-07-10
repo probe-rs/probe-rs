@@ -6,7 +6,11 @@ use std::time::Duration;
 use anyhow::Context;
 use itm::TracePacket;
 use probe_rs::{
-    architecture::arm::{component::{TraceSink, Dwt, find_component}, SwoConfig, DpAddress, memory::PeripheralType},
+    architecture::arm::{
+        component::{find_component, Dwt, TraceSink},
+        memory::PeripheralType,
+        DpAddress, SwoConfig,
+    },
     flashing::{FileDownloadError, Format},
 };
 use time::Instant;
@@ -153,14 +157,9 @@ impl Cmd {
                 let iter = decoder.singles();
 
                 for packet in iter {
-                    match packet? {
-                        TracePacket::PCSample { pc } => {
-                            if let Some(pc) = pc {
-                                *samples.entry(pc).or_insert(1) += 1;
-                                reads += 1;
-                            }
-                        }
-                        _ => {}, // ignore other packets
+                    if let TracePacket::PCSample { pc: Some(pc) } = packet? {
+                        *samples.entry(pc).or_insert(1) += 1;
+                        reads += 1;
                     }
                     if Instant::now() - start > duration {
                         break;

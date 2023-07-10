@@ -2488,7 +2488,6 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "static_assertions",
- "strum",
  "svd-parser",
  "svg",
  "terminal_size 0.2.6",
