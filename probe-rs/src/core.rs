@@ -239,7 +239,12 @@ pub trait ExceptionInterface {
     fn get_exception_info(
         &mut self,
         _stackframe_registers: &DebugRegisters,
-    ) -> Result<Option<ExceptionInfo>, Error>;
+    ) -> Result<Option<ExceptionInfo>, Error> {
+        // For architectures where the exception handling has not been implemented in probe-rs,
+        // this will result in maintaining the current `unwind` behavior, i.e. unwinding will stop
+        // when the first frame is reached that was called from an exception handler.
+        Ok(None)
+    }
 }
 
 impl<'probe> ExceptionInterface for Core<'probe> {
@@ -247,7 +252,15 @@ impl<'probe> ExceptionInterface for Core<'probe> {
         &mut self,
         stackframe_registers: &DebugRegisters,
     ) -> Result<Option<ExceptionInfo>, Error> {
-        self.inner.get_exception_info(stackframe_registers)
+        if matches!(self.inner.core_type(), CoreType::Armv7m) {
+            // NOTE: There is `CoreType::Armv7em`, but it is not currently implemented in probe-rs.
+            self.inner.get_exception_info(stackframe_registers)
+        } else {
+            // For architectures where the exception handling has not been implemented in probe-rs,
+            // this will result in maintaining the current `unwind` behavior, i.e. unwinding will stop
+            // when the first frame is reached that was called from an exception handler.
+            Ok(None)
+        }
     }
 }
 

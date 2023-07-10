@@ -12,20 +12,9 @@ static EXCEPTION_STACK_REGISTERS_CORTEX_M: &[RegisterRole] = &[
 ];
 
 pub(crate) mod armv6m {
-    use crate::{
-        core::{ExceptionInfo, ExceptionInterface},
-        debug::DebugRegisters,
-        Error,
-    };
+    use crate::core::ExceptionInterface;
 
-    impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv6m::Armv6m<'probe> {
-        fn get_exception_info(
-            &mut self,
-            _stackframe_registers: &DebugRegisters,
-        ) -> Result<Option<ExceptionInfo>, Error> {
-            todo!("ARMv6-M exception decoding not implemented")
-        }
-    }
+    impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv6m::Armv6m<'probe> {}
 }
 
 pub(crate) mod armv7m {
@@ -176,52 +165,19 @@ pub(crate) mod armv7m {
 }
 
 pub(crate) mod armv7a {
-    use crate::{
-        core::{ExceptionInfo, ExceptionInterface},
-        debug::DebugRegisters,
-        Error,
-    };
+    use crate::core::ExceptionInterface;
 
-    impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv7a::Armv7a<'probe> {
-        fn get_exception_info(
-            &mut self,
-            _stackframe_registers: &DebugRegisters,
-        ) -> Result<Option<ExceptionInfo>, Error> {
-            todo!("ARMv7-A exception decoding not implemented")
-        }
-    }
+    impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv7a::Armv7a<'probe> {}
 }
 
 pub(crate) mod armv8a {
-    use crate::{
-        core::{ExceptionInfo, ExceptionInterface},
-        debug::DebugRegisters,
-        Error,
-    };
+    use crate::core::ExceptionInterface;
 
-    impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv8a::Armv8a<'probe> {
-        fn get_exception_info(
-            &mut self,
-            _stackframe_registers: &DebugRegisters,
-        ) -> Result<Option<ExceptionInfo>, Error> {
-            todo!("ARMv8-A exception decoding not implemented")
-        }
-    }
+    impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv8a::Armv8a<'probe> {}
 }
 
 pub(crate) mod armv8m {
-    use crate::{
-        core::{ExceptionInfo, ExceptionInterface},
-        debug::DebugRegisters,
-        Error,
-    };
+    use crate::core::ExceptionInterface;
 
-    impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv8m::Armv8m<'probe> {
-        fn get_exception_info(
-            &mut self,
-            _stackframe_registers: &DebugRegisters,
-        ) -> Result<Option<ExceptionInfo>, Error> {
-            todo!("ARMv8-M exception decoding not implemented")
-        }
-    }
+    impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv8m::Armv8m<'probe> {}
 }
