@@ -92,7 +92,7 @@ gimli = { version = "0.27.3", default-features = false, features = [
     "read",
     "std",
 ] }
-hidapi = { version = "2.3.3", default-features = false, features = [
+hidapi = { version = "2.4.0", default-features = false, features = [
     "linux-static-hidraw",
 ] }
 ihex = "3.0.0"
@@ -106,7 +106,7 @@ object = { version = "0.31.1", default-features = false, features = [
     "read_core",
     "std",
 ] }
-paste = "1.0.12"
+paste = "1.0.13"
 rusb = "0.9.2"
 scroll = "0.11.0"
 serde = { version = "1", features = ["derive"] }
@@ -137,13 +137,13 @@ capstone = { version = "0.11.0", optional = true }
 cargo_metadata = { version = "0.15.4", optional = true }
 cargo_toml = { version = "0.15.3", optional = true }
 clap = { version = "4.3", features = ["derive"], optional = true }
-colored = { version = "2.0.0", optional = true }
+colored = { version = "2.0.4", optional = true }
 defmt-decoder = { version = "0.3.7", features = ["unstable"], optional = true }
 directories = { version = "5", optional = true }
 dunce = { version = "1.0.4", optional = true }
 goblin = { version = "0.7.1", optional = true }
 indicatif = { version = "0.17.5", optional = true }
-is-terminal = { version = "0.4.8", optional = true }
+is-terminal = { version = "0.4.9", optional = true }
 itm = { version = "0.9.0-rc.1", default-features = false, optional = true }
 parse_int = { version = "0.6.0", optional = true }
 pretty_env_logger = { workspace = true, optional = true }
@@ -176,7 +176,7 @@ git-version = { version = "0.3.5", optional = true }
 [dev-dependencies]
 pretty_env_logger = "0.5.0"
 rand = "0.8.5"
-serde_json = "1.0.99"
+serde_json = "1.0.100"
 serde = "1"
 clap = { version = "4.3", features = ["derive"] }
 itm = { version = "0.9.0-rc.1", default-features = false }
