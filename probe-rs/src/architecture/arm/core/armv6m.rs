@@ -690,8 +690,7 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
 
     fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error> {
         if self.state.current_state.is_halted() {
-            super::cortex_m::write_core_reg(&mut *self.memory, address, value.try_into()?)?;
-            Ok(())
+            super::cortex_m::write_core_reg(&mut *self.memory, address, value.try_into()?)
         } else {
             Err(Error::Arm(ArmError::CoreNotHalted))
         }

@@ -2,6 +2,7 @@ use super::{
     function_die::FunctionDie, get_sequential_key, unit_info::UnitInfo, unit_info::UnitIter,
     variable::*, DebugError, DebugRegisters, SourceLocation, StackFrame, VariableCache,
 };
+use crate::core::UnwindRule;
 use crate::{
     core::Core,
     core::{ExceptionInfo, ExceptionInterface, RegisterRole, RegisterValue},
@@ -12,7 +13,6 @@ use ::gimli::{FileEntry, LineProgramHeader, UnwindContext};
 use gimli::{BaseAddresses, ColumnType, DebugFrame, UnwindSection};
 use object::read::{Object, ObjectSection};
 use probe_rs_target::InstructionSet;
-use registers::UnwindRule;
 use std::{
     borrow,
     cmp::Ordering,
@@ -1329,25 +1329,24 @@ fn unwind_register(
                 other_register => {
                     // If the the register rule was not specified, then we either carry the previous value forward,
                     // or we clear the register value, depending on the architecture and register type.
-                    match other_register.preserve_rule {
+                    match other_register.core_register.unwind_rule {
                         UnwindRule::Preserve => {
-                            register_rule_string = "Preserve (dwarf Undefined)".to_string();
+                            register_rule_string = "Preserve".to_string();
                             callee_frame_registers
                                 .get_register(other_register.core_register.id)
                                 .and_then(|reg| reg.value)
                         }
                         UnwindRule::Clear => {
-                            register_rule_string = "Clear (dwarf Undefined)".to_string();
+                            register_rule_string = "Clear".to_string();
                             None
                         }
                         UnwindRule::SpecialRule => {
-                            // In theory, these should all be handled above, so flag it if we get here,
-                            // but continue the unwind.
-                            tracing::error!(
-                                "Register rule required for register {:?}",
-                                other_register.core_register.name()
-                            );
-                            None
+                            // When no DWARF rules are available, and it is not a special register like PC, SP, FP, etc., we will preserve the value.
+                            register_rule_string =
+                                "Preserve (no unwind rules specified)".to_string();
+                            callee_frame_registers
+                                .get_register(other_register.core_register.id)
+                                .and_then(|reg| reg.value)
                         }
                     }
                 }

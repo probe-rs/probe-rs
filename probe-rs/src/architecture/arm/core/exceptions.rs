@@ -1,3 +1,16 @@
+use crate::core::RegisterRole;
+
+static EXCEPTION_STACK_REGISTERS_CORTEX_M: &[RegisterRole] = &[
+    RegisterRole::Core("R0"),
+    RegisterRole::Core("R1"),
+    RegisterRole::Core("R2"),
+    RegisterRole::Core("R3"),
+    RegisterRole::Core("R12"),
+    RegisterRole::ReturnAddress,
+    RegisterRole::ProgramCounter,
+    RegisterRole::ProcessorStatus,
+];
+
 pub(crate) mod armv6m {
     use crate::{
         core::{ExceptionInfo, ExceptionInterface},
@@ -21,6 +34,8 @@ pub(crate) mod armv7m {
         debug::DebugRegisters,
         Error, MemoryInterface, RegisterValue,
     };
+
+    use super::EXCEPTION_STACK_REGISTERS_CORTEX_M;
 
     /// Decode the exception number.
     #[derive(Debug, Copy, Clone, PartialEq)]
@@ -86,6 +101,7 @@ pub(crate) mod armv7m {
     }
 
     impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv7m::Armv7m<'probe> {
+        /// Decode the exception information. Largely based on [ARM documentation here](https://developer.arm.com/documentation/ddi0403/d/System-Level-Architecture/System-Level-Programmers--Model/ARMv7-M-exception-model/Exception-return-behavior?lang=en).
         fn get_exception_info(
             &mut self,
             stackframe_registers: &DebugRegisters,
@@ -119,18 +135,20 @@ pub(crate) mod armv7m {
                             let mut calling_frame_registers = stackframe_registers.clone();
 
                             // The MSP register value points to the base of the stack frame that invoked the exception handler. We need to read the stack frame to determine the values of the registers that were stored on the stack.
-                            let stored_stack_registers =
-                                vec!["R0", "R1", "R2", "R3", "R12", "LR", "PC", "PSR"];
-                            let mut calling_stack = vec![0u32; stored_stack_registers.len()];
+                            // TODO: probe-rs does not currently do anything with the floating point registers. When support is added, please not that the list of registers to read is different for cores that have the floating point extension.
+                            let mut calling_stack =
+                                vec![0u32; EXCEPTION_STACK_REGISTERS_CORTEX_M.len()];
 
                             self.read_32(msp_value, &mut calling_stack)?;
 
                             // We've read the stack frame that invoked the exception handler, so now we need to update the `calling_frame_registers` to match the values we just read.
-                            for (i, register_name) in stored_stack_registers.iter().enumerate() {
-                                calling_frame_registers.update_register_value_by_name(
-                                    register_name,
-                                    RegisterValue::U32(calling_stack[i]),
-                                )?;
+                            for (i, register_role) in
+                                EXCEPTION_STACK_REGISTERS_CORTEX_M.iter().enumerate()
+                            {
+                                calling_frame_registers
+                                    .get_register_mut_by_role(register_role)
+                                    .ok_or(crate::Error::Other(anyhow::anyhow!("UNWIND: No stack pointer register value. Please report this as a bug.")))?
+                                    .value = Some(RegisterValue::U32(calling_stack[i]));
                             }
                             Ok(Some(ExceptionInfo {
                                 reason,

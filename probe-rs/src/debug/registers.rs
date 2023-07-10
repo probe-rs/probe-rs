@@ -1,33 +1,7 @@
-use probe_rs_target::CoreType;
-
 use crate::{
     core::{Core, RegisterDataType, RegisterId, RegisterRole, RegisterValue},
     CoreRegister, Error,
 };
-
-/// The rule used to preserve the value of a register between function calls duing unwinding,
-/// when DWARF unwind information is not available.
-/// (Applies to ARM and RISC-V). See `DebugRegister::from_core()` implementation for more details.
-/// The rules for these are based on the 'Procedure Calling Standard' for each of the architectures,
-/// and are documented in the `register_preserve_rule()` function.
-/// Please note that the `Procedure Calling Standard` define register rules for the act of calling and/or returning from functions,
-/// while the timing of a stack unwinding is different (the `callee` has not yet completed / executed the epilogue),
-/// and the rules about preserving register values have to take this into account.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum UnwindRule {
-    /// Callee-saved, a.k.a non-volatile registers, or call-preserved.
-    /// If there is DWARF unwind `RegisterRule` we will apply it,
-    /// otherwise we assume it was untouched and preserve the current value.
-    Preserve,
-    /// Caller-saved, a.k.a. volatile registers, or call-clobbered.
-    /// If there is DWARF unwind `RegisterRule` we will apply it,
-    /// otherwise we assume it was corrupted by the callee, and clear the value.
-    Clear,
-    /// Additional rules are required to determine the value of the register.
-    /// These are typically found in either the DWARF unwind information,
-    /// or requires additional platform specific registers to be read.
-    SpecialRule,
-}
 
 /// Stores the relevant information from [`crate::core::CoreRegister`] for use in debug operations,
 /// as well as additional information required during debug.
@@ -35,8 +9,6 @@ pub enum UnwindRule {
 pub struct DebugRegister {
     /// To lookup platform specific details of core register definitions.
     pub core_register: &'static CoreRegister,
-    /// For unwind purposes, we need to know how values are preserved between function calls. (Applies to ARM and RISC-V)
-    pub preserve_rule: UnwindRule,
     /// [DWARF](https://dwarfstd.org) specification, section 2.6.1.1.3.1 "... operations encode the names of up to 32 registers, numbered from 0 through 31, inclusive ..."
     pub dwarf_id: Option<u16>,
     /// The value of the register is read from the target memory and updated as needed.
@@ -82,13 +54,12 @@ impl DebugRegisters {
     pub fn from_core(core: &mut Core) -> Self {
         let mut debug_registers = Vec::<DebugRegister>::new();
 
-        for (dwarf_id, core_register) in core.registers().core_registers().enumerate() {
+        for (dwarf_id, core_register) in core.registers().all_registers().enumerate() {
             // Check to ensure the register type is compatible with u64.
             if matches!(core_register.data_type(), RegisterDataType::UnsignedInteger(size_in_bits) if size_in_bits <= 64)
             {
                 debug_registers.push(DebugRegister {
                     core_register,
-                    preserve_rule: register_preserve_rule(core_register, core.core_type()),
                     // The DWARF register ID is only valid for the first 32 registers.
                     dwarf_id: if dwarf_id < 32 {
                         Some(dwarf_id as u16)
@@ -206,14 +177,14 @@ impl DebugRegisters {
     /// Retrieve a mutable refererence to a register by searching against an exact match of the [`RegisterRole`].
     pub fn get_register_mut_by_role(
         &mut self,
-        register_role: RegisterRole,
+        register_role: &RegisterRole,
     ) -> Option<&mut DebugRegister> {
         self.0.iter_mut().find(|debug_register| {
             debug_register
                 .core_register
                 .roles
                 .iter()
-                .any(|&role| role == register_role)
+                .any(|role| role == register_role)
         })
     }
 
@@ -234,46 +205,5 @@ impl DebugRegisters {
                 register_name_matches
             })
             .cloned()
-    }
-}
-
-/// Determine the [`PreserveRule`] for a [`CoreRegister`], based on the [`CoreType`].
-/// The rules are based on the `Procedure Calling Standard for each of the architectures.
-fn register_preserve_rule(core_register: &CoreRegister, core_type: CoreType) -> UnwindRule {
-    match core_type {
-        // [AAPCS32](https://github.com/ARM-software/abi-aa/blob/main/aapcs32/aapcs32.rst#core-registers)
-        CoreType::Armv6m | CoreType::Armv7a | CoreType::Armv7m | CoreType::Armv7em => {
-            match core_register.id.0 {
-                // r0-r3 are caller-saved
-                0..=3 => UnwindRule::Clear,
-                // r4-r8 are callee-saved
-                4..=6 => UnwindRule::Preserve,
-                // r7 is used by Thumb instruction set as the Frame Pointer, and is callee-saved in the ARM instruction set.
-                7 => UnwindRule::SpecialRule,
-                // r8 is callee-saved
-                8 => UnwindRule::Preserve,
-                // r9 is platform specific, so using a general rule is not possible.
-                9 => UnwindRule::Clear, //SpecialRule,
-                // r10-r11 are callee-saved
-                10..=11 => UnwindRule::Preserve,
-                // r12 is platform specific
-                12 => UnwindRule::Clear, //SpecialRule,
-                // r13-r14 are callee-saved
-                13..=14 => UnwindRule::Preserve,
-                // r15 is the program counter
-                15 => UnwindRule::SpecialRule,
-                // r16-r19 are callee-saved
-                16..=19 => UnwindRule::Preserve,
-                // r20-r31 are caller-saved
-                20..=31 => UnwindRule::Clear,
-                _ => unreachable!(),
-            }
-        }
-        // [AAPCS64](https://github.com/ARM-software/abi-aa/blob/main/aapcs32/aapcs32.rst#core-registers)
-        // TODO: This is a placeholder, that will allow all other core types to continue to work as before.
-        CoreType::Armv8a | CoreType::Armv8m => UnwindRule::Clear,
-        // [RISC-V PCS](https://github.com/riscv-non-isa/riscv-elf-psabi-doc/releases/download/v1.0/riscv-abi.pdf)
-        // TODO: This is a placeholder, that will allow all other core types to continue to work as before.
-        CoreType::Riscv => UnwindRule::Clear,
     }
 }

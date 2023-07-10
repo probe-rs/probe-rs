@@ -44,6 +44,7 @@ pub enum RegisterRole {
 impl Display for RegisterRole {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
+            RegisterRole::Core(name) => write!(f, "{}", name),
             RegisterRole::Argument(name) => write!(f, "{}", name),
             RegisterRole::Return(name) => write!(f, "{}", name),
             RegisterRole::ProgramCounter => write!(f, "PC"),
@@ -60,6 +61,36 @@ impl Display for RegisterRole {
     }
 }
 
+/// The rule used to preserve the value of a register between function calls duing unwinding,
+/// when DWARF unwind information is not available.
+///
+/// The rules for these are based on the 'Procedure Calling Standard' for each of the supported architectures:
+/// - Implemented: [AAPCS32](https://github.com/ARM-software/abi-aa/blob/main/aapcs32/aapcs32.rst#core-registers)
+/// - To be Implemented: [AAPCS64](https://github.com/ARM-software/abi-aa/blob/main/aapcs32/aapcs32.rst#core-registers)
+/// - To be Implemented: [RISC-V PCS](https://github.com/riscv-non-isa/riscv-elf-psabi-doc/releases/download/v1.0/riscv-abi.pdf)
+///
+/// Please note that the `Procedure Calling Standard` define register rules for the act of calling and/or returning from functions,
+/// while the timing of a stack unwinding is different (the `callee` has not yet completed / executed the epilogue),
+/// and the rules about preserving register values have to take this into account.
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UnwindRule {
+    /// Callee-saved, a.k.a non-volatile registers, or call-preserved.
+    /// If there is DWARF unwind `RegisterRule` we will apply it during unwind,
+    /// otherwise we assume it was untouched and preserve the current value.
+    Preserve,
+    /// Caller-saved, a.k.a. volatile registers, or call-clobbered.
+    /// If there is DWARF unwind `RegisterRule` we will apply it during unwind,
+    /// otherwise we assume it was corrupted by the callee, and clear the value.
+    /// Note: This is the default value, and is used for all situations where DWARF unwind
+    /// information is not available, and the register is not explicitly marked in the definition.
+    #[default]
+    Clear,
+    /// Additional rules are required to determine the value of the register.
+    /// These are typically found in either the DWARF unwind information,
+    /// or requires additional platform specific registers to be read.
+    SpecialRule,
+}
+
 /// Describes a core (or CPU / hardware) register with its properties.
 /// Each architecture will have a set of general purpose registers, and potentially some special purpose registers. It also happens that some general purpose registers can be used for special purposes. For instance, some ARM variants allows the `LR` (link register / return address) to be used as general purpose register `R14`."
 #[derive(Debug, Clone, PartialEq)]
@@ -69,6 +100,8 @@ pub struct CoreRegister {
     /// If the register plays a special role (one or more) during program execution and exception handling, this array will contain the appropriate [`RegisterRole`] entry/entries.
     pub(crate) roles: &'static [RegisterRole],
     pub(crate) data_type: RegisterDataType,
+    /// For unwind purposes (debug and/or exception handling), we need to know how values are preserved between function calls. (Applies to ARM and RISC-V)
+    pub unwind_rule: UnwindRule,
 }
 
 impl Display for CoreRegister {
@@ -384,7 +417,7 @@ impl CoreRegisters {
         CoreRegisters(core_registers)
     }
 
-    /// Returns an iterator over the descriptions of all the core registers (non-FPU) of this core.
+    /// Returns an iterator over the descriptions of all the non-FPU registers of this core.
     pub fn core_registers(&self) -> impl Iterator<Item = &CoreRegister> {
         self.0
             .iter()
@@ -397,6 +430,11 @@ impl CoreRegisters {
                 })
             })
             .cloned()
+    }
+
+    /// Returns an iterator over the descriptions of all the registers of this core.
+    pub fn all_registers(&self) -> impl Iterator<Item = &CoreRegister> {
+        self.0.iter().cloned()
     }
 
     /// Returns the nth platform register.
