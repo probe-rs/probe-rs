@@ -19,6 +19,9 @@ use tracing_subscriber::{
     EnvFilter, Layer,
 };
 
+use crate::util::parse_u32;
+use crate::util::parse_u64;
+
 #[derive(clap::Parser)]
 #[clap(
     name = "probe-rs",
@@ -93,11 +96,11 @@ pub(crate) struct FormatOptions {
     #[clap(value_enum, ignore_case = true, default_value = "elf", long)]
     #[serde(deserialize_with = "format_from_str")]
     format: Format,
-    /// The address in memory where the binary will be put at.
-    #[clap(long)]
+    /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
+    #[clap(long, value_parser = parse_u64)]
     pub base_address: Option<u64>,
-    /// The number of bytes to skip at the start of the binary file.
-    #[clap(long, default_value = "0")]
+    /// The number of bytes to skip at the start of the binary file. This is only considered when `bin` is selected as the format.
+    #[clap(long, value_parser = parse_u32, default_value = "0")]
     pub skip: u32,
     /// The idf bootloader path
     #[clap(long)]

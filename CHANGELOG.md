@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `dap-server`: In addition to `Elf` format, this adds support for binary formats `Bin`, `Hex`, and `Idf` (#1656).
 - Added PAC55XX series targets (#1655)
 
+
+### Fixed
+
+- probe-rs-cli: fixed `--base-address` having no effect
+- probe-rs-cli: fixed `--skip` not accepting hexadecimal values
+
+### Removed
+
+- probe-rs-cli: removed obsolete `--skip-bytes` (which had no effect), use `--skip` instead
+
 ## [0.19.0]
 
 Released 2023-06-27
