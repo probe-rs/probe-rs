@@ -70,6 +70,7 @@ enum Subcommand {
     Itm(cmd::itm::Cmd),
     Chip(cmd::chip::Cmd),
     Benchmark(cmd::benchmark::Cmd),
+    Profile(cmd::profile::Cmd),
 }
 
 /// Shared options for core selection, shared between commands
@@ -254,6 +255,7 @@ fn main() -> Result<()> {
         Subcommand::Itm(cmd) => cmd.run(),
         Subcommand::Chip(cmd) => cmd.run(),
         Subcommand::Benchmark(cmd) => cmd.run(),
+        Subcommand::Profile(cmd) => cmd.run(),
     };
 
     tracing::info!("Wrote log to {:?}", log_path);
