@@ -1341,12 +1341,11 @@ fn unwind_register(
                             None
                         }
                         UnwindRule::SpecialRule => {
-                            // When no DWARF rules are available, and it is not a special register like PC, SP, FP, etc., we will preserve the value.
-                            register_rule_string =
-                                "Preserve (no unwind rules specified)".to_string();
-                            callee_frame_registers
-                                .get_register(other_register.core_register.id)
-                                .and_then(|reg| reg.value)
+                            // When no DWARF rules are available, and it is not a special register like PC, SP, FP, etc.,
+                            // we will preserve the value. It is possible it might have its value set later if
+                            // exception frame information is available.
+                            register_rule_string = "Clear (no unwind rules specified)".to_string();
+                            None
                         }
                     }
                 }

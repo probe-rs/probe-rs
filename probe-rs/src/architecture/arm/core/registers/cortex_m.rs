@@ -150,7 +150,7 @@ static CORTEX_M_COMMON_REGS_SET: &[CoreRegister] = &[
         roles: &[RegisterRole::Core("MSP"), RegisterRole::MainStackPointer],
         id: RegisterId(0b10001),
         data_type: RegisterDataType::UnsignedInteger(32),
-        unwind_rule: UnwindRule::Preserve,
+        unwind_rule: UnwindRule::SpecialRule,
     },
     CoreRegister {
         roles: &[RegisterRole::Core("PSP"), RegisterRole::ProcessStackPointer],

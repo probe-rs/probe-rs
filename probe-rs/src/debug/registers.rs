@@ -185,6 +185,19 @@ impl DebugRegisters {
         })
     }
 
+    /// Retrieve the stored value of a register by searching against an exact match of the [`RegisterRole`].
+    pub fn get_register_value_by_role(&self, register_role: &RegisterRole) -> Result<u64, Error> {
+        self.get_register_by_role(register_role)
+            .ok_or(crate::Error::Other(anyhow::anyhow!(
+                "No {register_role:?} register. Please report this as a bug."
+            )))?
+            .value
+            .ok_or(crate::Error::Other(anyhow::anyhow!(
+                "No value for {register_role:?} register. Please report this as a bug."
+            )))?
+            .try_into()
+    }
+
     /// Retrieve a mutable refererence to a register by searching against an exact match of the [`RegisterRole`].
     pub fn get_register_mut_by_role(
         &mut self,
