@@ -504,7 +504,7 @@ impl DebugInfo {
         let mut units = self.get_units();
 
         let unknown_function = if let Some(exception_info) = exception_info {
-            exception_info.reason.to_string()
+            exception_info.description.to_string()
         } else {
             format!(
                 "<unknown function @ {:#0width$x}>",
@@ -727,7 +727,10 @@ impl DebugInfo {
             // At worst, the unwind will be able to unwind the stack to the frame of the most recent exception handler.
             let exception_info = match core.get_exception_info(&unwind_registers) {
                 Ok(Some(exception_info)) => {
-                    tracing::trace!("UNWIND: Found exception context: {}", exception_info.reason);
+                    tracing::trace!(
+                        "UNWIND: Found exception context: {}",
+                        exception_info.description
+                    );
                     Some(exception_info)
                 }
                 Ok(None) => {
@@ -800,12 +803,12 @@ impl DebugInfo {
                     if let Some(exception_info) = exception_info {
                         tracing::trace!(
                             "UNWIND: Stack unwind reached an exception handler {}",
-                            exception_info.reason
+                            exception_info.description
                         );
                         if let Some(exception_info) = core.get_exception_info(&unwind_registers)? {
                             tracing::trace!(
                                 "UNWIND: Found exception context: {}",
-                                exception_info.reason
+                                exception_info.description
                             );
                             // If we are at an exception hanlder frame, we need to overwrite the unwind registers.
                             // This will allow us to continue unwinding from the exception handler frame.
@@ -814,7 +817,7 @@ impl DebugInfo {
                             // Now that we've optionally updated the `unwind_registers` to match the exception handler, we can continue.
                             stack_frames.push(return_frame);
                             tracing::trace!(
-                                    "UNWIND: Stack unwind will attempt to unwind the frame that invoked {}.", exception_info.reason
+                                    "UNWIND: Stack unwind will attempt to unwind the frame that invoked {}.", exception_info.description
                                 );
                             continue;
                         } else {

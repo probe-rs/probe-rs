@@ -223,7 +223,7 @@ impl<'probe> MemoryInterface for Core<'probe> {
 /// architecture specific implementations of [`crate::core::ExceptionInterface`].
 pub struct ExceptionInfo {
     /// A human readable explanation for the exception.
-    pub reason: String,
+    pub description: String,
     /// The stackframe registers, and their values, for the frame that triggered the exception.
     pub calling_frame_registers: DebugRegisters,
 }
@@ -245,6 +245,25 @@ pub trait ExceptionInterface {
         // when the first frame is reached that was called from an exception handler.
         Ok(None)
     }
+
+    /// Using the `stackframe_registers` for a "called frame", retrieve updated register values for the "calling frame".
+    fn calling_frame_registers(
+        &mut self,
+        _stackframe_registers: &crate::debug::DebugRegisters,
+    ) -> Result<crate::debug::DebugRegisters, crate::Error> {
+        Err(error::Error::Other(anyhow!(
+            "Not implemented for this architecture."
+        )))
+    }
+
+    /// Convert the architecture specific exception number into a human readable description.
+    /// Where possible, the implementation may read additional registers from the core, to provide additional context.
+    fn exception_description(
+        &mut self,
+        _stackframe_registers: &crate::debug::DebugRegisters,
+    ) -> Result<String, crate::Error> {
+        Ok("Not implemented for this architecture.".to_string())
+    }
 }
 
 impl<'probe> ExceptionInterface for Core<'probe> {
@@ -253,6 +272,20 @@ impl<'probe> ExceptionInterface for Core<'probe> {
         stackframe_registers: &DebugRegisters,
     ) -> Result<Option<ExceptionInfo>, Error> {
         self.inner.get_exception_info(stackframe_registers)
+    }
+
+    fn calling_frame_registers(
+        &mut self,
+        stackframe_registers: &crate::debug::DebugRegisters,
+    ) -> Result<crate::debug::DebugRegisters, crate::Error> {
+        self.inner.calling_frame_registers(stackframe_registers)
+    }
+
+    fn exception_description(
+        &mut self,
+        _stackframe_registers: &crate::debug::DebugRegisters,
+    ) -> Result<String, crate::Error> {
+        self.inner.exception_description(_stackframe_registers)
     }
 }
 
