@@ -174,6 +174,17 @@ impl DebugRegisters {
             .unwrap_or_else(|| "unknown register".to_string())
     }
 
+    /// Retrieve a refererence to a register by searching against an exact match of the [`RegisterRole`].
+    pub fn get_register_by_role(&self, register_role: &RegisterRole) -> Option<&DebugRegister> {
+        self.0.iter().find(|debug_register| {
+            debug_register
+                .core_register
+                .roles
+                .iter()
+                .any(|role| role == register_role)
+        })
+    }
+
     /// Retrieve a mutable refererence to a register by searching against an exact match of the [`RegisterRole`].
     pub fn get_register_mut_by_role(
         &mut self,
