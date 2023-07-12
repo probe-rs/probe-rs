@@ -14,6 +14,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - ARMv7-M: Also decodes details about HardFault, UsageFault, BusFault, and MemManageFault.
   - ARMv7-A, Armv8-M, Armv8-A, RISC-V: Not implemented - requires architecture specific implementations.
 
+
+### Fixed
+
+- probe-rs-cli: fixed `--base-address` having no effect
+- probe-rs-cli: fixed `--skip` not accepting hexadecimal values
+
+### Removed
+
+- probe-rs-cli: removed obsolete `--skip-bytes` (which had no effect), use `--skip` instead
+
 ## [0.19.0]
 
 Released 2023-06-27
