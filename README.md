@@ -57,7 +57,7 @@ If you are looking for a more extended debugging experience, please have a look 
 
 ### VSCode
 
-We have implemented the [Microsoft DAP protocol](https://microsoft.github.io/debug-adapter-protocol/). This makes embedded debugging via probe-rs available in modern code editors implementing the standard, such as VSCode. Please see [probe-rs-debugger](./debugger) and [vscode](https://github.com/probe-rs/vscode) for more information.
+We have implemented the [Microsoft DAP protocol](https://microsoft.github.io/debug-adapter-protocol/). This makes embedded debugging via probe-rs available in modern code editors implementing the standard, such as VSCode. Please see the [website](https://probe.rs/docs/tools/vscode/) for more information.
 
 ## Usage Examples
 
