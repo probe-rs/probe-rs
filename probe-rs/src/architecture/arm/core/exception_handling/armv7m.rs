@@ -1,11 +1,158 @@
 use crate::{
     core::{ExceptionInfo, ExceptionInterface},
     debug::DebugRegisters,
-    CoreInterface, Error,
+    memory_mapped_bitfield_register, CoreInterface, Error, MemoryMappedRegister,
 };
 
 use super::cortexm_6_and_7::{self, calling_frame_registers, Xpsr};
 
+memory_mapped_bitfield_register! {
+    /// HFSR - HardFault Status Register
+    pub struct Hfsr(u32);
+    0xE000ED2C, "HFSR",
+    impl From;
+    debug_event, _: 31;
+    escalation_forced, _: 30;
+    vector_table_read_fault, _: 1;
+}
+
+memory_mapped_bitfield_register! {
+    /// CFSR - Configuratble Status Register (UFSR[31:16], BFSR[15:8], MMFSR[7:0])
+    pub struct Cfsr(u32);
+    0xE000ED28, "CFSR",
+    impl From;
+    /// When SDIV or UDIV instruction is used with a divisor of 0, this fault occurs if DIV_0_TRP is enabled in the CCR.
+    uf_div_by_zero, _: 25;
+    /// Multi-word accesses always fault if not word aligned. Software can configure unaligned word and halfword accesses to fault, by enabling UNALIGN_TRP in the CCR.
+    uf_unaligned_access, _: 24;
+    /// A coprocessor access error has occurred. This shows that the coprocessor is disabled or not present.
+    uf_coprocessor, _: 19;
+    /// An integrity check error has occurred on EXC_RETURN.
+    uf_integrity_check, _: 18;
+    /// Instruction executed with invalid EPSR.T or EPSR.IT field.
+    uf_invalid_state, _: 17;
+    /// The processor has attempted to execute an undefined instruction. This might be an undefined instruction associated with an enabled coprocessor.
+    uf_undefined_instruction, _: 16;
+    /// BFAR has valid contents.
+    bf_address_register_valid, _: 15;
+    /// A bus fault occurred during FP lazy state preservation.
+    bf_fp_lazy_state_preservation, _: 13;
+    /// A derived bus fault has occurred on exception entry.
+    bf_exception_entry, _: 12;
+    /// A derived bus fault has occurred on exception return.
+    bf_exception_return, _: 11;
+    /// Imprecise data access error has occurred.
+    bf_imprecise_data_access_error, _: 10;
+    /// Precise data access error has occurred.
+    bf_precise_data_access_error, _: 9;
+    ///  A bus fault on an instruction prefetch has occurred. The fault is signalled only if the instruction is issued.
+    bf_instruction_prefetch, _: 8;
+    ///  MMAR has valid contents.
+    mm_address_register_valid, _: 7;
+    /// A MemManage fault occurred during FP lazy state preservation.
+    mm_fp_lazy_state_preservation, _: 5;
+    /// A derived MemManage fault occurred on exception entry.
+    mm_exception_entry, _: 4;
+    /// A derived MemManage fault occurred on exception return.
+    mm_exception_return, _: 3;
+    ///  Data access violation. The MMAR shows the data address that the load or store tried to access.
+    mm_data_access_violation, _: 1;
+    ///  MPU or Execute Never (XN) default memory map access violation on an instruction fetch has occurred.
+    mm_instruction_fetch_violation, _: 0;
+}
+
+impl Cfsr {
+    /// Additional information about a Usage Fault, or Ok(None) if the fault was not a Usage Fault.
+    fn get_uf_details<T: CoreInterface>(&self, _core: &mut T) -> Result<Option<String>, Error> {
+        let source = if self.uf_coprocessor() {
+            "Coprocessor access error"
+        } else if self.uf_div_by_zero() {
+            "Division by zero"
+        } else if self.uf_integrity_check() {
+            "Integrity check error"
+        } else if self.uf_invalid_state() {
+            "Instruction executed with invalid EPSR.T or EPSR.IT field"
+        } else if self.uf_unaligned_access() {
+            "Unaligned access"
+        } else if self.uf_undefined_instruction() {
+            "Undefined instruction"
+        } else {
+            // Not a UsageFault.
+            return Ok(None);
+        };
+        Ok(Some(format!("UsageFault ({source})")))
+    }
+
+    /// Additional information about a Bus Fault, or Ok(None) if the fault was not a Bus Fault.
+    fn get_bf_details<T: CoreInterface>(&self, core: &mut T) -> Result<Option<String>, Error> {
+        let source = if self.bf_exception_entry() {
+            "Derived fault on exception entry"
+        } else if self.bf_exception_return() {
+            "Derived fault on exception return"
+        } else if self.bf_fp_lazy_state_preservation() {
+            "Fault occurred during FP lazy state preservation"
+        } else if self.bf_imprecise_data_access_error() {
+            "Imprecise data access error"
+        } else if self.bf_instruction_prefetch() {
+            "Instruction prefetch"
+        } else if self.bf_precise_data_access_error() {
+            "Precise data access error"
+        } else {
+            // Not a BusFault
+            return Ok(None);
+        };
+
+        Ok(Some(if self.bf_address_register_valid() {
+            format!(
+                "BusFault ({source}) at location: {:#010x}",
+                core.read_word_32(Bfar::get_mmio_address())?
+            )
+        } else {
+            format!("BusFault ({source})")
+        }))
+    }
+
+    /// Additional information about a MemManage Fault, or Ok(None) if the fault was not a MemManage Fault.
+    fn get_mmf_details<T: CoreInterface>(&self, core: &mut T) -> Result<Option<String>, Error> {
+        let source = if self.mm_data_access_violation() {
+            "Data access violation"
+        } else if self.mm_exception_entry() {
+            "Derived fault on exception entry"
+        } else if self.mm_exception_return() {
+            "Derived fault on exception return"
+        } else if self.mm_fp_lazy_state_preservation() {
+            "Fault occurred during FP lazy state preservation"
+        } else if self.mm_instruction_fetch_violation() {
+            "MPU or Execute Never (XN) default memory map access violation on an instruction fetch"
+        } else {
+            // Not a MemManage Fault.
+            return Ok(None);
+        };
+
+        Ok(Some(if self.mm_address_register_valid() {
+            format!(
+                "MemManage Fault({source}) at location: {:#010x}",
+                core.read_word_32(Mmfar::get_mmio_address())?
+            )
+        } else {
+            format!("MemManage Fault({source})")
+        }))
+    }
+}
+
+memory_mapped_bitfield_register! {
+    /// MMFAR - MemManage Fault Address Register
+    pub struct Mmfar(u32);
+    0xE000ED34, "MMFAR",
+    impl From;
+}
+
+memory_mapped_bitfield_register! {
+    /// BFAR - Bus Fault Address Register
+    pub struct Bfar(u32);
+    0xE000ED38, "BFAR",
+    impl From;
+}
 /// Decode the exception number.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub(crate) enum ExceptionReason {
@@ -63,16 +210,62 @@ impl ExceptionReason {
     fn expanded_description<T: CoreInterface>(&self, core: &mut T) -> Result<String, Error> {
         match self {
             ExceptionReason::ThreadMode => Ok("No active exception.".to_string()),
-            ExceptionReason::Reset => Ok("".to_string()),
-            ExceptionReason::NonMaskableInterrupt => todo!(),
-            ExceptionReason::HardFault => todo!(),
-            ExceptionReason::MemoryManagementFault => todo!(),
-            ExceptionReason::BusFault => todo!(),
-            ExceptionReason::UsageFault => todo!(),
-            ExceptionReason::SVCall => todo!(),
-            ExceptionReason::DebugMonitor => todo!(),
-            ExceptionReason::PendSV => todo!(),
-            ExceptionReason::SysTick => Ok("".to_string()),
+            ExceptionReason::Reset => Ok("Reset handler.".to_string()),
+            ExceptionReason::NonMaskableInterrupt => Ok("Non maskable interrupt.".to_string()),
+            ExceptionReason::HardFault => {
+                let hfsr = Hfsr(core.read_word_32(Hfsr::get_mmio_address())?);
+                let description = if hfsr.debug_event() {
+                    "Synchronous debug fault.".to_string()
+                } else if hfsr.escalation_forced() {
+                    let description = "Escalated ";
+                    let cfsr = Cfsr(core.read_word_32(Cfsr::get_mmio_address())?);
+                    if let Some(source) = cfsr.get_uf_details(core)? {
+                        format!("{description}{source}")
+                    } else if let Some(source) = cfsr.get_bf_details(core)? {
+                        format!("{description}{source}")
+                    } else if let Some(source) = cfsr.get_mmf_details(core)? {
+                        format!("{description}{source}")
+                    } else {
+                        format!("{description}from an unknown source")
+                    }
+                } else if hfsr.vector_table_read_fault() {
+                    "Vector table read fault".to_string()
+                } else {
+                    "Undeterminable".to_string()
+                };
+                Ok(format!("HardFault handler. Cause: {description}."))
+            }
+            ExceptionReason::MemoryManagementFault => {
+                if let Some(source) =
+                    Cfsr(core.read_word_32(Cfsr::get_mmio_address())?).get_uf_details(core)?
+                {
+                    Ok(source)
+                } else {
+                    Ok("UsageFault handler. Cause: Unknown.".to_string())
+                }
+            }
+            ExceptionReason::BusFault => {
+                if let Some(source) =
+                    Cfsr(core.read_word_32(Cfsr::get_mmio_address())?).get_bf_details(core)?
+                {
+                    Ok(source)
+                } else {
+                    Ok("BusFault handler. Cause: Unknown.".to_string())
+                }
+            }
+            ExceptionReason::UsageFault => {
+                if let Some(source) =
+                    Cfsr(core.read_word_32(Cfsr::get_mmio_address())?).get_uf_details(core)?
+                {
+                    Ok(source)
+                } else {
+                    Ok("MemManage Fault handler. Cause: Unknown.".to_string())
+                }
+            }
+            ExceptionReason::SVCall => Ok("Supervisor call.".to_string()),
+            ExceptionReason::DebugMonitor => Ok("Synchronous Debug monitor fault.".to_string()),
+            ExceptionReason::PendSV => Ok("Pending Supervisor call.".to_string()),
+            ExceptionReason::SysTick => Ok("Systick handler.".to_string()),
             ExceptionReason::ExternalInterrupt(exti) => Ok(format!("External interrupt #{exti}.")),
             ExceptionReason::Reserved => {
                 Ok("Reserved by the ISA, and not usable by software.".to_string())
