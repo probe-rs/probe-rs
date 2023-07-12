@@ -71,8 +71,6 @@ impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv6m::Armv
         Ok(format!("{:?}", ExceptionReason::from(exception_number)))
     }
 
-    /// Decode the exception information. Uses shared logic from the [`cortexm`] module where applicable,
-    /// and then adds additional information specific to the ARMv6-M architecture.
     fn get_exception_info(
         &mut self,
         stackframe_registers: &DebugRegisters,

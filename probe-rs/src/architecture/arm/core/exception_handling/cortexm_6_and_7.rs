@@ -44,7 +44,7 @@ bitfield! {
     pub exception_number, _: 8,0;
 }
 
-/// Decode the exception information. Largely based on [ARM documentation here](https://developer.arm.com/documentation/ddi0403/d/System-Level-Architecture/System-Level-Programmers--Model/ARMv7-M-exception-model/Exception-return-behavior?lang=en).
+/// Decode the exception information.
 pub(crate) fn get_exception_info<T: CoreInterface>(
     core: &mut T,
     stackframe_registers: &DebugRegisters,

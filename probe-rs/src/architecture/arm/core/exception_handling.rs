@@ -1,3 +1,5 @@
+//! Variant specific exception handling for the ARM architecture.
+
 pub(crate) mod armv6m;
 /// Where applicable, this defines shared logic for implementing exception handling accross the various ARMv6-m and ARMv7-m [`crate::CoreType`]'s.
 pub(crate) mod cortexm_6_and_7;

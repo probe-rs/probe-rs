@@ -1,7 +1,7 @@
 use crate::{
     core::{ExceptionInfo, ExceptionInterface},
     debug::DebugRegisters,
-    Error,
+    CoreInterface, Error,
 };
 
 use super::cortexm_6_and_7::{self, calling_frame_registers, Xpsr};
@@ -57,6 +57,30 @@ impl From<u32> for ExceptionReason {
     }
 }
 
+impl ExceptionReason {
+    /// Expands the exception reason, by providing additional information about the exception from the
+    /// HFSR and CFSR registers.
+    fn expanded_description<T: CoreInterface>(&self, core: &mut T) -> Result<String, Error> {
+        match self {
+            ExceptionReason::ThreadMode => Ok("No active exception.".to_string()),
+            ExceptionReason::Reset => Ok("".to_string()),
+            ExceptionReason::NonMaskableInterrupt => todo!(),
+            ExceptionReason::HardFault => todo!(),
+            ExceptionReason::MemoryManagementFault => todo!(),
+            ExceptionReason::BusFault => todo!(),
+            ExceptionReason::UsageFault => todo!(),
+            ExceptionReason::SVCall => todo!(),
+            ExceptionReason::DebugMonitor => todo!(),
+            ExceptionReason::PendSV => todo!(),
+            ExceptionReason::SysTick => Ok("".to_string()),
+            ExceptionReason::ExternalInterrupt(exti) => Ok(format!("External interrupt #{exti}.")),
+            ExceptionReason::Reserved => {
+                Ok("Reserved by the ISA, and not usable by software.".to_string())
+            }
+        }
+    }
+}
+
 impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv7m::Armv7m<'probe> {
     fn calling_frame_registers(
         &mut self,
@@ -77,12 +101,12 @@ impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv7m::Armv
         )
         .exception_number();
 
-        // TODO: Some ARMv7-M cores (e.g. the Cortex-M3) do not have HFSR and CFGR registers, so we cannot
-        Ok(format!("{:?}", ExceptionReason::from(exception_number)))
+        Ok(format!(
+            "{:?}",
+            ExceptionReason::from(exception_number).expanded_description(self)?
+        ))
     }
 
-    /// Decode the exception information. Uses shared logic from the [`cortexm`] module where applicable,
-    /// and then adds additional information specific to the ARMv7-M architecture.
     fn get_exception_info(
         &mut self,
         stackframe_registers: &DebugRegisters,
