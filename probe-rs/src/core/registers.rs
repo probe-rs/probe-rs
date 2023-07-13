@@ -28,14 +28,23 @@ pub enum RegisterRole {
     Argument(&'static str),
     /// Function Return value registers like "R0", "r1", etc. (uses architecture specific names)
     Return(&'static str),
+    /// Program Counter register
     ProgramCounter,
+    /// Frame Pointer register
     FramePointer,
+    /// Stack Pointer register
     StackPointer,
+    /// Main Stack Pointer register
     MainStackPointer,
+    /// Process Stack Pointer register
     ProcessStackPointer,
+    /// Processor Status register
     ProcessorStatus,
+    /// Return Address register
     ReturnAddress,
+    /// Floating Point Unit register
     FloatingPoint,
+    /// Floating Point Status register
     FloatingPointStatus,
     /// Other architecture specific roles, e.g. "saved", "temporary", "variable", etc.
     Other(&'static str),
