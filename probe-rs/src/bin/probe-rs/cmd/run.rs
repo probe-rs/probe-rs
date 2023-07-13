@@ -15,21 +15,21 @@ use crate::FormatOptions;
 #[derive(clap::Parser)]
 pub struct Cmd {
     #[clap(flatten)]
-    common: ProbeOptions,
+    pub(crate) common: ProbeOptions,
 
     /// The path to the ELF file to flash and run
-    path: String,
+    pub(crate) path: String,
 
     /// Whether to erase the entire chip before downloading
     #[clap(long)]
-    chip_erase: bool,
+    pub(crate) chip_erase: bool,
 
     /// Disable double-buffering when downloading flash.  If downloading times out, try this option.
     #[clap(long = "disable-double-buffering")]
-    disable_double_buffering: bool,
+    pub(crate) disable_double_buffering: bool,
 
     #[clap(flatten)]
-    format_options: FormatOptions,
+    pub(crate) format_options: FormatOptions,
 }
 
 impl Cmd {

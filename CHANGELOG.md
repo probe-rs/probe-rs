@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - ARMv6-M: Report Exception / Fault description, and Unwind the registers and next frames.
   - ARMv7-M: Also decodes details about HardFault, UsageFault, BusFault, and MemManageFault.
   - ARMv7-A, Armv8-M, Armv8-A, RISC-V: Not implemented - requires architecture specific implementations.
+- Added a simple profiler to the probe-rs cli toolkit (#1628)
 
 
 ### Fixed
@@ -203,7 +204,7 @@ Released 2023-01-28
 - target-gen: Add a command which enables the easy development and debugging of a flash algorithm.
 
   `target-gen test` is a new command to automatically upload, run, print RTT messages and test
-  a flash algorithm. Have a look at the [template](https://github.com/probe-rs/flash-algorithm-template)
+  a flash algorithm. Have a look at the - Added a simple profiler to the probe-rs cli toolkit (#1628)[template](https://github.com/probe-rs/flash-algorithm-template)
   to create a new flash algorithm.
 
 ### Changed
