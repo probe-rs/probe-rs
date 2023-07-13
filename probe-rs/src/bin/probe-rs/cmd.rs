@@ -11,6 +11,7 @@ pub mod gdb;
 pub mod info;
 pub mod itm;
 pub mod list;
+pub mod profile;
 pub mod reset;
 pub mod run;
 pub mod trace;
