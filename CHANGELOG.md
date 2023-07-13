@@ -15,10 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - ARMv7-A, Armv8-M, Armv8-A, RISC-V: Not implemented - requires architecture specific implementations.
 - `cli`: Added a simple profiler to the probe-rs cli toolkit (#1628)
 - `core`: Added MSP432E4 target (MSP432E401Y and MSP432E411Y). (#1139)
+- `core`: Added vector catch for ARMv6-M and ARMv7-M (#1592)
+  - Currently supported are HardFault and CoreReset.
+- `cli`: The run command now prints a stack trace on `HardFault` (#1592)
 
 ### Changed
 
-- probe-rs-cli: more descriptive error messages for ambigous chips
+- `cli`: more descriptive error messages for ambigous chips
 
 ### Fixed
 
@@ -28,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- `cli`: removed obsolete `--skip-bytes` (which had no effect), use `--skip` instead
+- cli: removed obsolete `--skip-bytes` (which had no effect), use `--skip` instead
 
 ## [0.19.0]
 
