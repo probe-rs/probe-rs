@@ -64,7 +64,6 @@ pub(crate) fn exception_details<T: CoreInterface>(
 
     if ExcReturn(frame_return_address).is_exception_flag() == 0xF {
         // This is an exception frame.
-        // TODO: probe-rs does not currently do anything with the floating point registers. When support is added, please note that the list of registers to read is different for cores that have the floating point extension.
 
         Ok(Some(ExceptionInfo {
             description: core.exception_description(stackframe_registers)?,
@@ -76,6 +75,10 @@ pub(crate) fn exception_details<T: CoreInterface>(
     }
 }
 
+/// The calling frame registers are a predefined set of registers that are stored on the stack when an exception occurs.
+/// The registers are stored in that list in the order they are defined in the `EXCEPTION_STACK_REGISTERS` array.
+/// This function will read the values of the registers from the stack and update the passed `stackframe_registers` with the new values.
+// TODO: probe-rs does not currently do anything with the floating point registers. When support is added, please note that the list of registers to read is different for cores that have the floating point extension.
 pub(crate) fn calling_frame_registers<T: CoreInterface>(
     core: &mut T,
     stackframe_registers: &crate::debug::DebugRegisters,

@@ -15,7 +15,6 @@ pub mod registers;
 pub use core_state::*;
 pub use core_status::*;
 pub use memory_mapped_registers::MemoryMappedRegister;
-pub use registers::RegisterRole;
 pub use registers::*;
 
 /// An struct for storing the current state of a core.
