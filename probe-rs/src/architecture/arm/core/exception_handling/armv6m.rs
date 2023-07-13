@@ -4,7 +4,7 @@ use crate::{
     Error,
 };
 
-use super::cortexm_6_and_7::{self, calling_frame_registers, Xpsr};
+use super::armv6m_armv7m_shared::{calling_frame_registers, exception_details, Xpsr};
 
 /// Decode the exception number.
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -67,14 +67,15 @@ impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv6m::Armv
 
         // TODO: Some ARMv6-M cores (e.g. the Cortex-M0) do not have HFSR and CFGR registers, so we cannot
         //       determine the cause of the hard fault. We should add a check for this, and return a more
-        //       helpful error message in this case.
+        //       helpful error message in this case (I'm not sure this is possible).
+        //       Until then, this will return a generic error message for all hard faults on this architecture.
         Ok(format!("{:?}", ExceptionReason::from(exception_number)))
     }
 
-    fn get_exception_info(
+    fn exception_details(
         &mut self,
         stackframe_registers: &DebugRegisters,
     ) -> Result<Option<ExceptionInfo>, Error> {
-        cortexm_6_and_7::get_exception_info(self, stackframe_registers)
+        exception_details(self, stackframe_registers)
     }
 }

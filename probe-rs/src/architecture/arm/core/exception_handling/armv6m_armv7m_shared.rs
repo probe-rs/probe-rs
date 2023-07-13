@@ -45,19 +45,21 @@ bitfield! {
 }
 
 /// Decode the exception information.
-pub(crate) fn get_exception_info<T: CoreInterface>(
+pub(crate) fn exception_details<T: CoreInterface>(
     core: &mut T,
     stackframe_registers: &DebugRegisters,
 ) -> Result<Option<ExceptionInfo>, Error> {
     let frame_return_address: u32 = stackframe_registers
         .get_return_address()
-        .ok_or(crate::Error::Other(anyhow::anyhow!(
-            "No Return Address register. Please report this as a bug."
-        )))?
+        .ok_or_else(|| {
+            Error::Register("No Return Address register. Please report this as a bug.".to_string())
+        })?
         .value
-        .ok_or(crate::Error::Other(anyhow::anyhow!(
-            "No value for Return Address register. Please report this as a bug."
-        )))?
+        .ok_or_else(|| {
+            Error::Register(
+                "No value for Return Address register. Please report this as a bug.".to_string(),
+            )
+        })?
         .try_into()?;
 
     if ExcReturn(frame_return_address).is_exception_flag() == 0xF {
@@ -87,10 +89,7 @@ pub(crate) fn calling_frame_registers<T: CoreInterface>(
     let mut calling_frame_registers = stackframe_registers.clone();
     for (i, register_role) in EXCEPTION_STACK_REGISTERS.iter().enumerate() {
         calling_frame_registers
-            .get_register_mut_by_role(register_role)
-            .ok_or(crate::Error::Other(anyhow::anyhow!(
-                "UNWIND: No stack pointer register value. Please report this as a bug."
-            )))?
+            .get_register_mut_by_role(register_role)?
             .value = Some(RegisterValue::U32(calling_stack_registers[i]));
     }
     Ok(calling_frame_registers)

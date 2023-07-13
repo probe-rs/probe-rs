@@ -237,14 +237,16 @@ pub trait ExceptionInterface {
     /// and the stackframe registers for the frame that triggered the exception.
     /// A return value of `Ok(None)` indicates that the given frame was called from within the current thread,
     /// and the unwind should continue normally.
-    fn get_exception_info(
+    fn exception_details(
         &mut self,
         _stackframe_registers: &DebugRegisters,
     ) -> Result<Option<ExceptionInfo>, Error> {
         // For architectures where the exception handling has not been implemented in probe-rs,
         // this will result in maintaining the current `unwind` behavior, i.e. unwinding will stop
         // when the first frame is reached that was called from an exception handler.
-        Ok(None)
+        Err(Error::NotImplemented(
+            "Unwinding of exception frames has not yet been implemented for this architecture.",
+        ))
     }
 
     /// Using the `stackframe_registers` for a "called frame", retrieve updated register values for the "calling frame".
@@ -252,9 +254,9 @@ pub trait ExceptionInterface {
         &mut self,
         _stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<crate::debug::DebugRegisters, crate::Error> {
-        Err(error::Error::Other(anyhow!(
-            "Not implemented for this architecture."
-        )))
+        Err(Error::NotImplemented(
+            "Not implemented for this architecture.",
+        ))
     }
 
     /// Convert the architecture specific exception number into a human readable description.
@@ -263,16 +265,18 @@ pub trait ExceptionInterface {
         &mut self,
         _stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<String, crate::Error> {
-        Ok("Not implemented for this architecture.".to_string())
+        Err(Error::NotImplemented(
+            "Not implemented for this architecture.",
+        ))
     }
 }
 
 impl<'probe> ExceptionInterface for Core<'probe> {
-    fn get_exception_info(
+    fn exception_details(
         &mut self,
         stackframe_registers: &DebugRegisters,
     ) -> Result<Option<ExceptionInfo>, Error> {
-        self.inner.get_exception_info(stackframe_registers)
+        self.inner.exception_details(stackframe_registers)
     }
 
     fn calling_frame_registers(

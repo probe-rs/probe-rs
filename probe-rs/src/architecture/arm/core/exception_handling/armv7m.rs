@@ -4,7 +4,7 @@ use crate::{
     memory_mapped_bitfield_register, CoreInterface, Error, MemoryMappedRegister,
 };
 
-use super::cortexm_6_and_7::{self, calling_frame_registers, Xpsr};
+use super::armv6m_armv7m_shared::{calling_frame_registers, exception_details, Xpsr};
 
 memory_mapped_bitfield_register! {
     /// HFSR - HardFault Status Register
@@ -63,7 +63,10 @@ memory_mapped_bitfield_register! {
 
 impl Cfsr {
     /// Additional information about a Usage Fault, or Ok(None) if the fault was not a Usage Fault.
-    fn get_uf_details<T: CoreInterface>(&self, _core: &mut T) -> Result<Option<String>, Error> {
+    fn usage_fault_description<T: CoreInterface>(
+        &self,
+        _core: &mut T,
+    ) -> Result<Option<String>, Error> {
         let source = if self.uf_coprocessor() {
             "Coprocessor access error"
         } else if self.uf_div_by_zero() {
@@ -84,7 +87,10 @@ impl Cfsr {
     }
 
     /// Additional information about a Bus Fault, or Ok(None) if the fault was not a Bus Fault.
-    fn get_bf_details<T: CoreInterface>(&self, core: &mut T) -> Result<Option<String>, Error> {
+    fn bus_fault_description<T: CoreInterface>(
+        &self,
+        core: &mut T,
+    ) -> Result<Option<String>, Error> {
         let source = if self.bf_exception_entry() {
             "Derived fault on exception entry"
         } else if self.bf_exception_return() {
@@ -113,7 +119,10 @@ impl Cfsr {
     }
 
     /// Additional information about a MemManage Fault, or Ok(None) if the fault was not a MemManage Fault.
-    fn get_mmf_details<T: CoreInterface>(&self, core: &mut T) -> Result<Option<String>, Error> {
+    fn memory_management_fault_description<T: CoreInterface>(
+        &self,
+        core: &mut T,
+    ) -> Result<Option<String>, Error> {
         let source = if self.mm_data_access_violation() {
             "Data access violation"
         } else if self.mm_exception_entry() {
@@ -219,11 +228,11 @@ impl ExceptionReason {
                 } else if hfsr.escalation_forced() {
                     let description = "Escalated ";
                     let cfsr = Cfsr(core.read_word_32(Cfsr::get_mmio_address())?);
-                    if let Some(source) = cfsr.get_uf_details(core)? {
+                    if let Some(source) = cfsr.usage_fault_description(core)? {
                         format!("{description}{source}")
-                    } else if let Some(source) = cfsr.get_bf_details(core)? {
+                    } else if let Some(source) = cfsr.bus_fault_description(core)? {
                         format!("{description}{source}")
-                    } else if let Some(source) = cfsr.get_mmf_details(core)? {
+                    } else if let Some(source) = cfsr.memory_management_fault_description(core)? {
                         format!("{description}{source}")
                     } else {
                         format!("{description}from an unknown source")
@@ -236,8 +245,8 @@ impl ExceptionReason {
                 Ok(format!("HardFault handler. Cause: {description}."))
             }
             ExceptionReason::MemoryManagementFault => {
-                if let Some(source) =
-                    Cfsr(core.read_word_32(Cfsr::get_mmio_address())?).get_uf_details(core)?
+                if let Some(source) = Cfsr(core.read_word_32(Cfsr::get_mmio_address())?)
+                    .usage_fault_description(core)?
                 {
                     Ok(source)
                 } else {
@@ -245,8 +254,8 @@ impl ExceptionReason {
                 }
             }
             ExceptionReason::BusFault => {
-                if let Some(source) =
-                    Cfsr(core.read_word_32(Cfsr::get_mmio_address())?).get_bf_details(core)?
+                if let Some(source) = Cfsr(core.read_word_32(Cfsr::get_mmio_address())?)
+                    .bus_fault_description(core)?
                 {
                     Ok(source)
                 } else {
@@ -254,8 +263,8 @@ impl ExceptionReason {
                 }
             }
             ExceptionReason::UsageFault => {
-                if let Some(source) =
-                    Cfsr(core.read_word_32(Cfsr::get_mmio_address())?).get_uf_details(core)?
+                if let Some(source) = Cfsr(core.read_word_32(Cfsr::get_mmio_address())?)
+                    .usage_fault_description(core)?
                 {
                     Ok(source)
                 } else {
@@ -300,10 +309,10 @@ impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv7m::Armv
         ))
     }
 
-    fn get_exception_info(
+    fn exception_details(
         &mut self,
         stackframe_registers: &DebugRegisters,
     ) -> Result<Option<ExceptionInfo>, Error> {
-        cortexm_6_and_7::get_exception_info(self, stackframe_registers)
+        exception_details(self, stackframe_registers)
     }
 }

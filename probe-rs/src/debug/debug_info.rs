@@ -506,6 +506,8 @@ impl DebugInfo {
         let unknown_function = if let Some(exception_info) = exception_info {
             exception_info.description.to_string()
         } else {
+            // When reporting the address, we format it as a hex string, with the width matching
+            // the configured size of the datatype used in the `RegisterValue` address.
             format!(
                 "<unknown function @ {:#0width$x}>",
                 address,
@@ -725,7 +727,7 @@ impl DebugInfo {
             // - If we are at an exception hanlder frame, we need to overwrite the unwind registers with the exception context.
             // - If for some reason we cannot determine the exception context, we silently continue with the rest of the unwind.
             // At worst, the unwind will be able to unwind the stack to the frame of the most recent exception handler.
-            let exception_info = match core.get_exception_info(&unwind_registers) {
+            let exception_info = match core.exception_details(&unwind_registers) {
                 Ok(Some(exception_info)) => {
                     tracing::trace!(
                         "UNWIND: Found exception context: {}",
@@ -748,7 +750,7 @@ impl DebugInfo {
             // PART 1: Construct the `StackFrame` for the current pc.
             let frame_pc = frame_pc_register_value
                 .try_into()
-                .map_err(|error| crate::Error::Other(anyhow::anyhow!("Cannot convert register value for program counter to a 64-bit integeer value: {:?}", error)))?;
+                .map_err(|error| crate::Error::Register(format!("Cannot convert register value for program counter to a 64-bit integeer value: {:?}", error)))?;
             tracing::trace!(
                 "UNWIND: Will generate `StackFrame` for function at address (PC) {}",
                 frame_pc,
@@ -805,7 +807,7 @@ impl DebugInfo {
                             "UNWIND: Stack unwind reached an exception handler {}",
                             exception_info.description
                         );
-                        if let Some(exception_info) = core.get_exception_info(&unwind_registers)? {
+                        if let Some(exception_info) = core.exception_details(&unwind_registers)? {
                             tracing::trace!(
                                 "UNWIND: Found exception context: {}",
                                 exception_info.description
@@ -1304,29 +1306,11 @@ fn unwind_register(
                     // NOTE: PC = Value of the unwound LR, i.e. the first instruction after the one that called this function.
                     register_rule_string = "PC=(unwound LR) (dwarf Undefined)".to_string();
                     unwound_return_address.and_then(|return_address| {
-                        if return_address.is_max_value() || return_address.is_zero() {
-                            tracing::warn!("No reliable return address is available, so we cannot determine the program counter to unwind the previous frame.");
-                            None
-                        } else {
-                            match return_address {
-                                RegisterValue::U32(return_address) => {
-                                    if matches!(core.instruction_set(), Ok(InstructionSet::Thumb2)) {
-                                        // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section A5.1.2: We have to clear the last bit to ensure the PC is half-word aligned. (on ARM architecture, when in Thumb state for certain instruction types will set the LSB to 1)
-                                        register_rule_string = "PC=(unwound LR & !0b1) (dwarf Undefined)".to_string();
-                                        Some(RegisterValue::U32(return_address  & !0b1))
-                                    } else{
-                                        Some(RegisterValue::U32(return_address))
-                                    }
-                                }
-                                RegisterValue::U64(return_address) => {
-                                    Some(RegisterValue::U64(return_address))
-                                },
-                                RegisterValue::U128(_) => {
-                                    tracing::warn!("128 bit address space not supported");
-                                    None
-                                }
-                            }
-                        }
+                        unwind_program_counter_register(
+                            return_address,
+                            core,
+                            &mut register_rule_string,
+                        )
                     })
                 }
                 other_register => {
@@ -1431,6 +1415,35 @@ fn unwind_register(
         register_rule_string,
     );
     ControlFlow::Continue(())
+}
+
+/// Helper function to determine the program counter value for the previous frame.
+fn unwind_program_counter_register(
+    return_address: RegisterValue,
+    core: &mut Core<'_>,
+    register_rule_string: &mut String,
+) -> Option<RegisterValue> {
+    if return_address.is_max_value() || return_address.is_zero() {
+        tracing::warn!("No reliable return address is available, so we cannot determine the program counter to unwind the previous frame.");
+        None
+    } else {
+        match return_address {
+            RegisterValue::U32(return_address) => {
+                if matches!(core.instruction_set(), Ok(InstructionSet::Thumb2)) {
+                    // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section A5.1.2: We have to clear the last bit to ensure the PC is half-word aligned. (on ARM architecture, when in Thumb state for certain instruction types will set the LSB to 1)
+                    *register_rule_string = "PC=(unwound LR & !0b1) (dwarf Undefined)".to_string();
+                    Some(RegisterValue::U32(return_address & !0b1))
+                } else {
+                    Some(RegisterValue::U32(return_address))
+                }
+            }
+            RegisterValue::U64(return_address) => Some(RegisterValue::U64(return_address)),
+            RegisterValue::U128(_) => {
+                tracing::warn!("128 bit address space not supported");
+                None
+            }
+        }
+    }
 }
 
 /// Helper function to handle adding a signed offset to a u64 address.

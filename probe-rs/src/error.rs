@@ -35,6 +35,16 @@ pub enum Error {
     /// An error that is not architecture specific occurred.
     #[error("A generic core (not architecture specific) error occurred.")]
     GenericCoreError(String),
+    /// Errors related to the handling of core registers inside probe-rs .
+    #[error("Register error: {0}")]
+    Register(String),
+    /// The variant of the function you called is not yet implemented.
+    /// Because of the large varieties of supported architectures, it is not always possible for
+    /// a contributor to implement functionality for all of them. This allows us to
+    /// implement new functionality on selected architectures first, and then add support for
+    /// the other architectures later.
+    #[error("This capability has not yet been implemented for this architecture: {0}")]
+    NotImplemented(&'static str),
     /// Any other error occurred.
     #[error(transparent)]
     Other(#[from] anyhow::Error),

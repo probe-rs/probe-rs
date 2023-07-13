@@ -175,26 +175,47 @@ impl DebugRegisters {
     }
 
     /// Retrieve a refererence to a register by searching against an exact match of the [`RegisterRole`].
-    pub fn get_register_by_role(&self, register_role: &RegisterRole) -> Option<&DebugRegister> {
-        self.0.iter().find(|debug_register| {
-            debug_register
-                .core_register
-                .roles
-                .iter()
-                .any(|role| role == register_role)
-        })
+    pub fn get_register_by_role(
+        &self,
+        register_role: &RegisterRole,
+    ) -> Result<&DebugRegister, Error> {
+        let qualifying_registers = self
+            .0
+            .iter()
+            .filter(|debug_register| {
+                debug_register
+                    .core_register
+                    .roles
+                    .iter()
+                    .any(|role| role == register_role)
+            })
+            .collect::<Vec<&DebugRegister>>();
+        if qualifying_registers.is_empty() {
+            Err(Error::Register(format!(
+                "No {register_role:?} registers. Please report this as a bug."
+            )))
+        } else if qualifying_registers.len() == 1 {
+            qualifying_registers.first().cloned().ok_or_else(|| {
+                Error::Register(format!(
+                    "No {register_role:?} registers. Please report this as a bug."
+                ))
+            })
+        } else {
+            Err(Error::Register(format!(
+                "Multiple {register_role:?} registers. Please report this as a bug."
+            )))
+        }
     }
 
     /// Retrieve the stored value of a register by searching against an exact match of the [`RegisterRole`].
     pub fn get_register_value_by_role(&self, register_role: &RegisterRole) -> Result<u64, Error> {
-        self.get_register_by_role(register_role)
-            .ok_or(crate::Error::Other(anyhow::anyhow!(
-                "No {register_role:?} register. Please report this as a bug."
-            )))?
+        self.get_register_by_role(register_role)?
             .value
-            .ok_or(crate::Error::Other(anyhow::anyhow!(
-                "No value for {register_role:?} register. Please report this as a bug."
-            )))?
+            .ok_or_else(|| {
+                Error::Register(format!(
+                    "No value for {register_role:?} register. Please report this as a bug."
+                ))
+            })?
             .try_into()
     }
 
@@ -202,14 +223,13 @@ impl DebugRegisters {
     pub fn get_register_mut_by_role(
         &mut self,
         register_role: &RegisterRole,
-    ) -> Option<&mut DebugRegister> {
-        self.0.iter_mut().find(|debug_register| {
-            debug_register
-                .core_register
-                .roles
-                .iter()
-                .any(|role| role == register_role)
-        })
+    ) -> Result<&mut DebugRegister, Error> {
+        self.get_register_mut(self.get_register_by_role(register_role)?.core_register.id)
+            .ok_or_else(|| {
+                Error::Register(format!(
+                    "No {register_role:?} registers. Please report this as a bug."
+                ))
+            })
     }
 
     /// Retrieve a register by searching against either the name or the role name.
@@ -219,14 +239,12 @@ impl DebugRegisters {
         self.0
             .iter()
             .find(|&debug_register| {
-                let mut register_name_matches = false;
                 for role in debug_register.core_register.roles {
                     if matches!(role, RegisterRole::Core(role_name) | RegisterRole::Argument(role_name) | RegisterRole::Return(role_name)  | RegisterRole::Other(role_name) if *role_name == register_name) {
-                        register_name_matches = true;
-                        break;
+                        return true;
                     }
                 }
-                register_name_matches
+                false
             })
             .cloned()
     }
