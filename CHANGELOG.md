@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `dap-server`: In addition to `Elf` format, this adds support for binary formats `Bin`, `Hex`, and `Idf` (#1656).
 - Added PAC55XX series targets (#1655)
+- Stack unwinding can now unwind beyond (optionally nested) exception handlers (#1665).
+  - ARMv6-M: Report Exception / Fault description, and Unwind the registers and next frames.
+  - ARMv7-M: Also decodes details about HardFault, UsageFault, BusFault, and MemManageFault.
+  - ARMv7-A, Armv8-M, Armv8-A, RISC-V: Not implemented - requires architecture specific implementations.
 - Added a simple profiler to the probe-rs cli toolkit (#1628)
 
 

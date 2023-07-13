@@ -54,7 +54,7 @@ impl DebugRegisters {
     pub fn from_core(core: &mut Core) -> Self {
         let mut debug_registers = Vec::<DebugRegister>::new();
 
-        for (dwarf_id, core_register) in core.registers().core_registers().enumerate() {
+        for (dwarf_id, core_register) in core.registers().all_registers().enumerate() {
             // Check to ensure the register type is compatible with u64.
             if matches!(core_register.data_type(), RegisterDataType::UnsignedInteger(size_in_bits) if size_in_bits <= 64)
             {
@@ -174,24 +174,77 @@ impl DebugRegisters {
             .unwrap_or_else(|| "unknown register".to_string())
     }
 
+    /// Retrieve a refererence to a register by searching against an exact match of the [`RegisterRole`].
+    pub fn get_register_by_role(
+        &self,
+        register_role: &RegisterRole,
+    ) -> Result<&DebugRegister, Error> {
+        let qualifying_registers = self
+            .0
+            .iter()
+            .filter(|debug_register| {
+                debug_register
+                    .core_register
+                    .roles
+                    .iter()
+                    .any(|role| role == register_role)
+            })
+            .collect::<Vec<&DebugRegister>>();
+        if qualifying_registers.is_empty() {
+            Err(Error::Register(format!(
+                "No {register_role:?} registers. Please report this as a bug."
+            )))
+        } else if qualifying_registers.len() == 1 {
+            qualifying_registers.first().cloned().ok_or_else(|| {
+                Error::Register(format!(
+                    "No {register_role:?} registers. Please report this as a bug."
+                ))
+            })
+        } else {
+            Err(Error::Register(format!(
+                "Multiple {register_role:?} registers. Please report this as a bug."
+            )))
+        }
+    }
+
+    /// Retrieve the stored value of a register by searching against an exact match of the [`RegisterRole`].
+    pub fn get_register_value_by_role(&self, register_role: &RegisterRole) -> Result<u64, Error> {
+        self.get_register_by_role(register_role)?
+            .value
+            .ok_or_else(|| {
+                Error::Register(format!(
+                    "No value for {register_role:?} register. Please report this as a bug."
+                ))
+            })?
+            .try_into()
+    }
+
+    /// Retrieve a mutable refererence to a register by searching against an exact match of the [`RegisterRole`].
+    pub fn get_register_mut_by_role(
+        &mut self,
+        register_role: &RegisterRole,
+    ) -> Result<&mut DebugRegister, Error> {
+        self.get_register_mut(self.get_register_by_role(register_role)?.core_register.id)
+            .ok_or_else(|| {
+                Error::Register(format!(
+                    "No {register_role:?} registers. Please report this as a bug."
+                ))
+            })
+    }
+
     /// Retrieve a register by searching against either the name or the role name.
     /// Use this for registers that have platform specific names like "t1", or "s9", etc.,
     /// and cannot efficiently be accessed through any of the other methods.
-    // TODO: Investigate if this can leverate the function of the same name on `CoreRegisters`
     pub fn get_register_by_name(&self, register_name: &str) -> Option<DebugRegister> {
         self.0
             .iter()
             .find(|&debug_register| {
-                debug_register.core_register.name == register_name || {
-                    let mut register_name_matches = false;
-                    for role in debug_register.core_register.roles {
-                        if matches!(role, RegisterRole::Argument(role_name) | RegisterRole::Return(role_name)  | RegisterRole::Other(role_name) if *role_name == register_name) {
-                            register_name_matches = true;
-                            break;
-                        }
+                for role in debug_register.core_register.roles {
+                    if matches!(role, RegisterRole::Core(role_name) | RegisterRole::Argument(role_name) | RegisterRole::Return(role_name)  | RegisterRole::Other(role_name) if *role_name == register_name) {
+                        return true;
                     }
-                    register_name_matches
                 }
+                false
             })
             .cloned()
     }

@@ -1,6 +1,6 @@
 use crate::{
-    architecture::arm::sequences::ArmDebugSequence, error, CoreType, Error, InstructionSet,
-    MemoryInterface, Target,
+    architecture::arm::sequences::ArmDebugSequence, debug::DebugRegisters, error, CoreType, Error,
+    InstructionSet, MemoryInterface, Target,
 };
 use anyhow::{anyhow, Result};
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
@@ -25,7 +25,7 @@ pub struct CoreInformation {
 }
 
 /// A generic interface to control a MCU core.
-pub trait CoreInterface: MemoryInterface {
+pub trait CoreInterface: MemoryInterface + ExceptionInterface {
     /// Numerical ID of the core. Can be used as an argument to `Session::core()`.
     fn id(&self) -> usize;
 
@@ -218,9 +218,84 @@ impl<'probe> MemoryInterface for Core<'probe> {
     }
 }
 
+/// A struct containing key information about an exception.
+/// The exception details are architecture specific, and the abstraction is handled in the
+/// architecture specific implementations of [`crate::core::ExceptionInterface`].
+pub struct ExceptionInfo {
+    /// A human readable explanation for the exception.
+    pub description: String,
+    /// The stackframe registers, and their values, for the frame that triggered the exception.
+    pub calling_frame_registers: DebugRegisters,
+}
+
+/// A generic interface to identify and decode exceptions during unwind processing.
+pub trait ExceptionInterface {
+    /// Using the `stackframe_registers` for a "called frame",
+    /// determine if the given frame was called from an exception handler,
+    /// and resolve the relevant details about the exception, including the reason for the exception,
+    /// and the stackframe registers for the frame that triggered the exception.
+    /// A return value of `Ok(None)` indicates that the given frame was called from within the current thread,
+    /// and the unwind should continue normally.
+    fn exception_details(
+        &mut self,
+        _stackframe_registers: &DebugRegisters,
+    ) -> Result<Option<ExceptionInfo>, Error> {
+        // For architectures where the exception handling has not been implemented in probe-rs,
+        // this will result in maintaining the current `unwind` behavior, i.e. unwinding will stop
+        // when the first frame is reached that was called from an exception handler.
+        Err(Error::NotImplemented(
+            "Unwinding of exception frames has not yet been implemented for this architecture.",
+        ))
+    }
+
+    /// Using the `stackframe_registers` for a "called frame", retrieve updated register values for the "calling frame".
+    fn calling_frame_registers(
+        &mut self,
+        _stackframe_registers: &crate::debug::DebugRegisters,
+    ) -> Result<crate::debug::DebugRegisters, crate::Error> {
+        Err(Error::NotImplemented(
+            "Not implemented for this architecture.",
+        ))
+    }
+
+    /// Convert the architecture specific exception number into a human readable description.
+    /// Where possible, the implementation may read additional registers from the core, to provide additional context.
+    fn exception_description(
+        &mut self,
+        _stackframe_registers: &crate::debug::DebugRegisters,
+    ) -> Result<String, crate::Error> {
+        Err(Error::NotImplemented(
+            "Not implemented for this architecture.",
+        ))
+    }
+}
+
+impl<'probe> ExceptionInterface for Core<'probe> {
+    fn exception_details(
+        &mut self,
+        stackframe_registers: &DebugRegisters,
+    ) -> Result<Option<ExceptionInfo>, Error> {
+        self.inner.exception_details(stackframe_registers)
+    }
+
+    fn calling_frame_registers(
+        &mut self,
+        stackframe_registers: &crate::debug::DebugRegisters,
+    ) -> Result<crate::debug::DebugRegisters, crate::Error> {
+        self.inner.calling_frame_registers(stackframe_registers)
+    }
+
+    fn exception_description(
+        &mut self,
+        _stackframe_registers: &crate::debug::DebugRegisters,
+    ) -> Result<String, crate::Error> {
+        self.inner.exception_description(_stackframe_registers)
+    }
+}
+
 /// Generic core handle representing a physical core on an MCU.
 ///
-/// This should be considere as a temporary view of the core which locks the debug probe driver to as single consumer by borrowing it.
+/// This should be considered as a temporary view of the core which locks the debug probe driver to as single consumer by borrowing it.
 ///
 /// As soon as you did your atomic task (e.g. halt the core, read the core state and all other debug relevant info) you should drop this object,
 /// to allow potential other shareholders of the session struct to grab a core handle too.
