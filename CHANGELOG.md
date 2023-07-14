@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added a simple profiler to the probe-rs cli toolkit (#1628)
 
 
+### Changed
+
+- probe-rs-cli: more descriptive error messages for ambigous chips
+
 ### Fixed
 
 - probe-rs-cli: fixed `--base-address` having no effect
