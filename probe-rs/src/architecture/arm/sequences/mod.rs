@@ -481,8 +481,10 @@ pub trait ArmDebugSequence: Send + Sync {
                 // Change if SWJ-DP uses deprecated switch code (0xEDB6).
                 interface.swj_sequence(16, 0xE79E)?;
 
-                interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?; // > 50 cycles SWDIO/TMS High.
-                interface.swj_sequence(3, 0x00)?; // At least 2 idle cycles (SWDIO/TMS Low).
+                // > 50 cycles SWDIO/TMS High.
+                interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
+                // At least 2 idle cycles (SWDIO/TMS Low).
+                interface.swj_sequence(3, 0x00)?;
             }
             _ => {
                 return Err(ArmDebugSequenceError::SequenceSpecific(

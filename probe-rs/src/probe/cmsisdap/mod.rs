@@ -78,17 +78,44 @@ pub struct CmsisDap {
 
 /// Stores information about a JTAG scan chain,
 /// including detected IDCODEs and IR lengths.
-struct JTAGChain {
+struct JtagChain {
     #[allow(dead_code)]
-    pub idcodes: Vec<Option<IDCODE>>,
+    pub idcodes: Vec<Option<IdCode>>,
     pub irlens: Vec<usize>,
 }
 
-#[allow(clippy::upper_case_acronyms)]
-#[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub struct IDCODE(pub u32);
+use bitfield::bitfield;
 
-impl std::fmt::Display for IDCODE {
+bitfield! {
+    /// TODO
+    #[derive(Copy, Clone, Eq, PartialEq)]
+    pub struct IdCode(u32);
+    impl Debug;
+
+    u8;
+    /// The IDCODE version.
+    pub version, set_version: 31, 28;
+
+    u16;
+    /// The part number.
+    pub part_number, set_part_number: 27, 12;
+
+    /// The JEDEC JEP-106 Manufacturer ID.
+    pub manufacturer, set_manufacturer: 11, 1;
+
+    u8;
+    /// The continuation code of the JEDEC JEP-106 Manufacturer ID.
+    pub manufacturer_continuation, set_manufacturer_continuation: 11, 5;
+    /// The identity code of the JEDEC JEP-106 Manufacturer ID.
+    pub manufacturer_identity, set_manufacturer_identity: 4, 1;
+
+    bool;
+    /// The least-significant bit.
+    /// Always set.
+    pub lsbit, set_lsbit: 0;
+}
+
+impl std::fmt::Display for IdCode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Some(mfn) = self.manufacturer_name() {
             write!(f, "0x{:08X} ({})", self.0, mfn)
@@ -98,38 +125,17 @@ impl std::fmt::Display for IDCODE {
     }
 }
 
-impl IDCODE {
+impl IdCode {
     pub fn valid(&self) -> bool {
         // Check LSbit is 1 and Manufacturer field is not the reserved value.
-        (self.0 & 1 == 1) && (self.0 & 0b1111_1111_1110 != 0b0000_1111_1110)
-    }
-
-    #[allow(dead_code)]
-    /// Extract the manufacturer ID, which is an 11-bit field in bits 1-11.
-    pub fn manufacturer(&self) -> u16 {
-        ((self.0 >> 1) & 0x7FF) as u16
+        self.lsbit() && (self.manufacturer() != 0b0000_0111_1111)
     }
 
     /// Return the manufacturer name, if available.
     pub fn manufacturer_name(&self) -> Option<&'static str> {
-        let cc = ((self.0 >> 8) & 0x0F) as u8;
-        if cc >= 11 {
-            return None;
-        }
-        let id = ((self.0 >> 1) & 0x7F) as u8;
+        let cc = self.manufacturer_continuation();
+        let id = self.manufacturer_identity();
         jep106::JEP106Code::new(cc, id).get()
-    }
-
-    #[allow(dead_code)]
-    /// Extract the part number, which is a 16-bit field in bits 12-27.
-    pub fn part_number(&self) -> u16 {
-        ((self.0 >> 12) & 0xFFFF) as u16
-    }
-
-    #[allow(dead_code)]
-    /// Extract the IDCODE version, which is a 4-bit field in bits 28-31.
-    pub fn version(&self) -> u8 {
-        ((self.0 >> 28) & 0xF) as u8
     }
 }
 
@@ -255,22 +261,22 @@ impl CmsisDap {
     /// all IDCODEs and TAPs in BYPASS.
     ///
     /// Returns Vec<Option<u32>>, with None for TAPs in BYPASS.
-    fn extract_idcodes(mut dr: &BitSlice<u8>) -> Result<Vec<Option<IDCODE>>, CmsisDapError> {
+    fn extract_idcodes(mut dr: &BitSlice<u8>) -> Result<Vec<Option<IdCode>>, CmsisDapError> {
         let mut idcodes = Vec::new();
 
         while !dr.is_empty() {
             if dr[0] {
                 if dr.len() < 32 {
                     tracing::error!("Truncated IDCODE: {dr:02X?}");
-                    return Err(CmsisDapError::InvalidIDCODE);
+                    return Err(CmsisDapError::InvalidIdCode);
                 }
 
                 let idcode = dr.load::<u32>();
-                let idcode = IDCODE(idcode);
+                let idcode = IdCode(idcode);
 
                 if !idcode.valid() {
                     tracing::error!("Invalid IDCODE: {:08X}", idcode.0);
-                    return Err(CmsisDapError::InvalidIDCODE);
+                    return Err(CmsisDapError::InvalidIdCode);
                 }
                 tracing::debug!("Found IDCODE: {idcode}");
                 idcodes.push(Some(idcode));
@@ -394,12 +400,12 @@ impl CmsisDap {
     /// If IR lengths for each TAP are known, provide them in `ir_lengths`.
     ///
     /// Returns a new JTAGChain.
-    fn jtag_scan(&mut self, ir_lengths: Option<&[usize]>) -> Result<JTAGChain, CmsisDapError> {
+    fn jtag_scan(&mut self, ir_lengths: Option<&[usize]>) -> Result<JtagChain, CmsisDapError> {
         let (ir, dr) = self.jtag_reset_scan()?;
         let idcodes = Self::extract_idcodes(&dr)?;
         let irlens = Self::extract_ir_lengths(&ir, idcodes.len(), ir_lengths)?;
 
-        let chain = JTAGChain { idcodes, irlens };
+        let chain = JtagChain { idcodes, irlens };
 
         Ok(chain)
     }
@@ -930,7 +936,7 @@ impl DebugProbe for CmsisDap {
 
         if self.active_protocol() == Some(WireProtocol::Jtag) {
             // no-op: we configure JTAG in debug_port_setup,
-            // becuase that is where we execute the SWJ-DP Switch Sequence
+            // because that is where we execute the SWJ-DP Switch Sequence
             // to ensure the debug port is ready for JTAG signals,
             // at which point we can interrogate the scan chain
             // and configure the probe with the given IR lengths.

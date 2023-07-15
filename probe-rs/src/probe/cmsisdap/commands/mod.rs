@@ -38,7 +38,7 @@ pub enum CmsisDapError {
     #[error("Could not determine a suitable packet size for this probe")]
     NoPacketSize,
     #[error("Invalid IDCODE detected")]
-    InvalidIDCODE,
+    InvalidIdCode,
     #[error("Error scanning IR lengths")]
     InvalidIR,
 }

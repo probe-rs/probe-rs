@@ -1360,22 +1360,13 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         tms: bool,
         mut bits: u64,
     ) -> Result<(), DebugProbeError> {
-        let protocol = self.active_protocol().expect("No protocol set");
-        assert_eq!(
-            protocol,
-            crate::WireProtocol::Jtag,
-            "Expected protocol to be JTAG"
-        );
+        let bit_array = bits.to_le_bytes();
 
-        let mut io_bits = Vec::with_capacity(bit_len as usize);
-        for _ in 0..bit_len {
-            io_bits.push(bits & 1 == 1);
-
-            bits >>= 1;
-        }
+        let bit_iter =
+            crate::probe::espusbjtag::protocol::BitIter::new(&bit_array, bit_len as usize);
 
         let tms_bits = iter::repeat(tms).take(bit_len as usize);
-        self.jtag_io(tms_bits, io_bits)?;
+        self.jtag_io(tms_bits, bit_iter)?;
 
         Ok(())
     }

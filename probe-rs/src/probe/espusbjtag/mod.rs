@@ -1,4 +1,5 @@
-mod protocol;
+// TODO: this is only so we can use BitIter elsewhere -- where would be like to move BitIter to for reuse?
+pub(crate) mod protocol;
 
 use std::{
     convert::TryInto,

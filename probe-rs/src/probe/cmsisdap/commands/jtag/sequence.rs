@@ -20,11 +20,19 @@ pub struct Sequence {
 }
 
 impl Sequence {
+    /// Create a JTAG sequence, optionally capturing TDO.
+    ///
+    /// # Args
+    ///
+    /// * `tck_cycles` - The number of cycles to clock out `data` bits on TDI
+    /// * `tck_capture` - Whether the probe should capture TDO
+    /// * `tms` - Whether TMS should be held high or low
+    /// * `tdi` - The TDI bits to clock out
     pub(crate) fn new(
         tck_cycles: u8,
         tdo_capture: bool,
         tms: bool,
-        data: [u8; 8],
+        tdi: [u8; 8],
     ) -> Result<Self, CmsisDapError> {
         if tck_cycles > 64 {
             return Err(CmsisDapError::JTAGSequenceTooManyClockSequences);
@@ -33,10 +41,17 @@ impl Sequence {
             tck_cycles,
             tdo_capture,
             tms,
-            data,
+            data: tdi,
         })
     }
 
+    /// Create a JTAG sequence, capturing TDO.
+    /// The number of TCK cycles is determined by the `tdi` len.
+    ///
+    /// # Args
+    ///
+    /// * `tms` - Whether TMS should be held high or low
+    /// * `tdi` - The TDI bits to clock out
     pub(crate) fn capture(tms: bool, tdi: &BitVec<u8>) -> Result<Self, CmsisDapError> {
         let tck_cycles = tdi.len();
         if tck_cycles > 64 {
@@ -55,6 +70,13 @@ impl Sequence {
         })
     }
 
+    /// Create a JTAG sequence, *without* capturing TDO.
+    /// The number of TCK cycles is determined by the `tdi` len.
+    ///
+    /// # Args
+    ///
+    /// * `tms` - Whether TMS should be held high or low
+    /// * `tdi` - The TDI bits to clock out
     pub(crate) fn no_capture(tms: bool, tdi: &BitVec<u8>) -> Result<Self, CmsisDapError> {
         let tck_cycles = tdi.len();
         if tck_cycles > 64 {
