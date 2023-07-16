@@ -1,3 +1,4 @@
+pub mod attach;
 pub mod benchmark;
 pub mod cargo_embed;
 pub mod cargo_flash;
