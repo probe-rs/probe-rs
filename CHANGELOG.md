@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - ARMv7-M: Also decodes details about HardFault, UsageFault, BusFault, and MemManageFault.
   - ARMv7-A, Armv8-M, Armv8-A, RISC-V: Not implemented - requires architecture specific implementations.
 - Added a simple profiler to the probe-rs cli toolkit (#1628)
+- Added MSP432E4 target (MSP432E401Y and MSP432E411Y). (#1139)
 
 
 ### Fixed
