@@ -21,12 +21,6 @@ pub enum CmsisDapError {
     ErrorResponse,
     #[error("Too much data provided for SWJ Sequence command")]
     TooMuchData,
-    #[error("Too much data provided for JTAG Configure command")]
-    JTAGConfigureTooMuchData,
-    #[error("Too much data provided for JTAG Sequence command")]
-    JTAGSequenceTooMuchData,
-    #[error("Too many clock pulses for JTAG Sequence command")]
-    JTAGSequenceTooManyClockSequences,
     #[error("Requested SWO baud rate could not be configured")]
     SwoBaudrateNotConfigured,
     #[error("Probe reported an error while streaming SWO")]

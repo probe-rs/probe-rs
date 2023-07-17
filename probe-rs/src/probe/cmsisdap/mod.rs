@@ -77,17 +77,16 @@ pub struct CmsisDap {
 }
 
 /// Stores information about a JTAG scan chain,
-/// including detected IDCODEs and IR lengths.
+/// including IR lengths.
 struct JtagChain {
-    #[allow(dead_code)]
-    pub idcodes: Vec<Option<IdCode>>,
     pub irlens: Vec<usize>,
 }
 
 use bitfield::bitfield;
 
 bitfield! {
-    /// TODO
+    /// A JTAG IDCODE.
+    /// Identifies a particular Test Access Port (TAP) on the JTAG scan chain.
     #[derive(Copy, Clone, Eq, PartialEq)]
     pub struct IdCode(u32);
     impl Debug;
@@ -105,9 +104,9 @@ bitfield! {
 
     u8;
     /// The continuation code of the JEDEC JEP-106 Manufacturer ID.
-    pub manufacturer_continuation, set_manufacturer_continuation: 11, 5;
+    pub manufacturer_continuation, set_manufacturer_continuation: 11, 8;
     /// The identity code of the JEDEC JEP-106 Manufacturer ID.
-    pub manufacturer_identity, set_manufacturer_identity: 4, 1;
+    pub manufacturer_identity, set_manufacturer_identity: 7, 1;
 
     bool;
     /// The least-significant bit.
@@ -126,9 +125,10 @@ impl std::fmt::Display for IdCode {
 }
 
 impl IdCode {
+    /// Returns `true` iff the IDCODE's least significant bit is `1`
+    /// and the 7-bit `manufacturer_identity` is set to one of the non-reserved values in the range `[1,126]`.
     pub fn valid(&self) -> bool {
-        // Check LSbit is 1 and Manufacturer field is not the reserved value.
-        self.lsbit() && (self.manufacturer() != 0b0000_0111_1111)
+        self.lsbit() && (self.manufacturer() != 0) && (self.manufacturer() != 127)
     }
 
     /// Return the manufacturer name, if available.
@@ -303,7 +303,7 @@ impl CmsisDap {
     /// If expected IR lengths are provided, specify them in `expected`, and they are
     /// verified against the IR scan and then returned.
     ///
-    /// Valid IRs in the capture must start with `10` (a 1 in the last-significant,
+    /// Valid IRs in the capture must start with `10` (a 1 in the least-significant,
     /// and therefore first, bit). However, IRs may contain `10` in other positions, so we
     /// can only find a superset of all possible start positions. If this happens to match
     /// the number of taps, or there is only one tap, we can find all IR lengths. Otherwise,
@@ -405,7 +405,7 @@ impl CmsisDap {
         let idcodes = Self::extract_idcodes(&dr)?;
         let irlens = Self::extract_ir_lengths(&ir, idcodes.len(), ir_lengths)?;
 
-        let chain = JtagChain { idcodes, irlens };
+        let chain = JtagChain { irlens };
 
         Ok(chain)
     }

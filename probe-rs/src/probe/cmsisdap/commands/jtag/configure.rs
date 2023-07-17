@@ -9,9 +9,12 @@ pub struct ConfigureRequest {
 
 impl ConfigureRequest {
     pub(crate) fn new(ir_lengths: Vec<u8>) -> Result<ConfigureRequest, CmsisDapError> {
-        if ir_lengths.len() > (u8::MAX as usize) {
-            return Err(CmsisDapError::JTAGConfigureTooMuchData);
-        }
+        assert!(
+            ir_lengths.is_empty() && ir_lengths.len() <= (u8::MAX as usize),
+            "ir_lengths.len() == {}, but expected [0,255]",
+            ir_lengths.len()
+        );
+
         Ok(ConfigureRequest { ir_lengths })
     }
 }

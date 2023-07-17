@@ -1354,12 +1354,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         self
     }
 
-    fn jtag_sequence(
-        &mut self,
-        bit_len: u8,
-        tms: bool,
-        mut bits: u64,
-    ) -> Result<(), DebugProbeError> {
+    fn jtag_sequence(&mut self, bit_len: u8, tms: bool, bits: u64) -> Result<(), DebugProbeError> {
         let bit_array = bits.to_le_bytes();
 
         let bit_iter =

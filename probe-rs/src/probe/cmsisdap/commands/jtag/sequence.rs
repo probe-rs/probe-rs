@@ -15,7 +15,7 @@ pub struct Sequence {
     /// TMS value
     tms: bool,
 
-    /// Data generated on TDI
+    /// Data to generate on TDI
     data: [u8; 8],
 }
 
@@ -34,9 +34,12 @@ impl Sequence {
         tms: bool,
         tdi: [u8; 8],
     ) -> Result<Self, CmsisDapError> {
-        if tck_cycles > 64 {
-            return Err(CmsisDapError::JTAGSequenceTooManyClockSequences);
-        }
+        assert!(
+            tck_cycles > 0 && tck_cycles <= 64,
+            "tck_cycles = {}, but expected [1,64]",
+            tck_cycles
+        );
+
         Ok(Self {
             tck_cycles,
             tdo_capture,
@@ -54,9 +57,11 @@ impl Sequence {
     /// * `tdi` - The TDI bits to clock out
     pub(crate) fn capture(tms: bool, tdi: &BitVec<u8>) -> Result<Self, CmsisDapError> {
         let tck_cycles = tdi.len();
-        if tck_cycles > 64 {
-            return Err(CmsisDapError::JTAGSequenceTooManyClockSequences);
-        }
+        assert!(
+            tck_cycles > 0 && tck_cycles <= 64,
+            "tdi.len() = {}, but expected [1,64]",
+            tck_cycles
+        );
 
         let num_bytes = (tdi.len() + 7) / 8;
         let mut data: [u8; 8] = [0; 8];
@@ -79,9 +84,11 @@ impl Sequence {
     /// * `tdi` - The TDI bits to clock out
     pub(crate) fn no_capture(tms: bool, tdi: &BitVec<u8>) -> Result<Self, CmsisDapError> {
         let tck_cycles = tdi.len();
-        if tck_cycles > 64 {
-            return Err(CmsisDapError::JTAGSequenceTooManyClockSequences);
-        }
+        assert!(
+            tck_cycles > 0 && tck_cycles <= 64,
+            "tdi.len() = {}, but expected [1,64]",
+            tck_cycles
+        );
 
         let num_bytes = (tdi.len() + 7) / 8;
         let mut data: [u8; 8] = [0; 8];
@@ -103,9 +110,11 @@ pub struct SequenceRequest {
 
 impl SequenceRequest {
     pub(crate) fn new(sequences: Vec<Sequence>) -> Result<Self, CmsisDapError> {
-        if sequences.len() > (u8::MAX as usize) {
-            return Err(CmsisDapError::JTAGSequenceTooMuchData);
-        }
+        assert!(
+            sequences.is_empty() && sequences.len() <= (u8::MAX as usize),
+            "sequences.len() == {}, but expected [1,255]",
+            sequences.len()
+        );
         Ok(SequenceRequest { sequences })
     }
 }
