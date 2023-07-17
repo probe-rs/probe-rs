@@ -26,13 +26,13 @@ goblin = { version = "0.7.1", default-features = false, features = [
     "std",
 ] }
 scroll = "0.11.0"
-serde_yaml = "^0.9.22"
+serde_yaml = "^0.9.23"
 log = "0.4.19"
 zip = "0.6.6"
 clap = { version = "4.3", features = ["derive"] }
 colored = "2"
 base64 = "0.21.2"
-anyhow = "1.0.71"
+anyhow = "1.0.72"
 reqwest = { version = "0.11.18", features = ["json", "blocking"] }
 serde = { version = "1", features = ["derive"] }
 futures = "0.3.28"
@@ -46,6 +46,6 @@ cargo_metadata = { version = "0.15", default-features = false }
 indicatif = { version = "0.17", default-features = false }
 
 [dev-dependencies]
-assert_cmd = "2.0.11"
+assert_cmd = "2.0.12"
 predicates = "3.0.3"
 assert_fs = "1.0.13"
