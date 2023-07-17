@@ -1,5 +1,4 @@
 /// Implementation of the DAP_JTAG_CONFIGURE command
-//
 use super::super::{CmsisDapError, CommandId, Request, SendError, Status};
 
 #[derive(Clone, Debug)]

@@ -1,5 +1,4 @@
 /// Implementation of the DAP_JTAG_SEQUENCE command
-///
 use super::super::{CmsisDapError, CommandId, Request, SendError, Status};
 
 use bitvec::prelude::*;
