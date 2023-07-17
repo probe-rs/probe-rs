@@ -27,7 +27,7 @@ probe-rs-target = { path = "probe-rs-target", version = "0.19.0" }
 log = "0.4.19"
 pretty_env_logger = "0.5.0"
 thiserror = "1.0"
-anyhow = "1.0.71"
+anyhow = "1.0.72"
 
 # Config for 'cargo dist'
 [workspace.metadata.dist]
