@@ -111,7 +111,7 @@ pub struct SequenceRequest {
 impl SequenceRequest {
     pub(crate) fn new(sequences: Vec<Sequence>) -> Result<Self, CmsisDapError> {
         assert!(
-            sequences.is_empty() && sequences.len() <= (u8::MAX as usize),
+            !sequences.is_empty() && sequences.len() <= (u8::MAX as usize),
             "sequences.len() == {}, but expected [1,255]",
             sequences.len()
         );
