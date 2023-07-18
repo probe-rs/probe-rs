@@ -167,7 +167,7 @@ Released 2023-02-06
 
 - cmsis-dap: Avoid endless recursion when recovering from errors.
 
-  When an error occured, the cmsis-dap code tried to read the debug port CTRL register.
+  When an error occurred, the cmsis-dap code tried to read the debug port CTRL register.
   If that read failed, it would again try to read the same register, returning in an
   endless recursion.
 
