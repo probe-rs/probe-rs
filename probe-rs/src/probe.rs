@@ -156,8 +156,8 @@ pub enum DebugProbeError {
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 
-    /// A timeout occured during probe operation.
-    #[error("Timeout occured during probe operation.")]
+    /// A timeout occurred during probe operation.
+    #[error("Timeout occurred during probe operation.")]
     Timeout,
 }
 
