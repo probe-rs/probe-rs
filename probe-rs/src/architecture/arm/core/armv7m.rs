@@ -807,7 +807,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
             self.write_core_reg(XPSR.id(), (xpsr_value | XPSR_THUMB).into())?;
         }
 
-        self.reset_catch_set()?;
+        self.reset_catch_clear()?;
 
         // try to read the program counter
         let pc_value = self.read_core_reg(self.program_counter().into())?;
