@@ -105,6 +105,7 @@ bitfield! {
     u8;
     /// The continuation code of the JEDEC JEP-106 Manufacturer ID.
     pub manufacturer_continuation, set_manufacturer_continuation: 11, 8;
+
     /// The identity code of the JEDEC JEP-106 Manufacturer ID.
     pub manufacturer_identity, set_manufacturer_identity: 7, 1;
 
@@ -271,19 +272,19 @@ impl CmsisDap {
                     return Err(CmsisDapError::InvalidIdCode);
                 }
 
-                let idcode = dr.load::<u32>();
+                let idcode = dr[0..32].load_le::<u32>();
                 let idcode = IdCode(idcode);
 
                 if !idcode.valid() {
                     tracing::error!("Invalid IDCODE: {:08X}", idcode.0);
                     return Err(CmsisDapError::InvalidIdCode);
                 }
-                tracing::debug!("Found IDCODE: {idcode}");
+                tracing::info!("Found IDCODE: {idcode}");
                 idcodes.push(Some(idcode));
                 dr = &dr[32..];
             } else {
                 idcodes.push(None);
-                tracing::debug!("Found bypass TAP");
+                tracing::info!("Found bypass TAP");
                 dr = &dr[1..];
             }
         }
@@ -310,8 +311,7 @@ impl CmsisDap {
     /// they must be provided, and are then checked.
     ///
     /// This implementation is a port of the algorithm from:
-    /// https://github.com/GlasgowEmbedded/glasgow/blob/30dc11b2/
-    /// /software/glasgow/applet/interface/jtag_probe/__init__.py#L712
+    /// https://github.com/GlasgowEmbedded/glasgow/blob/30dc11b2/software/glasgow/applet/interface/jtag_probe/__init__.py#L712
     ///
     /// Returns Vec<usize>, with an entry for each TAP.
     fn extract_ir_lengths(
@@ -487,7 +487,7 @@ impl CmsisDap {
         // Find first 1 in d1, which indicates length of register.
         let n = match d1.first_one() {
             Some(n) => {
-                tracing::debug!("JTAG {name} scan chain detected as {n} bits long");
+                tracing::info!("JTAG {name} scan chain detected as {n} bits long");
                 n
             }
             None => {
