@@ -1,5 +1,5 @@
 [workspace.package]
-version = "0.19.0"
+version = "0.20.0"
 edition = "2021"
 
 documentation = "https://docs.rs/probe-rs/"
@@ -21,8 +21,8 @@ members = [
 ]
 
 [workspace.dependencies]
-probe-rs = { path = "probe-rs", version = "0.19.0" }
-probe-rs-target = { path = "probe-rs-target", version = "0.19.0" }
+probe-rs = { path = "probe-rs", version = "0.20.0" }
+probe-rs-target = { path = "probe-rs-target", version = "0.20.0" }
 
 log = "0.4.19"
 pretty_env_logger = "0.5.0"
