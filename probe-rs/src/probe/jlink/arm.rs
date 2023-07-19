@@ -6,6 +6,7 @@ use crate::{
         dp::{Abort, Ctrl, RdBuff, DPIDR},
         ArmError, DapError, DpAddress, Pins, PortType, RawDapAccess, Register,
     },
+    probe::common::BitIter,
     probe::JTAGAccess,
     DebugProbe, DebugProbeError,
 };
@@ -1357,8 +1358,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
     fn jtag_sequence(&mut self, bit_len: u8, tms: bool, bits: u64) -> Result<(), DebugProbeError> {
         let bit_array = bits.to_le_bytes();
 
-        let bit_iter =
-            crate::probe::espusbjtag::protocol::BitIter::new(&bit_array, bit_len as usize);
+        let bit_iter = BitIter::new(&bit_array, bit_len as usize);
 
         let tms_bits = iter::repeat(tms).take(bit_len as usize);
         self.jtag_io(tms_bits, bit_iter)?;

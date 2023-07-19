@@ -1,3 +1,5 @@
+pub(crate) mod common;
+
 pub(crate) mod cmsisdap;
 pub(crate) mod espusbjtag;
 pub(crate) mod fake_probe;
