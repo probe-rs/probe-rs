@@ -8,23 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `dap-server`: In addition to `Elf` format, this adds support for binary formats `Bin`, `Hex`, and `Idf` (#1656).
-- Added PAC55XX series targets (#1655)
-- Stack unwinding can now unwind beyond (optionally nested) exception handlers (#1665).
+- `core`: Added PAC55XX series targets (#1655)
+- `core`: Stack unwinding can now unwind beyond (optionally nested) exception handlers (#1665).
   - ARMv6-M: Report Exception / Fault description, and Unwind the registers and next frames.
   - ARMv7-M: Also decodes details about HardFault, UsageFault, BusFault, and MemManageFault.
   - ARMv7-A, Armv8-M, Armv8-A, RISC-V: Not implemented - requires architecture specific implementations.
-- Added a simple profiler to the probe-rs cli toolkit (#1628)
-- Added MSP432E4 target (MSP432E401Y and MSP432E411Y). (#1139)
-
+- `cli`: Added a simple profiler to the probe-rs cli toolkit (#1628)
+- `core`: Added MSP432E4 target (MSP432E401Y and MSP432E411Y). (#1139)
 
 ### Fixed
 
-- probe-rs-cli: fixed `--base-address` having no effect
-- probe-rs-cli: fixed `--skip` not accepting hexadecimal values
+- `core`: Added a missing reset catch clear that prevented the CPU from properly starting after flashing RTT from attaching (#1675).
+- `cli`: fixed `--base-address` having no effect
+- `cli`: fixed `--skip` not accepting hexadecimal values
 
 ### Removed
 
-- probe-rs-cli: removed obsolete `--skip-bytes` (which had no effect), use `--skip` instead
+- `cli`: removed obsolete `--skip-bytes` (which had no effect), use `--skip` instead
 
 ## [0.19.0]
 
