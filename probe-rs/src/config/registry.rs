@@ -18,8 +18,8 @@ pub enum RegistryError {
     #[error("The requested chip '{0}' was not found in the list of known targets.")]
     ChipNotFound(String),
     /// Multiple chips found which match the given string, unable to return a single chip.
-    #[error("Found multiple chips matching '{0}', unable to select a single chip.")]
-    ChipNotUnique(String),
+    #[error("Found multiple chips matching '{0}', unable to select a single chip. ({1})")]
+    ChipNotUnique(String, String),
     /// When searching for a chip based on information read from the target,
     /// no matching chip was found in the registry.
     #[error("The connected chip could not automatically be determined.")]
@@ -162,7 +162,7 @@ impl Registry {
             // Try get the corresponding chip.
             let mut selected_family_and_chip = None;
             let mut exact_matches = 0;
-            let mut partial_matches = 0;
+            let mut partial_matches = Vec::new();
             for family in &self.families {
                 for variant in family.variants.iter() {
                     if match_name_prefix(&variant.name, name) {
@@ -170,8 +170,8 @@ impl Registry {
                             tracing::debug!("Exact match for chip name: {}", variant.name);
                             exact_matches += 1;
                         } else {
-                            tracing::debug!("Partial match for chip name: {}", variant.name);
-                            partial_matches += 1;
+                            tracing::debug!("Partial match for chip name: {}", &variant.name);
+                            partial_matches.push(variant.name.clone());
                             if exact_matches > 0 {
                                 continue;
                             }
@@ -180,16 +180,24 @@ impl Registry {
                     }
                 }
             }
-            if exact_matches > 1 || (exact_matches == 0 && partial_matches > 1) {
+            if partial_matches.len() > 1 {
                 tracing::warn!(
                     "Ignoring ambiguous matches for specified chip name {}",
                     name,
                 );
-                return Err(RegistryError::ChipNotUnique(name.to_owned()));
+                let mut suggestions;
+                if partial_matches.len() <= 100 {
+                    suggestions = partial_matches.join(", ");
+                } else {
+                    // prevent too much text being printed if too many matches
+                    suggestions = partial_matches[0..100].join(", ");
+                    suggestions.push_str(&format!(" and {} more", partial_matches.len() - 100))
+                }
+                return Err(RegistryError::ChipNotUnique(name.to_owned(), suggestions));
             }
             let (family, chip) = selected_family_and_chip
                 .ok_or_else(|| RegistryError::ChipNotFound(name.to_owned()))?;
-            if exact_matches == 0 && partial_matches == 1 {
+            if exact_matches == 0 && partial_matches.len() == 1 {
                 tracing::warn!(
                     "Found chip {} which matches given partial name {}. Consider specifying its full name.",
                     chip.name,
@@ -376,7 +384,7 @@ mod tests {
         // ambiguous: partially matches STM32G081KBUx and STM32G081KBUxN
         assert!(matches!(
             registry.get_target_by_name("STM32G081KBU"),
-            Err(RegistryError::ChipNotUnique(_))
+            Err(RegistryError::ChipNotUnique(_, _))
         ));
     }
 
