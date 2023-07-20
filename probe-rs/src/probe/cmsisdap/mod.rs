@@ -28,6 +28,15 @@ use commands::{
         info::Capabilities,
         reset::{ResetRequest, ResetResponse},
     },
+    jtag::{
+        configure::{
+            ConfigureRequest as JtagConfigureRequest, ConfigureResponse as JtagConfigureResponse,
+        },
+        sequence::{
+            Sequence as JtagSequence, SequenceRequest as JtagSequenceRequest,
+            SequenceResponse as JtagSequenceResponse,
+        },
+    },
     swd,
     swj::{
         clock::{SWJClockRequest, SWJClockResponse},
@@ -44,6 +53,8 @@ use commands::{
 };
 
 use std::{result::Result, time::Duration};
+
+use bitvec::prelude::*;
 
 pub struct CmsisDap {
     pub device: CmsisDapDevice,
@@ -63,6 +74,12 @@ pub struct CmsisDap {
     speed_khz: u32,
 
     batch: Vec<BatchCommand>,
+}
+
+/// Stores information about a JTAG scan chain,
+/// including IR lengths.
+struct JtagChain {
+    pub irlens: Vec<usize>,
 }
 
 impl std::fmt::Debug for CmsisDap {
@@ -150,6 +167,203 @@ impl CmsisDap {
                 swd::configure::ConfigureResponse(Status::DAPError) => {
                     Err(CmsisDapError::ErrorResponse)
                 }
+            })
+    }
+
+    /// Reset JTAG state machine to Test-Logic-Reset.
+    fn jtag_ensure_test_logic_reset(&mut self) -> Result<(), CmsisDapError> {
+        let sequence = JtagSequence::no_capture(true, &bitvec![u8, Lsb0; 0; 6])?;
+        let sequences = vec![sequence];
+
+        self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
+
+        Ok(())
+    }
+
+    /// Reset JTAG state machine to Run-Test/Idle, as requisite precondition for DAP_Transfer commands.
+    fn jtag_ensure_run_test_idle(&mut self) -> Result<(), CmsisDapError> {
+        // These could be coalesced into one sequence request, but for now we'll keep things simple.
+
+        // First reach Test-Logic-Reset
+        self.jtag_ensure_test_logic_reset()?;
+
+        // Then transition to Run-Test-Idle
+        let sequence = JtagSequence::no_capture(false, &bitvec![u8, Lsb0; 0; 1])?;
+        let sequences = vec![sequence];
+        self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
+
+        Ok(())
+    }
+
+    /// Scan JTAG chain, detecting TAPs and their IDCODEs and IR lengths.
+    ///
+    /// If IR lengths for each TAP are known, provide them in `ir_lengths`.
+    ///
+    /// Returns a new JTAGChain.
+    fn jtag_scan(&mut self, ir_lengths: Option<&[usize]>) -> Result<JtagChain, CmsisDapError> {
+        let (ir, dr) = self.jtag_reset_scan()?;
+        let idcodes = jtag_util::extract_idcodes(&dr)?;
+        let irlens = jtag_util::extract_ir_lengths(&ir, idcodes.len(), ir_lengths)?;
+
+        let chain = JtagChain { irlens };
+
+        Ok(chain)
+    }
+
+    /// Capture the power-up scan chain values, including all IDCODEs.
+    ///
+    /// Returns the IR and DR results as (IR, DR).
+    fn jtag_reset_scan(&mut self) -> Result<(BitVec<u8>, BitVec<u8>), CmsisDapError> {
+        let dr = self.jtag_scan_dr()?;
+        let ir = self.jtag_scan_ir()?;
+
+        // Return to Run-Test/Idle, so the probe is ready for DAP_Transfer commands again.
+        self.jtag_ensure_run_test_idle()?;
+
+        Ok((ir, dr))
+    }
+
+    /// Detect the IR chain length and return its current contents.
+    ///
+    /// Replaces the current contents with all 1s (BYPASS) and enters
+    /// the Run-Test/Idle state.
+    fn jtag_scan_ir(&mut self) -> Result<BitVec<u8>, CmsisDapError> {
+        self.jtag_ensure_shift_ir()?;
+        let data = self.jtag_scan_inner("IR")?;
+        Ok(data)
+    }
+
+    /// Detect the DR chain length and return its contents.
+    ///
+    /// Replaces the current contents with all 1s and enters
+    /// the Run-Test/Idle state.
+    fn jtag_scan_dr(&mut self) -> Result<BitVec<u8>, CmsisDapError> {
+        self.jtag_ensure_shift_dr()?;
+        let data = self.jtag_scan_inner("DR")?;
+        Ok(data)
+    }
+
+    /// Detect current chain length and return its contents.
+    /// Must already be in either Shift-IR or Shift-DR state.
+    fn jtag_scan_inner(&mut self, name: &'static str) -> Result<BitVec<u8>, CmsisDapError> {
+        // Max scan chain length (in bits) to attempt to detect.
+        const MAX_LENGTH: usize = 128;
+        // How many bytes to write out / read in per request.
+        const BYTES_PER_REQUEST: usize = 16;
+        // How many requests are needed to read/write at least MAX_LENGTH bits.
+        const REQUESTS: usize =
+            (MAX_LENGTH + (BYTES_PER_REQUEST * 8 - 1)) / (BYTES_PER_REQUEST * 8);
+
+        // Completely fill xR with 0s, capture result.
+        let mut tdo_bytes: Vec<u8> = Vec::with_capacity(REQUESTS * BYTES_PER_REQUEST);
+        for _ in 0..REQUESTS {
+            let sequences = vec![
+                JtagSequence::capture(false, &bitvec![u8, Lsb0; 0; 64])?,
+                JtagSequence::capture(false, &bitvec![u8, Lsb0; 0; 64])?,
+            ];
+
+            tdo_bytes.extend(
+                self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?
+                    .iter(),
+            );
+        }
+        let d0 = tdo_bytes.view_bits::<Lsb0>();
+
+        // Completely fill xR with 1s, capture result.
+        let mut tdo_bytes: Vec<u8> = Vec::with_capacity(REQUESTS * BYTES_PER_REQUEST);
+        for _ in 0..REQUESTS {
+            let sequences = vec![
+                JtagSequence::capture(false, &bitvec![u8, Lsb0; 1; 64])?,
+                JtagSequence::capture(false, &bitvec![u8, Lsb0; 1; 64])?,
+            ];
+
+            tdo_bytes.extend(
+                self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?
+                    .iter(),
+            );
+        }
+        let d1 = tdo_bytes.view_bits::<Lsb0>();
+
+        // Find first 1 in d1, which indicates length of register.
+        let n = match d1.first_one() {
+            Some(n) => {
+                tracing::info!("JTAG {name} scan chain detected as {n} bits long");
+                n
+            }
+            None => {
+                tracing::error!(
+                    "JTAG {name} scan chain either broken or too long: did not detect 1"
+                );
+                return Err(CmsisDapError::ErrorResponse);
+            }
+        };
+
+        // Check at least one register is detected in the scan chain.
+        if n == 0 {
+            tracing::error!("JTAG {name} scan chain is empty");
+            return Err(CmsisDapError::ErrorResponse);
+        }
+
+        // Check d0[n..] are all 0.
+        if d0[n..].any() {
+            tracing::error!("JTAG {name} scan chain either broken or too long: did not detect 0");
+            return Err(CmsisDapError::ErrorResponse);
+        }
+
+        // Extract d0[..n] as the initial scan chain contents.
+        let data = d0[..n].to_bitvec();
+
+        Ok(data)
+    }
+
+    fn jtag_ensure_shift_dr(&mut self) -> Result<(), CmsisDapError> {
+        // Transition to Test-Logic-Reset.
+        self.jtag_ensure_test_logic_reset()?;
+
+        // Transition to Shift-DR
+        let sequences = vec![
+            JtagSequence::no_capture(false, &bitvec![u8, Lsb0; 0; 1])?,
+            JtagSequence::no_capture(true, &bitvec![u8, Lsb0; 0; 1])?,
+            JtagSequence::no_capture(false, &bitvec![u8, Lsb0; 0; 2])?,
+        ];
+        self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
+
+        Ok(())
+    }
+
+    fn jtag_ensure_shift_ir(&mut self) -> Result<(), CmsisDapError> {
+        // Transition to Test-Logic-Reset.
+        self.jtag_ensure_test_logic_reset()?;
+
+        // Transition to Shift-IR
+        let sequences = vec![
+            JtagSequence::no_capture(false, &bitvec![u8, Lsb0; 0; 1])?,
+            JtagSequence::no_capture(true, &bitvec![u8, Lsb0; 0; 2])?,
+            JtagSequence::no_capture(false, &bitvec![u8, Lsb0; 0; 2])?,
+        ];
+        self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
+
+        Ok(())
+    }
+
+    fn send_jtag_configure(&mut self, request: JtagConfigureRequest) -> Result<(), CmsisDapError> {
+        commands::send_command::<JtagConfigureRequest>(&mut self.device, request)
+            .map_err(CmsisDapError::from)
+            .and_then(|v| match v {
+                JtagConfigureResponse(Status::DAPOk) => Ok(()),
+                JtagConfigureResponse(Status::DAPError) => Err(CmsisDapError::ErrorResponse),
+            })
+    }
+
+    fn send_jtag_sequences(
+        &mut self,
+        request: JtagSequenceRequest,
+    ) -> Result<Vec<u8>, CmsisDapError> {
+        commands::send_command::<JtagSequenceRequest>(&mut self.device, request)
+            .map_err(CmsisDapError::from)
+            .and_then(|v| match v {
+                JtagSequenceResponse(Status::DAPOk, tdo) => Ok(tdo),
+                JtagSequenceResponse(Status::DAPError, _) => Err(CmsisDapError::ErrorResponse),
             })
     }
 
@@ -520,7 +734,15 @@ impl DebugProbe for CmsisDap {
             match_retry: 0,
         })?;
 
-        self.configure_swd(swd::configure::ConfigureRequest {})?;
+        if self.active_protocol() == Some(WireProtocol::Jtag) {
+            // no-op: we configure JTAG in debug_port_setup,
+            // because that is where we execute the SWJ-DP Switch Sequence
+            // to ensure the debug port is ready for JTAG signals,
+            // at which point we can interrogate the scan chain
+            // and configure the probe with the given IR lengths.
+        } else {
+            self.configure_swd(swd::configure::ConfigureRequest {})?;
+        }
 
         // Tell the probe we are connected so it can turn on an LED.
         let _: Result<HostStatusResponse, _> =
@@ -557,10 +779,8 @@ impl DebugProbe for CmsisDap {
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         match protocol {
             WireProtocol::Jtag => {
-                tracing::warn!(
-                    "Support for JTAG protocol is not yet implemented for CMSIS-DAP based probes."
-                );
-                Err(DebugProbeError::UnsupportedProtocol(WireProtocol::Jtag))
+                self.protocol = Some(WireProtocol::Jtag);
+                Ok(())
             }
             WireProtocol::Swd => {
                 self.protocol = Some(WireProtocol::Swd);
@@ -791,6 +1011,27 @@ impl RawDapAccess for CmsisDap {
         self
     }
 
+    fn configure_jtag(&mut self) -> Result<(), DebugProbeError> {
+        // TODO: allow user to specify expected IR lengths
+        let chain = self.jtag_scan(None)?;
+        let ir_lengths = chain.irlens.iter().map(|len| *len as u8).collect();
+        self.send_jtag_configure(JtagConfigureRequest::new(ir_lengths)?)?;
+
+        Ok(())
+    }
+
+    fn jtag_sequence(&mut self, cycles: u8, tms: bool, tdi: u64) -> Result<(), DebugProbeError> {
+        self.connect_if_needed()?;
+
+        let tdi_bytes = tdi.to_le_bytes();
+        let sequence = JtagSequence::new(cycles, false, tms, tdi_bytes)?;
+        let sequences = vec![sequence];
+
+        self.send_jtag_sequences(JtagSequenceRequest::new(sequences)?)?;
+
+        Ok(())
+    }
+
     fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
         self.connect_if_needed()?;
 
@@ -938,5 +1179,307 @@ impl Drop for CmsisDap {
         }
 
         let _ = self.detach();
+    }
+}
+
+mod jtag_util {
+    use crate::probe::cmsisdap::commands::CmsisDapError;
+
+    use bitfield::bitfield;
+    use bitvec::prelude::*;
+
+    bitfield! {
+        /// A JTAG IDCODE.
+        /// Identifies a particular Test Access Port (TAP) on the JTAG scan chain.
+        #[derive(Copy, Clone, Eq, PartialEq)]
+        pub struct IdCode(u32);
+        impl Debug;
+
+        u8;
+        /// The IDCODE version.
+        pub version, set_version: 31, 28;
+
+        u16;
+        /// The part number.
+        pub part_number, set_part_number: 27, 12;
+
+        /// The JEDEC JEP-106 Manufacturer ID.
+        pub manufacturer, set_manufacturer: 11, 1;
+
+        u8;
+        /// The continuation code of the JEDEC JEP-106 Manufacturer ID.
+        pub manufacturer_continuation, set_manufacturer_continuation: 11, 8;
+
+        /// The identity code of the JEDEC JEP-106 Manufacturer ID.
+        pub manufacturer_identity, set_manufacturer_identity: 7, 1;
+
+        bool;
+        /// The least-significant bit.
+        /// Always set.
+        pub lsbit, set_lsbit: 0;
+    }
+
+    impl std::fmt::Display for IdCode {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            if let Some(mfn) = self.manufacturer_name() {
+                write!(f, "0x{:08X} ({})", self.0, mfn)
+            } else {
+                write!(f, "0x{:08X}", self.0)
+            }
+        }
+    }
+
+    impl IdCode {
+        /// Returns `true` iff the IDCODE's least significant bit is `1`
+        /// and the 7-bit `manufacturer_identity` is set to one of the non-reserved values in the range `[1,126]`.
+        pub fn valid(&self) -> bool {
+            self.lsbit() && (self.manufacturer() != 0) && (self.manufacturer() != 127)
+        }
+
+        /// Return the manufacturer name, if available.
+        pub fn manufacturer_name(&self) -> Option<&'static str> {
+            let cc = self.manufacturer_continuation();
+            let id = self.manufacturer_identity();
+            jep106::JEP106Code::new(cc, id).get()
+        }
+    }
+
+    #[derive(Debug, thiserror::Error)]
+    pub enum ScanChainError {
+        #[error("Invalid IDCODE")]
+        InvalidIdCode,
+        #[error("Invalid IR scan chain")]
+        InvalidIR,
+    }
+
+    impl From<ScanChainError> for CmsisDapError {
+        fn from(error: ScanChainError) -> Self {
+            match error {
+                ScanChainError::InvalidIdCode => CmsisDapError::InvalidIdCode,
+                ScanChainError::InvalidIR => CmsisDapError::InvalidIR,
+            }
+        }
+    }
+
+    /// Convert a list of start positions to a list of lengths.
+    fn starts_to_lens(starts: &[usize], total: usize) -> Vec<usize> {
+        let mut lens: Vec<usize> = starts.windows(2).map(|w| w[1] - w[0]).collect();
+        lens.push(total - lens.iter().sum::<usize>());
+        lens
+    }
+
+    /// Extract all IDCODEs from a test-logic-reset DR chain `dr`.
+    ///
+    /// Valid IDCODEs have a '1' in the least significant (first) bit,
+    /// and are 32 bits long. DRs in BYPASS always have a single 0 bit.
+    ///
+    /// We can therefore unambiguously scan through the DR capture to find
+    /// all IDCODEs and TAPs in BYPASS.
+    ///
+    /// Returns Vec<Option<IdCode>>, with None for TAPs in BYPASS.
+    pub(crate) fn extract_idcodes(
+        mut dr: &BitSlice<u8>,
+    ) -> Result<Vec<Option<IdCode>>, ScanChainError> {
+        let mut idcodes = Vec::new();
+
+        while !dr.is_empty() {
+            if dr[0] {
+                if dr.len() < 32 {
+                    tracing::error!("Truncated IDCODE: {dr:02X?}");
+                    return Err(ScanChainError::InvalidIdCode);
+                }
+
+                let idcode = dr[0..32].load_le::<u32>();
+                let idcode = IdCode(idcode);
+
+                if !idcode.valid() {
+                    tracing::error!("Invalid IDCODE: {:08X}", idcode.0);
+                    return Err(ScanChainError::InvalidIdCode);
+                }
+                tracing::info!("Found IDCODE: {idcode}");
+                idcodes.push(Some(idcode));
+                dr = &dr[32..];
+            } else {
+                idcodes.push(None);
+                tracing::info!("Found bypass TAP");
+                dr = &dr[1..];
+            }
+        }
+        Ok(idcodes)
+    }
+
+    /// Best-effort extraction of IR lengths from a test-logic-reset IR chain `ir`,
+    /// which is known to contain `n_taps` TAPs (as discovered by scanning DR for IDCODEs).
+    ///
+    /// If expected IR lengths are provided, specify them in `expected`, and they are
+    /// verified against the IR scan and then returned.
+    ///
+    /// Valid IRs in the capture must start with `10` (a 1 in the least-significant,
+    /// and therefore first, bit). However, IRs may contain `10` in other positions, so we
+    /// can only find a superset of all possible start positions. If this happens to match
+    /// the number of taps, or there is only one tap, we can find all IR lengths. Otherwise,
+    /// they must be provided, and are then checked.
+    ///
+    /// This implementation is a port of the algorithm from:
+    /// https://github.com/GlasgowEmbedded/glasgow/blob/30dc11b2/software/glasgow/applet/interface/jtag_probe/__init__.py#L712
+    ///
+    /// Returns Vec<usize>, with an entry for each TAP.
+    pub(crate) fn extract_ir_lengths(
+        ir: &BitSlice<u8>,
+        n_taps: usize,
+        expected: Option<&[usize]>,
+    ) -> Result<Vec<usize>, ScanChainError> {
+        // Find all `10` patterns which indicate potential IR start positions.
+        let starts = ir
+            .windows(2)
+            .enumerate()
+            .filter(|(_, w)| w[0] && !w[1])
+            .map(|(i, _)| i)
+            .collect::<Vec<usize>>();
+        tracing::trace!("Possible IR start positions: {starts:?}");
+
+        if n_taps == 0 {
+            tracing::error!("Cannot scan IR without at least one TAP");
+            Err(ScanChainError::InvalidIR)
+        } else if n_taps > starts.len() {
+            // We must have at least as many `10` patterns as TAPs.
+            tracing::error!("Fewer IRs detected than TAPs");
+            Err(ScanChainError::InvalidIR)
+        } else if starts[0] != 0 {
+            // The chain must begin with a possible start location.
+            tracing::error!("IR chain does not begin with a valid start pattern");
+            Err(ScanChainError::InvalidIR)
+        } else if let Some(expected) = expected {
+            // If expected lengths are available, verify and return them.
+            if expected.len() != n_taps {
+                tracing::error!(
+                    "Number of provided IR lengths ({}) does not match \
+                         number of detected TAPs ({n_taps})",
+                    expected.len()
+                );
+
+                Err(ScanChainError::InvalidIR)
+            } else if expected.iter().sum::<usize>() != ir.len() {
+                tracing::error!(
+                    "Sum of provided IR lengths ({}) does not match \
+                         length of IR scan ({} bits)",
+                    expected.iter().sum::<usize>(),
+                    ir.len()
+                );
+                Err(ScanChainError::InvalidIR)
+            } else {
+                let exp_starts = expected
+                    .iter()
+                    .scan(0, |a, &x| {
+                        let b = *a;
+                        *a += x;
+                        Some(b)
+                    })
+                    .collect::<Vec<usize>>();
+                tracing::trace!("Provided IR start positions: {exp_starts:?}");
+                let unsupported = exp_starts.iter().filter(|s| !starts.contains(s)).count();
+                if unsupported > 0 {
+                    tracing::error!(
+                        "Provided IR lengths imply an IR start position \
+                             which is not supported by the IR scan"
+                    );
+                    Err(ScanChainError::InvalidIR)
+                } else {
+                    tracing::debug!("Verified provided IR lengths against IR scan");
+                    Ok(starts_to_lens(&exp_starts, ir.len()))
+                }
+            }
+        } else if n_taps == 1 {
+            // If there's only one TAP, this is easy.
+            tracing::info!("Only one TAP detected, IR length {}", ir.len());
+            Ok(vec![ir.len()])
+        } else if n_taps == starts.len() {
+            // If the number of possible starts matches the number of TAPs,
+            // we can unambiguously find all lengths.
+            let irlens = starts_to_lens(&starts, ir.len());
+            tracing::info!("IR lengths are unambiguous: {irlens:?}");
+            Ok(irlens)
+        } else {
+            tracing::error!("IR lengths are ambiguous and must be explicitly configured.");
+            Err(ScanChainError::InvalidIR)
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use bitvec::prelude::*;
+
+    use super::jtag_util;
+    use jtag_util::IdCode;
+
+    const ARM_TAP: IdCode = IdCode(0x4BA00477);
+    const STM_BS_TAP: IdCode = IdCode(0x06433041);
+
+    #[test]
+    fn id_code_display() {
+        let debug_fmt = format!("{idcode}", idcode = ARM_TAP);
+        assert_eq!(debug_fmt, "0x4BA00477 (ARM Ltd)");
+
+        let debug_fmt = format!("{idcode}", idcode = STM_BS_TAP);
+        assert_eq!(debug_fmt, "0x06433041 (STMicroelectronics)");
+    }
+
+    #[test]
+    fn extract_ir_lengths_with_one_tap() {
+        let ir = &bitvec![u8, Lsb0; 1,0,0,0];
+        let n_taps = 1;
+        let expected = None;
+
+        let ir_lengths = jtag_util::extract_ir_lengths(ir, n_taps, expected).unwrap();
+
+        assert_eq!(ir_lengths, vec![4]);
+    }
+
+    #[test]
+    fn extract_ir_lengths_with_two_taps() {
+        // The STM32F1xx and STM32F4xx are examples of MCUs that two serially connected JTAG TAPs,
+        // the boundary scan TAP (IR is 5-bit wide) and the Cortex® -M4 with FPU TAP (IR is 4-bit wide).
+        // This test ensures our scan chain interrogation handles this scenario.
+        let ir = &bitvec![u8, Lsb0; 1,0,0,0,1,0,0,0,0];
+        let n_taps = 2;
+        let expected = None;
+
+        let ir_lengths = jtag_util::extract_ir_lengths(ir, n_taps, expected).unwrap();
+
+        assert_eq!(ir_lengths, vec![4, 5]);
+    }
+
+    #[test]
+    fn extract_id_codes_one_tap() {
+        let mut dr = bitvec![u8, Lsb0; 0; 32];
+        dr[0..32].store_le(ARM_TAP.0);
+
+        let idcodes = jtag_util::extract_idcodes(&dr).unwrap();
+
+        assert_eq!(idcodes, vec![Some(ARM_TAP)]);
+    }
+
+    #[test]
+    fn extract_id_codes_two_taps() {
+        let mut dr = bitvec![u8, Lsb0; 0; 64];
+        dr[0..32].store_le(ARM_TAP.0);
+        dr[32..64].store_le(STM_BS_TAP.0);
+
+        let idcodes = jtag_util::extract_idcodes(&dr).unwrap();
+
+        assert_eq!(idcodes, vec![Some(ARM_TAP), Some(STM_BS_TAP)]);
+    }
+
+    #[test]
+    fn extract_id_codes_tap_bypass_tap() {
+        let mut dr = bitvec![u8, Lsb0; 0; 65];
+        dr[0..32].store_le(ARM_TAP.0);
+        dr.set(32, false);
+        dr[33..65].store_le(STM_BS_TAP.0);
+
+        let idcodes = jtag_util::extract_idcodes(&dr).unwrap();
+
+        assert_eq!(idcodes, vec![Some(ARM_TAP), None, Some(STM_BS_TAP)]);
     }
 }

@@ -173,6 +173,10 @@ impl RawDapAccess for FakeProbe {
         handler(port, addr, value)
     }
 
+    fn jtag_sequence(&mut self, _cycles: u8, _tms: bool, _tdi: u64) -> Result<(), DebugProbeError> {
+        todo!()
+    }
+
     fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
         todo!()
     }

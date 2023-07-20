@@ -6,6 +6,7 @@ use crate::{
         dp::{Abort, Ctrl, RdBuff, DPIDR},
         ArmError, DapError, DpAddress, Pins, PortType, RawDapAccess, Register,
     },
+    probe::common::BitIter,
     probe::JTAGAccess,
     DebugProbe, DebugProbeError,
 };
@@ -1354,8 +1355,19 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         self
     }
 
+    fn jtag_sequence(&mut self, bit_len: u8, tms: bool, bits: u64) -> Result<(), DebugProbeError> {
+        let bit_array = bits.to_le_bytes();
+
+        let bit_iter = BitIter::new(&bit_array, bit_len as usize);
+
+        let tms_bits = iter::repeat(tms).take(bit_len as usize);
+        self.jtag_io(tms_bits, bit_iter)?;
+
+        Ok(())
+    }
+
     fn swj_sequence(&mut self, bit_len: u8, mut bits: u64) -> Result<(), DebugProbeError> {
-        let protocol = self.active_protocol().expect("No protocol set");
+        let protocol = self.active_protocol();
 
         let mut io_sequence = IoSequence::new();
 
@@ -1369,18 +1381,20 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         self.set_ir_len(4);
 
         match protocol {
-            crate::WireProtocol::Jtag => {
+            Some(crate::WireProtocol::Jtag) => {
+                // TODO: aren't these two arguments reversed?
                 self.jtag_io(
                     io_sequence.io_bits().to_owned(),
                     iter::repeat(false).take(bit_len.into()),
                 )?;
             }
-            crate::WireProtocol::Swd => {
+            Some(crate::WireProtocol::Swd) => {
                 self.swd_io(
                     io_sequence.direction_bits().to_owned(),
                     io_sequence.io_bits().to_owned(),
                 )?;
             }
+            _ => {}
         }
 
         Ok(())

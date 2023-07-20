@@ -1,4 +1,5 @@
 pub mod general;
+pub mod jtag;
 pub mod swd;
 pub mod swj;
 pub mod swo;
@@ -30,6 +31,10 @@ pub enum CmsisDapError {
     SwoReadError(#[source] rusb::Error),
     #[error("Could not determine a suitable packet size for this probe")]
     NoPacketSize,
+    #[error("Invalid IDCODE detected")]
+    InvalidIdCode,
+    #[error("Error scanning IR lengths")]
+    InvalidIR,
 }
 
 #[derive(Debug, thiserror::Error)]

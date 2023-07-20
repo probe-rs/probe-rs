@@ -18,7 +18,9 @@ use crate::{
     DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
 };
 
-use self::protocol::{BitIter, ProtocolHandler};
+use crate::probe::common::BitIter;
+
+use self::protocol::ProtocolHandler;
 
 use super::JTAGAccess;
 
