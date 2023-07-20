@@ -47,7 +47,7 @@ impl Cmd {
                     // the USB connection to the probe can become unstable.
                     std::thread::sleep(Duration::from_millis(100));
                 }
-            },
+            }
             Err(error) => {
                 log::error!("{:?} RTT is not available.", error);
             }
