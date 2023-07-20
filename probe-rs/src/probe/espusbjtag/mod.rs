@@ -18,6 +18,8 @@ use crate::{
     DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
 };
 
+use crate::probe::common::BitIter;
+
 use self::protocol::ProtocolHandler;
 
 use super::JTAGAccess;
@@ -33,8 +35,6 @@ pub(crate) struct EspUsbJtag {
     jtag_idle_cycles: u8,
 
     current_ir_reg: u32,
-
-    speed_khz: u32,
 }
 
 impl EspUsbJtag {
@@ -64,6 +64,7 @@ impl EspUsbJtag {
         tms.extend(iter::repeat(false).take(self.idle_cycles() as usize));
 
         let mut response = self.protocol.jtag_io(tms, tdi, true)?;
+        let mut response = response.iter();
 
         tracing::trace!("Response: {:?}", response);
 
@@ -94,6 +95,24 @@ impl EspUsbJtag {
     /// will be truncated to `len` bits. If data has less
     /// than `len` bits, an error will be returned.
     fn write_ir(&mut self, data: &[u8], len: usize) -> Result<(), DebugProbeError> {
+        if len >= 8 {
+            return Err(DebugProbeError::NotImplemented(
+                "Not yet implemented for IR registers larger than 8 bit",
+            ));
+        }
+
+        self.prepare_write_ir(data, len)?;
+        let response = self.protocol.flush()?;
+        tracing::trace!("Response: {:?}", response);
+
+        // TODO: Why only store the first 8 bits?
+        self.current_ir_reg = data[0] as u32;
+
+        // Maybe we could return the previous state of the IR register here...
+        Ok(())
+    }
+
+    fn prepare_write_ir(&mut self, data: &[u8], len: usize) -> Result<usize, DebugProbeError> {
         tracing::debug!("Write IR: {:?}, len={}", data, len);
 
         // Check the bit length, enough data has to be
@@ -160,25 +179,52 @@ impl EspUsbJtag {
         tracing::trace!("tms: {:?}", tms);
         tracing::trace!("tdi: {:?}", tdi);
 
-        let response = self.protocol.jtag_io(tms, tdi, true)?;
+        let len = tms.len();
+        self.protocol.jtag_io_async(tms, tdi, true)?;
 
-        tracing::trace!("Response: {:?}", response);
-
-        if len >= 8 {
-            return Err(DebugProbeError::NotImplemented(
-                "Not yet implemented for IR registers larger than 8 bit",
-            ));
-        }
-
-        // TODO: Why only store the first 8 bits?
-        self.current_ir_reg = data[0] as u32;
-
-        // Maybe we could return the previous state of the IR register here...
-
-        Ok(())
+        Ok(len)
     }
 
     fn write_dr(&mut self, data: &[u8], register_bits: usize) -> Result<Vec<u8>, DebugProbeError> {
+        self.prepare_write_dr(data, register_bits)?;
+        let mut response = self.protocol.flush()?;
+        self.recieve_write_dr(response.iter(), register_bits)
+    }
+
+    fn recieve_write_dr(
+        &mut self,
+        mut response: BitIter,
+        register_bits: usize,
+    ) -> Result<Vec<u8>, DebugProbeError> {
+        let tms_enter_shift = [true, false, false]; // TODO taken from below, make a const in future
+
+        let _remainder = response.split_off(tms_enter_shift.len());
+
+        let mut remaining_bits = register_bits;
+
+        let mut result = Vec::new();
+
+        while remaining_bits >= 8 {
+            let byte = bits_to_byte(response.split_off(8)) as u8;
+            result.push(byte);
+            remaining_bits -= 8;
+        }
+
+        // Handle leftover bytes
+        if remaining_bits > 0 {
+            result.push(bits_to_byte(response.split_off(remaining_bits)) as u8);
+        }
+
+        tracing::trace!("result: {:?}", result);
+
+        Ok(result)
+    }
+
+    fn prepare_write_dr(
+        &mut self,
+        data: &[u8],
+        register_bits: usize,
+    ) -> Result<usize, DebugProbeError> {
         tracing::debug!("Write DR: {:?}, len={}", data, register_bits);
 
         let tms_enter_shift = [true, false, false];
@@ -198,7 +244,6 @@ impl EspUsbJtag {
 
         let tdi_enter_idle = [false, false];
 
-        // TODO: TDI data
         let mut tdi =
             Vec::with_capacity(tdi_enter_shift.len() + tdi_enter_idle.len() + register_bits);
 
@@ -233,31 +278,52 @@ impl EspUsbJtag {
         tms.extend(iter::repeat(false).take(self.idle_cycles() as usize));
         tdi.extend(iter::repeat(false).take(self.idle_cycles() as usize));
 
-        let mut response = self.protocol.jtag_io(tms, tdi, true)?;
+        let len = tms.len();
+        self.protocol.jtag_io_async(tms, tdi, true)?;
 
-        tracing::trace!("Response: {:?}", response);
-
-        let _remainder = response.split_off(tms_enter_shift.len());
-
-        let mut remaining_bits = register_bits;
-
-        let mut result = Vec::new();
-
-        while remaining_bits >= 8 {
-            let byte = bits_to_byte(response.split_off(8)) as u8;
-            result.push(byte);
-            remaining_bits -= 8;
-        }
-
-        // Handle leftover bytes
-        if remaining_bits > 0 {
-            result.push(bits_to_byte(response.split_off(remaining_bits)) as u8);
-        }
-
-        tracing::trace!("result: {:?}", result);
-
-        Ok(result)
+        Ok(len)
     }
+
+    /// Write the data register
+    fn prepare_write_register(
+        &mut self,
+        address: u32,
+        data: &[u8],
+        len: u32,
+    ) -> Result<DeferredRegisterWrite, DebugProbeError> {
+        let address_bits = address.to_le_bytes();
+
+        // TODO: This is limited to 5 bit addresses for now
+        if address > 0x1f {
+            return Err(DebugProbeError::NotImplemented(
+                "JTAG Register addresses are fixed to 5 bits",
+            ));
+        }
+
+        let write_ir_bits = if self.current_ir_reg != address {
+            // Write IR register
+            let def = self.prepare_write_ir(&address_bits[..1], 5)?;
+            self.current_ir_reg = data[0] as u32;
+            Some(def)
+        } else {
+            None
+        };
+
+        // write DR register
+        let write_dr_bits_total = self.prepare_write_dr(data, len as usize)?;
+
+        Ok(DeferredRegisterWrite {
+            write_ir_bits,
+            write_dr_bits_total,
+            write_dr_bits: len as usize,
+        })
+    }
+}
+
+pub struct DeferredRegisterWrite {
+    write_ir_bits: Option<usize>,
+    write_dr_bits_total: usize,
+    write_dr_bits: usize,
 }
 
 impl JTAGAccess for EspUsbJtag {
@@ -319,6 +385,50 @@ impl JTAGAccess for EspUsbJtag {
     fn get_idle_cycles(&self) -> u8 {
         self.jtag_idle_cycles
     }
+
+    fn write_register_batch(
+        &mut self,
+        writes: &[super::JtagWriteCommand],
+    ) -> Result<Vec<super::CommandResult>, super::BatchExecutionError> {
+        let mut bits = Vec::with_capacity(writes.len());
+        let t1 = std::time::Instant::now();
+        tracing::debug!("Preparing {} writes...", writes.len());
+        for write in writes {
+            bits.push(
+                // If an error happens during prep, return no results as chip will be in an inconsistent state
+                self.prepare_write_register(write.address, &write.data, write.len)
+                    .map_err(|e| super::BatchExecutionError::new(e.into(), Vec::new()))?,
+            );
+        }
+
+        tracing::debug!("Sending to chip...");
+        // If an error happens during the final flush, also retry whole operation
+        let mut response = self
+            .protocol
+            .flush()
+            .map_err(|e| super::BatchExecutionError::new(e.into(), Vec::new()))?;
+        tracing::debug!("Got responses! Took {:?}! Processing...", t1.elapsed());
+        let mut response = response.iter();
+
+        let mut responses = Vec::with_capacity(bits.len());
+
+        for (index, bit) in bits.into_iter().enumerate() {
+            if let Some(ir_bits) = bit.write_ir_bits {
+                _ = response.split_off(ir_bits);
+            }
+            let dr_resp = response.split_off(bit.write_dr_bits_total);
+            let v = self
+                .recieve_write_dr(dr_resp, bit.write_dr_bits)
+                .map_err(|e| super::BatchExecutionError::new(e.into(), responses.clone()))?;
+
+            let transform = writes[index].transform;
+            let t =
+                transform(v).map_err(|e| super::BatchExecutionError::new(e, responses.clone()))?;
+            responses.push(t);
+        }
+
+        Ok(responses)
+    }
 }
 
 impl DebugProbe for EspUsbJtag {
@@ -331,7 +441,6 @@ impl DebugProbe for EspUsbJtag {
             protocol,
             jtag_idle_cycles: 0,
             current_ir_reg: 1,
-            speed_khz: 0,
         }))
     }
 
@@ -352,11 +461,12 @@ impl DebugProbe for EspUsbJtag {
     }
 
     fn speed_khz(&self) -> u32 {
-        self.speed_khz
+        self.protocol.base_speed_khz / self.protocol.div_min as u32
     }
 
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
         // TODO:
+        // can only go lower, base speed it max of 40000khz
 
         Ok(speed_khz)
     }

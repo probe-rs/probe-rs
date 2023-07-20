@@ -91,6 +91,15 @@ impl<'a> Dwt<'a> {
         ctrl.set_exctrcena(false);
         ctrl.store(self.component, self.interface)
     }
+
+    /// Enable PC sample trace output
+    pub fn enable_pc_sampling(&mut self) -> Result<(), ArmError> {
+        let mut ctrl = Ctrl::load(self.component, self.interface)?;
+        ctrl.set_pcsamplena(true);
+        ctrl.set_cyctap(true);
+        ctrl.set_postpreset(0x3);
+        ctrl.store(self.component, self.interface)
+    }
 }
 
 memory_mapped_bitfield_register! {

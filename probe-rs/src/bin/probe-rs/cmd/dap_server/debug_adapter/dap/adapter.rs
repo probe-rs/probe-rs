@@ -1101,7 +1101,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 let function_display_name = if frame.is_inlined {
                     format!("{} #[inline]", frame.function_name)
                 } else {
-                    format!("{} @{}", frame.function_name, frame.pc)
+                    frame.function_name.clone()
                 };
 
                 // Create the appropriate [`dap_types::Source`] for the response

@@ -1,6 +1,7 @@
 //! Crate-public stuctures and utilites to be shared between probes.
 
 use core::fmt;
+use std::collections::VecDeque;
 
 /// An iterator over a received bit stream.
 #[derive(Clone)]
@@ -81,5 +82,134 @@ impl fmt::Debug for BitIter<'_> {
             .map(|bit| if bit { '1' } else { '0' })
             .collect::<String>();
         write!(f, "BitIter({s})")
+    }
+}
+
+/// An iterator over a received bit stream.
+#[derive(Clone)]
+pub struct OwnedBitIter {
+    buf: VecDeque<u8>,
+    next_bit: u8,
+    bits_left: usize,
+}
+
+impl OwnedBitIter {
+    pub(crate) fn new(slice: &[u8], total_bits: usize) -> Self {
+        assert!(
+            slice.len() * 8 >= total_bits,
+            "cannot pull {} bits out of {} bytes",
+            total_bits,
+            slice.len()
+        );
+        let mut buf = VecDeque::new();
+        buf.extend(slice);
+        Self {
+            buf,
+            next_bit: 0,
+            bits_left: total_bits,
+        }
+    }
+
+    pub fn iter(&mut self) -> BitIter<'_> {
+        self.buf.make_contiguous();
+        BitIter::new(self.buf.as_slices().0, self.bits_left)
+    }
+}
+
+impl Iterator for OwnedBitIter {
+    type Item = bool;
+
+    fn next(&mut self) -> Option<bool> {
+        if self.bits_left > 0 {
+            let byte = self.buf.iter().next().unwrap();
+            let bit = byte & (1 << self.next_bit) != 0;
+            if self.next_bit < 7 {
+                self.next_bit += 1;
+            } else {
+                self.next_bit = 0;
+                self.buf.pop_front();
+            }
+
+            self.bits_left -= 1;
+            Some(bit)
+        } else {
+            None
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.bits_left, Some(self.bits_left))
+    }
+}
+
+impl FromIterator<bool> for OwnedBitIter {
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = bool>,
+    {
+        let iter = iter.into_iter();
+        let (lower, upper) = iter.size_hint();
+        let mut buf = VecDeque::with_capacity(upper.unwrap_or(lower));
+        let mut total_bits = 0;
+        let mut current_byte = 0;
+        let mut bit_index: u8 = 0;
+        for b in iter {
+            if b {
+                current_byte |= 1 << bit_index
+            }
+            if bit_index < 7 {
+                bit_index += 1;
+            } else {
+                buf.push_back(current_byte);
+                current_byte = 0;
+                bit_index = 0;
+            }
+            total_bits += 1;
+        }
+        if bit_index > 0 {
+            buf.push_back(current_byte);
+        }
+
+        OwnedBitIter {
+            buf,
+            next_bit: 0,
+            bits_left: total_bits,
+        }
+    }
+}
+
+impl ExactSizeIterator for OwnedBitIter {}
+
+impl fmt::Debug for OwnedBitIter {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = self
+            .clone()
+            .map(|bit| if bit { '1' } else { '0' })
+            .collect::<String>();
+        write!(f, "BitIter({s})")
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn owned_collect() {
+        let one = [true, true, true, true, true, true, true, true, true];
+        let two = [true, true, true, true, true, true, true, true, true];
+
+        let bits = one.into_iter().chain(two.into_iter());
+
+        let s = bits
+            .clone()
+            .map(|bit| if bit { '1' } else { '0' })
+            .collect::<String>();
+
+        let x: OwnedBitIter = bits.clone().collect();
+
+        println!("Actual: {}, Owned: {:?} : {:?}", s, x, x.buf);
+
+        assert!(bits.eq(x))
     }
 }

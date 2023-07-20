@@ -10,6 +10,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `dap-server`: In addition to `Elf` format, this adds support for binary formats `Bin`, `Hex`, and `Idf` (#1656).
 - Added PAC55XX series targets (#1655)
 - Added support for JTAG commands via CMSIS-DAP protocol (#1462)
+- `core`: Added PAC55XX series targets (#1655)
+- `core`: Stack unwinding can now unwind beyond (optionally nested) exception handlers (#1665).
+  - ARMv6-M: Report Exception / Fault description, and Unwind the registers and next frames.
+  - ARMv7-M: Also decodes details about HardFault, UsageFault, BusFault, and MemManageFault.
+  - ARMv7-A, Armv8-M, Armv8-A, RISC-V: Not implemented - requires architecture specific implementations.
+- `cli`: Added a simple profiler to the probe-rs cli toolkit (#1628)
+- `core`: Added MSP432E4 target (MSP432E401Y and MSP432E411Y). (#1139)
+- `core`: Added vector catch for ARMv6-M and ARMv7-M (#1592)
+  - Currently supported are HardFault and CoreReset.
+- `cli`: The run command now prints a stack trace on `HardFault` (#1592)
+
+### Changed
+
+- `cli`: more descriptive error messages for ambigous chips
+
+### Fixed
+
+- `core`: Added a missing reset catch clear that prevented the CPU from properly starting after flashing RTT from attaching (#1675).
+- `cli`: fixed `--base-address` having no effect
+- `cli`: fixed `--skip` not accepting hexadecimal values
+
+### Removed
+
+- cli: removed obsolete `--skip-bytes` (which had no effect), use `--skip` instead
 
 ## [0.19.0]
 
@@ -152,7 +176,7 @@ Released 2023-02-06
 
 - cmsis-dap: Avoid endless recursion when recovering from errors.
 
-  When an error occured, the cmsis-dap code tried to read the debug port CTRL register.
+  When an error occurred, the cmsis-dap code tried to read the debug port CTRL register.
   If that read failed, it would again try to read the same register, returning in an
   endless recursion.
 
@@ -190,7 +214,7 @@ Released 2023-01-28
 - target-gen: Add a command which enables the easy development and debugging of a flash algorithm.
 
   `target-gen test` is a new command to automatically upload, run, print RTT messages and test
-  a flash algorithm. Have a look at the [template](https://github.com/probe-rs/flash-algorithm-template)
+  a flash algorithm. Have a look at the - Added a simple profiler to the probe-rs cli toolkit (#1628)[template](https://github.com/probe-rs/flash-algorithm-template)
   to create a new flash algorithm.
 
 ### Changed
@@ -343,6 +367,7 @@ Released 2023-01-13
 - Added FPU register support for Cortex-A cores (#1154)
 - GDB now reports the core name in `info threads` (#1158)
 - Added a recover sequence for the nRF9160 (#1169)
+- Added support for `JTAGAccess::write_register_batch` the esp-serial-jtag probe (#1633)
 
 ### Changed
 

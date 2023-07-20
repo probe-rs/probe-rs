@@ -1,0 +1,76 @@
+name: MSP432E4 Series
+generated_from_pack: true
+pack_file_release: 3.2.6
+variants:
+- name: MSP432E401Y
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - msp432e4_mainflash1024kb
+- name: MSP432E411Y
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20040000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x100000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - msp432e4_mainflash1024kb
+flash_algorithms:
+- name: msp432e4_mainflash1024kb
+  description: MSP432E4 1MB Main Flash Memory
+  default: true
+  instructions: QLpwR8C6cEdP6jAAcEcAAHK2O0gBaCHwAwEBYAAgcEcAIHBHN0hA9gMhQWE2SYFggWhJB/zUwGhA9gEhCEIB0QEgAOAAIAixACBwRwEgcEcsSUD2AyJKYQhgK0iAHohgiGiAB/zUyGhA9gEhCEIB0QEgAOAAIAixACBwRwEgcEct6fBNikYBIwxGk0aBBzTRHE9C8gNheWEm4AAhC+sKDP8llEUE2AfrgQbG+ABRBOBAygfrgQjI+ABhSRwgKfDbOGARSckeOWI5askH/NEzsfloQvIBQxlCAdEBIwDgACMCIXlhgDCAPAAsAt0AK9TRA+ATsQAgvejwjQEg++cAAADmD0AA0A9ABABCpAAAAAA=
+  pc_init: 0x11
+  pc_uninit: 0x21
+  pc_program_page: 0x81
+  pc_erase_sector: 0x51
+  pc_erase_all: 0x25
+  data_section_offset: 0x10c
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x100000
+    page_size: 0x4000
+    erased_byte_value: 0xff
+    program_page_timeout: 600
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x4000
+      address: 0x0

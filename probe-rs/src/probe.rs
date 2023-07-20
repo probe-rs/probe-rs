@@ -158,8 +158,8 @@ pub enum DebugProbeError {
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 
-    /// A timeout occured during probe operation.
-    #[error("Timeout occured during probe operation.")]
+    /// A timeout occurred during probe operation.
+    #[error("Timeout occurred during probe operation.")]
     Timeout,
 }
 
@@ -844,6 +844,7 @@ pub trait JTAGAccess: DebugProbe {
         &mut self,
         writes: &[JtagWriteCommand],
     ) -> Result<Vec<CommandResult>, BatchExecutionError> {
+        tracing::debug!("Using default `JTAGAccess::write_register_batch` this will hurt performance. Please implement proper batching for this probe.");
         let mut results = Vec::new();
 
         for write in writes {

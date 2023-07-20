@@ -8,21 +8,12 @@ use probe_rs::flashing::Format;
 use crate::util::common_options::ProbeOptions;
 use crate::util::common_options::{CargoOptions, FlashOptions};
 use crate::util::flash::run_flash_download;
-use crate::util::parse_u32;
-use crate::util::parse_u64;
 use crate::FormatOptions;
 
 #[derive(clap::Parser)]
 pub struct Cmd {
     #[clap(flatten)]
     common: ProbeOptions,
-
-    /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
-    #[clap(long, value_parser = parse_u64)]
-    base_address: Option<u64>,
-    /// The number of bytes to skip at the start of the binary file. This is only considered when `bin` is selected as the format.
-    #[clap(long, value_parser = parse_u32)]
-    skip_bytes: Option<u32>,
 
     /// The path to the file to be downloaded to the flash
     path: String,
