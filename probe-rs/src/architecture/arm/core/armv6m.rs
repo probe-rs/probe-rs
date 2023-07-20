@@ -5,7 +5,7 @@ use crate::{
     architecture::arm::{
         memory::adi_v5_memory_interface::ArmProbe, sequences::ArmDebugSequence, ArmError,
     },
-    core::{CoreRegisters, RegisterId, RegisterValue},
+    core::{CoreRegisters, RegisterId, RegisterValue, VectorCatchCondition},
     error::Error,
     memory::valid_32bit_address,
     Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType,
@@ -844,7 +844,44 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
     fn debug_core_stop(&mut self) -> Result<(), Error> {
         self.sequence
             .debug_core_stop(&mut *self.memory, CoreType::Armv6m)?;
+        Ok(())
+    }
 
+    #[tracing::instrument(skip(self))]
+    fn enable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
+        let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
+        dhcsr.set_c_debugen(true);
+        self.memory
+            .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
+
+        let mut demcr = Demcr(self.memory.read_word_32(Demcr::get_mmio_address())?);
+        match condition {
+            VectorCatchCondition::HardFault => demcr.set_vc_harderr(true),
+            VectorCatchCondition::CoreReset => demcr.set_vc_corereset(true),
+            VectorCatchCondition::All => {
+                demcr.set_vc_harderr(true);
+                demcr.set_vc_corereset(true);
+            }
+        };
+
+        self.memory
+            .write_word_32(Demcr::get_mmio_address(), demcr.into())?;
+        Ok(())
+    }
+
+    fn disable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
+        let mut demcr = Demcr(self.memory.read_word_32(Demcr::get_mmio_address())?);
+        match condition {
+            VectorCatchCondition::HardFault => demcr.set_vc_harderr(false),
+            VectorCatchCondition::CoreReset => demcr.set_vc_corereset(false),
+            VectorCatchCondition::All => {
+                demcr.set_vc_harderr(false);
+                demcr.set_vc_corereset(false);
+            }
+        };
+
+        self.memory
+            .write_word_32(Demcr::get_mmio_address(), demcr.into())?;
         Ok(())
     }
 }
