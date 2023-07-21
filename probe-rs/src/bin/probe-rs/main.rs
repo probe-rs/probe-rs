@@ -62,6 +62,9 @@ enum Subcommand {
     /// Flash and run an ELF program
     #[clap(name = "run")]
     Run(cmd::run::Cmd),
+    /// Attach to rtt logging
+    #[clap(name = "attach")]
+    Attach(cmd::attach::Cmd),
     /// Trace a memory location on the target
     #[clap(name = "trace")]
     Trace(cmd::trace::Cmd),
@@ -250,6 +253,7 @@ fn main() -> Result<()> {
         Subcommand::Dump(cmd) => cmd.run(),
         Subcommand::Download(cmd) => cmd.run(),
         Subcommand::Run(cmd) => cmd.run(utc_offset),
+        Subcommand::Attach(cmd) => cmd.run(utc_offset),
         Subcommand::Erase(cmd) => cmd.run(),
         Subcommand::Trace(cmd) => cmd.run(),
         Subcommand::Itm(cmd) => cmd.run(),
