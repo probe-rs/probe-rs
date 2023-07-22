@@ -2,19 +2,48 @@
 
 use probe_rs::architecture::arm::{component::TraceSink, swo::SwoConfig};
 
-use crate::util::{common_options::ProbeOptions, parse_u64};
+use crate::util::common_options::ProbeOptions;
 use crate::CoreOptions;
 
 #[derive(clap::Subcommand)]
 pub(crate) enum ItmSource {
-    /// Direct ITM data to internal trace memory for extraction.
-    /// Note: Not all targets support trace memory.
+    /// Direct ITM data to Embedded Trace Buffer/FIFO (ETB/ETF) for extraction.
+    ///
+    /// Note: Not all targets support ETF.
+    ///
+    /// The tracing infrastructure allows trace data to be generated on the SWO
+    /// output, which is a UART output to the debug probe. Because of the nature of
+    /// this output, the throughput is inherently limited. Additionally, there is
+    /// very little buffering between ITM packet generation and SWO output, so even
+    /// a small amount of trace data generated in a short time interval can result
+    /// in the trace data overflowing in the SWO data path.
+    ///
+    /// Alternatively there is a wide, source synchronous and fast output through
+    /// the TPIU. But that requires the availability of certain pins and a logic
+    /// analyzer or a capable probe to capture the data.
+    ///
+    /// To work around issues with buffering and throughput of the SWO output and to
+    /// avoid the need for, special hardware, this program provides a mechanism to
+    /// instead capture DWT/ITM trace data within the Embedded Trace Buffer/FIFO
+    /// (ETB/ETF). The ETF is a 4 KiB (usually) FIFO in SRAM that can be used to
+    /// buffer data before draining the trace data to an external source. The ETF
+    /// supports draining data through the debug registers.
+    ///
+    /// This program uses the ETF in "software" mode with no external tracing
+    /// utilities required. Instead, the ETF is used to buffer up a trace which is
+    /// then read out from the device via the debug probe.
     #[clap(name = "memory")]
-    TraceMemory,
+    TraceMemory {
+        /// The core clock frequency in Hz.
+        coreclk: u32,
+    },
 
     /// Direct ITM traffic out the TRACESWO pin for reception by the probe.
     #[clap(name = "swo")]
     Swo {
+        /// The trace duration in ms.
+        duration: u64,
+
         /// The speed of the clock feeding the TPIU/SWO module in Hz.
         clk: u32,
 
@@ -31,62 +60,57 @@ pub struct Cmd {
     #[clap(flatten)]
     common: ProbeOptions,
 
-    #[clap(value_parser = parse_u64)]
-    duration_ms: u64,
-
     #[clap(subcommand)]
     source: ItmSource,
 }
 
 impl Cmd {
     pub fn run(self) -> anyhow::Result<()> {
-        let sink = match self.source {
-            ItmSource::TraceMemory => TraceSink::TraceMemory,
-            ItmSource::Swo { clk, baud } => TraceSink::Swo(SwoConfig::new(clk).set_baud(baud)),
+        let mut session = self.common.simple_attach()?;
+
+        match self.source {
+            ItmSource::TraceMemory { coreclk } => {
+                session.setup_tracing(self.shared.core, TraceSink::TraceMemory)?;
+
+                let trace = session.read_trace_data()?;
+                let decoder =
+                    itm::Decoder::new(trace.as_slice(), itm::DecoderOptions { ignore_eof: false });
+
+                let timestamp_cfg = itm::TimestampsConfiguration {
+                    clock_frequency: coreclk,
+                    lts_prescaler: itm::LocalTimestampOptions::Enabled,
+                    expect_malformed: false,
+                };
+                for packet in decoder.timestamps(timestamp_cfg) {
+                    println!("{packet:?}");
+                }
+            }
+
+            ItmSource::Swo {
+                duration,
+                clk,
+                baud,
+            } => {
+                session.setup_tracing(
+                    self.shared.core,
+                    TraceSink::Swo(SwoConfig::new(clk).set_baud(baud)),
+                )?;
+
+                let decoder = itm::Decoder::new(
+                    session.swo_reader()?,
+                    itm::DecoderOptions { ignore_eof: true },
+                );
+
+                let start = std::time::Instant::now();
+                let stop = std::time::Duration::from_millis(duration);
+                for packet in decoder.singles() {
+                    if start.elapsed() > stop {
+                        return Ok(());
+                    }
+                    println!("{packet:?}");
+                }
+            }
         };
-        itm_trace(
-            &self.shared,
-            &self.common,
-            sink,
-            std::time::Duration::from_millis(self.duration_ms),
-        )
+        Ok(())
     }
-}
-
-/// Trace the application using ITM.
-///
-/// # Args
-/// * `shared_options` - Specifies information about which core to trace.
-/// * `common` - Specifies information about the probe to use for tracing.
-/// * `sink` - Specifies the destination for trace data.
-/// * `duration` - Specifies the duration to trace for.
-/// * `output_file` - An optionally specified filename to write ITM binary data into.
-fn itm_trace(
-    shared_options: &CoreOptions,
-    common: &ProbeOptions,
-    sink: TraceSink,
-    duration: std::time::Duration,
-) -> anyhow::Result<()> {
-    let mut session = common.simple_attach()?;
-
-    session.setup_tracing(shared_options.core, sink)?;
-
-    let decoder = itm::Decoder::new(
-        session.swo_reader()?,
-        itm::DecoderOptions { ignore_eof: true },
-    );
-
-    let start = std::time::Instant::now();
-    let iter = decoder.singles();
-
-    // Decode and print the ITM data for display.
-    for packet in iter {
-        if start.elapsed() > duration {
-            return Ok(());
-        }
-
-        println!("{packet:?}");
-    }
-
-    Ok(())
 }
