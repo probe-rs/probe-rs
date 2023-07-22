@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `cli`: more descriptive error messages for ambigous chips
+- `cli`: When using `memory` as the trace sink for an ITM trace, the trace is now read
+  out through the debug registers (#2651)
 
 ### Fixed
 
