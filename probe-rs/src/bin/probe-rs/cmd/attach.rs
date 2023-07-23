@@ -19,7 +19,7 @@ pub struct Cmd {
 
 impl Cmd {
     pub fn run(self, timestamp_offset: UtcOffset) -> anyhow::Result<()> {
-        let mut session = self.common.simple_attach()?;
+        let (mut session, _probe_options) = self.common.simple_attach()?;
 
         let rtt_config = rtt::RttConfig::default();
 

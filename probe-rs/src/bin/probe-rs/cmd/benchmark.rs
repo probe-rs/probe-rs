@@ -34,7 +34,8 @@ pub struct Cmd {
 
 impl Cmd {
     pub fn run(self) -> anyhow::Result<()> {
-        let probe = self.common.attach_probe()?;
+        let common_options = self.common.load()?;
+        let probe = common_options.attach_probe()?;
 
         let protocol_name = probe
             .protocol()
@@ -43,9 +44,9 @@ impl Cmd {
 
         let protocol_speed = probe.speed_khz() as i32;
 
-        let target = self.common.get_target_selector()?;
+        let target = common_options.get_target_selector()?;
         let probe_name = probe.get_name();
-        let mut session = self.common.attach_session(probe, target)?;
+        let mut session = common_options.attach_session(probe, target)?;
 
         let target_name = session.target().name.clone();
 

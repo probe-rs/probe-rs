@@ -10,7 +10,7 @@ pub struct Cmd {
 
 impl Cmd {
     pub fn run(self) -> anyhow::Result<()> {
-        let mut session = self.common.simple_attach()?;
+        let (mut session, _probe_options) = self.common.simple_attach()?;
 
         erase_all(&mut session, None)?;
 

@@ -8,7 +8,7 @@ use probe_rs::debug::DebugInfo;
 use probe_rs::flashing::{FileDownloadError, Format};
 use time::UtcOffset;
 
-use crate::util::common_options::{CargoOptions, FlashOptions, ProbeOptions};
+use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 use crate::util::flash::run_flash_download;
 use crate::util::rtt;
 use crate::FormatOptions;
@@ -16,7 +16,10 @@ use crate::FormatOptions;
 #[derive(clap::Parser)]
 pub struct Cmd {
     #[clap(flatten)]
-    pub(crate) common: ProbeOptions,
+    pub(crate) probe_options: ProbeOptions,
+
+    #[clap(flatten)]
+    pub(crate) download_options: BinaryDownloadOptions,
 
     /// The path to the ELF file to flash and run
     pub(crate) path: String,
@@ -25,17 +28,13 @@ pub struct Cmd {
     #[clap(long)]
     pub(crate) chip_erase: bool,
 
-    /// Disable double-buffering when downloading flash.  If downloading times out, try this option.
-    #[clap(long = "disable-double-buffering")]
-    pub(crate) disable_double_buffering: bool,
-
     #[clap(flatten)]
     pub(crate) format_options: FormatOptions,
 }
 
 impl Cmd {
     pub fn run(self, timestamp_offset: UtcOffset) -> anyhow::Result<()> {
-        let mut session = self.common.simple_attach()?;
+        let (mut session, probe_options) = self.probe_options.simple_attach()?;
 
         let mut file = match File::open(&self.path) {
             Ok(file) => file,
@@ -55,18 +54,8 @@ impl Cmd {
         run_flash_download(
             &mut session,
             Path::new(&self.path),
-            &FlashOptions {
-                disable_progressbars: false,
-                disable_double_buffering: self.disable_double_buffering,
-                reset_halt: false,
-                log: None,
-                restore_unwritten: false,
-                flash_layout_output_path: None,
-                elf: None,
-                work_dir: None,
-                cargo_options: CargoOptions::default(),
-                probe_options: self.common,
-            },
+            &self.download_options,
+            &probe_options,
             loader,
             self.chip_erase,
         )?;

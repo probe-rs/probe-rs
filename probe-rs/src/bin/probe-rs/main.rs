@@ -172,6 +172,7 @@ fn default_logfile_location() -> Result<PathBuf> {
     Ok(log_path)
 }
 
+/// Returns the cleaned arguments for the handler of the respective end binary (cli, cargo-flash, cargo-embed, etc.).
 fn multicall_check(args: &[OsString], want: &str) -> Option<Vec<OsString>> {
     let argv0 = Path::new(&args[0]);
     if let Some(command) = argv0.file_stem().and_then(|f| f.to_str()) {

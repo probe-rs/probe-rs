@@ -53,9 +53,6 @@ fn main_try(mut args: Vec<OsString>) -> Result<(), OperationError> {
     // Get the current working dir. Make sure we have a proper default if it cannot be determined.
     let work_dir = opt.work_dir.clone().unwrap_or_else(|| PathBuf::from("."));
 
-    // Load the target description, if given in the cli parameters.
-    opt.probe_options.maybe_load_chip_desc()?;
-
     // Change the work dir if the user asked to do so.
     std::env::set_current_dir(&work_dir).map_err(|error| {
         OperationError::FailedToChangeWorkingDirectory {
@@ -94,32 +91,19 @@ fn main_try(mut args: Vec<OsString>) -> Result<(), OperationError> {
         path.display()
     ));
 
-    // Deduce the target to attach to
-    let target_selector = opt.probe_options.get_target_selector()?;
-
     // Attach to specified probe
-    let probe = opt.probe_options.attach_probe()?;
-    {
-        let protocol_speed = probe.speed_khz();
-        if let Some(speed) = opt.probe_options.speed {
-            if protocol_speed < speed {
-                log::warn!(
-                    "Unable to use specified speed of {} kHz, actual speed used is {} kHz",
-                    speed,
-                    protocol_speed
-                );
-            }
-        }
-
-        log::info!("Protocol speed {} kHz", protocol_speed);
-    }
-
-    // Create a new session
-    let mut session = opt.probe_options.attach_session(probe, target_selector)?;
+    let (mut session, probe_options) = opt.probe_options.simple_attach()?;
 
     // Flash the binary
-    let flashloader = opt.probe_options.build_flashloader(&mut session, &path)?;
-    flash::run_flash_download(&mut session, &path, &opt, flashloader, false)?;
+    let flashloader = flash::build_flashloader(&mut session, &path)?;
+    flash::run_flash_download(
+        &mut session,
+        &path,
+        &opt.download_options,
+        &probe_options,
+        flashloader,
+        false,
+    )?;
 
     // Reset target according to CLI options
     {

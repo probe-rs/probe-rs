@@ -38,7 +38,7 @@ use std::{fs::File, path::Path, path::PathBuf};
 use clap;
 use probe_rs::{
     config::{RegistryError, TargetSelector},
-    flashing::{FileDownloadError, FlashError, FlashLoader},
+    flashing::{FileDownloadError, FlashError},
     DebugProbeError, DebugProbeSelector, FakeProbe, Permissions, Probe, Session, Target,
     WireProtocol,
 };
@@ -46,14 +46,6 @@ use probe_rs::{
 /// Common options when flashing a target device.
 #[derive(Debug, clap::Parser)]
 pub struct FlashOptions {
-    #[clap(name = "disable-progressbars", long = "disable-progressbars")]
-    pub disable_progressbars: bool,
-    #[clap(
-        long = "disable-double-buffering",
-        help = "Use this flag to disable double-buffering when downloading flash data.  If download fails during\
-        programming with timeout errors, try this option."
-    )]
-    pub disable_double_buffering: bool,
     #[clap(
         name = "reset-halt",
         long = "reset-halt",
@@ -67,18 +59,6 @@ pub struct FlashOptions {
         Default is `warning`. Possible choices are [error, warning, info, debug, trace]."
     )]
     pub log: Option<log::Level>,
-    #[clap(
-        name = "restore-unwritten",
-        long = "restore-unwritten",
-        help = "Enable this flag to restore all bytes erased in the sector erase but not overwritten by any page."
-    )]
-    pub restore_unwritten: bool,
-    #[clap(
-        name = "filename",
-        long = "flash-layout",
-        help = "Requests the flash builder to output the layout into the given file in SVG format."
-    )]
-    pub flash_layout_output_path: Option<String>,
     #[clap(
         name = "elf file",
         long = "elf",
@@ -97,6 +77,34 @@ pub struct FlashOptions {
     #[clap(flatten)]
     /// Argument relating to probe/chip selection/configuration.
     pub probe_options: ProbeOptions,
+    #[clap(flatten)]
+    /// Argument relating to probe/chip selection/configuration.
+    pub download_options: BinaryDownloadOptions,
+}
+
+/// Common options when flashing a target device.
+#[derive(Debug, clap::Parser)]
+pub struct BinaryDownloadOptions {
+    #[clap(name = "disable-progressbars", long = "disable-progressbars")]
+    pub disable_progressbars: bool,
+    #[clap(
+        long = "disable-double-buffering",
+        help = "Use this flag to disable double-buffering when downloading flash data.  If download fails during\
+        programming with timeout errors, try this option."
+    )]
+    pub disable_double_buffering: bool,
+    #[clap(
+        name = "restore-unwritten",
+        long = "restore-unwritten",
+        help = "Enable this flag to restore all bytes erased in the sector erase but not overwritten by any page."
+    )]
+    pub restore_unwritten: bool,
+    #[clap(
+        name = "filename",
+        long = "flash-layout",
+        help = "Requests the flash builder to output the layout into the given file in SVG format."
+    )]
+    pub flash_layout_output_path: Option<String>,
 }
 
 /// Common options and logic when interfacing with a [Probe].
@@ -138,13 +146,49 @@ pub struct ProbeOptions {
 }
 
 impl ProbeOptions {
+    pub fn load(self) -> Result<LoadedProbeOptions, OperationError> {
+        LoadedProbeOptions::new(self)
+    }
+
+    /// Convenience method that attaches to the specified probe, target,
+    /// and target session.
+    pub fn simple_attach(self) -> Result<(Session, LoadedProbeOptions), OperationError> {
+        let common_options = self.load()?;
+
+        let target = common_options.get_target_selector()?;
+        let probe = common_options.attach_probe()?;
+        let session = common_options.attach_session(probe, target)?;
+
+        Ok((session, common_options))
+    }
+}
+
+/// Common options and logic when interfacing with a [Probe] which already did all pre operation preparation.
+#[derive(Debug)]
+pub struct LoadedProbeOptions(ProbeOptions);
+
+impl LoadedProbeOptions {
+    /// Performs necessary init calls such as loading all chip descriptions
+    /// and returns a newtype that ensures initialization.
+    pub(crate) fn new(probe_options: ProbeOptions) -> Result<Self, OperationError> {
+        let options = Self(probe_options);
+        // Load the target description, if given in the cli parameters.
+        options.maybe_load_chip_desc()?;
+        Ok(options)
+    }
+
     /// Add targets contained in file given by --chip-description-path
     /// to probe-rs registery.
     ///
     /// Note: should be called before [FlashOptions::early_exit] and any other functions in [ProbeOptions].
-    pub fn maybe_load_chip_desc(&self) -> Result<(), OperationError> {
-        if let Some(ref cdp) = self.chip_description_path {
-            let file = File::open(Path::new(cdp))?;
+    fn maybe_load_chip_desc(&self) -> Result<(), OperationError> {
+        if let Some(ref cdp) = self.0.chip_description_path {
+            let file = File::open(Path::new(cdp)).map_err(|error| {
+                OperationError::ChipDescriptionNotFound {
+                    source: error,
+                    path: cdp.clone(),
+                }
+            })?;
             probe_rs::config::add_target_from_yaml(file).map_err(|error| {
                 OperationError::FailedChipDescriptionParsing {
                     source: error,
@@ -158,7 +202,7 @@ impl ProbeOptions {
 
     /// Resolves a resultant target selector from passed [ProbeOptions].
     pub fn get_target_selector(&self) -> Result<TargetSelector, OperationError> {
-        let target = if let Some(chip_name) = &self.chip {
+        let target = if let Some(chip_name) = &self.0.chip {
             let target = probe_rs::config::get_target_by_name(chip_name).map_err(|error| {
                 OperationError::ChipNotFound {
                     source: error,
@@ -177,13 +221,13 @@ impl ProbeOptions {
     /// Attaches to specified probe and configures it.
     pub fn attach_probe(&self) -> Result<Probe, OperationError> {
         let mut probe = {
-            if self.dry_run {
+            if self.0.dry_run {
                 Probe::from_specific_probe(Box::new(FakeProbe::new()));
             }
 
             // If we got a probe selector as an argument, open the probe
             // matching the selector if possible.
-            match &self.probe_selector {
+            match &self.0.probe_selector {
                 Some(selector) => {
                     Probe::open(selector.clone()).map_err(OperationError::FailedToOpenProbe)
                 }
@@ -204,7 +248,7 @@ impl ProbeOptions {
             }
         }?;
 
-        if let Some(protocol) = self.protocol {
+        if let Some(protocol) = self.0.protocol {
             // Select protocol and speed
             probe.select_protocol(protocol).map_err(|error| {
                 OperationError::FailedToSelectProtocol {
@@ -214,13 +258,28 @@ impl ProbeOptions {
             })?;
         }
 
-        if let Some(speed) = self.speed {
+        if let Some(speed) = self.0.speed {
             let _actual_speed = probe.set_speed(speed).map_err(|error| {
                 OperationError::FailedToSelectProtocolSpeed {
                     source: error,
                     speed,
                 }
             })?;
+
+            // Warn the user if they specified a speed the debug probe does not support
+            // and a fitting speed was automatically selected.
+            let protocol_speed = probe.speed_khz();
+            if let Some(speed) = self.0.speed {
+                if protocol_speed < speed {
+                    log::warn!(
+                        "Unable to use specified speed of {} kHz, actual speed used is {} kHz",
+                        speed,
+                        protocol_speed
+                    );
+                }
+            }
+
+            log::info!("Protocol speed {} kHz", protocol_speed);
         }
 
         Ok(probe)
@@ -234,58 +293,43 @@ impl ProbeOptions {
         target: TargetSelector,
     ) -> Result<Session, OperationError> {
         let mut permissions = Permissions::new();
-        if self.allow_erase_all {
+        if self.0.allow_erase_all {
             permissions = permissions.allow_erase_all();
         }
 
-        let session = if self.connect_under_reset {
+        let session = if self.0.connect_under_reset {
             probe.attach_under_reset(target, permissions)
         } else {
             probe.attach(target, permissions)
         }
         .map_err(|error| OperationError::AttachingFailed {
             source: error,
-            connect_under_reset: self.connect_under_reset,
+            connect_under_reset: self.0.connect_under_reset,
         })?;
 
         Ok(session)
     }
 
-    /// Convenience method that attaches to the specified probe, target,
-    /// and target session.
-    pub fn simple_attach(&self) -> Result<Session, OperationError> {
-        let target = self.get_target_selector()?;
-        let probe = self.attach_probe()?;
-        let session = self.attach_session(probe, target)?;
-
-        Ok(session)
+    pub(crate) fn protocol(&self) -> Option<WireProtocol> {
+        self.0.protocol
     }
 
-    /// Builds a new flash loader for the given target and ELF. This
-    /// will check the ELF for validity and check what pages have to be
-    /// flashed etc.
-    pub fn build_flashloader(
-        &self,
-        session: &mut Session,
-        elf_path: &Path,
-    ) -> Result<FlashLoader, OperationError> {
-        let target = session.target();
+    pub(crate) fn connect_under_reset(&self) -> bool {
+        self.0.connect_under_reset
+    }
 
-        // Create the flash loader
-        let mut loader = FlashLoader::new(target.memory_map.to_vec(), target.source().clone());
+    pub(crate) fn dry_run(&self) -> bool {
+        self.0.dry_run
+    }
 
-        // Add data from the ELF.
-        let mut file = File::open(elf_path).map_err(|error| OperationError::FailedToOpenElf {
-            source: error,
-            path: elf_path.to_path_buf(),
-        })?;
+    pub(crate) fn chip(&self) -> Option<String> {
+        self.0.chip.clone()
+    }
+}
 
-        // Try and load the ELF data.
-        loader
-            .load_elf_data(&mut file)
-            .map_err(OperationError::FailedToLoadElfData)?;
-
-        Ok(loader)
+impl AsRef<ProbeOptions> for LoadedProbeOptions {
+    fn as_ref(&self) -> &ProbeOptions {
+        &self.0
     }
 }
 
@@ -425,6 +469,12 @@ pub enum OperationError {
         source: FlashError,
         target: Box<Target>, // Box to reduce enum size
         target_spec: Option<String>,
+        path: PathBuf,
+    },
+    #[error("Failed to open the chip description '{path}'.")]
+    ChipDescriptionNotFound {
+        #[source]
+        source: std::io::Error,
         path: PathBuf,
     },
     #[error("Failed to parse the chip description '{path}'.")]

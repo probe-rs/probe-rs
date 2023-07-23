@@ -78,6 +78,10 @@ pub(crate) fn render_diagnostics(error: OperationError) {
             ],
         ),
         OperationError::FlashingFailed { source, target, target_spec, .. } => generate_flash_error_hints(source, target, target_spec),
+        OperationError::ChipDescriptionNotFound{ .. } => (
+            error.to_string(),
+            vec![],
+        ),
         OperationError::FailedChipDescriptionParsing { .. } => (
             error.to_string(),
             vec![],
