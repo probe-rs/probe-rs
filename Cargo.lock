@@ -2487,6 +2487,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "signal-hook",
  "static_assertions",
  "svd-parser",
  "svg",

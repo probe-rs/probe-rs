@@ -253,7 +253,7 @@ fn main() -> Result<()> {
         Subcommand::Debug(cmd) => cmd.run(),
         Subcommand::Dump(cmd) => cmd.run(),
         Subcommand::Download(cmd) => cmd.run(),
-        Subcommand::Run(cmd) => cmd.run(utc_offset),
+        Subcommand::Run(cmd) => cmd.run(true, utc_offset),
         Subcommand::Attach(cmd) => cmd.run(utc_offset),
         Subcommand::Erase(cmd) => cmd.run(),
         Subcommand::Trace(cmd) => cmd.run(),
