@@ -26,17 +26,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- `cli`: more descriptive error messages for ambigous chips
+- `cli`: more descriptive error messages for ambigous chips (#1671).
+- `cli`: When using `memory` as the trace sink for an ITM trace, the trace is now read
+  out through the debug registers (#1688)
+- `target-gen`: RTT is enabled by default now in the `test` command (#1690).
 
 ### Fixed
 
 - `core`: Added a missing reset catch clear that prevented the CPU from properly starting after flashing RTT from attaching (#1675).
-- `cli`: fixed `--base-address` having no effect
-- `cli`: fixed `--skip` not accepting hexadecimal values
+- `cli`: fixed `--base-address` having no effect (#1664).
+- `cli`: fixed `--skip` not accepting hexadecimal values (#1664).
 
 ### Removed
 
-- cli: removed obsolete `--skip-bytes` (which had no effect), use `--skip` instead
+- cli: removed obsolete `--skip-bytes` (which had no effect), use `--skip` instead (#1664).
 
 ## [0.19.0]
 
