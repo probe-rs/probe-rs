@@ -46,7 +46,7 @@ pub(crate) enum DebugSessionStatus {
 /// The DAP Server will usually be managed automatically by the VSCode client.
 /// The DAP Server can optionally be run from the command line as a "server" process.
 /// - In this case, the management (start and stop) of the server process is the responsibility of the user. e.g.
-///   - `probe-rs-debug --debug --port <IP port number> <other options>` : Uses TCP Sockets to the defined IP port number to service DAP requests.
+///   - `probe-rs dap-server --port <IP port number> <other options>` : Uses TCP Sockets to the defined IP port number to service DAP requests.
 pub struct Debugger {
     config: configuration::SessionConfig,
 
@@ -289,7 +289,8 @@ impl Debugger {
     }
 
     /// `debug_session` is where the primary _debug processing_ for the DAP (Debug Adapter Protocol) adapter happens.
-    /// All requests are interpreted, actions taken, and responses formulated here. This function is self contained and returns nothing.
+    /// All requests are interpreted, actions taken, and responses formulated here.
+    /// This function is self contained and returns only status data to control what happens after the session completes.
     /// The [`DebugAdapter`] takes care of _implementing the DAP Base Protocol_ and _communicating with the DAP client_ and _probe_.
     pub(crate) fn debug_session<P: ProtocolAdapter + 'static>(
         &mut self,
@@ -305,22 +306,16 @@ impl Debugger {
         // before entering the iterative loop that processes requests through the process_request method.
 
         // Initialize request
-        if let Err(initialize_error) = self.handle_initialize(&mut debug_adapter) {
-            tracing::error!(
-                "probe-rs-debugger session failed to initialize: {}",
-                initialize_error
-            );
+        if self.handle_initialize(&mut debug_adapter).is_err() {
+            // The request handler has already reported this error to the user.
             return Ok(DebugSessionStatus::Terminate);
         }
 
         // Process either the Launch or Attach request.
         let (mut debug_adapter, mut session_data) = match self.handle_launch_attach(debug_adapter) {
             Ok((debug_adapter, session_data)) => (debug_adapter, session_data),
-            Err(launch_attach_error) => {
-                tracing::error!(
-                    "probe-rs-debugger session failed to start a new debug session: {}",
-                    launch_attach_error
-                );
+            Err(_) => {
+                // The request handler has already reported this error to the user.
                 return Ok(DebugSessionStatus::Terminate);
             }
         };

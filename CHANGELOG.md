@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `cli`: fixed `--base-address` having no effect (#1664).
 - `cli`: fixed `--skip` not accepting hexadecimal values (#1664).
 - `cli`: all the commands now load the chip description path and provide uniform config arguments (#1691).
+- `dap-server`: The VSCode extension reports all STDERR errors if process initialization fails (#1699).
 
 ### Removed
 
