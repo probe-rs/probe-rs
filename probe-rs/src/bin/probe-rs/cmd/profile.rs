@@ -21,7 +21,6 @@ use addr2line::{
     Context as ObjectContext, LookupResult,
 };
 
-use crate::util::common_options::{CargoOptions, FlashOptions};
 use crate::util::flash::run_flash_download;
 use tracing::info;
 
@@ -74,7 +73,7 @@ impl core::fmt::Display for ProfileMethod {
 
 impl Cmd {
     pub fn run(self) -> anyhow::Result<()> {
-        let mut session = self.run.common.simple_attach()?;
+        let (mut session, probe_options) = self.run.probe_options.simple_attach()?;
 
         let mut file = match File::open(&self.run.path) {
             Ok(file) => file,
@@ -98,18 +97,8 @@ impl Cmd {
             run_flash_download(
                 &mut session,
                 Path::new(&self.run.path),
-                &FlashOptions {
-                    disable_progressbars: false,
-                    disable_double_buffering: self.run.disable_double_buffering,
-                    reset_halt: false,
-                    log: None,
-                    restore_unwritten: false,
-                    flash_layout_output_path: None,
-                    elf: None,
-                    work_dir: None,
-                    cargo_options: CargoOptions::default(),
-                    probe_options: self.run.common,
-                },
+                &self.run.download_options,
+                &probe_options,
                 loader,
                 self.run.chip_erase,
             )?;

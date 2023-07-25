@@ -5,15 +5,15 @@ use anyhow::Context;
 use probe_rs::flashing::FileDownloadError;
 use probe_rs::flashing::Format;
 
+use crate::util::common_options::BinaryDownloadOptions;
 use crate::util::common_options::ProbeOptions;
-use crate::util::common_options::{CargoOptions, FlashOptions};
 use crate::util::flash::run_flash_download;
 use crate::FormatOptions;
 
 #[derive(clap::Parser)]
 pub struct Cmd {
     #[clap(flatten)]
-    common: ProbeOptions,
+    probe_options: ProbeOptions,
 
     /// The path to the file to be downloaded to the flash
     path: String,
@@ -22,13 +22,8 @@ pub struct Cmd {
     #[clap(long)]
     chip_erase: bool,
 
-    /// Whether to disable fancy progress reporting
-    #[clap(long)]
-    disable_progressbars: bool,
-
-    /// Disable double-buffering when downloading flash.  If downloading times out, try this option.
-    #[clap(long = "disable-double-buffering")]
-    disable_double_buffering: bool,
+    #[clap(flatten)]
+    download_options: BinaryDownloadOptions,
 
     #[clap(flatten)]
     format_options: FormatOptions,
@@ -36,7 +31,7 @@ pub struct Cmd {
 
 impl Cmd {
     pub fn run(self) -> anyhow::Result<()> {
-        let mut session = self.common.simple_attach()?;
+        let (mut session, probe_options) = self.probe_options.simple_attach()?;
 
         let mut file = match File::open(&self.path) {
             Ok(file) => file,
@@ -56,18 +51,8 @@ impl Cmd {
         run_flash_download(
             &mut session,
             Path::new(&self.path),
-            &FlashOptions {
-                disable_progressbars: self.disable_progressbars,
-                disable_double_buffering: self.disable_double_buffering,
-                reset_halt: false,
-                log: None,
-                restore_unwritten: false,
-                flash_layout_output_path: None,
-                elf: None,
-                work_dir: None,
-                cargo_options: CargoOptions::default(),
-                probe_options: self.common,
-            },
+            &self.download_options,
+            &probe_options,
             loader,
             self.chip_erase,
         )?;

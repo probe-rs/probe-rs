@@ -1,6 +1,7 @@
-use super::common_options::{FlashOptions, OperationError};
+use super::common_options::{BinaryDownloadOptions, LoadedProbeOptions, OperationError};
 use super::logging;
 
+use std::fs::File;
 use std::time::Duration;
 use std::{path::Path, sync::Arc, time::Instant};
 
@@ -16,20 +17,21 @@ use probe_rs::{
 pub fn run_flash_download(
     session: &mut Session,
     path: &Path,
-    opt: &FlashOptions,
+    download_options: &BinaryDownloadOptions,
+    probe_options: &LoadedProbeOptions,
     loader: FlashLoader,
     do_chip_erase: bool,
 ) -> Result<(), OperationError> {
     // Start timer.
     let instant = Instant::now();
 
-    let mut download_option = DownloadOptions::default();
-    download_option.keep_unwritten_bytes = opt.restore_unwritten;
-    download_option.dry_run = opt.probe_options.dry_run;
-    download_option.do_chip_erase = do_chip_erase;
-    download_option.disable_double_buffering = opt.disable_double_buffering;
+    let mut options = DownloadOptions::default();
+    options.keep_unwritten_bytes = download_options.restore_unwritten;
+    options.dry_run = probe_options.dry_run();
+    options.do_chip_erase = do_chip_erase;
+    options.disable_double_buffering = download_options.disable_double_buffering;
 
-    if !opt.disable_progressbars {
+    if !download_options.disable_progressbars {
         // Create progress bars.
         let multi_progress = MultiProgress::new();
         let style = ProgressStyle::default_bar()
@@ -38,7 +40,7 @@ pub fn run_flash_download(
                     .template("{msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {bytes:>8}/{total_bytes:>8} @ {bytes_per_sec:>10} (eta {eta:3})").expect("Error in progress bar creation. This is a bug, please report it.");
 
         // Create a new progress bar for the fill progress if filling is enabled.
-        let fill_progress = if opt.restore_unwritten {
+        let fill_progress = if download_options.restore_unwritten {
             let fill_progress = multi_progress.add(ProgressBar::new(0));
             fill_progress.set_style(style.clone());
             fill_progress.set_message("     Reading flash  ");
@@ -61,7 +63,7 @@ pub fn run_flash_download(
         program_progress.set_message(" Programming pages  ");
 
         // Register callback to update the progress.
-        let flash_layout_output_path = opt.flash_layout_output_path.clone();
+        let flash_layout_output_path = download_options.flash_layout_output_path.clone();
         let progress = FlashProgress::new(move |event| {
             use ProgressEvent::*;
             match event {
@@ -137,25 +139,25 @@ pub fn run_flash_download(
             }
         });
 
-        download_option.progress = Some(progress);
+        options.progress = Some(progress);
 
-        loader.commit(session, download_option).map_err(|error| {
-            OperationError::FlashingFailed {
+        loader
+            .commit(session, options)
+            .map_err(|error| OperationError::FlashingFailed {
                 source: error,
                 target: Box::new(session.target().clone()),
-                target_spec: opt.probe_options.chip.clone(),
+                target_spec: probe_options.chip(),
                 path: path.to_path_buf(),
-            }
-        })?;
+            })?;
     } else {
-        loader.commit(session, download_option).map_err(|error| {
-            OperationError::FlashingFailed {
+        loader
+            .commit(session, options)
+            .map_err(|error| OperationError::FlashingFailed {
                 source: error,
                 target: Box::new(session.target().clone()),
-                target_spec: opt.probe_options.chip.clone(),
+                target_spec: probe_options.chip(),
                 path: path.to_path_buf(),
-            }
-        })?;
+            })?;
     }
 
     // Stop timer.
@@ -167,4 +169,30 @@ pub fn run_flash_download(
     ));
 
     Ok(())
+}
+
+/// Builds a new flash loader for the given target and ELF. This
+/// will check the ELF for validity and check what pages have to be
+/// flashed etc.
+pub fn build_flashloader(
+    session: &mut Session,
+    elf_path: &Path,
+) -> Result<FlashLoader, OperationError> {
+    let target = session.target();
+
+    // Create the flash loader
+    let mut loader = FlashLoader::new(target.memory_map.to_vec(), target.source().clone());
+
+    // Add data from the ELF.
+    let mut file = File::open(elf_path).map_err(|error| OperationError::FailedToOpenElf {
+        source: error,
+        path: elf_path.to_path_buf(),
+    })?;
+
+    // Try and load the ELF data.
+    loader
+        .load_elf_data(&mut file)
+        .map_err(OperationError::FailedToLoadElfData)?;
+
+    Ok(loader)
 }

@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `core`: Added a missing reset catch clear that prevented the CPU from properly starting after flashing RTT from attaching (#1675).
 - `cli`: fixed `--base-address` having no effect (#1664).
 - `cli`: fixed `--skip` not accepting hexadecimal values (#1664).
+- `cli`: all the commands now load the chip description path and provide uniform config arguments (#1691).
 
 ### Removed
 

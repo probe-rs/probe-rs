@@ -29,9 +29,10 @@ pub struct Cmd {
 
 impl Cmd {
     pub fn run(self) -> anyhow::Result<()> {
-        let mut probe = self.common.attach_probe()?;
+        let probe_options = self.common.load()?;
+        let mut probe = probe_options.attach_probe()?;
 
-        let protocols = if let Some(protocol) = self.common.protocol {
+        let protocols = if let Some(protocol) = probe_options.protocol() {
             vec![protocol]
         } else {
             vec![WireProtocol::Jtag, WireProtocol::Swd]
@@ -42,7 +43,7 @@ impl Cmd {
             println!();
 
             let (new_probe, result) =
-                try_show_info(probe, protocol, self.common.connect_under_reset);
+                try_show_info(probe, protocol, probe_options.connect_under_reset());
 
             probe = new_probe;
 
