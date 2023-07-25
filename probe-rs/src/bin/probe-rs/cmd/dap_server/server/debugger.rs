@@ -46,7 +46,7 @@ pub(crate) enum DebugSessionStatus {
 /// The DAP Server will usually be managed automatically by the VSCode client.
 /// The DAP Server can optionally be run from the command line as a "server" process.
 /// - In this case, the management (start and stop) of the server process is the responsibility of the user. e.g.
-///   - `probe-rs-debug --debug --port <IP port number> <other options>` : Uses TCP Sockets to the defined IP port number to service DAP requests.
+///   - `probe-rs dap-server --port <IP port number> <other options>` : Uses TCP Sockets to the defined IP port number to service DAP requests.
 pub struct Debugger {
     config: configuration::SessionConfig,
 
