@@ -862,7 +862,11 @@ impl DebugInfo {
                                         tracing::trace!("UNWIND: Stack unwind complete - The FP register value unwound to a value of zero.");
                                         break;
                                     }
-                                    let unwind_cfa = add_to_address(reg_val.try_into()?, *offset);
+                                    let unwind_cfa = add_to_address(
+                                        reg_val.try_into()?,
+                                        *offset,
+                                        unwind_registers.get_address_size_bytes(),
+                                    );
                                     tracing::trace!(
                                         "UNWIND - CFA : {:#010x}\tRule: {:?}",
                                         unwind_cfa,
@@ -1344,8 +1348,10 @@ fn unwind_register(
         Offset(address_offset) => {
             // "The previous value of this register is saved at the address CFA+N where CFA is the current CFA value and N is a signed offset"
             if let Some(unwind_cfa) = unwind_cfa {
-                let previous_frame_register_address = add_to_address(unwind_cfa, address_offset);
                 let address_size = callee_frame_registers.get_address_size_bytes();
+                let previous_frame_register_address =
+                    add_to_address(unwind_cfa, address_offset, address_size);
+
                 register_rule_string = format!("CFA {register_rule:?}");
                 let result = match address_size {
                     4 => {
@@ -1446,13 +1452,37 @@ fn unwind_program_counter_register(
     }
 }
 
-/// Helper function to handle adding a signed offset to a u64 address.
-/// The result wraps, which matches previous behavior of using i64 operations and
-/// casting to u32
-fn add_to_address(address: u64, offset: i64) -> u64 {
-    if offset >= 0 {
-        address.wrapping_add(offset as u64)
-    } else {
-        address.wrapping_sub(offset.unsigned_abs())
+/// Helper function to handle adding a signed offset to a [`RegisterValue`] address.
+/// The numerical overflow is handled based on the byte size (`address_size_in_bytes` parameter  )
+/// of the [`RegisterValue`], as opposed to just the datatype of the `address` parameter.
+/// In the case of unwinding stack frame register values, it makes no sense to wrap,
+/// because it will result in invalid register address reads.
+/// Instead, when we detect over/underflow, we return an address value of 0x0,
+/// which will trigger a graceful (and logged) end of a stack unwind.
+fn add_to_address(address: u64, offset: i64, address_size_in_bytes: usize) -> u64 {
+    match address_size_in_bytes {
+        4 => {
+            if offset >= 0 {
+                (address as u32)
+                    .checked_add(offset as u32)
+                    .map(u64::from)
+                    .unwrap_or(0x0)
+            } else {
+                (address as u32).saturating_sub(offset.unsigned_abs() as u32) as u64
+            }
+        }
+        8 => {
+            if offset >= 0 {
+                address.checked_add(offset as u64).unwrap_or(0x0)
+            } else {
+                address.saturating_sub(offset.unsigned_abs())
+            }
+        }
+        _ => {
+            panic!(
+                "UNWIND: Address size {} not supported.  Please report this as a bug.",
+                address_size_in_bytes
+            );
+        }
     }
 }
