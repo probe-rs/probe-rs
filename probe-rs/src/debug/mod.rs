@@ -5,9 +5,6 @@
 //! The `debug` module contains various debug functionality, which can be
 //! used to implement a debugger based on `probe-rs`.
 
-// Bad things happen to the VSCode debug extenison and debug_adapter if we panic at the wrong time.
-#![warn(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
-
 /// Debug information which is parsed from DWARF debugging information.
 pub mod debug_info;
 /// Stepping through a program during debug, at various granularities.
