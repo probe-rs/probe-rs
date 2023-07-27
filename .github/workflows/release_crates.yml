@@ -74,7 +74,7 @@ jobs:
           echo "::endgroup::"
 
           echo "::group:Pushing tags to remote using 'cargo release push'"
-          cargo release push --no-confirm --execute
+          cargo release push --no-confirm --execute --tag-prefix ""
           echo "::endgroup::"
         env:
           SSH_AUTH_SOCK: /tmp/ssh_agent.sock
