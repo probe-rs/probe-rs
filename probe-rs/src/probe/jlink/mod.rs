@@ -678,9 +678,25 @@ impl JTAGAccess for JLink {
 }
 
 impl RawProtocolIo for JLink {
-    fn jtag_io<M, I>(&mut self, tms: M, tdi: I) -> Result<Vec<bool>, DebugProbeError>
+    fn jtag_shift_tms<M>(&mut self, tms: M, tdi: bool) -> Result<(), DebugProbeError>
     where
         M: IntoIterator<Item = bool>,
+    {
+        if self.protocol.unwrap() == crate::WireProtocol::Swd {
+            panic!("Logic error, requested jtag_io when in SWD mode");
+        }
+
+        self.probe_statistics.report_io();
+        let tms_iter: Vec<_> = tms.into_iter().collect();
+        let count = tms_iter.len();
+
+        self.handle
+            .jtag_io(tms_iter, std::iter::repeat(tdi).take(count))?;
+        Ok(())
+    }
+
+    fn jtag_shift_tdi<I>(&mut self, tms: bool, tdi: I) -> Result<(), DebugProbeError>
+    where
         I: IntoIterator<Item = bool>,
     {
         if self.protocol.unwrap() == crate::WireProtocol::Swd {
@@ -688,10 +704,12 @@ impl RawProtocolIo for JLink {
         }
 
         self.probe_statistics.report_io();
+        let tdi_iter: Vec<_> = tdi.into_iter().collect();
+        let count = tdi_iter.len();
 
-        let iter = self.handle.jtag_io(tms, tdi)?;
-
-        Ok(iter.collect())
+        self.handle
+            .jtag_io(std::iter::repeat(tms).take(count), tdi_iter)?;
+        Ok(())
     }
 
     fn swd_io<D, S>(&mut self, dir: D, swdio: S) -> Result<Vec<bool>, DebugProbeError>

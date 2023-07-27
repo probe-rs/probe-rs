@@ -188,7 +188,7 @@ fn perform_jtag_transfer<P: JTAGAccess + RawProtocolIo>(
 
     // Clock out any idle time
     let idle_sequence = iter::repeat(false).take(transfer.idle_cycles_after);
-    probe.jtag_io(idle_sequence.to_owned(), idle_sequence)?;
+    probe.jtag_shift_tdi(false, idle_sequence)?;
 
     let received = parse_jtag_response(&result);
 
@@ -822,9 +822,12 @@ fn parse_swd_response(response: &[bool], direction: TransferDirection) -> Result
 }
 
 pub trait RawProtocolIo {
-    fn jtag_io<M, I>(&mut self, tms: M, tdi: I) -> Result<Vec<bool>, DebugProbeError>
+    fn jtag_shift_tms<M>(&mut self, tms: M, tdi: bool) -> Result<(), DebugProbeError>
     where
-        M: IntoIterator<Item = bool>,
+        M: IntoIterator<Item = bool>;
+
+    fn jtag_shift_tdi<I>(&mut self, tms: bool, tdi: I) -> Result<(), DebugProbeError>
+    where
         I: IntoIterator<Item = bool>;
 
     fn swd_io<D, S>(&mut self, dir: D, swdio: S) -> Result<Vec<bool>, DebugProbeError>
@@ -1304,9 +1307,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         let bit_array = bits.to_le_bytes();
 
         let bit_iter = BitIter::new(&bit_array, bit_len as usize);
-
-        let tms_bits = iter::repeat(tms).take(bit_len as usize);
-        self.jtag_io(tms_bits, bit_iter)?;
+        self.jtag_shift_tdi(tms, bit_iter)?;
 
         Ok(())
     }
@@ -1327,11 +1328,9 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
 
         match protocol {
             Some(crate::WireProtocol::Jtag) => {
-                // TODO: aren't these two arguments reversed?
-                self.jtag_io(
-                    io_sequence.io_bits().to_owned(),
-                    iter::repeat(false).take(bit_len.into()),
-                )?;
+                // Swj sequences should be shifted out to tms, since that is the pin
+                // shared between swd and jtag modes.
+                self.jtag_shift_tms(io_sequence.io_bits().to_owned(), false)?;
             }
             Some(crate::WireProtocol::Swd) => {
                 self.swd_io(
@@ -1616,12 +1615,18 @@ mod test {
     }
 
     impl RawProtocolIo for MockJaylink {
-        fn jtag_io<M, I>(&mut self, _tms: M, _tdi: I) -> Result<Vec<bool>, crate::DebugProbeError>
+        fn jtag_shift_tms<M>(&mut self, _tms: M, _tdi: bool) -> Result<(), DebugProbeError>
         where
             M: IntoIterator<Item = bool>,
+        {
+            Ok(())
+        }
+
+        fn jtag_shift_tdi<I>(&mut self, _tms: bool, _tdi: I) -> Result<(), DebugProbeError>
+        where
             I: IntoIterator<Item = bool>,
         {
-            Ok(Vec::new())
+            Ok(())
         }
 
         fn swd_io<D, S>(&mut self, dir: D, swdio: S) -> Result<Vec<bool>, crate::DebugProbeError>
