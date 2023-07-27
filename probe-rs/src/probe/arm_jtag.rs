@@ -1,4 +1,4 @@
-//! Implementation of the SWD and JTAG protocols for the JLink probe.
+//! Generic implementation of the SWD and JTAG protocols.
 use std::{iter, time::Duration};
 
 use crate::{
@@ -6,12 +6,10 @@ use crate::{
         dp::{Abort, Ctrl, RdBuff, DPIDR},
         ArmError, DapError, DpAddress, Pins, PortType, RawDapAccess, Register,
     },
-    probe::common::BitIter,
+    probe::common::{bits_to_byte, BitIter},
     probe::JTAGAccess,
     DebugProbe, DebugProbeError,
 };
-
-use super::{bits_to_byte, JLink};
 
 #[derive(Debug)]
 pub struct SwdSettings {
@@ -20,16 +18,16 @@ pub struct SwdSettings {
     /// When a WAIT response is received, the number of idle cycles
     /// will be increased automatically, so this number can be quite
     /// low.
-    num_idle_cycles_between_writes: usize,
+    pub num_idle_cycles_between_writes: usize,
 
     /// How often a SWD transfer is retried when a WAIT response
     /// is received.
-    num_retries_after_wait: usize,
+    pub num_retries_after_wait: usize,
 
     /// When a SWD transfer is retried due to a WAIT response, the idle
     /// cycle amount is doubled every time as a backoff. This sets a maximum
     /// cap to the cycle amount.
-    max_retry_idle_cycles_after_wait: usize,
+    pub max_retry_idle_cycles_after_wait: usize,
 
     /// Number of idle cycles inserted before the result
     /// of a write is checked.
@@ -44,13 +42,13 @@ pub struct SwdSettings {
     /// If any writes are still pending, this read will result in a WAIT response.
     /// By adding idle cycles before performing this read, the chance of a
     /// WAIT response is smaller.
-    idle_cycles_before_write_verify: usize,
+    pub idle_cycles_before_write_verify: usize,
 
     /// Number of idle cycles to insert after a transfer
     ///
     /// It is recommended that at least 8 idle cycles are
     /// inserted.
-    idle_cycles_after_transfer: usize,
+    pub idle_cycles_after_transfer: usize,
 }
 
 impl Default for SwdSettings {
@@ -99,19 +97,19 @@ pub struct ProbeStatistics {
 }
 
 impl ProbeStatistics {
-    fn record_extra_transfer(&mut self) {
+    pub fn record_extra_transfer(&mut self) {
         self.num_extra_transfers += 1;
     }
 
-    fn record_transfers(&mut self, num_transfers: usize) {
+    pub fn record_transfers(&mut self, num_transfers: usize) {
         self.num_transfers += num_transfers;
     }
 
-    fn report_io(&mut self) {
+    pub fn report_io(&mut self) {
         self.num_io_calls += 1;
     }
 
-    fn report_swd_response<T>(&mut self, response: &Result<T, DapError>) {
+    pub fn report_swd_response<T>(&mut self, response: &Result<T, DapError>) {
         match response {
             Err(DapError::FaultResponse) => self.num_faults += 1,
             Err(DapError::WaitResponse) => self.num_wait_resp += 1,
@@ -120,7 +118,7 @@ impl ProbeStatistics {
         }
     }
 
-    fn report_line_reset(&mut self) {
+    pub fn report_line_reset(&mut self) {
         self.num_line_resets += 1;
     }
 }
@@ -837,98 +835,45 @@ pub trait RawProtocolIo {
     fn swd_settings(&self) -> &SwdSettings;
 
     fn probe_statistics(&mut self) -> &mut ProbeStatistics;
-
-    /// Try to perform a SWD line reset, followed by a read of the DPIDR register.
-    ///
-    /// Returns Ok if the read of the DPIDR register was succesful, and Err
-    /// otherwise. In case of JLink Errors, the actual error is returned.
-    ///
-    /// If the first line reset fails, it is tried once again, as the target
-    /// might be in the middle of a transfer the first time we try the reset.
-    ///
-    /// See section B4.3.3 in the ADIv5 Specification.
-    fn line_reset(&mut self) -> Result<(), ArmError>;
 }
 
-impl RawProtocolIo for JLink {
-    fn jtag_io<M, I>(&mut self, tms: M, tdi: I) -> Result<Vec<bool>, DebugProbeError>
-    where
-        M: IntoIterator<Item = bool>,
-        I: IntoIterator<Item = bool>,
-    {
-        if self.protocol.unwrap() == crate::WireProtocol::Swd {
-            panic!("Logic error, requested jtag_io when in SWD mode");
-        }
+fn line_reset<P: RawProtocolIo + JTAGAccess + RawDapAccess>(this: &mut P) -> Result<(), ArmError> {
+    tracing::debug!("Performing line reset!");
 
-        self.probe_statistics.report_io();
+    const NUM_RESET_BITS: u8 = 50;
 
-        let iter = self.handle.jtag_io(tms, tdi)?;
+    let idle_cycles = std::cmp::max(1, this.swd_settings().num_idle_cycles_between_writes);
 
-        Ok(iter.collect())
-    }
+    let mut result = Ok(());
 
-    fn swd_io<D, S>(&mut self, dir: D, swdio: S) -> Result<Vec<bool>, DebugProbeError>
-    where
-        D: IntoIterator<Item = bool>,
-        S: IntoIterator<Item = bool>,
-    {
-        if self.protocol.unwrap() == crate::WireProtocol::Jtag {
-            panic!("Logic error, requested swd_io when in JTAG mode");
-        }
+    for _ in 0..2 {
+        this.probe_statistics().report_line_reset();
 
-        self.probe_statistics.report_io();
+        this.swj_sequence(NUM_RESET_BITS, 0x7FFFFFFFFFFFF)?;
 
-        let iter = self.handle.swd_io(dir, swdio)?;
+        // Read DPIDR register
+        //
+        // The `raw_read_register` function cannot be called here, because that function can call `line_reset` again,
+        // resulting in an endless loop.
+        let mut transfers = [DapTransfer::read(PortType::DebugPort, 0)];
 
-        Ok(iter.collect())
-    }
+        perform_transfers(this, &mut transfers, idle_cycles)?;
 
-    fn line_reset(&mut self) -> Result<(), ArmError> {
-        tracing::debug!("Performing line reset!");
-
-        const NUM_RESET_BITS: u8 = 50;
-
-        let idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
-
-        let mut result = Ok(());
-
-        for _ in 0..2 {
-            self.probe_statistics().report_line_reset();
-
-            self.swj_sequence(NUM_RESET_BITS, 0x7FFFFFFFFFFFF)?;
-
-            // Read DPIDR register
-            //
-            // The `raw_read_register` function cannot be called here, because that function can call `line_reset` again,
-            // resulting in an endless loop.
-            let mut transfers = [DapTransfer::read(PortType::DebugPort, 0)];
-
-            perform_transfers(self, &mut transfers, idle_cycles)?;
-
-            match &transfers[0].status {
-                TransferStatus::Ok => return Ok(()),
-                TransferStatus::Pending => {
-                    tracing::debug!("Unexpected pending status in line reset.");
-                    // Transfer will be retried.
-                }
-                TransferStatus::Failed(e) => {
-                    tracing::debug!("Error reading DPIDR register after line reset: {e:?}");
-                    result = Err(ArmError::from(e.clone()));
-                }
+        match &transfers[0].status {
+            TransferStatus::Ok => return Ok(()),
+            TransferStatus::Pending => {
+                tracing::debug!("Unexpected pending status in line reset.");
+                // Transfer will be retried.
+            }
+            TransferStatus::Failed(e) => {
+                tracing::debug!("Error reading DPIDR register after line reset: {e:?}");
+                result = Err(ArmError::from(e.clone()));
             }
         }
-
-        // No acknowledge from the target, even if after line reset
-        result
     }
 
-    fn swd_settings(&self) -> &SwdSettings {
-        &self.swd_settings
-    }
-
-    fn probe_statistics(&mut self) -> &mut ProbeStatistics {
-        &mut self.probe_statistics
-    }
+    // No acknowledge from the target, even if after line reset
+    result
 }
 
 impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for Probe {
@@ -936,7 +881,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         match dp {
             DpAddress::Default => Ok(()), // nop
             DpAddress::Multidrop(_) => Err(DebugProbeError::ProbeSpecific(
-                anyhow::anyhow!("JLink doesn't support multidrop SWD yet").into(),
+                anyhow::anyhow!("No support for multidrop SWD yet").into(),
             )
             .into()),
         }
@@ -1045,7 +990,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                     // Because we clock the SWDCLK line after receving the WAIT response,
                     // the target might be in weird state. If we perform a line reset,
                     // we should be able to recover from this.
-                    self.line_reset()?;
+                    line_reset(self)?;
 
                     // Retry operation again
                     continue;
@@ -1228,7 +1173,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                     // Because we clock the SWDCLK line after receving the WAIT response,
                     // the target might be in weird state. If we perform a line reset,
                     // we should be able to recover from this.
-                    self.line_reset()?;
+                    line_reset(self)?;
 
                     // Retry operation
                     continue;
@@ -1411,7 +1356,7 @@ mod test {
     use std::iter;
 
     use crate::{
-        architecture::arm::{ArmError, PortType, RawDapAccess},
+        architecture::arm::{PortType, RawDapAccess},
         probe::JTAGAccess,
         DebugProbe, DebugProbeError,
     };
@@ -1705,10 +1650,6 @@ mod test {
             self.performed_transfer_count += 1;
 
             Ok(transfer_response)
-        }
-
-        fn line_reset(&mut self) -> Result<(), ArmError> {
-            Ok(())
         }
 
         fn swd_settings(&self) -> &SwdSettings {
@@ -2020,12 +1961,11 @@ mod test {
     /// Test the correct handling of several transfers, with
     /// the appropriate extra reads added as necessary.
     mod transfer_handling {
-        use crate::{
-            architecture::arm::PortType,
-            probe::jlink::arm::{perform_transfers, DapTransfer, TransferStatus},
+        use super::{
+            super::{perform_transfers, DapTransfer, TransferStatus},
+            DapAcknowledge, MockJaylink,
         };
-
-        use super::{DapAcknowledge, MockJaylink};
+        use crate::architecture::arm::PortType;
 
         #[test]
         fn single_dp_register_read() {

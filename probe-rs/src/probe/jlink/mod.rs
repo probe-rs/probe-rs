@@ -8,6 +8,7 @@ use std::time::{Duration, Instant};
 
 use crate::architecture::arm::{ArmError, RawDapAccess};
 use crate::architecture::riscv::communication_interface::RiscvError;
+use crate::probe::common::bits_to_byte;
 use crate::{
     architecture::{
         arm::{
@@ -17,14 +18,11 @@ use crate::{
         riscv::communication_interface::RiscvCommunicationInterface,
     },
     probe::{
+        arm_jtag::{ProbeStatistics, RawProtocolIo, SwdSettings},
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, JTAGAccess, WireProtocol,
     },
     DebugProbeSelector,
 };
-
-use self::arm::{ProbeStatistics, SwdSettings};
-
-mod arm;
 
 const SWO_BUFFER_SIZE: u16 = 128;
 
@@ -679,6 +677,48 @@ impl JTAGAccess for JLink {
     }
 }
 
+impl RawProtocolIo for JLink {
+    fn jtag_io<M, I>(&mut self, tms: M, tdi: I) -> Result<Vec<bool>, DebugProbeError>
+    where
+        M: IntoIterator<Item = bool>,
+        I: IntoIterator<Item = bool>,
+    {
+        if self.protocol.unwrap() == crate::WireProtocol::Swd {
+            panic!("Logic error, requested jtag_io when in SWD mode");
+        }
+
+        self.probe_statistics.report_io();
+
+        let iter = self.handle.jtag_io(tms, tdi)?;
+
+        Ok(iter.collect())
+    }
+
+    fn swd_io<D, S>(&mut self, dir: D, swdio: S) -> Result<Vec<bool>, DebugProbeError>
+    where
+        D: IntoIterator<Item = bool>,
+        S: IntoIterator<Item = bool>,
+    {
+        if self.protocol.unwrap() == crate::WireProtocol::Jtag {
+            panic!("Logic error, requested swd_io when in JTAG mode");
+        }
+
+        self.probe_statistics.report_io();
+
+        let iter = self.handle.swd_io(dir, swdio)?;
+
+        Ok(iter.collect())
+    }
+
+    fn swd_settings(&self) -> &SwdSettings {
+        &self.swd_settings
+    }
+
+    fn probe_statistics(&mut self) -> &mut ProbeStatistics {
+        &mut self.probe_statistics
+    }
+}
+
 impl DapProbe for JLink {}
 
 impl SwoAccess for JLink {
@@ -726,18 +766,6 @@ impl SwoAccess for JLink {
         }
         Ok(bytes)
     }
-}
-
-pub(crate) fn bits_to_byte(bits: impl IntoIterator<Item = bool>) -> u32 {
-    let mut bit_val = 0u32;
-
-    for (index, bit) in bits.into_iter().take(32).enumerate() {
-        if bit {
-            bit_val |= 1 << index;
-        }
-    }
-
-    bit_val
 }
 
 #[tracing::instrument(skip_all)]
