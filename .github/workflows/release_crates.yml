@@ -60,9 +60,21 @@ jobs:
       - name: release to crates.io
         run: |
           git checkout master
+
+          echo "::group:Setup auth for crates.io"
           cargo login ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          echo "::endgroup::"
+
+          echo "::group:Publishing on crates.io using 'cargo release publish'"
           cargo release publish --no-confirm --execute
+          echo "::endgroup::"
+
+          echo "::group:Tagging release using 'cargo release tag'"
           cargo release tag --no-confirm --execute --sign-tag --tag-prefix ""
+          echo "::endgroup::"
+
+          echo "::group:Pushing tags to remote using 'cargo release push'"
           cargo release push --no-confirm --execute
+          echo "::endgroup::"
         env:
           SSH_AUTH_SOCK: /tmp/ssh_agent.sock
