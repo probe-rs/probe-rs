@@ -104,11 +104,11 @@ fn run_loop(
     timestamp_offset: UtcOffset,
     always_print_stacktrace: bool,
 ) -> Result<bool, anyhow::Error> {
-    let exit = Arc::new(AtomicBool::new(false));
-    let sig_id = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
-
     let rtt_config = rtt::RttConfig::default();
     let mut rtta = attach_to_rtt(core, memory_map, path, rtt_config, timestamp_offset);
+
+    let exit = Arc::new(AtomicBool::new(false));
+    let sig_id = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
 
     let mut stdout = std::io::stdout();
     while !exit.load(Ordering::Relaxed) {

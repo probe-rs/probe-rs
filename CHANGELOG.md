@@ -5,6 +5,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `cli`: Allow to interrupt `probe-rs run` during RTT scan (#1705).
+
 ## [0.20.0]
 
 Released 2023-07-19
