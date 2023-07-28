@@ -742,7 +742,7 @@ impl DebugInfo {
                     None
                 }
                 Err(e) => {
-                    tracing::warn!("UNWIND: Error while checking for exception context. Unwinding will stop at the first exception handler. : {}", e);
+                    tracing::warn!("UNWIND: Error while checking for exception context. The stack trace will not include the calling frames. : {}", e);
                     None
                 }
             };

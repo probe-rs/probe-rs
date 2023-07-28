@@ -79,8 +79,8 @@ impl DebugRegisters {
                     },
                 });
             } else {
-                tracing::warn!(
-                    "Unsupported platform register type or size for register: {:?}",
+                tracing::trace!(
+                    "Unwind will use the default rule for this register : {:?}",
                     core_register
                 );
             }
