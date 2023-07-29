@@ -37,6 +37,10 @@ pub struct Cmd {
     #[clap(long)]
     pub(crate) chip_erase: bool,
 
+    /// Suppress filename and line number information from the rtt log
+    #[clap(long)]
+    pub(crate) no_location: bool,
+
     #[clap(flatten)]
     pub(crate) format_options: FormatOptions,
 }
@@ -89,6 +93,7 @@ impl Cmd {
             path,
             timestamp_offset,
             self.always_print_stacktrace,
+            self.no_location,
         )?;
 
         Ok(())
@@ -103,8 +108,15 @@ fn run_loop(
     path: &Path,
     timestamp_offset: UtcOffset,
     always_print_stacktrace: bool,
+    no_location: bool,
 ) -> Result<bool, anyhow::Error> {
-    let rtt_config = rtt::RttConfig::default();
+    let mut rtt_config = rtt::RttConfig::default();
+    rtt_config.channels.push(rtt::RttChannelConfig {
+        channel_number: Some(0),
+        show_location: !no_location,
+        ..Default::default()
+    });
+
     let mut rtta = attach_to_rtt(core, memory_map, path, rtt_config, timestamp_offset);
 
     let exit = Arc::new(AtomicBool::new(false));
