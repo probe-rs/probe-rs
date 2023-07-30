@@ -5,6 +5,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added RA4M1 series target, R7FA4M1AB. (#1706)
+
 ### Changed
 
 - `cli`: Allow to interrupt `probe-rs run` during RTT scan (#1705).
