@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added RA4M1 series target, R7FA4M1AB. (#1706)
+- target-gen: Add new `--test-address` option to the `target-gen test` subcommand. (#1708)
 
 ### Changed
 

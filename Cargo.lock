@@ -3455,6 +3455,7 @@ dependencies = [
  "goblin",
  "indicatif",
  "log",
+ "parse_int",
  "predicates",
  "probe-rs",
  "probe-rs-target",

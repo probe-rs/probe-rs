@@ -4,7 +4,7 @@ use std::path::Path;
 use std::rc::Rc;
 use std::time::Instant;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use colored::Colorize;
 use probe_rs::flashing::erase_all;
 use probe_rs::MemoryInterface;
@@ -12,6 +12,7 @@ use probe_rs::{
     flashing::{erase_sectors, DownloadOptions, FlashLoader, FlashProgress},
     Permissions, Session,
 };
+use probe_rs_target::RawFlashAlgorithm;
 use xshell::{cmd, Shell};
 
 use crate::commands::elf::cmd_elf;
@@ -22,6 +23,7 @@ pub fn cmd_test(
     target_artifact: &Path,
     template_path: &Path,
     definition_export_path: &Path,
+    test_start_sector_address: Option<u64>,
 ) -> Result<()> {
     // Generate the binary
     println!("Generating the YAML file in `{definition_export_path:?}`");
@@ -43,10 +45,6 @@ pub fn cmd_test(
     probe_rs::config::add_target_from_yaml(file)?;
     let mut session =
         probe_rs::Session::auto_attach(ALGORITHM_NAME, Permissions::new().allow_erase_all())?;
-
-    let data_size = probe_rs::config::get_target_by_name(ALGORITHM_NAME)?.flash_algorithms[0]
-        .flash_properties
-        .page_size;
 
     // Register callback to update the progress.
     let t = Rc::new(RefCell::new(Instant::now()));
@@ -85,21 +83,51 @@ pub fn cmd_test(
         }
     });
 
-    let test = "Test".green();
-    let flash_properties = session.target().flash_algorithms[0]
-        .flash_properties
-        .clone();
+    let flash_algorithm = if let Some(test_start_sector_address) = test_start_sector_address {
+        let predicate = |x: &&RawFlashAlgorithm| {
+            x.flash_properties.address_range.start <= test_start_sector_address
+                && test_start_sector_address < x.flash_properties.address_range.end
+        };
+        let error_message = anyhow!("No flash algorithm matching specified address can be found");
+        session
+            .target()
+            .flash_algorithms
+            .iter()
+            .find(predicate)
+            .ok_or(error_message)?
+    } else {
+        &session.target().flash_algorithms[0]
+    };
+    let flash_properties = flash_algorithm.flash_properties.clone();
+    let start_address = flash_properties.address_range.start;
+    let end_address = flash_properties.address_range.end;
+    let data_size = flash_properties.page_size;
     let erased_state = flash_properties.erased_byte_value;
+    let sector_size = flash_properties.sectors[0].size;
 
+    let test_start_sector_address = test_start_sector_address.unwrap_or(start_address);
+    if test_start_sector_address < start_address
+        || test_start_sector_address > start_address + end_address - sector_size * 2
+        || test_start_sector_address % sector_size != 0
+    {
+        return Err(anyhow!(
+            "test_start_sector_address must be sector aligned address pointing flash range"
+        ));
+    }
+    let test_start_sector_index =
+        ((test_start_sector_address - start_address) / sector_size) as usize;
+
+    let test = "Test".green();
     println!("{test}: Erasing sectorwise and writing two pages ...");
-
-    run_flash_erase(&mut session, progress.clone(), false)?;
-    // TODO: The sector used here is not necessarily the sector the flash algorithm targets.
-    // Make this configurable.
-    let mut readback = vec![0; flash_properties.sectors[0].size as usize];
+    run_flash_erase(
+        &mut session,
+        progress.clone(),
+        EraseSectors(test_start_sector_index, 2),
+    )?;
+    let mut readback = vec![0; (sector_size * 2) as usize];
     session
         .core(0)?
-        .read_8(flash_properties.address_range.start, &mut readback)?;
+        .read_8(test_start_sector_address, &mut readback)?;
     assert!(
         !readback.iter().any(|v| *v != erased_state),
         "Not all sectors were erased"
@@ -107,22 +135,20 @@ pub fn cmd_test(
 
     let mut loader = session.target().flash_loader();
     let data = (0..data_size).map(|n| (n % 256) as u8).collect::<Vec<_>>();
-    loader.add_data(flash_properties.address_range.start + 1, &data)?;
+    loader.add_data(test_start_sector_address + 1, &data)?;
     run_flash_download(&mut session, loader, progress.clone(), true)?;
     let mut readback = vec![0; data_size as usize];
     session
         .core(0)?
-        .read_8(flash_properties.address_range.start + 1, &mut readback)?;
+        .read_8(test_start_sector_address + 1, &mut readback)?;
     assert_eq!(readback, data);
 
     println!("{test}: Erasing the entire chip and writing two pages ...");
-    run_flash_erase(&mut session, progress.clone(), true)?;
-    // TODO: The sector used here is not necessarily the sector the flash algorithm targets.
-    // Make this configurable.
-    let mut readback = vec![0; flash_properties.sectors[0].size as usize];
+    run_flash_erase(&mut session, progress.clone(), EraseAll)?;
+    let mut readback = vec![0; (sector_size * 2) as usize];
     session
         .core(0)?
-        .read_8(flash_properties.address_range.start, &mut readback)?;
+        .read_8(test_start_sector_address, &mut readback)?;
     assert!(
         !readback.iter().any(|v| *v != erased_state),
         "Not all sectors were erased"
@@ -130,22 +156,24 @@ pub fn cmd_test(
 
     let mut loader = session.target().flash_loader();
     let data = (0..data_size).map(|n| (n % 256) as u8).collect::<Vec<_>>();
-    loader.add_data(flash_properties.address_range.start + 1, &data)?;
+    loader.add_data(test_start_sector_address + 1, &data)?;
     run_flash_download(&mut session, loader, progress.clone(), true)?;
     let mut readback = vec![0; data_size as usize];
     session
         .core(0)?
-        .read_8(flash_properties.address_range.start + 1, &mut readback)?;
+        .read_8(test_start_sector_address + 1, &mut readback)?;
     assert_eq!(readback, data);
 
     println!("{test}: Erasing sectorwise and writing two pages double buffered ...");
-    run_flash_erase(&mut session, progress.clone(), false)?;
-    // TODO: The sector used here is not necessarily the sector the flash algorithm targets.
-    // Make this configurable.
-    let mut readback = vec![0; flash_properties.sectors[0].size as usize];
+    run_flash_erase(
+        &mut session,
+        progress.clone(),
+        EraseSectors(test_start_sector_index, 2),
+    )?;
+    let mut readback = vec![0; (sector_size * 2) as usize];
     session
         .core(0)?
-        .read_8(flash_properties.address_range.start, &mut readback)?;
+        .read_8(test_start_sector_address, &mut readback)?;
     assert!(
         !readback.iter().any(|v| *v != erased_state),
         "Not all sectors were erased"
@@ -153,12 +181,12 @@ pub fn cmd_test(
 
     let mut loader = session.target().flash_loader();
     let data = (0..data_size).map(|n| (n % 256) as u8).collect::<Vec<_>>();
-    loader.add_data(flash_properties.address_range.start + 1, &data)?;
+    loader.add_data(test_start_sector_address + 1, &data)?;
     run_flash_download(&mut session, loader, progress, false)?;
     let mut readback = vec![0; data_size as usize];
     session
         .core(0)?
-        .read_8(flash_properties.address_range.start + 1, &mut readback)?;
+        .read_8(test_start_sector_address + 1, &mut readback)?;
     assert_eq!(readback, data);
 
     Ok(())
@@ -184,17 +212,22 @@ pub fn run_flash_download(
     Ok(())
 }
 
-/// Erases the entire flash if `do_chip_erase` is true,
-/// Otherwise it erases sectors 0 and 1.
+pub enum EraseType {
+    EraseAll,
+    EraseSectors(usize, usize),
+}
+use EraseType::*;
+
+/// Erases the entire flash or just the sectors specified.
 pub fn run_flash_erase(
     session: &mut Session,
     progress: FlashProgress,
-    do_chip_erase: bool,
+    erase_type: EraseType,
 ) -> Result<()> {
-    if do_chip_erase {
-        erase_all(session, Some(progress))?;
+    if let EraseSectors(start_sector, sectors) = erase_type {
+        erase_sectors(session, Some(progress), start_sector, sectors)?;
     } else {
-        erase_sectors(session, Some(progress), 0, 2)?;
+        erase_all(session, Some(progress))?;
     }
 
     Ok(())
