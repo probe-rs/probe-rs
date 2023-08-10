@@ -29,6 +29,10 @@ pretty_env_logger = "0.5.0"
 thiserror = "1.0"
 anyhow = "1.0.72"
 
+[workspace.metadata.release]
+shared-version = true
+tag-name = "v{{version}}"
+
 # Config for 'cargo dist'
 [workspace.metadata.dist]
 # The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
@@ -44,6 +48,8 @@ targets = [
     "aarch64-apple-darwin",
     "x86_64-pc-windows-msvc",
 ]
+precise-builds = true
+unix-archive = ".tar.xz"
 
 # The profile that 'cargo dist' will build with
 [profile.dist]
