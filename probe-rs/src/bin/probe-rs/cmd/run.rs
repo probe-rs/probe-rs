@@ -83,7 +83,9 @@ impl Cmd {
 
         if run_download {
             core.reset_and_halt(Duration::from_millis(100))?;
-            core.enable_vector_catch(VectorCatchCondition::All)?;
+            if let Err(e) = core.enable_vector_catch(VectorCatchCondition::All) {
+                tracing::error!("Failed to enable_vector_catch: {:?}", e);
+            }
             core.run()?;
         }
 

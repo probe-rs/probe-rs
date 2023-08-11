@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `cli`: Allow to interrupt `probe-rs run` during RTT scan (#1705).
-
+- `cli`: Ignore errors from `enable_vector_catch` (#1714).
 ## [0.20.0]
 
 Released 2023-07-19
