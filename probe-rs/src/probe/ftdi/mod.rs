@@ -61,15 +61,15 @@ impl JtagAdapter {
     pub fn attach(&mut self) -> Result<(), ftdi::Error> {
         self.device.usb_reset()?;
         self.device.set_latency_timer(1)?;
-        self.device.set_bitmode(0x0b, ftdi::BitMode::Mpsse)?;
+        self.device.set_bitmode(0x8b, ftdi::BitMode::Mpsse)?;
         self.device.usb_purge_buffers()?;
 
         let mut junk = vec![];
         let _ = self.device.read_to_end(&mut junk);
 
         // Minimal values, may not work with all probes
-        let output: u16 = 0x0008;
-        let direction: u16 = 0x000b;
+        let output: u16 = 0x0088;
+        let direction: u16 = 0x008b;
         self.device
             .write_all(&[0x80, output as u8, direction as u8])?;
         self.device
@@ -303,7 +303,12 @@ impl JtagAdapter {
                     ir |= (byte as u32) << irbits;
                     irbits += 8;
                 }
-                if ir & 0b11 == 0b01 {
+                if target.idcode == 0x23727093 {
+                    ir >>= 6;
+                    irbits -= 6;
+                    tracing::debug!("tap {} irlen: 6", i);
+                    target.irlen = 6;
+                } else if ir & 0b11 == 0b01 {
                     ir &= !1;
                     let irlen = ir.trailing_zeros();
                     ir >>= irlen;
@@ -497,6 +502,7 @@ impl DebugProbe for FtdiProbe {
         } else {
             let known_idcodes = [
                 0x1000563d, // GD32VF103
+                0x4ba00477, // Zynq 7020
             ];
             let idcode = taps
                 .iter()
