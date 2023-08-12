@@ -1,3 +1,5 @@
+use crate::architecture::arm::communication_interface::DapProbe;
+use crate::architecture::arm::ArmCommunicationInterface;
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::{
     arm::communication_interface::UninitializedArmProbe,
@@ -20,6 +22,7 @@ mod commands;
 
 use self::commands::{JtagCommand, WriteRegisterCommand};
 
+use super::arm_jtag::{ProbeStatistics, RawProtocolIo, SwdSettings};
 use super::{BatchExecutionError, CommandResult};
 
 #[derive(Debug)]
@@ -420,6 +423,8 @@ pub struct FtdiProbe {
     adapter: JtagAdapter,
     speed_khz: u32,
     idle_cycles: u8,
+    probe_statistics: ProbeStatistics,
+    swd_settings: SwdSettings,
 }
 
 impl DebugProbe for FtdiProbe {
@@ -449,6 +454,8 @@ impl DebugProbe for FtdiProbe {
             adapter,
             speed_khz: 0,
             idle_cycles: 0,
+            probe_statistics: ProbeStatistics::default(),
+            swd_settings: SwdSettings::default(),
         };
         tracing::debug!("opened probe: {:?}", probe);
         Ok(Box::new(probe))
@@ -559,7 +566,120 @@ impl DebugProbe for FtdiProbe {
         self: Box<Self>,
     ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
     {
-        todo!()
+        let uninitialized_interface = ArmCommunicationInterface::new(self, true);
+
+        Ok(Box::new(uninitialized_interface))
+    }
+}
+
+impl DapProbe for FtdiProbe {}
+
+impl RawProtocolIo for FtdiProbe {
+    fn jtag_shift_tms<M>(&mut self, tms: M, tdi: bool) -> Result<(), DebugProbeError>
+    where
+        M: IntoIterator<Item = bool>,
+    {
+        self.probe_statistics.report_io();
+
+        let mut tms = tms.into_iter();
+        let tdi_bits = if tdi { 0 } else { 0x80 };
+
+        loop {
+            let mut count = 0;
+            let mut bits = 0;
+            while let Some(bit) = tms.next() {
+                if bit {
+                    bits |= 1 << count;
+                }
+                count += 1;
+
+                if count >= 7 {
+                    break;
+                }
+            }
+            if count == 0 {
+                break;
+            }
+            self.adapter
+                .device
+                .write_all(&[0x4b, count - 1, tdi_bits | bits])
+                .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))?;
+        }
+
+        Ok(())
+    }
+
+    fn jtag_shift_tdi<I>(&mut self, tms: bool, tdi: I) -> Result<(), DebugProbeError>
+    where
+        I: IntoIterator<Item = bool>,
+    {
+        self.probe_statistics.report_io();
+
+        let mut tdi = tdi.into_iter();
+        // Handle first bit separately to set tms
+        let Some(first_tdi) = tdi.next() else {
+            return Ok(());
+        };
+        let first_bits = match (first_tdi, tms) {
+            (false, false) => 0x00,
+            (true, false) => 0x80,
+            (false, true) => 0x01,
+            (true, true) => 0x81,
+        };
+        self.adapter
+            .device
+            .write_all(&[0x4b, 0, first_bits])
+            .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))?;
+
+        let mut bulk = vec![];
+        let mut last_byte = 0;
+        let mut last_count = 0;
+        while let Some(bit) = tdi.next() {
+            if last_count == 8 {
+                bulk.push(last_byte);
+                last_count = 0;
+                last_byte = 0;
+            }
+            if bit {
+                last_byte <<= 1 << last_count;
+            }
+            last_count += 1;
+        }
+
+        if bulk.len() > 0 {
+            let count = bulk.len() - 1;
+            assert!(count <= u16::MAX as usize);
+            let mut command = vec![0x19, (count & 0xff) as u8, ((count >> 8) & 0xff) as u8];
+            command.append(&mut bulk);
+            self.adapter
+                .device
+                .write_all(&command)
+                .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))?;
+        }
+        if last_count != 0 {
+            self.adapter
+                .device
+                .write_all(&[0x1b, last_count - 1, last_byte])
+                .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))?;
+        }
+
+        Ok(())
+    }
+
+    fn swd_io<D, S>(&mut self, _dir: D, _swdio: S) -> Result<Vec<bool>, DebugProbeError>
+    where
+        D: IntoIterator<Item = bool>,
+        S: IntoIterator<Item = bool>,
+    {
+        panic!("SWD not supported");
+    }
+
+    fn swd_settings(&self) -> &super::arm_jtag::SwdSettings {
+        &self.swd_settings
+    }
+
+    fn probe_statistics(&mut self) -> &mut super::arm_jtag::ProbeStatistics {
+        &mut self.probe_statistics
     }
 }
 
