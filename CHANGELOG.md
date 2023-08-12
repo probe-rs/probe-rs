@@ -53,6 +53,7 @@ Released 2023-07-19
 - `cli`: all the commands now load the chip description path and provide uniform config arguments (#1691).
 - `dap-server`: The VSCode extension reports all STDERR errors if process initialization fails (#1699).
 - `debug` : Consider `RegisterValue` byte size when doing arithmetic on register addresses. (#1701)
+- FTDI probe: Fixed dr_pre bits not being handled correctly during register operations.
 
 ### Removed
 
