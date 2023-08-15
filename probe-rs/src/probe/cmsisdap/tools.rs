@@ -128,7 +128,7 @@ fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> 
     let prod_str = device.product_string().unwrap_or("");
     let path = device.path().to_str().unwrap_or("");
     if is_cmsis_dap(prod_str) || is_cmsis_dap(path) {
-        tracing::trace!("CMSIS_DAP device with USB path: {:?}", device.path());
+        tracing::trace!("CMSIS-DAP device with USB path: {:?}", device.path());
         tracing::trace!("                product_string: {:?}", prod_str);
         tracing::trace!(
             "                     interface: {}",
