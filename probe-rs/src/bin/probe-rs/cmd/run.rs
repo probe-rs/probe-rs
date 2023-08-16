@@ -18,6 +18,8 @@ use crate::util::flash::run_flash_download;
 use crate::util::rtt::{self, RttConfig};
 use crate::FormatOptions;
 
+const RTT_RETRIES: usize = 10;
+
 #[derive(clap::Parser)]
 pub struct Cmd {
     #[clap(flatten)]
@@ -249,11 +251,15 @@ fn attach_to_rtt(
     rtt_config: RttConfig,
     timestamp_offset: UtcOffset,
 ) -> Option<rtt::RttActiveTarget> {
-    match rtt::attach_to_rtt(core, memory_map, path, &rtt_config, timestamp_offset) {
-        Ok(target_rtt) => Some(target_rtt),
-        Err(error) => {
-            log::error!("{:?} Continuing without RTT... ", error);
-            None
+    for _ in 0..RTT_RETRIES {
+        match rtt::attach_to_rtt(core, memory_map, path, &rtt_config, timestamp_offset) {
+            Ok(target_rtt) => return Some(target_rtt),
+            Err(error) => {
+                log::debug!("{:?} RTT attach error", error);
+            }
         }
+        std::thread::sleep(std::time::Duration::from_millis(100));
     }
+    log::error!("Failed to attach to RTT continuing...");
+    None
 }
