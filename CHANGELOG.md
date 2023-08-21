@@ -212,6 +212,8 @@ Released 2023-10-04
 - Support for vector catch in Armv8-M targets (#1709)
 - Add log rotation to stop disks from filling. Currently a maximum of 20 logs is kept. (#1780)
 - Allow to customize the defmt log format with `--log-format`. (#1788)
+- Support for Texas Instruments cc13xx_cc26xx devices (#1729)
+  - Flash algorithm not yet supported
 
 ### Changed
 
