@@ -278,7 +278,7 @@ impl RttActiveChannel {
                                             match stream_decoder.decode() {
                                                 Ok(frame) => {
                                                     let loc = locs.as_ref().and_then(|locs| locs.get(&frame.index()) );
-                                                    writeln!(formatted_data, "{}", frame.display(false)).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
+                                                    writeln!(formatted_data, "{}", frame.display(true)).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
                                                     if self.show_location {
                                                         if let Some(loc) = loc {
                                                             let relpath = if let Ok(relpath) =
