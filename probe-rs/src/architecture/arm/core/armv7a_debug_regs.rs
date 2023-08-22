@@ -5,7 +5,7 @@ use crate::{core::BreakpointCause, memory_mapped_bitfield_register, HaltReason};
 memory_mapped_bitfield_register! {
     /// DBGDSCR - Debug Status and Control Registers
     pub struct Dbgdscr(u32);
-    34, "DBGDSCR",
+    0x088, "DBGDSCR",
     impl From;
 
     /// DBGDTRRX register full. The possible values of this bit are:
@@ -245,7 +245,7 @@ impl Dbgdscr {
 memory_mapped_bitfield_register! {
     /// DBGDIDR - Debug ID Register
     pub struct Dbgdidr(u32);
-    0, "DBGDIDR",
+    0x000, "DBGDIDR",
     impl From;
 
     /// The number of watchpoints implemented. The number of implemented watchpoints is one more than the value of this field.
@@ -299,7 +299,7 @@ memory_mapped_bitfield_register! {
 memory_mapped_bitfield_register! {
     /// DBGDRCR - Debug Run Control Register
     pub struct Dbgdrcr(u32);
-    36, "DBGDRCR",
+    0x090, "DBGDRCR",
     impl From;
 
     /// Cancel Bus Requests Request
@@ -321,7 +321,7 @@ memory_mapped_bitfield_register! {
 memory_mapped_bitfield_register! {
     /// DBGBVR - Breakpoint Value Register
     pub struct Dbgbvr(u32);
-    64, "DBGBVR",
+    0x100, "DBGBVR",
     impl From;
 
     /// Breakpoint address
@@ -331,7 +331,7 @@ memory_mapped_bitfield_register! {
 memory_mapped_bitfield_register! {
     /// DBGBCR - Breakpoint Control Register
     pub struct Dbgbcr(u32);
-    80, "DBGBCR",
+    0x140, "DBGBCR",
     impl From;
 
     /// Address range mask. Whether masking is supported is implementation defined.
@@ -362,7 +362,7 @@ memory_mapped_bitfield_register! {
 memory_mapped_bitfield_register! {
     /// DBGLAR - Lock Access Register
     pub struct Dbglar(u32);
-    1004, "DBGLAR",
+    0xFB0, "DBGLAR",
     impl From;
 
     /// Lock value
@@ -373,7 +373,7 @@ memory_mapped_bitfield_register! {
 memory_mapped_bitfield_register! {
     /// DBGDSCCR - State Cache Control Register
     pub struct Dbgdsccr(u32);
-    10, "DBGDSCCR",
+    0x028, "DBGDSCCR",
     impl From;
 
     /// Force Write-Through
@@ -389,7 +389,7 @@ memory_mapped_bitfield_register! {
 memory_mapped_bitfield_register! {
     /// DBGDSMCR - Debug State MMU Control Register
     pub struct Dbgdsmcr(u32);
-    11, "DBGDSMCR",
+    0x02C, "DBGDSMCR",
     impl From;
 
     /// Instruction TLB matching bit
@@ -408,7 +408,7 @@ memory_mapped_bitfield_register! {
 memory_mapped_bitfield_register! {
     /// DBGITR - Instruction Transfer Register
     pub struct Dbgitr(u32);
-    33, "DBGITR",
+    0x084, "DBGITR",
     impl From;
 
     /// Instruction value
@@ -418,7 +418,7 @@ memory_mapped_bitfield_register! {
 memory_mapped_bitfield_register! {
     /// DBGDTRTX - Target to Host data transfer register
     pub struct Dbgdtrtx(u32);
-    35, "DBGDTRTX",
+    0x08C, "DBGDTRTX",
     impl From;
 
     /// Value
@@ -428,7 +428,7 @@ memory_mapped_bitfield_register! {
 memory_mapped_bitfield_register! {
     /// DBGDTRRX - Host to Target data transfer register
     pub struct Dbgdtrrx(u32);
-    32, "DBGDTRRX",
+    0x080, "DBGDTRRX",
     impl From;
 
     /// Value
@@ -438,7 +438,7 @@ memory_mapped_bitfield_register! {
 memory_mapped_bitfield_register! {
     /// DBGPRCR - Powerdown and Reset Control Register
     pub struct Dbgprcr(u32);
-    196, "DBGPRCR",
+    0x310, "DBGPRCR",
     impl From;
 
     /// Core powerup request
@@ -457,7 +457,7 @@ memory_mapped_bitfield_register! {
 memory_mapped_bitfield_register! {
     /// DBGPRSR - Powerdown and Reset Status Register
     pub struct Dbgprsr(u32);
-    197, "DBGPRSR",
+    0x314, "DBGPRSR",
     impl From;
 
     /// OS Double Lock Status
