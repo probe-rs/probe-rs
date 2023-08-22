@@ -30,6 +30,7 @@ pub fn run_flash_download(
     options.dry_run = probe_options.dry_run();
     options.do_chip_erase = do_chip_erase;
     options.disable_double_buffering = download_options.disable_double_buffering;
+    options.verify = download_options.verify;
 
     if !download_options.disable_progressbars {
         // Create progress bars.
