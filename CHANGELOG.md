@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added --no-location option to the CLI run command, which suppresses the filename and line number
   information from the rtt log (#1704)
 - target-gen: Add new `--test-address` option to the `target-gen test` subcommand. (#1708)
+- `cli`: Add `--verify` flag to `download`, `flash` and `run`
 
 ### Changed
 
