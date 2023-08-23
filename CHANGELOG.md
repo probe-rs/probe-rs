@@ -21,11 +21,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `cli`: Allow to interrupt `probe-rs run` during RTT scan (#1705).
 - `cli`: Ignore errors from `enable_vector_catch` (#1714).
 - `cli`: Retry RTT attach before continuing (#1722).
-- `cli`: Clean clap attributes (#xxxx)
+- `cli`: Clean clap attributes (#1730)
 - `target-gen`: (#1745)
   - Memory regions in target.yaml are now sorted with lowest address first.
   - Use `.pdsc` flash algorithm `RAMstart` field to calculate `load_address` for target yaml.
 - Target definitions can now constrain the RTT automatic scanning ranges to just a subset of all available RAM, to support targets that have large amounts of RAM that would take a long time to scan. (#1738, #1749)
+- `cli`: Output `defmt` logs as colored (#xxxx)
 
 ## [0.20.0]
 
