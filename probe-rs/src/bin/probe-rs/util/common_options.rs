@@ -105,6 +105,9 @@ pub struct BinaryDownloadOptions {
         help = "Requests the flash builder to output the layout into the given file in SVG format."
     )]
     pub flash_layout_output_path: Option<String>,
+    /// After flashing, read back all the flashed data to verify it has been written correctly.
+    #[clap(long)]
+    pub verify: bool,
 }
 
 /// Common options and logic when interfacing with a [Probe].
