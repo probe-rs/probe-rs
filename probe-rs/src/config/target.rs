@@ -1,6 +1,10 @@
 use probe_rs_target::{Architecture, ChipFamily, MemoryRange};
 
 use super::{Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource};
+
+use super::{
+    Core, MemoryRegion, RawFlashAlgorithm, RegistryError, ScanChain, TargetDescriptionSource,
+};
 use crate::architecture::arm::{
     ap::MemoryAp,
     sequences::{
@@ -45,6 +49,8 @@ pub struct Target {
     /// Each region must be enclosed in exactly one RAM region from
     /// `memory_map`.
     pub rtt_scan_regions: Vec<std::ops::Range<u64>>,
+    /// Description of scan chain
+    pub scan_chain: Option<Vec<ScanChain>>,
 }
 
 impl std::fmt::Debug for Target {
@@ -215,6 +221,7 @@ impl Target {
             memory_map: chip.memory_map.clone(),
             debug_sequence,
             rtt_scan_regions,
+            scan_chain: chip.scan_chain.clone(),
         })
     }
 

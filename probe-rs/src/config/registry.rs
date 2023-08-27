@@ -109,6 +109,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 memory_map: vec![],
                 flash_algorithms: vec![],
                 rtt_scan_ranges: None,
+                scan_chain: Some(vec![]),
             }],
             flash_algorithms: vec![],
             source: TargetDescriptionSource::Generic,
@@ -381,6 +382,9 @@ fn match_name_prefix(pattern: &str, name: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs::File;
+    use probe_rs_target::ScanChain;
+    type TestResult = Result<(), RegistryError>;
 
     #[test]
     fn try_fetch_not_unique() {
@@ -443,5 +447,54 @@ mod tests {
             .map(|family| family.validate())
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
+    }
+
+    #[test]
+    fn add_targets_with_and_without_scanchain() -> TestResult {
+        let file = File::open("tests/scan_chain_test.yaml")?;
+        add_target_from_yaml(file)?;
+
+        // Check that the scan chain can read from a target correctly
+        let mut target = get_target_by_name("FULL_SCAN_CHAIN").unwrap();
+        let scan_chain = target.scan_chain.unwrap();
+        for device in scan_chain {
+            match device {
+                ScanChain::Dap(ref dap) => {
+                    assert_eq!(dap.name, Some("core0".to_string()));
+                    assert_eq!(dap.dap_type, Some("armv6m".to_string()));
+                    assert_eq!(dap.ir_len, Some(4));
+                    assert_eq!(dap.protocols, Some(vec!["jtag".to_string() ,"swd".to_string()]));
+                }
+                ScanChain::Device(ref device) => {
+                    assert_eq!(device.name, Some("ICEPICK".to_string()));
+                    assert_eq!(device.ir_len, Some(6));
+                }
+            }
+        }
+
+        // Now check that a device without a scan chain is read correctly
+        target = get_target_by_name("NO_SCAN_CHAIN").unwrap();
+        assert_eq!(target.scan_chain, None);
+
+        // Check a device with a minimal scan chain
+        target = get_target_by_name("PARTIAL_SCAN_CHAIN").unwrap();
+        let scan_chain = target.scan_chain.unwrap();
+        for device in scan_chain {
+            match device {
+                ScanChain::Dap(ref dap) => {
+                    assert_eq!(dap.name, None);
+                    assert_eq!(dap.dap_type, None);
+                    assert_eq!(dap.ir_len, Some(4));
+                    assert_eq!(dap.protocols, None);
+                }
+                ScanChain::Device(ref device) => {
+                    assert_eq!(device.name, None);
+                    assert_eq!(device.ir_len, Some(6));
+                }
+            }
+        }
+
+
+        Ok(())
     }
 }

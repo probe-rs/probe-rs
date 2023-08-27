@@ -30,6 +30,7 @@ use crate::{
     Permissions,
 };
 use jlink::list_jlink_devices;
+use probe_rs_target::ScanChain;
 use std::{convert::TryFrom, fmt};
 
 /// Used to log warnings when the measured target voltage is

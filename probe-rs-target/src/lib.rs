@@ -18,7 +18,10 @@ mod flash_properties;
 mod memory;
 pub(crate) mod serialize;
 
-pub use chip::{ArmCoreAccessOptions, Chip, Core, CoreAccessOptions, RiscvCoreAccessOptions};
+pub use chip::{
+    ArmCoreAccessOptions, Chip, Core, CoreAccessOptions, RiscvCoreAccessOptions, ScanChain,
+    ScanChainDap, ScanChainDevice,
+};
 pub use chip_family::{
     Architecture, ChipFamily, CoreType, InstructionSet, TargetDescriptionSource,
 };
