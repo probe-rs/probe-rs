@@ -4,39 +4,13 @@ use serde::{Deserialize, Serialize};
 
 /// Represents a DAP scan chain element.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct ScanChainDap {
+pub struct ScanChainElement {
     /// Unique name of the DAP
     pub name: Option<String>,
-    /// Specifies the type of the DAP (e.g. ARMCS-DP)
-    pub dap_type: Option<String>,
     /// Specifies the IR length of the DAP (default value: 4).
     pub ir_len: Option<u8>,
-    /// List of protocols via which the DAP can be use. Possible values are SWD, JTAG, and cJTAG.
-    pub protocols: Option<Vec<String>>,
-    /// Specifies the SW-DPv2 TARGETSEL register value that selects this DAP in a serial-wire debug multi-drop system
-    pub targetsel: Option<u8>,
 }
 
-/// Represents a non DAP device in the scan chain. This can be other TAPs.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct ScanChainDevice {
-    /// Unique name of the device
-    pub name: Option<String>,
-    /// Specifies the type of the device (e.g. ARMCS-DP)
-    pub device_type: Option<String>,
-    /// Specifies the IR length of the device (default value: 4).
-    pub ir_len: Option<u8>,
-}
-
-/// Declares the type of a scan chain as defined by CMSIS-Pack SDF
-/// ref: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/sdf_pg.html#sdf_element_scanchain
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum ScanChain {
-    /// Scan chain element is a DAP
-    Dap(ScanChainDap),
-    /// Scan chain element is another JTAG device such as other TAPs
-    Device(ScanChainDevice),
-}
 /// A single chip variant.
 ///
 /// This describes an exact chip variant, including the cores, flash and memory size. For example,
@@ -81,9 +55,9 @@ pub struct Chip {
     pub rtt_scan_ranges: Option<Vec<std::ops::Range<u64>>>,
     /// Describes the scan chain
     ///
-    /// ref: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/sdf_pg.html#sdf_element_scanchain
+    /// ref: `<https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/sdf_pg.html#sdf_element_scanchain>`
     #[serde(default)]
-    pub scan_chain: Option<Vec<ScanChain>>,
+    pub scan_chain: Option<Vec<ScanChainElement>>,
 }
 
 impl Chip {
@@ -151,3 +125,16 @@ pub struct ArmCoreAccessOptions {
 /// The data required to access a Risc-V core
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RiscvCoreAccessOptions {}
+
+/// Helper function that interates the scan chain and returns a vector of all of
+/// the ir_lengths of the scan chain elements.
+/// If an element does not contain an ir_length, the default value of 4 is used.
+/// The first element of the vector is the first element of the scan chain.
+pub fn get_ir_lengths(scan_chain: &Vec<ScanChainElement>) -> Vec<u8> {
+    let mut ir_lengths = Vec::new();
+    for element in scan_chain {
+        let ir_len = element.ir_len.unwrap_or(4);
+        ir_lengths.push(ir_len);
+    }
+    ir_lengths
+}

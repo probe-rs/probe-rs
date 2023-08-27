@@ -3,7 +3,7 @@ use crate::architecture::{
     arm::communication_interface::UninitializedArmProbe,
     riscv::communication_interface::RiscvCommunicationInterface,
 };
-use crate::probe::{JTAGAccess, ProbeCreationError};
+use crate::probe::{JTAGAccess, ProbeCreationError, ScanChainElement};
 use crate::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, WireProtocol,
 };
@@ -421,6 +421,7 @@ pub struct FtdiProbe {
     adapter: JtagAdapter,
     speed_khz: u32,
     idle_cycles: u8,
+    scan_chain: Option<Vec<ScanChainElement>>,
 }
 
 impl DebugProbe for FtdiProbe {
@@ -450,6 +451,7 @@ impl DebugProbe for FtdiProbe {
             adapter,
             speed_khz: 0,
             idle_cycles: 0,
+            scan_chain: None,
         };
         tracing::debug!("opened probe: {:?}", probe);
         Ok(Box::new(probe))
@@ -467,6 +469,18 @@ impl DebugProbe for FtdiProbe {
         self.speed_khz = speed_khz;
         // TODO
         Ok(speed_khz)
+    }
+
+    fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
+        // A scan chain only makes sense in JTAG mode. Quit early if a different protocol is used.
+        if self.active_protocol() != Some(WireProtocol::Jtag) {
+            return Err(DebugProbeError::CommandNotSupportedByProbe(
+                "Setting Scan Chain is only supported in JTAG mode",
+            ));
+        }
+        tracing::info!("Setting scan chain to {:?}", scan_chain);
+        self.scan_chain = Some(scan_chain);
+        Ok(())
     }
 
     fn attach(&mut self) -> Result<(), DebugProbeError> {

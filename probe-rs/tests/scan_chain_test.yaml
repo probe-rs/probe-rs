@@ -1,20 +1,13 @@
+---
 name: TEMP_FAM
 variants:
   - name: FULL_SCAN_CHAIN
     # https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/sdf_pg.html#sdf_element_scanchain
     scan_chain:
-      - !Dap
-          name: core0
-          dap_type: armv6m
-          ir_len: 4
-          protocols: 
-          - jtag
-          - swd
-          targetsel:
-      - !Device
-          name: ICEPICK
-          device_type: Other
-          ir_len: 6
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
     cores:
       - name: core0
         type: armv6m
@@ -49,10 +42,8 @@ variants:
   - name: PARTIAL_SCAN_CHAIN
     # https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/sdf_pg.html#sdf_element_scanchain
     scan_chain:
-      - !Dap
-          ir_len: 4
-      - !Device
-          ir_len: 6
+      - ir_len: 4
+      - ir_len: 6
     cores:
       - name: core0
         type: armv6m
