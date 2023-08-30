@@ -199,7 +199,7 @@ mod test {
         let one = [true, true, true, true, true, true, true, true, true];
         let two = [true, true, true, true, true, true, true, true, true];
 
-        let bits = one.into_iter().chain(two.into_iter());
+        let bits = one.into_iter().chain(two);
 
         let s = bits
             .clone()

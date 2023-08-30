@@ -1881,9 +1881,9 @@ pub fn get_arguments<T: DeserializeOwned, P: ProtocolAdapter>(
     let Some(raw_arguments) = &req.arguments else {
         debug_adapter.send_response::<()>(req, Err(DebuggerError::InvalidRequest))?;
         return Err(DebuggerError::Other(anyhow!(
-            "Failed to get {} arguments", req.command
+            "Failed to get {} arguments",
+            req.command
         )));
-
     };
 
     match serde_json::from_value(raw_arguments.to_owned()) {

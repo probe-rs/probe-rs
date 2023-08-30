@@ -132,17 +132,18 @@ impl Debugger {
                 // Attach to the core. so that we have the handle available for processing the request.
 
                 let Some(target_core_config) = self.config.core_configs.get_mut(core_id) else {
-                        return Err(DebuggerError::Other(anyhow!(
-                            "No core configuration found for core id {}",
-                            core_id
-                        )));
-                    };
+                    return Err(DebuggerError::Other(anyhow!(
+                        "No core configuration found for core id {}",
+                        core_id
+                    )));
+                };
 
-                let Ok(mut target_core) = session_data.attach_core(target_core_config.core_index) else {
-                        return Err(DebuggerError::Other(anyhow!(
-                            "Unable to connect to target core"
-                        )));
-                    };
+                let Ok(mut target_core) = session_data.attach_core(target_core_config.core_index)
+                else {
+                    return Err(DebuggerError::Other(anyhow!(
+                        "Unable to connect to target core"
+                    )));
+                };
 
                 // For some operations, we need to make sure the core isn't sleeping, by calling `Core::halt()`.
                 // When we do this, we need to flag it (`unhalt_me = true`), and later call `Core::run()` again.
@@ -438,11 +439,11 @@ impl Debugger {
                 ))
             })?;
             let Some(path_to_elf) = target_core_config.program_binary.clone() else {
-                    let err =  DebuggerError::Other(anyhow!("Please specify use the `program-binary` option in `launch.json` to specify an executable"));
+                let err =  DebuggerError::Other(anyhow!("Please specify use the `program-binary` option in `launch.json` to specify an executable"));
 
-                    debug_adapter.show_error_message(&err)?;
-                    return Err(err);
-                };
+                debug_adapter.show_error_message(&err)?;
+                return Err(err);
+            };
 
             // Store timestamp of flashed binary
             self.binary_timestamp = get_file_timestamp(&path_to_elf);
@@ -524,11 +525,11 @@ impl Debugger {
                 ))
             })?;
             let Some(path_to_elf) = target_core_config.program_binary.clone() else {
-                    let err =  DebuggerError::Other(anyhow!("Please specify use the `program-binary` option in `launch.json` to specify an executable"));
+                let err =  DebuggerError::Other(anyhow!("Please specify use the `program-binary` option in `launch.json` to specify an executable"));
 
-                    debug_adapter.show_error_message(&err)?;
-                    return Err(err);
-                };
+                debug_adapter.show_error_message(&err)?;
+                return Err(err);
+            };
 
             if is_file_newer(&mut self.binary_timestamp, &path_to_elf) {
                 // If there is a new binary as part of a restart, there are some key things that
