@@ -148,7 +148,7 @@ jobs:
   # Build and package all the platform-agnostic(ish) things
   upload-global-artifacts:
     needs: upload-local-artifacts
-    runs-on: "ubuntu-20.04"
+    runs-on: "ubuntu-22.04"
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
