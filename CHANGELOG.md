@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   information from the rtt log (#1704)
 - target-gen: Add new `--test-address` option to the `target-gen test` subcommand. (#1708)
 - `cli`: Add `--verify` flag to `download`, `flash` and `run` (#1727)
+- Added `en-/disable_vector_catch` functions for armv8m (#1742)
 
 ### Changed
 
