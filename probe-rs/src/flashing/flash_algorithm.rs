@@ -34,8 +34,8 @@ pub struct FlashAlgorithm {
     /// Initial value of the R9 register for calling flash algo entry points, which
     /// determines where the position-independent data resides.
     pub static_base: u64,
-    /// Initial value of the stack pointer when calling any flash algo API.
-    pub begin_stack: u64,
+    /// The expected address range of the stack pointer when calling any flash algo API.
+    pub stack: std::ops::Range<u64>,
     /// Base address of the page buffer. Used if `page_buffers` is not provided.
     pub begin_data: u64,
     /// An optional list of base addresses for page buffers. The buffers must be at
@@ -300,7 +300,7 @@ impl FlashAlgorithm {
             pc_erase_sector: code_start + raw.pc_erase_sector,
             pc_erase_all: raw.pc_erase_all.map(|v| code_start + v),
             static_base: code_start + raw.data_section_offset,
-            begin_stack: addr_stack,
+            stack: addr_stack..(addr_stack - stack_size as u64),
             begin_data: page_buffers[0],
             page_buffers: page_buffers.clone(),
             rtt_control_block: raw.rtt_location,

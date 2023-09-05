@@ -12,7 +12,7 @@ use crate::{
         core::registers::cortex_m::XPSR, memory::adi_v5_memory_interface::ArmProbe,
         sequences::ArmDebugSequence, ArmError,
     },
-    core::{CoreRegisters, RegisterId, RegisterValue},
+    core::{CoreRegisters, RegisterDataType, RegisterId, RegisterRole, RegisterValue},
     error::Error,
     memory::valid_32bit_address,
     Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType, HaltReason,
@@ -20,11 +20,59 @@ use crate::{
 };
 use anyhow::Result;
 use bitfield::bitfield;
+use once_cell::sync::Lazy;
+
 use std::{
     mem::size_of,
     sync::Arc,
     time::{Duration, Instant},
 };
+
+pub(crate) const MSPLIM_NS: CoreRegister = CoreRegister {
+    name: "MSPLIM_NS",
+    roles: &[RegisterRole::Other("MainStackPointerLimit_NonSecure")],
+    id: RegisterId(0b0011110),
+    data_type: RegisterDataType::UnsignedInteger(32),
+};
+
+pub(crate) const MSPLIM_S: CoreRegister = CoreRegister {
+    name: "MSPLIM_S",
+    roles: &[RegisterRole::Other("MainStackPointerLimit_Secure")],
+    id: RegisterId(0b0011100),
+    data_type: RegisterDataType::UnsignedInteger(32),
+};
+
+pub(crate) const PSPLIM_NS: CoreRegister = CoreRegister {
+    name: "PSPLIM_NS",
+    roles: &[RegisterRole::Other("ProcessStackPointerLimit_NonSecure")],
+    id: RegisterId(0b0011101),
+    data_type: RegisterDataType::UnsignedInteger(32),
+};
+
+pub(crate) const PSPLIM_S: CoreRegister = CoreRegister {
+    name: "PSPLIM_S",
+    roles: &[RegisterRole::Other("ProcessStackPointerLimit_Secure")],
+    id: RegisterId(0b0011111),
+    data_type: RegisterDataType::UnsignedInteger(32),
+};
+
+static CORTEX_V8_M_CORE_REGISTERS: Lazy<CoreRegisters> = Lazy::new(|| {
+    CoreRegisters::new(
+        CORTEX_M_CORE_REGSISTERS
+            .core_registers()
+            .chain(&[MSPLIM_NS, MSPLIM_S, PSPLIM_NS, PSPLIM_S])
+            .collect(),
+    )
+});
+
+static CORTEX_V8_M_WITH_FP_CORE_REGSISTERS: Lazy<CoreRegisters> = Lazy::new(|| {
+    CoreRegisters::new(
+        CORTEX_M_WITH_FP_CORE_REGSISTERS
+            .core_registers()
+            .chain(&[MSPLIM_NS, MSPLIM_S, PSPLIM_NS, PSPLIM_S])
+            .collect(),
+    )
+});
 
 /// The state of a core that can be used to persist core state across calls to multiple different cores.
 pub struct Armv8m<'probe> {
@@ -395,9 +443,9 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
     fn registers(&self) -> &'static CoreRegisters {
         if self.state.fp_present {
-            &CORTEX_M_WITH_FP_CORE_REGSISTERS
+            &CORTEX_V8_M_CORE_REGISTERS
         } else {
-            &CORTEX_M_CORE_REGSISTERS
+            &CORTEX_V8_M_WITH_FP_CORE_REGSISTERS
         }
     }
 

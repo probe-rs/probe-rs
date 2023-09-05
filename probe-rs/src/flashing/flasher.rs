@@ -1,4 +1,4 @@
-use probe_rs_target::{MemoryRegion, RawFlashAlgorithm};
+use probe_rs_target::{CoreType, MemoryRegion, RawFlashAlgorithm};
 use tracing::Level;
 
 use super::{
@@ -504,7 +504,7 @@ impl Debug for Registers {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{:08x}({:?}, {:?}, {:?}, {:?}",
+            "{:#010x}({:x?}, {:x?}, {:x?}, {:x?}",
             self.pc, self.r0, self.r1, self.r2, self.r3
         )
     }
@@ -607,7 +607,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
     }
 
     fn call_function(&mut self, registers: &Registers, init: bool) -> Result<(), FlashError> {
-        tracing::debug!("Calling routine {:?}, init={})", &registers, init);
+        tracing::debug!("Calling routine at {:?}, init={})", &registers, init);
 
         let algo = &self.flash_algorithm;
         let regs: &'static CoreRegisters = self.core.registers();
@@ -629,7 +629,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
             (
                 self.core.stack_pointer(),
                 if init {
-                    Some(into_reg(algo.begin_stack)?)
+                    Some(into_reg(algo.stack.start)?)
                 } else {
                     None
                 },
@@ -644,6 +644,15 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                     Some(into_reg(algo.load_address)?)
                 },
             ),
+            // ARMv8m chips are dependent on the MSPLIM register to avoid a UsageFault/HardFault
+            if self.core.core_type() == CoreType::Armv8m {
+                (
+                    regs.other_by_name("MSPLIM_S").unwrap(),
+                    Some(algo.stack.end as u32),
+                )
+            } else {
+                (self.core.program_counter(), None)
+            },
         ];
 
         for (description, value) in &registers {
@@ -734,6 +743,24 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         }
 
         if timeout_ocurred {
+            let pc = self.core.halt(Duration::from_millis(100))?.pc;
+            let sp = self.core.read_core_reg::<u32>(self.core.frame_pointer())?;
+            let lr = self.core.read_core_reg::<u32>(self.core.return_address())?;
+
+            let r0 = self
+                .core
+                .read_core_reg::<u32>(self.core.registers().core_register(0))?;
+            let r1 = self
+                .core
+                .read_core_reg::<u32>(self.core.registers().core_register(1))?;
+            let r2 = self
+                .core
+                .read_core_reg::<u32>(self.core.registers().core_register(2))?;
+            let r3 = self
+                .core
+                .read_core_reg::<u32>(self.core.registers().core_register(3))?;
+
+            tracing::error!("Register State: {{pc: {:#010x?}, sp: {:#010x?}, ret: {:#010x?}, r0: {:#010x?}, r1: {:#010x?}, r2: {:#010x?}, r3: {:#010x?}}}", pc, sp, lr, r0, r1, r2, r3);
             return Err(FlashError::Core(crate::Error::Timeout));
         }
 
@@ -768,6 +795,18 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
         let flasher = self;
         let algo = &flasher.flash_algorithm;
 
+        // This assumes that the `erase_sector_timeout` variable pertains to the largest declared sector
+        let max_sector_size = algo
+            .flash_properties
+            .sectors
+            .iter()
+            .map(|sector| sector.size)
+            .max()
+            .unwrap();
+        let num_sectors = (algo.flash_properties.address_range.end
+            - algo.flash_properties.address_range.start)
+            / max_sector_size;
+
         if let Some(pc_erase_all) = algo.pc_erase_all {
             let result = flasher
                 .call_function_and_wait(
@@ -779,7 +818,10 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
                         r3: None,
                     },
                     false,
-                    Duration::from_secs(30),
+                    Duration::from_millis(
+                        // This timeout will generally be way too large to be useful, but it gives an upper bound
+                        algo.flash_properties.erase_sector_timeout as u64 * num_sectors,
+                    ),
                 )
                 .map_err(|error| FlashError::ChipEraseFailed {
                     source: Box::new(error),
