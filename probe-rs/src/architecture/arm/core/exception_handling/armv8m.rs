@@ -17,7 +17,7 @@ memory_mapped_bitfield_register! {
 }
 
 memory_mapped_bitfield_register! {
-    /// CFSR - Configuratble Status Register (UFSR[31:16], BFSR[15:8], MMFSR[7:0])
+    /// CFSR - Configurable Status Register (UFSR[31:16], BFSR[15:8], MMFSR[7:0])
     pub struct Cfsr(u32);
     0xE000ED28, "CFSR",
     impl From;
@@ -150,6 +150,65 @@ impl Cfsr {
 }
 
 memory_mapped_bitfield_register! {
+    /// SFSR - Secure Fault Status Register
+    pub struct Sfsr(u32);
+    0xE000EDE4, "SFSR",
+    impl From;
+    /// Sticky flag indicating that an error occurred during lazy Floating-point state preservation activation or deactivation.
+    lazy_state_error, _: 7;
+    /// This bit is set when the SFAR register contains a valid value.
+    secure_fault_address_valid, _: 6;
+    /// Sticky flag indicating that an SAU or IDAU violation occurred during the lazy Floating-point state preservation.
+    lazy_state_preservation_error, _: 5;
+    /// Sticky flag indicating that an exception was raised due to a branch that was not flagged as being domain crossing causing a transition from Secure to Non-secure memory.
+    invalid_transition, _: 4;
+    /// Sticky flag indicating that an attempt was made to access parts of the address space that are marked as Secure with NS-Req for the transaction set to Non-secure.
+    attribution_unit_violation, _: 3;
+    /// This can be caused by EXC_RETURN.DCRS being set to 0 when returning from an exception in the Non-secure state, or by EXC_RETURN.ES being set to 1 when returning from an exception in the Non-secure state.
+    invalid_exception_return, _: 2;
+    /// This bit is set if the integrity signature in an exception stack frame is found to be invalid during the unstacking operation.
+    invalid_integrity_signature, _: 1;
+    /// This bit is set if there is an invalid attempt to enter Secure state.
+    invalid_entry_point, _: 0;
+}
+
+impl Sfsr {
+    /// Additional information about a Secure Fault, or Ok(None) if the fault was not a Secure Fault.
+    fn secure_fault_description<T: CoreInterface>(
+        &self,
+        core: &mut T,
+    ) -> Result<Option<String>, Error> {
+        let source = if self.lazy_state_error() {
+            "Fault occurred during lazy state activation or deactivation"
+        } else if self.lazy_state_preservation_error() {
+            "Fault occurred during FP lazy state preservation"
+        } else if self.invalid_transition() {
+            "Invalid transition error"
+        } else if self.attribution_unit_violation() {
+            "Attribution unit violation error"
+        } else if self.invalid_exception_return() {
+            "Invalid exception return error"
+        } else if self.invalid_integrity_signature() {
+            "Invalid integrity signature error"
+        } else if self.invalid_entry_point() {
+            "Invalid entry point error"
+        } else {
+            // Not a SecureFault
+            return Ok(None);
+        };
+
+        Ok(Some(if self.secure_fault_address_valid() {
+            format!(
+                "SecureFault ({source}) at location: {:#010x}",
+                core.read_word_32(Sfar::get_mmio_address())?
+            )
+        } else {
+            format!("SecureFault ({source})")
+        }))
+    }
+}
+
+memory_mapped_bitfield_register! {
     /// MMFAR - MemManage Fault Address Register
     pub struct Mmfar(u32);
     0xE000ED34, "MMFAR",
@@ -162,6 +221,14 @@ memory_mapped_bitfield_register! {
     0xE000ED38, "BFAR",
     impl From;
 }
+
+memory_mapped_bitfield_register! {
+    /// SFAR - Secure Fault Address Register
+    pub struct Sfar(u32);
+    0xE000EDE8, "SFAR",
+    impl From;
+}
+
 /// Decode the exception number.
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub(crate) enum ExceptionReason {
@@ -179,6 +246,8 @@ pub(crate) enum ExceptionReason {
     BusFault,
     /// A usage fault has been triggered.
     UsageFault,
+    /// A secure fault has been triggered.
+    SecureFault,
     /// A SuperVisor call has been triggered.
     SVCall,
     /// A debug monitor fault has been triggered.
@@ -203,7 +272,8 @@ impl From<u32> for ExceptionReason {
             4 => ExceptionReason::MemoryManagementFault,
             5 => ExceptionReason::BusFault,
             6 => ExceptionReason::UsageFault,
-            7..=10 | 13 => ExceptionReason::Reserved,
+            7 => ExceptionReason::SecureFault,
+            8..=10 | 13 => ExceptionReason::Reserved,
             11 => ExceptionReason::SVCall,
             12 => ExceptionReason::DebugMonitor,
             14 => ExceptionReason::PendSV,
@@ -215,7 +285,7 @@ impl From<u32> for ExceptionReason {
 
 impl ExceptionReason {
     /// Expands the exception reason, by providing additional information about the exception from the
-    /// HFSR and CFSR registers.
+    /// HFSR, CFSR, and SFSR registers.
     fn expanded_description<T: CoreInterface>(&self, core: &mut T) -> Result<String, Error> {
         match self {
             ExceptionReason::ThreadMode => Ok("No active exception.".to_string()),
@@ -269,6 +339,15 @@ impl ExceptionReason {
                     Ok(source)
                 } else {
                     Ok("MemManage Fault handler. Cause: Unknown.".to_string())
+                }
+            }
+            ExceptionReason::SecureFault => {
+                if let Some(source) = Sfsr(core.read_word_32(Sfsr::get_mmio_address())?)
+                    .secure_fault_description(core)?
+                {
+                    Ok(source)
+                } else {
+                    Ok("SecureFault handler. Cause: Unknown.".to_string())
                 }
             }
             ExceptionReason::SVCall => Ok("Supervisor call.".to_string()),
