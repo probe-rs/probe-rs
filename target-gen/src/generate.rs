@@ -446,13 +446,9 @@ struct DeviceMemory {
     name: String,
 }
 
-// From PR's https://github.com/probe-rs/target-gen/pull/20 and https://github.com/probe-rs/target-gen/pull/25:
-// TODO: What is the logic that justifies PR#20 selecting the largest memory? Shouldn't we match flash algo's with RAM based on load_address?
-// Flash and RAM regions are not guaranteed to be sorted in the PDSC file, so we:
-// - Sort them here.
-// - Merge contiguous regions.
-// Update: For multiple cores, we have to take processor access into account during this merge.
-/// Sorts the memory regions in the package and merges contiguous regions with the same attributes.
+/// Extracts the memory regions in the package.
+/// The new memory regions are sorted by memory type, then by boot memory, then by start address,
+/// with correctly assigned cores/processor names.
 pub(crate) fn get_mem_map(device: &Device) -> Vec<MemoryRegion> {
     let mut device_memories: Vec<DeviceMemory> = device
         .memories
@@ -478,36 +474,8 @@ pub(crate) fn get_mem_map(device: &Device) -> Vec<MemoryRegion> {
         })
         .collect();
 
-    // Merge memory regions with the same attributes.
-    if device_memories.len() > 1 {
-        // Sort by memory type, then by processor name, then by boot memory, then by start address.
-        device_memories.sort();
-
-        let mut merged: Vec<DeviceMemory> = Vec::new();
-        let mut cur = device_memories.first().cloned().unwrap();
-        for region in device_memories.iter().skip(1) {
-            if region.is_boot_memory == cur.is_boot_memory && region.memory_start == cur.memory_end
-            {
-                // Merge with previous region.
-                cur.memory_end = region.memory_end;
-                cur.name = format!("{} + {}", cur.name, region.name);
-            } else {
-                merged.push(cur);
-                cur = region.clone();
-            }
-        }
-        merged.push(cur);
-        device_memories = merged;
-    }
-
-    // Finally, sort so that the LARGEST contiguous region is first for each core.
-    device_memories.sort_by_cached_key(|region| {
-        (
-            region.memory_type.clone(),
-            region.p_name.clone(),
-            (region.memory_start as i128 - region.memory_end as i128),
-        )
-    });
+    // Sort by memory type, then by processor name, then by boot memory, then by start address.
+    device_memories.sort();
 
     // Convert DeviceMemory's to MemoryRegion's, and assign cores to shared reqions.
     let mut mem_map = vec![];

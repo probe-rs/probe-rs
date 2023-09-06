@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `cli`: Ignore errors from `enable_vector_catch` (#1714).
 - `cli`: Retry RTT attach before continuing (#1722).
 - `cli`: Clean clap attributes (#xxxx)
+- `target-gen` : Memory regions in target.yaml are now sorted with lowest address first (# )
 
 ## [0.20.0]
 
