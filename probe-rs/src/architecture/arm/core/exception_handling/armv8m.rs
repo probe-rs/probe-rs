@@ -2,9 +2,32 @@ use crate::{
     core::{ExceptionInfo, ExceptionInterface},
     debug::DebugRegisters,
     memory_mapped_bitfield_register, CoreInterface, Error, MemoryMappedRegister,
+    RegisterValue,
+    memory::MemoryInterface
 };
+use bitfield::bitfield;
 
-use super::armv6m_armv7m_shared::{calling_frame_registers, exception_details, Xpsr};
+use super::armv6m_armv7m_shared::{EXCEPTION_STACK_REGISTERS, Xpsr};
+
+bitfield! {
+    /// The EXC_RETURN value (The value of the link address register) is used to
+    /// determine the stack to return to when returning from an exception.
+    struct ExcReturn(u32);
+    /// If the value is 0xFF, then this is a valid EXC_RETURN value.
+    is_exception_flag, _: 31, 24;
+    /// Indicates whether to restore registers from the secure stack or the unsecure stack
+    use_secure_stack, _:6;
+    /// Indicates wheteher the default stacking rules apply or the callee registers are already on the stack
+    use_default_register_stacking, _:5;
+    /// Defines whether the stack frame for this exception has space allocated for FPU state information. Bit [4] is 0 if stack space is the exended frame that includes FPU registes.
+    use_standard_stackframe, _: 4;
+    /// Indicates whether the return mode is Handler (0) or Thread (1)
+    mode, _: 3;
+    /// Indicates which stack pointer the exception frame resides on
+    stack_pointer_selection, _: 2;
+    /// Indicates whether the security domain the exception was taken to was non-secure (0) or secure (1)
+    exception_secure, _: 0;
+}
 
 memory_mapped_bitfield_register! {
     /// HFSR - HardFault Status Register
@@ -367,7 +390,19 @@ impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv8m::Armv
         &mut self,
         stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<crate::debug::DebugRegisters, crate::Error> {
-        calling_frame_registers(self, stackframe_registers)
+        let mut calling_stack_registers = vec![0u32; EXCEPTION_STACK_REGISTERS.len()];
+        self.read_32(
+            stackframe_registers
+                .get_register_value_by_role(&crate::core::RegisterRole::StackPointer)?,
+            &mut calling_stack_registers,
+        )?;
+        let mut calling_frame_registers = stackframe_registers.clone();
+        for (i, register_role) in EXCEPTION_STACK_REGISTERS.iter().enumerate() {
+            calling_frame_registers
+                .get_register_mut_by_role(register_role)?
+                .value = Some(RegisterValue::U32(calling_stack_registers[i]));
+        }
+        Ok(calling_frame_registers)
     }
 
     fn exception_description(
@@ -392,6 +427,29 @@ impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv8m::Armv
         &mut self,
         stackframe_registers: &DebugRegisters,
     ) -> Result<Option<ExceptionInfo>, Error> {
-        exception_details(self, stackframe_registers)
+        let frame_return_address: u32 = stackframe_registers
+            .get_return_address()
+            .ok_or_else(|| {
+                Error::Register("No Return Address register. Please report this as a bug.".to_string())
+            })?
+            .value
+            .ok_or_else(|| {
+                Error::Register(
+                    "No value for Return Address register. Please report this as a bug.".to_string(),
+                )
+            })?
+            .try_into()?;
+    
+        if ExcReturn(frame_return_address).is_exception_flag() == 0xFF {
+            // This is an exception frame.
+    
+            Ok(Some(ExceptionInfo {
+                description: self.exception_description(stackframe_registers)?,
+                calling_frame_registers: self.calling_frame_registers(stackframe_registers)?,
+            }))
+        } else {
+            // This is a normal function return.
+            Ok(None)
+        }
     }
 }
