@@ -101,7 +101,6 @@ where
                 }?;
 
                 // If the algo specifies `RAMstart` and/or `RAMsize` fields, then use them.
-                // - See https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/pdsc_family_pg.html#element_memory .
                 // - See https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/pdsc_family_pg.html#element_algorithm for more information.
                 algo.load_address = flash_algorithm.ram_start.map(|ram_start| ram_start + FlashAlgorithm::get_max_algorithm_header_size() as u64);
                 if let Some(stack_size) = flash_algorithm.ram_size {

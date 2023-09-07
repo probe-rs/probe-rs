@@ -75,6 +75,12 @@ impl<'session> Flasher<'session> {
                 _ => None,
             })
             .find(|ram| {
+                // If the algorithm has a forced load address, we try to use it.
+                // If not, then follow the CMSIS-Pack spec and use first available RAM region.
+                // In theory, it should be the "first listed in the pack", but the process of
+                // reading from the pack files obfuscates the list order, so we wil use the first
+                // one in the target spec, which is the qualifying region with the lowest start saddress.
+                // - See https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/pdsc_family_pg.html#element_memory .
                 if let Some(load_addr) = raw_flash_algorithm.load_address {
                     // The RAM must contain the forced load address _and_
                     // be accessible from the core we're going to run the
