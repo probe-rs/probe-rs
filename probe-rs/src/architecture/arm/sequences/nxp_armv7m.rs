@@ -1,4 +1,4 @@
-//! Sequences for NXP chips.
+//! Sequences for NXP chips that use ARMv7-M cores.
 
 use std::{
     sync::Arc,
