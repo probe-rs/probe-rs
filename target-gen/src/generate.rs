@@ -1,16 +1,12 @@
-use std::fs::{self};
-use std::io::Read;
-use std::path::Path;
-
+use std::{fs::{self}, io::Read, path::Path};
 use anyhow::{anyhow, bail, Context, Error, Result};
 use cmsis_pack::pdsc::{Core, Device, Package, Processor};
 use cmsis_pack::{pack_index::PdscRef, utils::FromElem};
 use futures::StreamExt;
-use probe_rs::config::{
+use probe_rs::{config::{
     Chip, ChipFamily, Core as ProbeCore, GenericRegion, MemoryRegion, NvmRegion, RamRegion,
     RawFlashAlgorithm,
-};
-use probe_rs::{Architecture, CoreType};
+}, flashing::FlashAlgorithm, Architecture, CoreType};
 use probe_rs_target::{ArmCoreAccessOptions, CoreAccessOptions, RiscvCoreAccessOptions};
 use tokio::runtime::Builder;
 
@@ -81,7 +77,7 @@ where
             .algorithms
             .iter()
             .map(|flash_algorithm| {
-                let algo = match &mut kind {
+                let mut algo = match &mut kind {
                     Kind::Archive(archive) => crate::parser::extract_flash_algo(
                         archive.by_name(&flash_algorithm.file_name.as_path().to_string_lossy())?,
                         &flash_algorithm.file_name,
@@ -95,6 +91,16 @@ where
                         false, // Algorithms from CMSIS-Pack files are position independent
                     ),
                 }?;
+
+                // If the algo specifies `RAMstart` and/or `RAMsize` fields, then use them.
+                // - See https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/pdsc_family_pg.html#element_memory .
+                // - See https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/pdsc_family_pg.html#element_algorithm for more information.
+                algo.load_address = flash_algorithm.ram_start.map(|ram_start| ram_start + FlashAlgorithm::get_max_algorithm_header_size() as u64);
+                if let Some(stack_size) = flash_algorithm.ram_size {
+                     algo.stack_size = Some(stack_size.try_into().map_err(|data_conversion_error| 
+                        anyhow!("Algorithm requires a stack size of  '{:?}' : {data_conversion_error:?}", flash_algorithm.ram_size)
+                    )?);
+                }
 
                 // We add this algo directly to the algos of the family if it's not already added.
                 // Make sure we never add an algo twice to save file size.
