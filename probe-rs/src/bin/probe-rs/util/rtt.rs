@@ -2,7 +2,6 @@ use crate::*;
 use anyhow::{anyhow, Result};
 use defmt_decoder::DecodeError;
 use num_traits::Zero;
-use probe_rs::config::MemoryRegion;
 pub use probe_rs::rtt::ChannelMode;
 use probe_rs::rtt::{DownChannel, Rtt, ScanRegion, UpChannel};
 use probe_rs::Core;
@@ -20,7 +19,7 @@ use time::{OffsetDateTime, UtcOffset};
 
 pub fn attach_to_rtt(
     core: &mut Core,
-    memory_map: &[MemoryRegion],
+    scan_regions: &[std::ops::Range<u64>],
     elf_file: &Path,
     rtt_config: &RttConfig,
     timestamp_offset: UtcOffset,
@@ -30,13 +29,20 @@ pub fn attach_to_rtt(
         if let Some(address) = RttActiveTarget::get_rtt_symbol(&mut file) {
             ScanRegion::Exact(address as u32)
         } else {
-            ScanRegion::Ram
+            ScanRegion::Ranges(scan_regions.to_vec())
         }
     } else {
-        ScanRegion::Ram
+        ScanRegion::Ranges(scan_regions.to_vec())
     };
 
-    match Rtt::attach_region(core, memory_map, &rtt_header_address) {
+    if let ScanRegion::Ranges(rngs) = &rtt_header_address {
+        if rngs.is_empty() {
+            // We have no regions to scan so we cannot initialize RTT.
+            return Err(anyhow!("ELF file has no RTT block symbol, and this target does not support automatic scanning"));
+        }
+    }
+
+    match Rtt::attach_region(core, &[], &rtt_header_address) {
         Ok(rtt) => {
             log::info!("RTT initialized.");
             let app = RttActiveTarget::new(rtt, elf_file, rtt_config, timestamp_offset)?;

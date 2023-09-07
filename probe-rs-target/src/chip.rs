@@ -27,6 +27,22 @@ pub struct Chip {
     /// [`ChipFamily::flash_algorithms`]: crate::ChipFamily::flash_algorithms
     #[serde(default)]
     pub flash_algorithms: Vec<String>,
+    /// Specific memory ranges to search for a dynamic RTT header for code
+    /// running on this chip.
+    ///
+    /// This need not be specified for most chips because the default is
+    /// to search all RAM regions specified in `memory_map`. However,
+    /// that behavior isn't appropriate for some chips, such as those which
+    /// have a very large amount of RAM that would be time-consuming to
+    /// scan exhaustively.
+    ///
+    /// If specified then this is a list of zero or more address ranges to
+    /// scan. Each address range must be enclosed in exactly one RAM region
+    /// from `memory_map`. An empty list disables automatic scanning
+    /// altogether, in which case RTT will be enabled only when using an
+    /// executable image that includes the `_SEGGER_RTT` symbol pointing
+    /// to the exact address of the RTT header.
+    pub rtt_scan_ranges: Option<Vec<std::ops::Range<u64>>>,
 }
 
 impl Chip {
@@ -44,6 +60,7 @@ impl Chip {
             }],
             memory_map: vec![],
             flash_algorithms: vec![],
+            rtt_scan_ranges: None,
         }
     }
 }

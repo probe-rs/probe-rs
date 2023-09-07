@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `target-gen`: (#1745)
   - Memory regions in target.yaml are now sorted with lowest address first.
   - Use `.pdsc` flash algorithm `RAMstart` field to calculate `load_address` for target yaml.
+- Target definitions can now constrain the RTT automatic scanning ranges to just a subset of all available RAM, to support targets that have large amounts of RAM that would take a long time to scan. (#xxx)
 
 ## [0.20.0]
 
