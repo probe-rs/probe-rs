@@ -1,9 +1,7 @@
-use probe_rs_target::{FlashProperties, PageInfo, RamRegion, RawFlashAlgorithm, SectorInfo};
-
 use super::FlashError;
-use crate::core::Architecture;
-use crate::{architecture::riscv, Target};
-use std::convert::TryInto;
+use crate::{architecture::riscv, core::Architecture, Target};
+use probe_rs_target::{FlashProperties, PageInfo, RamRegion, RawFlashAlgorithm, SectorInfo};
+use std::{cmp::max, convert::TryInto, mem::size_of_val};
 
 /// A flash algorithm, which has been assembled for a specific
 /// chip.
@@ -175,6 +173,15 @@ impl FlashAlgorithm {
         0x2A00_1E52,
         0x0477_0D1F,
     ];
+
+    /// When the target architecture is not known, and we need to allocate space for the header,
+    /// this function returns the maximum size of the header of supported architectures.
+    pub fn get_max_algorithm_header_size() -> u64 {
+        max(
+            size_of_val(&Self::ARM_FLASH_BLOB_HEADER),
+            size_of_val(&Self::RISCV_FLASH_BLOB_HEADER),
+        ) as u64
+    }
 
     fn get_algorithm_header(architecture: Architecture) -> &'static [u32] {
         match architecture {
