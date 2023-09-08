@@ -190,6 +190,18 @@ impl fmt::Debug for OwnedBitIter {
     }
 }
 
+pub(crate) fn bits_to_byte(bits: impl IntoIterator<Item = bool>) -> u32 {
+    let mut bit_val = 0u32;
+
+    for (index, bit) in bits.into_iter().take(32).enumerate() {
+        if bit {
+            bit_val |= 1 << index;
+        }
+    }
+
+    bit_val
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
