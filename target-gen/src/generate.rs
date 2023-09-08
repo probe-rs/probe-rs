@@ -102,7 +102,7 @@ where
 
                 // If the algo specifies `RAMstart` and/or `RAMsize` fields, then use them.
                 // - See https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/pdsc_family_pg.html#element_algorithm for more information.
-                algo.load_address = flash_algorithm.ram_start.map(|ram_start| ram_start + FlashAlgorithm::get_max_algorithm_header_size() as u64);
+                algo.load_address = flash_algorithm.ram_start.map(|ram_start| ram_start + FlashAlgorithm::get_max_algorithm_header_size());
                 if let Some(stack_size) = flash_algorithm.ram_size {
                      algo.stack_size = Some(stack_size.try_into().map_err(|data_conversion_error|
                         anyhow!("Algorithm requires a stack size of  '{:?}' : {data_conversion_error:?}", flash_algorithm.ram_size)
