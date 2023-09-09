@@ -1,3 +1,4 @@
+pub(crate) mod arm_jtag;
 pub(crate) mod common;
 
 pub(crate) mod cmsisdap;

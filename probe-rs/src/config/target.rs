@@ -1,4 +1,4 @@
-use probe_rs_target::{Architecture, ChipFamily};
+use probe_rs_target::{Architecture, ChipFamily, MemoryRange};
 
 use super::{Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource};
 use crate::architecture::arm::{
@@ -10,7 +10,7 @@ use crate::architecture::arm::{
         nrf52::Nrf52,
         nrf53::Nrf5340,
         nrf91::Nrf9160,
-        nxp::{LPC55Sxx, MIMXRT10xx, MIMXRT11xx},
+        nxp_armv7m::{LPC55Sxx, MIMXRT10xx, MIMXRT11xx},
         stm32_armv6::{Stm32Armv6, Stm32Armv6Family},
         stm32_armv7::Stm32Armv7,
         stm32h7::Stm32h7,
@@ -40,6 +40,11 @@ pub struct Target {
     pub(crate) source: TargetDescriptionSource,
     /// Debug sequences for the given target.
     pub debug_sequence: DebugSequence,
+    /// The regions of memory to scan to try to find an RTT header.
+    ///
+    /// Each region must be enclosed in exactly one RAM region from
+    /// `memory_map`.
+    pub rtt_scan_regions: Vec<std::ops::Range<u64>>,
 }
 
 impl std::fmt::Debug for Target {
@@ -171,6 +176,37 @@ impl Target {
             debug_sequence = DebugSequence::Arm(XMC4000::create());
         }
 
+        let rtt_scan_regions = match &chip.rtt_scan_ranges {
+            Some(ranges) => {
+                // The custom ranges must all be enclosed by exactly one of
+                // the defined RAM regions.
+                for rng in ranges {
+                    let region = chip.memory_map.iter().find(|region| {
+                        if let MemoryRegion::Ram(region) = region {
+                            region.range.contains_range(rng)
+                        } else {
+                            false
+                        }
+                    });
+                    if region.is_none() {
+                        return Err(RegistryError::InvalidRttScanRange(rng.clone()));
+                    }
+                }
+                ranges.clone()
+            }
+            None => {
+                // By default we use all of the RAM ranges from the
+                // memory map.
+                chip.memory_map
+                    .iter()
+                    .filter_map(|region| match region {
+                        MemoryRegion::Ram(region) => Some(region.range.clone()),
+                        _ => None,
+                    })
+                    .collect()
+            }
+        };
+
         Ok(Target {
             name: chip.name.clone(),
             cores: chip.cores.clone(),
@@ -178,6 +214,7 @@ impl Target {
             source: family.source.clone(),
             memory_map: chip.memory_map.clone(),
             debug_sequence,
+            rtt_scan_regions,
         })
     }
 
