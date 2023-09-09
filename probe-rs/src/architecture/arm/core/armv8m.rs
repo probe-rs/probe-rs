@@ -473,12 +473,12 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
             .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
 
         let mut demcr = Demcr(self.memory.read_word_32(Demcr::get_mmio_address())?);
-        let id_pfr = IdPfr1(self.memory.read_word_32(IdPfr1::get_mmio_address())?);
+        let idpfr1 = IdPfr1(self.memory.read_word_32(IdPfr1::get_mmio_address())?);
         match condition {
             VectorCatchCondition::HardFault => demcr.set_vc_harderr(true),
             VectorCatchCondition::CoreReset => demcr.set_vc_corereset(true),
             VectorCatchCondition::SecureFault => {
-                if !id_pfr.security_present() {
+                if !idpfr1.security_present() {
                     return Err(Error::Arm(ArmError::ArchitectureRequired(&["ARMv8"])));
                 }
                 demcr.set_vc_sferr(true);
@@ -486,7 +486,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
             VectorCatchCondition::All => {
                 demcr.set_vc_harderr(true);
                 demcr.set_vc_corereset(true);
-                if id_pfr.security_present() {
+                if idpfr1.security_present() {
                     demcr.set_vc_sferr(true);
                 }
             }
@@ -499,14 +499,21 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
     fn disable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
         let mut demcr = Demcr(self.memory.read_word_32(Demcr::get_mmio_address())?);
+        let idpfr1 = IdPfr1(self.memory.read_word_32(IdPfr1::get_mmio_address())?);
         match condition {
             VectorCatchCondition::HardFault => demcr.set_vc_harderr(false),
             VectorCatchCondition::CoreReset => demcr.set_vc_corereset(false),
-            VectorCatchCondition::SecureFault => demcr.set_vc_sferr(false),
+            VectorCatchCondition::SecureFault => {
+                if idpfr1.security_present() {
+                    demcr.set_vc_sferr(false);
+                }
+            },
             VectorCatchCondition::All => {
                 demcr.set_vc_harderr(false);
                 demcr.set_vc_corereset(false);
-                demcr.set_vc_sferr(false);
+                if idpfr1.security_present() {
+                    demcr.set_vc_sferr(false);
+                }
             }
         };
 
