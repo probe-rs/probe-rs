@@ -73,6 +73,8 @@ pub enum VectorCatchCondition {
     HardFault,
     /// We encountered a local reset.
     CoreReset,
+    /// We encountered a SecureFault.
+    SecureFault,
     /// We encountered any exception.
     All,
 }

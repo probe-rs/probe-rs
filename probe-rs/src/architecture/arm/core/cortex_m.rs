@@ -80,6 +80,23 @@ impl Mvfr0 {
     }
 }
 
+memory_mapped_bitfield_register! {
+    /// Processor Feature Register 1
+    pub struct IdPfr1(u32);
+    0xE000_ED40, "ID_PFR1",
+    impl From;
+    /// Identifies support for the M-Profile programmer's model
+    pub m_prog_mod, _: 31, 28;
+    /// Identifies whether the Security Extension is implemented
+    pub security, _: 7, 4;
+}
+
+impl IdPfr1 {
+    pub fn security_present(&self) -> bool {
+        self.security() == 0b0001
+    }
+}
+
 pub(crate) fn read_core_reg(memory: &mut dyn ArmProbe, addr: RegisterId) -> Result<u32, Error> {
     // Write the DCRSR value to select the register we want to read.
     let mut dcrsr_val = Dcrsr(0);
