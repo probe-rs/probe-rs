@@ -465,7 +465,8 @@ impl Session {
         let Some(erase_sequence) = debug_sequence.debug_erase_sequence() else {
             return Err(Error::Probe(crate::DebugProbeError::NotImplemented(
                 "Debug Erase Sequence",
-        )))};
+            )));
+        };
 
         tracing::info!("Trying Debug Erase Sequence");
         let erase_result = erase_sequence.erase_all(interface.deref_mut());

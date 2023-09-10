@@ -9,10 +9,10 @@
 //!
 //! #[derive(clap::Parser)]
 //! struct Opts {
-//!     #[clap(long = "some-opt")]
+//!     #[arg(long = "some-opt")]
 //!     opt: String,
 //!
-//!     #[clap(flatten)]
+//!     #[arg(flatten)]
 //!     flash_options: FlashOptions,
 //! }
 //!
@@ -35,6 +35,7 @@ use super::ArtifactError;
 
 use std::{fs::File, path::Path, path::PathBuf};
 
+use crate::util::parse_u64;
 use clap;
 use probe_rs::{
     config::{RegistryError, TargetSelector},
@@ -42,42 +43,33 @@ use probe_rs::{
     DebugProbeError, DebugProbeSelector, FakeProbe, Permissions, Probe, Session, Target,
     WireProtocol,
 };
+use serde::{Deserialize, Serialize};
 
 /// Common options when flashing a target device.
 #[derive(Debug, clap::Parser)]
 pub struct FlashOptions {
-    #[clap(
-        name = "reset-halt",
-        long = "reset-halt",
-        help = "Use this flag to reset and halt (instead of just a reset) the attached core after flashing the target."
-    )]
+    /// Use this flag to reset and halt (instead of just a reset) the attached core after flashing the target.
+    #[arg(long)]
     pub reset_halt: bool,
-    #[clap(
-        name = "level",
-        long = "log",
-        help = "Use this flag to set the log level.\n\
-        Default is `warning`. Possible choices are [error, warning, info, debug, trace]."
-    )]
+    /// Use this flag to set the log level.
+    ///
+    /// Default is `warning`. Possible choices are [error, warning, info, debug, trace].
+    #[arg(name = "level")]
     pub log: Option<log::Level>,
-    #[clap(
-        name = "elf file",
-        long = "elf",
-        help = "The path to the ELF file to be flashed."
-    )]
+    /// The path to the ELF file to be flashed.
+    #[arg(name = "elf file", long)]
     pub elf: Option<PathBuf>,
-    #[clap(
-        name = "directory",
-        long = "work-dir",
-        help = "The work directory from which cargo-flash should operate from."
-    )]
+    /// The work directory from which cargo-flash should operate from.
+    #[arg(name = "directory", long)]
     pub work_dir: Option<PathBuf>,
-    #[clap(flatten)]
+
+    #[command(flatten)]
     /// Arguments which are forwarded to 'cargo build'.
     pub cargo_options: CargoOptions,
-    #[clap(flatten)]
+    #[command(flatten)]
     /// Argument relating to probe/chip selection/configuration.
     pub probe_options: ProbeOptions,
-    #[clap(flatten)]
+    #[command(flatten)]
     /// Argument relating to probe/chip selection/configuration.
     pub download_options: BinaryDownloadOptions,
 }
@@ -85,63 +77,76 @@ pub struct FlashOptions {
 /// Common options when flashing a target device.
 #[derive(Debug, clap::Parser)]
 pub struct BinaryDownloadOptions {
-    #[clap(name = "disable-progressbars", long = "disable-progressbars")]
+    #[arg(long)]
     pub disable_progressbars: bool,
-    #[clap(
-        long = "disable-double-buffering",
-        help = "Use this flag to disable double-buffering when downloading flash data.  If download fails during\
-        programming with timeout errors, try this option."
-    )]
+    /// Use this flag to disable double-buffering when downloading flash data. If
+    /// download fails during programming with timeout errors, try this option.
+    #[arg(long)]
     pub disable_double_buffering: bool,
-    #[clap(
-        name = "restore-unwritten",
-        long = "restore-unwritten",
-        help = "Enable this flag to restore all bytes erased in the sector erase but not overwritten by any page."
-    )]
+    /// Enable this flag to restore all bytes erased in the sector erase but not overwritten by any page.
+    #[arg(long)]
     pub restore_unwritten: bool,
-    #[clap(
-        name = "filename",
-        long = "flash-layout",
-        help = "Requests the flash builder to output the layout into the given file in SVG format."
-    )]
+    /// Requests the flash builder to output the layout into the given file in SVG format.
+    #[arg(name = "filename", long = "flash-layout")]
     pub flash_layout_output_path: Option<String>,
+    /// After flashing, read back all the flashed data to verify it has been written correctly.
+    #[arg(long)]
+    pub verify: bool,
+}
+
+/// Supported bit-widths for read/write commands (not every device may support each width).
+#[derive(Debug, Copy, Clone, Serialize, Deserialize, clap::ValueEnum)]
+pub enum ReadWriteBitWidth {
+    /// 8-bit width
+    B8 = 8,
+    /// 32-bit width
+    B32 = 32,
+    /// 64-bit width
+    B64 = 64,
+}
+
+/// Common options for read/write operations to a target device.
+#[derive(Debug, clap::Parser)]
+pub struct ReadWriteOptions {
+    /// Width of the data to read/write.
+    #[clap(value_enum, ignore_case = true)]
+    pub width: ReadWriteBitWidth,
+    /// The address to start from.
+    /// Takes an integer as an argument, and can be specified in decimal (16), hexadecimal (0x10) or octal (0o20) format.
+    #[clap(value_parser = parse_u64)]
+    pub address: u64,
 }
 
 /// Common options and logic when interfacing with a [Probe].
 #[derive(clap::Parser, Debug)]
 pub struct ProbeOptions {
-    #[structopt(long)]
+    #[arg(long)]
     pub chip: Option<String>,
-    #[structopt(name = "chip description file path", long = "chip-description-path")]
+    #[arg(name = "chip description file path", long)]
     pub chip_description_path: Option<PathBuf>,
 
     /// Protocol used to connect to chip. Possible options: [swd, jtag]
-    #[structopt(long, help_heading = "PROBE CONFIGURATION")]
+    #[arg(long, help_heading = "PROBE CONFIGURATION")]
     pub protocol: Option<WireProtocol>,
 
     /// Use this flag to select a specific probe in the list.
     ///
-    /// Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one probe with the same VID:PID.",
-    #[structopt(long = "probe", help_heading = "PROBE CONFIGURATION")]
+    /// Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one
+    /// probe with the same VID:PID.",
+    #[arg(long = "probe", help_heading = "PROBE CONFIGURATION")]
     pub probe_selector: Option<DebugProbeSelector>,
-    #[clap(
-        long,
-        help = "The protocol speed in kHz.",
-        help_heading = "PROBE CONFIGURATION"
-    )]
+    /// The protocol speed in kHz.
+    #[arg(long, help_heading = "PROBE CONFIGURATION")]
     pub speed: Option<u32>,
-    #[structopt(
-        long = "connect-under-reset",
-        help = "Use this flag to assert the nreset & ntrst pins during attaching the probe to the chip."
-    )]
+    /// Use this flag to assert the nreset & ntrst pins during attaching the probe to
+    /// the chip.
+    #[arg(long)]
     pub connect_under_reset: bool,
-    #[structopt(long = "dry-run")]
+    #[arg(long)]
     pub dry_run: bool,
-    #[structopt(
-        long = "allow-erase-all",
-        help = "Use this flag to allow all memory, including security keys and 3rd party firmware, to be erased \
-        even when it has read-only protection."
-    )]
+    /// Use this flag to allow all memory, including security keys and 3rd party
+    /// firmware, to be erased even when it has read-only protection.
+    #[arg(long)]
     pub allow_erase_all: bool,
 }
 
@@ -336,28 +341,28 @@ impl AsRef<ProbeOptions> for LoadedProbeOptions {
 /// Common options used when building artifacts with cargo.
 #[derive(clap::Parser, Debug, Default)]
 pub struct CargoOptions {
-    #[clap(name = "binary", long = "bin", hide = true)]
+    #[arg(name = "binary", long, hide = true)]
     pub bin: Option<String>,
-    #[clap(name = "example", long = "example", hide = true)]
+    #[arg(long, hide = true)]
     pub example: Option<String>,
-    #[clap(name = "package", short = 'p', long = "package", hide = true)]
+    #[arg(short, long, hide = true)]
     pub package: Option<String>,
-    #[clap(name = "release", long = "release", hide = true)]
+    #[arg(long, hide = true)]
     pub release: bool,
-    #[clap(name = "target", long = "target", hide = true)]
+    #[arg(long, hide = true)]
     pub target: Option<String>,
-    #[clap(name = "PATH", long = "manifest-path", hide = true)]
+    #[arg(name = "PATH", long, hide = true)]
     pub manifest_path: Option<PathBuf>,
-    #[clap(long, hide = true)]
+    #[arg(long, hide = true)]
     pub no_default_features: bool,
-    #[clap(long, hide = true)]
+    #[arg(long, hide = true)]
     pub all_features: bool,
-    #[clap(long, hide = true)]
+    #[arg(long, hide = true)]
     pub features: Vec<String>,
-    #[clap(hide = true)]
     /// Escape hatch: all args passed after a sentinel `--` end up here,
     /// unprocessed. Used to pass arguments to cargo not declared in
     /// [CargoOptions].
+    #[arg(hide = true)]
     pub trailing_opts: Vec<String>,
 }
 

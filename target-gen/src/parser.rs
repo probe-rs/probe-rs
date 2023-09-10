@@ -1,7 +1,6 @@
 use crate::flash_device::FlashDevice;
-use probe_rs::config::{FlashProperties, RawFlashAlgorithm, SectorDescription};
-
 use anyhow::{anyhow, Context, Result};
+use probe_rs::config::{FlashProperties, RawFlashAlgorithm, SectorDescription};
 
 /// Extract a chunk of data from an ELF binary.
 ///
@@ -57,7 +56,7 @@ fn extract_flash_device(elf: &goblin::elf::Elf, buffer: &[u8]) -> Result<FlashDe
     Err(anyhow!("Failed to find 'FlashDevice' symbol in ELF file."))
 }
 
-/// Extracts a position & memory independent flash algorithm blob from the proveided ELF file.
+/// Extracts a position & memory independent flash algorithm blob from the provided ELF file.
 pub fn extract_flash_algo(
     mut file: impl std::io::Read,
     file_name: &std::path::Path,

@@ -14,7 +14,7 @@ use crate::{
         },
         riscv::communication_interface::{RiscvCommunicationInterface, RiscvError},
     },
-    probe::jlink::bits_to_byte,
+    probe::common::bits_to_byte,
     DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
 };
 

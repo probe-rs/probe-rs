@@ -29,16 +29,16 @@ goblin = { version = "0.7.1", default-features = false, features = [
 ] }
 scroll = "0.11.0"
 serde_yaml = "^0.9.25"
-log = "0.4.19"
+log = "0.4.20"
 zip = "0.6.6"
-clap = { version = "4.3", features = ["derive"] }
+clap = { version = "4.4", features = ["derive"] }
 colored = "2"
-base64 = "0.21.2"
-anyhow = "1.0.72"
-reqwest = { version = "0.11.18", features = ["json", "blocking"] }
+base64 = "0.21.3"
+anyhow = "1.0.75"
+reqwest = { version = "0.11.20", features = ["json", "blocking"] }
 serde = { version = "1", features = ["derive"] }
 futures = "0.3.28"
-tokio = { version = "1.29.1", features = ["macros", "rt", "rt-multi-thread"] }
+tokio = { version = "1.32.0", features = ["macros", "rt", "rt-multi-thread"] }
 tracing-subscriber = { version = "0.3.17", features = [
     "env-filter",
     "tracing-log",
@@ -46,6 +46,7 @@ tracing-subscriber = { version = "0.3.17", features = [
 xshell = { version = "0.2", default-features = false }
 cargo_metadata = { version = "0.17", default-features = false }
 indicatif = { version = "0.17", default-features = false }
+parse_int = { version = "0.6.0" }
 
 [dev-dependencies]
 assert_cmd = "2.0.12"

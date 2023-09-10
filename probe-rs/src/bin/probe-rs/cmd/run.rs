@@ -1,5 +1,6 @@
 use std::fs::File;
 use std::io::Write;
+use std::ops::Range;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -17,6 +18,8 @@ use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 use crate::util::flash::run_flash_download;
 use crate::util::rtt::{self, RttConfig};
 use crate::FormatOptions;
+
+const RTT_RETRIES: usize = 10;
 
 #[derive(clap::Parser)]
 pub struct Cmd {
@@ -79,6 +82,7 @@ impl Cmd {
         }
 
         let memory_map = session.target().memory_map.clone();
+        let rtt_scan_regions = session.target().rtt_scan_regions.clone();
         let mut core = session.core(0)?;
 
         if run_download {
@@ -92,6 +96,7 @@ impl Cmd {
         run_loop(
             &mut core,
             &memory_map,
+            &rtt_scan_regions,
             path,
             timestamp_offset,
             self.always_print_stacktrace,
@@ -107,6 +112,7 @@ impl Cmd {
 fn run_loop(
     core: &mut Core<'_>,
     memory_map: &[MemoryRegion],
+    rtt_scan_regions: &[Range<u64>],
     path: &Path,
     timestamp_offset: UtcOffset,
     always_print_stacktrace: bool,
@@ -119,7 +125,14 @@ fn run_loop(
         ..Default::default()
     });
 
-    let mut rtta = attach_to_rtt(core, memory_map, path, rtt_config, timestamp_offset);
+    let mut rtta = attach_to_rtt(
+        core,
+        memory_map,
+        rtt_scan_regions,
+        path,
+        rtt_config,
+        timestamp_offset,
+    );
 
     let exit = Arc::new(AtomicBool::new(false));
     let sig_id = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
@@ -245,15 +258,27 @@ fn poll_rtt(
 fn attach_to_rtt(
     core: &mut Core<'_>,
     memory_map: &[MemoryRegion],
+    scan_regions: &[Range<u64>],
     path: &Path,
     rtt_config: RttConfig,
     timestamp_offset: UtcOffset,
 ) -> Option<rtt::RttActiveTarget> {
-    match rtt::attach_to_rtt(core, memory_map, path, &rtt_config, timestamp_offset) {
-        Ok(target_rtt) => Some(target_rtt),
-        Err(error) => {
-            log::error!("{:?} Continuing without RTT... ", error);
-            None
+    for _ in 0..RTT_RETRIES {
+        match rtt::attach_to_rtt(
+            core,
+            memory_map,
+            scan_regions,
+            path,
+            &rtt_config,
+            timestamp_offset,
+        ) {
+            Ok(target_rtt) => return Some(target_rtt),
+            Err(error) => {
+                log::debug!("{:?} RTT attach error", error);
+            }
         }
+        std::thread::sleep(std::time::Duration::from_millis(100));
     }
+    log::error!("Failed to attach to RTT continuing...");
+    None
 }
