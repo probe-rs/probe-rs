@@ -13,6 +13,8 @@ pub mod info;
 pub mod itm;
 pub mod list;
 pub mod profile;
+pub mod read;
 pub mod reset;
 pub mod run;
 pub mod trace;
+pub mod write;

@@ -35,6 +35,7 @@ use super::ArtifactError;
 
 use std::{fs::File, path::Path, path::PathBuf};
 
+use crate::util::parse_u64;
 use clap;
 use probe_rs::{
     config::{RegistryError, TargetSelector},
@@ -42,6 +43,7 @@ use probe_rs::{
     DebugProbeError, DebugProbeSelector, FakeProbe, Permissions, Probe, Session, Target,
     WireProtocol,
 };
+use serde::{Deserialize, Serialize};
 
 /// Common options when flashing a target device.
 #[derive(Debug, clap::Parser)]
@@ -90,6 +92,29 @@ pub struct BinaryDownloadOptions {
     /// After flashing, read back all the flashed data to verify it has been written correctly.
     #[arg(long)]
     pub verify: bool,
+}
+
+/// Supported bit-widths for read/write commands (not every device may support each width).
+#[derive(Debug, Copy, Clone, Serialize, Deserialize, clap::ValueEnum)]
+pub enum ReadWriteBitWidth {
+    /// 8-bit width
+    B8 = 8,
+    /// 32-bit width
+    B32 = 32,
+    /// 64-bit width
+    B64 = 64,
+}
+
+/// Common options for read/write operations to a target device.
+#[derive(Debug, clap::Parser)]
+pub struct ReadWriteOptions {
+    /// Width of the data to read/write.
+    #[clap(value_enum, ignore_case = true)]
+    pub width: ReadWriteBitWidth,
+    /// The address to start from.
+    /// Takes an integer as an argument, and can be specified in decimal (16), hexadecimal (0x10) or octal (0o20) format.
+    #[clap(value_parser = parse_u64)]
+    pub address: u64,
 }
 
 /// Common options and logic when interfacing with a [Probe].
