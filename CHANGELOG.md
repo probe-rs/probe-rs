@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - target-gen: Add new `--test-address` option to the `target-gen test` subcommand. (#1708)
 - `cli`: Add `--verify` flag to `download`, `flash` and `run` (#1727)
 - `cli`: Add `read` and `write` commands to interact with target memory (8,32,64 bit words) (#1746)
+- Added STM32U5A and STM32U59 targets. (#1744)
 
 ### Changed
 
