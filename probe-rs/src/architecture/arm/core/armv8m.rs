@@ -479,7 +479,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
             VectorCatchCondition::CoreReset => demcr.set_vc_corereset(true),
             VectorCatchCondition::SecureFault => {
                 if !idpfr1.security_present() {
-                    return Err(Error::Arm(ArmError::ArchitectureRequired(&["ARMv8"])));
+                    return Err(Error::Arm(ArmError::ExtensionRequired(&["Security"])));
                 }
                 demcr.set_vc_sferr(true);
             }
