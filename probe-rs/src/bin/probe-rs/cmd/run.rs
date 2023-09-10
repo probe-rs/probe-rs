@@ -125,7 +125,14 @@ fn run_loop(
         ..Default::default()
     });
 
-    let mut rtta = attach_to_rtt(core, memory_map, rtt_scan_regions, path, rtt_config, timestamp_offset);
+    let mut rtta = attach_to_rtt(
+        core,
+        memory_map,
+        rtt_scan_regions,
+        path,
+        rtt_config,
+        timestamp_offset,
+    );
 
     let exit = Arc::new(AtomicBool::new(false));
     let sig_id = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
@@ -257,7 +264,14 @@ fn attach_to_rtt(
     timestamp_offset: UtcOffset,
 ) -> Option<rtt::RttActiveTarget> {
     for _ in 0..RTT_RETRIES {
-        match rtt::attach_to_rtt(core, memory_map, scan_regions, path, &rtt_config, timestamp_offset) {
+        match rtt::attach_to_rtt(
+            core,
+            memory_map,
+            scan_regions,
+            path,
+            &rtt_config,
+            timestamp_offset,
+        ) {
             Ok(target_rtt) => return Some(target_rtt),
             Err(error) => {
                 log::debug!("{:?} RTT attach error", error);
