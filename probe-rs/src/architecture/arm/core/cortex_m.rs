@@ -83,10 +83,10 @@ impl Mvfr0 {
 memory_mapped_bitfield_register! {
     /// Processor Feature Register 1
     pub struct IdPfr1(u32);
-    0xE000_ED40, "ID_PFR1",
+    0xE000_ED44, "ID_PFR1",
     impl From;
     /// Identifies support for the M-Profile programmer's model
-    pub m_prog_mod, _: 31, 28;
+    pub m_prog_mod, _: 11, 8;
     /// Identifies whether the Security Extension is implemented
     pub security, _: 7, 4;
 }
