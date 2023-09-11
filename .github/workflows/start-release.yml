@@ -17,7 +17,7 @@ jobs:
     env:
       BRANCH_NAME: release/${{ inputs.version }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: chainguard-dev/actions/setup-gitsign@main
       - name: install cargo-release
         run: |
