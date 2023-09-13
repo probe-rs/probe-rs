@@ -1,6 +1,7 @@
 pub(crate) mod arm_jtag;
 pub(crate) mod common;
 
+pub(crate) mod bmp;
 pub(crate) mod cmsisdap;
 pub(crate) mod espusbjtag;
 pub(crate) mod fake_probe;
@@ -288,6 +289,11 @@ impl Probe {
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),
         };
+        match bmp::Bmp::new_from_selector(selector.clone()) {
+            Ok(link) => return Ok(Probe::from_specific_probe(link)),
+            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
+            Err(e) => return Err(e),
+        };
 
         Err(DebugProbeError::ProbeCouldNotBeCreated(
             ProbeCreationError::NotFound,
@@ -509,7 +515,7 @@ impl Probe {
 pub trait DebugProbe: Send + fmt::Debug {
     /// Creates a new boxed [`DebugProbe`] from a given [`DebugProbeSelector`].
     /// This will be called for all available debug drivers when discovering probes.
-    /// When opening, it will open the first probe which succeds during this call.
+    /// When opening, it will open the first probe which succeeds during this call.
     fn new_from_selector(
         selector: impl Into<DebugProbeSelector>,
     ) -> Result<Box<Self>, DebugProbeError>
@@ -645,6 +651,8 @@ pub enum DebugProbeType {
     JLink,
     /// Built in RISC-V ESP JTAG debug probe
     EspJtag,
+    /// Black Magic Probe
+    Bmp,
 }
 
 /// Gathers some information about a debug probe which was found during a scan.
