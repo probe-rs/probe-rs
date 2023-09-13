@@ -730,8 +730,8 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
                 let instruction1 = self.read_word_8((pc + 1) as u64)?;
                 if instruction1 == 0xBE && instruction2 == 0xAB {
                     // 0xAB breakpoint -> we are semihosting
-                    // This is defined by the ARM Compiler Software Development Guide.
-                    // <https://developer.arm.com/documentation/dui0471/m/what-is-semihosting->
+                    // This is defined by the ARM Semihosting Specification:
+                    // <https://github.com/ARM-software/abi-aa/blob/main/semihosting/semihosting.rst#the-semihosting-interface>
                     const SYS_EXIT: u32 = 0x18;
                     const SYS_EXIT_ADP_STOPPED_APPLICATIONEXIT: u32 = 0x20026;
                     match (r0, r1) {
