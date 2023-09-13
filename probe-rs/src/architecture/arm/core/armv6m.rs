@@ -8,9 +8,8 @@ use crate::{
     core::{CoreRegisters, RegisterId, RegisterValue, VectorCatchCondition},
     error::Error,
     memory::valid_32bit_address,
-    Architecture, BreakpointCause, CoreInformation, CoreInterface, CoreRegister, CoreStatus,
-    CoreType, DebugProbeError, HaltReason, InstructionSet, MemoryInterface, MemoryMappedRegister,
-    SemihostingCommand,
+    Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType,
+    DebugProbeError, HaltReason, InstructionSet, MemoryInterface, MemoryMappedRegister,
 };
 use anyhow::Result;
 use bitfield::bitfield;
@@ -540,38 +539,14 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
                 );
             }
 
-            if let HaltReason::Breakpoint(_) = reason {
-                // Check for semihosting
-                let pc: u32 = self.read_core_reg(RegisterId(15))?.try_into()?;
-                let r0: u32 = self.read_core_reg(RegisterId(0))?.try_into()?;
-                let r1: u32 = self.read_core_reg(RegisterId(1))?.try_into()?;
-                let instruction2 = self.read_word_8(pc as u64)?;
-                let instruction1 = self.read_word_8((pc + 1) as u64)?;
-                if instruction1 == 0xBE && instruction2 == 0xAB {
-                    // 0xAB breakpoint -> we are semihosting
-                    // This is defined by the ARM Semihosting Specification:
-                    // <https://github.com/ARM-software/abi-aa/blob/main/semihosting/semihosting.rst#the-semihosting-interface>
-                    const SYS_EXIT: u32 = 0x18;
-                    const SYS_EXIT_ADP_STOPPED_APPLICATIONEXIT: u32 = 0x20026;
-                    match (r0, r1) {
-                        (SYS_EXIT, SYS_EXIT_ADP_STOPPED_APPLICATIONEXIT) => {
-                            reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(
-                                SemihostingCommand::ExitSuccess,
-                            ));
-                        }
-                        (SYS_EXIT, code) => {
-                            reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(
-                                SemihostingCommand::ExitError { code: code as u64 },
-                            ));
-                        }
-                        _ => {
-                            tracing::warn!("Unknown semihosting operation r0={r0:08x} r1={r1:08x}");
-                        }
-                    }
-                }
-            }
-
+            // Set the status so any semihosting operations will know we're halted
             self.set_core_status(CoreStatus::Halted(reason));
+
+            if let HaltReason::Breakpoint(_) = reason {
+                reason = super::cortex_m::check_for_semihosting(reason, self)?;
+                // Set it again if it's changed
+                self.set_core_status(CoreStatus::Halted(reason));
+            }
 
             return Ok(CoreStatus::Halted(reason));
         }

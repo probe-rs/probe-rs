@@ -3,7 +3,8 @@
 use crate::{
     architecture::arm::{memory::adi_v5_memory_interface::ArmProbe, ArmError},
     core::RegisterId,
-    memory_mapped_bitfield_register, Error, MemoryMappedRegister,
+    memory_mapped_bitfield_register, BreakpointCause, CoreInterface, Error, HaltReason,
+    MemoryMappedRegister, SemihostingCommand,
 };
 use std::time::{Duration, Instant};
 
@@ -112,6 +113,49 @@ pub(crate) fn write_core_reg(
     wait_for_core_register_transfer(memory, Duration::from_millis(100))?;
 
     Ok(())
+}
+
+/// Check if the current breakpoint is a semihosting call.
+///
+/// Call this if you get some kind of breakpoint. Works on ARMv6-M, ARMv7-M and ARMv8-M.
+pub(crate) fn check_for_semihosting(
+    old_reason: HaltReason,
+    core: &mut dyn CoreInterface,
+) -> Result<HaltReason, Error> {
+    let mut reason = old_reason;
+    // Check for semihosting instruction
+    let pc: u32 = core.read_core_reg(RegisterId(15))?.try_into()?;
+    let instruction2 = core.read_word_8(pc as u64)?;
+    let instruction1 = core.read_word_8((pc + 1) as u64)?;
+    tracing::debug!(
+        "Semihosting check pc={pc:#x} instruction={instruction1:#02x}{instruction2:02x}"
+    );
+    if instruction1 == 0xBE && instruction2 == 0xAB {
+        // BKPT 0xAB -> we are semihosting
+        let r0: u32 = core.read_core_reg(RegisterId(0))?.try_into()?;
+        let r1: u32 = core.read_core_reg(RegisterId(1))?.try_into()?;
+        tracing::info!("Semihosting found pc={pc:#x} r0={r0:#x} r1={r1:#x}");
+        // This is defined by the ARM Semihosting Specification:
+        // <https://github.com/ARM-software/abi-aa/blob/main/semihosting/semihosting.rst#the-semihosting-interface>
+        const SYS_EXIT: u32 = 0x18;
+        const SYS_EXIT_ADP_STOPPED_APPLICATIONEXIT: u32 = 0x20026;
+        match (r0, r1) {
+            (SYS_EXIT, SYS_EXIT_ADP_STOPPED_APPLICATIONEXIT) => {
+                reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(
+                    SemihostingCommand::ExitSuccess,
+                ));
+            }
+            (SYS_EXIT, code) => {
+                reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(
+                    SemihostingCommand::ExitError { code: code as u64 },
+                ));
+            }
+            _ => {
+                tracing::warn!("Unknown semihosting operation r0={r0:08x} r1={r1:08x}");
+            }
+        }
+    }
+    Ok(reason)
 }
 
 fn wait_for_core_register_transfer(
