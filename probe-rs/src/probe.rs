@@ -10,6 +10,7 @@ pub(crate) mod ftdi;
 pub(crate) mod jlink;
 pub(crate) mod stlink;
 
+use self::bmp::list_bmp_devices;
 use self::espusbjtag::list_espjtag_devices;
 use crate::architecture::arm::ArmError;
 use crate::architecture::riscv::communication_interface::RiscvError;
@@ -255,7 +256,9 @@ impl Probe {
 
         list.extend(list_espjtag_devices());
 
-        list
+        list.extend(list_bmp_devices());
+
+        return list;
     }
 
     /// Create a [`Probe`] from [`DebugProbeInfo`]. Use the
@@ -652,7 +655,7 @@ pub enum DebugProbeType {
     /// Built in RISC-V ESP JTAG debug probe
     EspJtag,
     /// Black Magic Probe
-    Bmp,
+    BlackMagicProbe,
 }
 
 /// Gathers some information about a debug probe which was found during a scan.

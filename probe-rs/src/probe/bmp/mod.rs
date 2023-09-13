@@ -1,22 +1,65 @@
-use crate::DebugProbeError;
+use std::time::Duration;
+
+use crate::{
+    DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, ProbeCreationError,
+    WireProtocol,
+};
 
 use super::DebugProbe;
-use blackmagicprobe::BlackMagicProbe;
+use blackmagicprobe::Probe;
+use rusb::{Context, Device, UsbContext};
 
 #[derive(Debug)]
 pub(crate) struct Bmp {
-    handle: BlackMagicProbe,
+    handle: Probe,
+    protocol: WireProtocol,
 }
 
 impl DebugProbe for Bmp {
     /// Creates a new boxed [`DebugProbe`] from a given [`DebugProbeSelector`].
     /// This will be called for all available debug drivers when discovering probes.
     /// When opening, it will open the first probe which succeeds during this call.
-    // fn new_from_selector(
-    //     selector: impl Into<DebugProbeSelector>,
-    // ) -> Result<Box<Self>, DebugProbeError>
-    // where
-    //     Self: Sized;
+    fn new_from_selector(
+        selector: impl Into<DebugProbeSelector>,
+    ) -> Result<Box<Self>, DebugProbeError> {
+        let selector = selector.into();
+
+        let context = Context::new()?;
+
+        tracing::debug!("Acquired libusb context.");
+
+        let device = context
+            .devices()?
+            .iter()
+            .filter(is_bmp_device)
+            .find_map(|device| {
+                let descriptor = device.device_descriptor().ok()?;
+                // First match the VID & PID.
+                if selector.vendor_id == descriptor.vendor_id()
+                    && selector.product_id == descriptor.product_id()
+                {
+                    // If the VID & PID match, match the serial if one was given.
+                    if let Some(serial) = &selector.serial_number {
+                        let sn_str = read_serial_number(&device, &descriptor).ok();
+                        if sn_str.as_ref() == Some(serial) {
+                            Some(device)
+                        } else {
+                            None
+                        }
+                    } else {
+                        // If no serial was given, the VID & PID match is enough; return the device.
+                        Some(device)
+                    }
+                } else {
+                    None
+                }
+            })
+            .map_or(Err(ProbeCreationError::NotFound), Ok)?;
+        Ok(Box::new(Bmp {
+            handle: Probe::open_by_serial(serial).unwrap(),
+            protocol: WireProtocol::Swd,
+        }))
+    }
 
     /// Get human readable name for the probe.
     fn get_name(&self) -> &str {
@@ -73,10 +116,20 @@ impl DebugProbe for Bmp {
     }
 
     /// Selects the transport protocol to be used by the debug probe.
-    // fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError>;
+    fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
+        match protocol {
+            WireProtocol::Swd | WireProtocol::Jtag => {
+                self.protocol = protocol;
+                return Ok(());
+            }
+            other => Err(DebugProbeError::UnsupportedProtocol(other)),
+        }
+    }
 
     /// Get the transport protocol currently in active use by the debug probe.
-    // fn active_protocol(&self) -> Option<WireProtocol>;
+    fn active_protocol(&self) -> Option<WireProtocol> {
+        Some(self.protocol)
+    }
 
     /// Check if the proble offers an interface to debug ARM chips.
     // fn has_arm_interface(&self) -> bool {
@@ -126,7 +179,9 @@ impl DebugProbe for Bmp {
     // }
 
     /// Boxes itself.
-    // fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
+    fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self
+    }
 
     /// Try creating a DAP interface for the given probe.
     ///
@@ -138,6 +193,77 @@ impl DebugProbe for Bmp {
     /// Reads the target voltage in Volts, if possible. Returns `Ok(None)`
     /// if the probe doesn’t support reading the target voltage.
     fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
-        self.handle.target_voltage()
+        let result = self.handle.target_voltage();
+        match result {
+            Ok(voltage) => Ok(Some(voltage)),
+            Err(err) => Err(DebugProbeError::ProbeSpecific(err.into())),
+        }
     }
+}
+
+/// Try to read the serial number of a USB device.
+fn read_serial_number<T: rusb::UsbContext>(
+    device: &rusb::Device<T>,
+    descriptor: &rusb::DeviceDescriptor,
+) -> Result<String, rusb::Error> {
+    let timeout = Duration::from_millis(100);
+
+    let handle = device.open()?;
+    let language = handle
+        .read_languages(timeout)?
+        .get(0)
+        .cloned()
+        .ok_or(rusb::Error::BadDescriptor)?;
+    handle.read_serial_number_string(language, descriptor, timeout)
+}
+
+pub(super) fn is_bmp_device<T: UsbContext>(device: &Device<T>) -> bool {
+    // Check the VID/PID.
+    if let Ok(descriptor) = device.device_descriptor() {
+        descriptor.vendor_id() == blackmagicprobe::VENDOR_ID
+            && blackmagicprobe::PRODUCT_IDS.contains(&descriptor.product_id())
+    } else {
+        false
+    }
+}
+
+#[tracing::instrument(skip_all)]
+pub(crate) fn list_bmp_devices() -> Vec<DebugProbeInfo> {
+    rusb::Context::new()
+        .and_then(|context| context.devices())
+        .map_or(vec![], |devices| {
+            devices
+                .iter()
+                .filter(is_bmp_device)
+                .filter_map(|device| {
+                    let descriptor = device.device_descriptor().ok()?;
+
+                    let sn_str = match read_serial_number(&device, &descriptor) {
+                        Ok(serial_number) => Some(serial_number),
+                        Err(e) => {
+                            // Reading the serial number can fail, e.g. if the driver for the probe
+                            // is not installed. In this case we can still list the probe,
+                            // just without serial number.
+                            tracing::debug!(
+                                "Failed to read serial number of device {:04x}:{:04x} : {}",
+                                descriptor.vendor_id(),
+                                descriptor.product_id(),
+                                e
+                            );
+                            tracing::debug!("This might be happening because of a missing driver.");
+                            None
+                        }
+                    };
+
+                    Some(DebugProbeInfo::new(
+                        "Black Magic Probe".to_string(),
+                        descriptor.vendor_id(),
+                        descriptor.product_id(),
+                        sn_str,
+                        DebugProbeType::BlackMagicProbe,
+                        None,
+                    ))
+                })
+                .collect::<Vec<_>>()
+        })
 }
