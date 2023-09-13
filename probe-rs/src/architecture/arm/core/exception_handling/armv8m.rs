@@ -391,11 +391,24 @@ impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv8m::Armv
         stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<crate::debug::DebugRegisters, crate::Error> {
         let mut calling_stack_registers = vec![0u32; EXCEPTION_STACK_REGISTERS.len()];
-        self.read_32(
-            stackframe_registers
-                .get_register_value_by_role(&crate::core::RegisterRole::StackPointer)?,
-            &mut calling_stack_registers,
-        )?;
+        let stack_frame_return_address: u32 = get_stack_frame_return_address(stackframe_registers)?;
+        let exc_return = ExcReturn(stack_frame_return_address);
+        let sp_value = if exc_return.is_exception_flag() == 0xFF {
+            let stack_info = (exc_return.use_secure_stack(),
+                exc_return.stack_pointer_selection());
+            
+            let sp_reg_id = match stack_info {
+                (false, false) => { 0b00011000 }, // non-secure, main stack pointer
+                (false, true) => { 0b00011001 }, // non-secure, process stack pointer
+                (true, false) => { 0b00011010 }, // secure, main stack pointer
+                (true, true) => { 0b00011011 }, // secure, process stack pointer
+            };
+            self.read_core_reg(sp_reg_id.into())?.try_into()?
+        } else {
+            stackframe_registers.get_register_value_by_role(&crate::core::RegisterRole::StackPointer)?
+        };
+
+        self.read_32(sp_value, &mut calling_stack_registers)?;
         let mut calling_frame_registers = stackframe_registers.clone();
         for (i, register_role) in EXCEPTION_STACK_REGISTERS.iter().enumerate() {
             calling_frame_registers
@@ -427,20 +440,8 @@ impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv8m::Armv
         &mut self,
         stackframe_registers: &DebugRegisters,
     ) -> Result<Option<ExceptionInfo>, Error> {
-        let frame_return_address: u32 = stackframe_registers
-            .get_return_address()
-            .ok_or_else(|| {
-                Error::Register("No Return Address register. Please report this as a bug.".to_string())
-            })?
-            .value
-            .ok_or_else(|| {
-                Error::Register(
-                    "No value for Return Address register. Please report this as a bug.".to_string(),
-                )
-            })?
-            .try_into()?;
-    
-        if ExcReturn(frame_return_address).is_exception_flag() == 0xFF {
+        let stack_frame_return_address: u32 = get_stack_frame_return_address(stackframe_registers)?;
+        if ExcReturn(stack_frame_return_address).is_exception_flag() == 0xFF {
             // This is an exception frame.
     
             Ok(Some(ExceptionInfo {
@@ -452,4 +453,23 @@ impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv8m::Armv
             Ok(None)
         }
     }
+}
+
+fn get_stack_frame_return_address(
+    stackframe_registers: &crate::debug::DebugRegisters
+    ) -> Result<u32, crate::Error> {
+    let return_address: u32 = stackframe_registers
+        .get_return_address()
+        .ok_or_else(|| {
+            Error::Register("No Return Address register. Please report this as a bug.".to_string())
+        })?
+        .value
+        .ok_or_else(|| {
+            Error::Register(
+                "No value for Return Address register. Please report this as a bug.".to_string(),
+            )
+        })?
+        .try_into()?;
+
+    Ok(return_address)
 }
