@@ -39,7 +39,7 @@ impl DebugProbe for Bmp {
     /// `DebugProbeError::UnsupportedSpeed` will be returned.
     ///
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
-       self.handle.max_speed_set(speed_khz * 1000);
+        self.handle.max_speed_set(speed_khz * 1000);
         return Ok(self.speed_khz());
     }
 
@@ -62,13 +62,15 @@ impl DebugProbe for Bmp {
 
     /// This should assert the reset pin of the target via debug probe.
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
-
+        self.handle.nrst_set(true);
+        Ok(())
     }
 
     /// This should deassert the reset pin of the target via debug probe.
-    // fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
-
-    // }
+    fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
+        self.handle.nrst_set(false);
+        Ok(())
+    }
 
     /// Selects the transport protocol to be used by the debug probe.
     // fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError>;
@@ -135,7 +137,7 @@ impl DebugProbe for Bmp {
 
     /// Reads the target voltage in Volts, if possible. Returns `Ok(None)`
     /// if the probe doesn’t support reading the target voltage.
-    // fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
-    //     Ok(None)
-    // }
+    fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
+        self.handle.target_voltage()
+    }
 }
