@@ -2,10 +2,11 @@ use crate::{
     core::{ExceptionInfo, ExceptionInterface},
     debug::DebugRegisters,
     memory::MemoryInterface,
-    memory_mapped_bitfield_register, CoreInterface, Error, MemoryMappedRegister, RegisterValue,};
+    memory_mapped_bitfield_register, CoreInterface, Error, MemoryMappedRegister, RegisterValue,
+};
 use bitfield::bitfield;
 
-use super::armv6m_armv7m_shared::{EXCEPTION_STACK_REGISTERS, Xpsr};
+use super::armv6m_armv7m_shared::{Xpsr, EXCEPTION_STACK_REGISTERS};
 
 bitfield! {
     /// The EXC_RETURN value (The value of the link address register) is used to
