@@ -25,6 +25,20 @@ impl CoreStatus {
     }
 }
 
+/// Indicates the operation the target would like the debugger to perform.
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub enum SemihostingCommand {
+    /// The target indicates that it completed successfully and no-longer wishes
+    /// to run.
+    ExitSuccess,
+    /// The target indicates that it completed unsuccessfully, with an error
+    /// code, and no-longer wishes to run.
+    ExitError {
+        /// Some architecture-specific or application specific exit code
+        code: u64,
+    },
+}
+
 /// When the core halts due to a breakpoint request, some architectures will allow us to distinguish between a software and hardware breakpoint.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum BreakpointCause {
@@ -34,6 +48,12 @@ pub enum BreakpointCause {
     Software,
     /// We were not able to distinguish if this was a hardware or software breakpoint.
     Unknown,
+    /// The target requested the host perform a semihosting operation.
+    ///
+    /// The core set up some registers into a well-specified state and then hit
+    /// a breakpoint. This indicates the core would like the debug probe to do
+    /// some work.
+    Semihosting(SemihostingCommand),
 }
 
 /// The reason why a core was halted.

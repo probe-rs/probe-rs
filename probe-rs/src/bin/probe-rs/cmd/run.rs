@@ -6,10 +6,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use probe_rs::debug::DebugInfo;
 use probe_rs::flashing::{FileDownloadError, Format};
-use probe_rs::{Core, HaltReason, RegisterId, VectorCatchCondition};
+use probe_rs::{BreakpointCause, Core, HaltReason, SemihostingCommand, VectorCatchCondition};
 use probe_rs_target::MemoryRegion;
 use signal_hook::consts::signal;
 use time::UtcOffset;
@@ -107,8 +107,10 @@ impl Cmd {
     }
 }
 
-/// Print all RTT messsages and a stacktrace when the core stops due to an exception
-/// or when ctrl + c is pressed.
+/// Print all RTT messsages and a stacktrace when the core stops due to an
+/// exception or when ctrl + c is pressed.
+///
+/// Returns `Ok(())` if the core gracefully halted, or an error.
 fn run_loop(
     core: &mut Core<'_>,
     memory_map: &[MemoryRegion],
@@ -117,7 +119,7 @@ fn run_loop(
     timestamp_offset: UtcOffset,
     always_print_stacktrace: bool,
     no_location: bool,
-) -> Result<bool, anyhow::Error> {
+) -> Result<(), anyhow::Error> {
     let mut rtt_config = rtt::RttConfig::default();
     rtt_config.channels.push(rtt::RttChannelConfig {
         channel_number: Some(0),
@@ -141,7 +143,7 @@ fn run_loop(
     while !exit.load(Ordering::Relaxed) {
         let had_rtt_data = poll_rtt(&mut rtta, core, &mut stdout)?;
         if poll_stacktrace(core, path)? {
-            return Ok(false);
+            return Ok(());
         }
 
         // Poll RTT with a frequency of 10 Hz if we do not receive any new data.
@@ -166,51 +168,39 @@ fn run_loop(
 
     signal_hook::low_level::unregister(sig_id);
     signal_hook::flag::register_conditional_default(signal::SIGINT, exit)?;
-    Ok(manually_halted)
+    Ok(())
 }
 
 /// Try to fetch the necessary data of the core to print its stacktrace.
+///
+/// Returns `Ok(true)` if the debuger should stop polling, or `Ok(false)` if the
+/// polling should continue, or an error.
 fn poll_stacktrace(core: &mut Core<'_>, path: &Path) -> Result<bool> {
     let status = core.status()?;
     let registers = core.registers();
     let pc_register = registers.pc().expect("a program counter register");
-    if let probe_rs::CoreStatus::Halted(reason) = status {
-        let mut skip_stacktrace = false;
-        if core.architecture() == probe_rs::Architecture::Arm {
-            if let HaltReason::Breakpoint(_kind) = reason {
-                use probe_rs::MemoryInterface;
-                // Maybe this was a semihosting operation.
-                // Grab the breakpoint instruction and the registers R0 and R1
-                let pc: u32 = core.read_core_reg(pc_register)?;
-                let r0: u32 = core.read_core_reg(RegisterId(0))?;
-                let r1: u32 = core.read_core_reg(RegisterId(1))?;
-                let instruction2 = core.read_word_8(pc as u64)?;
-                let instruction1 = core.read_word_8((pc + 1) as u64)?;
-                if instruction1 == 0xBE && instruction2 == 0xAB {
-                    // 0xAB breakpoint -> we are semihosting
-                    const SYS_EXIT: u32 = 0x18;
-                    const SYS_EXIT_ADP_STOPPED_APPLICATIONEXIT: u32 = 0x20026;
-                    match (r0, r1) {
-                        (SYS_EXIT, SYS_EXIT_ADP_STOPPED_APPLICATIONEXIT) => {
-                            skip_stacktrace = true;
-                            println!("Program exited successfully");
-                        }
-                        (SYS_EXIT, _) => {
-                            println!("Exited with unknown error code r1={r1:08x}");
-                        }
-                        _ => {
-                            println!("Unknown semihosting operation r0={r0:08x} r1={r1:08x}");
-                        }
-                    }
-                }
-            }
-        }
-        if !skip_stacktrace {
+    match status {
+        probe_rs::CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
+            SemihostingCommand::ExitSuccess,
+        ))) => Ok(true),
+        probe_rs::CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
+            SemihostingCommand::ExitError { code },
+        ))) => Err(anyhow!(
+            "Semihosting indicates exit with failure code: {code:#08x} ({code})"
+        )),
+        probe_rs::CoreStatus::Halted(_reason) => {
+            // Try and give the user some info as to why it halted.
             print_stacktrace(core, pc_register, path)?;
+            // Report this as an error
+            Err(anyhow!("CPU halted unexpectedly."))
         }
-        Ok(true)
-    } else {
-        Ok(false)
+        probe_rs::CoreStatus::Running
+        | probe_rs::CoreStatus::LockedUp
+        | probe_rs::CoreStatus::Sleeping
+        | probe_rs::CoreStatus::Unknown => {
+            // Carry on
+            Ok(false)
+        }
     }
 }
 
