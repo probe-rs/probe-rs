@@ -74,6 +74,25 @@ enum Subcommand {
     Chip(cmd::chip::Cmd),
     Benchmark(cmd::benchmark::Cmd),
     Profile(cmd::profile::Cmd),
+    /// Read from target memory address
+    /// e.g. probe-rs read b32 0x400E1490 2
+    ///      Reads 2 32-bit words from address 0x400E1490
+    /// Output is a space separated list of hex values padded to the read word width.
+    /// e.g. 2 words
+    ///     00 00 (8-bit)
+    ///     00000000 00000000 (32-bit)
+    ///     0000000000000000 0000000000000000 (64-bit)
+    ///
+    /// NOTE: Only supports RAM addresses
+    #[clap(verbatim_doc_comment)]
+    Read(cmd::read::Cmd),
+    /// Write to target memory address
+    /// e.g. probe-rs write b32 0x400E1490 0xDEADBEEF 0xCAFEF00D
+    ///      Writes 0xDEADBEEF to address 0x400E1490 and 0xCAFEF00D to address 0x400E1494
+    ///
+    /// NOTE: Only supports RAM addresses
+    #[clap(verbatim_doc_comment)]
+    Write(cmd::write::Cmd),
 }
 
 /// Shared options for core selection, shared between commands
@@ -261,6 +280,8 @@ fn main() -> Result<()> {
         Subcommand::Chip(cmd) => cmd.run(),
         Subcommand::Benchmark(cmd) => cmd.run(),
         Subcommand::Profile(cmd) => cmd.run(),
+        Subcommand::Read(cmd) => cmd.run(),
+        Subcommand::Write(cmd) => cmd.run(),
     };
 
     tracing::info!("Wrote log to {:?}", log_path);

@@ -409,6 +409,7 @@ impl JtagAdapter {
             reply = reply.split_off(params.drpre);
         }
         reply.truncate(len_bits);
+        reply.force_align();
         let reply = reply.into_vec();
 
         Ok(reply)

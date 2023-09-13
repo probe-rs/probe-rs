@@ -6,18 +6,18 @@ use crossterm::{
 };
 use probe_rs::rtt::RttChannel;
 use probe_rs::Core;
+use ratatui::{
+    backend::CrosstermBackend,
+    layout::{Constraint, Direction, Layout},
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
+    widgets::{Block, Borders, List, ListItem, Paragraph, Tabs},
+    Terminal,
+};
 use std::{fmt::write, path::PathBuf, sync::mpsc::RecvTimeoutError};
 use std::{
     io::{Read, Seek, Write},
     time::Duration,
-};
-use tui::{
-    backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout},
-    style::{Color, Modifier, Style},
-    text::{Span, Spans},
-    widgets::{Block, Borders, List, ListItem, Paragraph, Tabs},
-    Terminal,
 };
 
 use super::super::{config, DefmtInformation};
@@ -191,7 +191,7 @@ impl App {
 
                         let tab_names = tabs
                             .iter()
-                            .map(|t| Spans::from(t.name()))
+                            .map(|t| Line::from(t.name()))
                             .collect::<Vec<_>>();
                         let tabs = Tabs::new(tab_names)
                             .select(current_tab)
@@ -219,7 +219,7 @@ impl App {
                             .iter()
                             .skip(message_num - (height + scroll_offset).min(message_num))
                             .take(height)
-                            .map(|s| ListItem::new(vec![Spans::from(Span::raw(s))]))
+                            .map(|s| ListItem::new(vec![Line::from(Span::raw(s))]))
                             .collect();
 
                         let messages = List::new(messages.as_slice())
@@ -227,7 +227,7 @@ impl App {
                         f.render_widget(messages, chunks[1]);
 
                         if has_down_channel {
-                            let input = Paragraph::new(Spans::from(vec![Span::raw(input.clone())]))
+                            let input = Paragraph::new(Line::from(vec![Span::raw(input.clone())]))
                                 .style(Style::default().fg(Color::Yellow).bg(Color::Blue));
                             f.render_widget(input, chunks[2]);
                         }
@@ -261,7 +261,7 @@ impl App {
 
                         let tab_names = tabs
                             .iter()
-                            .map(|t| Spans::from(t.name()))
+                            .map(|t| Line::from(t.name()))
                             .collect::<Vec<_>>();
                         let tabs = Tabs::new(tab_names)
                             .select(current_tab)
@@ -327,7 +327,7 @@ impl App {
                             .iter()
                             .skip(message_num - (height + scroll_offset).min(message_num))
                             .take(height)
-                            .map(|s| ListItem::new(vec![Spans::from(Span::raw(s))]))
+                            .map(|s| ListItem::new(vec![Line::from(Span::raw(s))]))
                             .collect();
 
                         let messages = List::new(messages.as_slice())
@@ -335,7 +335,7 @@ impl App {
                         f.render_widget(messages, chunks[1]);
 
                         if has_down_channel {
-                            let input = Paragraph::new(Spans::from(vec![Span::raw(input.clone())]))
+                            let input = Paragraph::new(Line::from(vec![Span::raw(input.clone())]))
                                 .style(Style::default().fg(Color::Yellow).bg(Color::Blue));
                             f.render_widget(input, chunks[2]);
                         }

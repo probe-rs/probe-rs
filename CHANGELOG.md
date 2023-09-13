@@ -7,22 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Support for EFM32 Happy Gecko MCUs (#1747)
 - Added RA4M1 series target, R7FA4M1AB. (#1706)
 - Added --no-location option to the CLI run command, which suppresses the filename and line number
   information from the rtt log (#1704)
 - target-gen: Add new `--test-address` option to the `target-gen test` subcommand. (#1708)
 - `cli`: Add `--verify` flag to `download`, `flash` and `run` (#1727)
+- `cli`: Add `read` and `write` commands to interact with target memory (8,32,64 bit words) (#1746)
+- Added STM32U5A and STM32U59 targets. (#1744)
 
 ### Changed
 
 - `cli`: Allow to interrupt `probe-rs run` during RTT scan (#1705).
 - `cli`: Ignore errors from `enable_vector_catch` (#1714).
 - `cli`: Retry RTT attach before continuing (#1722).
-- `cli`: Clean clap attributes (#xxxx)
+- `cli`: Clean clap attributes (#1730)
 - `target-gen`: (#1745)
   - Memory regions in target.yaml are now sorted with lowest address first.
   - Use `.pdsc` flash algorithm `RAMstart` field to calculate `load_address` for target yaml.
-- Target definitions can now constrain the RTT automatic scanning ranges to just a subset of all available RAM, to support targets that have large amounts of RAM that would take a long time to scan. (#xxx)
+- Target definitions can now constrain the RTT automatic scanning ranges to just a subset of all available RAM, to support targets that have large amounts of RAM that would take a long time to scan. (#1738, #1749)
+- `cli`: Output `defmt` logs as colored (#xxxx)
 
 ## [0.20.0]
 
@@ -62,6 +66,7 @@ Released 2023-07-19
 - `cli`: all the commands now load the chip description path and provide uniform config arguments (#1691).
 - `dap-server`: The VSCode extension reports all STDERR errors if process initialization fails (#1699).
 - `debug` : Consider `RegisterValue` byte size when doing arithmetic on register addresses. (#1701)
+- FTDI probe: Fixed dr_pre bits not being handled correctly during register operations.
 - ARMv7-A, ARMv8-A: Fixed incorrect addresses for registers.
 
 ### Removed
