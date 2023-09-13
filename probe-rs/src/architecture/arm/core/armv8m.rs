@@ -507,7 +507,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
                 if idpfr1.security_present() {
                     demcr.set_vc_sferr(false);
                 }
-            },
+            }
             VectorCatchCondition::All => {
                 demcr.set_vc_harderr(false);
                 demcr.set_vc_corereset(false);

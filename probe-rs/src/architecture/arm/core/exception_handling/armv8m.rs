@@ -1,10 +1,8 @@
 use crate::{
     core::{ExceptionInfo, ExceptionInterface},
     debug::DebugRegisters,
-    memory_mapped_bitfield_register, CoreInterface, Error, MemoryMappedRegister,
-    RegisterValue,
-    memory::MemoryInterface
-};
+    memory::MemoryInterface,
+    memory_mapped_bitfield_register, CoreInterface, Error, MemoryMappedRegister, RegisterValue,};
 use bitfield::bitfield;
 
 use super::armv6m_armv7m_shared::{EXCEPTION_STACK_REGISTERS, Xpsr};
@@ -394,18 +392,21 @@ impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv8m::Armv
         let stack_frame_return_address: u32 = get_stack_frame_return_address(stackframe_registers)?;
         let exc_return = ExcReturn(stack_frame_return_address);
         let sp_value = if exc_return.is_exception_flag() == 0xFF {
-            let stack_info = (exc_return.use_secure_stack(),
-                exc_return.stack_pointer_selection());
-            
+            let stack_info = (
+                exc_return.use_secure_stack(),
+                exc_return.stack_pointer_selection(),
+            );
+
             let sp_reg_id = match stack_info {
-                (false, false) => { 0b00011000 }, // non-secure, main stack pointer
-                (false, true) => { 0b00011001 }, // non-secure, process stack pointer
-                (true, false) => { 0b00011010 }, // secure, main stack pointer
-                (true, true) => { 0b00011011 }, // secure, process stack pointer
+                (false, false) => 0b00011000, // non-secure, main stack pointer
+                (false, true) => 0b00011001,  // non-secure, process stack pointer
+                (true, false) => 0b00011010,  // secure, main stack pointer
+                (true, true) => 0b00011011,   // secure, process stack pointer
             };
             self.read_core_reg(sp_reg_id.into())?.try_into()?
         } else {
-            stackframe_registers.get_register_value_by_role(&crate::core::RegisterRole::StackPointer)?
+            stackframe_registers
+                .get_register_value_by_role(&crate::core::RegisterRole::StackPointer)?
         };
 
         self.read_32(sp_value, &mut calling_stack_registers)?;
@@ -443,7 +444,7 @@ impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv8m::Armv
         let stack_frame_return_address: u32 = get_stack_frame_return_address(stackframe_registers)?;
         if ExcReturn(stack_frame_return_address).is_exception_flag() == 0xFF {
             // This is an exception frame.
-    
+
             Ok(Some(ExceptionInfo {
                 description: self.exception_description(stackframe_registers)?,
                 calling_frame_registers: self.calling_frame_registers(stackframe_registers)?,
@@ -456,8 +457,8 @@ impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv8m::Armv
 }
 
 fn get_stack_frame_return_address(
-    stackframe_registers: &crate::debug::DebugRegisters
-    ) -> Result<u32, crate::Error> {
+    stackframe_registers: &crate::debug::DebugRegisters,
+) -> Result<u32, crate::Error> {
     let return_address: u32 = stackframe_registers
         .get_return_address()
         .ok_or_else(|| {
