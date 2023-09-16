@@ -51,6 +51,7 @@ Released 2023-07-19
 - Added a simple profiler to the probe-rs cli toolkit (#1628)
 - Added MSP432E4 target (MSP432E401Y and MSP432E411Y). (#1139)
 - probe-rs-cli: added `attach` subcommand. (#1672, #1616)
+- Added arm interface support to ftdi probes.
 
 ### Changed
 

@@ -1,0 +1,29 @@
+name: ZYNQ7000
+variants:
+  - name: Zynq7020
+    cores:
+      - name: core0
+        type: armv7a
+        core_access_options:
+          !Arm
+            ap: 0x0
+            psel: 0x0
+            debug_base: 0x80090000
+      - name: core1
+        type: armv7a
+        core_access_options:
+          !Arm
+            ap: 0x0
+            psel: 0x0
+            debug_base: 0x80092000
+    memory_map:
+      - !Ram
+          range:
+            start: 0x00000000
+            end: 0x00030000
+          is_boot_memory: false
+          cores:
+            - core0
+            - core1
+    flash_algorithms: []
+flash_algorithms: []
