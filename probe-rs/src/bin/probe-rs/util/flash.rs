@@ -1,3 +1,5 @@
+use crate::FormatOptions;
+
 use super::common_options::{BinaryDownloadOptions, LoadedProbeOptions, OperationError};
 use super::logging;
 
@@ -8,9 +10,13 @@ use std::{path::Path, sync::Arc, time::Instant};
 use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use probe_rs::{
-    flashing::{DownloadOptions, FlashLoader, FlashProgress, ProgressEvent},
+    flashing::{
+        DownloadOptions, FileDownloadError, FlashLoader, FlashProgress, Format, ProgressEvent,
+    },
     Session,
 };
+
+use anyhow::Context;
 
 /// Performs the flash download with the given loader. Ensure that the loader has the data to load already stored.
 /// This function also manages the update and display of progress bars.
@@ -172,28 +178,30 @@ pub fn run_flash_download(
     Ok(())
 }
 
-/// Builds a new flash loader for the given target and ELF. This
-/// will check the ELF for validity and check what pages have to be
+/// Builds a new flash loader for the given target and path. This
+/// will check the path for validity and check what pages have to be
 /// flashed etc.
-pub fn build_elf_flashloader(
+pub fn build_loader(
     session: &mut Session,
-    elf_path: &Path,
-) -> Result<FlashLoader, OperationError> {
-    let target = session.target();
-
+    path: &Path,
+    format_options: FormatOptions,
+) -> anyhow::Result<FlashLoader> {
     // Create the flash loader
-    let mut loader = FlashLoader::new(target.memory_map.to_vec(), target.source().clone());
+    let mut loader = session.target().flash_loader();
 
-    // Add data from the ELF.
-    let mut file = File::open(elf_path).map_err(|error| OperationError::FailedToOpenElf {
-        source: error,
-        path: elf_path.to_path_buf(),
-    })?;
+    // Add data from the BIN.
+    let mut file = match File::open(path) {
+        Ok(file) => file,
+        Err(e) => return Err(FileDownloadError::IO(e)).context("Failed to open binary file."),
+    };
 
-    // Try and load the ELF data.
-    loader
-        .load_elf_data(&mut file)
-        .map_err(OperationError::FailedToLoadElfData)?;
+    let format = format_options.into_format()?;
+    match format {
+        Format::Bin(options) => loader.load_bin_data(&mut file, options),
+        Format::Elf => loader.load_elf_data(&mut file),
+        Format::Hex => loader.load_hex_data(&mut file),
+        Format::Idf(options) => loader.load_idf_data(session, &mut file, options),
+    }?;
 
     Ok(loader)
 }
