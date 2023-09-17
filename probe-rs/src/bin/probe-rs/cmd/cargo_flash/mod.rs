@@ -95,7 +95,7 @@ fn main_try(mut args: Vec<OsString>) -> Result<(), OperationError> {
     let (mut session, probe_options) = opt.probe_options.simple_attach()?;
 
     // Flash the binary
-    let flashloader = flash::build_flashloader(&mut session, &path)?;
+    let flashloader = flash::build_elf_flashloader(&mut session, &path)?;
     flash::run_flash_download(
         &mut session,
         &path,

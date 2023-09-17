@@ -175,7 +175,7 @@ pub fn run_flash_download(
 /// Builds a new flash loader for the given target and ELF. This
 /// will check the ELF for validity and check what pages have to be
 /// flashed etc.
-pub fn build_flashloader(
+pub fn build_elf_flashloader(
     session: &mut Session,
     elf_path: &Path,
 ) -> Result<FlashLoader, OperationError> {
