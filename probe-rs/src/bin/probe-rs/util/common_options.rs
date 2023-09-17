@@ -72,6 +72,9 @@ pub struct FlashOptions {
     #[command(flatten)]
     /// Argument relating to probe/chip selection/configuration.
     pub download_options: BinaryDownloadOptions,
+
+    #[command(flatten)]
+    pub format_options: crate::FormatOptions,
 }
 
 /// Common options when flashing a target device.
