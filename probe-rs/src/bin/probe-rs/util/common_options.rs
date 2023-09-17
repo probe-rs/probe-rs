@@ -56,9 +56,9 @@ pub struct FlashOptions {
     /// Default is `warning`. Possible choices are [error, warning, info, debug, trace].
     #[arg(value_name = "level", long)]
     pub log: Option<log::Level>,
-    /// The path to the ELF file to be flashed.
-    #[arg(value_name = "elf file", long)]
-    pub elf: Option<PathBuf>,
+    /// The path to the file to be flashed.
+    #[arg(value_name = "path", long)]
+    pub path: Option<PathBuf>,
     /// The work directory from which cargo-flash should operate from.
     #[arg(value_name = "directory", long)]
     pub work_dir: Option<PathBuf>,

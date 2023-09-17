@@ -62,9 +62,9 @@ fn main_try(mut args: Vec<OsString>) -> Result<(), OperationError> {
     })?;
     log::debug!("Changed working directory to {}", work_dir.display());
 
-    // Get the path to the ELF binary we want to flash.
+    // Get the path to the binary we want to flash.
     // This can either be give from the arguments or can be a cargo build artifact.
-    let path: PathBuf = if let Some(path) = &opt.elf {
+    let path: PathBuf = if let Some(path) = &opt.path {
         path.into()
     } else {
         // Build the project, and extract the path of the built artifact.
