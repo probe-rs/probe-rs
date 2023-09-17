@@ -162,6 +162,7 @@ impl FormatOptions {
                     partition_table,
                 })
             }
+            Format::Uf2 => Format::Uf2,
         })
     }
 }
