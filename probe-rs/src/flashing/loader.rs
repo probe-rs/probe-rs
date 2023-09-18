@@ -235,10 +235,10 @@ impl FlashLoader {
         file.read_to_end(&mut uf2_buffer)?;
 
         let (converted, family_to_target) = uf2_decode::convert_from_uf2(&uf2_buffer).unwrap();
-        let mut target_addresses = family_to_target.values();
+        let target_addresses = family_to_target.values();
         let num_sections = family_to_target.len();
 
-        if let Some(target_address) =  target_addresses.next() {
+        if let Some(target_address) =  target_addresses.min() {
             tracing::info!("Found {} loadable sections:", num_sections);
             if num_sections > 1 {
                 tracing::warn!("More than 1 section found in UF2 file.  Using first section.");
