@@ -3921,8 +3921,9 @@ checksum = "497961ef93d974e23eb6f433eb5fe1b7930b659f06d12dec6fc44a8f554c0bba"
 
 [[package]]
 name = "uf2-decode"
-version = "0.1.0"
-source = "git+https://github.com/tommy-gilligan/uf2-decode.git#3e65ea8f840f3cb959580a272e21d34f4c7fb2ac"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ca77d41ab27e3fa45df42043f96c79b80c6d8632eed906b54681d8d47ab00623"
 
 [[package]]
 name = "uncased"
