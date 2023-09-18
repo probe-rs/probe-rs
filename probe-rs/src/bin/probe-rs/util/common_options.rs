@@ -54,13 +54,13 @@ pub struct FlashOptions {
     /// Use this flag to set the log level.
     ///
     /// Default is `warning`. Possible choices are [error, warning, info, debug, trace].
-    #[arg(name = "level")]
+    #[arg(value_name = "level", long)]
     pub log: Option<log::Level>,
-    /// The path to the ELF file to be flashed.
-    #[arg(name = "elf file", long)]
-    pub elf: Option<PathBuf>,
+    /// The path to the file to be flashed.
+    #[arg(value_name = "path", long)]
+    pub path: Option<PathBuf>,
     /// The work directory from which cargo-flash should operate from.
-    #[arg(name = "directory", long)]
+    #[arg(value_name = "directory", long)]
     pub work_dir: Option<PathBuf>,
 
     #[command(flatten)]
@@ -72,6 +72,9 @@ pub struct FlashOptions {
     #[command(flatten)]
     /// Argument relating to probe/chip selection/configuration.
     pub download_options: BinaryDownloadOptions,
+
+    #[command(flatten)]
+    pub format_options: crate::FormatOptions,
 }
 
 /// Common options when flashing a target device.
@@ -87,7 +90,7 @@ pub struct BinaryDownloadOptions {
     #[arg(long)]
     pub restore_unwritten: bool,
     /// Requests the flash builder to output the layout into the given file in SVG format.
-    #[arg(name = "filename", long = "flash-layout")]
+    #[arg(value_name = "filename", long = "flash-layout")]
     pub flash_layout_output_path: Option<String>,
     /// After flashing, read back all the flashed data to verify it has been written correctly.
     #[arg(long)]
@@ -122,7 +125,7 @@ pub struct ReadWriteOptions {
 pub struct ProbeOptions {
     #[arg(long)]
     pub chip: Option<String>,
-    #[arg(name = "chip description file path", long)]
+    #[arg(value_name = "chip description file path", long)]
     pub chip_description_path: Option<PathBuf>,
 
     /// Protocol used to connect to chip. Possible options: [swd, jtag]
@@ -341,7 +344,7 @@ impl AsRef<ProbeOptions> for LoadedProbeOptions {
 /// Common options used when building artifacts with cargo.
 #[derive(clap::Parser, Debug, Default)]
 pub struct CargoOptions {
-    #[arg(name = "binary", long, hide = true)]
+    #[arg(value_name = "binary", long, hide = true)]
     pub bin: Option<String>,
     #[arg(long, hide = true)]
     pub example: Option<String>,
@@ -351,7 +354,7 @@ pub struct CargoOptions {
     pub release: bool,
     #[arg(long, hide = true)]
     pub target: Option<String>,
-    #[arg(name = "PATH", long, hide = true)]
+    #[arg(value_name = "PATH", long, hide = true)]
     pub manifest_path: Option<PathBuf>,
     #[arg(long, hide = true)]
     pub no_default_features: bool,
@@ -457,12 +460,14 @@ pub enum OperationError {
     #[error("No connected probes were found.")]
     NoProbesFound,
     #[error("Failed to open the ELF file '{path}' for flashing.")]
+    #[allow(dead_code)]
     FailedToOpenElf {
         #[source]
         source: std::io::Error,
         path: PathBuf,
     },
     #[error("Failed to load the ELF data.")]
+    #[allow(dead_code)]
     FailedToLoadElfData(#[source] FileDownloadError),
     #[error("Failed to open the debug probe.")]
     FailedToOpenProbe(#[source] DebugProbeError),

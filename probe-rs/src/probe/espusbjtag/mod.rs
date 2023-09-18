@@ -24,6 +24,7 @@ use self::protocol::ProtocolHandler;
 
 use super::JTAGAccess;
 
+use probe_rs_target::ScanChainElement;
 pub use protocol::list_espjtag_devices;
 
 #[derive(Debug)]
@@ -35,6 +36,7 @@ pub(crate) struct EspUsbJtag {
     jtag_idle_cycles: u8,
 
     current_ir_reg: u32,
+    scan_chain: Option<Vec<ScanChainElement>>,
 }
 
 impl EspUsbJtag {
@@ -441,6 +443,7 @@ impl DebugProbe for EspUsbJtag {
             protocol,
             jtag_idle_cycles: 0,
             current_ir_reg: 1,
+            scan_chain: None,
         }))
     }
 
@@ -469,6 +472,18 @@ impl DebugProbe for EspUsbJtag {
         // can only go lower, base speed it max of 40000khz
 
         Ok(speed_khz)
+    }
+
+    fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
+        // A scan chain only makes sense in JTAG mode. Quit early if a different protocol is used.
+        if self.active_protocol() != Some(WireProtocol::Jtag) {
+            return Err(DebugProbeError::CommandNotSupportedByProbe(
+                "Setting Scan Chain is only supported in JTAG mode",
+            ));
+        }
+        tracing::info!("Setting scan chain to {:?}", scan_chain);
+        self.scan_chain = Some(scan_chain);
+        Ok(())
     }
 
     fn attach(&mut self) -> Result<(), super::DebugProbeError> {

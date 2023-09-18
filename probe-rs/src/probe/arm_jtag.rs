@@ -1356,7 +1356,7 @@ mod test {
 
     use crate::{
         architecture::arm::{PortType, RawDapAccess},
-        probe::JTAGAccess,
+        probe::{JTAGAccess, ScanChainElement},
         DebugProbe, DebugProbeError,
     };
 
@@ -1687,6 +1687,13 @@ mod test {
         }
 
         fn set_speed(&mut self, _speed_khz: u32) -> Result<u32, crate::DebugProbeError> {
+            todo!()
+        }
+
+        fn set_scan_chain(
+            &mut self,
+            _scan_chain: Vec<ScanChainElement>,
+        ) -> Result<(), DebugProbeError> {
             todo!()
         }
 

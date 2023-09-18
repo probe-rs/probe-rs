@@ -9,12 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Support for EFM32 Happy Gecko MCUs (#1747)
 - Added RA4M1 series target, R7FA4M1AB. (#1706)
+- Support for NXP i.MX RT500 series chips: MIMXRT595S, MIMXRT555S, MIMXRT533S (#1642)
 - Added --no-location option to the CLI run command, which suppresses the filename and line number
   information from the rtt log (#1704)
 - target-gen: Add new `--test-address` option to the `target-gen test` subcommand. (#1708)
 - `cli`: Add `--verify` flag to `download`, `flash` and `run` (#1727)
 - `cli`: Add `read` and `write` commands to interact with target memory (8,32,64 bit words) (#1746)
 - Added STM32U5A and STM32U59 targets. (#1744)
+- Added AT32F4 series targets (#1759)
+- Allowed JTAG scan chain information to be encoded in targets (#1731)
+- Added support for IDF and BIN to cargo flash.  Added UF2 support to cargo
+  flash and probe-rs. (#1765)
 - Support for handling an Arm Cortex-M Semihosting 'Exit Success' or 'Exit Failure' command. (#1755)
 
 ### Changed

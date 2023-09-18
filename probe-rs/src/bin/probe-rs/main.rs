@@ -115,7 +115,7 @@ fn format_from_str<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Format,
 
 #[derive(clap::Parser, Clone, Deserialize, Debug, Default)]
 #[serde(default)]
-pub(crate) struct FormatOptions {
+pub struct FormatOptions {
     #[clap(value_enum, ignore_case = true, default_value = "elf", long)]
     #[serde(deserialize_with = "format_from_str")]
     format: Format,
@@ -162,6 +162,7 @@ impl FormatOptions {
                     partition_table,
                 })
             }
+            Format::Uf2 => Format::Uf2,
         })
     }
 }

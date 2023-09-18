@@ -1,0 +1,367 @@
+name: NXP MIMXRT500 Series
+# NOTE: This was originally generated from CMSIS-Pack but subsequently modified
+# to use datasheet-consistent names for the memory regions and to consolidate
+# the three chip variants into one target file, since they all have the same
+# memory map and flash algorithms anyway.
+generated_from_pack: true
+pack_file_release: 16.1.0
+variants:
+- name: MIMXRT595S
+  # This is the full-featured variant, including both DSP core and vector GPU
+  cores:
+  - name: cm33
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  # RT595 also includes a Cadence Fusion F1 (Tensilica) core, but
+  # probe-rs currently has no support for that architecture.
+  memory_map:
+  - !Ram
+    name: Shared RAM partitions 0-31 via M33 code bus
+    range:
+      start: 0x00000000
+      end: 0x00500000
+    cores:
+    - cm33
+  - !Generic
+    name: ROM-Boot
+    range:
+      start: 0x03000000
+      end: 0x03020000
+    cores:
+    - cm33
+  - !Nvm
+    name: FlexSPI0 memory-mapped space
+    range:
+      start: 0x08000000
+      end: 0x10000000
+    cores:
+    - cm33
+  - !Ram
+    name: Shared RAM partitions 0-31 via M33 code bus (secure)
+    range:
+      start: 0x10000000
+      end: 0x10500000
+    cores:
+    - cm33
+  - !Generic
+    name: ROM-Boot (secure)
+    range:
+      start: 0x13000000
+      end: 0x13020000
+    cores:
+    - cm33
+  - !Nvm
+    name: FlexSPI0 memory-mapped space (secure)
+    range:
+      start: 0x18000000
+      end: 0x20000000
+    cores:
+    - cm33
+  - !Ram
+    name: Shared RAM partitions 0-31 via data bus
+    range:
+      start: 0x20000000
+      end: 0x20500000
+    cores:
+    - cm33
+  - !Nvm
+    name: FlexSPI1 memory-mapped space
+    range:
+      start: 0x28000000
+      end: 0x30000000
+    cores:
+    - cm33
+  - !Ram
+    name: Shared RAM partitions 0-31 via data bus (secure)
+    range:
+      start: 0x30000000
+      end: 0x30500000
+    cores:
+    - cm33
+  - !Nvm
+    name: FlexSPI1 memory-mapped space (secure)
+    range:
+      start: 0x38000000
+      end: 0x40000000
+    cores:
+    - cm33
+  - !Ram
+    name: USB SRAM
+    range:
+      start: 0x40140000
+      end: 0x40144000
+    cores:
+    - cm33
+  - !Generic
+    name: USB SRAM (secure)
+    range:
+      start: 0x50140000
+      end: 0x50144000
+    cores:
+    - cm33
+  rtt_scan_ranges: [
+    # This chip has a large amount of RAM that takes too long to scan its
+    # entirety, so there's no automatic RTT header scanning on this target.
+  ]
+  flash_algorithms:
+  - mimxrt5xx_evk_flexspi
+  - mimxrt5xx_evk_flexspi_s
+- name: MIMXRT555S
+  # This is the first reduced variant, with no DSP core but still including
+  # the vector GPU.
+  cores:
+  - name: cm33
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: Shared RAM partitions 0-31 via M33 code bus
+    range:
+      start: 0x00000000
+      end: 0x00500000
+    cores:
+    - cm33
+  - !Generic
+    name: ROM-Boot
+    range:
+      start: 0x03000000
+      end: 0x03020000
+    cores:
+    - cm33
+  - !Nvm
+    name: FlexSPI0 memory-mapped space
+    range:
+      start: 0x08000000
+      end: 0x10000000
+    cores:
+    - cm33
+  - !Ram
+    name: Shared RAM partitions 0-31 via M33 code bus (secure)
+    range:
+      start: 0x10000000
+      end: 0x10500000
+    cores:
+    - cm33
+  - !Generic
+    name: ROM-Boot (secure)
+    range:
+      start: 0x13000000
+      end: 0x13020000
+    cores:
+    - cm33
+  - !Nvm
+    name: FlexSPI0 memory-mapped space (secure)
+    range:
+      start: 0x18000000
+      end: 0x20000000
+    cores:
+    - cm33
+  - !Ram
+    name: Shared RAM partitions 0-31 via data bus
+    range:
+      start: 0x20000000
+      end: 0x20500000
+    cores:
+    - cm33
+  - !Nvm
+    name: FlexSPI1 memory-mapped space
+    range:
+      start: 0x28000000
+      end: 0x30000000
+    cores:
+    - cm33
+  - !Ram
+    name: Shared RAM partitions 0-31 via data bus (secure)
+    range:
+      start: 0x30000000
+      end: 0x30500000
+    cores:
+    - cm33
+  - !Nvm
+    name: FlexSPI1 memory-mapped space (secure)
+    range:
+      start: 0x38000000
+      end: 0x40000000
+    cores:
+    - cm33
+  - !Ram
+    name: USB SRAM
+    range:
+      start: 0x40140000
+      end: 0x40144000
+    cores:
+    - cm33
+  - !Generic
+    name: USB SRAM (secure)
+    range:
+      start: 0x50140000
+      end: 0x50144000
+    cores:
+    - cm33
+  rtt_scan_ranges: [
+    # This chip has a large amount of RAM that takes too long to scan its
+    # entirety, so there's no automatic RTT header scanning on this target.
+  ]
+  flash_algorithms:
+  - mimxrt5xx_evk_flexspi
+  - mimxrt5xx_evk_flexspi_s
+- name: MIMXRT533S
+  # This is the second reduced variant, with neither DSP core nor vector GPU,
+  # and fewer RAM blocks than the other variants.
+  cores:
+  - name: cm33
+    type: armv8m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: Shared RAM partitions 0-31 via M33 code bus
+    range:
+      start: 0x00000000
+      end: 0x00300000
+    cores:
+    - cm33
+  - !Generic
+    name: ROM-Boot
+    range:
+      start: 0x03000000
+      end: 0x03020000
+    cores:
+    - cm33
+  - !Nvm
+    name: FlexSPI0 memory-mapped space
+    range:
+      start: 0x08000000
+      end: 0x10000000
+    cores:
+    - cm33
+  - !Ram
+    name: Shared RAM partitions 0-31 via M33 code bus (secure)
+    range:
+      start: 0x10000000
+      end: 0x10300000
+    cores:
+    - cm33
+  - !Generic
+    name: ROM-Boot (secure)
+    range:
+      start: 0x13000000
+      end: 0x13020000
+    cores:
+    - cm33
+  - !Nvm
+    name: FlexSPI0 memory-mapped space (secure)
+    range:
+      start: 0x18000000
+      end: 0x20000000
+    cores:
+    - cm33
+  - !Ram
+    name: Shared RAM partitions 0-31 via data bus
+    range:
+      start: 0x20000000
+      end: 0x20300000
+    cores:
+    - cm33
+  - !Nvm
+    name: FlexSPI1 memory-mapped space
+    range:
+      start: 0x28000000
+      end: 0x30000000
+    cores:
+    - cm33
+  - !Ram
+    name: Shared RAM partitions 0-31 via data bus (secure)
+    range:
+      start: 0x30000000
+      end: 0x30300000
+    cores:
+    - cm33
+  - !Nvm
+    name: FlexSPI1 memory-mapped space (secure)
+    range:
+      start: 0x38000000
+      end: 0x40000000
+    cores:
+    - cm33
+  - !Ram
+    name: USB SRAM
+    range:
+      start: 0x40140000
+      end: 0x40144000
+    cores:
+    - cm33
+  - !Generic
+    name: USB SRAM (secure)
+    range:
+      start: 0x50140000
+      end: 0x50144000
+    cores:
+    - cm33
+  rtt_scan_ranges: [
+    # This chip has a large amount of RAM that takes too long to scan its
+    # entirety, so there's no automatic RTT header scanning on this target.
+  ]
+  flash_algorithms:
+  - mimxrt5xx_evk_flexspi
+  - mimxrt5xx_evk_flexspi_s
+flash_algorithms:
+- name: mimxrt5xx_evk_flexspi
+  description: MIMXRT5XX-EVK FlexSPI0
+  default: true
+  # NOTE: The vendor-provided flash algorithm is largely just jumps into the
+  # boot ROM, where the real logic lives. Before launching the boot ROM it
+  # pulses PIO4_5 to reset the external flash chip, assuming the pinout used
+  # on the official evaluation kit boards.
+  instructions: cLVA8gwEwPIABEXyBAYJ6wQAT/QAccTyEwYA8F75QPIEBUPyBADA8gAFzPJAAEn4BQBD9gAAxPIDAAAhAWBD8hwAxPIDAAFgQPIBEPBiQvIwYMTyAABP9IAxAWAMIUFgT/D/MYFgwWCwaEDwAQCwYDBowAcJ0DBowAccvzBoX+rAcALQMGjAB/LRQfIQEMTyAAAfIQFgAyHA+CATACHA+CQTAyAA8Jj4cCPE8gADT/SANsP40G8J6wQBCesFAgEgHmC96HBAAPCXuAC/ACBwR0DyDADA8gAACesAAQEgAPBFuAC/APF4QkDyDADA8gAACesAAdH4xDEBIADwR7gAvwApBL8AIHBHLenwRYGwQPIMChRGiEYGRgAlwPIACgC/CesKBwbxeEIBIDlGI0YA8BP41/jAEQ1EDERFRQ5E79MBsL3o8IUAAE/yHALB8gIyEmhSaBBHAL9P8hwMwfICPNz4AMDc+AjAYEcAv0/yHALB8gIyEmjSaBBHAL9P8hwDwfICMxto22kYRwC/T/IcDMHyAjzc+ADA3PgQwGBHAL9P8hwMwfICPNz4AMDc+CDAYEcAv0/yHAzB8gI83PgAwNz4KMBgRwC/T/IcAsHyAjISaFJqEEcAv0/yHAHB8gIxCWjJaghHAL9P8hwDwfICMxtoG2sYRwC/cLWCsAxGBUZC8hBwAZAAvwGYQR4BkWCxAZhBHgGRQLEBmEEeAZEgsQGYQR4AKAGR7tFP8hwGwfICNjBoIUbDaShGmEcIsQKwcL0waCFGQmgoRpBHArBwvU/yIAHB8gIxCWgJaAhHAL9P8iAAwfICMABoQGgARwC/T/IgAsHyAjISaJJoEEcAv0/yIAPB8gIzG2jbaBhHAL9P8iAAwfICMABoQGkARwC/T/IgA8HyAjMbaJtpGEcAv0/yIAPB8gIzG2gbaRhHAL9P8gABwfICMQloCEfSsgHgAPgBK0ke+9JwRwAi9ucQtRNGCkYERhlG//fw/yBGEL0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+  load_address: 0x1001c000
+  stack_size: 4096
+  pc_init: 0x1
+  pc_uninit: 0xcd
+  pc_program_page: 0x101
+  pc_erase_sector: 0xe5
+  pc_erase_all: 0xd1
+  data_section_offset: 0x2f0
+  flash_properties:
+    address_range:
+      start: 0x08000000
+      end: 0x10000000
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 300
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x1000
+      address: 0x0
+- name: mimxrt5xx_evk_flexspi_s
+  description: MIMXRT5XX-EVK FlexSPI0 (Secure Memory Space)
+  default: true
+  # NOTE: The vendor-provided flash algorithm is largely just jumps into the
+  # boot ROM, where the real logic lives. Before launching the boot ROM it
+  # pulses PIO4_5 to reset the external flash chip, assuming the pinout used
+  # on the official evaluation kit boards.
+  instructions: cLVA8gwEwPIABEXyBAYJ6wQAT/QAccTyEwYA8F75QPIEBUPyBADA8gAFzPJAAEn4BQBD9gAAxPIDAAAhAWBD8hwAxPIDAAFgQPIBEPBiQvIwYMTyAABP9IAxAWAMIUFgT/D/MYFgwWCwaEDwAQCwYDBowAcJ0DBowAccvzBoX+rAcALQMGjAB/LRQfIQEMTyAAAfIQFgAyHA+CATACHA+CQTAyAA8Jj4cCPE8gADT/SANsP40G8J6wQBCesFAgEgHmC96HBAAPCXuAC/ACBwR0DyDADA8gAACesAAQEgAPBFuAC/APFoQkDyDADA8gAACesAAdH4xDEBIADwR7gAvwApBL8AIHBHLenwRYGwQPIMChRGiEYGRgAlwPIACgC/CesKBwbxaEIBIDlGI0YA8BP41/jAEQ1EDERFRQ5E79MBsL3o8IUAAE/yHALB8gIyEmhSaBBHAL9P8hwMwfICPNz4AMDc+AjAYEcAv0/yHALB8gIyEmjSaBBHAL9P8hwDwfICMxto22kYRwC/T/IcDMHyAjzc+ADA3PgQwGBHAL9P8hwMwfICPNz4AMDc+CDAYEcAv0/yHAzB8gI83PgAwNz4KMBgRwC/T/IcAsHyAjISaFJqEEcAv0/yHAHB8gIxCWjJaghHAL9P8hwDwfICMxtoG2sYRwC/cLWCsAxGBUZC8hBwAZAAvwGYQR4BkWCxAZhBHgGRQLEBmEEeAZEgsQGYQR4AKAGR7tFP8hwGwfICNjBoIUbDaShGmEcIsQKwcL0waCFGQmgoRpBHArBwvU/yIAHB8gIxCWgJaAhHAL9P8iAAwfICMABoQGgARwC/T/IgAsHyAjISaJJoEEcAv0/yIAPB8gIzG2jbaBhHAL9P8iAAwfICMABoQGkARwC/T/IgA8HyAjMbaJtpGEcAv0/yIAPB8gIzG2gbaRhHAL9P8gABwfICMQloCEfSsgHgAPgBK0ke+9JwRwAi9ucQtRNGCkYERhlG//fw/yBGEL0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==
+  load_address: 0x1001c000
+  stack_size: 4096
+  pc_init: 0x1
+  pc_uninit: 0xcd
+  pc_program_page: 0x101
+  pc_erase_sector: 0xe5
+  pc_erase_all: 0xd1
+  data_section_offset: 0x2f0
+  flash_properties:
+    address_range:
+      start: 0x18000000
+      end: 0x20000000
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 300
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x1000
+      address: 0x0
