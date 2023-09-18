@@ -29,7 +29,6 @@ pub(crate) fn render_diagnostics(error: OperationError) {
                 "For a guide on how to set up your probes, see https://probe.rs/docs/getting-started/probe-setup".into(),
             ],
         ),
-        #[allow(dead_code)]
         OperationError::FailedToOpenElf { source, path } => (
             error.to_string(),
             match source.kind() {
@@ -39,7 +38,6 @@ pub(crate) fn render_diagnostics(error: OperationError) {
                 _ => vec![]
             },
         ),
-        #[allow(dead_code)]
         OperationError::FailedToLoadElfData(e) => match e {
             FileDownloadError::NoLoadableSegments => (
                 e.to_string(),
