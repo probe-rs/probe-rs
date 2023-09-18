@@ -235,17 +235,15 @@ impl FlashLoader {
         file.read_to_end(&mut uf2_buffer)?;
 
         let (converted, family_to_target) = uf2_decode::convert_from_uf2(&uf2_buffer).unwrap();
-        self.add_data(
-            family_to_target
-                .into_iter()
-                .next()
-                .unwrap()
-                .1
-                .try_into()
-                .unwrap(),
-            &converted,
-        )?;
-        Ok(())
+
+        if let Some((_family, target)) = family_to_target.iter().next() {
+            tracing::info!("Found {} loadable sections:", family_to_target.len());
+            self.add_data((*target).try_into().unwrap(), &converted)?;
+            Ok(())
+        } else {
+            tracing::warn!("No loadable segments were found in the UF2 file.");
+            Err(FileDownloadError::NoLoadableSegments)
+        }
     }
 
     /// Writes all the stored data chunks to flash.
