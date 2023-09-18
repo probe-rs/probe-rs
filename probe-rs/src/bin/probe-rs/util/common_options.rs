@@ -341,7 +341,6 @@ impl AsRef<ProbeOptions> for LoadedProbeOptions {
     }
 }
 
-/// Common options used when building artifacts with cargo.
 #[derive(clap::Parser, Debug, Default)]
 pub struct CargoOptions {
     #[arg(value_name = "binary", long, hide = true)]
