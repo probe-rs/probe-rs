@@ -51,6 +51,7 @@ use commands::{
     },
     CmsisDapDevice, Status,
 };
+use probe_rs_target::{get_ir_lengths, ScanChainElement};
 
 use std::{result::Result, time::Duration};
 
@@ -72,6 +73,7 @@ pub struct CmsisDap {
 
     /// Speed in kHz
     speed_khz: u32,
+    scan_chain: Option<Vec<ScanChainElement>>,
 
     batch: Vec<BatchCommand>,
 }
@@ -131,6 +133,7 @@ impl CmsisDap {
             swo_streaming: false,
             connected: false,
             speed_khz: 1_000,
+            scan_chain: None,
             batch: Vec::new(),
         })
     }
@@ -717,6 +720,18 @@ impl DebugProbe for CmsisDap {
         Ok(speed_khz)
     }
 
+    fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
+        // A scan chain only makes sense in JTAG mode. Quit early if a different protocol is used.
+        if self.active_protocol() != Some(WireProtocol::Jtag) {
+            return Err(DebugProbeError::CommandNotSupportedByProbe(
+                "Setting Scan Chain is only supported in JTAG mode",
+            ));
+        }
+        tracing::info!("Setting scan chain to {:?}", scan_chain);
+        self.scan_chain = Some(scan_chain);
+        Ok(())
+    }
+
     /// Enters debug mode.
     #[tracing::instrument(skip(self))]
     fn attach(&mut self) -> Result<(), DebugProbeError> {
@@ -1012,9 +1027,18 @@ impl RawDapAccess for CmsisDap {
     }
 
     fn configure_jtag(&mut self) -> Result<(), DebugProbeError> {
-        // TODO: allow user to specify expected IR lengths
-        let chain = self.jtag_scan(None)?;
-        let ir_lengths = chain.irlens.iter().map(|len| *len as u8).collect();
+        // If the scan chain is populated, use that and skip runtime detection.
+        // We trust the user here and assume the scan chain is right. If its not,
+        // the use of the probe will fail later.
+        // If the scan chain is not populated, we need to do runtime detection.
+        let ir_lengths = if self.scan_chain.is_some() {
+            get_ir_lengths(self.scan_chain.as_ref().unwrap())
+        } else {
+            tracing::info!("No scan chain provided, doing runtime detection");
+            let chain = self.jtag_scan(None)?;
+            chain.irlens.iter().map(|len| *len as u8).collect()
+        };
+        tracing::info!("Configuring JTAG with ir lengths: {:?}", ir_lengths);
         self.send_jtag_configure(JtagConfigureRequest::new(ir_lengths)?)?;
 
         Ok(())

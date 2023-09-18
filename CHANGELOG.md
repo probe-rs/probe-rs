@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `cli`: Add `read` and `write` commands to interact with target memory (8,32,64 bit words) (#1746)
 - Added STM32U5A and STM32U59 targets. (#1744)
 - Added AT32F4 series targets (#1759)
+- Allowed JTAG scan chain information to be encoded in targets (#1731)
 
 ### Changed
 

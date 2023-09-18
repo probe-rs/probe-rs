@@ -161,13 +161,15 @@ impl Session {
         }
 
         probe.inner_attach()?;
+        if let Some(scan_chain) = target.scan_chain.clone() {
+            probe.set_scan_chain(scan_chain)?;
+        }
 
         let interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
 
         let mut interface = interface
             .initialize(sequence_handle.clone())
             .map_err(|(_interface, e)| e)?;
-
         let unlock_span = tracing::debug_span!("debug_device_unlock").entered();
 
         // Enable debug mode
@@ -259,8 +261,10 @@ impl Session {
                 panic!("Mismatch between architecture and sequence type!")
             }
         };
-
         probe.inner_attach()?;
+        if let Some(scan_chain) = target.scan_chain.clone() {
+            probe.set_scan_chain(scan_chain)?;
+        }
 
         let interface = probe
             .try_into_riscv_interface()
