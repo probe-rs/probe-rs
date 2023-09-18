@@ -138,7 +138,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         if dhcsr.s_halt() {
             let dfsr = Dfsr(self.memory.read_word_32(Dfsr::get_mmio_address())?);
 
-            let reason = dfsr.halt_reason();
+            let mut reason = dfsr.halt_reason();
 
             // Clear bits from Dfsr register
             self.memory
@@ -162,7 +162,14 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
                 );
             }
 
+            // Set the status so any semihosting operations will know we're halted
             self.set_core_status(CoreStatus::Halted(reason));
+
+            if let HaltReason::Breakpoint(_) = reason {
+                reason = super::cortex_m::check_for_semihosting(reason, self)?;
+                // Set it again if it's changed
+                self.set_core_status(CoreStatus::Halted(reason));
+            }
 
             return Ok(CoreStatus::Halted(reason));
         }

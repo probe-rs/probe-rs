@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Allowed JTAG scan chain information to be encoded in targets (#1731)
 - Added support for IDF and BIN to cargo flash.  Added UF2 support to cargo
   flash and probe-rs. (#1765)
+- Support for handling an Arm Cortex-M Semihosting 'Exit Success' or 'Exit Failure' command. (#1755)
 
 ### Changed
 
