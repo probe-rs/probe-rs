@@ -124,7 +124,7 @@ pub(crate) fn check_for_semihosting(
 ) -> Result<HaltReason, Error> {
     let mut reason = old_reason;
     // Check for semihosting instruction
-    let pc: u32 = core.read_core_reg(RegisterId(15))?.try_into()?;
+    let pc: u32 = core.read_core_reg(core.program_counter().id)?.try_into()?;
     let instruction2 = core.read_word_8(pc as u64)?;
     let instruction1 = core.read_word_8((pc + 1) as u64)?;
     tracing::debug!(
