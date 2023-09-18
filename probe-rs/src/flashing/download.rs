@@ -42,6 +42,8 @@ pub enum Format {
     /// Marks a file in the [ESP-IDF bootloader](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/app_image_format.html#app-image-structures) format.
     /// Use [IdfOptions] to configure flashing.
     Idf(IdfOptions),
+    /// Marks a file in the [UF2](https://github.com/microsoft/uf2) format.
+    Uf2,
 }
 
 impl FromStr for Format {
@@ -56,6 +58,7 @@ impl FromStr for Format {
             "idf" | "esp-idf" => Ok(Format::Idf(Default::default())),
             "hex" | "ihex" | "intelhex" => Ok(Format::Hex),
             "elf" => Ok(Format::Elf),
+            "uf2" => Ok(Format::Uf2),
             _ => Err(format!("Format '{s}' is unknown.")),
         }
     }
@@ -180,6 +183,7 @@ pub fn download_file_with_options<P: AsRef<Path>>(
         Format::Elf => loader.load_elf_data(&mut file),
         Format::Hex => loader.load_hex_data(&mut file),
         Format::Idf(options) => loader.load_idf_data(session, &mut file, options),
+        Format::Uf2 => loader.load_uf2_data(&mut file),
     }?;
 
     loader

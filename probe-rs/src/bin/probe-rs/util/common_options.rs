@@ -56,9 +56,9 @@ pub struct FlashOptions {
     /// Default is `warning`. Possible choices are [error, warning, info, debug, trace].
     #[arg(value_name = "level", long)]
     pub log: Option<log::Level>,
-    /// The path to the ELF file to be flashed.
-    #[arg(value_name = "elf file", long)]
-    pub elf: Option<PathBuf>,
+    /// The path to the file to be flashed.
+    #[arg(value_name = "path", long)]
+    pub path: Option<PathBuf>,
     /// The work directory from which cargo-flash should operate from.
     #[arg(value_name = "directory", long)]
     pub work_dir: Option<PathBuf>,
@@ -72,6 +72,9 @@ pub struct FlashOptions {
     #[command(flatten)]
     /// Argument relating to probe/chip selection/configuration.
     pub download_options: BinaryDownloadOptions,
+
+    #[command(flatten)]
+    pub format_options: crate::FormatOptions,
 }
 
 /// Common options when flashing a target device.
@@ -457,12 +460,14 @@ pub enum OperationError {
     #[error("No connected probes were found.")]
     NoProbesFound,
     #[error("Failed to open the ELF file '{path}' for flashing.")]
+    #[allow(dead_code)]
     FailedToOpenElf {
         #[source]
         source: std::io::Error,
         path: PathBuf,
     },
     #[error("Failed to load the ELF data.")]
+    #[allow(dead_code)]
     FailedToLoadElfData(#[source] FileDownloadError),
     #[error("Failed to open the debug probe.")]
     FailedToOpenProbe(#[source] DebugProbeError),
