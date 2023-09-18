@@ -107,7 +107,7 @@ pub struct FlashLayout {
 }
 
 impl FlashLayout {
-    /// List of sector which are erased during flashing.
+    /// List of sectors which are erased during flashing.
     pub fn sectors(&self) -> &[FlashSector] {
         &self.sectors
     }
