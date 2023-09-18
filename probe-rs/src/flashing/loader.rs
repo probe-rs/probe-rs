@@ -238,7 +238,7 @@ impl FlashLoader {
         let target_addresses = family_to_target.values();
         let num_sections = family_to_target.len();
 
-        if let Some(target_address) =  target_addresses.min() {
+        if let Some(target_address) = target_addresses.min() {
             tracing::info!("Found {} loadable sections:", num_sections);
             if num_sections > 1 {
                 tracing::warn!("More than 1 section found in UF2 file.  Using first section.");
