@@ -238,7 +238,7 @@ impl FlashLoader {
 
         if let Some((_family, target)) = family_to_target.iter().next() {
             tracing::info!("Found {} loadable sections:", family_to_target.len());
-            self.add_data((*target).try_into().unwrap(), &converted)?;
+            self.add_data(*target, &converted)?;
             Ok(())
         } else {
             tracing::warn!("No loadable segments were found in the UF2 file.");
