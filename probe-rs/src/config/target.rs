@@ -11,6 +11,7 @@ use crate::architecture::arm::{
         nrf53::Nrf5340,
         nrf91::Nrf9160,
         nxp_armv7m::{LPC55Sxx, MIMXRT10xx, MIMXRT11xx},
+        nxp_armv8m::MIMXRT5xxS,
         stm32_armv6::{Stm32Armv6, Stm32Armv6Family},
         stm32_armv7::Stm32Armv7,
         stm32h7::Stm32h7,
@@ -119,6 +120,9 @@ impl Target {
         } else if chip.name.starts_with("MIMXRT11") {
             tracing::warn!("Using custom sequence for MIMXRT11xx");
             debug_sequence = DebugSequence::Arm(MIMXRT11xx::create());
+        } else if chip.name.starts_with("MIMXRT5") {
+            tracing::warn!("Using custom sequence for MIMXRT5xxS");
+            debug_sequence = DebugSequence::Arm(MIMXRT5xxS::create());
         } else if chip.name.starts_with("LPC55S16")
             || chip.name.starts_with("LPC55S26")
             || chip.name.starts_with("LPC55S28")

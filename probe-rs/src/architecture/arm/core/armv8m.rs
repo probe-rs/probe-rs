@@ -795,7 +795,7 @@ bitfield! {
 
 impl Dhcsr {
     /// This function sets the bit to enable writes to this register.
-    fn enable_write(&mut self) {
+    pub fn enable_write(&mut self) {
         self.0 &= !(0xffff << 16);
         self.0 |= 0xa05f << 16;
     }
