@@ -39,7 +39,7 @@ use crate::util::parse_u64;
 use clap;
 use probe_rs::{
     config::{RegistryError, TargetSelector},
-    flashing::FlashError,
+    flashing::{FileDownloadError, FlashError},
     DebugProbeError, DebugProbeSelector, FakeProbe, Permissions, Probe, Session, Target,
     WireProtocol,
 };
@@ -459,6 +459,14 @@ CARGO BUILD OPTIONS:
 pub enum OperationError {
     #[error("No connected probes were found.")]
     NoProbesFound,
+    #[error("Failed to open the ELF file '{path}' for flashing.")]
+    FailedToOpenElf {
+        #[source]
+        source: std::io::Error,
+        path: PathBuf,
+    },
+    #[error("Failed to load the ELF data.")]
+    FailedToLoadElfData(#[source] FileDownloadError),
     #[error("Failed to open the debug probe.")]
     FailedToOpenProbe(#[source] DebugProbeError),
     #[error("{number} probes were found.")]

@@ -8,7 +8,7 @@ use bytesize::ByteSize;
 use probe_rs::{
     config::MemoryRegion,
     config::{RegistryError, TargetDescriptionSource},
-    flashing::FlashError,
+    flashing::{FileDownloadError, FlashError},
     Error as ProbeRsError, Target,
 };
 
@@ -29,6 +29,42 @@ pub(crate) fn render_diagnostics(error: OperationError) {
                 "For a guide on how to set up your probes, see https://probe.rs/docs/getting-started/probe-setup".into(),
             ],
         ),
+        OperationError::FailedToOpenElf { source, path } => (
+            error.to_string(),
+            match source.kind() {
+                std::io::ErrorKind::NotFound => vec![
+                    format!("Make sure the path '{}' is the correct location of your ELF binary.", path.display())
+                ],
+                _ => vec![]
+            },
+        ),
+        OperationError::FailedToLoadElfData(e) => match e {
+            FileDownloadError::NoLoadableSegments => (
+                e.to_string(),
+                vec![
+                    "Please make sure your linker script is correct and not missing at all.".into(),
+                    "If you are working with Rust, check your `.cargo/config.toml`? If you are new to the rust-embedded ecosystem, please head over to https://github.com/rust-embedded/cortex-m-quickstart.".into()
+                ],
+            ),
+            FileDownloadError::Flash(e) => match e {
+                FlashError::NoSuitableNvm {..} => (
+                    e.to_string(),
+                    vec![
+                        "Make sure the flash region specified in the linkerscript matches the one specified in the datasheet of your chip.".into()
+                    ]
+                ),
+                _ => (
+                    e.to_string(),
+                    vec![]
+                ),
+            },
+            _ => (
+                e.to_string(),
+                vec![
+                    "Make sure you are compiling for the correct architecture of your chip.".into()
+                ],
+            ),
+        },
         OperationError::FailedToOpenProbe(_e) => (
             error.to_string(),
             vec![
