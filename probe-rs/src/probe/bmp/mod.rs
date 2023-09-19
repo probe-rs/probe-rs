@@ -1,13 +1,15 @@
 use std::time::Duration;
 
+use rusb::{Context, Device, UsbContext};
+
+use blackmagic_sys::Probe;
+
 use crate::{
     DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, ProbeCreationError,
     WireProtocol,
 };
 
 use super::DebugProbe;
-use blackmagicprobe::Probe;
-use rusb::{Context, Device, UsbContext};
 
 #[derive(Debug)]
 pub(crate) struct Bmp {
@@ -24,12 +26,12 @@ impl DebugProbe for Bmp {
     ) -> Result<Box<Self>, DebugProbeError> {
         let selector = selector.into();
 
-        let context = Context::new()?;
+        let context = Context::new().unwrap();
 
         tracing::debug!("Acquired libusb context.");
 
-        let device = context
-            .devices()?
+        let serial = context
+            .devices().unwrap()
             .iter()
             .filter(is_bmp_device)
             .find_map(|device| {
@@ -42,13 +44,13 @@ impl DebugProbe for Bmp {
                     if let Some(serial) = &selector.serial_number {
                         let sn_str = read_serial_number(&device, &descriptor).ok();
                         if sn_str.as_ref() == Some(serial) {
-                            Some(device)
+                            sn_str.as_ref()
                         } else {
                             None
                         }
                     } else {
-                        // If no serial was given, the VID & PID match is enough; return the device.
-                        Some(device)
+                        let sn_str = read_serial_number(&device, &descriptor).ok();
+                        sn_str.as_ref()
                     }
                 } else {
                     None
@@ -117,13 +119,12 @@ impl DebugProbe for Bmp {
 
     /// Selects the transport protocol to be used by the debug probe.
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
-        match protocol {
+        return match protocol {
             WireProtocol::Swd | WireProtocol::Jtag => {
                 self.protocol = protocol;
-                return Ok(());
+                Ok(())
             }
-            other => Err(DebugProbeError::UnsupportedProtocol(other)),
-        }
+        };
     }
 
     /// Get the transport protocol currently in active use by the debug probe.
@@ -220,8 +221,8 @@ fn read_serial_number<T: rusb::UsbContext>(
 pub(super) fn is_bmp_device<T: UsbContext>(device: &Device<T>) -> bool {
     // Check the VID/PID.
     if let Ok(descriptor) = device.device_descriptor() {
-        descriptor.vendor_id() == blackmagicprobe::VENDOR_ID
-            && blackmagicprobe::PRODUCT_IDS.contains(&descriptor.product_id())
+        descriptor.vendor_id() == blackmagic_sys::VENDOR_ID
+            && blackmagic_sys::PRODUCT_IDS.contains(&descriptor.product_id())
     } else {
         false
     }
@@ -266,4 +267,10 @@ pub(crate) fn list_bmp_devices() -> Vec<DebugProbeInfo> {
                 })
                 .collect::<Vec<_>>()
         })
+}
+
+impl From<blackmagic_sys::BlackMagicProbeError> for DebugProbeError {
+    fn from(e: blackmagic_sys::BlackMagicProbeError) -> DebugProbeError {
+        DebugProbeError::ProbeSpecific(Box::new(e))
+    }
 }

@@ -87,7 +87,7 @@ base64 = "0.21.4"
 bincode = "1.3.3"
 bitfield = "0.14.0"
 bitvec = "1.0"
-blackmagicprobe = { path = "../../blackmagicprobe" }
+blackmagic-sys = { path = "../../blackmagic-sys" }
 enum-primitive-derive = "0.2.2"
 gimli = { version = "0.28.0", default-features = false, features = [
     "endian-reader",
