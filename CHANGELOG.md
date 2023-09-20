@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for IDF and BIN to cargo flash.  Added UF2 support to cargo
   flash and probe-rs. (#1765)
 - Support for handling an Arm Cortex-M Semihosting 'Exit Success' or 'Exit Failure' command. (#1755)
+- Added getters to registry : `get_targets_by_family_name` & `get_target_and_family_by_name`, change `get_target_by_name`;
 
 ### Changed
 
