@@ -290,6 +290,44 @@ impl Registry {
         Ok((targ, family.clone()))
     }
 
+    fn get_targets_by_family_name(&self, family_name: impl AsRef<str>) -> Result<Vec<String>, RegistryError> {
+        
+        let name: &str = family_name.as_ref();
+
+        let family =  {
+            let mut finded_family = None;
+            let mut exact_matches = 0;
+            for family in &self.families {
+                if match_name_prefix(&family.name, name) {
+                    if family.name.len() == name.len() {
+                        tracing::debug!("Exact match for family name: {}", family.name);
+                        exact_matches += 1;
+                    } else {
+                        tracing::debug!("Partial match for family name: {}", family.name);
+                        if exact_matches > 0 {
+                            continue;
+                        }
+                    }
+                    finded_family = Some(family);
+                }
+            }
+            let family = finded_family
+            .ok_or_else(|| RegistryError::ChipNotFound(name.to_owned()))?;
+            family
+        };
+
+        let mut all_family_targets = Vec::new();
+
+        for target in &family.variants {
+
+            all_family_targets.push(target.name.clone());
+
+        }
+
+        Ok(all_family_targets)
+
+    }
+
     fn search_chips(&self, name: &str) -> Vec<String> {
         tracing::debug!("Searching registry for chip with name {}", name);
 
@@ -386,9 +424,15 @@ pub fn get_target_by_name(name: impl AsRef<str>) -> Result<Target, RegistryError
 }
 
 /// Get a target & chip family from the internal registry based on its name.
-pub fn get_target_family_by_name(name: impl AsRef<str>) -> Result<((Target, ChipFamily), RegistryError> {
+pub fn get_target_family_by_name(name: impl AsRef<str>) -> Result<(Target, ChipFamily), RegistryError> {
     REGISTRY.lock().unwrap().get_target_and_family_by_name(name)
 }
+
+/// Get all target from the internal registry based on its family name.
+pub fn get_targets_by_family_name(family_name: impl AsRef<str>) -> Result<Vec<String>, RegistryError> {
+    REGISTRY.lock().unwrap().get_targets_by_family_name(family_name)
+}
+
 
 /// Get a target from the internal registry based on its name.
 pub fn search_chips(name: impl AsRef<str>) -> Result<Vec<String>, RegistryError> {
