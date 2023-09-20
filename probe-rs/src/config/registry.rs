@@ -385,6 +385,11 @@ pub fn get_target_by_name(name: impl AsRef<str>) -> Result<Target, RegistryError
     REGISTRY.lock().unwrap().get_target_by_name(name)
 }
 
+/// Get a target & chip family from the internal registry based on its name.
+pub fn get_target_family_by_name(name: impl AsRef<str>) -> Result<((Target, ChipFamily), RegistryError> {
+    REGISTRY.lock().unwrap().get_target_and_family_by_name(name)
+}
+
 /// Get a target from the internal registry based on its name.
 pub fn search_chips(name: impl AsRef<str>) -> Result<Vec<String>, RegistryError> {
     Ok(REGISTRY.lock().unwrap().search_chips(name.as_ref()))
