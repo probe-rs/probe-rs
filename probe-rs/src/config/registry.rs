@@ -251,9 +251,9 @@ impl Registry {
                     finded_family = Some(family);
                 }
             }
-            let family = finded_family
-            .ok_or_else(|| RegistryError::ChipNotFound(name.to_owned()))?;
-            family
+            finded_family
+            .ok_or_else(|| RegistryError::ChipNotFound(name.to_owned()))?
+    
         };
 
         let mut all_family_targets = Vec::new();
