@@ -12,7 +12,7 @@ use probe_rs::{
     flashing::{erase_sectors, DownloadOptions, FlashLoader, FlashProgress},
     Permissions, Session,
 };
-use probe_rs_target::RawFlashAlgorithm;
+use probe_rs_target::{RawFlashAlgorithm, ChipFamily};
 use xshell::{cmd, Shell};
 
 use crate::commands::elf::cmd_elf;
@@ -59,8 +59,13 @@ pub fn cmd_test(
 
     let file = File::open(Path::new(definition_export_path))?;
     probe_rs::config::add_target_from_yaml(file)?;
+    let file_handle = File::open(Path::new(definition_export_path))?;
+    let family: ChipFamily = serde_yaml::from_reader(file_handle)?;
+    // This assumes there is only one chip defined in the file, perhaps should be done for each family in the file.
+    // We need to get the chip name so that special startup procedure can be used. (matched on name)
+    let chip = family.variants[0].name.clone();
     let mut session =
-        probe_rs::Session::auto_attach(ALGORITHM_NAME, Permissions::new().allow_erase_all())?;
+        probe_rs::Session::auto_attach(chip, Permissions::new().allow_erase_all())?;
 
     // Register callback to update the progress.
     let t = Rc::new(RefCell::new(Instant::now()));
