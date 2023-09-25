@@ -1,4 +1,7 @@
 name: SAME51
+manufacturer:
+  id: 0x1F
+  cc: 0x0
 variants:
   - name: ATSAME51G18A
     cores:

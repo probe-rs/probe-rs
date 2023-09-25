@@ -1,4 +1,7 @@
 name: BCM2711
+manufacturer:
+  cc: 0x01
+  id: 0x3F
 variants:
   - name: RaspberryPi4B
     cores:

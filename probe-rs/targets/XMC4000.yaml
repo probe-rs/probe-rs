@@ -1,4 +1,7 @@
 name: XMC4000
+manufacturer:
+  id: 0x41
+  cc: 0x0
 generated_from_pack: true
 pack_file_release: 2.12.0
 variants:

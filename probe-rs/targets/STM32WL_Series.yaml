@@ -1,5 +1,7 @@
 name: STM32WL Series
-manufacturer: null
+manufacturer:
+  id: 0x20
+  cc: 0x0
 variants:
   - name: STM32WLE5J8Ix
     cores:

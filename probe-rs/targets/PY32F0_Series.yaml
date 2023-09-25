@@ -1,4 +1,7 @@
 name: PY32F0 Series
+manufacturer:
+  id: 0x05
+  cc: 0x9
 generated_from_pack: true
 pack_file_release: 1.1.7
 variants:

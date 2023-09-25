@@ -1,4 +1,7 @@
 name: EFM32PG12B Series
+manufacturer:
+  cc: 0x02
+  id: 0x21
 variants:
   - name: EFM32PG12B500F1024
     cores:

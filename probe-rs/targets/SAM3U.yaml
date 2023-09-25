@@ -1,6 +1,8 @@
 ---
 name: SAM3U
-manufacturer: ~
+manufacturer:
+  id: 0x1F
+  cc: 0x0
 variants:
   - name: ATSAM3U1C
     cores:

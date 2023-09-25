@@ -1,4 +1,7 @@
 name: iMX7ULP
+manufacturer:
+  cc: 0x00
+  id: 0x15
 variants:
   - name: iMX7ULP
     cores:

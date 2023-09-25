@@ -1,4 +1,7 @@
 name: nRF91 Series
+manufacturer:
+  cc: 0x2
+  id: 0x44
 variants:
   - name: nRF9160_xxAA
     cores:

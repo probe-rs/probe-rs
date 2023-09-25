@@ -1,4 +1,7 @@
 name: EFM32GG11B Series
+manufacturer:
+  cc: 0x02
+  id: 0x21
 generated_from_pack: true
 pack_file_release: 4.2.0
 variants:

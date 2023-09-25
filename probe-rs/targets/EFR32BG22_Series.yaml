@@ -1,4 +1,7 @@
 name: EFR32BG22 Series
+manufacturer:
+  cc: 0x02
+  id: 0x21
 variants:
   - name: EFR32BG22C112F352
     cores:

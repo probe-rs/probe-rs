@@ -1,6 +1,8 @@
 ---
 name: LPC55S16
-manufacturer: ~
+manufacturer:
+  cc: 0x00
+  id: 0x15
 variants:
   - name: LPC55S16JBD100
     part: ~

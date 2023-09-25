@@ -1,4 +1,7 @@
 name: SAME70
+manufacturer:
+  id: 0x1F
+  cc: 0x0
 variants:
   - name: ATSAME70J19
     cores:
