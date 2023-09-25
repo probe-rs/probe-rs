@@ -504,9 +504,10 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
             VectorCatchCondition::HardFault => demcr.set_vc_harderr(false),
             VectorCatchCondition::CoreReset => demcr.set_vc_corereset(false),
             VectorCatchCondition::SecureFault => {
-                if idpfr1.security_present() {
-                    demcr.set_vc_sferr(false);
+                if !idpfr1.security_present() {
+                    return Err(Error::Arm(ArmError::ExtensionRequired(&["Security"])));
                 }
+                demcr.set_vc_sferr(false);
             }
             VectorCatchCondition::All => {
                 demcr.set_vc_harderr(false);
