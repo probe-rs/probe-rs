@@ -1,4 +1,7 @@
 name: SAMD51
+manufacturer:
+  id: 0x1F
+  cc: 0x0
 manufacturer: null
 variants:
   - name: ATSAMD51G18A

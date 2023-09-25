@@ -1,4 +1,7 @@
 name: HT50F32002 Series
+manufacturer:
+  cc: 0x06
+  id: 0x76
 variants:
   - name: HT50F32002
     cores:

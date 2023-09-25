@@ -1,5 +1,7 @@
 name: MAX32665-66
-manufacturer: null
+manufacturer:
+  cc: 0x00
+  id: 0x5C
 variants:
   - name: MAX32665
     cores:

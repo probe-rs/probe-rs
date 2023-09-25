@@ -1,4 +1,7 @@
 name: HF5032x Series
+manufacturer:
+  cc: 0x06
+  id: 0x73
 variants:
   - name: HF5032
     cores:

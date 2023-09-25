@@ -1,4 +1,7 @@
 name: HT32F590xx Series
+manufacturer:
+  cc: 0x06
+  id: 0x76
 variants:
   - name: HT32F59041
     cores:

@@ -1,4 +1,7 @@
 name: HT32F12xx Series
+manufacturer:
+  cc: 0x06
+  id: 0x76
 variants:
   - name: HT32F1251
     cores:

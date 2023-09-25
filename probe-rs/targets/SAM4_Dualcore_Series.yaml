@@ -1,4 +1,7 @@
 name: SAM4 Dualcore Series
+manufacturer:
+  id: 0x1F
+  cc: 0x0
 variants:
   - name: ATSAM4C16C
     cores:

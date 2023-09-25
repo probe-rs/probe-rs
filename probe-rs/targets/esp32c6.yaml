@@ -1,6 +1,8 @@
 ---
 name: esp32c6
-manufacturer: null
+manufacturer:
+  cc: 0x12
+  id: 0x12
 variants:
   - name: esp32c6
     part: null

@@ -1,4 +1,7 @@
 name: LPC546xx Series
+manufacturer:
+  cc: 0x00
+  id: 0x15
 variants:
   - name: LPC54605J256BD100
     cores:

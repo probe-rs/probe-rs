@@ -1,4 +1,7 @@
 name: RA4M1 Series
+manufacturer:
+  id: 0x23
+  cc: 0x4
 variants:
 - name: R7FA4M1AB
   cores:

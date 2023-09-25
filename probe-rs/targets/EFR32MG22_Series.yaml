@@ -1,4 +1,7 @@
 name: EFR32MG22 Series
+manufacturer:
+  cc: 0x02
+  id: 0x21
 variants:
   - name: EFR32MG22A224F512
     cores:
