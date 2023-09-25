@@ -34,6 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Target definitions can now constrain the RTT automatic scanning ranges to just a subset of all available RAM, to support targets that have large amounts of RAM that would take a long time to scan. (#1738, #1749)
 - `cli`: Output `defmt` logs as colored (#xxxx)
 
+### Fixed
+  - Handle non-secure RESET peripheral in nRF5340 `debug_core_unlock` sequence.
+
 ### Removed
 - `cli`: `dump` subcommand, replaced by `read`.
 
