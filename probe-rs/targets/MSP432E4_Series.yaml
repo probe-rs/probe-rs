@@ -1,4 +1,7 @@
 name: MSP432E4 Series
+manufacturer:
+  cc: 0x0
+  id: 0x17
 generated_from_pack: true
 pack_file_release: 3.2.6
 variants:

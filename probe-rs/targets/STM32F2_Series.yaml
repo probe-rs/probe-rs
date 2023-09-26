@@ -1,4 +1,7 @@
 name: STM32F2 Series
+manufacturer:
+  id: 0x20
+  cc: 0x0
 variants:
   - name: STM32F205RBTx
     cores:

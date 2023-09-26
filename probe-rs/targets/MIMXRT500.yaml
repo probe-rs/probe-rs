@@ -1,4 +1,7 @@
 name: NXP MIMXRT500 Series
+manufacturer:
+  cc: 0x00
+  id: 0x15
 # NOTE: This was originally generated from CMSIS-Pack but subsequently modified
 # to use datasheet-consistent names for the memory regions and to consolidate
 # the three chip variants into one target file, since they all have the same

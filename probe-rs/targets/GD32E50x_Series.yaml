@@ -1,4 +1,7 @@
 name: GD32E50x Series
+manufacturer:
+  cc: 0x06
+  id: 0x42
 generated_from_pack: true
 pack_file_release: 1.3.2
 variants:

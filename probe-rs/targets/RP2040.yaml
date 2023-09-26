@@ -1,4 +1,7 @@
 name: RP2040
+manufacturer:
+  id: 0x13
+  cc: 0x09
 variants:
   - name: RP2040
     cores:

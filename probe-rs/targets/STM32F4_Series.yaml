@@ -1,4 +1,7 @@
 name: STM32F4 Series
+manufacturer:
+  id: 0x20
+  cc: 0x0
 variants:
   - name: STM32F401CBUx
     cores:
