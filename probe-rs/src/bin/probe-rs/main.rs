@@ -3,12 +3,15 @@ mod util;
 
 include!(concat!(env!("OUT_DIR"), "/meta.rs"));
 
+use std::ffi::OsStr;
+use std::fs;
 use std::path::Path;
 use std::str::FromStr;
 use std::{ffi::OsString, fs::File, path::PathBuf};
 
 use anyhow::{Context, Result};
 use clap::Parser;
+use itertools::Itertools;
 use probe_rs::flashing::{BinOptions, Format, IdfOptions};
 use serde::{de::Error, Deserialize, Deserializer};
 use serde_json::Value;
@@ -21,6 +24,8 @@ use tracing_subscriber::{
 
 use crate::util::parse_u32;
 use crate::util::parse_u64;
+
+const MAX_LOG_FILES: usize = 20;
 
 #[derive(clap::Parser)]
 #[clap(
@@ -173,6 +178,37 @@ fn default_logfile_location() -> Result<PathBuf> {
     Ok(log_path)
 }
 
+/// Prune all old log files in the `directory`.
+fn prune_logs(directory: &Path) -> Result<(), anyhow::Error> {
+    // Get the path and elapsed creation time of all files in the log directory that have the '.log'
+    // suffix.
+    let mut log_files = fs::read_dir(directory)?
+        .filter_map(|entry| {
+            if let Ok(entry) = entry {
+                let path = entry.path();
+                if path.extension() == Some(OsStr::new("log")) {
+                    let metadata = fs::metadata(&path).ok()?;
+                    let last_modified = metadata.created().ok()?.elapsed().ok()?.as_secs();
+                    Some((path, last_modified))
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect_vec();
+
+    // Order all files by the elapsed creation time with smallest first.
+    log_files.sort_unstable_by_key(|(_, b)| *b);
+
+    // Iterate all files except for the first `MAX_LOG_FILES` and delete them.
+    for (path, _) in log_files.iter().skip(MAX_LOG_FILES) {
+        fs::remove_file(path)?;
+    }
+    Ok(())
+}
+
 /// Returns the cleaned arguments for the handler of the respective end binary (cli, cargo-flash, cargo-embed, etc.).
 fn multicall_check(args: &[OsString], want: &str) -> Option<Vec<OsString>> {
     let argv0 = Path::new(&args[0]);
@@ -217,7 +253,14 @@ fn main() -> Result<()> {
     let log_path = if let Some(location) = matches.log_file {
         location
     } else {
-        default_logfile_location().context("Unable to determine default log file location.")?
+        let location =
+            default_logfile_location().context("Unable to determine default log file location.")?;
+        prune_logs(
+            location
+                .parent()
+                .expect("A file parent directory. Please report this as a bug."),
+        )?;
+        location
     };
 
     let log_file = File::create(&log_path)?;
