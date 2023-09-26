@@ -2,7 +2,7 @@
 name: esp32c6
 manufacturer:
   cc: 0x0B
-  id: 0x0B
+  id: 0x12
 variants:
   - name: esp32c6
     part: null
