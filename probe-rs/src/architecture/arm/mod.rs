@@ -124,6 +124,10 @@ pub enum ArmError {
     /// Failed to erase chip
     ChipEraseFailed,
 
+    /// The operation requires a specific extension.
+    #[error("The operation requires the following extension(s): {0:?}")]
+    ExtensionRequired(&'static [&'static str]),
+
     /// Any other error occurred.
     Other(#[from] anyhow::Error),
 }

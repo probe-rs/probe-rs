@@ -1092,6 +1092,9 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         match condition {
             VectorCatchCondition::HardFault => demcr.set_vc_harderr(true),
             VectorCatchCondition::CoreReset => demcr.set_vc_corereset(true),
+            VectorCatchCondition::SecureFault => {
+                return Err(Error::Arm(ArmError::ArchitectureRequired(&["ARMv8"])));
+            }
             VectorCatchCondition::All => {
                 demcr.set_vc_harderr(true);
                 demcr.set_vc_corereset(true);
@@ -1108,6 +1111,9 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         match condition {
             VectorCatchCondition::HardFault => demcr.set_vc_harderr(false),
             VectorCatchCondition::CoreReset => demcr.set_vc_corereset(false),
+            VectorCatchCondition::SecureFault => {
+                return Err(Error::Arm(ArmError::ArchitectureRequired(&["ARMv8"])));
+            }
             VectorCatchCondition::All => {
                 demcr.set_vc_harderr(false);
                 demcr.set_vc_corereset(false);
