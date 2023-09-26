@@ -1,7 +1,7 @@
 name: GD32F3x0 Series
 manufacturer:
   cc: 0x06
-  id: 0x42
+  id: 0x48
 variants:
   - name: GD32F310C8
     cores:

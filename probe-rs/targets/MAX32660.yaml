@@ -1,7 +1,7 @@
 name: MAX32660
 manufacturer:
   cc: 0x00
-  id: 0x5C
+  id: 0x65
 generated_from_pack: true
 pack_file_release: 1.4.0
 variants:

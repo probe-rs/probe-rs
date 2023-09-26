@@ -1,7 +1,7 @@
 name: GD32E10x Series
 manufacturer:
   cc: 0x06
-  id: 0x42
+  id: 0x48
 generated_from_pack: true
 pack_file_release: 1.2.1
 variants:
