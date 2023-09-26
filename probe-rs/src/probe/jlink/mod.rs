@@ -1,6 +1,7 @@
 //! Support for J-Link Debug probes
 
 use jaylink::{Capability, Interface, JayLink, SpeedConfig, SwoMode};
+use probe_rs_target::ScanChainElement;
 
 use std::convert::{TryFrom, TryInto};
 use std::iter;
@@ -47,6 +48,8 @@ pub(crate) struct JLink {
     current_ir_reg: u32,
 
     speed_khz: u32,
+
+    scan_chain: Option<Vec<ScanChainElement>>,
 
     probe_statistics: ProbeStatistics,
     swd_settings: SwdSettings,
@@ -395,6 +398,7 @@ impl DebugProbe for JLink {
             protocol: None,
             current_ir_reg: 1,
             speed_khz: 0,
+            scan_chain: None,
             swd_settings: SwdSettings::default(),
             probe_statistics: ProbeStatistics::default(),
         }))
@@ -424,6 +428,11 @@ impl DebugProbe for JLink {
 
     fn speed_khz(&self) -> u32 {
         self.speed_khz
+    }
+
+    fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
+        self.scan_chain = Some(scan_chain);
+        Ok(())
     }
 
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {

@@ -46,6 +46,7 @@ impl Cmd {
             Format::Elf => loader.load_elf_data(&mut file),
             Format::Hex => loader.load_hex_data(&mut file),
             Format::Idf(options) => loader.load_idf_data(&mut session, &mut file, options),
+            Format::Uf2 => loader.load_uf2_data(&mut file),
         }?;
 
         run_flash_download(

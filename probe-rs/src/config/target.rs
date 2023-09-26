@@ -1,6 +1,6 @@
-use probe_rs_target::{Architecture, ChipFamily, MemoryRange};
-
-use super::{Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource};
+use super::{
+    Core, MemoryRegion, RawFlashAlgorithm, RegistryError, ScanChainElement, TargetDescriptionSource,
+};
 use crate::architecture::arm::{
     ap::MemoryAp,
     sequences::{
@@ -11,6 +11,7 @@ use crate::architecture::arm::{
         nrf53::Nrf5340,
         nrf91::Nrf9160,
         nxp_armv7m::{LPC55Sxx, MIMXRT10xx, MIMXRT11xx},
+        nxp_armv8m::MIMXRT5xxS,
         stm32_armv6::{Stm32Armv6, Stm32Armv6Family},
         stm32_armv7::Stm32Armv7,
         stm32h7::Stm32h7,
@@ -21,6 +22,7 @@ use crate::architecture::arm::{
 use crate::architecture::riscv::sequences::{esp32c3::ESP32C3, esp32c6::ESP32C6};
 use crate::architecture::riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence};
 use crate::flashing::FlashLoader;
+use probe_rs_target::{Architecture, ChipFamily, MemoryRange};
 use std::sync::Arc;
 
 use crate::architecture::arm::sequences::DefaultArmSequence;
@@ -45,6 +47,12 @@ pub struct Target {
     /// Each region must be enclosed in exactly one RAM region from
     /// `memory_map`.
     pub rtt_scan_regions: Vec<std::ops::Range<u64>>,
+    /// The Description of the scan chain
+    ///
+    /// The scan chain can be parsed from the CMSIS-SDF file, or specified
+    /// manually in the target.yaml file. It is used by some probes to determine
+    /// the number devices in the scan chain and their ir lengths.
+    pub scan_chain: Option<Vec<ScanChainElement>>,
 }
 
 impl std::fmt::Debug for Target {
@@ -112,6 +120,9 @@ impl Target {
         } else if chip.name.starts_with("MIMXRT11") {
             tracing::warn!("Using custom sequence for MIMXRT11xx");
             debug_sequence = DebugSequence::Arm(MIMXRT11xx::create());
+        } else if chip.name.starts_with("MIMXRT5") {
+            tracing::warn!("Using custom sequence for MIMXRT5xxS");
+            debug_sequence = DebugSequence::Arm(MIMXRT5xxS::create());
         } else if chip.name.starts_with("LPC55S16")
             || chip.name.starts_with("LPC55S26")
             || chip.name.starts_with("LPC55S28")
@@ -215,6 +226,7 @@ impl Target {
             memory_map: chip.memory_map.clone(),
             debug_sequence,
             rtt_scan_regions,
+            scan_chain: chip.scan_chain.clone(),
         })
     }
 
@@ -320,9 +332,9 @@ impl From<Target> for TargetSelector {
     }
 }
 
-/// This is the type to denote a general debug sequence.  
-/// It can differentiate between ARM and RISC-V for now.  
-/// Currently, only the ARM variant does something sensible;  
+/// This is the type to denote a general debug sequence.
+/// It can differentiate between ARM and RISC-V for now.
+/// Currently, only the ARM variant does something sensible;
 /// RISC-V will be ignored when encountered.
 #[derive(Clone)]
 pub enum DebugSequence {

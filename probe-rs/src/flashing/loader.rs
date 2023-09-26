@@ -228,6 +228,30 @@ impl FlashLoader {
         Ok(())
     }
 
+    /// Prepares the data sections that have to be loaded into flash from an UF2 file.
+    /// This will validate the UF2 file and transform all its data into sections but no flash loader commands yet.
+    pub fn load_uf2_data<T: Read>(&mut self, file: &mut T) -> Result<(), FileDownloadError> {
+        let mut uf2_buffer = Vec::new();
+        file.read_to_end(&mut uf2_buffer)?;
+
+        let (converted, family_to_target) = uf2_decode::convert_from_uf2(&uf2_buffer).unwrap();
+        let target_addresses = family_to_target.values();
+        let num_sections = family_to_target.len();
+
+        if let Some(target_address) = target_addresses.min() {
+            tracing::info!("Found {} loadable sections:", num_sections);
+            if num_sections > 1 {
+                tracing::warn!("More than 1 section found in UF2 file.  Using first section.");
+            }
+            self.add_data(*target_address, &converted)?;
+
+            Ok(())
+        } else {
+            tracing::warn!("No loadable segments were found in the UF2 file.");
+            Err(FileDownloadError::NoLoadableSegments)
+        }
+    }
+
     /// Writes all the stored data chunks to flash.
     ///
     /// Requires a session with an attached target that has a known flash algorithm.

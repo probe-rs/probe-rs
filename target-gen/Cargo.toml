@@ -44,11 +44,11 @@ tracing-subscriber = { version = "0.3.17", features = [
     "tracing-log",
 ] }
 xshell = { version = "0.2", default-features = false }
-cargo_metadata = { version = "0.17", default-features = false }
+cargo_metadata = { version = "0.18", default-features = false }
 indicatif = { version = "0.17", default-features = false }
 parse_int = { version = "0.6.0" }
 
 [dev-dependencies]
 assert_cmd = "2.0.12"
-predicates = "3.0.3"
+predicates = "3.0.4"
 assert_fs = "1.0.13"

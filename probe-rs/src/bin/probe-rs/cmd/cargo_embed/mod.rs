@@ -30,21 +30,22 @@ use self::rttui::channel::DataFormat;
 use crate::util::{build_artifact, common_options::CargoOptions, logging};
 
 #[derive(Debug, clap::Parser)]
+#[command(after_long_help = CargoOptions::help_message("cargo-embed"))]
 struct Opt {
-    #[clap(name = "config")]
+    /// Name of the configuration profile to use.
+    #[arg()]
     config: Option<String>,
-    #[clap(name = "chip", long = "chip")]
+    #[arg(long)]
     chip: Option<String>,
-    #[clap(
-        long = "probe",
-        help = "Use this flag to select a specific probe in the list.\n\
-        Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one probe with the same VID:PID."
-    )]
+    ///  Use this flag to select a specific probe in the list.
+    ///
+    ///  Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one probe with the same VID:PID.
+    #[arg(long)]
     probe_selector: Option<DebugProbeSelector>,
-    #[clap(name = "disable-progressbars", long = "disable-progressbars")]
+    #[arg(long)]
     disable_progressbars: bool,
     /// Work directory for the command.
-    #[clap(long)]
+    #[arg(long)]
     work_dir: Option<PathBuf>,
     #[clap(flatten)]
     cargo_options: CargoOptions,

@@ -4,7 +4,14 @@ use crate::util::common_options::{ProbeOptions, ReadWriteBitWidth, ReadWriteOpti
 use crate::util::parse_u64;
 use crate::CoreOptions;
 
+/// Write to target memory address
+///
+/// e.g. probe-rs write b32 0x400E1490 0xDEADBEEF 0xCAFEF00D
+///      Writes 0xDEADBEEF to address 0x400E1490 and 0xCAFEF00D to address 0x400E1494
+///
+/// NOTE: Only supports RAM addresses
 #[derive(clap::Parser)]
+#[clap(verbatim_doc_comment)]
 pub struct Cmd {
     #[clap(flatten)]
     shared: CoreOptions,

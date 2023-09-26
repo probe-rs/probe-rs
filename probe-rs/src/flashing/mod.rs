@@ -56,6 +56,7 @@ mod visualizer;
 use builder::*;
 use flasher::*;
 
+pub use builder::{FlashDataBlockSpan, FlashFill, FlashLayout, FlashPage, FlashSector};
 pub use download::*;
 pub use erase::*;
 pub use error::*;

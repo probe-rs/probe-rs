@@ -27,13 +27,13 @@ enum TargetGen {
     /// Generate target description from ARM CMSIS-Packs
     Pack {
         #[clap(
-            name = "INPUT",
+            value_name = "INPUT",
             value_parser,
             help = "A Pack file or the unziped Pack directory."
         )]
         input: PathBuf,
         #[clap(
-            name = "OUTPUT",
+            value_name = "OUTPUT",
             value_parser,
             help = "An output directory where all the generated .yaml files are put in."
         )]

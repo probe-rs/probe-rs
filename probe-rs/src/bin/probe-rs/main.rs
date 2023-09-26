@@ -53,8 +53,6 @@ enum Subcommand {
     Gdb(cmd::gdb::Cmd),
     /// Basic command line debugger
     Debug(cmd::debug::Cmd),
-    /// Dump memory from attached target
-    Dump(cmd::dump::Cmd),
     /// Download memory to attached target
     Download(cmd::download::Cmd),
     /// Erase all nonvolatile memory of attached target
@@ -74,24 +72,7 @@ enum Subcommand {
     Chip(cmd::chip::Cmd),
     Benchmark(cmd::benchmark::Cmd),
     Profile(cmd::profile::Cmd),
-    /// Read from target memory address
-    /// e.g. probe-rs read b32 0x400E1490 2
-    ///      Reads 2 32-bit words from address 0x400E1490
-    /// Output is a space separated list of hex values padded to the read word width.
-    /// e.g. 2 words
-    ///     00 00 (8-bit)
-    ///     00000000 00000000 (32-bit)
-    ///     0000000000000000 0000000000000000 (64-bit)
-    ///
-    /// NOTE: Only supports RAM addresses
-    #[clap(verbatim_doc_comment)]
     Read(cmd::read::Cmd),
-    /// Write to target memory address
-    /// e.g. probe-rs write b32 0x400E1490 0xDEADBEEF 0xCAFEF00D
-    ///      Writes 0xDEADBEEF to address 0x400E1490 and 0xCAFEF00D to address 0x400E1494
-    ///
-    /// NOTE: Only supports RAM addresses
-    #[clap(verbatim_doc_comment)]
     Write(cmd::write::Cmd),
 }
 
@@ -115,7 +96,7 @@ fn format_from_str<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Format,
 
 #[derive(clap::Parser, Clone, Deserialize, Debug, Default)]
 #[serde(default)]
-pub(crate) struct FormatOptions {
+pub struct FormatOptions {
     #[clap(value_enum, ignore_case = true, default_value = "elf", long)]
     #[serde(deserialize_with = "format_from_str")]
     format: Format,
@@ -162,6 +143,7 @@ impl FormatOptions {
                     partition_table,
                 })
             }
+            Format::Uf2 => Format::Uf2,
         })
     }
 }
@@ -270,7 +252,6 @@ fn main() -> Result<()> {
         Subcommand::Gdb(cmd) => cmd.run(),
         Subcommand::Reset(cmd) => cmd.run(),
         Subcommand::Debug(cmd) => cmd.run(),
-        Subcommand::Dump(cmd) => cmd.run(),
         Subcommand::Download(cmd) => cmd.run(),
         Subcommand::Run(cmd) => cmd.run(true, utc_offset),
         Subcommand::Attach(cmd) => cmd.run(utc_offset),
