@@ -6,7 +6,6 @@ pub mod chip;
 pub mod dap_server;
 pub mod debug;
 pub mod download;
-pub mod dump;
 pub mod erase;
 pub mod gdb;
 pub mod info;

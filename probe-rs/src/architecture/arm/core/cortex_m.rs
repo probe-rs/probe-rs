@@ -81,6 +81,67 @@ impl Mvfr0 {
     }
 }
 
+pub enum MProgrammersModel {
+    TwoStack,
+    Reserved,
+}
+
+impl From<u8> for MProgrammersModel {
+    fn from(value: u8) -> Self {
+        match value {
+            0b0010 => MProgrammersModel::TwoStack,
+            _ => MProgrammersModel::Reserved,
+        }
+    }
+}
+
+impl From<u32> for MProgrammersModel {
+    fn from(value: u32) -> Self {
+        match value {
+            0b0010 => MProgrammersModel::TwoStack,
+            _ => MProgrammersModel::Reserved,
+        }
+    }
+}
+
+pub enum SecurityExtension {
+    NotImplemented,
+    Implemented,
+    ImplementedWithStateHandling,
+    Reserved,
+}
+
+impl From<u8> for SecurityExtension {
+    fn from(value: u8) -> Self {
+        match value {
+            0b0000 => SecurityExtension::NotImplemented,
+            0b0001 => SecurityExtension::Implemented,
+            0b0011 => SecurityExtension::ImplementedWithStateHandling,
+            _ => SecurityExtension::Reserved,
+        }
+    }
+}
+
+memory_mapped_bitfield_register! {
+    /// Processor Feature Register 1
+    pub struct IdPfr1(u32);
+    0xE000_ED44, "ID_PFR1",
+    impl From;
+    /// Identifies support for the M-Profile programmer's model
+    pub u8, m_prog_mod, _: 11, 8;
+    /// Identifies whether the Security Extension is implemented
+    pub u8, security, _: 7, 4;
+}
+
+impl IdPfr1 {
+    pub fn security_present(&self) -> bool {
+        matches!(
+            self.security().into(),
+            SecurityExtension::Implemented | SecurityExtension::ImplementedWithStateHandling
+        )
+    }
+}
+
 pub(crate) fn read_core_reg(memory: &mut dyn ArmProbe, addr: RegisterId) -> Result<u32, Error> {
     // Write the DCRSR value to select the register we want to read.
     let mut dcrsr_val = Dcrsr(0);

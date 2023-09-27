@@ -1,7 +1,7 @@
 //! Register types and the core interface for armv8-M
 
 use super::{
-    cortex_m::Mvfr0,
+    cortex_m::{IdPfr1, Mvfr0},
     registers::cortex_m::{
         CORTEX_M_CORE_REGSISTERS, CORTEX_M_WITH_FP_CORE_REGSISTERS, FP, PC, RA, SP,
     },
@@ -12,7 +12,7 @@ use crate::{
         core::registers::cortex_m::XPSR, memory::adi_v5_memory_interface::ArmProbe,
         sequences::ArmDebugSequence, ArmError,
     },
-    core::{CoreRegisters, RegisterId, RegisterValue},
+    core::{CoreRegisters, RegisterId, RegisterValue, VectorCatchCondition},
     error::Error,
     memory::valid_32bit_address,
     Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType, HaltReason,
@@ -469,6 +469,64 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         self.sequence
             .debug_core_stop(&mut *self.memory, CoreType::Armv8m)?;
 
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self))]
+    fn enable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
+        let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
+        dhcsr.set_c_debugen(true);
+        self.memory
+            .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
+
+        let mut demcr = Demcr(self.memory.read_word_32(Demcr::get_mmio_address())?);
+        let idpfr1 = IdPfr1(self.memory.read_word_32(IdPfr1::get_mmio_address())?);
+        match condition {
+            VectorCatchCondition::HardFault => demcr.set_vc_harderr(true),
+            VectorCatchCondition::CoreReset => demcr.set_vc_corereset(true),
+            VectorCatchCondition::SecureFault => {
+                if !idpfr1.security_present() {
+                    return Err(Error::Arm(ArmError::ExtensionRequired(&["Security"])));
+                }
+                demcr.set_vc_sferr(true);
+            }
+            VectorCatchCondition::All => {
+                demcr.set_vc_harderr(true);
+                demcr.set_vc_corereset(true);
+                if idpfr1.security_present() {
+                    demcr.set_vc_sferr(true);
+                }
+            }
+        };
+
+        self.memory
+            .write_word_32(Demcr::get_mmio_address(), demcr.into())?;
+        Ok(())
+    }
+
+    fn disable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
+        let mut demcr = Demcr(self.memory.read_word_32(Demcr::get_mmio_address())?);
+        let idpfr1 = IdPfr1(self.memory.read_word_32(IdPfr1::get_mmio_address())?);
+        match condition {
+            VectorCatchCondition::HardFault => demcr.set_vc_harderr(false),
+            VectorCatchCondition::CoreReset => demcr.set_vc_corereset(false),
+            VectorCatchCondition::SecureFault => {
+                if !idpfr1.security_present() {
+                    return Err(Error::Arm(ArmError::ExtensionRequired(&["Security"])));
+                }
+                demcr.set_vc_sferr(false);
+            }
+            VectorCatchCondition::All => {
+                demcr.set_vc_harderr(false);
+                demcr.set_vc_corereset(false);
+                if idpfr1.security_present() {
+                    demcr.set_vc_sferr(false);
+                }
+            }
+        };
+
+        self.memory
+            .write_word_32(Demcr::get_mmio_address(), demcr.into())?;
         Ok(())
     }
 }

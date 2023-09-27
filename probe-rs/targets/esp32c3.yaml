@@ -1,6 +1,8 @@
 ---
 name: esp32c3
-manufacturer: ~
+manufacturer:
+  cc: 0x0B
+  id: 0x12
 variants:
   - name: esp32c3
     part: ~

@@ -1,4 +1,7 @@
 name: AT32F4 Series
+manufacturer:
+  cc: 0x09
+  id: 0x3B
 generated_from_pack: true
 pack_file_release: 2.1.0
 variants:

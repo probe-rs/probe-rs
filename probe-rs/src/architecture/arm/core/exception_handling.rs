@@ -14,7 +14,4 @@ pub(crate) mod armv8a {
     impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv8a::Armv8a<'probe> {}
 }
 
-pub(crate) mod armv8m {
-    use crate::core::ExceptionInterface;
-    impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv8m::Armv8m<'probe> {}
-}
+pub(crate) mod armv8m;
