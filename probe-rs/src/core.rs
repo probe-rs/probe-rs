@@ -2,10 +2,12 @@ use crate::{
     architecture::arm::sequences::ArmDebugSequence, debug::DebugRegisters, error, CoreType, Error,
     InstructionSet, MemoryInterface, Target,
 };
-use anyhow::{anyhow, Result};
+use anyhow::anyhow;
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
 use probe_rs_target::{ArmCoreAccessOptions, RiscvCoreAccessOptions};
-use std::{sync::Arc, time::Duration};
+use std::{
+    collections::HashMap, fs::OpenOptions, ops::Range, path::Path, sync::Arc, time::Duration,
+};
 
 pub mod core_state;
 pub mod core_status;
@@ -160,6 +162,35 @@ pub trait CoreInterface: MemoryInterface + ExceptionInterface {
     /// Disables vector catching for the given `condition`
     fn disable_vector_catch(&mut self, _condition: VectorCatchCondition) -> Result<(), Error> {
         Err(Error::NotImplemented("vector catch"))
+    }
+}
+
+/// A snapshot representation of a core state.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CoreDump {
+    stack_data: Vec<u8>,
+    heap_data: Vec<u8>,
+    registers: HashMap<RegisterId, RegisterValue>,
+    additional_memory: Vec<(Range<u64>, Vec<u8>)>,
+}
+
+impl CoreDump {
+    pub fn store(&self, path: &Path) -> Result<(), Error> {
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open(path)
+            .map_err(Error::CoreDumpFileWrite)?;
+        rmp_serde::encode::write_named(&mut file, self).map_err(Error::EncodingCoreDump)?;
+        Ok(())
+    }
+
+    pub fn load(path: &Path) -> Result<Self, Error> {
+        let file = OpenOptions::new()
+            .read(true)
+            .open(path)
+            .map_err(Error::CoreDumpFileRead)?;
+        rmp_serde::from_read(&file).map_err(Error::DecodingCoreDump)
     }
 }
 
@@ -648,6 +679,46 @@ impl<'probe> Core<'probe> {
     /// Disables vector catching for the given `condition`
     pub fn disable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
         self.inner.disable_vector_catch(condition)
+    }
+
+    /// Dumps core info with the current state.
+    ///
+    /// # Arguments
+    ///
+    /// * `stack`: The stack memory that was allocated and should be dumped.
+    /// * `heap`: The heap memory that was allocated and should be dumped.
+    /// * `additional_memory`: Additional memory ranges that should be dumped.
+    pub fn dump(
+        &mut self,
+        stack: Range<u64>,
+        heap: Range<u64>,
+        additional_memory: Vec<Range<u64>>,
+    ) -> Result<CoreDump, Error> {
+        let mut stack_data = vec![0; (stack.end - stack.start) as usize];
+        self.read_8(stack.start, &mut stack_data)?;
+
+        let mut heap_data = vec![0; (heap.end - heap.start) as usize];
+        self.read_8(heap.start, &mut heap_data)?;
+
+        let mut registers = HashMap::new();
+        for register in self.registers().all_registers() {
+            let value = self.read_core_reg(register.id())?;
+            registers.insert(register.id(), value);
+        }
+
+        let mut data = Vec::new();
+        for range in additional_memory {
+            let mut values = vec![0; (range.end - range.start) as usize];
+            self.read_8(range.start, &mut values)?;
+            data.push((range, values));
+        }
+
+        Ok(CoreDump {
+            stack_data,
+            heap_data,
+            registers,
+            additional_memory: data,
+        })
     }
 }
 

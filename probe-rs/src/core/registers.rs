@@ -194,7 +194,8 @@ impl From<&CoreRegister> for RegisterId {
 }
 
 /// The location of a CPU \register. This is not an actual memory address, but a core specific location that represents a specific core register.
-#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
 pub struct RegisterId(pub u16);
 
 impl From<RegisterId> for u32 {
@@ -214,7 +215,7 @@ impl From<u16> for RegisterId {
 /// Creating a new `RegisterValue` should be done using From or Into.
 /// Converting a value back to a primitive type can be done with either
 /// a match arm or TryInto
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum RegisterValue {
     /// 32-bit unsigned integer
     U32(u32),

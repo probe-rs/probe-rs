@@ -45,6 +45,18 @@ pub enum Error {
     /// the other architectures later.
     #[error("This capability has not yet been implemented for this architecture: {0}")]
     NotImplemented(&'static str),
+    /// Opening the file for writing the core dump failed.
+    #[error("Opening the file for writing the core dump failed.")]
+    CoreDumpFileWrite(std::io::Error),
+    /// Opening the file for reading the core dump failed.
+    #[error("Opening the file for reading the core dump failed.")]
+    CoreDumpFileRead(std::io::Error),
+    /// Encoding the coredump MessagePack failed.
+    #[error("Encoding the coredump MessagePack failed.")]
+    EncodingCoreDump(rmp_serde::encode::Error),
+    /// Decoding the coredump MessagePack failed.
+    #[error("Decoding the coredump MessagePack failed.")]
+    DecodingCoreDump(rmp_serde::decode::Error),
     /// Any other error occurred.
     #[error(transparent)]
     Other(#[from] anyhow::Error),
