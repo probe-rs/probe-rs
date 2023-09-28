@@ -3,6 +3,7 @@ mod util;
 
 include!(concat!(env!("OUT_DIR"), "/meta.rs"));
 
+use std::cmp::Reverse;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
@@ -188,7 +189,7 @@ fn prune_logs(directory: &Path) -> Result<(), anyhow::Error> {
                 let path = entry.path();
                 if path.extension() == Some(OsStr::new("log")) {
                     let metadata = fs::metadata(&path).ok()?;
-                    let last_modified = metadata.created().ok()?.elapsed().ok()?.as_secs();
+                    let last_modified = metadata.created().ok()?;
                     Some((path, last_modified))
                 } else {
                     None
@@ -200,7 +201,7 @@ fn prune_logs(directory: &Path) -> Result<(), anyhow::Error> {
         .collect_vec();
 
     // Order all files by the elapsed creation time with smallest first.
-    log_files.sort_unstable_by_key(|(_, b)| *b);
+    log_files.sort_unstable_by_key(|(_, b)| Reverse(*b));
 
     // Iterate all files except for the first `MAX_LOG_FILES` and delete them.
     for (path, _) in log_files.iter().skip(MAX_LOG_FILES) {
