@@ -369,8 +369,8 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
             ReplCommandArgs::Optional("path"),
             ReplCommandArgs::Optional("heap-start"),
             ReplCommandArgs::Optional("heap-size"),
-            ReplCommandArgs::Optional("heap-start"),
-            ReplCommandArgs::Optional("path"),
+            ReplCommandArgs::Optional("stack-start"),
+            ReplCommandArgs::Optional("stack-size"),
         ]),
         handler: |target_core, command_arguments, _request_arguments| {
             let mut input_arguments = command_arguments.split_whitespace();

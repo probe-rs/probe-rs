@@ -1,5 +1,6 @@
-use std::{fs::File, path::PathBuf};
-use std::{io::prelude::*, time::Duration};
+use std::path::Path;
+use std::path::PathBuf;
+use std::time::Duration;
 
 use anyhow::anyhow;
 use capstone::{
@@ -12,11 +13,10 @@ use probe_rs::architecture::arm::ap::AccessPortError;
 use probe_rs::flashing::FileDownloadError;
 use probe_rs::DebugProbeError;
 use probe_rs::{
-    architecture::arm::Dump,
     debug::{
         debug_info::DebugInfo, registers::DebugRegisters, stack_frame::StackFrame, VariableName,
     },
-    Core, CoreRegister, CoreType, InstructionSet, MemoryInterface, RegisterId, RegisterValue,
+    Core, CoreRegister, CoreType, InstructionSet, MemoryInterface, RegisterValue,
 };
 use rustyline::DefaultEditor;
 
@@ -751,51 +751,6 @@ impl DebugCli {
         });
 
         cli.add_command(Command {
-            name: "dump",
-            help_text: "Store a dump of the current CPU state",
-
-            function: |cli_data, _args| {
-                // dump all relevant data, stack and regs for now..
-                //
-                // stack beginning -> assume beginning to be hardcoded
-
-                let stack_top: u32 = 0x2000_0000 + 0x4000;
-
-                let stack_bot: u32 = cli_data.core.read_core_reg(cli_data.core.stack_pointer())?;
-                let pc: u32 = cli_data
-                    .core
-                    .read_core_reg(cli_data.core.program_counter())?;
-
-                let mut stack = vec![0u8; (stack_top - stack_bot) as usize];
-
-                cli_data.core.read(stack_bot.into(), &mut stack[..])?;
-
-                let mut dump = Dump::new(stack_bot, stack);
-
-                for i in 0..12 {
-                    dump.regs[i as usize] =
-                        cli_data.core.read_core_reg(Into::<RegisterId>::into(i))?;
-                }
-
-                dump.regs[13] = stack_bot;
-                dump.regs[14] = cli_data
-                    .core
-                    .read_core_reg(cli_data.core.return_address())?;
-                dump.regs[15] = pc;
-
-                let serialized = ron::ser::to_string(&dump).expect("Failed to serialize dump");
-
-                let mut dump_file = File::create("dump.txt").expect("Failed to create file");
-
-                dump_file
-                    .write_all(serialized.as_bytes())
-                    .expect("Failed to write dump file");
-
-                Ok(CliState::Continue)
-            },
-        });
-
-        cli.add_command(Command {
             name: "reset",
 
             help_text: "Reset the CPU",
@@ -803,6 +758,33 @@ impl DebugCli {
             function: |cli_data, _args| {
                 cli_data.core.halt(Duration::from_millis(100))?;
                 cli_data.core.reset_and_halt(Duration::from_millis(100))?;
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
+            name: "dump",
+            help_text: "Dump the core memory & registers",
+
+            function: |cli_data, args| {
+                let stack_start: u64 = get_int_argument(args, 0)?;
+                let stack_size: u64 = get_int_argument(args, 1)?;
+                let heap_start: u64 = get_int_argument(args, 2)?;
+                let heap_size: u64 = get_int_argument(args, 3)?;
+
+                println!("Dumping core");
+
+                cli_data
+                    .core
+                    .dump(
+                        stack_start..stack_start + stack_size,
+                        heap_start..heap_start + heap_size,
+                        vec![],
+                    )?
+                    .store(Path::new("./coredump"))?;
+
+                println!("Done.");
 
                 Ok(CliState::Continue)
             },

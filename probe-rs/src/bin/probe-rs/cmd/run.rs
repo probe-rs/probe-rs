@@ -7,9 +7,13 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
+use probe_rs::architecture::arm::core::registers::cortex_m::CORTEX_M_CORE_REGSISTERS;
+use probe_rs::config::{get_target_by_name, TargetSelector};
 use probe_rs::debug::DebugInfo;
 use probe_rs::flashing::{FileDownloadError, Format};
-use probe_rs::{BreakpointCause, Core, HaltReason, SemihostingCommand, VectorCatchCondition};
+use probe_rs::{
+    BreakpointCause, Core, CoreDump, HaltReason, SemihostingCommand, Target, VectorCatchCondition,
+};
 use probe_rs_target::MemoryRegion;
 use signal_hook::consts::signal;
 use time::UtcOffset;
@@ -212,17 +216,38 @@ fn poll_stacktrace(core: &mut Core<'_>, path: &Path) -> Result<bool> {
     }
 }
 
-/// Prints the stacktrace of the current execution state.
-fn print_stacktrace(
+fn print_stacktrace_from_core(
     core: &mut Core<'_>,
     pc_register: &probe_rs::CoreRegister,
     path: &Path,
 ) -> Result<(), anyhow::Error> {
+    let program_counter: u64 = core.read_core_reg(pc_register)?;
+    print_stacktrace(path, program_counter)
+}
+
+fn print_stacktrace_from_dump(
+    target: &str,
+    core_dump_path: &Path,
+    elf_path: &Path,
+) -> Result<(), anyhow::Error> {
+    let core_dump = CoreDump::load(core_dump_path)?;
+
+    let pcr = CORTEX_M_CORE_REGSISTERS
+        .core_registers()
+        .find(|r| r.register_has_role(probe_rs::RegisterRole::ProgramCounter))
+        .unwrap();
+
+    let program_counter = core_dump.registers[&pcr.id()].try_into()?;
+
+    print_stacktrace(elf_path, program_counter)
+}
+
+/// Prints the stacktrace of the current execution state.
+fn print_stacktrace(path: &Path, program_counter: u64) -> Result<(), anyhow::Error> {
     let Some(debug_info) = DebugInfo::from_file(path).ok() else {
         log::error!("No debug info found.");
         return Ok(());
     };
-    let program_counter: u64 = core.read_core_reg(pc_register)?;
     let stack_frames = debug_info.unwind(core, program_counter).unwrap();
     for (i, frame) in stack_frames.iter().enumerate() {
         print!("Frame {}: {} @ {}", i, frame.function_name, frame.pc);

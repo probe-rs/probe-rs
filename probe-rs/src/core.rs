@@ -168,9 +168,9 @@ pub trait CoreInterface: MemoryInterface + ExceptionInterface {
 /// A snapshot representation of a core state.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CoreDump {
-    stack_data: Vec<u8>,
-    heap_data: Vec<u8>,
-    registers: HashMap<RegisterId, RegisterValue>,
+    pub stack_data: Vec<u8>,
+    pub heap_data: Vec<u8>,
+    pub registers: HashMap<RegisterId, RegisterValue>,
     additional_memory: Vec<(Range<u64>, Vec<u8>)>,
 }
 

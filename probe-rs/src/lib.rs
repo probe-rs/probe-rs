@@ -91,7 +91,7 @@ mod session;
 
 pub use crate::config::{CoreType, InstructionSet, Target};
 pub use crate::core::{
-    Architecture, BreakpointCause, Core, CoreInformation, CoreInterface, CoreRegister,
+    Architecture, BreakpointCause, Core, CoreDump, CoreInformation, CoreInterface, CoreRegister,
     CoreRegisters, CoreState, CoreStatus, HaltReason, MemoryMappedRegister, RegisterId,
     RegisterRole, RegisterValue, SemihostingCommand, SpecificCoreState, VectorCatchCondition,
 };

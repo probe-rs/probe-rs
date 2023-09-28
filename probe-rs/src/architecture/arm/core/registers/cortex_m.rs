@@ -39,7 +39,7 @@ pub(crate) const XPSR: CoreRegister = CoreRegister {
     unwind_rule: UnwindRule::Preserve,
 };
 
-pub(crate) static CORTEX_M_CORE_REGSISTERS: Lazy<CoreRegisters> = Lazy::new(|| {
+pub static CORTEX_M_CORE_REGSISTERS: Lazy<CoreRegisters> = Lazy::new(|| {
     CoreRegisters::new(
         ARM32_COMMON_REGS_SET
             .iter()
