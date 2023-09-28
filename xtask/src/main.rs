@@ -110,7 +110,7 @@ fn get_changelog_fragments(
         if path.is_file() {
             let filename = path
                 .file_name()
-                .expect("All files should have a nmae")
+                .expect("All files should have a name")
                 .to_str()
                 .with_context(|| format!("Filename {path:?} is not valid UTF-8"))?;
 
