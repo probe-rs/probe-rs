@@ -201,8 +201,6 @@ impl TestReport {
     ///
     /// This is current 0, or success, if all tests have passed,
     /// and the default failure exit code for the platform otherwise.
-    ///
-    /// See [ExitCode::SUCESS] and [ExitCode::FAILURE].
     fn exit_code(&self) -> ExitCode {
         if self.any_failed() {
             ExitCode::FAILURE
@@ -216,7 +214,7 @@ impl TestReport {
     }
 
     fn num_tests(&self) -> usize {
-        self.dut_tests.iter().count()
+        self.dut_tests.len()
     }
 }
 
