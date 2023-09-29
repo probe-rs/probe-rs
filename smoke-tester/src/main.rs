@@ -339,32 +339,14 @@ impl<'a> TestTracker<'a> {
                     println_dut_status!(self, red, "Error message: {:#}", e);
                     println_dut_status!(self, red, "Tests Failed",);
                 }
-                Err(join_err) => {
+                Err(_join_err) => {
                     tests_ok = false;
                     report.add_report(DutReport {
                         name: definition.chip.name.clone(),
                         succesful: false,
                     });
 
-                    if let Some(err_string) = join_err.downcast_ref::<String>() {
-                        println_dut_status!(
-                            self,
-                            red,
-                            "Panic while running tests: {:#}",
-                            err_string
-                        );
-                    }
-
-                    if let Some(err_string) = join_err.downcast_ref::<&str>() {
-                        println_dut_status!(
-                            self,
-                            red,
-                            "Panic while running tests: {:#}",
-                            err_string
-                        );
-                    }
-
-                    println_dut_status!(self, red, "Tests Failed",);
+                    println_dut_status!(self, red, "Panic while running tests.");
                 }
             }
 
