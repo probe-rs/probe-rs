@@ -2,16 +2,17 @@ use super::{
     function_die::FunctionDie, get_sequential_key, unit_info::UnitInfo, unit_info::UnitIter,
     variable::*, DebugError, DebugRegisters, SourceLocation, StackFrame, VariableCache,
 };
+use crate::core::UnwindRule;
 use crate::{
     core::Core,
+    core::{ExceptionInfo, ExceptionInterface, RegisterRole, RegisterValue},
     debug::{registers, source_statement::SourceStatements},
-    MemoryInterface, RegisterValue,
+    MemoryInterface,
 };
 use ::gimli::{FileEntry, LineProgramHeader, UnwindContext};
 use gimli::{BaseAddresses, ColumnType, DebugFrame, UnwindSection};
 use object::read::{Object, ObjectSection};
 use probe_rs_target::InstructionSet;
-use registers::RegisterGroup;
 use std::{
     borrow,
     cmp::Ordering,
@@ -497,15 +498,22 @@ impl DebugInfo {
         &self,
         core: &mut Core<'_>,
         address: u64,
+        exception_info: &Option<ExceptionInfo>,
         unwind_registers: &registers::DebugRegisters,
     ) -> Result<Vec<StackFrame>, DebugError> {
         let mut units = self.get_units();
 
-        let unknown_function = format!(
-            "<unknown function @ {:#0width$x}>",
-            address,
-            width = (unwind_registers.get_address_size_bytes() * 2 + 2)
-        );
+        let unknown_function = if let Some(exception_info) = exception_info {
+            exception_info.description.to_string()
+        } else {
+            // When reporting the address, we format it as a hex string, with the width matching
+            // the configured size of the datatype used in the `RegisterValue` address.
+            format!(
+                "<unknown function @ {:#0width$x}>",
+                address,
+                width = (unwind_registers.get_address_size_bytes() * 2 + 2)
+            )
+        };
         let stack_frame_registers = unwind_registers.clone();
 
         let mut frames = Vec::new();
@@ -692,7 +700,6 @@ impl DebugInfo {
     /// The unwind loop will continue until we meet one of the following conditions:
     /// - We can no longer unwind a valid PC value to be used for the next frame.
     /// - We encounter a LR register value of 0x0 or 0xFFFFFFFF(Arm 'Reset' value for that register).
-    /// - TODO: Catch the situation where the PC value indicates a hard-fault or other non-recoverable exception
     /// - We can not intelligently calculate a valid LR register value from the other registers, or the gimli::RegisterRule result is a value of 0x0. Note: [DWARF](https://dwarfstd.org) 6.4.4 - CIE defines the return register address used in the `gimli::RegisterRule` tables for unwind operations. Theoretically, if we encounter a function that has `Undefined` `gimli::RegisterRule` for the return register address, it means we have reached the bottom of the stack OR the function is a 'no return' type of function. I have found actual examples (e.g. local functions) where we get `Undefined` for register rule when we cannot apply this logic. Example 1: local functions in main.rs will have LR rule as `Undefined`. Example 2: main()-> ! that is called from a trampoline will have a valid LR rule.
     /// - Similarly, certain error conditions encountered in `StackFrameIterator` will also break out of the unwind loop.
     /// Note: In addition to populating the `StackFrame`s, this function will also populate the `DebugInfo::VariableCache` with `Variable`s for available Registers as well as static and function variables.
@@ -716,18 +723,46 @@ impl DebugInfo {
             .get_program_counter()
             .and_then(|pc| pc.value)
         {
+            // PART 0: The first step is to determine the exception context for the current PC.
+            // - If we are at an exception hanlder frame, we need to overwrite the unwind registers with the exception context.
+            // - If for some reason we cannot determine the exception context, we silently continue with the rest of the unwind.
+            // At worst, the unwind will be able to unwind the stack to the frame of the most recent exception handler.
+            let exception_info = match core.exception_details(&unwind_registers) {
+                Ok(Some(exception_info)) => {
+                    tracing::trace!(
+                        "UNWIND: Found exception context: {}",
+                        exception_info.description
+                    );
+                    Some(exception_info)
+                }
+                Ok(None) => {
+                    tracing::trace!(
+                        "UNWIND: No exception context found. Stack unwind will continue."
+                    );
+                    None
+                }
+                Err(e) => {
+                    tracing::warn!("UNWIND: Error while checking for exception context. The stack trace will not include the calling frames. : {}", e);
+                    None
+                }
+            };
+
             // PART 1: Construct the `StackFrame` for the current pc.
             let frame_pc = frame_pc_register_value
                 .try_into()
-                .map_err(|error| crate::Error::Other(anyhow::anyhow!("Cannot convert register value for program counter to a 64-bit integeer value: {:?}", error)))?;
+                .map_err(|error| crate::Error::Register(format!("Cannot convert register value for program counter to a 64-bit integeer value: {:?}", error)))?;
             tracing::trace!(
                 "UNWIND: Will generate `StackFrame` for function at address (PC) {}",
                 frame_pc,
             );
 
-            //
             // PART 1-a: Prepare the `StackFrame` that holds the current frame information.
-            let return_frame = match self.get_stackframe_info(core, frame_pc, &unwind_registers) {
+            let return_frame = match self.get_stackframe_info(
+                core,
+                frame_pc,
+                &exception_info,
+                &unwind_registers,
+            ) {
                 Ok(mut cached_stack_frames) => {
                     while cached_stack_frames.len() > 1 {
                         // If we encountered INLINED functions (all `StackFrames`s in this Vec, except for the last one, which is the containing NON-INLINED function), these are simply added to the list of stack_frames we return.
@@ -759,13 +794,40 @@ impl DebugInfo {
             };
 
             // Part 1-b: Check LR values to determine if we can continue unwinding.
-            // TODO: ARM has special ranges of LR addresses to indicate fault conditions. We should check those also.
             if let Some(check_return_address) = unwind_registers.get_return_address() {
                 if check_return_address.is_max_value() || check_return_address.is_zero() {
                     // When we encounter the starting (after reset) return address, we've reached the bottom of the stack, so no more unwinding after this.
                     stack_frames.push(return_frame);
                     tracing::trace!("UNWIND: Stack unwind complete - Reached the 'Reset' value of the LR register.");
                     break;
+                } else {
+                    // Part 1-c: If the target current frame is an exception handler, we need to update the `unwind_registers` to match the frame that invoked the exception handler.
+                    if let Some(exception_info) = exception_info {
+                        tracing::trace!(
+                            "UNWIND: Stack unwind reached an exception handler {}",
+                            exception_info.description
+                        );
+                        if let Some(exception_info) = core.exception_details(&unwind_registers)? {
+                            tracing::trace!(
+                                "UNWIND: Found exception context: {}",
+                                exception_info.description
+                            );
+                            // If we are at an exception hanlder frame, we need to overwrite the unwind registers.
+                            // This will allow us to continue unwinding from the exception handler frame.
+                            unwind_registers = exception_info.calling_frame_registers;
+
+                            // Now that we've optionally updated the `unwind_registers` to match the exception handler, we can continue.
+                            stack_frames.push(return_frame);
+                            tracing::trace!(
+                                    "UNWIND: Stack unwind will attempt to unwind the frame that invoked {}.", exception_info.description
+                                );
+                            continue;
+                        } else {
+                            tracing::trace!(
+                                "UNWIND: No exception context found. Stack unwind will continue."
+                            )
+                        }
+                    }
                 }
             } else {
                 // If the debug info rules result in a None return address, we cannot continue unwinding.
@@ -800,7 +862,11 @@ impl DebugInfo {
                                         tracing::trace!("UNWIND: Stack unwind complete - The FP register value unwound to a value of zero.");
                                         break;
                                     }
-                                    let unwind_cfa = add_to_address(reg_val.try_into()?, *offset);
+                                    let unwind_cfa = add_to_address(
+                                        reg_val.try_into()?,
+                                        *offset,
+                                        unwind_registers.get_address_size_bytes(),
+                                    );
                                     tracing::trace!(
                                         "UNWIND - CFA : {:#010x}\tRule: {:?}",
                                         unwind_cfa,
@@ -821,15 +887,7 @@ impl DebugInfo {
                     // PART 2-c: Unwind registers for the "previous/calling" frame.
                     // We sometimes need to keep a copy of the LR value to calculate the PC. For both ARM, and RISCV, The LR will be unwound before the PC, so we can reference it safely.
                     let mut unwound_return_address: Option<RegisterValue> = None;
-                    for debug_register in
-                        unwind_registers.0.iter_mut().filter(|platform_register| {
-                            matches!(
-                                platform_register.group,
-                                RegisterGroup::Base | RegisterGroup::Singleton
-                            )
-                            // We include platform registers, as well as the singletons, because on RISCV, the program counter is separate from the platform_registers
-                        })
-                    {
+                    for debug_register in unwind_registers.0.iter_mut() {
                         if unwind_register(
                             debug_register,
                             &callee_frame_registers,
@@ -918,8 +976,10 @@ impl DebugInfo {
 
                 for file_name in header.file_names() {
                     let combined_path = self.get_path(unit, header, file_name);
-
-                    if combined_path.map(|p| p == path).unwrap_or(false) {
+                    if combined_path
+                        .map(|p| canonical_path_eq(path, &p))
+                        .unwrap_or(false)
+                    {
                         let mut rows = line_program.clone().rows();
 
                         while let Some((header, row)) = rows.next_row()? {
@@ -927,7 +987,10 @@ impl DebugInfo {
                                 .file(header)
                                 .and_then(|file_entry| self.get_path(unit, header, file_entry));
 
-                            if row_path.map(|p| p != path).unwrap_or(true) {
+                            if row_path
+                                .map(|p| !canonical_path_eq(path, &p))
+                                .unwrap_or(true)
+                            {
                                 continue;
                             }
 
@@ -1063,7 +1126,8 @@ impl DebugInfo {
         )))
     }
 
-    /// Get the absolute path for an entry in a line program header
+    /// Get the path for an entry in a line program header, using the compilation unit's directory and file entries.
+    // TODO: Determine if it is necessary to navigate the include directories to find the file absolute path for C files.
     pub(crate) fn get_path(
         &self,
         unit: &gimli::read::Unit<DwarfReader>,
@@ -1076,7 +1140,6 @@ impl DebugInfo {
             .and_then(|dir| self.dwarf.attr_string(unit, dir).ok());
 
         let name_path = Path::new(from_utf8(&file_name_attr_string).ok()?);
-
         let dir_path =
             dir_name_attr_string.and_then(|dir_name| from_utf8(&dir_name).ok().map(PathBuf::from));
 
@@ -1093,7 +1156,6 @@ impl DebugInfo {
                 .transpose()
                 .ok()?
                 .map(PathBuf::from);
-
             if let Some(comp_dir) = comp_dir {
                 combined_path = comp_dir.join(&combined_path);
             }
@@ -1118,6 +1180,33 @@ impl DebugInfo {
 
         Some((file_name, directory))
     }
+}
+
+/// Uses the [std::fs::canonicalize] function to canonicalize both paths before applying the [std::path::PathBuf::eq]
+/// to test if the secondary path is equal or a suffix of the primary path.
+/// If for some reason (e.g., the paths don't exist) the canonicalization fails, the original equality check is used.
+/// We do this to maximize the chances of finding a match where the secondary path can be given as
+/// an absolute, relative, or partial path.
+pub(crate) fn canonical_path_eq(primary_path: &Path, secondary_path: &Path) -> bool {
+    primary_path
+        .canonicalize()
+        .ok()
+        .and_then(|canonical_primary_path| {
+            secondary_path
+                .canonicalize()
+                .ok()
+                .map(|canonical_secondary_path| {
+                    tracing::debug!(
+                        "Canonical path equality: Using `{canonical_primary_path:?}.eq({canonical_secondary_path:?})` to compare paths.");
+                    canonical_primary_path.eq(&canonical_secondary_path)
+                })
+        })
+        .unwrap_or_else(|| {
+            // If for some reason we can't canonicalize the paths, fall back to the original equality check.
+            tracing::debug!(
+                "Original path equality: Using `{primary_path:?}.eq({secondary_path:?})` to compare paths.");
+            primary_path.eq(secondary_path)
+        })
 }
 
 /// Get a handle to the [`gimli::UnwindTableRow`] for this call frame, so that we can reference it to unwind register values.
@@ -1181,13 +1270,19 @@ fn unwind_register(
         Undefined => {
             // In many cases, the DWARF has `Undefined` rules for variables like frame pointer, program counter, etc., so we hard-code some rules here to make sure unwinding can continue. If there is a valid rule, it will bypass these hardcoded ones.
             match &debug_register {
-                fp if fp.id == fp.register_file.frame_pointer.id => {
+                fp if fp
+                    .core_register
+                    .register_has_role(RegisterRole::FramePointer) =>
+                {
                     register_rule_string = "FP=CFA (dwarf Undefined)".to_string();
                     callee_frame_registers
                         .get_frame_pointer()
                         .and_then(|fp| fp.value)
                 }
-                sp if sp.id == sp.register_file.stack_pointer.id => {
+                sp if sp
+                    .core_register
+                    .register_has_role(RegisterRole::StackPointer) =>
+                {
                     // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section B.1.4.1: Treat bits [1:0] as `Should be Zero or Preserved`
                     // - Applying this logic to RISCV has no adverse effects, since all incoming addresses are already 32-bit aligned.
                     register_rule_string = "SP=CFA (dwarf Undefined)".to_string();
@@ -1199,55 +1294,64 @@ fn unwind_register(
                         }
                     })
                 }
-                lr if lr.id == lr.register_file.return_address.id => {
+                lr if lr
+                    .core_register
+                    .register_has_role(RegisterRole::ReturnAddress) =>
+                {
                     // This value is can only be used to determine the Undefined PC value. We have no way of inferring the previous frames LR until we have the PC.
                     register_rule_string = "LR=Unknown (dwarf Undefined)".to_string();
                     *unwound_return_address = lr.value;
                     None
                 }
-                pc if pc.id == pc.register_file.program_counter.id => {
+                pc if pc
+                    .core_register
+                    .register_has_role(RegisterRole::ProgramCounter) =>
+                {
                     // NOTE: PC = Value of the unwound LR, i.e. the first instruction after the one that called this function.
                     register_rule_string = "PC=(unwound LR) (dwarf Undefined)".to_string();
                     unwound_return_address.and_then(|return_address| {
-                        if return_address.is_max_value() || return_address.is_zero() {
-                            tracing::warn!("No reliable return address is available, so we cannot determine the program counter to unwind the previous frame.");
-                            None
-                        } else {
-                            match return_address {
-                                RegisterValue::U32(return_address) => {
-                                    if matches!(core.instruction_set(), Ok(InstructionSet::Thumb2)) {
-                                        // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section A5.1.2: We have to clear the last bit to ensure the PC is half-word aligned. (on ARM architecture, when in Thumb state for certain instruction types will set the LSB to 1)
-                                        register_rule_string = "PC=(unwound LR & !0b1) (dwarf Undefined)".to_string();
-                                        Some(RegisterValue::U32(return_address  & !0b1))
-                                    } else{
-                                        Some(RegisterValue::U32(return_address))
-                                    }
-                                }
-                                RegisterValue::U64(return_address) => {
-                                    Some(RegisterValue::U64(return_address))
-                                },
-                                RegisterValue::U128(_) => {
-                                    tracing::warn!("128 bit address space not supported");
-                                    None
-                                }
-                            }
-                        }
+                        unwind_program_counter_register(
+                            return_address,
+                            core,
+                            &mut register_rule_string,
+                        )
                     })
                 }
-                _ => {
-                    // This will result in the register value being cleared for the previous frame.
-                    None
+                other_register => {
+                    // If the the register rule was not specified, then we either carry the previous value forward,
+                    // or we clear the register value, depending on the architecture and register type.
+                    match other_register.core_register.unwind_rule {
+                        UnwindRule::Preserve => {
+                            register_rule_string = "Preserve".to_string();
+                            callee_frame_registers
+                                .get_register(other_register.core_register.id)
+                                .and_then(|reg| reg.value)
+                        }
+                        UnwindRule::Clear => {
+                            register_rule_string = "Clear".to_string();
+                            None
+                        }
+                        UnwindRule::SpecialRule => {
+                            // When no DWARF rules are available, and it is not a special register like PC, SP, FP, etc.,
+                            // we will preserve the value. It is possible it might have its value set later if
+                            // exception frame information is available.
+                            register_rule_string = "Clear (no unwind rules specified)".to_string();
+                            None
+                        }
+                    }
                 }
             }
         }
         SameValue => callee_frame_registers
-            .get_register(debug_register.id)
+            .get_register(debug_register.core_register.id)
             .and_then(|reg| reg.value),
         Offset(address_offset) => {
             // "The previous value of this register is saved at the address CFA+N where CFA is the current CFA value and N is a signed offset"
             if let Some(unwind_cfa) = unwind_cfa {
-                let previous_frame_register_address = add_to_address(unwind_cfa, address_offset);
                 let address_size = callee_frame_registers.get_address_size_bytes();
+                let previous_frame_register_address =
+                    add_to_address(unwind_cfa, address_offset, address_size);
+
                 register_rule_string = format!("CFA {register_rule:?}");
                 let result = match address_size {
                     4 => {
@@ -1271,7 +1375,10 @@ fn unwind_register(
 
                 match result {
                     Ok(register_value) => {
-                        if debug_register.id == debug_register.register_file.return_address.id {
+                        if debug_register
+                            .core_register
+                            .register_has_role(RegisterRole::ReturnAddress)
+                        {
                             // We need to store this value to be used by the calculation of the PC.
                             *unwound_return_address = Some(register_value);
                         }
@@ -1280,7 +1387,7 @@ fn unwind_register(
                     Err(error) => {
                         tracing::error!(
                             "UNWIND: Failed to read value for register {} from address {} ({} bytes): {}",
-                            debug_register.name,
+                            debug_register.get_register_name(),
                             RegisterValue::from(previous_frame_register_address),
                             4,
                             error
@@ -1308,7 +1415,7 @@ fn unwind_register(
         debug_register.get_register_name(),
         debug_register.value.unwrap_or_default(),
         callee_frame_registers
-            .get_register(debug_register.id)
+            .get_register(debug_register.core_register.id)
             .and_then(|reg| reg.value)
             .unwrap_or_default(),
         register_rule_string,
@@ -1316,13 +1423,66 @@ fn unwind_register(
     ControlFlow::Continue(())
 }
 
-/// Helper function to handle adding a signed offset to a u64 address.
-/// The result wraps, which matches previous behavior of using i64 operations and
-/// casting to u32
-fn add_to_address(address: u64, offset: i64) -> u64 {
-    if offset >= 0 {
-        address.wrapping_add(offset as u64)
+/// Helper function to determine the program counter value for the previous frame.
+fn unwind_program_counter_register(
+    return_address: RegisterValue,
+    core: &mut Core<'_>,
+    register_rule_string: &mut String,
+) -> Option<RegisterValue> {
+    if return_address.is_max_value() || return_address.is_zero() {
+        tracing::warn!("No reliable return address is available, so we cannot determine the program counter to unwind the previous frame.");
+        None
     } else {
-        address.wrapping_sub(offset.unsigned_abs())
+        match return_address {
+            RegisterValue::U32(return_address) => {
+                if matches!(core.instruction_set(), Ok(InstructionSet::Thumb2)) {
+                    // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section A5.1.2: We have to clear the last bit to ensure the PC is half-word aligned. (on ARM architecture, when in Thumb state for certain instruction types will set the LSB to 1)
+                    *register_rule_string = "PC=(unwound LR & !0b1) (dwarf Undefined)".to_string();
+                    Some(RegisterValue::U32(return_address & !0b1))
+                } else {
+                    Some(RegisterValue::U32(return_address))
+                }
+            }
+            RegisterValue::U64(return_address) => Some(RegisterValue::U64(return_address)),
+            RegisterValue::U128(_) => {
+                tracing::warn!("128 bit address space not supported");
+                None
+            }
+        }
+    }
+}
+
+/// Helper function to handle adding a signed offset to a [`RegisterValue`] address.
+/// The numerical overflow is handled based on the byte size (`address_size_in_bytes` parameter  )
+/// of the [`RegisterValue`], as opposed to just the datatype of the `address` parameter.
+/// In the case of unwinding stack frame register values, it makes no sense to wrap,
+/// because it will result in invalid register address reads.
+/// Instead, when we detect over/underflow, we return an address value of 0x0,
+/// which will trigger a graceful (and logged) end of a stack unwind.
+fn add_to_address(address: u64, offset: i64, address_size_in_bytes: usize) -> u64 {
+    match address_size_in_bytes {
+        4 => {
+            if offset >= 0 {
+                (address as u32)
+                    .checked_add(offset as u32)
+                    .map(u64::from)
+                    .unwrap_or(0x0)
+            } else {
+                (address as u32).saturating_sub(offset.unsigned_abs() as u32) as u64
+            }
+        }
+        8 => {
+            if offset >= 0 {
+                address.checked_add(offset as u64).unwrap_or(0x0)
+            } else {
+                address.saturating_sub(offset.unsigned_abs())
+            }
+        }
+        _ => {
+            panic!(
+                "UNWIND: Address size {} not supported.  Please report this as a bug.",
+                address_size_in_bytes
+            );
+        }
     }
 }

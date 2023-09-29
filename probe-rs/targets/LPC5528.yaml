@@ -1,5 +1,7 @@
 name: LPC5528
-manufacturer: null
+manufacturer:
+  cc: 0x00
+  id: 0x15
 variants:
   - name: LPC5528JBD100
     cores:

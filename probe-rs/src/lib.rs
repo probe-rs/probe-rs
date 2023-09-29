@@ -77,6 +77,8 @@ pub mod debug;
 mod error;
 #[warn(missing_docs)]
 pub mod flashing;
+#[cfg(feature = "gdb-server")]
+pub mod gdb_server;
 #[warn(missing_docs)]
 mod memory;
 #[warn(missing_docs)]
@@ -89,9 +91,9 @@ mod session;
 
 pub use crate::config::{CoreType, InstructionSet, Target};
 pub use crate::core::{
-    Architecture, BreakpointCause, BreakpointId, Core, CoreInformation, CoreInterface, CoreState,
-    CoreStatus, HaltReason, MemoryMappedRegister, RegisterDescription, RegisterFile, RegisterId,
-    RegisterValue, SpecificCoreState,
+    Architecture, BreakpointCause, Core, CoreInformation, CoreInterface, CoreRegister,
+    CoreRegisters, CoreState, CoreStatus, HaltReason, MemoryMappedRegister, RegisterId,
+    RegisterRole, RegisterValue, SemihostingCommand, SpecificCoreState, VectorCatchCondition,
 };
 pub use crate::error::Error;
 pub use crate::memory::MemoryInterface;

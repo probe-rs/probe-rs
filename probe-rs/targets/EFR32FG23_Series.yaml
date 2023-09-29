@@ -1,4 +1,7 @@
 name: EFR32FG23 Series
+manufacturer:
+  cc: 0x02
+  id: 0x21
 variants:
   - name: EFR32FG23A010F256
     cores:

@@ -1,5 +1,7 @@
 use std::{fmt::Debug, sync::Arc};
 
+use probe_rs_target::ScanChainElement;
+
 use crate::{
     architecture::arm::{
         ap::{memory_ap::mock::MockMemoryAp, AccessPort, MemoryAp},
@@ -20,6 +22,7 @@ use crate::{
 pub struct FakeProbe {
     protocol: WireProtocol,
     speed: u32,
+    scan_chain: Option<Vec<ScanChainElement>>,
 
     dap_register_read_handler: Option<Box<dyn Fn(PortType, u8) -> Result<u32, ArmError> + Send>>,
 
@@ -42,6 +45,7 @@ impl FakeProbe {
         FakeProbe {
             protocol: WireProtocol::Swd,
             speed: 1000,
+            scan_chain: None,
 
             dap_register_read_handler: None,
             dap_register_write_handler: None,
@@ -95,6 +99,11 @@ impl DebugProbe for FakeProbe {
 
     fn speed_khz(&self) -> u32 {
         self.speed
+    }
+
+    fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
+        self.scan_chain = Some(scan_chain);
+        Ok(())
     }
 
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
@@ -173,6 +182,10 @@ impl RawDapAccess for FakeProbe {
         handler(port, addr, value)
     }
 
+    fn jtag_sequence(&mut self, _cycles: u8, _tms: bool, _tdi: u64) -> Result<(), DebugProbeError> {
+        todo!()
+    }
+
     fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
         todo!()
     }
@@ -188,6 +201,10 @@ impl RawDapAccess for FakeProbe {
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
         self
+    }
+
+    fn core_status_notification(&mut self, _: crate::CoreStatus) -> Result<(), DebugProbeError> {
+        Ok(())
     }
 }
 

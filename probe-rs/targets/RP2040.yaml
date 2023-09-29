@@ -1,4 +1,7 @@
 name: RP2040
+manufacturer:
+  id: 0x13
+  cc: 0x09
 variants:
   - name: RP2040
     cores:
@@ -74,7 +77,7 @@ variants:
       - !Nvm
           range:
             start: 0x10000000
-            end: 0x11000000
+            end: 0x18000000
           is_boot_memory: true
           cores:
             - core0
@@ -142,7 +145,7 @@ variants:
       - !Nvm
           range:
             start: 0x10000000
-            end: 0x11000000
+            end: 0x18000000
           is_boot_memory: true
           cores:
             - core0
@@ -159,12 +162,11 @@ flash_algorithms:
     pc_uninit: 0x89
     pc_program_page: 0x105
     pc_erase_sector: 0xd1
-    pc_erase_all: 0xb5
     data_section_offset: 0x0
     flash_properties:
       address_range:
         start: 0x10000000
-        end: 0x11000000
+        end: 0x18000000
       page_size: 0x1000
       erased_byte_value: 0xff
       program_page_timeout: 0x3e8

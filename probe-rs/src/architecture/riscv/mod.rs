@@ -2,33 +2,35 @@
 
 #![allow(clippy::inconsistent_digit_grouping)]
 
-use crate::core::{Architecture, BreakpointCause};
-use crate::{CoreInterface, CoreType, InstructionSet};
-use anyhow::{anyhow, Result};
-use communication_interface::{
-    AbstractCommandErrorKind, DebugRegister, RiscvCommunicationInterface, RiscvError,
+use self::registers::*;
+use crate::{
+    core::{
+        Architecture, BreakpointCause, CoreInformation, CoreRegisters, RegisterId, RegisterValue,
+    },
+    memory::valid_32bit_address,
+    memory_mapped_bitfield_register, CoreInterface, CoreRegister, CoreStatus, CoreType, Error,
+    HaltReason, InstructionSet, MemoryInterface,
 };
-
-use crate::core::{CoreInformation, RegisterFile, RegisterValue};
-use crate::memory::valid_32bit_address;
-use crate::{CoreStatus, Error, HaltReason, MemoryInterface, RegisterId};
-
+use anyhow::{anyhow, Result};
 use bitfield::bitfield;
-use register::RISCV_REGISTERS;
+use communication_interface::{AbstractCommandErrorKind, RiscvCommunicationInterface, RiscvError};
+use registers::RISCV_CORE_REGSISTERS;
 use std::time::{Duration, Instant};
 
 #[macro_use]
-mod register;
+pub(crate) mod registers;
+pub use registers::PC;
 pub(crate) mod assembly;
-mod dtm;
-
 pub mod communication_interface;
+mod dtm;
+pub(crate) mod exception_handling;
 pub mod sequences;
 
 /// A interface to operate RISC-V cores.
 pub struct Riscv32<'probe> {
     interface: &'probe mut RiscvCommunicationInterface,
     state: &'probe mut RiscVState,
+    id: usize,
 }
 
 impl<'probe> Riscv32<'probe> {
@@ -36,8 +38,13 @@ impl<'probe> Riscv32<'probe> {
     pub fn new(
         interface: &'probe mut RiscvCommunicationInterface,
         state: &'probe mut RiscVState,
+        id: usize,
     ) -> Self {
-        Self { interface, state }
+        Self {
+            interface,
+            state,
+            id,
+        }
     }
 
     fn read_csr(&mut self, address: u16) -> Result<u32, RiscvError> {
@@ -93,6 +100,22 @@ impl<'probe> Riscv32<'probe> {
 
         Ok(())
     }
+
+    /// Check if the connected device supports halt after reset.
+    ///
+    /// Returns a cached value if available, otherwise queries the
+    /// `hasresethaltreq` bit in the `dmstatus` register.
+    fn supports_reset_halt_req(&mut self) -> Result<bool, crate::Error> {
+        if let Some(has_reset_halt_req) = self.state.hasresethaltreq {
+            Ok(has_reset_halt_req)
+        } else {
+            let dmstatus: Dmstatus = self.interface.read_dm_register()?;
+
+            self.state.hasresethaltreq = Some(dmstatus.hasresethaltreq());
+
+            Ok(dmstatus.hasresethaltreq())
+        }
+    }
 }
 
 impl<'probe> CoreInterface for Riscv32<'probe> {
@@ -116,6 +139,42 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         let dmstatus: Dmstatus = self.interface.read_dm_register()?;
 
         Ok(dmstatus.allhalted())
+    }
+
+    fn status(&mut self) -> Result<crate::core::CoreStatus, crate::Error> {
+        // TODO: We should use hartsum to determine if any hart is halted
+        //       quickly
+
+        let status: Dmstatus = self.interface.read_dm_register()?;
+
+        if status.allhalted() {
+            // determine reason for halt
+            let dcsr = Dcsr(self.read_core_reg(RegisterId::from(0x7b0))?.try_into()?);
+
+            let reason = match dcsr.cause() {
+                // An ebreak instruction was hit
+                1 => HaltReason::Breakpoint(BreakpointCause::Software),
+                // Trigger module caused halt
+                2 => HaltReason::Breakpoint(BreakpointCause::Hardware),
+                // Debugger requested a halt
+                3 => HaltReason::Request,
+                // Core halted after single step
+                4 => HaltReason::Step,
+                // Core halted directly after reset
+                5 => HaltReason::Exception,
+                // Reserved for future use in specification
+                _ => HaltReason::Unknown,
+            };
+
+            Ok(CoreStatus::Halted(reason))
+        } else if status.allrunning() {
+            Ok(CoreStatus::Running)
+        } else {
+            Err(
+                anyhow!("Some cores are running while some are halted, this should not happen.")
+                    .into(),
+            )
+        }
     }
 
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, crate::Error> {
@@ -143,11 +202,10 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
         self.interface.write_dm_register(dmcontrol)?;
 
-        let pc = self.read_core_reg(register::RISCV_REGISTERS.program_counter.id)?;
+        let pc = self.read_core_reg(self.program_counter().into())?;
 
         Ok(CoreInformation { pc: pc.try_into()? })
     }
-
     fn run(&mut self) -> Result<(), crate::Error> {
         // Before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction.
         self.step()?;
@@ -177,6 +235,8 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     ) -> Result<crate::core::CoreInformation, crate::Error> {
         tracing::debug!("Resetting core, setting hartreset bit");
 
+        self.reset_catch_set()?;
+
         let mut dmcontrol = Dmcontrol(0);
         dmcontrol.set_dmactive(true);
         dmcontrol.set_hartreset(true);
@@ -190,9 +250,8 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         if readback.hartreset() {
             tracing::debug!("Clearing hartreset bit");
             // Reset is performed by setting the bit high, and then low again
-            let mut dmcontrol = Dmcontrol(0);
+            let mut dmcontrol = readback;
             dmcontrol.set_dmactive(true);
-            dmcontrol.set_haltreq(true);
             dmcontrol.set_hartreset(false);
 
             self.interface.write_dm_register(dmcontrol)?;
@@ -231,6 +290,8 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
         self.interface.write_dm_register(dmcontrol)?;
 
+        self.reset_catch_clear()?;
+
         let pc = self.read_core_reg(RegisterId(0x7b1))?;
 
         Ok(CoreInformation { pc: pc.try_into()? })
@@ -247,9 +308,9 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             let mut debug_pc = self.read_core_reg(RegisterId(0x7b1))?;
             // Advance the dpc by the size of the EBREAK (ebreak or c.ebreak) instruction.
             if matches!(self.instruction_set()?, InstructionSet::RV32C) {
-                debug_pc.incremenet_address(2)?;
+                debug_pc.increment_address(2)?;
             } else {
-                debug_pc.incremenet_address(4)?;
+                debug_pc.increment_address(4)?;
             }
 
             self.write_core_reg(RegisterId(0x7b1), debug_pc)?;
@@ -298,7 +359,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         Ok(CoreInformation { pc: pc.try_into()? })
     }
 
-    fn read_core_reg(&mut self, address: crate::RegisterId) -> Result<RegisterValue, crate::Error> {
+    fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, crate::Error> {
         self.read_csr(address.0)
             .map(|v| v.into())
             .map_err(|e| e.into())
@@ -306,7 +367,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
     fn write_core_reg(
         &mut self,
-        address: crate::RegisterId,
+        address: RegisterId,
         value: RegisterValue,
     ) -> Result<(), crate::Error> {
         let value: u32 = value.try_into()?;
@@ -382,6 +443,47 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         tracing::debug!("Target supports {} breakpoints.", tselect_index);
 
         Ok(tselect_index)
+    }
+
+    /// See docs on the [`CoreInterface::hw_breakpoints`] trait
+    /// NOTE: For riscv, this assumes that only execution breakpoints are used.
+    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
+        let tselect = 0x7a0;
+        let tdata1 = 0x7a1;
+        let tdata2 = 0x7a2;
+
+        let mut breakpoints = vec![];
+        let num_hw_breakpoints = self.available_breakpoint_units()? as usize;
+        for bp_unit_index in 0..num_hw_breakpoints {
+            // Select the trigger.
+            self.write_csr(tselect, bp_unit_index as u32)?;
+
+            // Read the trigger "configuration" data.
+            let tdata_value = Mcontrol(self.read_csr(tdata1)?);
+
+            tracing::warn!("Breakpoint {}: {:?}", bp_unit_index, tdata_value);
+
+            // The trigger must be active in at least a single mode
+            let trigger_any_mode_active = tdata_value.m() || tdata_value.s() || tdata_value.u();
+
+            let trigger_any_action_enabled =
+                tdata_value.execute() || tdata_value.store() || tdata_value.load();
+
+            // Only return if the trigger if it is for an execution debug action in all modes.
+            if tdata_value.type_() == 0b10
+                && tdata_value.action() == 1
+                && tdata_value.match_() == 0
+                && trigger_any_mode_active
+                && trigger_any_action_enabled
+            {
+                let breakpoint = self.read_csr(tdata2)?;
+                breakpoints.push(Some(breakpoint as u64));
+            } else {
+                breakpoints.push(None);
+            }
+        }
+
+        Ok(breakpoints)
     }
 
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), crate::Error> {
@@ -485,12 +587,38 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         Ok(())
     }
 
-    fn registers(&self) -> &'static RegisterFile {
-        &RISCV_REGISTERS
+    fn registers(&self) -> &'static CoreRegisters {
+        &RISCV_CORE_REGSISTERS
+    }
+
+    fn program_counter(&self) -> &'static CoreRegister {
+        &PC
+    }
+
+    fn frame_pointer(&self) -> &'static CoreRegister {
+        &FP
+    }
+
+    fn stack_pointer(&self) -> &'static CoreRegister {
+        &SP
+    }
+
+    fn return_address(&self) -> &'static CoreRegister {
+        &RA
     }
 
     fn hw_breakpoints_enabled(&self) -> bool {
         self.state.hw_breakpoints_enabled
+    }
+
+    fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), crate::error::Error> {
+        let mut dcsr = Dcsr(self.read_core_reg(RegisterId(0x7b0))?.try_into()?);
+
+        dcsr.set_ebreakm(enabled);
+        dcsr.set_ebreaks(enabled);
+        dcsr.set_ebreaku(enabled);
+
+        self.write_csr(0x7b0, dcsr.0).map_err(|e| e.into())
     }
 
     fn architecture(&self) -> Architecture {
@@ -512,97 +640,47 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         }
     }
 
-    fn status(&mut self) -> Result<crate::core::CoreStatus, crate::Error> {
-        // TODO: We should use hartsum to determine if any hart is halted
-        //       quickly
-
-        let status: Dmstatus = self.interface.read_dm_register()?;
-
-        if status.allhalted() {
-            // determine reason for halt
-            let dcsr = Dcsr(self.read_core_reg(RegisterId::from(0x7b0))?.try_into()?);
-
-            let reason = match dcsr.cause() {
-                // An ebreak instruction was hit
-                1 => HaltReason::Breakpoint(BreakpointCause::Software),
-                // Trigger module caused halt
-                2 => HaltReason::Breakpoint(BreakpointCause::Hardware),
-                // Debugger requested a halt
-                3 => HaltReason::Request,
-                // Core halted after single step
-                4 => HaltReason::Step,
-                // Core halted directly after reset
-                5 => HaltReason::Exception,
-                // Reserved for future use in specification
-                _ => HaltReason::Unknown,
-            };
-
-            Ok(CoreStatus::Halted(reason))
-        } else if status.allrunning() {
-            Ok(CoreStatus::Running)
-        } else {
-            Err(
-                anyhow!("Some cores are running while some are halted, this should not happen.")
-                    .into(),
-            )
-        }
-    }
-
-    /// See docs on the [`CoreInterface::hw_breakpoints`] trait
-    /// NOTE: For riscv, this assumes that only execution breakpoints are used.
-    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
-        let tselect = 0x7a0;
-        let tdata1 = 0x7a1;
-        let tdata2 = 0x7a2;
-
-        let mut breakpoints = vec![];
-        let num_hw_breakpoints = self.available_breakpoint_units()? as usize;
-        for bp_unit_index in 0..num_hw_breakpoints {
-            // Select the trigger.
-            self.write_csr(tselect, bp_unit_index as u32)?;
-
-            // Read the trigger "configuration" data.
-            let tdata_value = Mcontrol(self.read_csr(tdata1)?);
-
-            tracing::warn!("Breakpoint {}: {:?}", bp_unit_index, tdata_value);
-
-            // The trigger must be active in at least a single mode
-            let trigger_any_mode_active = tdata_value.m() || tdata_value.s() || tdata_value.u();
-
-            let trigger_any_action_enabled =
-                tdata_value.execute() || tdata_value.store() || tdata_value.load();
-
-            // Only return if the trigger if it is for an execution debug action in all modes.
-            if tdata_value.type_() == 0b10
-                && tdata_value.action() == 1
-                && tdata_value.match_() == 0
-                && trigger_any_mode_active
-                && trigger_any_action_enabled
-            {
-                let breakpoint = self.read_csr(tdata2)?;
-                breakpoints.push(Some(breakpoint as u64));
-            } else {
-                breakpoints.push(None);
-            }
-        }
-
-        Ok(breakpoints)
-    }
-
     fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
         Err(crate::error::Error::Other(anyhow::anyhow!(
             "Fpu detection not yet implemented"
         )))
     }
 
-    fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), crate::error::Error> {
-        let mut dcsr = Dcsr(self.read_core_reg(RegisterId(0x7b0))?.try_into()?);
+    fn id(&self) -> usize {
+        self.id
+    }
 
-        dcsr.set_ebreakm(enabled);
-        dcsr.set_ebreaks(enabled);
-        dcsr.set_ebreaku(enabled);
+    fn reset_catch_set(&mut self) -> Result<(), Error> {
+        if !self.supports_reset_halt_req()? {
+            return Err(Error::Riscv(RiscvError::ResetHaltRequestNotSupported));
+        }
 
-        self.write_csr(0x7b0, dcsr.0).map_err(|e| e.into())
+        let mut dmcontrol: Dmcontrol = self.interface.read_dm_register()?;
+
+        dmcontrol.set_resethaltreq(true);
+
+        self.interface.write_dm_register(dmcontrol)?;
+
+        Ok(())
+    }
+
+    fn reset_catch_clear(&mut self) -> Result<(), Error> {
+        if !self.supports_reset_halt_req()? {
+            return Err(Error::Riscv(RiscvError::ResetHaltRequestNotSupported));
+        }
+
+        let mut dmcontrol: Dmcontrol = self.interface.read_dm_register()?;
+
+        dmcontrol.set_clrresethaltreq(true);
+
+        self.interface.write_dm_register(dmcontrol)?;
+
+        Ok(())
+    }
+
+    fn debug_core_stop(&mut self) -> Result<(), Error> {
+        self.debug_on_sw_breakpoint(false)?;
+        Ok(())
     }
 }
 
@@ -677,23 +755,26 @@ impl<'probe> MemoryInterface for Riscv32<'probe> {
 pub struct RiscVState {
     /// A flag to remember whether we want to use hw_breakpoints during stepping of the core.
     hw_breakpoints_enabled: bool,
+
+    /// Store the value of the `hasresethaltreq` bit of the `dmcstatus` register.
+    hasresethaltreq: Option<bool>,
 }
 
 impl RiscVState {
     pub(crate) fn new() -> Self {
         Self {
             hw_breakpoints_enabled: false,
+            hasresethaltreq: None,
         }
     }
 }
 
-bitfield! {
+memory_mapped_bitfield_register! {
     /// `dmcontrol` register, located at
     /// address 0x10
-    #[derive(Copy, Clone)]
     pub struct Dmcontrol(u32);
-    impl Debug;
-
+    0x10, "dmcontrol",
+    impl From;
     _, set_haltreq: 31;
     _, set_resumereq: 30;
     hartreset, set_hartreset: 29;
@@ -725,29 +806,13 @@ impl Dmcontrol {
     }
 }
 
-impl DebugRegister for Dmcontrol {
-    const ADDRESS: u8 = 0x10;
-    const NAME: &'static str = "dmcontrol";
-}
-
-impl From<Dmcontrol> for u32 {
-    fn from(register: Dmcontrol) -> Self {
-        register.0
-    }
-}
-
-impl From<u32> for Dmcontrol {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// Readonly `dmstatus` register.
     ///
     /// Located at address 0x11
     pub struct Dmstatus(u32);
-    impl Debug;
+    0x11, "dmstatus",
+    impl From;
     impebreak, _: 22;
     allhavereset, _: 19;
     anyhavereset, _: 18;
@@ -768,23 +833,6 @@ bitfield! {
     version, _: 3, 0;
 }
 
-impl DebugRegister for Dmstatus {
-    const ADDRESS: u8 = 0x11;
-    const NAME: &'static str = "dmstatus";
-}
-
-impl From<u32> for Dmstatus {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Dmstatus> for u32 {
-    fn from(register: Dmstatus) -> Self {
-        register.0
-    }
-}
-
 bitfield! {
         struct Dcsr(u32);
         impl Debug;
@@ -803,10 +851,11 @@ bitfield! {
         prv, set_prv: 1,0;
 }
 
-bitfield! {
+memory_mapped_bitfield_register! {
     /// Abstract Control and Status (see 3.12.6)
     pub struct Abstractcs(u32);
-    impl Debug;
+    0x16, "abstractcs",
+    impl From;
 
     progbufsize, _: 28, 24;
     busy, _: 12;
@@ -814,27 +863,11 @@ bitfield! {
     datacount, _: 3, 0;
 }
 
-impl DebugRegister for Abstractcs {
-    const ADDRESS: u8 = 0x16;
-    const NAME: &'static str = "abstractcs";
-}
-
-impl From<Abstractcs> for u32 {
-    fn from(register: Abstractcs) -> Self {
-        register.0
-    }
-}
-
-impl From<u32> for Abstractcs {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-bitfield! {
+memory_mapped_bitfield_register! {
     /// Hart Info (see 3.12.3)
     pub struct Hartinfo(u32);
-    impl Debug;
+    0x12, "hartinfo",
+    impl From;
 
     nscratch, _: 23, 20;
     dataaccess, _: 16;
@@ -842,54 +875,37 @@ bitfield! {
     dataaddr, _: 11, 0;
 }
 
-impl DebugRegister for Hartinfo {
-    const ADDRESS: u8 = 0x12;
-    const NAME: &'static str = "hartinfo";
-}
+memory_mapped_bitfield_register! { pub struct Data0(u32); 0x04, "data0", impl From; }
+memory_mapped_bitfield_register! { pub struct Data1(u32); 0x05, "data1", impl From; }
+memory_mapped_bitfield_register! { pub struct Data2(u32); 0x06, "data2", impl From; }
+memory_mapped_bitfield_register! { pub struct Data3(u32); 0x07, "data3", impl From; }
+memory_mapped_bitfield_register! { pub struct Data4(u32); 0x08, "data4", impl From; }
+memory_mapped_bitfield_register! { pub struct Data5(u32); 0x09, "data5", impl From; }
+memory_mapped_bitfield_register! { pub struct Data6(u32); 0x0A, "data6", impl From; }
+memory_mapped_bitfield_register! { pub struct Data7(u32); 0x0B, "data7", impl From; }
+memory_mapped_bitfield_register! { pub struct Data8(u32); 0x0C, "data8", impl From; }
+memory_mapped_bitfield_register! { pub struct Data9(u32); 0x0D, "data9", impl From; }
+memory_mapped_bitfield_register! { pub struct Data10(u32); 0x0E, "data10", impl From; }
+memory_mapped_bitfield_register! { pub struct Data11(u32); 0x0f, "data11", impl From; }
 
-impl From<Hartinfo> for u32 {
-    fn from(register: Hartinfo) -> Self {
-        register.0
-    }
-}
+memory_mapped_bitfield_register! { struct Command(u32); 0x17, "command", impl From; }
 
-impl From<u32> for Hartinfo {
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-data_register! { pub Data0, 0x04, "data0" }
-data_register! { pub Data1, 0x05, "data1" }
-data_register! { pub Data2, 0x06, "data2" }
-data_register! { pub Data3, 0x07, "data3" }
-data_register! { pub Data4, 0x08, "data4" }
-data_register! { pub Data5, 0x09, "data5" }
-data_register! { pub Data6, 0x0A, "data6" }
-data_register! { pub Data7, 0x0B, "data7" }
-data_register! { pub Data8, 0x0C, "data8" }
-data_register! { pub Data9, 0x0D, "data9" }
-data_register! { pub Data10, 0x0E, "data10" }
-data_register! { pub Data11, 0x0f, "data11" }
-
-data_register! { Command, 0x17, "command" }
-
-data_register! { pub Progbuf0, 0x20, "progbuf0" }
-data_register! { pub Progbuf1, 0x21, "progbuf1" }
-data_register! { pub Progbuf2, 0x22, "progbuf2" }
-data_register! { pub Progbuf3, 0x23, "progbuf3" }
-data_register! { pub Progbuf4, 0x24, "progbuf4" }
-data_register! { pub Progbuf5, 0x25, "progbuf5" }
-data_register! { pub Progbuf6, 0x26, "progbuf6" }
-data_register! { pub Progbuf7, 0x27, "progbuf7" }
-data_register! { pub Progbuf8, 0x28, "progbuf8" }
-data_register! { pub Progbuf9, 0x29, "progbuf9" }
-data_register! { pub Progbuf10, 0x2A, "progbuf10" }
-data_register! { pub Progbuf11, 0x2B, "progbuf11" }
-data_register! { pub Progbuf12, 0x2C, "progbuf12" }
-data_register! { pub Progbuf13, 0x2D, "progbuf13" }
-data_register! { pub Progbuf14, 0x2E, "progbuf14" }
-data_register! { pub Progbuf15, 0x2F, "progbuf15" }
+memory_mapped_bitfield_register! { pub struct Progbuf0(u32); 0x20, "progbuf0", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf1(u32); 0x21, "progbuf1", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf2(u32); 0x22, "progbuf2", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf3(u32); 0x23, "progbuf3", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf4(u32); 0x24, "progbuf4", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf5(u32); 0x25, "progbuf5", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf6(u32); 0x26, "progbuf6", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf7(u32); 0x27, "progbuf7", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf8(u32); 0x28, "progbuf8", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf9(u32); 0x29, "progbuf9", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf10(u32); 0x2A, "progbuf10", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf11(u32); 0x2B, "progbuf11", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf12(u32); 0x2C, "progbuf12", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf13(u32); 0x2D, "progbuf13", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf14(u32); 0x2E, "progbuf14", impl From; }
+memory_mapped_bitfield_register! { pub struct Progbuf15(u32); 0x2F, "progbuf15", impl From; }
 
 bitfield! {
     struct Mcontrol(u32);

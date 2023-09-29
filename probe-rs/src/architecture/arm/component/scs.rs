@@ -5,8 +5,10 @@
 use self::register::CPUID;
 
 use super::super::memory::romtable::CoresightComponent;
-use super::DebugRegister;
-use crate::architecture::arm::{ArmError, ArmProbeInterface};
+use crate::{
+    architecture::arm::{ArmError, ArmProbeInterface},
+    MemoryMappedRegister,
+};
 
 /// An interface to control the SCS (System Control Space) of a MCU.
 pub struct Scs<'a> {
@@ -29,40 +31,23 @@ impl<'a> Scs<'a> {
     /// B3.2.3 CPUID Base Register
     pub fn cpuid(&mut self) -> Result<CPUID, ArmError> {
         self.component
-            .read_reg(self.interface, CPUID::ADDRESS)
+            .read_reg(self.interface, CPUID::ADDRESS_OFFSET as u32)
             .map(CPUID)
     }
 }
 
 mod register {
-    use super::super::DebugRegister;
+    use crate::memory_mapped_bitfield_register;
 
-    bitfield::bitfield! {
+    memory_mapped_bitfield_register! {
         /// B3.2.3 CPUID Base Register
         #[allow(non_camel_case_types)]
-        #[derive(Copy, Clone)]
         pub struct CPUID(u32);
-        impl Debug;
+        0xD00, "CPUID",
+        impl From;
         pub implementer, _: 31, 24;
         pub variant, _: 23, 20;
         pub partno, _: 15, 4;
         pub revision, _: 3, 0;
-    }
-
-    impl From<u32> for CPUID {
-        fn from(value: u32) -> Self {
-            Self(value)
-        }
-    }
-
-    impl From<CPUID> for u32 {
-        fn from(value: CPUID) -> Self {
-            value.0
-        }
-    }
-
-    impl DebugRegister for CPUID {
-        const ADDRESS: u32 = 0xD00;
-        const NAME: &'static str = "CPUID";
     }
 }

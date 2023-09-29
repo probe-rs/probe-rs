@@ -1,4 +1,7 @@
 name: GD32VF1 Series
+manufacturer:
+  cc: 0x06
+  id: 0x48
 variants:
   - name: GD32VF103CBT6
     cores:

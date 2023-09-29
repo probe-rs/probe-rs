@@ -20,6 +20,7 @@ use crate::{
     DebugProbeSelector, Error as ProbeRsError, Probe,
 };
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
+use probe_rs_target::ScanChainElement;
 use scroll::{Pread, Pwrite, BE, LE};
 use std::{cmp::Ordering, convert::TryInto, sync::Arc, time::Duration};
 use usb_interface::TIMEOUT;
@@ -47,6 +48,7 @@ pub(crate) struct StLink<D: StLinkUsb> {
     swd_speed_khz: u32,
     jtag_speed_khz: u32,
     swo_enabled: bool,
+    scan_chain: Option<Vec<ScanChainElement>>,
 
     /// List of opened APs
     opened_aps: Vec<u8>,
@@ -66,6 +68,7 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
             swd_speed_khz: 1_800,
             jtag_speed_khz: 1_120,
             swo_enabled: false,
+            scan_chain: None,
 
             opened_aps: vec![],
         };
@@ -136,6 +139,18 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
             }
             Ordering::Greater => unimplemented!(),
         }
+    }
+
+    fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
+        // A scan chain only makes sense in JTAG mode. Quit early if a different protocol is used.
+        if self.active_protocol() != Some(WireProtocol::Jtag) {
+            return Err(DebugProbeError::CommandNotSupportedByProbe(
+                "Setting Scan Chain is only supported in JTAG mode",
+            ));
+        }
+        tracing::info!("Setting scan chain to {:?}", scan_chain);
+        self.scan_chain = Some(scan_chain);
+        Ok(())
     }
 
     #[tracing::instrument(skip(self))]
@@ -407,6 +422,12 @@ impl<D: StLinkUsb> StLink<D> {
         let mode = self.get_current_mode()?;
 
         match mode {
+            Mode::Jtag => self.device.write(
+                &[commands::JTAG_COMMAND, commands::JTAG_EXIT],
+                &[],
+                &mut [],
+                TIMEOUT,
+            ),
             Mode::Dfu => self.device.write(
                 &[commands::DFU_COMMAND, commands::DFU_EXIT],
                 &[],
@@ -1707,6 +1728,7 @@ mod test {
                 jtag_version: 0,
                 swd_speed_khz: 0,
                 jtag_speed_khz: 0,
+                scan_chain: None,
                 swo_enabled: false,
                 opened_aps: vec![],
             }

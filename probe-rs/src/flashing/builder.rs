@@ -107,31 +107,37 @@ pub struct FlashLayout {
 }
 
 impl FlashLayout {
-    /// Get the sectors of the flash layout.
+    /// List of sectors which are erased during flashing.
     pub fn sectors(&self) -> &[FlashSector] {
         &self.sectors
     }
 
-    /// Get the pages of the flash layout.
+    /// List of pages which are programmed during flashing.
     pub fn pages(&self) -> &[FlashPage] {
         &self.pages
     }
 
-    /// Get the pages of the flash layout as mut.
+    /// Mutable list of pages which are programmed during flashing.
     pub(super) fn pages_mut(&mut self) -> &mut [FlashPage] {
         &mut self.pages
     }
 
     /// Get the fills of the flash layout.
+    ///
+    /// This is data which is not written during flashing, but has to be restored to its original value afterwards.
     pub fn fills(&self) -> &[FlashFill] {
         &self.fills
     }
 
     /// Get the datablocks of the flash layout.
+    ///
+    /// This is the data which is written during flashing.
     pub fn data_blocks(&self) -> &[FlashDataBlockSpan] {
         &self.data_blocks
     }
 
+    /// Get a visualizer for the flash layout, which can create
+    /// a graphical representation of the layout.
     pub fn visualize(&self) -> FlashVisualizer {
         FlashVisualizer::new(self)
     }

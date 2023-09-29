@@ -3,8 +3,8 @@ use super::{
     function_die::FunctionDie, registers, variable::*, DebugError, DebugRegisters, SourceLocation,
     VariableCache,
 };
-use crate::{core::Core, MemoryInterface, RegisterValue};
-use gimli::{Location, UnitOffset};
+use crate::{core::Core, core::RegisterValue, MemoryInterface};
+use gimli::{AttributeValue::Language, Location, UnitOffset};
 use num_traits::Zero;
 
 pub(crate) type UnitIter =
@@ -16,12 +16,31 @@ pub(crate) enum ExpressionResult {
     Location(VariableLocation),
 }
 
+/// A struct containing information about a single compilation unit.
 pub(crate) struct UnitInfo<'debuginfo> {
     pub(crate) debug_info: &'debuginfo DebugInfo,
     pub(crate) unit: gimli::Unit<GimliReader, usize>,
 }
 
 impl<'debuginfo> UnitInfo<'debuginfo> {
+    /// Retrieve the value of the DW_AT_language attribute of the compilation unit.
+    /// This is used to influence logic for special cases related to the way the debug_info is generated.
+    /// In the unlikely event that we are unable to retrieve the language, we assume Rust,
+    /// so that other logic can follow the default behaviour.
+    pub(crate) fn get_language(&self) -> gimli::DwLang {
+        if let Ok(Some(Language(unit_language))) = self
+            .unit
+            .header
+            .entries_tree(&self.unit.abbreviations, None)
+            .and_then(|mut tree| tree.root()?.entry().attr_value(gimli::DW_AT_language))
+        {
+            unit_language
+        } else {
+            tracing::warn!("Unable to retrieve DW_AT_language attribute, assuming Rust.");
+            gimli::DW_LANG_Rust
+        }
+    }
+
     /// Get the DIE for the function containing the given address.
     ///
     /// If `stackframe_registers` is not `None`, then the function DIE's will have valid frame_base values calculated from the `DW_AT_frame_base` attribute.

@@ -4,8 +4,7 @@ use super::{Chip, ChipFamily, ChipInfo, Core, Target, TargetDescriptionSource};
 use crate::config::CoreType;
 use once_cell::sync::Lazy;
 use probe_rs_target::{CoreAccessOptions, RiscvCoreAccessOptions};
-use std::fs::File;
-use std::path::Path;
+use std::io::Read;
 use std::sync::{Arc, Mutex};
 
 static REGISTRY: Lazy<Arc<Mutex<Registry>>> =
@@ -19,8 +18,8 @@ pub enum RegistryError {
     #[error("The requested chip '{0}' was not found in the list of known targets.")]
     ChipNotFound(String),
     /// Multiple chips found which match the given string, unable to return a single chip.
-    #[error("Found multiple chips matching '{0}', unable to select a single chip.")]
-    ChipNotUnique(String),
+    #[error("Found multiple chips matching '{0}', unable to select a single chip. ({1})")]
+    ChipNotUnique(String, String),
     /// When searching for a chip based on information read from the target,
     /// no matching chip was found in the registry.
     #[error("The connected chip could not automatically be determined.")]
@@ -38,6 +37,9 @@ pub enum RegistryError {
     /// An invalid [`ChipFamily`] was encountered.
     #[error("Invalid chip family definition ({})", .0.name)]
     InvalidChipFamilyDefinition(Box<ChipFamily>, String),
+    /// One of the RTT scan ranges is not enclosed in exactly one RAM region.
+    #[error("Chip's RTT scan region {:#010x}..{:#010x} is not enclosed by any single RAM region.", .0.start, .0.end)]
+    InvalidRttScanRange(std::ops::Range<u64>),
 }
 
 fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
@@ -106,6 +108,8 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 }],
                 memory_map: vec![],
                 flash_algorithms: vec![],
+                rtt_scan_ranges: None,
+                scan_chain: Some(vec![]),
             }],
             flash_algorithms: vec![],
             source: TargetDescriptionSource::Generic,
@@ -155,6 +159,14 @@ impl Registry {
     }
 
     fn get_target_by_name(&self, name: impl AsRef<str>) -> Result<Target, RegistryError> {
+        let (target, _) = self.get_target_and_family_by_name(name)?;
+        Ok(target)
+    }
+
+    fn get_target_and_family_by_name(
+        &self,
+        name: impl AsRef<str>,
+    ) -> Result<(Target, ChipFamily), RegistryError> {
         let name = name.as_ref();
 
         tracing::debug!("Searching registry for chip with name {}", name);
@@ -163,7 +175,7 @@ impl Registry {
             // Try get the corresponding chip.
             let mut selected_family_and_chip = None;
             let mut exact_matches = 0;
-            let mut partial_matches = 0;
+            let mut partial_matches = Vec::new();
             for family in &self.families {
                 for variant in family.variants.iter() {
                     if match_name_prefix(&variant.name, name) {
@@ -171,8 +183,8 @@ impl Registry {
                             tracing::debug!("Exact match for chip name: {}", variant.name);
                             exact_matches += 1;
                         } else {
-                            tracing::debug!("Partial match for chip name: {}", variant.name);
-                            partial_matches += 1;
+                            tracing::debug!("Partial match for chip name: {}", &variant.name);
+                            partial_matches.push(variant.name.clone());
                             if exact_matches > 0 {
                                 continue;
                             }
@@ -181,16 +193,24 @@ impl Registry {
                     }
                 }
             }
-            if exact_matches > 1 || (exact_matches == 0 && partial_matches > 1) {
+            if partial_matches.len() > 1 {
                 tracing::warn!(
                     "Ignoring ambiguous matches for specified chip name {}",
                     name,
                 );
-                return Err(RegistryError::ChipNotUnique(name.to_owned()));
+                let mut suggestions;
+                if partial_matches.len() <= 100 {
+                    suggestions = partial_matches.join(", ");
+                } else {
+                    // prevent too much text being printed if too many matches
+                    suggestions = partial_matches[0..100].join(", ");
+                    suggestions.push_str(&format!(" and {} more", partial_matches.len() - 100))
+                }
+                return Err(RegistryError::ChipNotUnique(name.to_owned(), suggestions));
             }
             let (family, chip) = selected_family_and_chip
                 .ok_or_else(|| RegistryError::ChipNotFound(name.to_owned()))?;
-            if exact_matches == 0 && partial_matches == 1 {
+            if exact_matches == 0 && partial_matches.len() == 1 {
                 tracing::warn!(
                     "Found chip {} which matches given partial name {}. Consider specifying its full name.",
                     chip.name,
@@ -208,7 +228,43 @@ impl Registry {
             // Try get the correspnding flash algorithm.
             (family, chip)
         };
-        self.get_target(family, chip)
+        let targ = self.get_target(family, chip)?;
+        Ok((targ, family.clone()))
+    }
+
+    fn get_targets_by_family_name(
+        &self,
+        family_name: impl AsRef<str>,
+    ) -> Result<Vec<String>, RegistryError> {
+        let name: &str = family_name.as_ref();
+
+        let family = {
+            let mut finded_family = None;
+            let mut exact_matches = 0;
+            for family in &self.families {
+                if match_name_prefix(&family.name, name) {
+                    if family.name.len() == name.len() {
+                        tracing::debug!("Exact match for family name: {}", family.name);
+                        exact_matches += 1;
+                    } else {
+                        tracing::debug!("Partial match for family name: {}", family.name);
+                        if exact_matches > 0 {
+                            continue;
+                        }
+                    }
+                    finded_family = Some(family);
+                }
+            }
+            finded_family.ok_or_else(|| RegistryError::ChipNotFound(name.to_owned()))?
+        };
+
+        let mut all_family_targets = Vec::new();
+
+        for target in &family.variants {
+            all_family_targets.push(target.name.clone());
+        }
+
+        Ok(all_family_targets)
     }
 
     fn search_chips(&self, name: &str) -> Vec<String> {
@@ -278,9 +334,11 @@ impl Registry {
         Target::new(family, &chip.name)
     }
 
-    fn add_target_from_yaml(&mut self, path_to_yaml: &Path) -> Result<(), RegistryError> {
-        let file = File::open(path_to_yaml)?;
-        let family: ChipFamily = serde_yaml::from_reader(file)?;
+    fn add_target_from_yaml<R>(&mut self, yaml_reader: R) -> Result<(), RegistryError>
+    where
+        R: Read,
+    {
+        let family: ChipFamily = serde_yaml::from_reader(yaml_reader)?;
 
         family
             .validate()
@@ -304,6 +362,23 @@ pub fn get_target_by_name(name: impl AsRef<str>) -> Result<Target, RegistryError
     REGISTRY.lock().unwrap().get_target_by_name(name)
 }
 
+/// Get a target & chip family from the internal registry based on its name.
+pub fn get_target_and_family_by_name(
+    name: impl AsRef<str>,
+) -> Result<(Target, ChipFamily), RegistryError> {
+    REGISTRY.lock().unwrap().get_target_and_family_by_name(name)
+}
+
+/// Get all target from the internal registry based on its family name.
+pub fn get_targets_by_family_name(
+    family_name: impl AsRef<str>,
+) -> Result<Vec<String>, RegistryError> {
+    REGISTRY
+        .lock()
+        .unwrap()
+        .get_targets_by_family_name(family_name)
+}
+
 /// Get a target from the internal registry based on its name.
 pub fn search_chips(name: impl AsRef<str>) -> Result<Vec<String>, RegistryError> {
     Ok(REGISTRY.lock().unwrap().search_chips(name.as_ref()))
@@ -314,10 +389,34 @@ pub(crate) fn get_target_by_chip_info(chip_info: ChipInfo) -> Result<Target, Reg
     REGISTRY.lock().unwrap().get_target_by_chip_info(chip_info)
 }
 
-/// Parse a target description file and add the contained targets
+/// Parse a target description and add the contained targets
 /// to the internal target registry.
-pub fn add_target_from_yaml(path_to_yaml: &Path) -> Result<(), RegistryError> {
-    REGISTRY.lock().unwrap().add_target_from_yaml(path_to_yaml)
+///
+/// # Examples
+///
+/// ## Add targets from a YAML file
+///
+/// ```no_run
+/// use std::path::Path;
+/// use std::fs::File;
+///
+/// let file = File::open(Path::new("/path/target.yaml"))?;
+/// probe_rs::config::add_target_from_yaml(file)?;
+///
+/// # Ok::<(), anyhow::Error>(())
+/// ```
+///
+/// ## Add targets from a embedded YAML file
+///
+/// ```ignore
+/// const BUILTIN_TARGET_YAML: &[u8] = include_bytes!("/path/target.yaml");
+/// probe_rs::config::add_target_from_yaml(BUILTIN_TARGET_YAML)?;
+/// ```
+pub fn add_target_from_yaml<R>(yaml_reader: R) -> Result<(), RegistryError>
+where
+    R: Read,
+{
+    REGISTRY.lock().unwrap().add_target_from_yaml(yaml_reader)
 }
 
 /// Get a list of all families which are contained in the internal
@@ -344,6 +443,13 @@ fn match_name_prefix(pattern: &str, name: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use probe_rs_target::get_ir_lengths;
+    use std::fs::File;
+    type TestResult = Result<(), RegistryError>;
+
+    // Need to synchronize this with probe-rs/tests/scan_chain_test.yaml
+    const FIRST_IR_LENGTH: u8 = 4;
+    const SECOND_IR_LENGTH: u8 = 6;
 
     #[test]
     fn try_fetch_not_unique() {
@@ -351,7 +457,7 @@ mod tests {
         // ambiguous: partially matches STM32G081KBUx and STM32G081KBUxN
         assert!(matches!(
             registry.get_target_by_name("STM32G081KBU"),
-            Err(RegistryError::ChipNotUnique(_))
+            Err(RegistryError::ChipNotUnique(_, _))
         ));
     }
 
@@ -406,5 +512,48 @@ mod tests {
             .map(|family| family.validate())
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
+    }
+
+    #[test]
+    fn add_targets_with_and_without_scanchain() -> TestResult {
+        let file = File::open("tests/scan_chain_test.yaml")?;
+        add_target_from_yaml(file)?;
+
+        // Check that the scan chain can read from a target correctly
+        let mut target = get_target_by_name("FULL_SCAN_CHAIN").unwrap();
+        let scan_chain = target.scan_chain.unwrap();
+        for device in scan_chain {
+            if device.name == Some("core0".to_string()) {
+                assert_eq!(device.ir_len, Some(FIRST_IR_LENGTH));
+            } else if device.name == Some("ICEPICK".to_string()) {
+                assert_eq!(device.ir_len, Some(SECOND_IR_LENGTH));
+            }
+        }
+
+        // Now check that a device without a scan chain is read correctly
+        target = get_target_by_name("NO_SCAN_CHAIN").unwrap();
+        assert_eq!(target.scan_chain, None);
+
+        // Check a device with a minimal scan chain
+        target = get_target_by_name("PARTIAL_SCAN_CHAIN").unwrap();
+        let scan_chain = target.scan_chain.unwrap();
+        assert_eq!(scan_chain[0].ir_len, Some(FIRST_IR_LENGTH));
+        assert_eq!(scan_chain[1].ir_len, Some(SECOND_IR_LENGTH));
+
+        Ok(())
+    }
+
+    #[test]
+    fn check_get_ir_lengths_helper() -> TestResult {
+        let file = File::open("tests/scan_chain_test.yaml")?;
+        add_target_from_yaml(file)?;
+
+        // Check that the scan chain can read from a target correctly
+        let target = get_target_by_name("FULL_SCAN_CHAIN").unwrap();
+        let scan_chain = target.scan_chain.unwrap();
+        let ir_lengths = get_ir_lengths(&scan_chain);
+        assert_eq!(ir_lengths, vec![FIRST_IR_LENGTH, SECOND_IR_LENGTH]);
+
+        Ok(())
     }
 }

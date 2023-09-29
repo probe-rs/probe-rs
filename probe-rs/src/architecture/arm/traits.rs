@@ -1,4 +1,4 @@
-use crate::{DebugProbe, DebugProbeError};
+use crate::{CoreStatus, DebugProbe, DebugProbeError};
 
 use super::ArmError;
 
@@ -123,6 +123,17 @@ pub trait RawDapAccess {
         Ok(())
     }
 
+    /// Configures the probe for JTAG use (specifying IR lengths of each DAP).
+    fn configure_jtag(&mut self) -> Result<(), DebugProbeError> {
+        Ok(())
+    }
+
+    /// Send a specific output sequence over JTAG.
+    ///
+    /// This can only be used for output, and should be used to generate
+    /// the initial reset sequence, for example.
+    fn jtag_sequence(&mut self, cycles: u8, tms: bool, tdi: u64) -> Result<(), DebugProbeError>;
+
     /// Send a specific output sequence over JTAG or SWD.
     ///
     /// This can only be used for output, and should be used to generate
@@ -148,6 +159,9 @@ pub trait RawDapAccess {
 
     /// Cast this interface into a generic [`DebugProbe`].
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe>;
+
+    /// Inform the probe of the [`CoreStatus`] of the chip attached to the probe.
+    fn core_status_notification(&mut self, state: CoreStatus) -> Result<(), DebugProbeError>;
 }
 
 /// High-level DAP register access.

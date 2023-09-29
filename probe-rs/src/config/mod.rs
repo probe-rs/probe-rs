@@ -18,7 +18,7 @@
 //!
 //! ## Adding targets at runtime
 //!
-//! To add a target at runtime, the [add_target_from_yaml] file can
+//! To add a target at runtime, the [add_target_from_yaml] function can
 //! be used to read targets from a YAML file.
 //!
 
@@ -28,15 +28,17 @@ mod target;
 
 pub use probe_rs_target::{
     Chip, ChipFamily, Core, CoreType, FlashProperties, GenericRegion, InstructionSet, MemoryRange,
-    MemoryRegion, NvmRegion, PageInfo, RamRegion, RawFlashAlgorithm, SectorDescription, SectorInfo,
-    TargetDescriptionSource,
+    MemoryRegion, NvmRegion, PageInfo, RamRegion, RawFlashAlgorithm, ScanChainElement,
+    SectorDescription, SectorInfo, TargetDescriptionSource,
 };
 
 pub use registry::{
-    add_target_from_yaml, families, get_target_by_name, search_chips, RegistryError,
+    add_target_from_yaml, families, get_target_and_family_by_name, get_target_by_name,
+    get_targets_by_family_name, search_chips, RegistryError,
 };
 pub use target::{DebugSequence, Target, TargetParseError, TargetSelector};
 
 // Crate-internal API
 pub(crate) use chip_info::ChipInfo;
 pub(crate) use registry::get_target_by_chip_info;
+pub(crate) use target::CoreExt;

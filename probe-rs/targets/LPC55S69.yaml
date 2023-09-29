@@ -1,4 +1,7 @@
 name: LPC55S69
+manufacturer:
+  cc: 0x00
+  id: 0x15
 generated_from_pack: true
 pack_file_release: 15.0.0
 variants:

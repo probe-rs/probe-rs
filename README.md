@@ -33,17 +33,31 @@ To see what new functionality was added have a look at the [CHANGELOG](CHANGELOG
 
 If you think probe-rs makes your embedded journey more enjoyable or even earns you money, please consider supporting the project on [Github Sponsors](https://github.com/sponsors/probe-rs/) for better support and more features.
 
-## Downloading a file
+## Tools
 
-The `cargo-flash` utility can be used as a cargo subcommand to download a compiled Rust program onto a target device. It can also be used to download arbitrary ELF files that might come out of a C/C++ compiler. Have a look at [cargo-flash](./cargo-flash) for more information.
+In addition to being a library, probe-rs also includes a suite of tools which can be used for flashing and debugging.
 
-## Better debugging with probe-rs
+### Installation
 
-If you are looking for a more extended debugging experience, please have a look at [cargo-embed](./cargo-embed) which provides support for GDB, RTT, and config files.
+After installing the necessary [prerequisites](#building), the tools can be installed using `cargo install`:
 
-## VSCode
+```bash
+cargo install probe-rs --features cli
+```
 
-We have implemented the [Microsoft DAP protocol](https://microsoft.github.io/debug-adapter-protocol/). This makes embedded debugging via probe-rs available in modern code editors implementing the standard, such as VSCode. Please see [probe-rs-debugger](./debugger) and [vscode](https://github.com/probe-rs/vscode) for more information.
+See the [website](https://probe.rs/docs/getting-started/installation/) for a more detailed guide.
+
+### cargo-flash
+
+The `cargo-flash` utility can be used as a cargo subcommand to download a compiled Rust program onto a target device. It can also be used to download arbitrary ELF files that might come out of a C/C++ compiler. Have a look at [cargo-flash](https://probe.rs/docs/tools/cargo-flash/) for more information.
+
+### cargo-embed
+
+If you are looking for a more extended debugging experience, please have a look at [cargo-embed](https://probe.rs/docs/tools/cargo-embed/) which provides support for GDB, RTT, and config files.
+
+### VSCode
+
+We have implemented the [Microsoft DAP protocol](https://microsoft.github.io/debug-adapter-protocol/). This makes embedded debugging via probe-rs available in modern code editors implementing the standard, such as VSCode. Please see the [website](https://probe.rs/docs/tools/vscode/) for more information.
 
 ## Usage Examples
 
@@ -108,6 +122,8 @@ fn main() -> Result<(), probe_rs::Error> {
 ### I need help!
 
 Don't hesitate to [file an issue](https://github.com/probe-rs/probe-rs/issues/new), ask questions on [Matrix](https://matrix.to/#/#probe-rs:matrix.org), or contact [@Yatekii](https://github.com/Yatekii) via e-mail.
+
+There is also a [trouble-shooting section](https://probe.rs/docs/knowledge-base/troubleshooting/) on the [project page](https://probe.rs/).
 
 ### How can I help?
 

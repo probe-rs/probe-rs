@@ -1,6 +1,8 @@
 ---
 name: NXP MIMXRT1060 Series (Rev A)
-manufacturer: ~
+manufacturer:
+  cc: 0x00
+  id: 0x15
 variants:
   - name: MIMXRT1060
     part: ~
@@ -18,6 +20,14 @@ variants:
             start: 0x60000000
             end:   0x60800000
           is_boot_memory: true
+          cores:
+            - main
+      - !Ram
+          name: ITCM
+          range:
+            start: 0x00000000
+            end:   0x00020000
+          is_boot_memory: false
           cores:
             - main
       - !Ram

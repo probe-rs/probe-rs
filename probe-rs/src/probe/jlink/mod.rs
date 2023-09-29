@@ -1,6 +1,7 @@
 //! Support for J-Link Debug probes
 
 use jaylink::{Capability, Interface, JayLink, SpeedConfig, SwoMode};
+use probe_rs_target::ScanChainElement;
 
 use std::convert::{TryFrom, TryInto};
 use std::iter;
@@ -8,6 +9,7 @@ use std::time::{Duration, Instant};
 
 use crate::architecture::arm::{ArmError, RawDapAccess};
 use crate::architecture::riscv::communication_interface::RiscvError;
+use crate::probe::common::bits_to_byte;
 use crate::{
     architecture::{
         arm::{
@@ -17,14 +19,11 @@ use crate::{
         riscv::communication_interface::RiscvCommunicationInterface,
     },
     probe::{
+        arm_jtag::{ProbeStatistics, RawProtocolIo, SwdSettings},
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, JTAGAccess, WireProtocol,
     },
     DebugProbeSelector,
 };
-
-use self::arm::{ProbeStatistics, SwdSettings};
-
-mod arm;
 
 const SWO_BUFFER_SIZE: u16 = 128;
 
@@ -49,6 +48,8 @@ pub(crate) struct JLink {
     current_ir_reg: u32,
 
     speed_khz: u32,
+
+    scan_chain: Option<Vec<ScanChainElement>>,
 
     probe_statistics: ProbeStatistics,
     swd_settings: SwdSettings,
@@ -397,6 +398,7 @@ impl DebugProbe for JLink {
             protocol: None,
             current_ir_reg: 1,
             speed_khz: 0,
+            scan_chain: None,
             swd_settings: SwdSettings::default(),
             probe_statistics: ProbeStatistics::default(),
         }))
@@ -426,6 +428,11 @@ impl DebugProbe for JLink {
 
     fn speed_khz(&self) -> u32 {
         self.speed_khz
+    }
+
+    fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
+        self.scan_chain = Some(scan_chain);
+        Ok(())
     }
 
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
@@ -679,6 +686,66 @@ impl JTAGAccess for JLink {
     }
 }
 
+impl RawProtocolIo for JLink {
+    fn jtag_shift_tms<M>(&mut self, tms: M, tdi: bool) -> Result<(), DebugProbeError>
+    where
+        M: IntoIterator<Item = bool>,
+    {
+        if self.protocol.unwrap() == crate::WireProtocol::Swd {
+            panic!("Logic error, requested jtag_io when in SWD mode");
+        }
+
+        self.probe_statistics.report_io();
+        let tms_iter: Vec<_> = tms.into_iter().collect();
+        let count = tms_iter.len();
+
+        self.handle
+            .jtag_io(tms_iter, std::iter::repeat(tdi).take(count))?;
+        Ok(())
+    }
+
+    fn jtag_shift_tdi<I>(&mut self, tms: bool, tdi: I) -> Result<(), DebugProbeError>
+    where
+        I: IntoIterator<Item = bool>,
+    {
+        if self.protocol.unwrap() == crate::WireProtocol::Swd {
+            panic!("Logic error, requested jtag_io when in SWD mode");
+        }
+
+        self.probe_statistics.report_io();
+        let tdi_iter: Vec<_> = tdi.into_iter().collect();
+        let count = tdi_iter.len();
+
+        self.handle
+            .jtag_io(std::iter::repeat(tms).take(count), tdi_iter)?;
+        Ok(())
+    }
+
+    fn swd_io<D, S>(&mut self, dir: D, swdio: S) -> Result<Vec<bool>, DebugProbeError>
+    where
+        D: IntoIterator<Item = bool>,
+        S: IntoIterator<Item = bool>,
+    {
+        if self.protocol.unwrap() == crate::WireProtocol::Jtag {
+            panic!("Logic error, requested swd_io when in JTAG mode");
+        }
+
+        self.probe_statistics.report_io();
+
+        let iter = self.handle.swd_io(dir, swdio)?;
+
+        Ok(iter.collect())
+    }
+
+    fn swd_settings(&self) -> &SwdSettings {
+        &self.swd_settings
+    }
+
+    fn probe_statistics(&mut self) -> &mut ProbeStatistics {
+        &mut self.probe_statistics
+    }
+}
+
 impl DapProbe for JLink {}
 
 impl SwoAccess for JLink {
@@ -726,18 +793,6 @@ impl SwoAccess for JLink {
         }
         Ok(bytes)
     }
-}
-
-pub(crate) fn bits_to_byte(bits: impl IntoIterator<Item = bool>) -> u32 {
-    let mut bit_val = 0u32;
-
-    for (index, bit) in bits.into_iter().take(32).enumerate() {
-        if bit {
-            bit_val |= 1 << index;
-        }
-    }
-
-    bit_val
 }
 
 #[tracing::instrument(skip_all)]

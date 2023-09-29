@@ -1,12 +1,14 @@
 //! Debug sequences to operate special requirements ARM targets.
 
 pub mod atsame5x;
+pub mod efm32xg2;
 pub mod infineon;
 mod nrf;
 pub mod nrf52;
 pub mod nrf53;
 pub mod nrf91;
-pub mod nxp;
+pub mod nxp_armv7m;
+pub mod nxp_armv8m;
 pub mod stm32_armv6;
 pub mod stm32_armv7;
 pub mod stm32h7;
@@ -20,8 +22,7 @@ use std::{
 
 use probe_rs_target::CoreType;
 
-use crate::architecture::arm::core::armv7a_debug_regs::Armv7DebugRegister;
-use crate::{architecture::arm::ArmProbeInterface, core::MemoryMappedRegister, DebugProbeError};
+use crate::{architecture::arm::ArmProbeInterface, DebugProbeError, MemoryMappedRegister};
 
 use super::{
     ap::{AccessPortError, MemoryAp},
@@ -48,8 +49,8 @@ pub enum ArmDebugSequenceError {
     #[error("Core access requries cti_base to be specified, but it is not")]
     CtiBaseNotSpecified,
 
-    /// An error occured in a debug sequence.
-    #[error("An error occured in a debug sequnce: {0}")]
+    /// An error occurred in a debug sequence.
+    #[error("An error occurred in a debug sequnce: {0}")]
     SequenceSpecific(#[from] Box<dyn Error + Send + Sync + 'static>),
 }
 
@@ -81,7 +82,7 @@ fn armv7a_reset_catch_set(
     let debug_base =
         debug_base.ok_or_else(|| ArmError::from(ArmDebugSequenceError::DebugBaseNotSpecified))?;
 
-    let address = Dbgprcr::get_mmio_address(debug_base);
+    let address = Dbgprcr::get_mmio_address_from_base(debug_base)?;
     let mut dbgprcr = Dbgprcr(core.read_word_32(address)?);
 
     dbgprcr.set_hcwr(true);
@@ -101,7 +102,7 @@ fn armv7a_reset_catch_clear(
     let debug_base =
         debug_base.ok_or_else(|| ArmError::from(ArmDebugSequenceError::DebugBaseNotSpecified))?;
 
-    let address = Dbgprcr::get_mmio_address(debug_base);
+    let address = Dbgprcr::get_mmio_address_from_base(debug_base)?;
     let mut dbgprcr = Dbgprcr(core.read_word_32(address)?);
 
     dbgprcr.set_hcwr(false);
@@ -121,7 +122,7 @@ fn armv7a_reset_system(
         debug_base.ok_or_else(|| ArmError::from(ArmDebugSequenceError::DebugBaseNotSpecified))?;
 
     // Request reset
-    let address = Dbgprcr::get_mmio_address(debug_base);
+    let address = Dbgprcr::get_mmio_address_from_base(debug_base)?;
     let mut dbgprcr = Dbgprcr(interface.read_word_32(address)?);
 
     dbgprcr.set_cwrr(true);
@@ -129,7 +130,7 @@ fn armv7a_reset_system(
     interface.write_word_32(address, dbgprcr.into())?;
 
     // Wait until reset happens
-    let address = Dbgprsr::get_mmio_address(debug_base);
+    let address = Dbgprsr::get_mmio_address_from_base(debug_base)?;
 
     loop {
         let dbgprsr = Dbgprsr(interface.read_word_32(address)?);
@@ -153,19 +154,19 @@ fn armv7a_core_start(core: &mut dyn ArmProbe, debug_base: Option<u64>) -> Result
     );
 
     // Lock OS register access to prevent race conditions
-    let address = Dbglar::get_mmio_address(debug_base);
+    let address = Dbglar::get_mmio_address_from_base(debug_base)?;
     core.write_word_32(address, Dbglar(0).into())?;
 
     // Force write through / disable caching for debugger access
-    let address = Dbgdsccr::get_mmio_address(debug_base);
+    let address = Dbgdsccr::get_mmio_address_from_base(debug_base)?;
     core.write_word_32(address, Dbgdsccr(0).into())?;
 
     // Disable TLB matching and updates for debugger operations
-    let address = Dbgdsmcr::get_mmio_address(debug_base);
+    let address = Dbgdsmcr::get_mmio_address_from_base(debug_base)?;
     core.write_word_32(address, Dbgdsmcr(0).into())?;
 
     // Enable halting
-    let address = Dbgdscr::get_mmio_address(debug_base);
+    let address = Dbgdscr::get_mmio_address_from_base(debug_base)?;
     let mut dbgdscr = Dbgdscr(core.read_word_32(address)?);
 
     if dbgdscr.hdbgen() {
@@ -184,12 +185,12 @@ fn armv8a_reset_catch_set(
     core: &mut dyn ArmProbe,
     debug_base: Option<u64>,
 ) -> Result<(), ArmError> {
-    use crate::architecture::arm::core::armv8a_debug_regs::{Armv8DebugRegister, Edecr};
+    use crate::architecture::arm::core::armv8a_debug_regs::Edecr;
 
     let debug_base =
         debug_base.ok_or_else(|| ArmError::from(ArmDebugSequenceError::DebugBaseNotSpecified))?;
 
-    let address = Edecr::get_mmio_address(debug_base);
+    let address = Edecr::get_mmio_address_from_base(debug_base)?;
     let mut edecr = Edecr(core.read_word_32(address)?);
 
     edecr.set_rce(true);
@@ -204,12 +205,12 @@ fn armv8a_reset_catch_clear(
     core: &mut dyn ArmProbe,
     debug_base: Option<u64>,
 ) -> Result<(), ArmError> {
-    use crate::architecture::arm::core::armv8a_debug_regs::{Armv8DebugRegister, Edecr};
+    use crate::architecture::arm::core::armv8a_debug_regs::Edecr;
 
     let debug_base =
         debug_base.ok_or_else(|| ArmError::from(ArmDebugSequenceError::DebugBaseNotSpecified))?;
 
-    let address = Edecr::get_mmio_address(debug_base);
+    let address = Edecr::get_mmio_address_from_base(debug_base)?;
     let mut edecr = Edecr(core.read_word_32(address)?);
 
     edecr.set_rce(false);
@@ -223,13 +224,13 @@ fn armv8a_reset_system(
     interface: &mut dyn ArmProbe,
     debug_base: Option<u64>,
 ) -> Result<(), ArmError> {
-    use crate::architecture::arm::core::armv8a_debug_regs::{Armv8DebugRegister, Edprcr, Edprsr};
+    use crate::architecture::arm::core::armv8a_debug_regs::{Edprcr, Edprsr};
 
     let debug_base =
         debug_base.ok_or_else(|| ArmError::from(ArmDebugSequenceError::DebugBaseNotSpecified))?;
 
     // Request reset
-    let address = Edprcr::get_mmio_address(debug_base);
+    let address = Edprcr::get_mmio_address_from_base(debug_base)?;
     let mut edprcr = Edprcr(interface.read_word_32(address)?);
 
     edprcr.set_cwrr(true);
@@ -237,7 +238,7 @@ fn armv8a_reset_system(
     interface.write_word_32(address, edprcr.into())?;
 
     // Wait until reset happens
-    let address = Edprsr::get_mmio_address(debug_base);
+    let address = Edprsr::get_mmio_address_from_base(debug_base)?;
 
     loop {
         let edprsr = Edprsr(interface.read_word_32(address)?);
@@ -256,7 +257,7 @@ fn armv8a_core_start(
     cti_base: Option<u64>,
 ) -> Result<(), ArmError> {
     use crate::architecture::arm::core::armv8a_debug_regs::{
-        Armv8DebugRegister, CtiControl, CtiGate, CtiOuten, Edlar, Edscr,
+        CtiControl, CtiGate, CtiOuten, Edlar, Edscr,
     };
 
     let debug_base =
@@ -270,18 +271,18 @@ fn armv8a_core_start(
     );
 
     // Lock OS register access to prevent race conditions
-    let address = Edlar::get_mmio_address(debug_base);
+    let address = Edlar::get_mmio_address_from_base(debug_base)?;
     core.write_word_32(address, Edlar(0).into())?;
 
     // Configure CTI
     let mut cticontrol = CtiControl(0);
     cticontrol.set_glben(true);
 
-    let address = CtiControl::get_mmio_address(cti_base);
+    let address = CtiControl::get_mmio_address_from_base(cti_base)?;
     core.write_word_32(address, cticontrol.into())?;
 
     // Gate all events by default
-    let address = CtiGate::get_mmio_address(cti_base);
+    let address = CtiGate::get_mmio_address_from_base(cti_base)?;
     core.write_word_32(address, 0)?;
 
     // Configure output channels for halt and resume
@@ -289,18 +290,18 @@ fn armv8a_core_start(
     let mut ctiouten = CtiOuten(0);
     ctiouten.set_outen(0, 1);
 
-    let address = CtiOuten::get_mmio_address(cti_base);
+    let address = CtiOuten::get_mmio_address_from_base(cti_base)?;
     core.write_word_32(address, ctiouten.into())?;
 
     // Channel 1 - resume requests
     let mut ctiouten = CtiOuten(0);
     ctiouten.set_outen(1, 1);
 
-    let address = CtiOuten::get_mmio_address(cti_base) + 4;
+    let address = CtiOuten::get_mmio_address_from_base(cti_base)? + 4;
     core.write_word_32(address, ctiouten.into())?;
 
     // Enable halting
-    let address = Edscr::get_mmio_address(debug_base);
+    let address = Edscr::get_mmio_address_from_base(debug_base)?;
     let mut edscr = Edscr(core.read_word_32(address)?);
 
     if edscr.hde() {
@@ -318,7 +319,7 @@ fn armv8a_core_start(
 fn cortex_m_core_start(core: &mut dyn ArmProbe) -> Result<(), ArmError> {
     use crate::architecture::arm::core::armv7m::Dhcsr;
 
-    let current_dhcsr = Dhcsr(core.read_word_32(Dhcsr::ADDRESS)?);
+    let current_dhcsr = Dhcsr(core.read_word_32(Dhcsr::get_mmio_address())?);
 
     // Note: Manual addition for debugging, not part of the original DebugCoreStart function
     if current_dhcsr.c_debugen() {
@@ -331,7 +332,7 @@ fn cortex_m_core_start(core: &mut dyn ArmProbe) -> Result<(), ArmError> {
     dhcsr.set_c_debugen(true);
     dhcsr.enable_write();
 
-    core.write_word_32(Dhcsr::ADDRESS, dhcsr.into())?;
+    core.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
 
     Ok(())
 }
@@ -341,10 +342,10 @@ fn cortex_m_reset_catch_clear(core: &mut dyn ArmProbe) -> Result<(), ArmError> {
     use crate::architecture::arm::core::armv7m::Demcr;
 
     // Clear reset catch bit
-    let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
+    let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address())?);
     demcr.set_vc_corereset(false);
 
-    core.write_word_32(Demcr::ADDRESS, demcr.into())?;
+    core.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
     Ok(())
 }
 
@@ -353,13 +354,13 @@ fn cortex_m_reset_catch_set(core: &mut dyn ArmProbe) -> Result<(), ArmError> {
     use crate::architecture::arm::core::armv7m::{Demcr, Dhcsr};
 
     // Request halt after reset
-    let mut demcr = Demcr(core.read_word_32(Demcr::ADDRESS)?);
+    let mut demcr = Demcr(core.read_word_32(Demcr::get_mmio_address())?);
     demcr.set_vc_corereset(true);
 
-    core.write_word_32(Demcr::ADDRESS, demcr.into())?;
+    core.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
 
     // Clear the status bits by reading from DHCSR
-    let _ = core.read_word_32(Dhcsr::ADDRESS)?;
+    let _ = core.read_word_32(Dhcsr::get_mmio_address())?;
 
     Ok(())
 }
@@ -372,12 +373,12 @@ fn cortex_m_reset_system(interface: &mut dyn ArmProbe) -> Result<(), ArmError> {
     aircr.vectkey();
     aircr.set_sysresetreq(true);
 
-    interface.write_word_32(Aircr::ADDRESS, aircr.into())?;
+    interface.write_word_32(Aircr::get_mmio_address(), aircr.into())?;
 
     let start = Instant::now();
 
     while start.elapsed() < Duration::from_micros(50_0000) {
-        let dhcsr = match interface.read_word_32(Dhcsr::ADDRESS) {
+        let dhcsr = match interface.read_word_32(Dhcsr::get_mmio_address()) {
             Ok(val) => Dhcsr(val),
             // Some combinations of debug probe and target (in
             // particular, hs-probe and ATSAMD21) result in
@@ -466,11 +467,25 @@ pub trait ArmDebugSequence: Send + Sync {
             Some(crate::WireProtocol::Jtag) => {
                 // Execute SWJ-DP Switch Sequence SWD to JTAG (0xE73C).
                 interface.swj_sequence(16, 0xE73C)?;
+
+                // Execute at least >5 TCK cycles with TMS high to enter the Test-Logic-Reset state
+                interface.swj_sequence(6, 0x3F)?;
+
+                // Enter Run-Test-Idle state, as required by the DAP_Transfer command when using JTAG
+                interface.jtag_sequence(1, false, 0x01)?;
+
+                // Configure JTAG IR lengths in probe
+                interface.configure_jtag()?;
             }
             Some(crate::WireProtocol::Swd) => {
                 // Execute SWJ-DP Switch Sequence JTAG to SWD (0xE79E).
                 // Change if SWJ-DP uses deprecated switch code (0xEDB6).
                 interface.swj_sequence(16, 0xE79E)?;
+
+                // > 50 cycles SWDIO/TMS High.
+                interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
+                // At least 2 idle cycles (SWDIO/TMS Low).
+                interface.swj_sequence(3, 0x00)?;
             }
             _ => {
                 return Err(ArmDebugSequenceError::SequenceSpecific(
@@ -479,9 +494,6 @@ pub trait ArmDebugSequence: Send + Sync {
                 .into());
             }
         }
-
-        interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?; // > 50 cycles SWDIO/TMS High.
-        interface.swj_sequence(3, 0x00)?; // At least 2 idle cycles (SWDIO/TMS Low).
 
         // End of atomic block.
 
@@ -723,22 +735,19 @@ pub trait ArmDebugSequence: Send + Sync {
     #[doc(alias = "DebugCoreStop")]
     fn debug_core_stop(
         &self,
-        interface: &mut dyn ArmProbeInterface,
-        core_ap: MemoryAp,
+        interface: &mut dyn ArmProbe,
         core_type: CoreType,
     ) -> Result<(), ArmError> {
         if core_type.is_cortex_m() {
-            let mut memory_interface = interface.memory_interface(core_ap)?;
-
             // System Control Space (SCS) offset as defined in Armv6-M/Armv7-M.
             // Disable Core Debug via DHCSR
             let mut dhcsr = Dhcsr(0);
             dhcsr.enable_write();
-            memory_interface.write_word_32(Dhcsr::ADDRESS, dhcsr.0)?;
+            interface.write_word_32(Dhcsr::get_mmio_address(), dhcsr.0)?;
 
             // Disable DWT and ITM blocks, DebugMonitor handler,
             // halting debug traps, and Reset Vector Catch.
-            memory_interface.write_word_32(Demcr::ADDRESS, 0x0)?;
+            interface.write_word_32(Demcr::get_mmio_address(), 0x0)?;
         }
 
         Ok(())

@@ -5,16 +5,13 @@
 //! The `debug` module contains various debug functionality, which can be
 //! used to implement a debugger based on `probe-rs`.
 
-// Bad things happen to the VSCode debug extenison and debug_adapter if we panic at the wrong time.
-#![warn(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
-
 /// Debug information which is parsed from DWARF debugging information.
 pub mod debug_info;
 /// Stepping through a program during debug, at various granularities.
 pub mod debug_step;
 /// References to the DIE (debug information entry) of functions.
 pub mod function_die;
-/// Target Register definitions.
+/// Target Register definitions, expanded from [`crate::core::registers::CoreRegister`] to include unwind specific information.
 pub mod registers;
 /// The source statement information used while identifying haltpoints for debug stepping and breakpoints.
 pub(crate) mod source_statement;
@@ -33,7 +30,6 @@ pub use self::{
 };
 use crate::{core::Core, MemoryInterface};
 use gimli::DebuggingInformationEntry;
-
 use std::{
     io,
     path::PathBuf,

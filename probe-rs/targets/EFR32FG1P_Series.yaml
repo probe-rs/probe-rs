@@ -1,4 +1,7 @@
 name: EFR32FG1P Series
+manufacturer:
+  cc: 0x02
+  id: 0x21
 variants:
   - name: EFR32FG1P131F64
     cores:

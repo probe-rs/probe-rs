@@ -3,7 +3,7 @@ use crate::architecture::{
     arm::communication_interface::UninitializedArmProbe,
     riscv::communication_interface::RiscvCommunicationInterface,
 };
-use crate::probe::{JTAGAccess, ProbeCreationError};
+use crate::probe::{JTAGAccess, ProbeCreationError, ScanChainElement};
 use crate::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, WireProtocol,
 };
@@ -409,6 +409,7 @@ impl JtagAdapter {
             reply = reply.split_off(params.drpre);
         }
         reply.truncate(len_bits);
+        reply.force_align();
         let reply = reply.into_vec();
 
         Ok(reply)
@@ -420,6 +421,7 @@ pub struct FtdiProbe {
     adapter: JtagAdapter,
     speed_khz: u32,
     idle_cycles: u8,
+    scan_chain: Option<Vec<ScanChainElement>>,
 }
 
 impl DebugProbe for FtdiProbe {
@@ -429,22 +431,27 @@ impl DebugProbe for FtdiProbe {
     where
         Self: Sized,
     {
-        let selector = selector.into();
+        let DebugProbeSelector {
+            vendor_id,
+            product_id,
+            ..
+        } = selector.into();
 
-        // Only open FTDI probes
-        if selector.vendor_id != 0x0403 {
+        // Only open FTDI-compatible probes
+        if !FTDI_COMPAT_DEVICE_IDS.contains(&(vendor_id, product_id)) {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::NotFound,
             ));
         }
 
-        let adapter = JtagAdapter::open(selector.vendor_id, selector.product_id)
+        let adapter = JtagAdapter::open(vendor_id, product_id)
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
 
         let probe = FtdiProbe {
             adapter,
             speed_khz: 0,
             idle_cycles: 0,
+            scan_chain: None,
         };
         tracing::debug!("opened probe: {:?}", probe);
         Ok(Box::new(probe))
@@ -462,6 +469,18 @@ impl DebugProbe for FtdiProbe {
         self.speed_khz = speed_khz;
         // TODO
         Ok(speed_khz)
+    }
+
+    fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
+        // A scan chain only makes sense in JTAG mode. Quit early if a different protocol is used.
+        if self.active_protocol() != Some(WireProtocol::Jtag) {
+            return Err(DebugProbeError::CommandNotSupportedByProbe(
+                "Setting Scan Chain is only supported in JTAG mode",
+            ));
+        }
+        tracing::info!("Setting scan chain to {:?}", scan_chain);
+        self.scan_chain = Some(scan_chain);
+        Ok(())
     }
 
     fn attach(&mut self) -> Result<(), DebugProbeError> {
@@ -749,8 +768,12 @@ impl JTAGAccess for FtdiProbe {
 }
 
 /// (VendorId, ProductId)
-static FTDI_COMPAT_DEVICE_IDS: &[(u16, u16)] =
-    &[(0x0403, 0x6010), (0x0403, 0x6011), (0x0403, 0x6014)];
+static FTDI_COMPAT_DEVICE_IDS: &[(u16, u16)] = &[
+    (0x0403, 0x6010), // FTDI Ltd. FT2232C/D/H Dual UART/FIFO IC
+    (0x0403, 0x6011), // FTDI Ltd. FT4232H Quad HS USB-UART/FIFO IC
+    (0x0403, 0x6014), // FTDI Ltd. FT232H Single HS USB-UART/FIFO IC
+    (0x15ba, 0x002a), // Olimex Ltd. ARM-USB-TINY-H JTAG interface
+];
 
 fn get_device_info(device: &rusb::Device<rusb::Context>) -> Option<DebugProbeInfo> {
     let d_desc = device.device_descriptor().ok()?;

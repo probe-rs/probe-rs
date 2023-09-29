@@ -15,10 +15,12 @@ license.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-probe-rs = { path = "../probe-rs", version = "0.17.0", default-features = false }
-probe-rs-target = { path = "../probe-rs-target", version = "0.17.0", default-features = false }
+probe-rs = { path = "../probe-rs", version = "0.20.0", default-features = false, features = [
+    "rtt",
+] }
+probe-rs-target = { path = "../probe-rs-target", version = "0.20.0", default-features = false }
 cmsis-pack = { version = "0.6.2" }
-goblin = { version = "0.6.0", default-features = false, features = [
+goblin = { version = "0.7.1", default-features = false, features = [
     "elf32",
     "elf64",
     "endian_fd",
@@ -26,26 +28,27 @@ goblin = { version = "0.6.0", default-features = false, features = [
     "std",
 ] }
 scroll = "0.11.0"
-serde_yaml = "^0.9"
-log = "0.4.17"
-zip = "0.6.4"
-clap = { version = "4.1", features = ["derive"] }
+serde_yaml = "^0.9.25"
+log = "0.4.20"
+zip = "0.6.6"
+clap = { version = "4.4", features = ["derive"] }
 colored = "2"
-base64 = "0.21.0"
-anyhow = "1.0.69"
-reqwest = { version = "0.11.14", features = ["json", "blocking"] }
+base64 = "0.21.4"
+anyhow = "1.0.75"
+reqwest = { version = "0.11.20", features = ["json", "blocking"] }
 serde = { version = "1", features = ["derive"] }
-futures = "0.3.26"
-tokio = { version = "1.25.0", features = ["macros", "rt", "rt-multi-thread"] }
-tracing-subscriber = { version = "0.3.16", features = [
+futures = "0.3.28"
+tokio = { version = "1.32.0", features = ["macros", "rt", "rt-multi-thread"] }
+tracing-subscriber = { version = "0.3.17", features = [
     "env-filter",
     "tracing-log",
 ] }
 xshell = { version = "0.2", default-features = false }
-cargo_metadata = { version = "0.15", default-features = false }
+cargo_metadata = { version = "0.18", default-features = false }
 indicatif = { version = "0.17", default-features = false }
+parse_int = { version = "0.6.0" }
 
 [dev-dependencies]
-assert_cmd = "2.0.8"
-predicates = "2.1.5"
-assert_fs = "1.0.10"
+assert_cmd = "2.0.12"
+predicates = "3.0.4"
+assert_fs = "1.0.13"

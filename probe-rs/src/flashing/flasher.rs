@@ -6,7 +6,7 @@ use super::{
 };
 use crate::config::NvmRegion;
 use crate::memory::MemoryInterface;
-use crate::{core::RegisterFile, session::Session, Core, InstructionSet};
+use crate::{core::CoreRegisters, session::Session, Core, InstructionSet};
 use std::time::Instant;
 use std::{fmt::Debug, time::Duration};
 
@@ -75,8 +75,22 @@ impl<'session> Flasher<'session> {
                 _ => None,
             })
             .find(|ram| {
-                // The RAM must be accessible from the core we're going to run the algo on.
-                ram.cores.contains(core_name)
+                // If the algorithm has a forced load address, we try to use it.
+                // If not, then follow the CMSIS-Pack spec and use first available RAM region.
+                // In theory, it should be the "first listed in the pack", but the process of
+                // reading from the pack files obfuscates the list order, so we will use the first
+                // one in the target spec, which is the qualifying region with the lowest start saddress.
+                // - See https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/pdsc_family_pg.html#element_memory .
+                if let Some(load_addr) = raw_flash_algorithm.load_address {
+                    // The RAM must contain the forced load address _and_
+                    // be accessible from the core we're going to run the
+                    // algorithm on.
+                    ram.range.contains(&load_addr) && ram.cores.contains(core_name)
+                } else {
+                    // Any RAM is okay as long as it's accessible to the core;
+                    // the algorithm is presumably position-independent.
+                    ram.cores.contains(core_name)
+                }
             })
             .ok_or(FlashError::NoRamDefined {
                 name: session.target().name.clone(),
@@ -602,16 +616,16 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
         tracing::debug!("Calling routine {:?}, init={})", &registers, init);
 
         let algo = &self.flash_algorithm;
-        let regs: &'static RegisterFile = self.core.registers();
+        let regs: &'static CoreRegisters = self.core.registers();
 
         let registers = [
-            (regs.program_counter(), Some(registers.pc)),
+            (self.core.program_counter(), Some(registers.pc)),
             (regs.argument_register(0), registers.r0),
             (regs.argument_register(1), registers.r1),
             (regs.argument_register(2), registers.r2),
             (regs.argument_register(3), registers.r3),
             (
-                regs.platform_register(9),
+                regs.core_register(9),
                 if init {
                     Some(into_reg(algo.static_base)?)
                 } else {
@@ -619,7 +633,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                 },
             ),
             (
-                regs.stack_pointer(),
+                self.core.stack_pointer(),
                 if init {
                     Some(into_reg(algo.begin_stack)?)
                 } else {
@@ -627,7 +641,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                 },
             ),
             (
-                regs.return_address(),
+                self.core.return_address(),
                 // For ARM Cortex-M cores, we have to add 1 to the return address,
                 // to ensure that we stay in Thumb mode.
                 if self.core.instruction_set()? == InstructionSet::Thumb2 {
@@ -643,11 +657,11 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                 self.core.write_core_reg(description.id, *v)?;
 
                 if tracing::enabled!(Level::DEBUG) {
-                    let value: u32 = self.core.read_core_reg(description.id)?;
+                    let value: u32 = self.core.read_core_reg(*description)?;
 
                     tracing::debug!(
                         "content of {} {:#x}: 0x{:08x} should be: 0x{:08x}",
-                        description.name,
+                        description.name(),
                         description.id.0,
                         value,
                         *v
@@ -699,13 +713,23 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
 
         let mut timeout_ocurred = true;
         while start.elapsed() < timeout {
-            if self.core.core_halted()? {
-                timeout_ocurred = false;
-                // Once the core is halted we know for sure all RTT data is written
-                // so we can read all of it.
-                #[cfg(feature = "rtt")]
-                self.read_rtt()?;
-                break;
+            match self.core.status()? {
+                crate::CoreStatus::Halted(_) => {
+                    timeout_ocurred = false;
+                    // Once the core is halted we know for sure all RTT data is written
+                    // so we can read all of it.
+                    #[cfg(feature = "rtt")]
+                    self.read_rtt()?;
+                    break;
+                }
+                crate::CoreStatus::LockedUp => {
+                    return Err(FlashError::UnexpectedCoreStatus {
+                        status: crate::CoreStatus::LockedUp,
+                    });
+                }
+                _ => {
+                    // All other statuses are okay: we'll just keep polling.
+                }
             }
 
             // Periodically read RTT.

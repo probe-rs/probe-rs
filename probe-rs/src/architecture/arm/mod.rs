@@ -10,40 +10,32 @@ pub mod sequences;
 pub mod swo;
 mod traits;
 
+pub use self::core::{armv6m, armv7a, armv7m, armv8a, armv8m, Dump};
+use self::{
+    ap::{AccessPort, AccessPortError},
+    communication_interface::RegisterParseError,
+    dp::DebugPortError,
+    memory::romtable::RomTableError,
+    sequences::ArmDebugSequenceError,
+    {armv7a::Armv7aError, armv8a::Armv8aError},
+};
+use crate::DebugProbeError;
 pub use communication_interface::{
-    ApInformation, ArmChipInfo, ArmCommunicationInterface, DapError, MemoryApInformation, Register,
+    ApInformation, ArmChipInfo, ArmCommunicationInterface, ArmProbeInterface, DapError,
+    MemoryApInformation, Register,
 };
 pub use swo::{SwoAccess, SwoConfig, SwoMode, SwoReader};
 pub use traits::*;
 
-use crate::DebugProbeError;
-
-use self::ap::AccessPort;
-use self::ap::AccessPortError;
-use self::armv7a::Armv7aError;
-use self::armv8a::Armv8aError;
-use self::communication_interface::RegisterParseError;
-pub use self::core::armv6m;
-pub use self::core::armv7a;
-pub use self::core::armv7m;
-pub use self::core::armv8a;
-pub use self::core::armv8m;
-pub use self::core::Dump;
-use self::dp::DebugPortError;
-use self::memory::romtable::RomTableError;
-use self::sequences::ArmDebugSequenceError;
-
-pub use communication_interface::ArmProbeInterface;
-
 /// ARM-specific errors
 #[derive(Debug, thiserror::Error)]
-#[error("An ARM specific error occured.")]
+#[error("An ARM specific error occurred.")]
 pub enum ArmError {
     /// The operation requires a specific architecture.
     #[error("The operation requires one of the following architectures: {0:?}")]
     ArchitectureRequired(&'static [&'static str]),
-    /// A timeout occured during an operation
-    #[error("Timeout occured during operation.")]
+    /// A timeout occurred during an operation
+    #[error("Timeout occurred during operation.")]
     Timeout,
     /// The address is too large for the 32 bit address space.
     #[error("Address is not in 32 bit address space.")]
@@ -59,7 +51,7 @@ pub enum ArmError {
         /// Source of the error.
         source: AccessPortError,
     },
-    /// An error occured while using a debug port.
+    /// An error occurred while using a debug port.
     #[error("Error using a debug port.")]
     DebugPort(#[from] DebugPortError),
     /// The core has to be halted for the operation, but was not.
@@ -76,8 +68,8 @@ pub enum ArmError {
     #[error("An operation could not be performed because it lacked the permission to do so: {0}")]
     MissingPermissions(String),
 
-    /// An error occured in the communication with an access port or debug port.
-    #[error("An error occured in the communication with an access port or debug port.")]
+    /// An error occurred in the communication with an access port or debug port.
+    #[error("An error occurred in the communication with an access port or debug port.")]
     Dap(#[from] DapError),
 
     /// The debug probe encountered an error.
@@ -111,13 +103,13 @@ pub enum ArmError {
     #[error("Unable to create a breakpoint at address {0:#010X}. Hardware breakpoints are only supported at addresses < 0x2000'0000.")]
     UnsupportedBreakpointAddress(u32),
 
-    /// ARMv8a specifc erorr occured.
+    /// ARMv8a specifc erorr occurred.
     Armv8a(#[from] Armv8aError),
 
-    /// ARMv7a specifc erorr occured.
+    /// ARMv7a specifc erorr occurred.
     Armv7a(#[from] Armv7aError),
 
-    /// Error occured in a debug sequence.
+    /// Error occurred in a debug sequence.
     DebugSequence(#[from] ArmDebugSequenceError),
 
     /// Tracing has not been configured.
@@ -131,6 +123,13 @@ pub enum ArmError {
 
     /// Failed to erase chip
     ChipEraseFailed,
+
+    /// The operation requires a specific extension.
+    #[error("The operation requires the following extension(s): {0:?}")]
+    ExtensionRequired(&'static [&'static str]),
+
+    /// Any other error occurred.
+    Other(#[from] anyhow::Error),
 }
 
 impl ArmError {

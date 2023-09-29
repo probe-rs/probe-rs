@@ -1,3 +1,6 @@
+pub(crate) mod arm_jtag;
+pub(crate) mod common;
+
 pub(crate) mod cmsisdap;
 pub(crate) mod espusbjtag;
 pub(crate) mod fake_probe;
@@ -27,6 +30,7 @@ use crate::{
     Permissions,
 };
 use jlink::list_jlink_devices;
+use probe_rs_target::ScanChainElement;
 use std::{convert::TryFrom, fmt};
 
 /// Used to log warnings when the measured target voltage is
@@ -156,8 +160,8 @@ pub enum DebugProbeError {
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 
-    /// A timeout occured during probe operation.
-    #[error("Timeout occured during probe operation.")]
+    /// A timeout occurred during probe operation.
+    #[error("Timeout occurred during probe operation.")]
     Timeout,
 }
 
@@ -351,7 +355,7 @@ impl Probe {
         Session::new(self, target.into(), AttachMethod::UnderReset, permissions).map_err(|e| {
             if matches!(e, Error::Arm(ArmError::Timeout) | Error::Riscv(RiscvError::Timeout)) {
                 Error::Other(
-                anyhow::anyhow!("Timeout while attaching to target under reset. This can happen if the target is not responding to the reset sequence. Ensure the chip's reset pin is connected, or try attaching without reset."))
+                anyhow::anyhow!("Timeout while attaching to target under reset. This can happen if the target is not responding to the reset sequence. Ensure the chip's reset pin is connected, or try attaching without reset (`connectUnderReset = false` for DAP Clients, or remove `connect-under-reset` option from CLI options.)."))
             } else {
                 e
             }
@@ -412,6 +416,20 @@ impl Probe {
     pub fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
         if !self.attached {
             self.inner.set_speed(speed_khz)
+        } else {
+            Err(DebugProbeError::Attached)
+        }
+    }
+
+    /// Configure the scan chain to use for the attached target.
+    ///
+    /// See [`DebugProbe::set_scan_chain`] for more information and usage
+    pub fn set_scan_chain(
+        &mut self,
+        scan_chain: Vec<ScanChainElement>,
+    ) -> Result<(), DebugProbeError> {
+        if self.attached {
+            self.inner.set_scan_chain(scan_chain)
         } else {
             Err(DebugProbeError::Attached)
         }
@@ -535,6 +553,23 @@ pub trait DebugProbe: Send + fmt::Debug {
     /// `DebugProbeError::UnsupportedSpeed` will be returned.
     ///
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError>;
+
+    /// Set the JTAG scan chain information for the target under debug.
+    ///
+    /// This allows the probe to know which TAPs are in the scan chain and their
+    /// position and IR lengths.
+    ///
+    /// If the scan chain is provided, and the selected protocol is JTAG, the
+    /// probe will automatically configure the JTAG interface to match the
+    /// scan chain configuration without trying to deteremine the chain at
+    /// runtime.
+    ///
+    /// This is called by the `Session` when attaching to a target.
+    /// So this does not need to be called manually, unless you want to
+    /// modify the scan chain. You must be attached to a target to set the
+    /// scan_chain since the scan chain only applys to the attached target.
+    ///
+    fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError>;
 
     /// Attach to the chip.
     ///
@@ -842,6 +877,7 @@ pub trait JTAGAccess: DebugProbe {
         &mut self,
         writes: &[JtagWriteCommand],
     ) -> Result<Vec<CommandResult>, BatchExecutionError> {
+        tracing::debug!("Using default `JTAGAccess::write_register_batch` this will hurt performance. Please implement proper batching for this probe.");
         let mut results = Vec::new();
 
         for write in writes {

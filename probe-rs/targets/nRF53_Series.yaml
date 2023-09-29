@@ -1,4 +1,7 @@
 name: nRF53 Series
+manufacturer:
+  cc: 0x2
+  id: 0x44
 variants:
   - name: nRF5340_xxAA
     cores:

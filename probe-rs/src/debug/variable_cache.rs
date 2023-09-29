@@ -23,6 +23,13 @@ impl VariableCache {
         }
     }
 
+    /// Returns the number of `Variable`s in the cache.
+    // These caches are constructed with a single root variable, so this should never be empty.
+    #[allow(clippy::len_without_is_empty)]
+    pub fn len(&self) -> usize {
+        self.variable_hash_map.len()
+    }
+
     /// Performs an *add* or *update* of a `probe_rs::debug::Variable` to the cache, consuming the input and returning a Clone.
     /// - *Add* operation: If the `Variable::variable_key` is 0, then assign a key and store it in the cache.
     ///   - Return an updated Clone of the stored variable
@@ -159,7 +166,7 @@ impl VariableCache {
         let child_variables = self
             .variable_hash_map
             .values()
-            .filter(|child_variable| &child_variable.name == variable_name)
+            .filter(|child_variable| child_variable.name.eq(variable_name))
             .cloned()
             .collect::<Vec<Variable>>();
         match child_variables.len() {

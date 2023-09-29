@@ -1,6 +1,8 @@
 ---
 name: MSP432P4xx Series
-manufacturer: ~
+manufacturer:
+  cc: 0x0
+  id: 0x17
 variants:
 - name: MSP432P4011
   part: ~

@@ -1,6 +1,16 @@
 use super::memory::MemoryRegion;
 use crate::{serialize::hex_option, CoreType};
 use serde::{Deserialize, Serialize};
+
+/// Represents a DAP scan chain element.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct ScanChainElement {
+    /// Unique name of the DAP
+    pub name: Option<String>,
+    /// Specifies the IR length of the DAP (default value: 4).
+    pub ir_len: Option<u8>,
+}
+
 /// A single chip variant.
 ///
 /// This describes an exact chip variant, including the cores, flash and memory size. For example,
@@ -27,6 +37,27 @@ pub struct Chip {
     /// [`ChipFamily::flash_algorithms`]: crate::ChipFamily::flash_algorithms
     #[serde(default)]
     pub flash_algorithms: Vec<String>,
+    /// Specific memory ranges to search for a dynamic RTT header for code
+    /// running on this chip.
+    ///
+    /// This need not be specified for most chips because the default is
+    /// to search all RAM regions specified in `memory_map`. However,
+    /// that behavior isn't appropriate for some chips, such as those which
+    /// have a very large amount of RAM that would be time-consuming to
+    /// scan exhaustively.
+    ///
+    /// If specified then this is a list of zero or more address ranges to
+    /// scan. Each address range must be enclosed in exactly one RAM region
+    /// from `memory_map`. An empty list disables automatic scanning
+    /// altogether, in which case RTT will be enabled only when using an
+    /// executable image that includes the `_SEGGER_RTT` symbol pointing
+    /// to the exact address of the RTT header.
+    pub rtt_scan_ranges: Option<Vec<std::ops::Range<u64>>>,
+    /// Describes the scan chain
+    ///
+    /// ref: `<https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/sdf_pg.html#sdf_element_scanchain>`
+    #[serde(default)]
+    pub scan_chain: Option<Vec<ScanChainElement>>,
 }
 
 impl Chip {
@@ -44,6 +75,8 @@ impl Chip {
             }],
             memory_map: vec![],
             flash_algorithms: vec![],
+            rtt_scan_ranges: None,
+            scan_chain: Some(vec![]),
         }
     }
 }
@@ -92,3 +125,16 @@ pub struct ArmCoreAccessOptions {
 /// The data required to access a Risc-V core
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RiscvCoreAccessOptions {}
+
+/// Helper function that interates the scan chain and returns a vector of all of
+/// the ir_lengths of the scan chain elements.
+/// If an element does not contain an ir_length, the default value of 4 is used.
+/// The first element of the vector is the first element of the scan chain.
+pub fn get_ir_lengths(scan_chain: &Vec<ScanChainElement>) -> Vec<u8> {
+    let mut ir_lengths = Vec::new();
+    for element in scan_chain {
+        let ir_len = element.ir_len.unwrap_or(4);
+        ir_lengths.push(ir_len);
+    }
+    ir_lengths
+}

@@ -1,4 +1,7 @@
 name: LPC800 Series
+manufacturer:
+  cc: 0x00
+  id: 0x15
 variants:
   - name: LPC802M001JDH16
     cores:
