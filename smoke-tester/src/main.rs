@@ -304,7 +304,7 @@ impl<'a> TestTracker<'a> {
     #[must_use]
     fn run(
         &mut self,
-        handle_dut: impl Fn(&mut TestTracker, &DutDefinition) -> Result<(), Error>,
+        handle_dut: impl Fn(&mut TestTracker, &DutDefinition) -> Result<(), Error> + Sync + Send,
     ) -> TestReport {
         let mut report = TestReport::new();
 
@@ -318,15 +318,18 @@ impl<'a> TestTracker<'a> {
             }
             println!();
 
-            match handle_dut(self, definition) {
-                Ok(()) => {
+            let join_result =
+                std::thread::scope(|s| s.spawn(|| handle_dut(self, definition)).join());
+
+            match join_result {
+                Ok(Ok(())) => {
                     report.add_report(DutReport {
                         name: definition.chip.name.clone(),
                         succesful: true,
                     });
                     println_dut_status!(self, green, "Tests Passed",);
                 }
-                Err(e) => {
+                Ok(Err(e)) => {
                     tests_ok = false;
                     report.add_report(DutReport {
                         name: definition.chip.name.clone(),
@@ -334,6 +337,33 @@ impl<'a> TestTracker<'a> {
                     });
 
                     println_dut_status!(self, red, "Error message: {:#}", e);
+                    println_dut_status!(self, red, "Tests Failed",);
+                }
+                Err(join_err) => {
+                    tests_ok = false;
+                    report.add_report(DutReport {
+                        name: definition.chip.name.clone(),
+                        succesful: false,
+                    });
+
+                    if let Some(err_string) = join_err.downcast_ref::<String>() {
+                        println_dut_status!(
+                            self,
+                            red,
+                            "Panic while running tests: {:#}",
+                            err_string
+                        );
+                    }
+
+                    if let Some(err_string) = join_err.downcast_ref::<&str>() {
+                        println_dut_status!(
+                            self,
+                            red,
+                            "Panic while running tests: {:#}",
+                            err_string
+                        );
+                    }
+
                     println_dut_status!(self, red, "Tests Failed",);
                 }
             }
