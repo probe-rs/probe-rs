@@ -4,15 +4,17 @@ use super::{
 };
 use crate::core::UnwindRule;
 use crate::{
-    core::Core,
     core::{ExceptionInfo, ExceptionInterface, RegisterRole, RegisterValue},
     debug::{registers, source_statement::SourceStatements},
     MemoryInterface,
 };
+use crate::{error, CoreDump, CoreInterface, CoreRegister, RegisterId};
 use ::gimli::{FileEntry, LineProgramHeader, UnwindContext};
+use anyhow::anyhow;
 use gimli::{BaseAddresses, ColumnType, DebugFrame, UnwindSection};
 use object::read::{Object, ObjectSection};
 use probe_rs_target::InstructionSet;
+use scroll::Pread;
 use std::{
     borrow,
     cmp::Ordering,
@@ -105,13 +107,15 @@ impl DebugInfo {
     /// This function will currently return the innermost function in that case.
     pub fn function_name(
         &self,
+        adapter: &mut impl CoreInterface,
         address: u64,
         find_inlined: bool,
     ) -> Result<Option<String>, DebugError> {
         let mut units = self.dwarf.units();
 
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
-            let mut functions = unit_info.get_function_dies(address, None, find_inlined)?;
+            let mut functions =
+                unit_info.get_function_dies(adapter, address, None, find_inlined)?;
 
             // Use the last functions from the list, this is the function which most closely
             // corresponds to the PC in case of multiple inlined functions.
@@ -285,7 +289,7 @@ impl DebugInfo {
     /// This saves a lot of overhead when a user only wants to see the `[VariableName::LocalScope]` or `[VariableName::Registers]` while stepping through code (the most common use cases)
     pub(crate) fn create_static_scope_cache(
         &self,
-        core: &mut Core<'_>,
+        adapter: &mut impl CoreInterface,
         unit_info: &UnitInfo,
     ) -> Result<VariableCache, DebugError> {
         let mut static_variable_cache = VariableCache::new();
@@ -301,7 +305,7 @@ impl DebugInfo {
             );
             static_root_variable.variable_node_type = VariableNodeType::DirectLookup;
             static_root_variable.name = VariableName::StaticScopeRoot;
-            static_variable_cache.cache_variable(None, static_root_variable, core)?;
+            static_variable_cache.cache_variable(None, static_root_variable, adapter)?;
         }
         Ok(static_variable_cache)
     }
@@ -309,7 +313,7 @@ impl DebugInfo {
     /// Creates the unpopulated cache for `function` variables
     pub(crate) fn create_function_scope_cache(
         &self,
-        core: &mut Core<'_>,
+        adapter: &mut impl CoreInterface,
         die_cursor_state: &FunctionDie,
         unit_info: &UnitInfo,
     ) -> Result<VariableCache, DebugError> {
@@ -328,7 +332,7 @@ impl DebugInfo {
         );
         function_root_variable.variable_node_type = VariableNodeType::DirectLookup;
         function_root_variable.name = VariableName::LocalScopeRoot;
-        function_variable_cache.cache_variable(None, function_root_variable, core)?;
+        function_variable_cache.cache_variable(None, function_root_variable, adapter)?;
         Ok(function_variable_cache)
     }
 
@@ -336,7 +340,7 @@ impl DebugInfo {
     pub fn cache_deferred_variables(
         &self,
         cache: &mut VariableCache,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         parent_variable: &mut Variable,
         stack_frame_registers: &DebugRegisters,
         frame_base: Option<u64>,
@@ -369,7 +373,7 @@ impl DebugInfo {
                                 unit_info.unit.header.offset().as_debug_info_offset(),
                                 Some(referenced_node.entry().offset()),
                             ),
-                            core,
+                            adapter,
                         )?;
 
                         match &parent_variable.name {
@@ -389,7 +393,7 @@ impl DebugInfo {
                             referenced_node,
                             parent_variable,
                             referenced_variable,
-                            core,
+                            adapter,
                             stack_frame_registers,
                             frame_base,
                             cache,
@@ -427,13 +431,13 @@ impl DebugInfo {
                         temporary_variable = cache.cache_variable(
                             Some(parent_variable.variable_key),
                             temporary_variable,
-                            core,
+                            adapter,
                         )?;
 
                         temporary_variable = unit_info.process_tree(
                             parent_node,
                             temporary_variable,
-                            core,
+                            adapter,
                             stack_frame_registers,
                             frame_base,
                             cache,
@@ -467,7 +471,7 @@ impl DebugInfo {
                         temporary_variable = cache.cache_variable(
                             Some(parent_variable.variable_key),
                             temporary_variable,
-                            core,
+                            adapter,
                         )?;
 
                         let parent_node = type_tree.root()?;
@@ -475,7 +479,7 @@ impl DebugInfo {
                         temporary_variable = unit_info.process_tree(
                             parent_node,
                             temporary_variable,
-                            core,
+                            adapter,
                             stack_frame_registers,
                             frame_base,
                             cache,
@@ -496,7 +500,7 @@ impl DebugInfo {
     /// This function will also populate the `DebugInfo::VariableCache` with in scope `Variable`s for each `StackFrame`, while taking into account the appropriate strategy for lazy-loading of variables.
     pub(crate) fn get_stackframe_info(
         &self,
-        core: &mut Core<'_>,
+        adapter: &mut impl CoreInterface,
         address: u64,
         exception_info: &Option<ExceptionInfo>,
         unwind_registers: &registers::DebugRegisters,
@@ -519,8 +523,12 @@ impl DebugInfo {
         let mut frames = Vec::new();
 
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
-            let functions =
-                unit_info.get_function_dies(address, Some(&stack_frame_registers), true)?;
+            let functions = unit_info.get_function_dies(
+                adapter,
+                address,
+                Some(&stack_frame_registers),
+                true,
+            )?;
 
             if functions.is_empty() {
                 continue;
@@ -565,7 +573,7 @@ impl DebugInfo {
                     // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
                     // Resolve the statics that belong to the compilation unit that this function is in.
                     let static_variables = self
-                        .create_static_scope_cache(core, &unit_info)
+                        .create_static_scope_cache(adapter, &unit_info)
                         .map_or_else(
                             |error| {
                                 tracing::error!(
@@ -579,7 +587,7 @@ impl DebugInfo {
 
                     // Next, resolve and cache the function variables.
                     let local_variables = self
-                        .create_function_scope_cache(core, function_die, &unit_info)
+                        .create_function_scope_cache(adapter, function_die, &unit_info)
                         .map_or_else(
                             |error| {
                                 tracing::error!(
@@ -625,7 +633,7 @@ impl DebugInfo {
             // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
             // Resolve the statics that belong to the compilation unit that this function is in.
             let static_variables = self
-                .create_static_scope_cache(core, &unit_info)
+                .create_static_scope_cache(adapter, &unit_info)
                 .map_or_else(
                     |error| {
                         tracing::error!(
@@ -639,7 +647,7 @@ impl DebugInfo {
 
             // Next, resolve and cache the function variables.
             let local_variables = self
-                .create_function_scope_cache(core, last_function, &unit_info)
+                .create_function_scope_cache(adapter, last_function, &unit_info)
                 .map_or_else(
                     |error| {
                         tracing::error!(
@@ -704,15 +712,24 @@ impl DebugInfo {
     /// - Similarly, certain error conditions encountered in `StackFrameIterator` will also break out of the unwind loop.
     /// Note: In addition to populating the `StackFrame`s, this function will also populate the `DebugInfo::VariableCache` with `Variable`s for available Registers as well as static and function variables.
     /// TODO: Separate logic for stackframe creation and cache population
-    pub fn unwind(&self, core: &mut Core, address: u64) -> Result<Vec<StackFrame>, crate::Error> {
-        let mut stack_frames = Vec::<StackFrame>::new();
-        let mut unwind_registers = registers::DebugRegisters::from_core(core);
+    pub fn unwind(
+        &self,
+        adapter: &mut impl CoreInterface,
+        registers: Vec<&CoreRegister>,
+        program_counter_register: &CoreRegister,
+    ) -> Result<Vec<StackFrame>, crate::Error> {
+        let program_counter: u64 = adapter
+            .read_core_reg(program_counter_register.id())?
+            .try_into()?;
 
-        if unwind_registers
-            .get_program_counter()
-            .map_or_else(|| true, |pc| pc.value != Some(RegisterValue::U64(address)))
-        {
-            return Err(crate::Error::Other(anyhow::anyhow!("UNWIND: Attempting to perform an unwind for address: {:#018x}, which does not match the core register program counter.", address)));
+        let mut stack_frames = Vec::<StackFrame>::new();
+        let mut unwind_registers = registers::DebugRegisters::from_core(adapter, registers);
+
+        if unwind_registers.get_program_counter().map_or_else(
+            || true,
+            |pc| pc.value != Some(RegisterValue::U64(program_counter)),
+        ) {
+            return Err(crate::Error::Other(anyhow::anyhow!("UNWIND: Attempting to perform an unwind for address: {:#018x}, which does not match the core register program counter.", program_counter)));
         }
 
         let mut unwind_context: Box<UnwindContext<DwarfReader>> =
@@ -727,7 +744,7 @@ impl DebugInfo {
             // - If we are at an exception hanlder frame, we need to overwrite the unwind registers with the exception context.
             // - If for some reason we cannot determine the exception context, we silently continue with the rest of the unwind.
             // At worst, the unwind will be able to unwind the stack to the frame of the most recent exception handler.
-            let exception_info = match core.exception_details(&unwind_registers) {
+            let exception_info = match adapter.exception_details(&unwind_registers) {
                 Ok(Some(exception_info)) => {
                     tracing::trace!(
                         "UNWIND: Found exception context: {}",
@@ -758,7 +775,7 @@ impl DebugInfo {
 
             // PART 1-a: Prepare the `StackFrame` that holds the current frame information.
             let return_frame = match self.get_stackframe_info(
-                core,
+                adapter,
                 frame_pc,
                 &exception_info,
                 &unwind_registers,
@@ -807,7 +824,9 @@ impl DebugInfo {
                             "UNWIND: Stack unwind reached an exception handler {}",
                             exception_info.description
                         );
-                        if let Some(exception_info) = core.exception_details(&unwind_registers)? {
+                        if let Some(exception_info) =
+                            adapter.exception_details(&unwind_registers)?
+                        {
                             tracing::trace!(
                                 "UNWIND: Found exception context: {}",
                                 exception_info.description
@@ -894,7 +913,7 @@ impl DebugInfo {
                             Some(unwind_info),
                             unwind_cfa,
                             &mut unwound_return_address,
-                            core,
+                            adapter,
                         )
                         .is_break()
                         {
@@ -923,7 +942,7 @@ impl DebugInfo {
                                 None,
                                 None,
                                 &mut unwound_return_address,
-                                core,
+                                adapter,
                             )
                             .is_break()
                             {
@@ -1255,7 +1274,7 @@ fn unwind_register(
     unwind_info: Option<&gimli::UnwindTableRow<DwarfReader, gimli::StoreOnHeap>>,
     unwind_cfa: Option<u64>,
     unwound_return_address: &mut Option<RegisterValue>,
-    core: &mut Core,
+    core: &mut impl CoreInterface,
 ) -> ControlFlow<(), ()> {
     use gimli::read::RegisterRule::*;
     // If we do not have unwind info, or there is no register rule, then use UnwindRule::Undefined.
@@ -1426,7 +1445,7 @@ fn unwind_register(
 /// Helper function to determine the program counter value for the previous frame.
 fn unwind_program_counter_register(
     return_address: RegisterValue,
-    core: &mut Core<'_>,
+    core: &mut impl CoreInterface,
     register_rule_string: &mut String,
 ) -> Option<RegisterValue> {
     if return_address.is_max_value() || return_address.is_zero() {
@@ -1484,5 +1503,239 @@ fn add_to_address(address: u64, offset: i64, address_size_in_bytes: usize) -> u6
                 address_size_in_bytes
             );
         }
+    }
+}
+
+/// An adapter to interface a microchip core like structure.
+pub trait CoreAdapter: CoreInterface {}
+
+impl CoreInterface for CoreDump {
+    fn instruction_set(&mut self) -> Result<InstructionSet, error::Error> {
+        Ok(self.instruction_set)
+    }
+
+    fn read_core_reg(&mut self, register: RegisterId) -> Result<RegisterValue, error::Error> {
+        Ok(self.registers[&register])
+    }
+
+    fn id(&self) -> usize {
+        todo!()
+    }
+
+    fn wait_for_core_halted(&mut self, _timeout: std::time::Duration) -> Result<(), error::Error> {
+        todo!()
+    }
+
+    fn core_halted(&mut self) -> Result<bool, error::Error> {
+        todo!()
+    }
+
+    fn status(&mut self) -> Result<crate::CoreStatus, error::Error> {
+        todo!()
+    }
+
+    fn halt(
+        &mut self,
+        _timeout: std::time::Duration,
+    ) -> Result<crate::CoreInformation, error::Error> {
+        todo!()
+    }
+
+    fn run(&mut self) -> Result<(), error::Error> {
+        todo!()
+    }
+
+    fn reset(&mut self) -> Result<(), error::Error> {
+        todo!()
+    }
+
+    fn reset_and_halt(
+        &mut self,
+        _timeout: std::time::Duration,
+    ) -> Result<crate::CoreInformation, error::Error> {
+        todo!()
+    }
+
+    fn step(&mut self) -> Result<crate::CoreInformation, error::Error> {
+        todo!()
+    }
+
+    fn write_core_reg(
+        &mut self,
+        _address: crate::core::registers::RegisterId,
+        _value: crate::core::registers::RegisterValue,
+    ) -> Result<(), error::Error> {
+        todo!()
+    }
+
+    fn available_breakpoint_units(&mut self) -> Result<u32, error::Error> {
+        todo!()
+    }
+
+    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, error::Error> {
+        todo!()
+    }
+
+    fn enable_breakpoints(&mut self, _state: bool) -> Result<(), error::Error> {
+        todo!()
+    }
+
+    fn set_hw_breakpoint(&mut self, _unit_index: usize, _addrr: u64) -> Result<(), error::Error> {
+        todo!()
+    }
+
+    fn clear_hw_breakpoint(&mut self, _unit_index: usize) -> Result<(), error::Error> {
+        todo!()
+    }
+
+    fn registers(&self) -> &'static crate::core::registers::CoreRegisters {
+        todo!()
+    }
+
+    fn program_counter(&self) -> &'static CoreRegister {
+        todo!()
+    }
+
+    fn frame_pointer(&self) -> &'static CoreRegister {
+        todo!()
+    }
+
+    fn stack_pointer(&self) -> &'static CoreRegister {
+        todo!()
+    }
+
+    fn return_address(&self) -> &'static CoreRegister {
+        todo!()
+    }
+
+    fn hw_breakpoints_enabled(&self) -> bool {
+        todo!()
+    }
+
+    fn architecture(&self) -> probe_rs_target::Architecture {
+        todo!()
+    }
+
+    fn core_type(&self) -> probe_rs_target::CoreType {
+        todo!()
+    }
+
+    fn fpu_support(&mut self) -> Result<bool, error::Error> {
+        todo!()
+    }
+
+    fn reset_catch_set(&mut self) -> Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn reset_catch_clear(&mut self) -> Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn debug_core_stop(&mut self) -> Result<(), crate::Error> {
+        todo!()
+    }
+}
+
+impl MemoryInterface for CoreDump {
+    fn supports_native_64bit_access(&mut self) -> bool {
+        self.supports_native_64bit_access
+    }
+
+    fn read_word_64(&mut self, _address: u64) -> anyhow::Result<u64, crate::Error> {
+        todo!()
+    }
+
+    fn read_word_32(&mut self, _address: u64) -> anyhow::Result<u32, crate::Error> {
+        todo!()
+    }
+
+    fn read_word_8(&mut self, _address: u64) -> anyhow::Result<u8, crate::Error> {
+        todo!()
+    }
+
+    fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn read_32(&mut self, address: u64, data: &mut [u32]) -> anyhow::Result<(), crate::Error> {
+        for (range, memory) in &self.data {
+            if range.contains(&address) && range.contains(&(address + data.len() as u64 * 4)) {
+                for (n, data) in data.iter_mut().enumerate() {
+                    *data = memory
+                        .pread_with((address - range.start) as usize + n * 4, scroll::LE)
+                        .map_err(|e| anyhow!("{e}"))?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_word_64(&mut self, _address: u64, _data: u64) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_word_32(&mut self, _address: u64, _data: u32) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_word_8(&mut self, _address: u64, _data: u8) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_64(&mut self, _address: u64, _data: &[u64]) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_32(&mut self, _address: u64, _data: &[u32]) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_8(&mut self, _address: u64, _data: &[u8]) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn supports_8bit_transfers(&self) -> anyhow::Result<bool, crate::Error> {
+        todo!()
+    }
+
+    fn flush(&mut self) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+}
+
+impl ExceptionInterface for CoreDump {
+    fn exception_details(
+        &mut self,
+        stackframe_registers: &DebugRegisters,
+    ) -> Result<Option<ExceptionInfo>, crate::Error> {
+        crate::architecture::arm::core::exception_handling::armv6m_armv7m_shared::exception_details(
+            self,
+            stackframe_registers,
+        )
+    }
+
+    fn calling_frame_registers(
+        &mut self,
+        stackframe_registers: &crate::debug::DebugRegisters,
+    ) -> Result<crate::debug::DebugRegisters, crate::Error> {
+        crate::architecture::arm::core::exception_handling::armv6m_armv7m_shared::calling_frame_registers(
+            self,
+            stackframe_registers,
+        )
+    }
+
+    fn exception_description(
+        &mut self,
+        stackframe_registers: &crate::debug::DebugRegisters,
+    ) -> Result<String, crate::Error> {
+        crate::architecture::arm::core::exception_handling::armv6m::exception_description(
+            stackframe_registers,
+        )
     }
 }

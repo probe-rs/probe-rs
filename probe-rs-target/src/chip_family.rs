@@ -74,7 +74,7 @@ impl CoreType {
 }
 
 /// Instruction set used by a core
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum InstructionSet {
     /// ARM Thumb 2 instruction set
     Thumb2,

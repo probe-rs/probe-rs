@@ -6,7 +6,12 @@ use anyhow::anyhow;
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
 use probe_rs_target::{ArmCoreAccessOptions, RiscvCoreAccessOptions};
 use std::{
-    collections::HashMap, fs::OpenOptions, ops::Range, path::Path, sync::Arc, time::Duration,
+    collections::HashMap,
+    fs::OpenOptions,
+    ops::Range,
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Duration,
 };
 
 pub mod core_state;
@@ -168,28 +173,35 @@ pub trait CoreInterface: MemoryInterface + ExceptionInterface {
 /// A snapshot representation of a core state.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CoreDump {
-    pub stack_data: Vec<u8>,
-    pub heap_data: Vec<u8>,
+    /// The registers we dumped from the core.
     pub registers: HashMap<RegisterId, RegisterValue>,
-    additional_memory: Vec<(Range<u64>, Vec<u8>)>,
+    /// The memory we dumped from the core.
+    pub data: Vec<(Range<u64>, Vec<u8>)>,
+    /// The instruction set of the dumped core.
+    pub instruction_set: InstructionSet,
+    /// Whether or not the target supports native 64 bit support (64bit architectures)
+    pub supports_native_64bit_access: bool,
 }
 
 impl CoreDump {
+    /// Store the dumped core to a file.
     pub fn store(&self, path: &Path) -> Result<(), Error> {
         let mut file = OpenOptions::new()
             .create(true)
             .write(true)
             .open(path)
-            .map_err(Error::CoreDumpFileWrite)?;
+            .map_err(|e| {
+                Error::CoreDumpFileWrite(e, dunce::canonicalize(path).unwrap_or(PathBuf::new()))
+            })?;
         rmp_serde::encode::write_named(&mut file, self).map_err(Error::EncodingCoreDump)?;
         Ok(())
     }
 
+    /// Load the dumped core from a file.
     pub fn load(path: &Path) -> Result<Self, Error> {
-        let file = OpenOptions::new()
-            .read(true)
-            .open(path)
-            .map_err(Error::CoreDumpFileRead)?;
+        let file = OpenOptions::new().read(true).open(path).map_err(|e| {
+            Error::CoreDumpFileRead(e, dunce::canonicalize(path).unwrap_or(PathBuf::new()))
+        })?;
         rmp_serde::from_read(&file).map_err(Error::DecodingCoreDump)
     }
 }
@@ -350,6 +362,11 @@ pub struct Core<'probe> {
 }
 
 impl<'probe> Core<'probe> {
+    /// Borrow the boxed CoreInterface mutable.
+    pub fn inner_mut(&mut self) -> &mut Box<dyn CoreInterface + 'probe> {
+        &mut self.inner
+    }
+
     /// Create a new [`Core`].
     pub(crate) fn new(core: impl CoreInterface + 'probe) -> Core<'probe> {
         Self {
@@ -688,17 +705,10 @@ impl<'probe> Core<'probe> {
     /// * `stack`: The stack memory that was allocated and should be dumped.
     /// * `heap`: The heap memory that was allocated and should be dumped.
     /// * `additional_memory`: Additional memory ranges that should be dumped.
-    pub fn dump(
-        &mut self,
-        stack: Range<u64>,
-        heap: Range<u64>,
-        additional_memory: Vec<Range<u64>>,
-    ) -> Result<CoreDump, Error> {
-        let mut stack_data = vec![0; (stack.end - stack.start) as usize];
-        self.read_8(stack.start, &mut stack_data)?;
+    pub fn dump(&mut self, ranges: Vec<Range<u64>>) -> Result<CoreDump, Error> {
+        let instruction_set = self.instruction_set()?;
 
-        let mut heap_data = vec![0; (heap.end - heap.start) as usize];
-        self.read_8(heap.start, &mut heap_data)?;
+        let supports_native_64bit_access = self.supports_native_64bit_access();
 
         let mut registers = HashMap::new();
         for register in self.registers().all_registers() {
@@ -707,18 +717,143 @@ impl<'probe> Core<'probe> {
         }
 
         let mut data = Vec::new();
-        for range in additional_memory {
+        for range in ranges {
             let mut values = vec![0; (range.end - range.start) as usize];
             self.read_8(range.start, &mut values)?;
             data.push((range, values));
         }
 
         Ok(CoreDump {
-            stack_data,
-            heap_data,
             registers,
-            additional_memory: data,
+            data,
+            instruction_set,
+            supports_native_64bit_access,
         })
+    }
+}
+
+impl<'probe> CoreInterface for Core<'probe> {
+    fn id(&self) -> usize {
+        self.id()
+    }
+
+    fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), error::Error> {
+        self.wait_for_core_halted(timeout)
+    }
+
+    fn core_halted(&mut self) -> Result<bool, error::Error> {
+        self.core_halted()
+    }
+
+    fn status(&mut self) -> Result<CoreStatus, error::Error> {
+        self.status()
+    }
+
+    fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
+        self.halt(timeout)
+    }
+
+    fn run(&mut self) -> Result<(), error::Error> {
+        self.run()
+    }
+
+    fn reset(&mut self) -> Result<(), error::Error> {
+        self.reset()
+    }
+
+    fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
+        self.reset_and_halt(timeout)
+    }
+
+    fn step(&mut self) -> Result<CoreInformation, error::Error> {
+        self.step()
+    }
+
+    fn read_core_reg(
+        &mut self,
+        address: registers::RegisterId,
+    ) -> Result<registers::RegisterValue, error::Error> {
+        self.read_core_reg(address)
+    }
+
+    fn write_core_reg(
+        &mut self,
+        address: registers::RegisterId,
+        value: registers::RegisterValue,
+    ) -> Result<(), error::Error> {
+        self.write_core_reg(address, value)
+    }
+
+    fn available_breakpoint_units(&mut self) -> Result<u32, error::Error> {
+        self.available_breakpoint_units()
+    }
+
+    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, error::Error> {
+        todo!()
+    }
+
+    fn enable_breakpoints(&mut self, state: bool) -> Result<(), error::Error> {
+        self.enable_breakpoints(state)
+    }
+
+    fn set_hw_breakpoint(&mut self, _unit_index: usize, addr: u64) -> Result<(), error::Error> {
+        self.set_hw_breakpoint(addr)
+    }
+
+    fn clear_hw_breakpoint(&mut self, _unit_index: usize) -> Result<(), error::Error> {
+        self.clear_all_hw_breakpoints()
+    }
+
+    fn registers(&self) -> &'static registers::CoreRegisters {
+        self.registers()
+    }
+
+    fn program_counter(&self) -> &'static CoreRegister {
+        self.program_counter()
+    }
+
+    fn frame_pointer(&self) -> &'static CoreRegister {
+        self.frame_pointer()
+    }
+
+    fn stack_pointer(&self) -> &'static CoreRegister {
+        self.stack_pointer()
+    }
+
+    fn return_address(&self) -> &'static CoreRegister {
+        self.return_address()
+    }
+
+    fn hw_breakpoints_enabled(&self) -> bool {
+        todo!()
+    }
+
+    fn architecture(&self) -> Architecture {
+        self.architecture()
+    }
+
+    fn core_type(&self) -> CoreType {
+        self.core_type()
+    }
+
+    fn instruction_set(&mut self) -> Result<InstructionSet, error::Error> {
+        self.instruction_set()
+    }
+
+    fn fpu_support(&mut self) -> Result<bool, error::Error> {
+        self.fpu_support()
+    }
+
+    fn reset_catch_set(&mut self) -> Result<(), Error> {
+        todo!()
+    }
+
+    fn reset_catch_clear(&mut self) -> Result<(), Error> {
+        self.reset_catch_clear()
+    }
+
+    fn debug_core_stop(&mut self) -> Result<(), Error> {
+        self.debug_core_stop()
     }
 }
 

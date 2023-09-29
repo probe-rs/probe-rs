@@ -8,6 +8,7 @@ use super::{
     request_helpers::set_instruction_breakpoint,
 };
 use crate::cmd::dap_server::{server::core_data::CoreHandle, DebuggerError};
+use itertools::Itertools;
 use probe_rs::{debug::VariableName, CoreStatus, HaltReason};
 use std::{fmt::Display, path::Path, str::FromStr, time::Duration};
 
@@ -366,64 +367,40 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
         help_text: "Create a core dump at a target location",
         sub_commands: None,
         args: Some(&[
-            ReplCommandArgs::Optional("path"),
-            ReplCommandArgs::Optional("heap-start"),
-            ReplCommandArgs::Optional("heap-size"),
-            ReplCommandArgs::Optional("stack-start"),
-            ReplCommandArgs::Optional("stack-size"),
+            ReplCommandArgs::Optional("memory start address"),
+            ReplCommandArgs::Optional("memory size in bytes"),
         ]),
         handler: |target_core, command_arguments, _request_arguments| {
-            let mut input_arguments = command_arguments.split_whitespace();
-            let location = if let Some(location) = input_arguments.next() {
-                Path::new(location)
-            } else {
-                Path::new("./coredump")
-            };
+            let input_arguments = command_arguments.split_whitespace();
+            let location = Path::new("./coredump");
 
-            let stack_start = if let Some(input) = input_arguments.next() {
-                parse_int::parse::<u64>(input)
-                    .map_err(|e| DebuggerError::UserMessage(e.to_string()))?
-            } else {
-                return Err(DebuggerError::UserMessage(
-                    "A stack start is required.".to_string(),
-                ));
-            };
+            let ranges = input_arguments
+                .collect_vec()
+                .chunks(2)
+                .map(|c| {
+                    let start = if let Some(start) = c.get(0) {
+                        parse_int::parse::<u64>(start)
+                            .map_err(|e| DebuggerError::UserMessage(e.to_string()))?
+                    } else {
+                        return Err(DebuggerError::UserMessage(
+                            "A stack start is required.".to_string(),
+                        ));
+                    };
 
-            let stack_size = if let Some(input) = input_arguments.next() {
-                parse_int::parse::<u64>(input)
-                    .map_err(|e| DebuggerError::UserMessage(e.to_string()))?
-            } else {
-                return Err(DebuggerError::UserMessage(
-                    "A stack size is required.".to_string(),
-                ));
-            };
+                    let size = if let Some(size) = c.get(0) {
+                        parse_int::parse::<u64>(size)
+                            .map_err(|e| DebuggerError::UserMessage(e.to_string()))?
+                    } else {
+                        return Err(DebuggerError::UserMessage(
+                            "A memory size is required.".to_string(),
+                        ));
+                    };
 
-            let heap_start = if let Some(input) = input_arguments.next() {
-                parse_int::parse::<u64>(input)
-                    .map_err(|e| DebuggerError::UserMessage(e.to_string()))?
-            } else {
-                return Err(DebuggerError::UserMessage(
-                    "A heap start is required.".to_string(),
-                ));
-            };
+                    Ok(start..start + size)
+                })
+                .collect::<Result<Vec<_>, _>>()?;
 
-            let heap_size = if let Some(input) = input_arguments.next() {
-                parse_int::parse::<u64>(input)
-                    .map_err(|e| DebuggerError::UserMessage(e.to_string()))?
-            } else {
-                return Err(DebuggerError::UserMessage(
-                    "A heap size is required.".to_string(),
-                ));
-            };
-
-            target_core
-                .core
-                .dump(
-                    stack_start..stack_start + stack_size,
-                    heap_start..heap_start + heap_size,
-                    vec![],
-                )?
-                .store(location)?;
+            target_core.core.dump(ranges)?.store(location)?;
 
             Ok(Response {
                 command: "dump".to_string(),

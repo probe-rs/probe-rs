@@ -7,6 +7,7 @@ use capstone::{
     arch::arm::ArchMode as armArchMode, arch::arm64::ArchMode as aarch64ArchMode,
     arch::riscv::ArchMode as riscvArchMode, prelude::*, Capstone, Endian,
 };
+use itertools::Itertools;
 use num_traits::Num;
 use parse_int::parse;
 use probe_rs::architecture::arm::ap::AccessPortError;
@@ -501,13 +502,12 @@ impl DebugCli {
             function: |cli_data, _args| {
                 match cli_data.state {
                     DebugState::Halted(ref mut halted_state) => {
-                        let program_counter: u64 = cli_data
-                            .core
-                            .read_core_reg(cli_data.core.program_counter())?;
-
                         if let Some(di) = &mut cli_data.debug_info {
-                            halted_state.stack_frames =
-                                di.unwind(&mut cli_data.core, program_counter).unwrap();
+                            let registers = cli_data.core.registers().all_registers().collect_vec();
+                            let program_counter_register = cli_data.core.program_counter();
+                            halted_state.stack_frames = di
+                                .unwind(&mut cli_data.core, registers, program_counter_register)
+                                .unwrap();
 
                             halted_state.frame_indices =
                                 halted_state.stack_frames.iter().map(|sf| sf.id).collect();
@@ -768,21 +768,43 @@ impl DebugCli {
             help_text: "Dump the core memory & registers",
 
             function: |cli_data, args| {
-                let stack_start: u64 = get_int_argument(args, 0)?;
-                let stack_size: u64 = get_int_argument(args, 1)?;
-                let heap_start: u64 = get_int_argument(args, 2)?;
-                let heap_size: u64 = get_int_argument(args, 3)?;
+                let location = Path::new("./coredump");
+
+                let ranges = args
+                    .chunks(2)
+                    .enumerate()
+                    .map(|(i, c)| {
+                        let start = if let Some(start) = c.first() {
+                            parse_int::parse::<u64>(start).map_err(|e| {
+                                CliError::ArgumentParseError {
+                                    argument_index: i,
+                                    argument: start.to_string(),
+                                    source: e.into(),
+                                }
+                            })?
+                        } else {
+                            return Err(CliError::MissingArgument);
+                        };
+
+                        let size = if let Some(size) = c.get(1) {
+                            parse_int::parse::<u64>(size).map_err(|e| {
+                                CliError::ArgumentParseError {
+                                    argument_index: i,
+                                    argument: size.to_string(),
+                                    source: e.into(),
+                                }
+                            })?
+                        } else {
+                            return Err(CliError::MissingArgument);
+                        };
+
+                        Ok(start..start + size)
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
 
                 println!("Dumping core");
 
-                cli_data
-                    .core
-                    .dump(
-                        stack_start..stack_start + stack_size,
-                        heap_start..heap_start + heap_size,
-                        vec![],
-                    )?
-                    .store(Path::new("./coredump"))?;
+                cli_data.core.dump(ranges)?.store(location)?;
 
                 println!("Done.");
 
@@ -885,7 +907,8 @@ impl<'p> CliData<'p> {
 
         self.state = match status {
             probe_rs::CoreStatus::Halted(_) => {
-                let registers = DebugRegisters::from_core(&mut self.core);
+                let core_registers = self.core.registers().core_registers().collect_vec();
+                let registers = DebugRegisters::from_core(&mut self.core, core_registers);
                 DebugState::Halted(HaltedState {
                     program_counter: registers
                         .get_program_counter()

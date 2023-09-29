@@ -43,7 +43,7 @@ impl VariableCache {
         &mut self,
         parent_key: Option<i64>,
         cache_variable: Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
     ) -> Result<Variable, Error> {
         let mut variable_to_add = cache_variable.clone();
         // Validate that the parent_key exists ...
@@ -109,7 +109,7 @@ impl VariableCache {
                 || stored_variable.variable_node_type == VariableNodeType::SvdField)
             {
                 // Only do this for non-SVD variables. Those will extract their value everytime they are read from the client.
-                stored_variable.extract_value(core, self);
+                stored_variable.extract_value(adapter, self);
             }
             if self
                 .variable_hash_map

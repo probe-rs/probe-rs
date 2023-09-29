@@ -1,14 +1,13 @@
 use crate::{
-    core::{Core, RegisterDataType, RegisterId, RegisterRole, RegisterValue},
-    CoreRegister, Error,
+    core::{RegisterDataType, RegisterId, RegisterRole, RegisterValue},
+    CoreInterface, CoreRegister, Error,
 };
-
 /// Stores the relevant information from [`crate::core::CoreRegister`] for use in debug operations,
 /// as well as additional information required during debug.
 #[derive(Debug, Clone, PartialEq)]
 pub struct DebugRegister {
     /// To lookup platform specific details of core register definitions.
-    pub core_register: &'static CoreRegister,
+    pub core_register: CoreRegister,
     /// [DWARF](https://dwarfstd.org) specification, section 2.6.1.1.3.1 "... operations encode the names of up to 32 registers, numbered from 0 through 31, inclusive ..."
     pub dwarf_id: Option<u16>,
     /// The value of the register is read from the target memory and updated as needed.
@@ -51,23 +50,23 @@ pub struct DebugRegisters(pub Vec<DebugRegister>);
 
 impl DebugRegisters {
     /// Read all registers defined in [`crate::core::CoreRegisters`] from the given core.
-    pub fn from_core(core: &mut Core) -> Self {
+    pub fn from_core(adapter: &mut impl CoreInterface, core_registers: Vec<&CoreRegister>) -> Self {
         let mut debug_registers = Vec::<DebugRegister>::new();
 
-        for (dwarf_id, core_register) in core.registers().all_registers().enumerate() {
+        for (dwarf_id, &core_register) in core_registers.iter().enumerate() {
             // Check to ensure the register type is compatible with u64.
             if matches!(core_register.data_type(), RegisterDataType::UnsignedInteger(size_in_bits) if size_in_bits <= 64)
             {
                 debug_registers.push(DebugRegister {
-                    core_register,
+                    core_register: core_register.clone(),
                     // The DWARF register ID is only valid for the first 32 registers.
                     dwarf_id: if dwarf_id < 32 {
                         Some(dwarf_id as u16)
                     } else {
                         None
                     },
-                    value: match core.read_core_reg(core_register.id) {
-                        Ok::<RegisterValue, Error>(register_value) => Some(register_value),
+                    value: match adapter.read_core_reg(core_register.id()) {
+                        Ok::<RegisterValue, _>(register_value) => Some(register_value),
                         Err(e) => {
                             tracing::warn!(
                                 "Failed to read value for register {:?}: {}",

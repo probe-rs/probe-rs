@@ -7,12 +7,14 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
+use itertools::Itertools;
 use probe_rs::architecture::arm::core::registers::cortex_m::CORTEX_M_CORE_REGSISTERS;
 use probe_rs::config::{get_target_by_name, TargetSelector};
-use probe_rs::debug::DebugInfo;
+use probe_rs::debug::{CoreAdapter, DebugInfo};
 use probe_rs::flashing::{FileDownloadError, Format};
 use probe_rs::{
-    BreakpointCause, Core, CoreDump, HaltReason, SemihostingCommand, Target, VectorCatchCondition,
+    BreakpointCause, Core, CoreDump, CoreInterface, CoreRegister, HaltReason, SemihostingCommand,
+    Target, VectorCatchCondition,
 };
 use probe_rs_target::MemoryRegion;
 use signal_hook::consts::signal;
@@ -202,7 +204,8 @@ fn poll_stacktrace(core: &mut Core<'_>, path: &Path) -> Result<bool> {
         )),
         probe_rs::CoreStatus::Halted(_reason) => {
             // Try and give the user some info as to why it halted.
-            print_stacktrace(core, pc_register, path)?;
+            // TODO:
+            // print_stacktrace(path, pc_register)?;
             // Report this as an error
             Err(anyhow!("CPU halted unexpectedly."))
         }
@@ -218,37 +221,31 @@ fn poll_stacktrace(core: &mut Core<'_>, path: &Path) -> Result<bool> {
 
 fn print_stacktrace_from_core(
     core: &mut Core<'_>,
-    pc_register: &probe_rs::CoreRegister,
+    program_counter_register: &CoreRegister,
     path: &Path,
 ) -> Result<(), anyhow::Error> {
-    let program_counter: u64 = core.read_core_reg(pc_register)?;
-    print_stacktrace(path, program_counter)
-}
-
-fn print_stacktrace_from_dump(
-    target: &str,
-    core_dump_path: &Path,
-    elf_path: &Path,
-) -> Result<(), anyhow::Error> {
-    let core_dump = CoreDump::load(core_dump_path)?;
-
-    let pcr = CORTEX_M_CORE_REGSISTERS
-        .core_registers()
-        .find(|r| r.register_has_role(probe_rs::RegisterRole::ProgramCounter))
-        .unwrap();
-
-    let program_counter = core_dump.registers[&pcr.id()].try_into()?;
-
-    print_stacktrace(elf_path, program_counter)
+    print_stacktrace(
+        path,
+        core,
+        core.registers().all_registers().collect_vec(),
+        program_counter_register,
+    )
 }
 
 /// Prints the stacktrace of the current execution state.
-fn print_stacktrace(path: &Path, program_counter: u64) -> Result<(), anyhow::Error> {
+fn print_stacktrace(
+    path: &Path,
+    adapter: &mut impl CoreInterface,
+    registers: Vec<&CoreRegister>,
+    program_counter_register: &CoreRegister,
+) -> Result<(), anyhow::Error> {
     let Some(debug_info) = DebugInfo::from_file(path).ok() else {
         log::error!("No debug info found.");
         return Ok(());
     };
-    let stack_frames = debug_info.unwind(core, program_counter).unwrap();
+    let stack_frames = debug_info
+        .unwind(adapter, registers, program_counter_register)
+        .unwrap();
     for (i, frame) in stack_frames.iter().enumerate() {
         print!("Frame {}: {} @ {}", i, frame.function_name, frame.pc);
 
@@ -338,4 +335,34 @@ fn attach_to_rtt(
     }
     log::error!("Failed to attach to RTT continuing...");
     None
+}
+
+#[cfg(test)]
+mod test {
+    use std::path::Path;
+
+    use itertools::Itertools;
+    use probe_rs::{
+        architecture::arm::core::registers::cortex_m::CORTEX_M_CORE_REGSISTERS, CoreDump,
+    };
+
+    use super::print_stacktrace;
+
+    #[test]
+    fn test_print_stacktrace() {
+        let mut core_dump = CoreDump::load(Path::new("./tests/coredump")).unwrap();
+
+        let program_counter_register = CORTEX_M_CORE_REGSISTERS
+            .core_registers()
+            .find(|r| r.register_has_role(probe_rs::RegisterRole::ProgramCounter))
+            .unwrap();
+
+        print_stacktrace(
+            Path::new("./tests/gpio-hal-blinky"),
+            &mut core_dump,
+            CORTEX_M_CORE_REGSISTERS.all_registers().collect_vec(),
+            program_counter_register,
+        )
+        .unwrap();
+    }
 }

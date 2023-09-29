@@ -1,3 +1,5 @@
+use crate::CoreInterface;
+
 use super::*;
 use anyhow::anyhow;
 use gimli::{DebugInfoOffset, UnitOffset};
@@ -350,7 +352,7 @@ impl Variable {
     /// Currently this only works for base data types. There is no provision in the MS DAP API to catch this client side, so we can only respond with a 'gentle' error message if the user attemtps unsupported data types.
     pub fn update_value(
         &self,
-        core: &mut Core,
+        adapter: &mut impl CoreInterface,
         variable_cache: &mut variable_cache::VariableCache,
         new_value: String,
     ) -> Result<String, DebugError> {
@@ -376,22 +378,22 @@ impl Variable {
             // We have everything we need to update the variable value.
             let update_result = match &self.type_name {
                 VariableType::Base(name) => match name.as_str() {
-                    "bool" => bool::update_value(self, core, new_value.as_str()),
-                    "char" => char::update_value(self, core, new_value.as_str()),
-                    "i8" => i8::update_value(self, core, new_value.as_str()),
-                    "i16" => i16::update_value(self, core, new_value.as_str()),
-                    "i32" => i32::update_value(self, core, new_value.as_str()),
-                    "i64" => i64::update_value(self, core, new_value.as_str()),
-                    "i128" => i128::update_value(self, core, new_value.as_str()),
-                    "isize" => isize::update_value(self, core, new_value.as_str()),
-                    "u8" => u8::update_value(self, core, new_value.as_str()),
-                    "u16" => u16::update_value(self, core, new_value.as_str()),
-                    "u32" => u32::update_value(self, core, new_value.as_str()),
-                    "u64" => u64::update_value(self, core, new_value.as_str()),
-                    "u128" => u128::update_value(self, core, new_value.as_str()),
-                    "usize" => usize::update_value(self, core, new_value.as_str()),
-                    "f32" => f32::update_value(self, core, new_value.as_str()),
-                    "f64" => f64::update_value(self, core, new_value.as_str()),
+                    "bool" => bool::update_value(self, adapter, new_value.as_str()),
+                    "char" => char::update_value(self, adapter, new_value.as_str()),
+                    "i8" => i8::update_value(self, adapter, new_value.as_str()),
+                    "i16" => i16::update_value(self, adapter, new_value.as_str()),
+                    "i32" => i32::update_value(self, adapter, new_value.as_str()),
+                    "i64" => i64::update_value(self, adapter, new_value.as_str()),
+                    "i128" => i128::update_value(self, adapter, new_value.as_str()),
+                    "isize" => isize::update_value(self, adapter, new_value.as_str()),
+                    "u8" => u8::update_value(self, adapter, new_value.as_str()),
+                    "u16" => u16::update_value(self, adapter, new_value.as_str()),
+                    "u32" => u32::update_value(self, adapter, new_value.as_str()),
+                    "u64" => u64::update_value(self, adapter, new_value.as_str()),
+                    "u128" => u128::update_value(self, adapter, new_value.as_str()),
+                    "usize" => usize::update_value(self, adapter, new_value.as_str()),
+                    "f32" => f32::update_value(self, adapter, new_value.as_str()),
+                    "f64" => f64::update_value(self, adapter, new_value.as_str()),
                     other => Err(DebugError::UnwindIncompleteResults {
                         message: format!("Unsupported datatype: {other}. Please only update variables with a base data type."),
                     }),
@@ -407,7 +409,7 @@ impl Variable {
                     variable_cache.cache_variable(
                         cache_variable.parent_key,
                         cache_variable,
-                        core,
+                        adapter,
                     )?;
                     new_value
                 }
@@ -514,7 +516,7 @@ impl Variable {
     /// Evaluate the variable's result if possible and set self.value, or else set self.value as the error String.
     pub fn extract_value(
         &mut self,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         variable_cache: &variable_cache::VariableCache,
     ) {
         if let VariableValue::Error(_) = self.value {
@@ -525,7 +527,7 @@ impl Variable {
         {
             // Special handling for SVD registers.
             // Because we cache the SVD structure once per sesion, we have to re-read the actual register values whenever queried.
-            match core.read_word_32(self.memory_location.memory_address().unwrap_or(u64::MAX)) {
+            match adapter.read_word_32(self.memory_location.memory_address().unwrap_or(u64::MAX)) {
                 Ok(u32_value) => self.value = VariableValue::Valid(u32_value.to_le().to_string()),
                 Err(error) => {
                     self.value = VariableValue::Error(format!(
@@ -569,67 +571,67 @@ impl Variable {
                 match name.as_str() {
                     "!" => VariableValue::Valid("<Never returns>".to_string()),
                     "()" => VariableValue::Valid("()".to_string()),
-                    "bool" => bool::get_value(self, core, variable_cache).map_or_else(
+                    "bool" => bool::get_value(self, adapter, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "char" => char::get_value(self, core, variable_cache).map_or_else(
+                    "char" => char::get_value(self, adapter, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "i8" => i8::get_value(self, core, variable_cache).map_or_else(
+                    "i8" => i8::get_value(self, adapter, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "i16" => i16::get_value(self, core, variable_cache).map_or_else(
+                    "i16" => i16::get_value(self, adapter, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "i32" => i32::get_value(self, core, variable_cache).map_or_else(
+                    "i32" => i32::get_value(self, adapter, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "i64" => i64::get_value(self, core, variable_cache).map_or_else(
+                    "i64" => i64::get_value(self, adapter, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "i128" => i128::get_value(self, core, variable_cache).map_or_else(
+                    "i128" => i128::get_value(self, adapter, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "isize" => isize::get_value(self, core, variable_cache).map_or_else(
+                    "isize" => isize::get_value(self, adapter, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "u8" => u8::get_value(self, core, variable_cache).map_or_else(
+                    "u8" => u8::get_value(self, adapter, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "u16" => u16::get_value(self, core, variable_cache).map_or_else(
+                    "u16" => u16::get_value(self, adapter, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "u32" => u32::get_value(self, core, variable_cache).map_or_else(
+                    "u32" => u32::get_value(self, adapter, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "u64" => u64::get_value(self, core, variable_cache).map_or_else(
+                    "u64" => u64::get_value(self, adapter, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "u128" => u128::get_value(self, core, variable_cache).map_or_else(
+                    "u128" => u128::get_value(self, adapter, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "usize" => usize::get_value(self, core, variable_cache).map_or_else(
+                    "usize" => usize::get_value(self, adapter, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "f32" => f32::get_value(self, core, variable_cache).map_or_else(
+                    "f32" => f32::get_value(self, adapter, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "f64" => f64::get_value(self, core, variable_cache).map_or_else(
+                    "f64" => f64::get_value(self, adapter, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
@@ -638,7 +640,7 @@ impl Variable {
                 }
             }
             VariableType::Struct(name) if name == "&str" => {
-                String::get_value(self, core, variable_cache).map_or_else(
+                String::get_value(self, adapter, variable_cache).map_or_else(
                     |err| VariableValue::Error(format!("{err:?}")),
                     VariableValue::Valid,
                 )
@@ -872,7 +874,7 @@ trait Value {
     /// The MS DAP protocol passes the value as a string, so this trait is here to provide the memory read logic before returning it as a string.
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError>
     where
@@ -883,7 +885,7 @@ trait Value {
     /// - The input format of the [Variable.value] is a [String], and the impl of this trait must convert the memory value appropriately before storing.
     fn update_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError>;
 }
@@ -891,41 +893,42 @@ trait Value {
 impl Value for bool {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
-        let mem_data = core.read_word_8(variable.memory_location.memory_address()?)?;
+        let mem_data = adapter.read_word_8(variable.memory_location.memory_address()?)?;
         let ret_value: bool = mem_data != 0;
         Ok(ret_value)
     }
 
     fn update_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        core.write_word_8(
-            variable.memory_location.memory_address()?,
-            <bool as FromStr>::from_str(new_value).map_err(|error| {
-                DebugError::UnwindIncompleteResults {
-                    message: format!(
-                        "Invalid data conversion from value: {new_value:?}. {error:?}"
-                    ),
-                }
-            })? as u8,
-        )
-        .map_err(|error| DebugError::UnwindIncompleteResults {
-            message: format!("{error:?}"),
-        })
+        adapter
+            .write_word_8(
+                variable.memory_location.memory_address()?,
+                <bool as FromStr>::from_str(new_value).map_err(|error| {
+                    DebugError::UnwindIncompleteResults {
+                        message: format!(
+                            "Invalid data conversion from value: {new_value:?}. {error:?}"
+                        ),
+                    }
+                })? as u8,
+            )
+            .map_err(|error| DebugError::UnwindIncompleteResults {
+                message: format!("{error:?}"),
+            })
     }
 }
 impl Value for char {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
-        let mem_data = core.read_word_32(variable.memory_location.memory_address()?)?;
+        let mem_data = adapter.read_word_32(variable.memory_location.memory_address()?)?;
         if let Some(return_value) = char::from_u32(mem_data) {
             Ok(return_value)
         } else {
@@ -935,28 +938,29 @@ impl Value for char {
 
     fn update_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        core.write_word_32(
-            variable.memory_location.memory_address()?,
-            <char as FromStr>::from_str(new_value).map_err(|error| {
-                DebugError::UnwindIncompleteResults {
-                    message: format!(
-                        "Invalid data conversion from value: {new_value:?}. {error:?}"
-                    ),
-                }
-            })? as u32,
-        )
-        .map_err(|error| DebugError::UnwindIncompleteResults {
-            message: format!("{error:?}"),
-        })
+        adapter
+            .write_word_32(
+                variable.memory_location.memory_address()?,
+                <char as FromStr>::from_str(new_value).map_err(|error| {
+                    DebugError::UnwindIncompleteResults {
+                        message: format!(
+                            "Invalid data conversion from value: {new_value:?}. {error:?}"
+                        ),
+                    }
+                })? as u32,
+            )
+            .map_err(|error| DebugError::UnwindIncompleteResults {
+                message: format!("{error:?}"),
+            })
     }
 }
 impl Value for String {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut str_value: String = "".to_owned();
@@ -1012,7 +1016,7 @@ impl Value for String {
                         // A string with length 0 doesn't need to be read from memory.
                     } else {
                         let mut buff = vec![0u8; string_length];
-                        core.read(string_location, &mut buff)?;
+                        adapter.read(string_location, &mut buff)?;
                         str_value = core::str::from_utf8(&buff)?.to_owned();
                     }
                 }
@@ -1025,7 +1029,7 @@ impl Value for String {
 
     fn update_value(
         _variable: &Variable,
-        _core: &mut Core<'_>,
+        _adapter: &mut impl MemoryInterface,
         _new_value: &str,
     ) -> Result<(), DebugError> {
         Err(DebugError::UnwindIncompleteResults { message:"Unsupported datatype: \"String\". Please only update variables with a base data type.".to_string()})
@@ -1034,50 +1038,51 @@ impl Value for String {
 impl Value for i8 {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 1];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        adapter.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = i8::from_le_bytes(buff);
         Ok(ret_value)
     }
 
     fn update_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        core.write_word_8(
-            variable.memory_location.memory_address()?,
-            <i8 as FromStr>::from_str(new_value).map_err(|error| {
-                DebugError::UnwindIncompleteResults {
-                    message: format!(
-                        "Invalid data conversion from value: {new_value:?}. {error:?}"
-                    ),
-                }
-            })? as u8,
-        )
-        .map_err(|error| DebugError::UnwindIncompleteResults {
-            message: format!("{error:?}"),
-        })
+        adapter
+            .write_word_8(
+                variable.memory_location.memory_address()?,
+                <i8 as FromStr>::from_str(new_value).map_err(|error| {
+                    DebugError::UnwindIncompleteResults {
+                        message: format!(
+                            "Invalid data conversion from value: {new_value:?}. {error:?}"
+                        ),
+                    }
+                })? as u8,
+            )
+            .map_err(|error| DebugError::UnwindIncompleteResults {
+                message: format!("{error:?}"),
+            })
     }
 }
 impl Value for i16 {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 2];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        adapter.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = i16::from_le_bytes(buff);
         Ok(ret_value)
     }
 
     fn update_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         let buff = i16::to_le_bytes(<i16 as FromStr>::from_str(new_value).map_err(|error| {
@@ -1085,7 +1090,8 @@ impl Value for i16 {
                 message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
-        core.write_8(variable.memory_location.memory_address()?, &buff)
+        adapter
+            .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),
             })
@@ -1094,18 +1100,18 @@ impl Value for i16 {
 impl Value for i32 {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        adapter.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = i32::from_le_bytes(buff);
         Ok(ret_value)
     }
 
     fn update_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         let buff = i32::to_le_bytes(<i32 as FromStr>::from_str(new_value).map_err(|error| {
@@ -1113,7 +1119,8 @@ impl Value for i32 {
                 message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
-        core.write_8(variable.memory_location.memory_address()?, &buff)
+        adapter
+            .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),
             })
@@ -1122,18 +1129,18 @@ impl Value for i32 {
 impl Value for i64 {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 8];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        adapter.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = i64::from_le_bytes(buff);
         Ok(ret_value)
     }
 
     fn update_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         let buff = i64::to_le_bytes(<i64 as FromStr>::from_str(new_value).map_err(|error| {
@@ -1141,7 +1148,8 @@ impl Value for i64 {
                 message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
-        core.write_8(variable.memory_location.memory_address()?, &buff)
+        adapter
+            .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),
             })
@@ -1150,18 +1158,18 @@ impl Value for i64 {
 impl Value for i128 {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 16];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        adapter.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = i128::from_le_bytes(buff);
         Ok(ret_value)
     }
 
     fn update_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         let buff = i128::to_le_bytes(<i128 as FromStr>::from_str(new_value).map_err(|error| {
@@ -1169,7 +1177,8 @@ impl Value for i128 {
                 message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
-        core.write_8(variable.memory_location.memory_address()?, &buff)
+        adapter
+            .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),
             })
@@ -1178,11 +1187,11 @@ impl Value for i128 {
 impl Value for isize {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        adapter.read(variable.memory_location.memory_address()?, &mut buff)?;
         // TODO: We can get the actual WORD length from [DWARF] instead of assuming `u32`
         let ret_value = i32::from_le_bytes(buff);
         Ok(ret_value as isize)
@@ -1190,7 +1199,7 @@ impl Value for isize {
 
     fn update_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         let buff =
@@ -1201,7 +1210,8 @@ impl Value for isize {
                     ),
                 }
             })?);
-        core.write_8(variable.memory_location.memory_address()?, &buff)
+        adapter
+            .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),
             })
@@ -1210,50 +1220,51 @@ impl Value for isize {
 impl Value for u8 {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 1];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        adapter.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = u8::from_le_bytes(buff);
         Ok(ret_value)
     }
 
     fn update_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        core.write_word_8(
-            variable.memory_location.memory_address()?,
-            <u8 as FromStr>::from_str(new_value).map_err(|error| {
-                DebugError::UnwindIncompleteResults {
-                    message: format!(
-                        "Invalid data conversion from value: {new_value:?}. {error:?}"
-                    ),
-                }
-            })?,
-        )
-        .map_err(|error| DebugError::UnwindIncompleteResults {
-            message: format!("{error:?}"),
-        })
+        adapter
+            .write_word_8(
+                variable.memory_location.memory_address()?,
+                <u8 as FromStr>::from_str(new_value).map_err(|error| {
+                    DebugError::UnwindIncompleteResults {
+                        message: format!(
+                            "Invalid data conversion from value: {new_value:?}. {error:?}"
+                        ),
+                    }
+                })?,
+            )
+            .map_err(|error| DebugError::UnwindIncompleteResults {
+                message: format!("{error:?}"),
+            })
     }
 }
 impl Value for u16 {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 2];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        adapter.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = u16::from_le_bytes(buff);
         Ok(ret_value)
     }
 
     fn update_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         let buff = u16::to_le_bytes(<u16 as FromStr>::from_str(new_value).map_err(|error| {
@@ -1261,7 +1272,8 @@ impl Value for u16 {
                 message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
-        core.write_8(variable.memory_location.memory_address()?, &buff)
+        adapter
+            .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),
             })
@@ -1270,18 +1282,18 @@ impl Value for u16 {
 impl Value for u32 {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        adapter.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = u32::from_le_bytes(buff);
         Ok(ret_value)
     }
 
     fn update_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         let buff = u32::to_le_bytes(<u32 as FromStr>::from_str(new_value).map_err(|error| {
@@ -1289,7 +1301,8 @@ impl Value for u32 {
                 message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
-        core.write_8(variable.memory_location.memory_address()?, &buff)
+        adapter
+            .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),
             })
@@ -1298,18 +1311,18 @@ impl Value for u32 {
 impl Value for u64 {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 8];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        adapter.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = u64::from_le_bytes(buff);
         Ok(ret_value)
     }
 
     fn update_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         let buff = u64::to_le_bytes(<u64 as FromStr>::from_str(new_value).map_err(|error| {
@@ -1317,7 +1330,8 @@ impl Value for u64 {
                 message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
-        core.write_8(variable.memory_location.memory_address()?, &buff)
+        adapter
+            .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),
             })
@@ -1326,18 +1340,18 @@ impl Value for u64 {
 impl Value for u128 {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 16];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        adapter.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = u128::from_le_bytes(buff);
         Ok(ret_value)
     }
 
     fn update_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         let buff = u128::to_le_bytes(<u128 as FromStr>::from_str(new_value).map_err(|error| {
@@ -1345,7 +1359,8 @@ impl Value for u128 {
                 message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
-        core.write_8(variable.memory_location.memory_address()?, &buff)
+        adapter
+            .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),
             })
@@ -1354,11 +1369,11 @@ impl Value for u128 {
 impl Value for usize {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        adapter.read(variable.memory_location.memory_address()?, &mut buff)?;
         // TODO: We can get the actual WORD length from [DWARF] instead of assuming `u32`
         let ret_value = u32::from_le_bytes(buff);
         Ok(ret_value as usize)
@@ -1366,7 +1381,7 @@ impl Value for usize {
 
     fn update_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         let buff =
@@ -1377,7 +1392,8 @@ impl Value for usize {
                     ),
                 }
             })?);
-        core.write_8(variable.memory_location.memory_address()?, &buff)
+        adapter
+            .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),
             })
@@ -1386,18 +1402,18 @@ impl Value for usize {
 impl Value for f32 {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        adapter.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = f32::from_le_bytes(buff);
         Ok(ret_value)
     }
 
     fn update_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         let buff = f32::to_le_bytes(<f32 as FromStr>::from_str(new_value).map_err(|error| {
@@ -1405,7 +1421,8 @@ impl Value for f32 {
                 message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
-        core.write_8(variable.memory_location.memory_address()?, &buff)
+        adapter
+            .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),
             })
@@ -1414,18 +1431,18 @@ impl Value for f32 {
 impl Value for f64 {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 8];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        adapter.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = f64::from_le_bytes(buff);
         Ok(ret_value)
     }
 
     fn update_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        adapter: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         let buff = f64::to_le_bytes(<f64 as FromStr>::from_str(new_value).map_err(|error| {
@@ -1433,7 +1450,8 @@ impl Value for f64 {
                 message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
-        core.write_8(variable.memory_location.memory_address()?, &buff)
+        adapter
+            .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),
             })

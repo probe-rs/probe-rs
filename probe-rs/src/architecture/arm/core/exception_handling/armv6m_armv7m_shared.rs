@@ -1,7 +1,7 @@
 use crate::{
-    core::{CoreInterface, ExceptionInfo, RegisterRole},
+    core::{ExceptionInfo, ExceptionInterface, RegisterRole},
     debug::DebugRegisters,
-    Error, RegisterValue,
+    Error, MemoryInterface, RegisterValue,
 };
 use bitfield::bitfield;
 
@@ -45,8 +45,8 @@ bitfield! {
 }
 
 /// Decode the exception information.
-pub(crate) fn exception_details<T: CoreInterface>(
-    core: &mut T,
+pub(crate) fn exception_details(
+    adapter: &mut (impl MemoryInterface + ExceptionInterface),
     stackframe_registers: &DebugRegisters,
 ) -> Result<Option<ExceptionInfo>, Error> {
     let frame_return_address: u32 = stackframe_registers
@@ -66,8 +66,8 @@ pub(crate) fn exception_details<T: CoreInterface>(
         // This is an exception frame.
 
         Ok(Some(ExceptionInfo {
-            description: core.exception_description(stackframe_registers)?,
-            calling_frame_registers: core.calling_frame_registers(stackframe_registers)?,
+            description: adapter.exception_description(stackframe_registers)?,
+            calling_frame_registers: adapter.calling_frame_registers(stackframe_registers)?,
         }))
     } else {
         // This is a normal function return.
@@ -79,12 +79,12 @@ pub(crate) fn exception_details<T: CoreInterface>(
 /// The registers are stored in that list in the order they are defined in the `EXCEPTION_STACK_REGISTERS` array.
 /// This function will read the values of the registers from the stack and update the passed `stackframe_registers` with the new values.
 // TODO: probe-rs does not currently do anything with the floating point registers. When support is added, please note that the list of registers to read is different for cores that have the floating point extension.
-pub(crate) fn calling_frame_registers<T: CoreInterface>(
-    core: &mut T,
+pub(crate) fn calling_frame_registers(
+    adapter: &mut impl MemoryInterface,
     stackframe_registers: &crate::debug::DebugRegisters,
 ) -> Result<crate::debug::DebugRegisters, crate::Error> {
     let mut calling_stack_registers = vec![0u32; EXCEPTION_STACK_REGISTERS.len()];
-    core.read_32(
+    adapter.read_32(
         stackframe_registers
             .get_register_value_by_role(&crate::core::RegisterRole::StackPointer)?,
         &mut calling_stack_registers,

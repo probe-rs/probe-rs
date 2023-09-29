@@ -57,19 +57,7 @@ impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv6m::Armv
         &mut self,
         stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<String, crate::Error> {
-        // Load the provided xPSR register as a bitfield.
-        let exception_number = Xpsr(
-            stackframe_registers
-                .get_register_value_by_role(&crate::core::RegisterRole::ProcessorStatus)?
-                as u32,
-        )
-        .exception_number();
-
-        // TODO: Some ARMv6-M cores (e.g. the Cortex-M0) do not have HFSR and CFGR registers, so we cannot
-        //       determine the cause of the hard fault. We should add a check for this, and return a more
-        //       helpful error message in this case (I'm not sure this is possible).
-        //       Until then, this will return a generic error message for all hard faults on this architecture.
-        Ok(format!("{:?}", ExceptionReason::from(exception_number)))
+        exception_description(stackframe_registers)
     }
 
     fn exception_details(
@@ -78,4 +66,22 @@ impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv6m::Armv
     ) -> Result<Option<ExceptionInfo>, Error> {
         exception_details(self, stackframe_registers)
     }
+}
+
+pub fn exception_description(
+    stackframe_registers: &crate::debug::DebugRegisters,
+) -> Result<String, crate::Error> {
+    // Load the provided xPSR register as a bitfield.
+    let exception_number = Xpsr(
+        stackframe_registers
+            .get_register_value_by_role(&crate::core::RegisterRole::ProcessorStatus)?
+            as u32,
+    )
+    .exception_number();
+
+    // TODO: Some ARMv6-M cores (e.g. the Cortex-M0) do not have HFSR and CFGR registers, so we cannot
+    //       determine the cause of the hard fault. We should add a check for this, and return a more
+    //       helpful error message in this case (I'm not sure this is possible).
+    //       Until then, this will return a generic error message for all hard faults on this architecture.
+    Ok(format!("{:?}", ExceptionReason::from(exception_number)))
 }
