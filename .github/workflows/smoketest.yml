@@ -1,0 +1,60 @@
+
+on:
+  push:
+    branches: [master, staging, trying]
+  pull_request:
+  merge_group:
+
+
+name: Run smoke test
+
+env:
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - uses: ./.github/actions/setup
+        with:
+          targets:
+            aarch64-unknown-linux-gnu
+
+      - name: Install cross 
+        uses: taiki-e/install-action@v2.4.2
+        with:
+          tool: cross
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@v2.2.0
+      
+      - name: Build smoke-tester
+        run:
+          cross build --release --target aarch64-unknown-linux-gnu -p smoke_tester
+      
+      - uses: actions/upload-artifact@v3
+        with:
+          name: smoke_tester
+          path: target/aarch64-unknown-linux-gnu/release/smoke_tester
+
+  test:
+    runs-on: ["self-hosted", "linux", "ARM64", "smoke-test"]
+
+    needs: build
+
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: smoke_tester
+
+      - name: Run smoke-tester
+        run:  |
+          chmod +x smoke_tester
+          ./smoke_tester --dut-definitions $SMOKE_TESTER_CONFIG --markdown-summary $GITHUB_STEP_SUMMARY
+
+      
+
