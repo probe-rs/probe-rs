@@ -235,8 +235,6 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     ) -> Result<crate::core::CoreInformation, crate::Error> {
         tracing::debug!("Resetting core, setting hartreset bit");
 
-        self.reset_catch_set()?;
-
         let mut dmcontrol = Dmcontrol(0);
         dmcontrol.set_dmactive(true);
         dmcontrol.set_hartreset(true);
@@ -289,8 +287,6 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         dmcontrol.set_ackhavereset(true);
 
         self.interface.write_dm_register(dmcontrol)?;
-
-        self.reset_catch_clear()?;
 
         let pc = self.read_core_reg(RegisterId(0x7b1))?;
 
