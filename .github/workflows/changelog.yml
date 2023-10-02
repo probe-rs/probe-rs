@@ -20,3 +20,5 @@ jobs:
 
       - name: Check that fragments are valid
         run:  cargo xtask check-changelog
+        env:
+          GH_TOKEN: ${{ github.token }}
