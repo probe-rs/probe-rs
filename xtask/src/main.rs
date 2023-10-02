@@ -89,19 +89,35 @@ const CHANGELOG_CATEGORIES: &[&str] = &["Added", "Changed", "Fixed", "Removed"];
 const FRAGMENTS_DIR: &str = "changelog/";
 const CHANGELOG_FILE: &str = "CHANGELOG.md";
 
-fn get_changelog_fragments(
-    fragments_dir: &Path,
-) -> Result<(HashMap<String, Vec<PathBuf>>, Vec<PathBuf>)> {
-    let mut fragments = HashMap::new();
+#[derive(Debug)]
+struct FragmentList {
+    /// List of fragments, grouped by category
+    fragments: HashMap<String, Vec<PathBuf>>,
 
-    let mut invalid_fragments = Vec::new();
+    /// List of invalid fragments (not matching the expected pattern)
+    invalid_fragments: Vec<PathBuf>,
+}
 
-    for category in CHANGELOG_CATEGORIES {
-        fragments.insert(category.to_lowercase(), Vec::new());
+impl FragmentList {
+    pub fn new() -> Self {
+        let mut fragments = HashMap::new();
+
+        for category in CHANGELOG_CATEGORIES {
+            fragments.insert(category.to_lowercase(), Vec::new());
+        }
+
+        FragmentList {
+            fragments,
+            invalid_fragments: Vec::new(),
+        }
     }
+}
+
+fn get_changelog_fragments(fragments_dir: &Path) -> Result<FragmentList> {
+    let mut list = FragmentList::new();
 
     let fragment_files = std::fs::read_dir(fragments_dir)
-        .with_context(|| format!("Unable to read fragments from {FRAGMENTS_DIR}"))?;
+        .with_context(|| format!("Unable to read fragments from {}", fragments_dir.display()))?;
 
     for file in fragment_files {
         let file = file?;
@@ -115,16 +131,16 @@ fn get_changelog_fragments(
                 .with_context(|| format!("Filename {path:?} is not valid UTF-8"))?;
 
             if let Some((category, _)) = filename.split_once('-') {
-                if let Some(fragments) = fragments.get_mut(category) {
+                if let Some(fragments) = list.fragments.get_mut(category) {
                     fragments.push(path);
                 } else {
-                    invalid_fragments.push(path);
+                    list.invalid_fragments.push(path);
                 }
             }
         }
     }
 
-    Ok((fragments, invalid_fragments))
+    Ok(list)
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -134,8 +150,13 @@ struct PrFile {
 }
 
 #[derive(Debug, serde::Deserialize)]
+struct Label {
+    name: String,
+}
+
+#[derive(Debug, serde::Deserialize)]
 struct PrInfo {
-    labels: Vec<String>,
+    labels: Vec<Label>,
     files: Vec<PrFile>,
 }
 
@@ -148,7 +169,7 @@ fn check_changelog() -> Result<()> {
 
     let info: PrInfo = serde_json::from_str(&info_json)?;
 
-    if info.labels.iter().any(|l| l == "skip-changelog") {
+    if info.labels.iter().any(|l| l.name == "skip-changelog") {
         println!("Skipping changelog check because of 'skip-changelog' label");
         return Ok(());
     }
@@ -169,12 +190,12 @@ fn check_changelog() -> Result<()> {
 }
 
 fn check_fragments() -> Result<(), anyhow::Error> {
-    let (_fragments, invalid_fragments) = get_changelog_fragments(Path::new(FRAGMENTS_DIR))?;
-    Ok(if !invalid_fragments.is_empty() {
+    let fragment_list = get_changelog_fragments(Path::new(FRAGMENTS_DIR))?;
+    if !fragment_list.invalid_fragments.is_empty() {
         println!("The following changelog fragments do not match the expected pattern:");
         println!();
 
-        for invalid_fragment in invalid_fragments {
+        for invalid_fragment in fragment_list.invalid_fragments {
             println!(" - {}", invalid_fragment.display());
         }
 
@@ -191,7 +212,8 @@ fn check_fragments() -> Result<(), anyhow::Error> {
         println!();
 
         anyhow::bail!("Invalid changelog fragments found");
-    })
+    };
+    Ok(())
 }
 
 fn is_changelog_unchanged() -> bool {
@@ -206,12 +228,12 @@ fn assemble_changelog(version: String, force: bool, no_cleanup: bool) -> anyhow:
         anyhow::bail!("Changelog has local changes, aborting.\nUse --force to override.");
     }
 
-    let (fragments, invalid_fragments) = get_changelog_fragments(Path::new(FRAGMENTS_DIR))?;
+    let fragment_list = get_changelog_fragments(Path::new(FRAGMENTS_DIR))?;
 
     ensure!(
-        invalid_fragments.is_empty(),
+        fragment_list.invalid_fragments.is_empty(),
         "Found invalid fragments: {:?}",
-        invalid_fragments
+        fragment_list.invalid_fragments
     );
 
     let mut assembled = Vec::new();
@@ -223,14 +245,17 @@ fn assemble_changelog(version: String, force: bool, no_cleanup: bool) -> anyhow:
     let mut fragments_found = false;
 
     for category in CHANGELOG_CATEGORIES {
-        let fragment_list = fragments.get(&category.to_lowercase()).unwrap();
+        let fragment_list = fragment_list
+            .fragments
+            .get(&category.to_lowercase())
+            .unwrap();
 
         if fragment_list.is_empty() {
             continue;
         }
 
         fragments_found = true;
-        write_changelog_section(&mut writer, &category, &fragment_list)?;
+        write_changelog_section(&mut writer, category, fragment_list)?;
     }
 
     ensure!(
@@ -261,7 +286,7 @@ fn assemble_changelog(version: String, force: bool, no_cleanup: bool) -> anyhow:
     if !no_cleanup {
         println!("Cleaning up fragments...");
 
-        for fragment in fragments.values() {
+        for fragment in fragment_list.fragments.values() {
             for fragment_path in fragment {
                 println!(" Removing {}", fragment_path.display());
                 std::fs::remove_file(fragment_path)?;
@@ -274,9 +299,9 @@ fn assemble_changelog(version: String, force: bool, no_cleanup: bool) -> anyhow:
 
 fn changelog_header(mut writer: impl std::io::Write, version: &str) -> Result<(), std::io::Error> {
     writeln!(writer, "## [{}]", version)?;
-    writeln!(writer, "")?;
+    writeln!(writer)?;
     writeln!(writer, "Released {}", chrono::Utc::now().format("%Y-%m-%d"))?;
-    writeln!(writer, "")?;
+    writeln!(writer)?;
 
     Ok(())
 }
@@ -287,7 +312,7 @@ fn write_changelog_section(
     fragments: &[PathBuf],
 ) -> anyhow::Result<()> {
     writeln!(writer, "### {}", heading)?;
-    writeln!(writer, "")?;
+    writeln!(writer)?;
 
     for fragment_path in fragments {
         let fragment = std::fs::read_to_string(fragment_path).with_context(|| {
