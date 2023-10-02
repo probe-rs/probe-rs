@@ -15,14 +15,13 @@ jobs:
     name: Changelog
     runs-on: ubuntu-latest
 
-    env:
-      CARGO_TERM_COLOR: always
-
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
 
       - uses: swatinem/rust-cache@v2
+        with:
+          cache-on-failure: "true"
 
       - name: Check that fragments are valid
         run:  cargo xtask check-changelog
