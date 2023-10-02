@@ -127,10 +127,48 @@ fn get_changelog_fragments(
     Ok((fragments, invalid_fragments))
 }
 
-fn check_changelog() -> Result<()> {
-    let (_fragments, invalid_fragments) = get_changelog_fragments(Path::new(FRAGMENTS_DIR))?;
+#[derive(Debug, serde::Deserialize)]
+struct PrFile {
+    path: PathBuf,
+    additions: usize,
+}
 
-    if !invalid_fragments.is_empty() {
+#[derive(Debug, serde::Deserialize)]
+struct PrInfo {
+    labels: Vec<String>,
+    files: Vec<PrFile>,
+}
+
+fn check_changelog() -> Result<()> {
+    let sh = Shell::new()?;
+
+    let info_json = cmd!(sh, "gh pr view --json labels,files").read()?;
+
+    let info: PrInfo = serde_json::from_str(&info_json)?;
+
+    if info.labels.iter().any(|l| l == "skip-changelog") {
+        println!("Skipping changelog check because of 'skip-changelog' label");
+        return Ok(());
+    }
+
+    if !info
+        .files
+        .iter()
+        .any(|f| f.path.starts_with(FRAGMENTS_DIR) && f.additions > 0)
+    {
+        anyhow::bail!(
+            "No new changelog fragments detected, and 'skip-changelog' label not applied."
+        );
+    }
+
+    check_fragments()?;
+
+    Ok(())
+}
+
+fn check_fragments() -> Result<(), anyhow::Error> {
+    let (_fragments, invalid_fragments) = get_changelog_fragments(Path::new(FRAGMENTS_DIR))?;
+    Ok(if !invalid_fragments.is_empty() {
         println!("The following changelog fragments do not match the expected pattern:");
         println!();
 
@@ -151,9 +189,7 @@ fn check_changelog() -> Result<()> {
         println!();
 
         anyhow::bail!("Invalid changelog fragments found");
-    }
-
-    Ok(())
+    })
 }
 
 fn is_changelog_unchanged() -> bool {
