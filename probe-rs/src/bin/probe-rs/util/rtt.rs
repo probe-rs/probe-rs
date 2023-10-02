@@ -25,6 +25,7 @@ pub fn attach_to_rtt(
     elf_file: &Path,
     rtt_config: &RttConfig,
     timestamp_offset: UtcOffset,
+    log_format: Option<&str>,
 ) -> Result<RttActiveTarget, anyhow::Error> {
     log::info!("Initializing RTT");
     let rtt_header_address = if let Ok(mut file) = File::open(elf_file) {
@@ -47,7 +48,8 @@ pub fn attach_to_rtt(
     match Rtt::attach_region(core, memory_map, &rtt_header_address) {
         Ok(rtt) => {
             log::info!("RTT initialized.");
-            let app = RttActiveTarget::new(rtt, elf_file, rtt_config, timestamp_offset)?;
+            let app =
+                RttActiveTarget::new(rtt, elf_file, rtt_config, timestamp_offset, log_format)?;
             Ok(app)
         }
         Err(err) => Err(anyhow!("Error attempting to attach to RTT: {}", err)),
@@ -351,6 +353,7 @@ impl RttActiveTarget {
         elf_file: &Path,
         rtt_config: &RttConfig,
         timestamp_offset: UtcOffset,
+        log_format: Option<&str>,
     ) -> Result<Self> {
         let mut active_channels = Vec::new();
         // For each channel configured in the RTT Control Block (`Rtt`), check if there are additional user configuration in a `RttChannelConfig`. If not, apply defaults.
@@ -403,9 +406,29 @@ impl RttActiveTarget {
                     err
                 )
             })?;
-            const DEFAULT_LOG_FORMAT: &str = "{t} {L} {s}\n└─ {m} @ {F}:{l}";
-            let formatter = defmt_decoder::log::Formatter::new(DEFAULT_LOG_FORMAT);
+
+            let show_location = active_channels
+                .get(0)
+                .expect("`active_channels` is not empty")
+                .show_location;
+
             if let Some(table) = defmt_decoder::Table::parse(&elf)? {
+                let has_timestamp = table.has_timestamp();
+
+                // Format options:
+                // 1. Custom format
+                // 2. Default with timestamp with location
+                // 3. Default with timestamp without location
+                // 4. Default without timestamp with location
+                // 5. Default without timestamp without location
+                let format = log_format.unwrap_or_else(|| match (show_location, has_timestamp) {
+                    (true, true) => "{t} {L} {s}\n└─ {m} @ {F}:{l}",
+                    (true, false) => "{L} {s}\n└─ {m} @ {F}:{l}",
+                    (false, true) => "{t} {L} {s}",
+                    (false, false) => "{L} {s}",
+                });
+                let formatter = defmt_decoder::log::Formatter::new(format);
+
                 let locs = {
                     let locs = table.get_locations(&elf)?;
 

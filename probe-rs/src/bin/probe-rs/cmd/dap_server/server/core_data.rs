@@ -192,7 +192,7 @@ impl<'p> CoreHandle<'p> {
             })
             .and_then(|rtt| {
                 tracing::info!("RTT initialized.");
-                RttActiveTarget::new(rtt, program_binary, rtt_config, timestamp_offset)
+                RttActiveTarget::new(rtt, program_binary, rtt_config, timestamp_offset, None)
             }) {
             Ok(target_rtt) => {
                 for any_channel in target_rtt.active_channels.iter() {
