@@ -142,7 +142,9 @@ struct PrInfo {
 fn check_changelog() -> Result<()> {
     let sh = Shell::new()?;
 
-    let info_json = cmd!(sh, "gh pr view --json labels,files").read()?;
+    let pr_number = std::env::var("PR").unwrap_or_default();
+
+    let info_json = cmd!(sh, "gh pr view {pr_number} --json labels,files").read()?;
 
     let info: PrInfo = serde_json::from_str(&info_json)?;
 
