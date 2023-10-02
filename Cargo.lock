@@ -789,8 +789,7 @@ checksum = "c2e66c9d817f1720209181c316d28635c050fa304f9c79e47a520882661b7308"
 [[package]]
 name = "defmt-decoder"
 version = "0.3.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69494bdf0927405e6d22641d1307c664ad3e9483452b85078940529883945044"
+source = "git+https://github.com/knurling-rs/defmt/?branch=decoder-add-formatter#5cebef69bca26cf8dd5e87fab289a53068f7a7ba"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -811,8 +810,7 @@ dependencies = [
 [[package]]
 name = "defmt-json-schema"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96b04d228e57a61cf385d86bc8980bb41b47c6fc0eace90592668df97b2dad6a"
+source = "git+https://github.com/knurling-rs/defmt/?branch=decoder-add-formatter#5cebef69bca26cf8dd5e87fab289a53068f7a7ba"
 dependencies = [
  "log",
  "serde",
@@ -821,8 +819,7 @@ dependencies = [
 [[package]]
 name = "defmt-parser"
 version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "269924c02afd7f94bc4cecbfa5c379f6ffcf9766b3408fe63d22c728654eccd0"
+source = "git+https://github.com/knurling-rs/defmt/?branch=decoder-add-formatter#5cebef69bca26cf8dd5e87fab289a53068f7a7ba"
 dependencies = [
  "thiserror",
 ]
