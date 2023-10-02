@@ -284,17 +284,13 @@ impl RttActiveChannel {
                                             match stream_decoder.decode() {
                                                 Ok(frame) => {
                                                     let loc = locs.as_ref().and_then(|locs| locs.get(&frame.index()) );
-                                                    let (a, b, c) = if self.show_location {
-                                                        if let Some(loc) = loc {
-                                                            let relpath = loc.file.strip_prefix(&std::env::current_dir().unwrap()).unwrap_or(&loc.file);
-                                                            (Some(relpath.display().to_string()), Some(loc.line.try_into().unwrap()), Some(loc.module.as_str()))
-                                                        } else {
-                                                            (Some(format!("└─ <invalid location: defmt frame-index: {}>", frame.index())), None, None)
-                                                        }
+                                                    let (file, line, module) = if let Some(loc) = loc {
+                                                        let relpath = loc.file.strip_prefix(&std::env::current_dir().unwrap()).unwrap_or(&loc.file);
+                                                        (Some(relpath.display().to_string()), Some(loc.line.try_into().unwrap()), Some(loc.module.as_str()))
                                                     } else {
-                                                        (None, None, None)
+                                                        (Some(format!("└─ <invalid location: defmt frame-index: {}>", frame.index())), None, None)
                                                     };
-                                                    let s = formatter.format_to_string(frame, a.as_deref(), b, c);
+                                                    let s = formatter.format_to_string(frame, file.as_deref(), line, module);
                                                     writeln!(formatted_data, "{s}")?;
                                                     continue;
                                                 },
