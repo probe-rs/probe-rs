@@ -243,7 +243,11 @@ impl RttActiveChannel {
     pub fn get_rtt_data(
         &mut self,
         core: &mut Core,
-        defmt_state: Option<&(defmt_decoder::Table, Option<defmt_decoder::Locations>)>,
+        defmt_state: Option<&(
+            defmt_decoder::Table,
+            Option<defmt_decoder::Locations>,
+            defmt_decoder::log::Formatter,
+        )>,
     ) -> Result<Option<(String, String)>, anyhow::Error> {
         self
             .poll_rtt(core)
@@ -271,33 +275,25 @@ impl RttActiveChannel {
                             }
                             DataFormat::Defmt => {
                                 match defmt_state {
-                                    Some((table, locs)) => {
+                                    Some((table, locs, formatter)) => {
                                         let mut stream_decoder = table.new_stream_decoder();
                                         stream_decoder.received(&self.rtt_buffer.0[..bytes_read]);
                                         loop {
                                             match stream_decoder.decode() {
                                                 Ok(frame) => {
                                                     let loc = locs.as_ref().and_then(|locs| locs.get(&frame.index()) );
-                                                    writeln!(formatted_data, "{}", frame.display(true)).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
-                                                    if self.show_location {
+                                                    let (a, b, c) = if self.show_location {
                                                         if let Some(loc) = loc {
-                                                            let relpath = if let Ok(relpath) =
-                                                                loc.file.strip_prefix(&std::env::current_dir().unwrap())
-                                                            {
-                                                                relpath
-                                                            } else {
-                                                                // not relative; use full path
-                                                                &loc.file
-                                                            };
-                                                            writeln!(formatted_data,
-                                                                "└─ {}:{}",
-                                                                relpath.display(),
-                                                                loc.line
-                                                            ).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
+                                                            let relpath = loc.file.strip_prefix(&std::env::current_dir().unwrap()).unwrap_or(&loc.file);
+                                                            (Some(relpath.display().to_string()), Some(loc.line.try_into().unwrap()), Some(loc.module.as_str()))
                                                         } else {
-                                                            writeln!(formatted_data, "└─ <invalid location: defmt frame-index: {}>", frame.index()).map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
+                                                            (Some(format!("└─ <invalid location: defmt frame-index: {}>", frame.index())), None, None)
                                                         }
-                                                    }
+                                                    } else {
+                                                        (None, None, None)
+                                                    };
+                                                    let s = formatter.format_to_string(frame, a.as_deref(), b, c);
+                                                    writeln!(formatted_data, "{s}")?;
                                                     continue;
                                                 },
                                                 Err(DecodeError::UnexpectedEof) => break,
@@ -341,7 +337,11 @@ impl RttActiveChannel {
 #[derive(Debug)]
 pub struct RttActiveTarget {
     pub active_channels: Vec<RttActiveChannel>,
-    pub defmt_state: Option<(defmt_decoder::Table, Option<defmt_decoder::Locations>)>,
+    pub defmt_state: Option<(
+        defmt_decoder::Table,
+        Option<defmt_decoder::Locations>,
+        defmt_decoder::log::Formatter,
+    )>,
 }
 
 impl RttActiveTarget {
@@ -403,6 +403,8 @@ impl RttActiveTarget {
                     err
                 )
             })?;
+            const DEFAULT_LOG_FORMAT: &str = "{t} {L} {s}\n└─ {m} @ {F}:{l}";
+            let formatter = defmt_decoder::log::Formatter::new(DEFAULT_LOG_FORMAT);
             if let Some(table) = defmt_decoder::Table::parse(&elf)? {
                 let locs = {
                     let locs = table.get_locations(&elf)?;
@@ -419,7 +421,7 @@ impl RttActiveTarget {
                         None
                     }
                 };
-                Some((table, locs))
+                Some((table, locs, formatter))
             } else {
                 log::warn!("No `Table` definition in DWARF info; compile your program with `debug = 2` to enable location info.");
                 None
