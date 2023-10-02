@@ -23,9 +23,6 @@ jobs:
         uses: actions/checkout@v4
 
       - uses: swatinem/rust-cache@v2
-      
-      - name: Check that fragments are valid
-        run:  cargo xtask check-changelog
 
       - name: Check that fragments are valid
         run:  cargo xtask check-changelog
