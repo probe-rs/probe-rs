@@ -1,0 +1,504 @@
+name: MSPM0L Series
+generated_from_pack: true
+pack_file_release: 1.1.0
+variants:
+- name: MSPM0L1105
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: NonMain
+    range:
+      start: 0x41c00000
+      end: 0x41c00200
+    cores:
+    - main
+  - !Generic
+    name: Factory
+    range:
+      start: 0x41c40000
+      end: 0x41c40080
+    cores:
+    - main
+  flash_algorithms:
+  - mspm0l_main_32kb
+  - mspm0l_nonmain
+- name: MSPM0L1106
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: NonMain
+    range:
+      start: 0x41c00000
+      end: 0x41c00200
+    cores:
+    - main
+  - !Generic
+    name: Factory
+    range:
+      start: 0x41c40000
+      end: 0x41c40080
+    cores:
+    - main
+  flash_algorithms:
+  - mspm0l_main_64kb
+  - mspm0l_nonmain
+- name: MSPM0L1303
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x2000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: NonMain
+    range:
+      start: 0x41c00000
+      end: 0x41c00200
+    cores:
+    - main
+  - !Generic
+    name: Factory
+    range:
+      start: 0x41c40000
+      end: 0x41c40080
+    cores:
+    - main
+  flash_algorithms:
+  - mspm0l_main_8kb
+  - mspm0l_nonmain
+- name: MSPM0L1304
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x4000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: NonMain
+    range:
+      start: 0x41c00000
+      end: 0x41c00200
+    cores:
+    - main
+  - !Generic
+    name: Factory
+    range:
+      start: 0x41c40000
+      end: 0x41c40080
+    cores:
+    - main
+  flash_algorithms:
+  - mspm0l_main_16kb
+  - mspm0l_nonmain
+- name: MSPM0L1305
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: NonMain
+    range:
+      start: 0x41c00000
+      end: 0x41c00200
+    cores:
+    - main
+  - !Generic
+    name: Factory
+    range:
+      start: 0x41c40000
+      end: 0x41c40080
+    cores:
+    - main
+  flash_algorithms:
+  - mspm0l_main_32kb
+  - mspm0l_nonmain
+- name: MSPM0L1306
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: NonMain
+    range:
+      start: 0x41c00000
+      end: 0x41c00200
+    cores:
+    - main
+  - !Generic
+    name: Factory
+    range:
+      start: 0x41c40000
+      end: 0x41c40080
+    cores:
+    - main
+  flash_algorithms:
+  - mspm0l_main_64kb
+  - mspm0l_nonmain
+- name: MSPM0L1343
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x2000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: NonMain
+    range:
+      start: 0x41c00000
+      end: 0x41c00200
+    cores:
+    - main
+  - !Generic
+    name: Factory
+    range:
+      start: 0x41c40000
+      end: 0x41c40080
+    cores:
+    - main
+  flash_algorithms:
+  - mspm0l_main_8kb
+  - mspm0l_nonmain
+- name: MSPM0L1344
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x4000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: NonMain
+    range:
+      start: 0x41c00000
+      end: 0x41c00200
+    cores:
+    - main
+  - !Generic
+    name: Factory
+    range:
+      start: 0x41c40000
+      end: 0x41c40080
+    cores:
+    - main
+  flash_algorithms:
+  - mspm0l_main_16kb
+  - mspm0l_nonmain
+- name: MSPM0L1345
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: NonMain
+    range:
+      start: 0x41c00000
+      end: 0x41c00200
+    cores:
+    - main
+  - !Generic
+    name: Factory
+    range:
+      start: 0x41c40000
+      end: 0x41c40080
+    cores:
+    - main
+  flash_algorithms:
+  - mspm0l_main_32kb
+  - mspm0l_nonmain
+- name: MSPM0L1346
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  - !Generic
+    name: NonMain
+    range:
+      start: 0x41c00000
+      end: 0x41c00200
+    cores:
+    - main
+  - !Generic
+    name: Factory
+    range:
+      start: 0x41c40000
+      end: 0x41c40080
+    cores:
+    - main
+  flash_algorithms:
+  - mspm0l_main_64kb
+  - mspm0l_nonmain
+flash_algorithms:
+- name: mspm0l_main_32kb
+  description: MSPM0L MAIN 64KB
+  default: true
+  instructions: gLUJSAFoByKRQwFgB0gBaA8ikUMBYADwv/gFSAFoBCKRQwFgACCAvQATQEAEAQtAEO0A4AAgcEf4tQRGEUgAaBFJAUCgChFKAkCKQhfSASBCAg9OMEYhRgDwgPgEIMdDACUoRsAHC9EALwnQQCIwRiFGAPBV+H8cAPAM+PLnASUoRvi9GADEQf8PAAD/7z8AANAMQARIAWjJB/zQAGgCIQFASAhwR8BG0OMMQPi1FEYNRgZGFUgAaBVJAUCwChVKAkABIIpCINIALR7QByEpQBvRASERTwAgAC0W0MkHFNABIEICDEgxRgDwOPg4aEAH/NQJSDFGIkYA8B74CDYINAg9//fH/wFG5ef4vRgAxEH/DwAA/+8/AADQDEDQ4wxAELUCIxNDESISAoQYY2AhYgEhgVAQvcBGcLURIxsCxBgBJWVgBE5mYiFiEWghY1FoYWPFUHC9wEb/AQAAELUNS8AYASOcAqJCDNBcAqJCENGJAgkNHykI2f8pCtgAHSA5yQgC4EAwSQTJDotAAWiZQwFgEL3QEQAAASCBAgZKE2iLQxNgAAVRaIFDUWADSAFoiQP81HBHwEYAAQtABAILQAAAAAA=
+  pc_init: 0x1
+  pc_uninit: 0x35
+  pc_program_page: 0xad
+  pc_erase_sector: 0x39
+  data_section_offset: 0x1c0
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x10000
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 500
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x400
+      address: 0x0
+- name: mspm0l_nonmain
+  description: MSPM0L NON-MAIN
+  instructions: gLUNSAFoByKRQwFgC0gMSQFgDEgBaA8ikUMBYADwVvoJSAFoBCKRQwFgCEkCIAhgACDCQ0pggL0AE0BAAAhEQAEAACYEAQtAEO0A4AARREDwtYWwASGIQwIoAND04ACRiAIEkAAhyEMBkHpNe0wG4AKZSBwEKQFGeEwA09vgApEYI3VIAZ85RiJGAPCz+SZGBEYWI3BIOUZxSgDwq/kgQwDRy+BqTCBGMUYEmgDw8PlAIiBGMUYA8M35NEYoaMAHCNEoaMAHBdEoaMAHAtEoaMAH89AoaIAHTdRAIlxIIUYA8Lj5KGjABwjRKGjABwXRKGjABwLRKGjAB/PQKGiABznUQCJSSCFGAPCk+ShowAcI0ShowAcF0ShowAcC0ShowAfz0ChogAcl1EAiSEghRgDwkPkoaMAHCNEoaMAHBdEoaMAHAtEoaMAH89AoaIAHEdRAIj5IIUYA8Hz5KGjABwjRKGjABwXRKGjABwLRKGjAB/PQKGhgJzpOfkQ0SCFGBJoA8IX5KGhABwjVKGhABwXVKGhABwLVKGhAB/PULEghRjJGAPBi+ShowAcI0ShowAcF0ShowAcC0ShowAfz0ChoAiEIPwTQCEAINAg2ACjU0VgnJEx8RCFOA5EcSDFGBJoA8FX5KGhABwjVKGhABwXVKGhABwLVKGhAB/PUFEgxRiJGAPAy+ShowAcI0ShowAcF0ShowAcC0ShowAfz0ChoCD8DmQDRIucIQAg2CDQAKNPRHOcAmAWw8L0CmAAoAJgB0AWw8L0AIAWw8L3ARgDQDEDQ4wxAAABEQAAAwEEAAcBBigMAAK4EAADwtYGwBEZACjlJiEJr0QEgggI4TjBGIUYA8AT5QCIwRiFGAPDh+DRPOGjABwjROGjABwXROGjABwLROGjAB/PQOGgAJYAHT9RAIjBGIUYA8Mv4OGjABwjROGjABwXROGjABwLROGjAB/PQOGiABzvUQCIwRiFGAPC3+DhowAcI0ThowAcF0ThowAcC0ThowAfz0DhogAcn1EAiMEYhRgDwo/g4aMAHCNE4aMAHBdE4aMAHAtE4aMAH89A4aIAHE9RAIjBGIUYA8I/4OGjABwjROGjABwXROGjABwLROGjAB/PQOGgA4AElKEYBsPC9wEYA4CAAANAMQNDjDEDwtYGwFEYNRgZGQQoBIBxKkUIz0QAtMdAHISlALtEaTwEgggIXSDFGAPB++DhoQAcI1ThoQAcF1ThoQAcC1ThoQAfz1A9IMUYiRgDwW/g4aMAHCNE4aMAHBdE4aMAHAtE4aMAH89A5aAg9ACAALQXQAiIRQAg2CDQAKdHRAbDwvQDgIAAA0AxA0OMMQHC1FkwBUQAZACsk0AMkGUYhQF0eAy0B0gAkDuCjQwAkFUYuaEZgbmhGYK5oRmDuaEZgEDUkHaNC89EAKQvQowDUWERgASkG0JoYU2hDYAIpAdCRaEFggGhwvcBGBBEAABC1AiMTQxEiEgKEGGNgIWIBIYFQEL3ARnC1ESMbAsQYASVlYAROZmIhYhFoIWNRaGFjxVBwvcBG/wEAABC1DUvAGAEjnAKiQgzQXAKiQhDRiQIJDR8pCNn/KQrYAB0gOckIAuBAMEkEyQ6LQAFomUMBYBC90BEAAAEggQILShNoi0MTYAEFU2iLQ1NgQAQISQpoAkII0ApoAkIF0ApoAkIC0ApoAkLz0XBHwEYAAQtABAILQAEAAAC7qruqu6q7qv///////////////////////7uqu6q7qv//////////////////////////////////////////////////////////////////////////w9p5GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAAXAhgCAQMCA5MS//////////////////////////////////////////////////////////////////////////////////////////9IAJXedowAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x51
+  pc_program_page: 0x369
+  pc_erase_sector: 0x26d
+  data_section_offset: 0x7e8
+  flash_properties:
+    address_range:
+      start: 0x41c00000
+      end: 0x41c00200
+    page_size: 0x40
+    erased_byte_value: 0xff
+    program_page_timeout: 500
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x200
+      address: 0x0
+- name: mspm0l_main_64kb
+  description: MSPM0L MAIN 64KB
+  default: true
+  instructions: gLUJSAFoByKRQwFgB0gBaA8ikUMBYADwv/gFSAFoBCKRQwFgACCAvQATQEAEAQtAEO0A4AAgcEf4tQRGEUgAaBFJAUCgChFKAkCKQhfSASBCAg9OMEYhRgDwgPgEIMdDACUoRsAHC9EALwnQQCIwRiFGAPBV+H8cAPAM+PLnASUoRvi9GADEQf8PAAD/7z8AANAMQARIAWjJB/zQAGgCIQFASAhwR8BG0OMMQPi1FEYNRgZGFUgAaBVJAUCwChVKAkABIIpCINIALR7QByEpQBvRASERTwAgAC0W0MkHFNABIEICDEgxRgDwOPg4aEAH/NQJSDFGIkYA8B74CDYINAg9//fH/wFG5ef4vRgAxEH/DwAA/+8/AADQDEDQ4wxAELUCIxNDESISAoQYY2AhYgEhgVAQvcBGcLURIxsCxBgBJWVgBE5mYiFiEWghY1FoYWPFUHC9wEb/AQAAELUNS8AYASOcAqJCDNBcAqJCENGJAgkNHykI2f8pCtgAHSA5yQgC4EAwSQTJDotAAWiZQwFgEL3QEQAAASCBAgZKE2iLQxNgAAVRaIFDUWADSAFoiQP81HBHwEYAAQtABAILQAAAAAA=
+  pc_init: 0x1
+  pc_uninit: 0x35
+  pc_program_page: 0xad
+  pc_erase_sector: 0x39
+  data_section_offset: 0x1c0
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x10000
+    page_size: 0x100
+    erased_byte_value: 0xff
+    program_page_timeout: 500
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x400
+      address: 0x0
+- name: mspm0l_main_8kb
+  description: MSPM0L MAIN 8KB
+  default: true
+  instructions: gLUJSAFoByKRQwFgB0gBaA8ikUMBYADwv/gFSAFoBCKRQwFgACCAvQATQEAEAQtAEO0A4AAgcEf4tQRGEUgAaBFJAUCgChFKAkCKQhfSASBCAg9OMEYhRgDwgPgEIMdDACUoRsAHC9EALwnQQCIwRiFGAPBV+H8cAPAM+PLnASUoRvi9GADEQf8PAAD/7z8AANAMQARIAWjJB/zQAGgCIQFASAhwR8BG0OMMQPi1FEYNRgZGFUgAaBVJAUCwChVKAkABIIpCINIALR7QByEpQBvRASERTwAgAC0W0MkHFNABIEICDEgxRgDwOPg4aEAH/NQJSDFGIkYA8B74CDYINAg9//fH/wFG5ef4vRgAxEH/DwAA/+8/AADQDEDQ4wxAELUCIxNDESISAoQYY2AhYgEhgVAQvcBGcLURIxsCxBgBJWVgBE5mYiFiEWghY1FoYWPFUHC9wEb/AQAAELUNS8AYASOcAqJCDNBcAqJCENGJAgkNHykI2f8pCtgAHSA5yQgC4EAwSQTJDotAAWiZQwFgEL3QEQAAASCBAgZKE2iLQxNgAAVRaIFDUWADSAFoiQP81HBHwEYAAQtABAILQAAAAAA=
+  pc_init: 0x1
+  pc_uninit: 0x35
+  pc_program_page: 0xad
+  pc_erase_sector: 0x39
+  data_section_offset: 0x1c0
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x2000
+    page_size: 0x80
+    erased_byte_value: 0xff
+    program_page_timeout: 500
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x400
+      address: 0x0
+- name: mspm0l_main_16kb
+  description: MSPM0L MAIN 16KB
+  default: true
+  instructions: gLUJSAFoByKRQwFgB0gBaA8ikUMBYADwv/gFSAFoBCKRQwFgACCAvQATQEAEAQtAEO0A4AAgcEf4tQRGEUgAaBFJAUCgChFKAkCKQhfSASBCAg9OMEYhRgDwgPgEIMdDACUoRsAHC9EALwnQQCIwRiFGAPBV+H8cAPAM+PLnASUoRvi9GADEQf8PAAD/7z8AANAMQARIAWjJB/zQAGgCIQFASAhwR8BG0OMMQPi1FEYNRgZGFUgAaBVJAUCwChVKAkABIIpCINIALR7QByEpQBvRASERTwAgAC0W0MkHFNABIEICDEgxRgDwOPg4aEAH/NQJSDFGIkYA8B74CDYINAg9//fH/wFG5ef4vRgAxEH/DwAA/+8/AADQDEDQ4wxAELUCIxNDESISAoQYY2AhYgEhgVAQvcBGcLURIxsCxBgBJWVgBE5mYiFiEWghY1FoYWPFUHC9wEb/AQAAELUNS8AYASOcAqJCDNBcAqJCENGJAgkNHykI2f8pCtgAHSA5yQgC4EAwSQTJDotAAWiZQwFgEL3QEQAAASCBAgZKE2iLQxNgAAVRaIFDUWADSAFoiQP81HBHwEYAAQtABAILQAAAAAA=
+  pc_init: 0x1
+  pc_uninit: 0x35
+  pc_program_page: 0xad
+  pc_erase_sector: 0x39
+  data_section_offset: 0x1c0
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x4000
+    page_size: 0x80
+    erased_byte_value: 0xff
+    program_page_timeout: 500
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x400
+      address: 0x0

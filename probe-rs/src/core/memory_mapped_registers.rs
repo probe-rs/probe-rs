@@ -54,7 +54,7 @@ pub trait MemoryMappedRegister<T>: Clone + From<T> + Into<T> + Sized + std::fmt:
 /// - Default `From<u32>` and `From<MemoryMappedRegister>` impls for [`MemoryMappedRegister`] are generated.
 /// - A `bitfield!` mapping for the fields `progbufsize`, `busy`, `cmderr`, `datacount`.
 /// - `bitfield!` getters and setters for the fields as defined - See [`bitfield::bitfield!`] for more information.
-/// - A `const ADDRESS: u64 = 0x16;`.
+/// - A `const ADDRESS_OFFSET: u64 = 0x16;`.
 /// - A `const NAME: &'static str = "abstractcs";`.
 macro_rules! memory_mapped_bitfield_register {
     ($(#[$outer:meta])* $visibility:vis struct $struct_name:ident($reg_type:ty); $addr:expr, $reg_name:expr, impl From; $($rest:tt)*) => {

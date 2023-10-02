@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added Target for MSPM0L (#1789) 
 - Support for EFM32 Happy Gecko MCUs (#1747)
 - Added RA4M1 series target, R7FA4M1AB. (#1706)
 - Support for NXP i.MX RT500 series chips: MIMXRT595S, MIMXRT555S, MIMXRT533S (#1642)
@@ -21,7 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added support for IDF and BIN to cargo flash.  Added UF2 support to cargo
   flash and probe-rs. (#1765)
 - Support for handling an Arm Cortex-M Semihosting 'Exit Success' or 'Exit Failure' command. (#1755)
+- Added getters to registry : `get_targets_by_family_name` & `get_target_and_family_by_name`, change `get_target_by_name`. (#1770)
 - Support for vector catch in Armv8-M targets (#1709)
+- Add log rotation to stop disks from filling. Currently a maximum of 20 logs is kept. (#1780)
 
 ### Changed
 
