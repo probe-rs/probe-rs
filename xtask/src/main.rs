@@ -100,7 +100,7 @@ fn get_changelog_fragments(
         fragments.insert(category.to_lowercase(), Vec::new());
     }
 
-    let fragment_files = std::fs::read_dir(FRAGMENTS_DIR)
+    let fragment_files = std::fs::read_dir(fragments_dir)
         .with_context(|| format!("Unable to read fragments from {FRAGMENTS_DIR}"))?;
 
     for file in fragment_files {
@@ -234,18 +234,6 @@ fn assemble_changelog(version: String, force: bool, no_cleanup: bool) -> anyhow:
     Ok(())
 }
 
-fn extract_changelog_for_newest_version(changelog: &str) -> String {
-    let re = regex::Regex::new(
-        r"## \[\d+.\d+.\d+\]\n\n(?:Released \d+-\d+-\d+)?\n?\n?((?:[\n]|.)*?)## \[\d+.\d+.\d+\]",
-    )
-    .unwrap();
-    let captures = re.captures(changelog).unwrap();
-    let release_text = captures[1].trim_start().trim_end();
-
-    // The GH API expects those special characters to be replaced.
-    release_text.to_string()
-}
-
 fn changelog_header(mut writer: impl std::io::Write, version: &str) -> Result<(), std::io::Error> {
     writeln!(writer, "## [{}]", version)?;
     writeln!(writer, "")?;
@@ -259,15 +247,41 @@ fn write_changelog_section(
     mut writer: impl std::io::Write,
     heading: &str,
     fragments: &[PathBuf],
-) -> Result<(), std::io::Error> {
+) -> anyhow::Result<()> {
     writeln!(writer, "### {}", heading)?;
     writeln!(writer, "")?;
 
-    for fragment in fragments {
-        writeln!(writer, "{}", std::fs::read_to_string(fragment)?.trim_end())?;
+    for fragment_path in fragments {
+        let fragment = std::fs::read_to_string(fragment_path).with_context(|| {
+            format!(
+                "Failed to read changelog fragment {}",
+                fragment_path.display()
+            )
+        })?;
+
+        let mut lines = fragment.lines();
+
+        let Some(first_line) = lines.next() else {
+            anyhow::bail!("Empty changelog fragment {}", fragment_path.display());
+        };
+
+        writeln!(writer, " - {}", first_line)?;
+
+        let mut multiline = false;
+
+        // Write remaining lines
+        for line in lines {
+            writeln!(writer, "   {}", line)?;
+            multiline = true;
+        }
+
+        // Add an empty line between multiline fragments
+        if multiline {
+            writeln!(writer)?;
+        }
     }
 
-    writeln!(writer, "")?;
+    writeln!(writer)?;
 
     Ok(())
 }
