@@ -88,8 +88,11 @@ fn main() -> Result<ExitCode> {
         println_dut_status!(tracker, blue, "Probe: {:?}", probe.get_name());
         println_dut_status!(tracker, blue, "Chip:  {:?}", &definition.chip.name);
 
+        // We don't care about existing flash contents
+        let permissions = Permissions::default().allow_erase_all();
+
         let mut session = probe
-            .attach(definition.chip.clone(), Permissions::default())
+            .attach(definition.chip.clone(), permissions)
             .context("Failed to attach to chip")?;
         let target = session.target();
         let memory_regions = target.memory_map.clone();
