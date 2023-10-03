@@ -245,11 +245,7 @@ impl RttActiveChannel {
     pub fn get_rtt_data(
         &mut self,
         core: &mut Core,
-        defmt_state: Option<&(
-            defmt_decoder::Table,
-            Option<defmt_decoder::Locations>,
-            defmt_decoder::log::Formatter,
-        )>,
+        defmt_state: Option<&DefmtState>,
     ) -> Result<Option<(String, String)>, anyhow::Error> {
         self
             .poll_rtt(core)
@@ -277,7 +273,7 @@ impl RttActiveChannel {
                             }
                             DataFormat::Defmt => {
                                 match defmt_state {
-                                    Some((table, locs, formatter)) => {
+                                    Some(DefmtState { table, locs, formatter }) => {
                                         let mut stream_decoder = table.new_stream_decoder();
                                         stream_decoder.received(&self.rtt_buffer.0[..bytes_read]);
                                         loop {
@@ -335,11 +331,14 @@ impl RttActiveChannel {
 #[derive(Debug)]
 pub struct RttActiveTarget {
     pub active_channels: Vec<RttActiveChannel>,
-    pub defmt_state: Option<(
-        defmt_decoder::Table,
-        Option<defmt_decoder::Locations>,
-        defmt_decoder::log::Formatter,
-    )>,
+    pub defmt_state: Option<DefmtState>,
+}
+
+#[derive(Debug)]
+pub struct DefmtState {
+    table: defmt_decoder::Table,
+    locs: Option<defmt_decoder::Locations>,
+    formatter: defmt_decoder::log::Formatter,
 }
 
 impl RttActiveTarget {
@@ -440,7 +439,11 @@ impl RttActiveTarget {
                         None
                     }
                 };
-                Some((table, locs, formatter))
+                Some(DefmtState {
+                    table,
+                    locs,
+                    formatter,
+                })
             } else {
                 log::warn!("No `Table` definition in DWARF info; compile your program with `debug = 2` to enable location info.");
                 None
