@@ -116,6 +116,7 @@ impl Cmd {
 /// exception or when ctrl + c is pressed.
 ///
 /// Returns `Ok(())` if the core gracefully halted, or an error.
+#[allow(clippy::too_many_arguments)]
 fn run_loop(
     core: &mut Core<'_>,
     memory_map: &[MemoryRegion],

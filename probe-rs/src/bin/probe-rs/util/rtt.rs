@@ -417,7 +417,7 @@ impl RttActiveTarget {
                 // 3. Default with timestamp without location
                 // 4. Default without timestamp with location
                 // 5. Default without timestamp without location
-                let format = log_format.unwrap_or_else(|| match (show_location, has_timestamp) {
+                let format = log_format.unwrap_or(match (show_location, has_timestamp) {
                     (true, true) => "{t} {L} {s}\n└─ {m} @ {F}:{l}",
                     (true, false) => "{L} {s}\n└─ {m} @ {F}:{l}",
                     (false, true) => "{t} {L} {s}",
