@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added Target for MSPM0L (#1789) 
 - Support for EFM32 Happy Gecko MCUs (#1747)
 - Added RA4M1 series target, R7FA4M1AB. (#1706)
 - Support for NXP i.MX RT500 series chips: MIMXRT595S, MIMXRT555S, MIMXRT533S (#1642)
