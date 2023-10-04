@@ -14,7 +14,28 @@ use anyhow::{Context, Result};
 use crate::{println_test_status, TestTracker};
 
 pub fn test_register_access(tracker: &TestTracker, core: &mut Core) -> Result<()> {
-    println_test_status!(tracker, blue, "Testing register access...");
+    test_register_read(tracker, core)?;
+    test_register_write(tracker, core)?;
+
+    Ok(())
+}
+
+pub fn test_register_read(tracker: &TestTracker, core: &mut Core) -> Result<()> {
+    println_test_status!(tracker, blue, "Testing register read...");
+
+    let register = core.registers();
+
+    for register in register.core_registers() {
+        let _: u64 = core
+            .read_core_reg(register)
+            .with_context(|| format!("Failed to read register {}", register.name()))?;
+    }
+
+    Ok(())
+}
+
+pub fn test_register_write(tracker: &TestTracker, core: &mut Core) -> Result<()> {
+    println_test_status!(tracker, blue, "Testing register write...");
 
     let register = core.registers();
 
@@ -24,6 +45,14 @@ pub fn test_register_access(tracker: &TestTracker, core: &mut Core) -> Result<()
         // Skip register x0 on RISCV chips, it's hardwired to zero.
         if core.architecture() == Architecture::Riscv && register.name() == "x0" {
             continue;
+        }
+
+        if core.architecture() == Architecture::Arm {
+            match register.name() {
+                // TODO: Should this be a part of `core_registers`?
+                "EXTRA" => continue,
+                _ => (),
+            }
         }
 
         // Write new value

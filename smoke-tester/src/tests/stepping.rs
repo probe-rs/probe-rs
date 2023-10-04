@@ -27,15 +27,13 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
         anyhow::bail!("No RAM configured for core!");
     };
 
-    core.halt(Duration::from_millis(100))?;
+    core.reset_and_halt(Duration::from_millis(100))?;
 
     let code_load_address = ram_region.range.start;
 
     core.write_8(code_load_address, TEST_CODE)?;
 
     let registers = core.registers();
-
-    core.write_core_reg(core.program_counter(), code_load_address)?;
 
     let core_information = core.step()?;
 
