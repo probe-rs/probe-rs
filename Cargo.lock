@@ -49,7 +49,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a30b2e23b9e17a9f90641c7ab1549cd9b44f296d3ccbf309d2863cfe398a0cb"
 dependencies = [
  "cpp_demangle",
- "fallible-iterator 0.3.0",
+ "fallible-iterator",
  "gimli 0.28.0",
  "memmap2",
  "object 0.32.1",
@@ -788,8 +788,9 @@ checksum = "c2e66c9d817f1720209181c316d28635c050fa304f9c79e47a520882661b7308"
 
 [[package]]
 name = "defmt-decoder"
-version = "0.3.8"
-source = "git+https://github.com/knurling-rs/defmt/?branch=decoder-add-formatter#da03a4b9e4a2e9c28f83f7075f5d06283eafa88b"
+version = "0.3.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5cc8c950fcaefdfce609498332b92c9b235c431d85c6c71908142cbb55709140"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -797,10 +798,10 @@ dependencies = [
  "defmt-json-schema",
  "defmt-parser",
  "dissimilar",
- "gimli 0.27.3",
+ "gimli 0.28.0",
  "log",
  "nom",
- "object 0.31.1",
+ "object 0.32.1",
  "ryu",
  "serde",
  "serde_json",
@@ -810,7 +811,8 @@ dependencies = [
 [[package]]
 name = "defmt-json-schema"
 version = "0.1.0"
-source = "git+https://github.com/knurling-rs/defmt/?branch=decoder-add-formatter#da03a4b9e4a2e9c28f83f7075f5d06283eafa88b"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96b04d228e57a61cf385d86bc8980bb41b47c6fc0eace90592668df97b2dad6a"
 dependencies = [
  "log",
  "serde",
@@ -819,7 +821,8 @@ dependencies = [
 [[package]]
 name = "defmt-parser"
 version = "0.3.3"
-source = "git+https://github.com/knurling-rs/defmt/?branch=decoder-add-formatter#da03a4b9e4a2e9c28f83f7075f5d06283eafa88b"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "269924c02afd7f94bc4cecbfa5c379f6ffcf9766b3408fe63d22c728654eccd0"
 dependencies = [
  "thiserror",
 ]
@@ -1046,12 +1049,6 @@ dependencies = [
 
 [[package]]
 name = "fallible-iterator"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4443176a9f2c162692bd3d352d745ef9413eec5782a80d8fd6f8a1ac692a07f7"
-
-[[package]]
-name = "fallible-iterator"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2acce4a10f12dc2fb14a218589d4f1f62ef011b2d0cc4b3cb1bba8e94da14649"
@@ -1273,10 +1270,6 @@ name = "gimli"
 version = "0.27.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6c80984affa11d98d1b88b66ac8853f143217b399d3c74116778ff8fdb4ed2e"
-dependencies = [
- "fallible-iterator 0.2.0",
- "stable_deref_trait",
-]
 
 [[package]]
 name = "gimli"
@@ -1284,7 +1277,7 @@ version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6fb8d784f27acf97159b40fc4db5ecd8aa23b9ad5ef69cdd136d3bc80665f0c0"
 dependencies = [
- "fallible-iterator 0.3.0",
+ "fallible-iterator",
  "stable_deref_trait",
 ]
 
