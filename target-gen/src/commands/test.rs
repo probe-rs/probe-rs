@@ -4,7 +4,7 @@ use std::path::Path;
 use std::rc::Rc;
 use std::time::Instant;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use colored::Colorize;
 use probe_rs::flashing::erase_all;
 use probe_rs::MemoryInterface;
@@ -25,9 +25,25 @@ pub fn cmd_test(
     definition_export_path: &Path,
     test_start_sector_address: Option<u64>,
 ) -> Result<()> {
+    ensure_is_file(target_artifact)?;
+    ensure_is_file(template_path)?;
+
+    anyhow::ensure!(
+        !definition_export_path.is_dir(),
+        "'{}' is a directory. Please specify a file name.",
+        definition_export_path.display()
+    );
+
     // Generate the binary
     println!("Generating the YAML file in `{definition_export_path:?}`");
-    std::fs::copy(template_path, definition_export_path)?;
+    std::fs::copy(template_path, definition_export_path).with_context(|| {
+        format!(
+            "Failed to copy template file from '{}' to '{}'",
+            template_path.display(),
+            definition_export_path.display()
+        )
+    })?;
+
     cmd_elf(
         target_artifact,
         true,
@@ -188,6 +204,16 @@ pub fn cmd_test(
         .core(0)?
         .read_8(test_start_sector_address + 1, &mut readback)?;
     assert_eq!(readback, data);
+
+    Ok(())
+}
+
+fn ensure_is_file(file_path: &Path) -> Result<()> {
+    anyhow::ensure!(
+        file_path.is_file(),
+        "'{}' does not seem to be a valid file.",
+        file_path.display()
+    );
 
     Ok(())
 }
