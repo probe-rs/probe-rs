@@ -1,11 +1,12 @@
 //! WCH-LinkRV probe support.
 //!
 //! The protocl is mostly undocumented, and is changing between firmware versions.
-//! For more details see: <https://github.com/ch32-rs/wlink/blob/main/protocol.md>
+//! For more details see: <https://github.com/ch32-rs/wlink>
 
 use core::fmt;
 use std::{thread::sleep, time::Duration};
 
+use probe_rs_target::ScanChainElement;
 use rusb::{Device, UsbContext};
 
 use crate::{
@@ -18,6 +19,7 @@ use self::usb_interface::WchLinkUsbDevice;
 use super::JTAGAccess;
 
 mod usb_interface;
+mod commands;
 
 const VENDOR_ID: u16 = 0x1a86;
 const PRODUCT_ID: u16 = 0x8010;
@@ -451,8 +453,18 @@ impl DebugProbe for WchLink {
     ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
         RiscvCommunicationInterface::new(self).map_err(|(probe, err)| (probe.into_probe(), err))
     }
+
+    fn set_scan_chain(
+        &mut self,
+        _scan_chain: Vec<ScanChainElement>,
+    ) -> Result<(), DebugProbeError> {
+        return Err(DebugProbeError::CommandNotSupportedByProbe(
+            "Setting Scan Chain is not supported by WCH-LinkRV",
+        ));
+    }
 }
 
+/// Wrap WCH-Link's USB based DMI access as a fake JTAGAccess
 impl JTAGAccess for WchLink {
     fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
         tracing::debug!("read register 0x{:08x}", address);
@@ -460,6 +472,7 @@ impl JTAGAccess for WchLink {
 
         match address as u8 {
             REG_IDCODE_ADDRESS => {
+                // using hard coded idcode 0x00000001, the same as WCH's official appro
                 tracing::debug!("using hard coded idcode 0x00000001");
                 Ok(0x1_u32.to_le_bytes().to_vec())
             }
