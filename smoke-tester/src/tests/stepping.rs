@@ -34,13 +34,19 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
     core.write_8(code_load_address, TEST_CODE)?;
 
     let registers = core.registers();
+    core.write_core_reg(registers.pc().unwrap(), code_load_address)?;
 
     let core_information = core.step()?;
 
-    assert_eq!(core_information.pc, code_load_address + 2);
+    let expected_pc = code_load_address + 2;
 
     let core_status = core.status()?;
 
+    assert_eq!(
+        core_information.pc, expected_pc,
+        "After stepping, PC should be at 0x{:08x}, but is at 0x{:08x}. Core state: {:?}",
+        expected_pc, core_information.pc, core_status
+    );
     if core_status != CoreStatus::Halted(HaltReason::Step) {
         log::warn!("Unexpected core status: {:?}!", core_status);
     }
