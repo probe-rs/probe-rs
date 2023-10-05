@@ -8,7 +8,7 @@ Please make sure that your submission includes the following:
 - [ ] The code compiles without `errors` or `warnings`.
 - [ ] All tests pass and in the best case you also added new tests.
 - [ ] `cargo fmt` was run.
-- [ ] Add a changelog fragment describing your canges in `changelogs/`. See https://github.com/probe-rs/probe-rs/blob/master/CONTRIBUTING.md#changelog-entries. 
+- [ ] Add a changelog fragment describing your changes in `changelogs/`. See https://github.com/probe-rs/probe-rs/blob/master/CONTRIBUTING.md#changelog-entries. 
 
 ### Nice to have
 
