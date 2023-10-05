@@ -1,4 +1,5 @@
 use std::{
+    error::Error,
     io::Write,
     marker::PhantomData,
     path::Path,
@@ -17,7 +18,7 @@ use anyhow::{Context, Result};
 use colored::Colorize;
 
 use clap::{Arg, Command};
-use probe_rs::{Error, Permissions};
+use probe_rs::Permissions;
 
 mod dut_definition;
 mod macros;
@@ -98,7 +99,9 @@ fn main() -> Result<ExitCode> {
         let memory_regions = target.memory_map.clone();
         let cores = session.list_cores();
 
-        for (core_index, core_type) in cores {
+        // TODO: Handle different cores. Handling multiple cores is not supported properly yet,
+        //       some cores need additional setup so that they can be used, and this is not handled yet.
+        for (core_index, core_type) in cores.into_iter().take(1) {
             println_dut_status!(tracker, blue, "Core {}: {:?}", core_index, core_type);
 
             let target = session.target();
@@ -307,7 +310,9 @@ impl<'a> TestTracker<'a> {
     #[must_use]
     fn run(
         &mut self,
-        handle_dut: impl Fn(&mut TestTracker, &DutDefinition) -> Result<(), Error> + Sync + Send,
+        handle_dut: impl Fn(&mut TestTracker, &DutDefinition) -> Result<(), probe_rs::Error>
+            + Sync
+            + Send,
     ) -> TestReport {
         let mut report = TestReport::new();
 
@@ -340,6 +345,11 @@ impl<'a> TestTracker<'a> {
                     });
 
                     println_dut_status!(self, red, "Error message: {:#}", e);
+
+                    if let Some(source) = e.source() {
+                        println_dut_status!(self, red, " caused by:    {}", source);
+                    }
+
                     println_dut_status!(self, red, "Tests Failed",);
                 }
                 Err(_join_err) => {
@@ -367,8 +377,8 @@ impl<'a> TestTracker<'a> {
 
     fn run_test(
         &mut self,
-        test: impl FnOnce(&TestTracker) -> Result<(), Error>,
-    ) -> Result<(), Error> {
+        test: impl FnOnce(&TestTracker) -> Result<(), probe_rs::Error>,
+    ) -> Result<(), probe_rs::Error> {
         let start_time = Instant::now();
 
         let test_result = test(self);
