@@ -105,8 +105,8 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y libusb-1.0-0-dev libudev-dev
-        # Only install on Ubuntu
-        if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-20.04')
+        # Only install on Linux
+        if: runner.os == 'Linux'
       - uses: swatinem/rust-cache@v2
       - name: Install cargo-dist
         run: ${{ matrix.install_dist }}
