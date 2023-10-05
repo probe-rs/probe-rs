@@ -22,16 +22,36 @@ pub struct ChannelConfig {
 }
 
 #[derive(Debug)]
+pub enum ChannelData {
+    String(Vec<String>),
+    Binary { data: Vec<u8>, is_defmt: bool },
+}
+
+impl ChannelData {
+    pub fn new(format: DataFormat) -> Self {
+        match format {
+            DataFormat::String => Self::String(Vec::new()),
+            DataFormat::BinaryLE | DataFormat::Defmt => Self::Binary {
+                data: Vec::new(),
+                is_defmt: format == DataFormat::Defmt,
+            },
+        }
+    }
+
+    fn clear(&mut self) {
+        match self {
+            Self::String(data) => data.clear(),
+            Self::Binary { data, .. } => data.clear(),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct ChannelState {
     up_channel: Option<UpChannel>,
     down_channel: Option<DownChannel>,
     name: String,
-    format: DataFormat,
-    /// Contains the strings when [ChannelState::format] is [DataFormat::String].
-    messages: Vec<String>,
-    /// When [ChannelState::format] is not [DataFormat::String] this
-    /// contains RTT binary data or binary data in defmt format.
-    data: Vec<u8>,
+    data: ChannelData,
     last_line_done: bool,
     input: String,
     scroll_offset: usize,
@@ -56,27 +76,23 @@ impl ChannelState {
             })
             .unwrap_or_else(|| "Unnamed channel".to_owned());
 
+        let data = ChannelData::new(format);
+
         Self {
             up_channel,
             down_channel,
             name,
-            format,
-            messages: Vec::new(),
             last_line_done: true,
             input: String::new(),
             scroll_offset: 0,
             rtt_buffer: RttBuffer([0u8; 1024]),
             show_timestamps,
-            data: Vec::new(),
+            data,
         }
     }
 
     pub fn has_down_channel(&self) -> bool {
         self.down_channel.is_some()
-    }
-
-    pub fn messages(&self) -> &Vec<String> {
-        &self.messages
     }
 
     pub fn input(&self) -> &str {
@@ -105,22 +121,14 @@ impl ChannelState {
         &self.name
     }
 
-    pub fn format(&self) -> DataFormat {
-        self.format
-    }
-
     pub fn set_scroll_offset(&mut self, value: usize) {
         self.scroll_offset = value;
     }
 
     pub fn clear(&mut self) {
         self.scroll_offset = 0;
-        self.data = Vec::new();
-        self.messages = Vec::new();
-    }
 
-    pub fn data(&self) -> &Vec<u8> {
-        &self.data
+        self.data.clear();
     }
 
     /// Polls the RTT target for new data on the specified channel.
@@ -147,8 +155,8 @@ impl ChannelState {
             return Ok(());
         }
 
-        match self.format {
-            DataFormat::String => {
+        match &mut self.data {
+            ChannelData::String(ref mut messages) => {
                 let now = OffsetDateTime::now_utc().to_offset(offset);
 
                 // First, convert the incoming bytes to UTF8.
@@ -157,7 +165,7 @@ impl ChannelState {
                 // Then pop the last stored line from our line buffer if possible and append our new line.
                 let last_line_done = self.last_line_done;
                 if !last_line_done {
-                    if let Some(last_line) = self.messages.pop() {
+                    if let Some(last_line) = messages.pop() {
                         incoming = last_line + &incoming;
                     }
                 }
@@ -174,9 +182,9 @@ impl ChannelState {
                         let ts = now.format(format_description!(
                             "[hour repr:24]:[minute]:[second].[subsecond digits:3]"
                         ))?;
-                        self.messages.push(format!("{ts} {line}"));
+                        messages.push(format!("{ts} {line}"));
                     } else {
-                        self.messages.push(line.to_string());
+                        messages.push(line.to_string());
                     }
                     if self.scroll_offset != 0 {
                         self.scroll_offset += 1;
@@ -184,8 +192,8 @@ impl ChannelState {
                 }
             }
             // defmt output is later formatted into strings in [App::render].
-            DataFormat::BinaryLE | DataFormat::Defmt => {
-                self.data.extend_from_slice(&self.rtt_buffer.0[..count]);
+            ChannelData::Binary { data, .. } => {
+                data.extend_from_slice(&self.rtt_buffer.0[..count]);
             }
         };
 
@@ -198,6 +206,10 @@ impl ChannelState {
             down_channel.write(core, self.input.as_bytes()).unwrap();
             self.input.clear();
         }
+    }
+
+    pub(crate) fn data(&self) -> &ChannelData {
+        &self.data
     }
 }
 

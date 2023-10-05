@@ -20,7 +20,10 @@ use std::{
     time::Duration,
 };
 
-use super::super::{config, DefmtInformation};
+use super::{
+    super::{config, DefmtInformation},
+    channel::ChannelData,
+};
 
 use super::{
     channel::{ChannelState, DataFormat},
@@ -160,18 +163,14 @@ impl App {
         let input = self.current_tab().input().to_owned();
         let has_down_channel = self.current_tab().has_down_channel();
         let scroll_offset = self.current_tab().scroll_offset();
-        let messages = self.current_tab().messages().clone();
-        let data = self.current_tab().data().clone();
-
-        log::debug!("Data length: {}", data.len());
 
         let tabs = &self.tabs;
         let current_tab = self.current_tab;
         let mut height = 0;
         let mut messages_wrapped: Vec<String> = Vec::new();
 
-        match tabs[current_tab].format() {
-            DataFormat::String => {
+        match tabs[current_tab].data() {
+            ChannelData::String(messages) => {
                 self.terminal
                     .draw(|f| {
                         let constraints = if has_down_channel {
@@ -241,7 +240,9 @@ impl App {
                         .set_scroll_offset(message_num - height.min(message_num));
                 }
             }
-            binle_or_defmt => {
+            ChannelData::Binary { data, is_defmt } => {
+                log::debug!("Data length: {}", data.len());
+
                 self.terminal
                     .draw(|f| {
                         let constraints = if has_down_channel {
@@ -277,8 +278,7 @@ impl App {
                         height = chunks[1].height as usize;
 
                         // probably pretty bad
-                        match binle_or_defmt {
-                            DataFormat::BinaryLE => {
+                        if !is_defmt {
                                 messages_wrapped.push(data.iter().fold(
                                     String::new(),
                                     |mut output, byte| {
@@ -287,7 +287,7 @@ impl App {
                                     },
                                 ));
                             }
-                            DataFormat::Defmt => {
+                            else {
                                 let defmt_state = defmt_state.as_ref().expect(
                                 "Running rtt in defmt mode but table or locations could not be loaded.",
                             );
@@ -318,8 +318,6 @@ impl App {
                                     }
                                 }
                             }
-                            DataFormat::String => unreachable!("You encountered a bug. Please open an issue on Github."),
-                        }
 
                         let message_num = messages_wrapped.len();
 
@@ -362,63 +360,85 @@ impl App {
 
                     if let Some(path) = &self.history_path {
                         for (i, tab) in self.tabs.iter().enumerate() {
-                            if tab.format() == DataFormat::Defmt {
-                                eprintln!("Not saving tab {} as saving defmt logs is currently unsupported.", i + 1);
-                                continue;
-                            }
-
-                            let extension = match tab.format() {
-                                DataFormat::String => "txt",
-                                DataFormat::BinaryLE => "dat",
-                                DataFormat::Defmt => unreachable!(),
-                            };
-
-                            let name = format!("{}_channel{}.{}", self.logname, i, extension);
-                            let sanitize_options = sanitize_filename::Options {
-                                replacement: "_",
-                                ..Default::default()
-                            };
-                            let sanitized_name =
-                                sanitize_filename::sanitize_with_options(name, sanitize_options);
-                            let final_path = path.join(sanitized_name);
-
-                            match std::fs::File::create(&final_path) {
-                                Ok(mut file) => {
-                                    match tab.format() {
-                                        DataFormat::String => {
-                                            for line in tab.messages() {
-                                                match writeln!(file, "{line}") {
-                                                    Ok(_) => {}
-                                                    Err(e) => {
-                                                        eprintln!(
-                                                            "\nError writing log channel {i}: {e}"
-                                                        );
-                                                        continue;
-                                                    }
-                                                }
-                                            }
+                            match tab.data() {
+                                ChannelData::Binary { is_defmt: true, .. } => {
+                                    eprintln!("Not saving tab {} as saving defmt logs is currently unsupported.", i + 1);
+                                    continue;
+                                }
+                                ChannelData::String(data) => {
+                                    let extension = "txt";
+                                    let name =
+                                        format!("{}_channel{}.{}", self.logname, i, extension);
+                                    let sanitize_options = sanitize_filename::Options {
+                                        replacement: "_",
+                                        ..Default::default()
+                                    };
+                                    let sanitized_name = sanitize_filename::sanitize_with_options(
+                                        name,
+                                        sanitize_options,
+                                    );
+                                    let final_path = path.join(sanitized_name);
+                                    let mut file = match std::fs::File::create(&final_path) {
+                                        Ok(file) => file,
+                                        Err(e) => {
+                                            eprintln!(
+                                                "\nCould not create log file {}: {}",
+                                                final_path.display(),
+                                                e
+                                            );
+                                            continue;
                                         }
-                                        DataFormat::BinaryLE => match file.write(tab.data()) {
+                                    };
+                                    for line in data {
+                                        match writeln!(file, "{line}") {
                                             Ok(_) => {}
                                             Err(e) => {
                                                 eprintln!("\nError writing log channel {i}: {e}");
                                                 continue;
                                             }
-                                        },
-                                        DataFormat::Defmt => unreachable!(),
-                                    };
-
+                                        }
+                                    }
                                     // Flush file
                                     if let Err(e) = file.flush() {
                                         eprintln!("Error writing log channel {i}: {e}")
                                     }
                                 }
-                                Err(e) => {
-                                    eprintln!(
-                                        "\nCould not create log file {}: {}",
-                                        final_path.display(),
-                                        e
+
+                                ChannelData::Binary { data, .. } => {
+                                    let extension = "dat";
+                                    let name =
+                                        format!("{}_channel{}.{}", self.logname, i, extension);
+                                    let sanitize_options = sanitize_filename::Options {
+                                        replacement: "_",
+                                        ..Default::default()
+                                    };
+                                    let sanitized_name = sanitize_filename::sanitize_with_options(
+                                        name,
+                                        sanitize_options,
                                     );
+                                    let final_path = path.join(sanitized_name);
+                                    let mut file = match std::fs::File::create(&final_path) {
+                                        Ok(file) => file,
+                                        Err(e) => {
+                                            eprintln!(
+                                                "\nCould not create log file {}: {}",
+                                                final_path.display(),
+                                                e
+                                            );
+                                            continue;
+                                        }
+                                    };
+                                    match file.write(data) {
+                                        Ok(_) => {}
+                                        Err(e) => {
+                                            eprintln!("\nError writing log channel {i}: {e}");
+                                            continue;
+                                        }
+                                    }
+                                    // Flush file
+                                    if let Err(e) = file.flush() {
+                                        eprintln!("Error writing log channel {i}: {e}")
+                                    }
                                 }
                             }
                         }
