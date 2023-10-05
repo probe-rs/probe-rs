@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added getters to registry : `get_targets_by_family_name` & `get_target_and_family_by_name`, change `get_target_by_name`. (#1770)
 - Support for vector catch in Armv8-M targets (#1709)
 - Add log rotation to stop disks from filling. Currently a maximum of 20 logs is kept. (#1780)
+- Allow to customize the defmt log format with `--log-format`. (#1788)
 
 ### Changed
 

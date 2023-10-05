@@ -46,6 +46,9 @@ pub struct Cmd {
 
     #[clap(flatten)]
     pub(crate) format_options: FormatOptions,
+
+    #[clap(long)]
+    pub(crate) log_format: Option<String>,
 }
 
 impl Cmd {
@@ -102,6 +105,7 @@ impl Cmd {
             timestamp_offset,
             self.always_print_stacktrace,
             self.no_location,
+            self.log_format.as_deref(),
         )?;
 
         Ok(())
@@ -112,6 +116,7 @@ impl Cmd {
 /// exception or when ctrl + c is pressed.
 ///
 /// Returns `Ok(())` if the core gracefully halted, or an error.
+#[allow(clippy::too_many_arguments)]
 fn run_loop(
     core: &mut Core<'_>,
     memory_map: &[MemoryRegion],
@@ -120,6 +125,7 @@ fn run_loop(
     timestamp_offset: UtcOffset,
     always_print_stacktrace: bool,
     no_location: bool,
+    log_format: Option<&str>,
 ) -> Result<(), anyhow::Error> {
     let mut rtt_config = rtt::RttConfig::default();
     rtt_config.channels.push(rtt::RttChannelConfig {
@@ -135,6 +141,7 @@ fn run_loop(
         path,
         rtt_config,
         timestamp_offset,
+        log_format,
     );
 
     let exit = Arc::new(AtomicBool::new(false));
@@ -285,6 +292,7 @@ fn attach_to_rtt(
     path: &Path,
     rtt_config: RttConfig,
     timestamp_offset: UtcOffset,
+    log_format: Option<&str>,
 ) -> Option<rtt::RttActiveTarget> {
     for _ in 0..RTT_RETRIES {
         match rtt::attach_to_rtt(
@@ -294,6 +302,7 @@ fn attach_to_rtt(
             path,
             &rtt_config,
             timestamp_offset,
+            log_format,
         ) {
             Ok(target_rtt) => return Some(target_rtt),
             Err(error) => {
