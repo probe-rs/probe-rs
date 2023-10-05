@@ -215,8 +215,7 @@ impl JtagAdapter {
         if cycles == 0 {
             return Ok(());
         }
-        let mut buf = vec![];
-        buf.resize((cycles + 7) / 8, 0);
+        let buf = vec![0; (cycles + 7) / 8];
         self.shift_tms(&buf, cycles)
     }
 

@@ -197,6 +197,8 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
                 // a single probe detected.
                 let list = Probe::list_all();
                 if list.len() > 1 {
+                    use std::fmt::Write;
+
                     return Err(anyhow!("The following devices were found:\n \
                                     {} \
                                         \
@@ -205,7 +207,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
                                     You can also set the [default.probe] config attribute \
                                     (in your Embed.toml) to select which probe to use. \
                                     For usage examples see https://github.com/probe-rs/cargo-embed/blob/master/src/config/default.toml .",
-                                    list.iter().enumerate().map(|(num, link)| format!("[{num}]: {link:?}\n")).collect::<String>()));
+                                    list.iter().enumerate().fold(String::new(), |mut s, (num, link)| { let _ = writeln!(s, "[{num}]: {link:?}"); s })));
                 }
                 Probe::open(
                     list.first()
