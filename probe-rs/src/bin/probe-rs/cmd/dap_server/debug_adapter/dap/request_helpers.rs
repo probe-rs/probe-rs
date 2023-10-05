@@ -13,7 +13,7 @@ use probe_rs::{
     debug::{ColumnType, SourceLocation},
     CoreType, InstructionSet, MemoryInterface,
 };
-use std::time::Duration;
+use std::{fmt::Write, time::Duration};
 
 use super::dap_types::{Breakpoint, InstructionBreakpoint, MemoryAddress};
 
@@ -180,7 +180,10 @@ pub(crate) fn disassemble_target_memory(
                                 instruction.op_str().unwrap_or("")
                             ),
                             instruction_bytes: Some(
-                                instruction.bytes().iter().map(|b| format!("{b:02X} ")).collect(),
+                                instruction.bytes().iter().fold(String::new(),|mut s, b| {
+                                    let _ = write!(s, "{b:02X} ");
+                                    s
+                                }),
                             ),
                             line,
                             location,

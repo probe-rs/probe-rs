@@ -5,6 +5,7 @@ use crate::probe::{DebugProbeInfo, DebugProbeType};
 
 use super::usb_interface::USB_PID_EP_MAP;
 use super::usb_interface::USB_VID;
+use std::fmt::Write;
 use std::time::Duration;
 
 pub(super) fn is_stlink_device<T: UsbContext>(device: &Device<T>) -> bool {
@@ -79,10 +80,13 @@ pub(super) fn read_serial_number<T: rusb::UsbContext>(
         if s.len() < 24 {
             // Some STLink (especially V2) have their serial number stored as a 12 bytes binary string
             // containing non printable characters, so convert to a hex string to make them printable.
-            s.as_bytes().iter().map(|b| format!("{b:02X}")).collect()
+            s.as_bytes().iter().fold(String::new(), |mut s, b| {
+                let _ = write!(s, "{b:02X}"); // Writing a String never fails
+                s
+            })
         } else {
             // Other STlink (especially V2-1) have their serial number already stored as a 24 characters
-            // hex string so they don't need to ba converted
+            // hex string so they don't need to be converted
             s
         }
     })
