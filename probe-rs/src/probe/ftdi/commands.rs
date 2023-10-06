@@ -433,8 +433,7 @@ impl JtagCommand for IdleCommand {
         if self.cycles == 0 {
             return;
         }
-        let mut buf = vec![];
-        buf.resize((self.cycles + 7) / 8, 0);
+        let buf = vec![0; (self.cycles + 7) / 8];
 
         ShiftTmsCommand::new(buf, self.cycles).add_bytes(buffer);
     }

@@ -191,16 +191,17 @@ impl Debugger {
                         {
                             let arguments: RttWindowOpenedArguments =
                                 get_arguments(debug_adapter, &request)?;
-                            debugger_rtt_target
+
+                            if let Some(rtt_channel) = debugger_rtt_target
                                 .debugger_rtt_channels
                                 .iter_mut()
                                 .find(|debugger_rtt_channel| {
                                     debugger_rtt_channel.channel_number == arguments.channel_number
                                 })
-                                .map_or(false, |rtt_channel| {
-                                    rtt_channel.has_client_window = arguments.window_is_open;
-                                    arguments.window_is_open
-                                });
+                            {
+                                rtt_channel.has_client_window = arguments.window_is_open;
+                            }
+
                             debug_adapter
                                 .send_response::<()>(&request, Ok(None))
                                 .map_err(|error| {

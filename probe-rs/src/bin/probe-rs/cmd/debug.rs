@@ -819,7 +819,7 @@ impl DebugCli {
         let mut command_parts = line.split_whitespace();
 
         match command_parts.next() {
-            Some(command) if command == "help" => {
+            Some("help") => {
                 println!("The following commands are available:");
 
                 for cmd in &self.commands {
