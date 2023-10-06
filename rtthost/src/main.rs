@@ -57,7 +57,8 @@ fn parse_scan_region(
 #[derive(Debug, clap::Parser)]
 #[clap(
     name = "rtthost",
-    about = "Host program for debugging microcontrollers using the RTT (real-time transfer) protocol."
+    about = "Host program for debugging microcontrollers using the RTT (real-time transfer) protocol.",
+    version = clap::crate_version!(),
 )]
 struct Opts {
     #[clap(
