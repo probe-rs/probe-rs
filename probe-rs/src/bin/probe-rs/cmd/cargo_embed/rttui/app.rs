@@ -33,8 +33,8 @@ use super::{
 use event::KeyModifiers;
 
 /// App holds the state of the application
-pub struct App {
-    tabs: Vec<ChannelState>,
+pub struct App<'defmt> {
+    tabs: Vec<ChannelState<'defmt>>,
     current_tab: usize,
 
     terminal: Terminal<CrosstermBackend<std::io::Stdout>>,
@@ -52,17 +52,21 @@ fn pull_channel<C: RttChannel>(channels: &mut Vec<C>, n: usize) -> Option<C> {
     c.map(|c| channels.remove(c))
 }
 
-impl App {
+impl<'defmt> App<'defmt> {
     pub fn new(
         mut rtt: probe_rs::rtt::Rtt,
         config: &config::Config,
         logname: String,
+        defmt_state: Option<&'defmt DefmtInformation>,
     ) -> Result<Self> {
         let mut tabs = Vec::new();
         if !config.rtt.channels.is_empty() {
             let mut up_channels = rtt.up_channels().drain().collect::<Vec<_>>();
             let mut down_channels = rtt.down_channels().drain().collect::<Vec<_>>();
+
             for channel in &config.rtt.channels {
+                let stream_decoder = defmt_state.map(|state| state.table.new_stream_decoder());
+
                 tabs.push(ChannelState::new(
                     channel.up.and_then(|up| pull_channel(&mut up_channels, up)),
                     channel
@@ -71,6 +75,8 @@ impl App {
                     channel.name.clone(),
                     config.rtt.show_timestamps,
                     channel.format,
+                    stream_decoder,
+                    defmt_state,
                 ))
             }
         } else {
@@ -84,6 +90,8 @@ impl App {
                     None,
                     config.rtt.show_timestamps,
                     DataFormat::String,
+                    None,
+                    None,
                 ));
             }
 
@@ -94,6 +102,8 @@ impl App {
                     None,
                     config.rtt.show_timestamps,
                     DataFormat::String,
+                    None,
+                    None,
                 ));
             }
         }
@@ -159,7 +169,7 @@ impl App {
         None
     }
 
-    pub fn render(&mut self, defmt_state: Option<&DefmtInformation>) {
+    pub fn render(&mut self) {
         let input = self.current_tab().input().to_owned();
         let has_down_channel = self.current_tab().has_down_channel();
         let scroll_offset = self.current_tab().scroll_offset();
@@ -240,7 +250,7 @@ impl App {
                         .set_scroll_offset(message_num - height.min(message_num));
                 }
             }
-            ChannelData::Binary { data, is_defmt } => {
+            ChannelData::Binary { data } => {
                 log::debug!("Data length: {}", data.len());
 
                 self.terminal
@@ -278,46 +288,80 @@ impl App {
                         height = chunks[1].height as usize;
 
                         // probably pretty bad
-                        if !is_defmt {
-                                messages_wrapped.push(data.iter().fold(
-                                    String::new(),
-                                    |mut output, byte| {
-                                        let _ = write(&mut output, format_args!("{byte:#04x}, "));
-                                        output
-                                    },
-                                ));
-                            }
-                            else {
-                                let defmt_state = defmt_state.as_ref().expect(
-                                "Running rtt in defmt mode but table or locations could not be loaded.",
+                        messages_wrapped.push(data.iter().fold(
+                            String::new(),
+                            |mut output, byte| {
+                                let _ = write(&mut output, format_args!("{byte:#04x}, "));
+                                output
+                            },
+                        ));
+
+                        let message_num = messages_wrapped.len();
+
+                        let messages: Vec<ListItem> = messages_wrapped
+                            .iter()
+                            .skip(message_num - (height + scroll_offset).min(message_num))
+                            .take(height)
+                            .map(|s| ListItem::new(vec![Line::from(Span::raw(s))]))
+                            .collect();
+
+                        let messages = List::new(messages.as_slice())
+                            .block(Block::default().borders(Borders::NONE));
+                        f.render_widget(messages, chunks[1]);
+
+                        if has_down_channel {
+                            let input = Paragraph::new(Line::from(vec![Span::raw(input.clone())]))
+                                .style(Style::default().fg(Color::Yellow).bg(Color::Blue));
+                            f.render_widget(input, chunks[2]);
+                        }
+                    })
+                    .unwrap();
+
+                let message_num = messages_wrapped.len();
+                let scroll_offset = self.tabs[self.current_tab].scroll_offset();
+                if message_num < height + scroll_offset {
+                    self.current_tab_mut()
+                        .set_scroll_offset(message_num - height.min(message_num));
+                }
+            }
+            ChannelData::Defmt { messages, .. } => {
+                log::debug!("Num messages: {}", messages.len());
+
+                self.terminal
+                    .draw(|f| {
+                        let constraints = if has_down_channel {
+                            &[
+                                Constraint::Length(1),
+                                Constraint::Min(1),
+                                Constraint::Length(1),
+                            ][..]
+                        } else {
+                            &[Constraint::Length(1), Constraint::Min(1)][..]
+                        };
+                        let chunks = Layout::default()
+                            .direction(Direction::Vertical)
+                            .margin(0)
+                            .constraints(constraints)
+                            .split(f.size());
+
+                        let tab_names = tabs
+                            .iter()
+                            .map(|t| Line::from(t.name()))
+                            .collect::<Vec<_>>();
+                        let tabs = Tabs::new(tab_names)
+                            .select(current_tab)
+                            .style(Style::default().fg(Color::Black).bg(Color::Yellow))
+                            .highlight_style(
+                                Style::default()
+                                    .fg(Color::Green)
+                                    .bg(Color::Yellow)
+                                    .add_modifier(Modifier::BOLD),
                             );
-                                let mut stream_decoder = defmt_state.table.new_stream_decoder();
-                                stream_decoder.received(&data);
-                                while let Ok(frame) = stream_decoder.decode()
-                                {
-                                    // NOTE(`[]` indexing) all indices in `table` have already been
-                                    // verified to exist in the `locs` map.
-                                    let loc = defmt_state.location_information.as_ref().map(|locs| &locs[&frame.index()]);
+                        f.render_widget(tabs, chunks[0]);
 
-                                    messages_wrapped.push(format!("{}", frame.display(false)));
-                                    if let Some(loc) = loc {
-                                        let relpath = if let Ok(relpath) =
-                                            loc.file.strip_prefix(&std::env::current_dir().unwrap())
-                                        {
-                                            relpath
-                                        } else {
-                                            // not relative; use full path
-                                            &loc.file
-                                        };
+                        height = chunks[1].height as usize;
 
-                                        messages_wrapped.push(format!(
-                                            "└─ {}:{}",
-                                            relpath.display(),
-                                            loc.line
-                                        ));
-                                    }
-                                }
-                            }
+                        messages_wrapped.extend_from_slice(&messages);
 
                         let message_num = messages_wrapped.len();
 
@@ -361,7 +405,7 @@ impl App {
                     if let Some(path) = &self.history_path {
                         for (i, tab) in self.tabs.iter().enumerate() {
                             match tab.data() {
-                                ChannelData::Binary { is_defmt: true, .. } => {
+                                ChannelData::Defmt { .. } => {
                                     eprintln!("Not saving tab {} as saving defmt logs is currently unsupported.", i + 1);
                                     continue;
                                 }
@@ -487,11 +531,11 @@ impl App {
         }
     }
 
-    pub fn current_tab(&self) -> &ChannelState {
+    pub fn current_tab(&self) -> &ChannelState<'defmt> {
         &self.tabs[self.current_tab]
     }
 
-    pub fn current_tab_mut(&mut self) -> &mut ChannelState {
+    pub fn current_tab_mut(&mut self) -> &mut ChannelState<'defmt> {
         &mut self.tabs[self.current_tab]
     }
 

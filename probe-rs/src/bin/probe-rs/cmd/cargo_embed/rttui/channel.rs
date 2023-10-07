@@ -1,9 +1,12 @@
 use std::fmt;
 
+use defmt_decoder::StreamDecoder;
 use probe_rs::rtt::{ChannelMode, DownChannel, UpChannel};
 use probe_rs::Core;
 use time::UtcOffset;
 use time::{macros::format_description, OffsetDateTime};
+
+use crate::cmd::cargo_embed::DefmtInformation;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum DataFormat {
@@ -21,19 +24,44 @@ pub struct ChannelConfig {
     pub format: DataFormat,
 }
 
-#[derive(Debug)]
-pub enum ChannelData {
+pub enum ChannelData<'defmt> {
     String(Vec<String>),
-    Binary { data: Vec<u8>, is_defmt: bool },
+    Binary {
+        data: Vec<u8>,
+    },
+    Defmt {
+        messages: Vec<String>,
+        decoder: Box<dyn StreamDecoder + 'defmt>,
+        information: &'defmt DefmtInformation,
+    },
 }
 
-impl ChannelData {
-    pub fn new(format: DataFormat) -> Self {
+impl std::fmt::Debug for ChannelData<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::String(arg0) => f.debug_tuple("String").field(arg0).finish(),
+            Self::Binary { data } => f.debug_struct("Binary").field("data", data).finish(),
+            Self::Defmt { messages, .. } => f
+                .debug_struct("Defmt")
+                .field("messages", messages)
+                .finish_non_exhaustive(),
+        }
+    }
+}
+
+impl<'defmt> ChannelData<'defmt> {
+    pub fn new(
+        format: DataFormat,
+        decoder: Option<Box<dyn StreamDecoder + 'defmt>>,
+        information: Option<&'defmt DefmtInformation>,
+    ) -> Self {
         match format {
             DataFormat::String => Self::String(Vec::new()),
-            DataFormat::BinaryLE | DataFormat::Defmt => Self::Binary {
-                data: Vec::new(),
-                is_defmt: format == DataFormat::Defmt,
+            DataFormat::BinaryLE => Self::Binary { data: Vec::new() },
+            DataFormat::Defmt => Self::Defmt {
+                messages: Vec::new(),
+                decoder: decoder.unwrap(),
+                information: information.unwrap(),
             },
         }
     }
@@ -42,16 +70,17 @@ impl ChannelData {
         match self {
             Self::String(data) => data.clear(),
             Self::Binary { data, .. } => data.clear(),
+            Self::Defmt { messages, .. } => messages.clear(),
         }
     }
 }
 
 #[derive(Debug)]
-pub struct ChannelState {
+pub struct ChannelState<'defmt> {
     up_channel: Option<UpChannel>,
     down_channel: Option<DownChannel>,
     name: String,
-    data: ChannelData,
+    data: ChannelData<'defmt>,
     last_line_done: bool,
     input: String,
     scroll_offset: usize,
@@ -59,13 +88,15 @@ pub struct ChannelState {
     show_timestamps: bool,
 }
 
-impl ChannelState {
+impl<'defmt> ChannelState<'defmt> {
     pub fn new(
         up_channel: Option<UpChannel>,
         down_channel: Option<DownChannel>,
         name: Option<String>,
         show_timestamps: bool,
         format: DataFormat,
+        decoder: Option<Box<dyn StreamDecoder + 'defmt>>,
+        information: Option<&'defmt DefmtInformation>,
     ) -> Self {
         let name = name
             .or_else(|| up_channel.as_ref().and_then(|up| up.name().map(Into::into)))
@@ -76,7 +107,7 @@ impl ChannelState {
             })
             .unwrap_or_else(|| "Unnamed channel".to_owned());
 
-        let data = ChannelData::new(format);
+        let data = ChannelData::new(format, decoder, information);
 
         Self {
             up_channel,
@@ -191,9 +222,38 @@ impl ChannelState {
                     }
                 }
             }
-            // defmt output is later formatted into strings in [App::render].
             ChannelData::Binary { data, .. } => {
                 data.extend_from_slice(&self.rtt_buffer.0[..count]);
+            }
+            // defmt output is later formatted into strings in [App::render].
+            ChannelData::Defmt {
+                ref mut messages,
+                ref mut decoder,
+                information,
+            } => {
+                decoder.received(&self.rtt_buffer.0[..count]);
+                while let Ok(frame) = decoder.decode() {
+                    // NOTE(`[]` indexing) all indices in `table` have already been
+                    // verified to exist in the `locs` map.
+                    let loc: Option<_> = information
+                        .location_information
+                        .as_ref()
+                        .map(|locs| &locs[&frame.index()]);
+
+                    messages.push(format!("{}", frame.display(false)));
+                    if let Some(loc) = loc {
+                        let relpath = if let Ok(relpath) =
+                            loc.file.strip_prefix(&std::env::current_dir().unwrap())
+                        {
+                            relpath
+                        } else {
+                            // not relative; use full path
+                            &loc.file
+                        };
+
+                        messages.push(format!("└─ {}:{}", relpath.display(), loc.line));
+                    }
+                }
             }
         };
 
