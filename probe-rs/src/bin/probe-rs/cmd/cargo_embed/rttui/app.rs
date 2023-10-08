@@ -66,15 +66,15 @@ impl<'defmt> App<'defmt> {
 
             for channel in &config.rtt.channels {
                 let data = match channel.format {
-                    DataFormat::String => ChannelData::string(),
-                    DataFormat::BinaryLE => ChannelData::binary(),
+                    DataFormat::String => ChannelData::new_string(),
+                    DataFormat::BinaryLE => ChannelData::new_binary(),
                     DataFormat::Defmt => {
                         let defmt_information = defmt_state.ok_or_else(|| {
                             anyhow!("Defmt information required for defmt channel {:?}", channel)
                         })?;
                         let stream_decoder = defmt_information.table.new_stream_decoder();
 
-                        ChannelData::defmt(stream_decoder, defmt_information)
+                        ChannelData::new_defmt(stream_decoder, defmt_information)
                     }
                 };
 
@@ -100,7 +100,7 @@ impl<'defmt> App<'defmt> {
                     pull_channel(&mut down_channels, number),
                     None,
                     config.rtt.show_timestamps,
-                    ChannelData::string(),
+                    ChannelData::new_string(),
                 ));
             }
 
@@ -110,7 +110,7 @@ impl<'defmt> App<'defmt> {
                     Some(channel),
                     None,
                     config.rtt.show_timestamps,
-                    ChannelData::string(),
+                    ChannelData::new_string(),
                 ));
             }
         }
@@ -213,7 +213,7 @@ impl<'defmt> App<'defmt> {
                     }
 
                     ChannelData::Defmt { messages, .. } => {
-                        messages_wrapped.extend_from_slice(&messages);
+                        messages_wrapped.extend_from_slice(messages);
                     }
                 };
 
@@ -426,19 +426,17 @@ fn layout_chunks(
     } else {
         &[Constraint::Length(1), Constraint::Min(1)][..]
     };
-    let chunks = Layout::default()
+    Layout::default()
         .direction(Direction::Vertical)
         .margin(0)
         .constraints(constraints)
-        .split(f.size());
-
-    chunks
+        .split(f.size())
 }
 
 fn render_tabs(
     f: &mut ratatui::Frame<'_, CrosstermBackend<std::io::Stdout>>,
     chunk: ratatui::prelude::Rect,
-    tabs: &Vec<ChannelState<'_>>,
+    tabs: &[ChannelState<'_>],
     current_tab: usize,
 ) {
     let tab_names = tabs

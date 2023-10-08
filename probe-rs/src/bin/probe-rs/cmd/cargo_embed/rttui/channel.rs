@@ -50,11 +50,11 @@ impl std::fmt::Debug for ChannelData<'_> {
 }
 
 impl<'defmt> ChannelData<'defmt> {
-    pub fn string() -> Self {
+    pub fn new_string() -> Self {
         Self::String(Vec::new())
     }
 
-    pub fn defmt(
+    pub fn new_defmt(
         decoder: Box<dyn StreamDecoder + 'defmt>,
         information: &'defmt DefmtInformation,
     ) -> Self {
@@ -65,7 +65,7 @@ impl<'defmt> ChannelData<'defmt> {
         }
     }
 
-    pub fn binary() -> Self {
+    pub fn new_binary() -> Self {
         Self::Binary { data: Vec::new() }
     }
 
