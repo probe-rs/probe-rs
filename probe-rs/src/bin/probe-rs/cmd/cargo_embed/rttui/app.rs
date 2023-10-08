@@ -65,7 +65,18 @@ impl<'defmt> App<'defmt> {
             let mut down_channels = rtt.down_channels().drain().collect::<Vec<_>>();
 
             for channel in &config.rtt.channels {
-                let stream_decoder = defmt_state.map(|state| state.table.new_stream_decoder());
+                let data = match channel.format {
+                    DataFormat::String => ChannelData::string(),
+                    DataFormat::BinaryLE => ChannelData::binary(),
+                    DataFormat::Defmt => {
+                        let defmt_information = defmt_state.ok_or_else(|| {
+                            anyhow!("Defmt information required for defmt channel {:?}", channel)
+                        })?;
+                        let stream_decoder = defmt_information.table.new_stream_decoder();
+
+                        ChannelData::defmt(stream_decoder, defmt_information)
+                    }
+                };
 
                 tabs.push(ChannelState::new(
                     channel.up.and_then(|up| pull_channel(&mut up_channels, up)),
@@ -74,12 +85,12 @@ impl<'defmt> App<'defmt> {
                         .and_then(|down| pull_channel(&mut down_channels, down)),
                     channel.name.clone(),
                     config.rtt.show_timestamps,
-                    channel.format,
-                    stream_decoder,
-                    defmt_state,
+                    data,
                 ))
             }
         } else {
+            // Display all detected channels as String channels
+
             let up_channels = rtt.up_channels().drain();
             let mut down_channels = rtt.down_channels().drain().collect::<Vec<_>>();
             for channel in up_channels {
@@ -89,9 +100,7 @@ impl<'defmt> App<'defmt> {
                     pull_channel(&mut down_channels, number),
                     None,
                     config.rtt.show_timestamps,
-                    DataFormat::String,
-                    None,
-                    None,
+                    ChannelData::string(),
                 ));
             }
 
@@ -101,9 +110,7 @@ impl<'defmt> App<'defmt> {
                     Some(channel),
                     None,
                     config.rtt.show_timestamps,
-                    DataFormat::String,
-                    None,
-                    None,
+                    ChannelData::string(),
                 ));
             }
         }
@@ -179,114 +186,22 @@ impl<'defmt> App<'defmt> {
         let mut height = 0;
         let mut messages_wrapped: Vec<String> = Vec::new();
 
-        match tabs[current_tab].data() {
-            ChannelData::String(messages) => {
-                self.terminal
-                    .draw(|f| {
-                        let constraints = if has_down_channel {
-                            &[
-                                Constraint::Length(1),
-                                Constraint::Min(1),
-                                Constraint::Length(1),
-                            ][..]
-                        } else {
-                            &[Constraint::Length(1), Constraint::Min(1)][..]
-                        };
-                        let chunks = Layout::default()
-                            .direction(Direction::Vertical)
-                            .margin(0)
-                            .constraints(constraints)
-                            .split(f.size());
+        self.terminal
+            .draw(|f| {
+                let chunks = layout_chunks(f, has_down_channel);
+                render_tabs(f, chunks[0], tabs, current_tab);
 
-                        let tab_names = tabs
-                            .iter()
-                            .map(|t| Line::from(t.name()))
-                            .collect::<Vec<_>>();
-                        let tabs = Tabs::new(tab_names)
-                            .select(current_tab)
-                            .style(Style::default().fg(Color::Black).bg(Color::Yellow))
-                            .highlight_style(
-                                Style::default()
-                                    .fg(Color::Green)
-                                    .bg(Color::Yellow)
-                                    .add_modifier(Modifier::BOLD),
-                            );
-                        f.render_widget(tabs, chunks[0]);
-
-                        height = chunks[1].height as usize;
-
+                height = chunks[1].height as usize;
+                match tabs[current_tab].data() {
+                    ChannelData::String(messages) => {
                         // We need to collect to generate message_num :(
                         messages_wrapped = messages
                             .iter()
                             .flat_map(|m| textwrap::wrap(m, chunks[1].width as usize))
                             .map(|s| s.into_owned())
                             .collect();
-
-                        let message_num = messages_wrapped.len();
-
-                        let messages: Vec<ListItem> = messages_wrapped
-                            .iter()
-                            .skip(message_num - (height + scroll_offset).min(message_num))
-                            .take(height)
-                            .map(|s| ListItem::new(vec![Line::from(Span::raw(s))]))
-                            .collect();
-
-                        let messages = List::new(messages.as_slice())
-                            .block(Block::default().borders(Borders::NONE));
-                        f.render_widget(messages, chunks[1]);
-
-                        if has_down_channel {
-                            let input = Paragraph::new(Line::from(vec![Span::raw(input.clone())]))
-                                .style(Style::default().fg(Color::Yellow).bg(Color::Blue));
-                            f.render_widget(input, chunks[2]);
-                        }
-                    })
-                    .unwrap();
-
-                let message_num = messages_wrapped.len();
-                let scroll_offset = self.tabs[self.current_tab].scroll_offset();
-                if message_num < height + scroll_offset {
-                    self.current_tab_mut()
-                        .set_scroll_offset(message_num - height.min(message_num));
-                }
-            }
-            ChannelData::Binary { data } => {
-                log::debug!("Data length: {}", data.len());
-
-                self.terminal
-                    .draw(|f| {
-                        let constraints = if has_down_channel {
-                            &[
-                                Constraint::Length(1),
-                                Constraint::Min(1),
-                                Constraint::Length(1),
-                            ][..]
-                        } else {
-                            &[Constraint::Length(1), Constraint::Min(1)][..]
-                        };
-                        let chunks = Layout::default()
-                            .direction(Direction::Vertical)
-                            .margin(0)
-                            .constraints(constraints)
-                            .split(f.size());
-
-                        let tab_names = tabs
-                            .iter()
-                            .map(|t| Line::from(t.name()))
-                            .collect::<Vec<_>>();
-                        let tabs = Tabs::new(tab_names)
-                            .select(current_tab)
-                            .style(Style::default().fg(Color::Black).bg(Color::Yellow))
-                            .highlight_style(
-                                Style::default()
-                                    .fg(Color::Green)
-                                    .bg(Color::Yellow)
-                                    .add_modifier(Modifier::BOLD),
-                            );
-                        f.render_widget(tabs, chunks[0]);
-
-                        height = chunks[1].height as usize;
-
+                    }
+                    ChannelData::Binary { data } => {
                         // probably pretty bad
                         messages_wrapped.push(data.iter().fold(
                             String::new(),
@@ -295,102 +210,39 @@ impl<'defmt> App<'defmt> {
                                 output
                             },
                         ));
+                    }
 
-                        let message_num = messages_wrapped.len();
-
-                        let messages: Vec<ListItem> = messages_wrapped
-                            .iter()
-                            .skip(message_num - (height + scroll_offset).min(message_num))
-                            .take(height)
-                            .map(|s| ListItem::new(vec![Line::from(Span::raw(s))]))
-                            .collect();
-
-                        let messages = List::new(messages.as_slice())
-                            .block(Block::default().borders(Borders::NONE));
-                        f.render_widget(messages, chunks[1]);
-
-                        if has_down_channel {
-                            let input = Paragraph::new(Line::from(vec![Span::raw(input.clone())]))
-                                .style(Style::default().fg(Color::Yellow).bg(Color::Blue));
-                            f.render_widget(input, chunks[2]);
-                        }
-                    })
-                    .unwrap();
-
-                let message_num = messages_wrapped.len();
-                let scroll_offset = self.tabs[self.current_tab].scroll_offset();
-                if message_num < height + scroll_offset {
-                    self.current_tab_mut()
-                        .set_scroll_offset(message_num - height.min(message_num));
-                }
-            }
-            ChannelData::Defmt { messages, .. } => {
-                log::debug!("Num messages: {}", messages.len());
-
-                self.terminal
-                    .draw(|f| {
-                        let constraints = if has_down_channel {
-                            &[
-                                Constraint::Length(1),
-                                Constraint::Min(1),
-                                Constraint::Length(1),
-                            ][..]
-                        } else {
-                            &[Constraint::Length(1), Constraint::Min(1)][..]
-                        };
-                        let chunks = Layout::default()
-                            .direction(Direction::Vertical)
-                            .margin(0)
-                            .constraints(constraints)
-                            .split(f.size());
-
-                        let tab_names = tabs
-                            .iter()
-                            .map(|t| Line::from(t.name()))
-                            .collect::<Vec<_>>();
-                        let tabs = Tabs::new(tab_names)
-                            .select(current_tab)
-                            .style(Style::default().fg(Color::Black).bg(Color::Yellow))
-                            .highlight_style(
-                                Style::default()
-                                    .fg(Color::Green)
-                                    .bg(Color::Yellow)
-                                    .add_modifier(Modifier::BOLD),
-                            );
-                        f.render_widget(tabs, chunks[0]);
-
-                        height = chunks[1].height as usize;
-
+                    ChannelData::Defmt { messages, .. } => {
                         messages_wrapped.extend_from_slice(&messages);
-
-                        let message_num = messages_wrapped.len();
-
-                        let messages: Vec<ListItem> = messages_wrapped
-                            .iter()
-                            .skip(message_num - (height + scroll_offset).min(message_num))
-                            .take(height)
-                            .map(|s| ListItem::new(vec![Line::from(Span::raw(s))]))
-                            .collect();
-
-                        let messages = List::new(messages.as_slice())
-                            .block(Block::default().borders(Borders::NONE));
-                        f.render_widget(messages, chunks[1]);
-
-                        if has_down_channel {
-                            let input = Paragraph::new(Line::from(vec![Span::raw(input.clone())]))
-                                .style(Style::default().fg(Color::Yellow).bg(Color::Blue));
-                            f.render_widget(input, chunks[2]);
-                        }
-                    })
-                    .unwrap();
+                    }
+                };
 
                 let message_num = messages_wrapped.len();
-                let scroll_offset = self.tabs[self.current_tab].scroll_offset();
-                if message_num < height + scroll_offset {
-                    self.current_tab_mut()
-                        .set_scroll_offset(message_num - height.min(message_num));
+
+                let messages: Vec<ListItem> = messages_wrapped
+                    .iter()
+                    .skip(message_num - (height + scroll_offset).min(message_num))
+                    .take(height)
+                    .map(|s| ListItem::new(vec![Line::from(Span::raw(s))]))
+                    .collect();
+
+                let messages =
+                    List::new(messages.as_slice()).block(Block::default().borders(Borders::NONE));
+                f.render_widget(messages, chunks[1]);
+
+                if has_down_channel {
+                    let input = Paragraph::new(Line::from(vec![Span::raw(input.clone())]))
+                        .style(Style::default().fg(Color::Yellow).bg(Color::Blue));
+                    f.render_widget(input, chunks[2]);
                 }
-            }
+            })
+            .unwrap();
+
+        let message_num = messages_wrapped.len();
+        let scroll_offset = self.tabs[self.current_tab].scroll_offset();
+        if message_num < height + scroll_offset {
+            self.current_tab_mut()
+                .set_scroll_offset(message_num - height.min(message_num));
         }
     }
 
@@ -559,6 +411,50 @@ impl<'defmt> App<'defmt> {
     pub fn push_rtt(&mut self, core: &mut Core) {
         self.tabs[self.current_tab].push_rtt(core);
     }
+}
+
+fn layout_chunks(
+    f: &mut ratatui::Frame<'_, CrosstermBackend<std::io::Stdout>>,
+    has_down_channel: bool,
+) -> std::rc::Rc<[ratatui::prelude::Rect]> {
+    let constraints = if has_down_channel {
+        &[
+            Constraint::Length(1),
+            Constraint::Min(1),
+            Constraint::Length(1),
+        ][..]
+    } else {
+        &[Constraint::Length(1), Constraint::Min(1)][..]
+    };
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(0)
+        .constraints(constraints)
+        .split(f.size());
+
+    chunks
+}
+
+fn render_tabs(
+    f: &mut ratatui::Frame<'_, CrosstermBackend<std::io::Stdout>>,
+    chunk: ratatui::prelude::Rect,
+    tabs: &Vec<ChannelState<'_>>,
+    current_tab: usize,
+) {
+    let tab_names = tabs
+        .iter()
+        .map(|t| Line::from(t.name()))
+        .collect::<Vec<_>>();
+    let tabs = Tabs::new(tab_names)
+        .select(current_tab)
+        .style(Style::default().fg(Color::Black).bg(Color::Yellow))
+        .highlight_style(
+            Style::default()
+                .fg(Color::Green)
+                .bg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        );
+    f.render_widget(tabs, chunk);
 }
 
 pub fn clean_up_terminal() {

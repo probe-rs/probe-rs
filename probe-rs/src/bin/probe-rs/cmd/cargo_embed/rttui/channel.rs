@@ -50,20 +50,23 @@ impl std::fmt::Debug for ChannelData<'_> {
 }
 
 impl<'defmt> ChannelData<'defmt> {
-    pub fn new(
-        format: DataFormat,
-        decoder: Option<Box<dyn StreamDecoder + 'defmt>>,
-        information: Option<&'defmt DefmtInformation>,
+    pub fn string() -> Self {
+        Self::String(Vec::new())
+    }
+
+    pub fn defmt(
+        decoder: Box<dyn StreamDecoder + 'defmt>,
+        information: &'defmt DefmtInformation,
     ) -> Self {
-        match format {
-            DataFormat::String => Self::String(Vec::new()),
-            DataFormat::BinaryLE => Self::Binary { data: Vec::new() },
-            DataFormat::Defmt => Self::Defmt {
-                messages: Vec::new(),
-                decoder: decoder.unwrap(),
-                information: information.unwrap(),
-            },
+        Self::Defmt {
+            messages: Vec::new(),
+            decoder,
+            information,
         }
+    }
+
+    pub fn binary() -> Self {
+        Self::Binary { data: Vec::new() }
     }
 
     fn clear(&mut self) {
@@ -94,9 +97,7 @@ impl<'defmt> ChannelState<'defmt> {
         down_channel: Option<DownChannel>,
         name: Option<String>,
         show_timestamps: bool,
-        format: DataFormat,
-        decoder: Option<Box<dyn StreamDecoder + 'defmt>>,
-        information: Option<&'defmt DefmtInformation>,
+        data: ChannelData<'defmt>,
     ) -> Self {
         let name = name
             .or_else(|| up_channel.as_ref().and_then(|up| up.name().map(Into::into)))
@@ -106,8 +107,6 @@ impl<'defmt> ChannelState<'defmt> {
                     .and_then(|down| down.name().map(Into::into))
             })
             .unwrap_or_else(|| "Unnamed channel".to_owned());
-
-        let data = ChannelData::new(format, decoder, information);
 
         Self {
             up_channel,
