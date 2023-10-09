@@ -288,25 +288,16 @@ impl RttActiveChannel {
                     "{} :",
                     OffsetDateTime::now_utc().to_offset(self.timestamp_offset)
                 )
-                .map_or_else(
-                    |err| log::error!("Failed to format RTT data - {:?}", err),
-                    |r| r,
-                );
+                .expect("Writing to String cannot fail");
             }
-            writeln!(formatted_data, "{line}").map_or_else(
-                |err| log::error!("Failed to format RTT data - {:?}", err),
-                |r| r,
-            );
+            writeln!(formatted_data, "{line}").expect("Writing to String cannot fail");
         }
     }
 
     fn get_binary_le(&self, bytes_read: usize, formatted_data: &mut String) {
         for element in &self.rtt_buffer.0[..bytes_read] {
             // Width of 4 allows 0xFF to be printed.
-            write!(formatted_data, "{element:#04x}").map_or_else(
-                |err| log::error!("Failed to format RTT data - {:?}", err),
-                |r| r,
-            );
+            write!(formatted_data, "{element:#04x}").expect("Writing to String cannot fail");
         }
     }
 
@@ -350,7 +341,7 @@ impl RttActiveChannel {
                             };
                             let s =
                                 formatter.format_to_string(frame, file.as_deref(), line, module);
-                            writeln!(formatted_data, "{s}")?;
+                            writeln!(formatted_data, "{s}").expect("Writing to String cannot fail");
                             continue;
                         }
                         Err(DecodeError::UnexpectedEof) => break,
@@ -370,10 +361,7 @@ impl RttActiveChannel {
                     formatted_data,
                     "Running rtt in defmt mode but table or locations could not be loaded."
                 )
-                .map_or_else(
-                    |err| log::error!("Failed to format RTT data - {:?}", err),
-                    |r| r,
-                );
+                .expect("Writing to String cannot fail");
             }
         }
         Ok(())
