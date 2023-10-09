@@ -41,7 +41,8 @@ Released 2023-10-04
   - Memory regions in target.yaml are now sorted with lowest address first.
   - Use `.pdsc` flash algorithm `RAMstart` field to calculate `load_address` for target yaml.
 - Target definitions can now constrain the RTT automatic scanning ranges to just a subset of all available RAM, to support targets that have large amounts of RAM that would take a long time to scan. (#1738, #1749)
-- `cli`: Output `defmt` logs as colored (#xxxx)
+- `cli`: Output `defmt` logs as colored (#1752)
+- `cli`:  Simplify `RttActiveChannel::get_rtt_data` (#1806) 
 
 ### Fixed
   - Handle non-secure RESET peripheral in nRF5340 `debug_core_unlock` sequence.
