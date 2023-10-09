@@ -28,7 +28,11 @@ pub static USB_PID_EP_MAP: Lazy<HashMap<u16, StLinkInfo>> = Lazy::new(|| {
     m.insert(0x3742, StLinkInfo::new("V2-1", 0x3742, 0x01, 0x81, 0x82)); // No MSD
     m.insert(0x3752, StLinkInfo::new("V2-1", 0x3752, 0x01, 0x81, 0x82)); // Unproven
     m.insert(0x374e, StLinkInfo::new("V3", 0x374e, 0x01, 0x81, 0x82));
-    m.insert(0x374f, StLinkInfo::new("V3", 0x374f, 0x01, 0x81, 0x82)); // Bridge
+    // Bridge
+    m.insert(
+        0x374f,
+        StLinkInfo::new("V3", 0x374f, 0x01, 0x81, 0x82).with_bridge(0x86, 0x06),
+    );
     m.insert(0x3753, StLinkInfo::new("V3", 0x3753, 0x01, 0x81, 0x82)); // 2VCP
     m.insert(0x3754, StLinkInfo::new("V3", 0x3754, 0x01, 0x81, 0x82)); // Without mass storage
     m
@@ -42,6 +46,13 @@ pub struct StLinkInfo {
     ep_out: u8,
     ep_in: u8,
     ep_swo: u8,
+    bridge: Option<Bridge>,
+}
+
+#[derive(Clone, Debug, Default)]
+struct Bridge {
+    ep_in: u8,
+    ep_out: u8,
 }
 
 impl StLinkInfo {
@@ -58,7 +69,13 @@ impl StLinkInfo {
             ep_out,
             ep_in,
             ep_swo,
+            bridge: None,
         }
+    }
+
+    const fn with_bridge(mut self, ep_in: u8, ep_out: u8) -> Self {
+        self.bridge = Some(Bridge { ep_in, ep_out });
+        self
     }
 }
 
@@ -79,6 +96,14 @@ impl std::fmt::Debug for StLinkUsbDevice {
 
 pub(crate) trait StLinkUsb: std::fmt::Debug {
     fn write(
+        &mut self,
+        cmd: &[u8],
+        write_data: &[u8],
+        read_data: &mut [u8],
+        timeout: Duration,
+    ) -> Result<(), StlinkError>;
+
+    fn write_bridge(
         &mut self,
         cmd: &[u8],
         write_data: &[u8],
@@ -156,15 +181,11 @@ impl StLinkUsbDevice {
 
         Ok(usb_stlink)
     }
-}
 
-impl StLinkUsb for StLinkUsbDevice {
-    /// Writes to the out EP and reads back data if needed.
-    /// First the `cmd` is sent.
-    /// In a second step `write_data` is transmitted.
-    /// And lastly, data will be read back until `read_data` is filled.
-    fn write(
+    fn write_ep(
         &mut self,
+        ep_out: u8,
+        ep_in: u8,
         cmd: &[u8],
         write_data: &[u8],
         read_data: &mut [u8],
@@ -180,9 +201,6 @@ impl StLinkUsb for StLinkUsbDevice {
         assert!(cmd.len() <= CMD_LEN);
         let mut padded_cmd = [0u8; CMD_LEN];
         padded_cmd[..cmd.len()].copy_from_slice(cmd);
-
-        let ep_out = self.info.ep_out;
-        let ep_in = self.info.ep_in;
 
         let written_bytes = self.interface.write_bulk(ep_out, &padded_cmd, timeout)?;
 
@@ -238,6 +256,49 @@ impl StLinkUsb for StLinkUsbDevice {
             }
         }
         Ok(())
+    }
+}
+
+impl StLinkUsb for StLinkUsbDevice {
+    /// Writes to the out EP and reads back data if needed.
+    /// First the `cmd` is sent.
+    /// In a second step `write_data` is transmitted.
+    /// And lastly, data will be read back until `read_data` is filled.
+    fn write(
+        &mut self,
+        cmd: &[u8],
+        write_data: &[u8],
+        read_data: &mut [u8],
+        timeout: Duration,
+    ) -> Result<(), StlinkError> {
+        self.write_ep(
+            self.info.ep_out,
+            self.info.ep_in,
+            cmd,
+            write_data,
+            read_data,
+            timeout,
+        )
+    }
+
+    fn write_bridge(
+        &mut self,
+        cmd: &[u8],
+        write_data: &[u8],
+        read_data: &mut [u8],
+        timeout: Duration,
+    ) -> Result<(), StlinkError> {
+        let Some(bridge) = &self.info.bridge else {
+            return Err(StlinkError::BridgeNotSupported);
+        };
+        self.write_ep(
+            bridge.ep_out,
+            bridge.ep_in,
+            cmd,
+            write_data,
+            read_data,
+            timeout,
+        )
     }
 
     fn read_swo(

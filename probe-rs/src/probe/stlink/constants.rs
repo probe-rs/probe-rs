@@ -11,6 +11,7 @@ pub mod commands {
     pub const GET_CURRENT_MODE: u8 = 0xf5;
     pub const GET_TARGET_VOLTAGE: u8 = 0xf7;
     pub const GET_VERSION_EXT: u8 = 0xfb;
+    pub const BRIDGE_COMMAND: u8 = 0xfc;
 
     // Commands to exit other modes.
     pub const DFU_EXIT: u8 = 0x07;
@@ -66,6 +67,12 @@ pub mod commands {
     // Parameters for SET_COM_FREQ and GET_COM_FREQ.
     pub const JTAG_STLINK_SWD_COM: u8 = 0x00;
     pub const JTAG_STLINK_JTAG_COM: u8 = 0x01;
+
+    // Bridge commands.
+    pub const BRIDGE_CLOSE: u8 = 0x01;
+    pub const BRIDGE_INIT_GPIO: u8 = 0x60;
+    pub const BRIDGE_WRITE_GPIO: u8 = 0x61;
+    pub const BRIDGE_READ_GPIO: u8 = 0x62;
 }
 
 /// STLink status codes and messages.
@@ -136,6 +143,43 @@ impl From<u8> for Status {
             0x20 => SwoNotAvailable,
             0x41 => JtagFreqNotSupported,
             0x42 => JtagUnknownCmd,
+            v => Other(v),
+        }
+    }
+}
+
+/// STLink Bridge status codes and messages.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum BridgeStatus {
+    Ok,
+    SpiError,
+    I2CError,
+    CanError,
+    InitNotDone,
+    UnknownCommand,
+    BadParameter,
+    Timeout,
+    Abort,
+    InternalError,
+    Busy,
+    Other(u8),
+}
+
+impl From<u8> for BridgeStatus {
+    fn from(value: u8) -> BridgeStatus {
+        use BridgeStatus::*;
+        match value {
+            0x80 => Ok,
+            0x02 => SpiError,
+            0x03 => I2CError,
+            0x04 => CanError,
+            0x07 => InitNotDone,
+            0x08 => UnknownCommand,
+            0x09 => BadParameter,
+            0x0a => Timeout,
+            0x0b => Abort,
+            0x0c => InternalError,
+            0x0d => Busy,
             v => Other(v),
         }
     }

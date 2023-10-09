@@ -103,6 +103,7 @@ pub use crate::error::Error;
 pub use crate::memory::MemoryInterface;
 pub use crate::probe::{
     list::Lister, AttachMethod, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-    Probe, ProbeCreationError, ProbeDriver, WireProtocol,
+    GpioConfig, GpioInterface, GpioMode, GpioNumber, GpioOutputType, GpioPull, GpioSpeed, Probe,
+    ProbeCreationError, ProbeDriver, WireProtocol,
 };
 pub use crate::session::{Permissions, Session};
