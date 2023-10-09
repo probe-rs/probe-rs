@@ -247,73 +247,26 @@ impl RttActiveChannel {
         core: &mut Core,
         defmt_state: Option<&DefmtState>,
     ) -> Result<Option<(String, String)>, anyhow::Error> {
-        self
-            .poll_rtt(core)
+        self.poll_rtt(core)
             .map(|bytes_read| {
                 Ok((
                     self.number().unwrap_or(0).to_string(), // If the Channel doesn't have a number, then send the output to channel 0
                     {
                         let mut formatted_data = String::new();
                         match self.data_format {
-                            DataFormat::String => {
-                                let incoming = String::from_utf8_lossy(&self.rtt_buffer.0[..bytes_read]).to_string();
-                                for (_i, line) in incoming.split_terminator('\n').enumerate() {
-                                    if self.show_timestamps {
-                                        write!(formatted_data, "{} :", OffsetDateTime::now_utc().to_offset(self.timestamp_offset))
-                                            .map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
-                                    }
-                                    writeln!(formatted_data, "{line}").map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
-                                }
-                            }
+                            DataFormat::String => self.get_string(bytes_read, &mut formatted_data),
                             DataFormat::BinaryLE => {
-                                for element in &self.rtt_buffer.0[..bytes_read] {
-                                    // Width of 4 allows 0xFF to be printed.
-                                    write!(formatted_data, "{element:#04x}").map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
-                                }
+                                self.get_binary_le(bytes_read, &mut formatted_data)
                             }
                             DataFormat::Defmt => {
-                                match defmt_state {
-                                    Some(DefmtState { table, locs, formatter }) => {
-                                        let mut stream_decoder = table.new_stream_decoder();
-                                        stream_decoder.received(&self.rtt_buffer.0[..bytes_read]);
-                                        loop {
-                                            match stream_decoder.decode() {
-                                                Ok(frame) => {
-                                                    let loc = locs.as_ref().and_then(|locs| locs.get(&frame.index()) );
-                                                    let (file, line, module) = if let Some(loc) = loc {
-                                                        let relpath = loc.file.strip_prefix(&std::env::current_dir().unwrap()).unwrap_or(&loc.file);
-                                                        (Some(relpath.display().to_string()), Some(loc.line.try_into().unwrap()), Some(loc.module.as_str()))
-                                                    } else {
-                                                        (Some(format!("└─ <invalid location: defmt frame-index: {}>", frame.index())), None, None)
-                                                    };
-                                                    let s = formatter.format_to_string(frame, file.as_deref(), line, module);
-                                                    writeln!(formatted_data, "{s}")?;
-                                                    continue;
-                                                },
-                                                Err(DecodeError::UnexpectedEof) => break,
-                                                Err(DecodeError::Malformed) => match table.encoding().can_recover() {
-                                                    // If recovery is impossible, break out of here and propagate the error.
-                                                    false => {
-                                                        return Err(anyhow!("Unrecoverable error while decoding Defmt data and some data may have been lost: {:?}", DecodeError::Malformed));
-                                                    },
-                                                    // If recovery is possible, skip the current frame and continue with new data.
-                                                    true => continue,
-                                                },
-
-                                            }
-                                        }
-                                    }
-                                    None => {
-                                        write!(formatted_data, "Running rtt in defmt mode but table or locations could not be loaded.")
-                                            .map_or_else(|err| log::error!("Failed to format RTT data - {:?}", err), |r|r);
-                                    }
-                                }
+                                self.get_defmt(bytes_read, &mut formatted_data, defmt_state)?
                             }
                         };
                         formatted_data
-                    }
+                    },
                 ))
-            }).transpose()
+            })
+            .transpose()
     }
 
     pub fn _push_rtt(&mut self, core: &mut Core) {
@@ -324,6 +277,106 @@ impl RttActiveChannel {
                 .unwrap();
             self._input_data.clear();
         }
+    }
+
+    fn get_string(&self, bytes_read: usize, formatted_data: &mut String) {
+        let incoming = String::from_utf8_lossy(&self.rtt_buffer.0[..bytes_read]).to_string();
+        for (_i, line) in incoming.split_terminator('\n').enumerate() {
+            if self.show_timestamps {
+                write!(
+                    formatted_data,
+                    "{} :",
+                    OffsetDateTime::now_utc().to_offset(self.timestamp_offset)
+                )
+                .map_or_else(
+                    |err| log::error!("Failed to format RTT data - {:?}", err),
+                    |r| r,
+                );
+            }
+            writeln!(formatted_data, "{line}").map_or_else(
+                |err| log::error!("Failed to format RTT data - {:?}", err),
+                |r| r,
+            );
+        }
+    }
+
+    fn get_binary_le(&self, bytes_read: usize, formatted_data: &mut String) {
+        for element in &self.rtt_buffer.0[..bytes_read] {
+            // Width of 4 allows 0xFF to be printed.
+            write!(formatted_data, "{element:#04x}").map_or_else(
+                |err| log::error!("Failed to format RTT data - {:?}", err),
+                |r| r,
+            );
+        }
+    }
+
+    fn get_defmt(
+        &self,
+        bytes_read: usize,
+        formatted_data: &mut String,
+        defmt_state: Option<&DefmtState>,
+    ) -> anyhow::Result<()> {
+        match defmt_state {
+            Some(DefmtState {
+                table,
+                locs,
+                formatter,
+            }) => {
+                let mut stream_decoder = table.new_stream_decoder();
+                stream_decoder.received(&self.rtt_buffer.0[..bytes_read]);
+                loop {
+                    match stream_decoder.decode() {
+                        Ok(frame) => {
+                            let loc = locs.as_ref().and_then(|locs| locs.get(&frame.index()));
+                            let (file, line, module) = if let Some(loc) = loc {
+                                let relpath = loc
+                                    .file
+                                    .strip_prefix(&std::env::current_dir().unwrap())
+                                    .unwrap_or(&loc.file);
+                                (
+                                    Some(relpath.display().to_string()),
+                                    Some(loc.line.try_into().unwrap()),
+                                    Some(loc.module.as_str()),
+                                )
+                            } else {
+                                (
+                                    Some(format!(
+                                        "└─ <invalid location: defmt frame-index: {}>",
+                                        frame.index()
+                                    )),
+                                    None,
+                                    None,
+                                )
+                            };
+                            let s =
+                                formatter.format_to_string(frame, file.as_deref(), line, module);
+                            writeln!(formatted_data, "{s}")?;
+                            continue;
+                        }
+                        Err(DecodeError::UnexpectedEof) => break,
+                        Err(DecodeError::Malformed) => match table.encoding().can_recover() {
+                            // If recovery is impossible, break out of here and propagate the error.
+                            false => {
+                                return Err(anyhow!("Unrecoverable error while decoding Defmt data and some data may have been lost: {:?}", DecodeError::Malformed));
+                            }
+                            // If recovery is possible, skip the current frame and continue with new data.
+                            true => continue,
+                        },
+                    }
+                }
+            }
+            None => {
+                write!(
+                    formatted_data,
+                    "Running rtt in defmt mode but table or locations could not be loaded."
+                )
+                .map_or_else(
+                    |err| log::error!("Failed to format RTT data - {:?}", err),
+                    |r| r,
+                );
+            }
+        }
+        Ok(())
     }
 }
 
