@@ -1439,9 +1439,12 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     }
                 },
                 Err(debug_error) => {
-                    // An Err() result indicates something happened that we have not accounted for, and therefore will propogate upwards to terminate the process in an ungraceful manner. This should be treated as a bug.
-                    tracing::error!("Encounted an unexpected error while resolving the location for variable {:?}. Please report this as a bug", child_variable.name);
-                    return Err(debug_error);
+                    // An Err() result indicates something happened that we have not accounted for. Currently, we support all known location expressions for non-optimized code.
+                    child_variable.memory_location = VariableLocation::Error(
+                        "Unsupported location expression while resolving the location. Please reduce optimization levels in your build profile.".to_string()
+                    );
+                    tracing::debug!("Encounted an unsupported location expression while resolving the location for variable {:?}. Please reduce optimization levels in your build profile. : {debug_error:?}", child_variable.name);
+                    return Ok(());
                 }
             }
         }

@@ -5,6 +5,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Do not crash and, and improve error message when unwinding memory location for optimized binaries. (#1807)
+
 ## [0.21.0]
 
 Released 2023-10-04
