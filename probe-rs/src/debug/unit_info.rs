@@ -1443,7 +1443,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     child_variable.memory_location = VariableLocation::Error(
                         "Unsupported location expression while resolving the location. Please reduce optimization levels in your build profile.".to_string()
                     );
-                    tracing::debug!("Encounted an unsupported location expression while resolving the location for variable {:?}. Please reduce optimization levels in your build profile. : {debug_error:?}", child_variable.name);
+                    tracing::debug!("Encountered an unsupported location expression while resolving the location for variable {:?}. Please reduce optimization levels in your build profile. : {debug_error:?}", child_variable.name);
                     return Ok(());
                 }
             }
