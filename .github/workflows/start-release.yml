@@ -19,12 +19,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: chainguard-dev/actions/setup-gitsign@main
-      - name: install cargo-release
-        run: |
-          curl -LsSf https://github.com/crate-ci/cargo-release/releases/download/v0.24.0/cargo-release-v0.24.0-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ${CARGO_HOME:-~/.cargo}/bin
+      - name: Install cargo-release
+        uses: taiki-e/install-action@v1
+        with:
+          tool: cargo-release
       - name: Install semver checks
-        run: |
-          curl -LsSf https://github.com/obi1kenobi/cargo-semver-checks/releases/download/v0.22.1/cargo-semver-checks-x86_64-unknown-linux-musl.tar.gz | tar xzf - -C ${CARGO_HOME:-~/.cargo}/bin
+        uses: taiki-e/install-action@v1
+        with:
+          tool: cargo-release
       - name: Install libusb, libudev (linux)
         run: |
           sudo apt update
@@ -53,6 +55,13 @@ jobs:
         run: |
           git checkout -b ${BRANCH_NAME}
 
+      - name: Update changelog
+        run: |
+          cargo xtask assemble-changelog #{{ inputs.version }}
+          git add CHANGELOG.md
+          git rm changelog/*.md
+          git commit -m "Update changelog"
+
       - name: Bump versions
         run: |
           cargo release version ${{ inputs.version }} --execute --verbose --no-confirm --allow-branch ${BRANCH_NAME}
@@ -61,6 +70,7 @@ jobs:
           cargo release commit --execute --verbose --no-confirm --sign-commit
         env:
           SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+
 
       - name: Check semver compliance
         run: |
@@ -75,6 +85,7 @@ jobs:
           gh pr create -B master -H "${BRANCH_NAME}"\
             --title "Release ${{ inputs.version }}"\
             --label "release"\
+            --label "skip-changelog"\
             --body "Released packages are:
 
           - probe-rs
