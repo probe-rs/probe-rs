@@ -230,7 +230,7 @@ fn assemble_changelog(
     version: String,
     force: bool,
     no_cleanup: bool,
-    commit: bool,
+    create_commit: bool,
 ) -> anyhow::Result<()> {
     if !force && !is_changelog_unchanged() {
         anyhow::bail!("Changelog has local changes, aborting.\nUse --force to override.");
@@ -307,7 +307,7 @@ fn assemble_changelog(
         cmd!(shell, "git rm {FRAGMENTS_DIR}/*.md").run()?;
         cmd!(
             shell,
-            r#"git commit -m "Update changelog for version {version}""#
+            "git commit -m 'Update changelog for version {version}'"
         )
         .run()?;
     }
