@@ -240,8 +240,6 @@ fn assemble_changelog(version: String, force: bool, no_cleanup: bool) -> anyhow:
 
     let mut writer = Cursor::new(&mut assembled);
 
-    changelog_header(&mut writer, &version)?;
-
     let mut fragments_found = false;
 
     for category in CHANGELOG_CATEGORIES {
@@ -293,15 +291,6 @@ fn assemble_changelog(version: String, force: bool, no_cleanup: bool) -> anyhow:
             }
         }
     }
-
-    Ok(())
-}
-
-fn changelog_header(mut writer: impl std::io::Write, version: &str) -> Result<(), std::io::Error> {
-    writeln!(writer, "## [{}]", version)?;
-    writeln!(writer)?;
-    writeln!(writer, "Released {}", chrono::Utc::now().format("%Y-%m-%d"))?;
-    writeln!(writer)?;
 
     Ok(())
 }
