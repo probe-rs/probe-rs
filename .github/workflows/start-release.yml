@@ -57,10 +57,7 @@ jobs:
 
       - name: Update changelog
         run: |
-          cargo xtask assemble-changelog #{{ inputs.version }}
-          git add CHANGELOG.md
-          git rm changelog/*.md
-          git commit -m "Update changelog"
+          cargo xtask assemble-changelog --commit #{{ inputs.version }}
 
       - name: Bump versions
         run: |

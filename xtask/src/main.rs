@@ -40,6 +40,8 @@ enum Cli {
         /// Do not delete used fragments
         #[arg(long)]
         no_cleanup: bool,
+        #[arg(long)]
+        commit: bool,
     },
     CheckChangelog,
 }
@@ -52,7 +54,8 @@ fn try_main() -> anyhow::Result<()> {
             version,
             force,
             no_cleanup,
-        } => assemble_changelog(version, force, no_cleanup)?,
+            commit,
+        } => assemble_changelog(version, force, no_cleanup, commit)?,
         Cli::CheckChangelog => check_changelog()?,
     }
 
@@ -223,7 +226,12 @@ fn is_changelog_unchanged() -> bool {
         .is_ok()
 }
 
-fn assemble_changelog(version: String, force: bool, no_cleanup: bool) -> anyhow::Result<()> {
+fn assemble_changelog(
+    version: String,
+    force: bool,
+    no_cleanup: bool,
+    commit: bool,
+) -> anyhow::Result<()> {
     if !force && !is_changelog_unchanged() {
         anyhow::bail!("Changelog has local changes, aborting.\nUse --force to override.");
     }
@@ -290,6 +298,18 @@ fn assemble_changelog(version: String, force: bool, no_cleanup: bool) -> anyhow:
                 std::fs::remove_file(fragment_path)?;
             }
         }
+    }
+
+    let shell = Shell::new()?;
+
+    if create_commit && !no_cleanup {
+        cmd!(shell, "git add {CHANGELOG_FILE}").run()?;
+        cmd!(shell, "git rm {FRAGMENTS_DIR}/*.md").run()?;
+        cmd!(
+            shell,
+            r#"git commit -m "Update changelog for version {version}""#
+        )
+        .run()?;
     }
 
     Ok(())
