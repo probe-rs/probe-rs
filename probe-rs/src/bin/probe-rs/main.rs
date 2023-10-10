@@ -76,7 +76,9 @@ enum Subcommand {
     #[clap(name = "itm")]
     Itm(cmd::itm::Cmd),
     Chip(cmd::chip::Cmd),
+    /// Measure the throughput of the selected debug probe
     Benchmark(cmd::benchmark::Cmd),
+    /// Profile on-target runtime performance of target ELF program
     Profile(cmd::profile::Cmd),
     Read(cmd::read::Cmd),
     Write(cmd::write::Cmd),
