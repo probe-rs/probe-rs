@@ -40,6 +40,8 @@ enum Cli {
         /// Do not delete used fragments
         #[arg(long)]
         no_cleanup: bool,
+        #[arg(long)]
+        commit: bool,
     },
     CheckChangelog,
 }
@@ -52,7 +54,8 @@ fn try_main() -> anyhow::Result<()> {
             version,
             force,
             no_cleanup,
-        } => assemble_changelog(version, force, no_cleanup)?,
+            commit,
+        } => assemble_changelog(version, force, no_cleanup, commit)?,
         Cli::CheckChangelog => check_changelog()?,
     }
 
@@ -223,7 +226,12 @@ fn is_changelog_unchanged() -> bool {
         .is_ok()
 }
 
-fn assemble_changelog(version: String, force: bool, no_cleanup: bool) -> anyhow::Result<()> {
+fn assemble_changelog(
+    version: String,
+    force: bool,
+    no_cleanup: bool,
+    create_commit: bool,
+) -> anyhow::Result<()> {
     if !force && !is_changelog_unchanged() {
         anyhow::bail!("Changelog has local changes, aborting.\nUse --force to override.");
     }
@@ -239,8 +247,6 @@ fn assemble_changelog(version: String, force: bool, no_cleanup: bool) -> anyhow:
     let mut assembled = Vec::new();
 
     let mut writer = Cursor::new(&mut assembled);
-
-    changelog_header(&mut writer, &version)?;
 
     let mut fragments_found = false;
 
@@ -294,14 +300,17 @@ fn assemble_changelog(version: String, force: bool, no_cleanup: bool) -> anyhow:
         }
     }
 
-    Ok(())
-}
+    let shell = Shell::new()?;
 
-fn changelog_header(mut writer: impl std::io::Write, version: &str) -> Result<(), std::io::Error> {
-    writeln!(writer, "## [{}]", version)?;
-    writeln!(writer)?;
-    writeln!(writer, "Released {}", chrono::Utc::now().format("%Y-%m-%d"))?;
-    writeln!(writer)?;
+    if create_commit && !no_cleanup {
+        cmd!(shell, "git add {CHANGELOG_FILE}").run()?;
+        cmd!(shell, "git rm {FRAGMENTS_DIR}/*.md").run()?;
+        cmd!(
+            shell,
+            "git commit -m 'Update changelog for version {version}'"
+        )
+        .run()?;
+    }
 
     Ok(())
 }
