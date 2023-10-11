@@ -22,11 +22,7 @@ jobs:
       - name: Install cargo-release
         uses: taiki-e/install-action@v1
         with:
-          tool: cargo-release
-      - name: Install semver checks
-        uses: taiki-e/install-action@v1
-        with:
-          tool: cargo-release
+          tool: cargo-release,cargo-semver-checks
       - name: Install libusb, libudev (linux)
         run: |
           sudo apt update
@@ -57,7 +53,7 @@ jobs:
 
       - name: Update changelog
         run: |
-          cargo xtask assemble-changelog --commit #{{ inputs.version }}
+          cargo xtask assemble-changelog --commit ${{ inputs.version }}
 
       - name: Bump versions
         run: |
