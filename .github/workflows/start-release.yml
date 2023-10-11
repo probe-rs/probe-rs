@@ -54,6 +54,8 @@ jobs:
       - name: Update changelog
         run: |
           cargo xtask assemble-changelog --commit ${{ inputs.version }}
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
 
       - name: Bump versions
         run: |
