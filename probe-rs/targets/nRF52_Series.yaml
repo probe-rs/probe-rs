@@ -19,6 +19,13 @@ variants:
           is_boot_memory: false
           cores:
             - main
+      - !Ram
+          range:
+            start: 0x00800000
+            end: 0x00806000
+          is_boot_memory: false
+          cores:
+            - main
       - !Nvm
           range:
             start: 0x0
@@ -48,6 +55,13 @@ variants:
           range:
             start: 0x20000000
             end: 0x20006000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          range:
+            start: 0x00800000
+            end: 0x00806000
           is_boot_memory: false
           cores:
             - main
@@ -83,6 +97,13 @@ variants:
           is_boot_memory: false
           cores:
             - main
+      - !Ram
+          range:
+            start: 0x00800000
+            end: 0x00806000
+          is_boot_memory: false
+          cores:
+            - main
       - !Nvm
           range:
             start: 0x0
@@ -112,6 +133,13 @@ variants:
           range:
             start: 0x20000000
             end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          range:
+            start: 0x00800000
+            end: 0x00808000
           is_boot_memory: false
           cores:
             - main
@@ -147,6 +175,13 @@ variants:
           is_boot_memory: false
           cores:
             - main
+      - !Ram
+          range:
+            start: 0x00800000
+            end: 0x00810000
+          is_boot_memory: false
+          cores:
+            - main
       - !Nvm
           range:
             start: 0x0
@@ -176,6 +211,13 @@ variants:
           range:
             start: 0x20000000
             end: 0x20008000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          range:
+            start: 0x00800000
+            end: 0x00808000
           is_boot_memory: false
           cores:
             - main
@@ -211,6 +253,13 @@ variants:
           is_boot_memory: false
           cores:
             - main
+      - !Ram
+          range:
+            start: 0x00800000
+            end: 0x00820000
+          is_boot_memory: false
+          cores:
+            - main
       - !Nvm
           range:
             start: 0x0
@@ -240,6 +289,13 @@ variants:
           range:
             start: 0x20000000
             end: 0x20040000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Ram
+          range:
+            start: 0x00800000
+            end: 0x00840000
           is_boot_memory: false
           cores:
             - main
