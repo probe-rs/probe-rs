@@ -15,6 +15,9 @@ Released 2023-10-12
 
  - `cli`: Simplify `RttActiveChannel::get_rtt_data` (#1806)
 
+### Fixed
+- debug: Do not crash and, and improve error message when unwinding memory location for optimized binaries. (#1810)
+
 ## [0.21.0]
 
 Released 2023-10-04
