@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.1]
+
+Released 2023-10-12
+
 ## [0.21.0]
 
 Released 2023-10-04
@@ -988,7 +992,8 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.21.0...master
+[unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.21.1...master
+[0.21.1]: https://github.com/probe-rs/probe-rs/compare/v0.21.0...v0.21.1
 [0.21.0]: https://github.com/probe-rs/probe-rs/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/probe-rs/probe-rs/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/probe-rs/probe-rs/compare/v0.18.0...v0.19.0
