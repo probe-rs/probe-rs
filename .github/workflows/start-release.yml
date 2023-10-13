@@ -18,9 +18,14 @@ jobs:
       BRANCH_NAME: release/${{ inputs.version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The custom token is needed so that this workflow can trigger
+          # another workflow. By default, pushing tags from inside a workflow
+          # does not trigger other workflows, but using a custom PAT it does.
+          token: ${{ secrets.GH_PAT }}
       - uses: chainguard-dev/actions/setup-gitsign@main
       - name: Install cargo-release
-        uses: taiki-e/install-action@v1
+        uses: taiki-e/install-action@v2
         with:
           tool: cargo-release,cargo-semver-checks
       - name: Install libusb, libudev (linux)
