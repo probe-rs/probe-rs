@@ -133,12 +133,20 @@ fn get_changelog_fragments(fragments_dir: &Path) -> Result<FragmentList> {
                 .to_str()
                 .with_context(|| format!("Filename {path:?} is not valid UTF-8"))?;
 
-            if let Some((category, _)) = filename.split_once('-') {
-                if let Some(fragments) = list.fragments.get_mut(category) {
-                    fragments.push(path);
-                } else {
-                    list.invalid_fragments.push(path);
-                }
+            if filename == (".gitkeep") {
+                continue;
+            }
+
+            let Some((category, _)) = filename.split_once('-') else {
+                // Unable to split filename
+                list.invalid_fragments.push(path);
+                continue;
+            };
+
+            if let Some(fragments) = list.fragments.get_mut(category) {
+                fragments.push(path);
+            } else {
+                list.invalid_fragments.push(path);
             }
         }
     }
@@ -168,26 +176,30 @@ fn check_changelog() -> Result<()> {
 
     let pr_number = std::env::var("PR").unwrap_or_default();
 
-    let info_json = cmd!(sh, "gh pr view {pr_number} --json labels,files").read()?;
+    if let Ok(info_json) = cmd!(sh, "gh pr view {pr_number} --json labels,files").read() {
+        let info: PrInfo = serde_json::from_str(&info_json)?;
 
-    let info: PrInfo = serde_json::from_str(&info_json)?;
+        if info.labels.iter().any(|l| l.name == "skip-changelog") {
+            println!("Skipping changelog check because of 'skip-changelog' label");
+            return Ok(());
+        }
 
-    if info.labels.iter().any(|l| l.name == "skip-changelog") {
-        println!("Skipping changelog check because of 'skip-changelog' label");
-        return Ok(());
-    }
-
-    if !info
-        .files
-        .iter()
-        .any(|f| f.path.starts_with(FRAGMENTS_DIR) && f.additions > 0)
-    {
-        anyhow::bail!(
-            "No new changelog fragments detected, and 'skip-changelog' label not applied."
-        );
+        if !info
+            .files
+            .iter()
+            .any(|f| f.path.starts_with(FRAGMENTS_DIR) && f.additions > 0)
+        {
+            anyhow::bail!(
+                "No new changelog fragments detected, and 'skip-changelog' label not applied."
+            );
+        }
+    } else {
+        println!("Unable to fetch PR info, just checking fragments.");
     }
 
     check_fragments()?;
+
+    println!("Everything looks good 👍");
 
     Ok(())
 }
@@ -215,7 +227,21 @@ fn check_fragments() -> Result<(), anyhow::Error> {
         println!();
 
         anyhow::bail!("Invalid changelog fragments found");
-    };
+    } else {
+        println!("Found {} valid fragments:", fragment_list.fragments.len());
+        for (group, fragments) in fragment_list.fragments.iter() {
+            if fragments.is_empty() {
+                continue;
+            }
+
+            println!(" {group}:");
+
+            for fragment in fragments {
+                println!("  - {}", fragment.display());
+            }
+        }
+    }
+
     Ok(())
 }
 
@@ -247,6 +273,10 @@ fn assemble_changelog(
     let mut assembled = Vec::new();
 
     let mut writer = Cursor::new(&mut assembled);
+
+    // Add an unreleased header, this will get picked up by `cargo-release` later.
+    writeln!(writer, "## [Unreleased]")?;
+    writeln!(writer)?;
 
     let mut fragments_found = false;
 
