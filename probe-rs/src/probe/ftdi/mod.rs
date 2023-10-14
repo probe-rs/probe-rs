@@ -471,12 +471,6 @@ impl DebugProbe for FtdiProbe {
     }
 
     fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
-        // A scan chain only makes sense in JTAG mode. Quit early if a different protocol is used.
-        if self.active_protocol() != Some(WireProtocol::Jtag) {
-            return Err(DebugProbeError::CommandNotSupportedByProbe(
-                "Setting Scan Chain is only supported in JTAG mode",
-            ));
-        }
         tracing::info!("Setting scan chain to {:?}", scan_chain);
         self.scan_chain = Some(scan_chain);
         Ok(())
