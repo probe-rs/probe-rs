@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use super::{ArmDebugSequence, ArmDebugSequenceError};
 use crate::architecture::arm::communication_interface::DapProbe;
-use crate::architecture::arm::ArmError;
 use crate::architecture::arm::sequences::ArmProbe;
+use crate::architecture::arm::ArmError;
 
 /// Marker struct indicating initialization sequencing for cc13xx_cc26xx family parts.
 pub struct CC13xxCC26xx {}
@@ -254,17 +254,19 @@ impl CC13xxCC26xx {
 }
 
 impl ArmDebugSequence for CC13xxCC26xx {
-
     fn reset_system(
         &self,
-        _interface: &mut dyn ArmProbe,
+        interface: &mut dyn ArmProbe,
         _core_type: crate::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
-
-        // The only reset that is supported is system reset, which will reset the entire chip
-        // losing the JTAG configuration (back in two pin JTAG mode)
-        // TODO! Find a way to reset setup JTAG again after reset
+        // From the TRM https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf, section 7.7.1.3:
+        // "Reset requests from the MCU system is by default set to result in a  system reset when any warm reset source is triggered"
+        // A system reset will reset the debug interface, so we need to bypass this behavior.
+        // We do this by setting the `RESET_REQ` bit in the `RESETCTL` register.
+        const AON_PMCTL_RESETCTL: u64 = 0x4009_0000 + 0x0000_0028;
+        const AON_PMCTL_RESETCTL_MCU_WARM_RESET_REQ: u32 = 0x0000_0010;
+        interface.write_word_32(AON_PMCTL_RESETCTL, AON_PMCTL_RESETCTL_MCU_WARM_RESET_REQ)?;
         Ok(())
     }
 
