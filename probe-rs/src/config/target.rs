@@ -187,11 +187,9 @@ impl Target {
             DebugSequence::Arm(AtSAM::create())
         } else if chip.name.starts_with("XMC4") {
             DebugSequence::Arm(XMC4000::create())
-
         } else if chip.name.starts_with("CC13") || chip.name.starts_with("CC26") {
             tracing::warn!("Using custom sequence for CC13xxCC26xx");
-            debug_sequence = DebugSequence::Arm(CC13xxCC26xx::create());
-
+            DebugSequence::Arm(CC13xxCC26xx::create(chip.name.clone()))
         } else {
             // Default to the architecture of the first core, which is okay if
             // there is no mixed architectures.

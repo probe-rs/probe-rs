@@ -1,0 +1,3 @@
+- Support for Texas Instruments cc13x2_cc26x2 devices (#1729)
+  - Flash algorithms not yet supported
+  - Warm reset support has limited testing on x0 and x4 devices

@@ -14,11 +14,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+    jtag:
+      scan_chain:
+        - name: core0
+          ir_len: 4
+        - name: ICEPICK
+          ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -47,11 +48,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -80,11 +82,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -113,11 +116,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -147,11 +151,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -180,11 +185,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -213,11 +219,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -247,11 +254,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -280,11 +288,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -313,11 +322,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -346,11 +356,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -379,11 +390,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -413,11 +425,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -446,11 +459,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -479,11 +493,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -512,11 +527,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -545,11 +561,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -578,11 +595,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -611,11 +629,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -645,11 +664,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -678,11 +698,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -711,11 +732,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -744,11 +766,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -778,11 +801,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -811,11 +835,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -844,11 +869,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -877,11 +903,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~
@@ -910,11 +937,12 @@ variants:
         psel: 0
         debug_base: ~
         cti_base: ~
-  scan_chain:
-    - name: core0
-      ir_len: 4
-    - name: ICEPICK
-      ir_len: 6
+  jtag:
+    scan_chain:
+      - name: core0
+        ir_len: 4
+      - name: ICEPICK
+        ir_len: 6
   memory_map:
   - !Ram
       name: ~

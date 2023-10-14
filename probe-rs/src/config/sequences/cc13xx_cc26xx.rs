@@ -1,14 +1,17 @@
 //! Sequences for cc13xx_cc26xx devices
-
 use std::sync::Arc;
 
-use super::{ArmDebugSequence, ArmDebugSequenceError};
 use crate::architecture::arm::communication_interface::DapProbe;
-use crate::architecture::arm::sequences::ArmProbe;
-use crate::architecture::arm::ArmError;
+use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
+use crate::architecture::arm::sequences::{ArmDebugSequence, ArmDebugSequenceError};
+use crate::architecture::arm::{ArmError, DpAddress};
+use crate::probe::{DebugProbeError, WireProtocol};
 
 /// Marker struct indicating initialization sequencing for cc13xx_cc26xx family parts.
-pub struct CC13xxCC26xx {}
+#[derive(Debug)]
+pub struct CC13xxCC26xx {
+    target: String,
+}
 
 // IR register values, see https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf table 6-7
 const IR_ROUTER: u64 = 0x02;
@@ -33,8 +36,8 @@ fn set_n_bits(x: u32) -> u64 {
 
 impl CC13xxCC26xx {
     /// Create the sequencer for the cc13xx_cc26xx family of parts.
-    pub fn create() -> Arc<Self> {
-        Arc::new(Self {})
+    pub fn create(target: String) -> Arc<Self> {
+        Arc::new(Self { target })
     }
 
     /// This function implements a Zero Bit Scan(ZBS)
@@ -260,25 +263,61 @@ impl ArmDebugSequence for CC13xxCC26xx {
         _core_type: crate::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        // From the TRM https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf, section 7.7.1.3:
-        // "Reset requests from the MCU system is by default set to result in a  system reset when any warm reset source is triggered"
-        // A system reset will reset the debug interface, so we need to bypass this behavior.
-        // We do this by setting the `RESET_REQ` bit in the `RESETCTL` register.
-        const AON_PMCTL_RESETCTL: u64 = 0x4009_0000 + 0x0000_0028;
-        const AON_PMCTL_RESETCTL_MCU_WARM_RESET_REQ: u32 = 0x0000_0010;
-        interface.write_word_32(AON_PMCTL_RESETCTL, AON_PMCTL_RESETCTL_MCU_WARM_RESET_REQ)?;
+        let mut reset_reg: u64 = 0x0000_010C; // This is the default offset for all devices, x4 has different base addr
+        let reset_val: u32 = 0x0000_0001; // This is the default value to write for all devices
+
+        // The TI family naming scheme is CCxxxN where N is the sub family
+        // The part names always have 4 digits and are prefixed by CC
+        // The devices ending with 4 have a different base address for the AON PMCTL register
+        const SUB_FAMILY_DIGIT_OFFSET: usize = 5;
+        match self.target.chars().nth(SUB_FAMILY_DIGIT_OFFSET).unwrap() {
+            '4' => {
+                // AON_PMCTL_RESETCTL has a different offset for the x4 devices
+                reset_reg += 0x58080000;
+            }
+            '2' | '1' | '0' => {
+                // AON_PMCTL_RESETCTL
+                // From the TRM https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf, section 7.7.1.3:
+                // "Reset requests from the MCU system is by default set to result in a  system reset when any warm reset source is triggered"
+                // A system reset will reset the debug interface, so we need to bypass this behavior.
+                // We do this by setting the `RESET_REQ` bit in the `RESETCTL` register.
+                reset_reg += 0x4008_2000;
+            }
+            _ => {
+                return Err(ArmDebugSequenceError::SequenceSpecific(
+                    "Unknown device family".into(),
+                )
+                .into());
+            }
+        }
+
+        interface.write_word_32(reset_reg, reset_val)?;
         Ok(())
     }
 
-    fn debug_port_setup(&self, interface: &mut dyn DapProbe) -> Result<(), ArmError> {
+    fn debug_port_setup(
+        &self,
+        interface: &mut dyn DapProbe,
+        _dp: DpAddress,
+    ) -> Result<(), ArmError> {
         // Ensure current debug interface is in reset state.
         interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
 
         match interface.active_protocol() {
-            Some(crate::WireProtocol::Jtag) => {
+            Some(WireProtocol::Jtag) => {
                 let mut jtag_state: JtagState = JtagState::RunTestIdle;
-                // Enter Run-Test-Idle state
-                interface.jtag_sequence(1, false, 0x00)?;
+
+                // Enter Run-Test-Idle state, quit early if jtag_sequence is not supported
+                if let Err(DebugProbeError::CommandNotSupportedByProbe("jtag_sequence")) =
+                    interface.jtag_sequence(1, false, 0x00)
+                {
+                    tracing::error!(
+                        "TI devices require a probe that supports the jtag_sequence command"
+                    );
+                    return Err(ArmError::Probe(
+                        DebugProbeError::CommandNotSupportedByProbe("jtag_sequence"),
+                    ));
+                }
                 // Load IR with BYPASS
                 self.shift_ir(
                     interface,
@@ -338,7 +377,7 @@ impl ArmDebugSequence for CC13xxCC26xx {
                 // 2. Entering test logic reset disconects the CPU again
                 interface.configure_jtag()?;
             }
-            Some(crate::WireProtocol::Swd) => {
+            Some(WireProtocol::Swd) => {
                 return Err(ArmDebugSequenceError::SequenceSpecific(
                     "The cc13xx_cc26xx family doesn't support SWD".into(),
                 )
