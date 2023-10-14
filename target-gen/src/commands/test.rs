@@ -57,52 +57,52 @@ pub fn cmd_test(
         println!("{error}");
     }
 
-    let file = File::open(Path::new(definition_export_path))?;
-    let file_contents = std::fs::read_to_string(definition_export_path)?;
+    let mut file = File::open(Path::new(definition_export_path))?;
     probe_rs::config::add_target_from_yaml(file)?;
-    let family: ChipFamily = serde_yaml::from_str(&file_contents)?;
+    file = File::open(Path::new(definition_export_path))?;
+    let family: ChipFamily = serde_yaml::from_reader(file)?;
     for chip in family.variants.iter() {
         let target = chip.name.clone();
         // We need to get the chip name so that special startup procedure can be used. (matched on name)
         let mut session =
             probe_rs::Session::auto_attach(target, Permissions::new().allow_erase_all())?;
 
-        // Register callback to update the progress.
-        let t = Rc::new(RefCell::new(Instant::now()));
-        let progress = FlashProgress::new(move |event| {
-            use probe_rs::flashing::ProgressEvent::*;
-            match event {
-                StartedProgramming => {
-                    let mut t = t.borrow_mut();
-                    *t = Instant::now();
-                }
-                StartedErasing => {
-                    let mut t = t.borrow_mut();
-                    *t = Instant::now();
-                }
-                FailedErasing => {
-                    println!("Failed erasing in {:?}", t.borrow().elapsed());
-                }
-                FinishedErasing => {
-                    println!("Finished erasing in {:?}", t.borrow().elapsed());
-                }
-                FailedProgramming => {
-                    println!("Failed programming in {:?}", t.borrow().elapsed());
-                }
-                FinishedProgramming => {
-                    println!("Finished programming in {:?}", t.borrow().elapsed());
-                }
-                DiagnosticMessage { message } => {
-                    let prefix = "Message".yellow();
-                    if message.ends_with('\n') {
-                        print!("{prefix}: {message}");
-                    } else {
-                        println!("{prefix}: {message}");
+            // Register callback to update the progress.
+            let t = Rc::new(RefCell::new(Instant::now()));
+            let progress = FlashProgress::new(move |event| {
+                use probe_rs::flashing::ProgressEvent;
+                match event {
+                    ProgressEvent::StartedProgramming { .. } => {
+                        let mut t = t.borrow_mut();
+                        *t = Instant::now();
                     }
+                    ProgressEvent::StartedErasing => {
+                        let mut t = t.borrow_mut();
+                        *t = Instant::now();
+                    }
+                    ProgressEvent::FailedErasing => {
+                        println!("Failed erasing in {:?}", t.borrow().elapsed());
+                    }
+                    ProgressEvent::FinishedErasing => {
+                        println!("Finished erasing in {:?}", t.borrow().elapsed());
+                    }
+                    ProgressEvent::FailedProgramming => {
+                        println!("Failed programming in {:?}", t.borrow().elapsed());
+                    }
+                    ProgressEvent::FinishedProgramming => {
+                        println!("Finished programming in {:?}", t.borrow().elapsed());
+                    }
+                    ProgressEvent::DiagnosticMessage { message } => {
+                        let prefix = "Message".yellow();
+                        if message.ends_with('\n') {
+                            print!("{prefix}: {message}");
+                        } else {
+                            println!("{prefix}: {message}");
+                        }
+                    }
+                    _ => (),
                 }
-                _ => (),
-            }
-        });
+            });
 
         let flash_algorithm = if let Some(test_start_sector_address) = test_start_sector_address {
             let predicate = |x: &&RawFlashAlgorithm| {

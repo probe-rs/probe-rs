@@ -1,36 +1,5 @@
 //! Debug sequences to operate special requirements ARM targets.
 
-<<<<<<< HEAD:probe-rs/src/architecture/arm/sequences.rs
-||||||| parent of d9f90e2e (Initial pass at cc13xx_cc26xx support within probe-rs):probe-rs/src/architecture/arm/sequences/mod.rs
-pub mod atsame5x;
-pub mod efm32xg2;
-pub mod infineon;
-mod nrf;
-pub mod nrf52;
-pub mod nrf53;
-pub mod nrf91;
-pub mod nxp_armv7m;
-pub mod nxp_armv8m;
-pub mod stm32_armv6;
-pub mod stm32_armv7;
-pub mod stm32h7;
-
-=======
-pub mod atsame5x;
-pub mod cc13xx_cc26xx;
-pub mod efm32xg2;
-pub mod infineon;
-mod nrf;
-pub mod nrf52;
-pub mod nrf53;
-pub mod nrf91;
-pub mod nxp_armv7m;
-pub mod nxp_armv8m;
-pub mod stm32_armv6;
-pub mod stm32_armv7;
-pub mod stm32h7;
-
->>>>>>> d9f90e2e (Initial pass at cc13xx_cc26xx support within probe-rs):probe-rs/src/architecture/arm/sequences/mod.rs
 use std::{
     error::Error,
     fmt::Debug,
