@@ -12,7 +12,7 @@ variants:
         core_access_options: !Arm
           ap: 0
           psel: 0
-    # Connecting to the second core is not supported yeti in probe-rs,
+    # Connecting to the second core is not supported yet in probe-rs,
     # and trying to connect to it will result in an error.
     #- name: cm33_core1
     #  type: armv8m
