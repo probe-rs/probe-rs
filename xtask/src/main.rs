@@ -40,6 +40,8 @@ enum Cli {
         /// Do not delete used fragments
         #[arg(long)]
         no_cleanup: bool,
+        #[arg(long)]
+        commit: bool,
     },
     CheckChangelog,
 }
@@ -52,7 +54,8 @@ fn try_main() -> anyhow::Result<()> {
             version,
             force,
             no_cleanup,
-        } => assemble_changelog(version, force, no_cleanup)?,
+            commit,
+        } => assemble_changelog(version, force, no_cleanup, commit)?,
         Cli::CheckChangelog => check_changelog()?,
     }
 
@@ -130,12 +133,20 @@ fn get_changelog_fragments(fragments_dir: &Path) -> Result<FragmentList> {
                 .to_str()
                 .with_context(|| format!("Filename {path:?} is not valid UTF-8"))?;
 
-            if let Some((category, _)) = filename.split_once('-') {
-                if let Some(fragments) = list.fragments.get_mut(category) {
-                    fragments.push(path);
-                } else {
-                    list.invalid_fragments.push(path);
-                }
+            if filename == (".gitkeep") {
+                continue;
+            }
+
+            let Some((category, _)) = filename.split_once('-') else {
+                // Unable to split filename
+                list.invalid_fragments.push(path);
+                continue;
+            };
+
+            if let Some(fragments) = list.fragments.get_mut(category) {
+                fragments.push(path);
+            } else {
+                list.invalid_fragments.push(path);
             }
         }
     }
@@ -165,26 +176,30 @@ fn check_changelog() -> Result<()> {
 
     let pr_number = std::env::var("PR").unwrap_or_default();
 
-    let info_json = cmd!(sh, "gh pr view {pr_number} --json labels,files").read()?;
+    if let Ok(info_json) = cmd!(sh, "gh pr view {pr_number} --json labels,files").read() {
+        let info: PrInfo = serde_json::from_str(&info_json)?;
 
-    let info: PrInfo = serde_json::from_str(&info_json)?;
+        if info.labels.iter().any(|l| l.name == "skip-changelog") {
+            println!("Skipping changelog check because of 'skip-changelog' label");
+            return Ok(());
+        }
 
-    if info.labels.iter().any(|l| l.name == "skip-changelog") {
-        println!("Skipping changelog check because of 'skip-changelog' label");
-        return Ok(());
-    }
-
-    if !info
-        .files
-        .iter()
-        .any(|f| f.path.starts_with(FRAGMENTS_DIR) && f.additions > 0)
-    {
-        anyhow::bail!(
-            "No new changelog fragments detected, and 'skip-changelog' label not applied."
-        );
+        if !info
+            .files
+            .iter()
+            .any(|f| f.path.starts_with(FRAGMENTS_DIR) && f.additions > 0)
+        {
+            anyhow::bail!(
+                "No new changelog fragments detected, and 'skip-changelog' label not applied."
+            );
+        }
+    } else {
+        println!("Unable to fetch PR info, just checking fragments.");
     }
 
     check_fragments()?;
+
+    println!("Everything looks good 👍");
 
     Ok(())
 }
@@ -212,7 +227,21 @@ fn check_fragments() -> Result<(), anyhow::Error> {
         println!();
 
         anyhow::bail!("Invalid changelog fragments found");
-    };
+    } else {
+        println!("Found {} valid fragments:", fragment_list.fragments.len());
+        for (group, fragments) in fragment_list.fragments.iter() {
+            if fragments.is_empty() {
+                continue;
+            }
+
+            println!(" {group}:");
+
+            for fragment in fragments {
+                println!("  - {}", fragment.display());
+            }
+        }
+    }
+
     Ok(())
 }
 
@@ -223,7 +252,12 @@ fn is_changelog_unchanged() -> bool {
         .is_ok()
 }
 
-fn assemble_changelog(version: String, force: bool, no_cleanup: bool) -> anyhow::Result<()> {
+fn assemble_changelog(
+    version: String,
+    force: bool,
+    no_cleanup: bool,
+    create_commit: bool,
+) -> anyhow::Result<()> {
     if !force && !is_changelog_unchanged() {
         anyhow::bail!("Changelog has local changes, aborting.\nUse --force to override.");
     }
@@ -240,7 +274,9 @@ fn assemble_changelog(version: String, force: bool, no_cleanup: bool) -> anyhow:
 
     let mut writer = Cursor::new(&mut assembled);
 
-    changelog_header(&mut writer, &version)?;
+    // Add an unreleased header, this will get picked up by `cargo-release` later.
+    writeln!(writer, "## [Unreleased]")?;
+    writeln!(writer)?;
 
     let mut fragments_found = false;
 
@@ -294,14 +330,17 @@ fn assemble_changelog(version: String, force: bool, no_cleanup: bool) -> anyhow:
         }
     }
 
-    Ok(())
-}
+    let shell = Shell::new()?;
 
-fn changelog_header(mut writer: impl std::io::Write, version: &str) -> Result<(), std::io::Error> {
-    writeln!(writer, "## [{}]", version)?;
-    writeln!(writer)?;
-    writeln!(writer, "Released {}", chrono::Utc::now().format("%Y-%m-%d"))?;
-    writeln!(writer)?;
+    if create_commit && !no_cleanup {
+        cmd!(shell, "git add {CHANGELOG_FILE}").run()?;
+        cmd!(shell, "git rm {FRAGMENTS_DIR}/*.md").run()?;
+        cmd!(
+            shell,
+            "git commit -m 'Update changelog for version {version}'"
+        )
+        .run()?;
+    }
 
     Ok(())
 }

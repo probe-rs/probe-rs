@@ -3,7 +3,20 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.21.1]
+
+Released 2023-10-12
+
+### Added
+
+ - rtthost: Add --version
+
+### Changed
+
+ - `cli`: Simplify `RttActiveChannel::get_rtt_data` (#1806)
+
+### Fixed
+- debug: Do not crash and, and improve error message when unwinding memory location for optimized binaries. (#1810)
 
 ## [0.21.0]
 
@@ -41,7 +54,7 @@ Released 2023-10-04
   - Memory regions in target.yaml are now sorted with lowest address first.
   - Use `.pdsc` flash algorithm `RAMstart` field to calculate `load_address` for target yaml.
 - Target definitions can now constrain the RTT automatic scanning ranges to just a subset of all available RAM, to support targets that have large amounts of RAM that would take a long time to scan. (#1738, #1749)
-- `cli`: Output `defmt` logs as colored (#xxxx)
+- `cli`: Output `defmt` logs as colored (#1752)
 
 ### Fixed
   - Handle non-secure RESET peripheral in nRF5340 `debug_core_unlock` sequence.
@@ -980,7 +993,8 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.21.0...master
+[unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.21.1...master
+[0.21.1]: https://github.com/probe-rs/probe-rs/compare/v0.21.0...v0.21.1
 [0.21.0]: https://github.com/probe-rs/probe-rs/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/probe-rs/probe-rs/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/probe-rs/probe-rs/compare/v0.18.0...v0.19.0
