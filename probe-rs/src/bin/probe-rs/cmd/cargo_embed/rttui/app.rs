@@ -66,7 +66,7 @@ impl<'defmt> App<'defmt> {
 
             for channel in &config.rtt.channels {
                 let data = match channel.format {
-                    DataFormat::String => ChannelData::new_string(),
+                    DataFormat::String => ChannelData::new_string(config.rtt.show_timestamps),
                     DataFormat::BinaryLE => ChannelData::new_binary(),
                     DataFormat::Defmt => {
                         let defmt_information = defmt_state.ok_or_else(|| {
@@ -84,7 +84,6 @@ impl<'defmt> App<'defmt> {
                         .down
                         .and_then(|down| pull_channel(&mut down_channels, down)),
                     channel.name.clone(),
-                    config.rtt.show_timestamps,
                     data,
                 ))
             }
@@ -99,8 +98,7 @@ impl<'defmt> App<'defmt> {
                     Some(channel),
                     pull_channel(&mut down_channels, number),
                     None,
-                    config.rtt.show_timestamps,
-                    ChannelData::new_string(),
+                    ChannelData::new_string(config.rtt.show_timestamps),
                 ));
             }
 
@@ -109,8 +107,7 @@ impl<'defmt> App<'defmt> {
                     None,
                     Some(channel),
                     None,
-                    config.rtt.show_timestamps,
-                    ChannelData::new_string(),
+                    ChannelData::new_string(config.rtt.show_timestamps),
                 ));
             }
         }
@@ -193,7 +190,7 @@ impl<'defmt> App<'defmt> {
 
                 height = chunks[1].height as usize;
                 match tabs[current_tab].data() {
-                    ChannelData::String(messages) => {
+                    ChannelData::String { data: messages, .. } => {
                         // We need to collect to generate message_num :(
                         messages_wrapped = messages
                             .iter()
@@ -261,7 +258,11 @@ impl<'defmt> App<'defmt> {
                                     eprintln!("Not saving tab {} as saving defmt logs is currently unsupported.", i + 1);
                                     continue;
                                 }
-                                ChannelData::String(data) => {
+                                ChannelData::String {
+                                    data,
+                                    last_line_done: _,
+                                    show_timestamps: _,
+                                } => {
                                     let extension = "txt";
                                     let name =
                                         format!("{}_channel{}.{}", self.logname, i, extension);
