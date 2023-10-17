@@ -618,9 +618,9 @@ dependencies = [
 
 [[package]]
 name = "cmsis-pack"
-version = "0.6.2"
+version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cacb9e006b34fae90b17594aef8fcf03e1fe909c00ce021ff0900d98c5cd5bc4"
+checksum = "857cf401f1f645ff5bcfbcb60b6573ed85919ebf20cd3a1851e45933d4bcb817"
 dependencies = [
  "anyhow",
  "bytes",
@@ -2753,6 +2753,7 @@ dependencies = [
  "percent-encoding",
  "pin-project-lite",
  "rustls",
+ "rustls-native-certs",
  "rustls-pemfile",
  "serde",
  "serde_json",
@@ -2876,6 +2877,18 @@ dependencies = [
  "ring",
  "rustls-webpki",
  "sct",
+]
+
+[[package]]
+name = "rustls-native-certs"
+version = "0.6.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a9aace74cb666635c918e9c12bc0d348266037aa8eb599b5cba565709a8dff00"
+dependencies = [
+ "openssl-probe",
+ "rustls-pemfile",
+ "schannel",
+ "security-framework",
 ]
 
 [[package]]
