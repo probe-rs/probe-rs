@@ -59,8 +59,8 @@ libudev1 = { stage = ["run"] }
 libftdi1-dev = '*'
 libftdi1 = { stage = ["run"] }
 
-libusb-1.0-0-dev = '*'
-libusb-1.0-0 = { stage = ["run"] }
+"libusb-1.0-0-dev" = '*'
+"libusb-1.0-0" = { stage = ["run"] }
 
 
 # The profile that 'cargo dist' will build with
