@@ -50,7 +50,7 @@ unix-archive = ".tar.xz"
 # The installers to generate for each app
 installers = ["shell", "powershell"]
 # Publish jobs to run in CI
-pr-run-mode = "upload" # Should be plan, temporarily changed for testing
+pr-run-mode = "upload"  # Should be plan, temporarily changed for testing
 
 [workspace.metadata.dist.dependencies.apt]
 libudev-dev = '*'
@@ -62,6 +62,8 @@ libftdi1 = { stage = ["run"] }
 "libusb-1.0-0-dev" = '*'
 "libusb-1.0-0" = { stage = ["run"] }
 
+[workspace.metadata.dist.dependencies.homebrew]
+libusb = { stage = ["build", "run"]}
 
 # The profile that 'cargo dist' will build with
 [profile.dist]
