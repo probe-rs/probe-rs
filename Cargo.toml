@@ -50,7 +50,7 @@ unix-archive = ".tar.xz"
 # The installers to generate for each app
 installers = ["shell", "powershell"]
 # Publish jobs to run in CI
-pr-run-mode = "plan"
+pr-run-mode = "upload" # Should be plan, temporarily changed for testing
 
 [workspace.metadata.dist.dependencies.apt]
 libudev-dev = '*'
