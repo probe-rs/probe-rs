@@ -39,7 +39,7 @@ targets = [
 # If true, metadata will be collected with `--all-features`. Note that this can't
 # be toggled off if true, if you want to conditionally enable `--all-features` it
 # is recommended to pass `--all-features` on the cmd line instead
-all-features = false
+all-features = true
 # If true, metadata will be collected with `--no-default-features`. The same
 # caveat with `all-features` applies
 no-default-features = false
@@ -75,9 +75,9 @@ notice = "warn"
 # output a note when they are encountered.
 ignore = [
     #"RUSTSEC-0000-0000",
-    "RUSTSEC-2020-0071",
-    "RUSTSEC-2023-0052",
-    "RUSTSEC-2023-0053",
+    #"RUSTSEC-2020-0071",
+    #"RUSTSEC-2023-0052",
+    #"RUSTSEC-2023-0053",
 ]
 # Threshold for security vulnerabilities, any vulnerability with a CVSS score
 # lower than the range specified will be ignored. Note that ignored advisories
@@ -100,7 +100,7 @@ ignore = [
 # https://embarkstudios.github.io/cargo-deny/checks/licenses/cfg.html
 [licenses]
 # The lint level for crates which do not have a detectable license
-unlicensed = "allow"
+unlicensed = "warn"
 # List of explicitly allowed licenses
 # See https://spdx.org/licenses/ for list of possible licenses
 # [possible values: any SPDX 3.11 short identifier (+ optional exception)].
@@ -116,6 +116,7 @@ allow = [
     "MIT-0",
     "MPL-2.0",
     "Unicode-DFS-2016",
+    "OpenSSL",
 ]
 # List of explicitly disallowed licenses
 # See https://spdx.org/licenses/ for list of possible licenses
@@ -153,22 +154,22 @@ exceptions = [
 # Some crates don't have (easily) machine readable licensing information,
 # adding a clarification entry for it allows you to manually specify the
 # licensing information
-#[[licenses.clarify]]
+[[licenses.clarify]]
 # The name of the crate the clarification applies to
-#name = "ring"
+name = "ring"
 # The optional version constraint for the crate
-#version = "*"
+version = "*"
 # The SPDX expression for the license requirements of the crate
-#expression = "MIT AND ISC AND OpenSSL"
+expression = "MIT AND ISC AND OpenSSL"
 # One or more files in the crate's source used as the "source of truth" for
 # the license expression. If the contents match, the clarification will be used
 # when running the license check, otherwise the clarification will be ignored
 # and the crate will be checked normally, which may produce warnings or errors
 # depending on the rest of your configuration
-#license-files = [
-# Each entry is a crate relative path, and the (opaque) hash of its contents
-#{ path = "LICENSE", hash = 0xbd0eed23 }
-#]
+license-files = [
+    # Each entry is a crate relative path, and the (opaque) hash of its contents
+    { path = "LICENSE", hash = 0xbd0eed23 },
+]
 
 [licenses.private]
 # If true, ignores workspace crates that aren't published, or are only
@@ -188,9 +189,9 @@ registries = [
 # https://embarkstudios.github.io/cargo-deny/checks/bans/cfg.html
 [bans]
 # Lint level for when multiple versions of the same crate are detected
-multiple-versions = "warn"
+multiple-versions = "allow"
 # Lint level for when a crate version requirement is `*`
-wildcards = "allow"
+wildcards = "deny"
 # The graph highlighting used when creating dotgraphs for crates
 # with multiple versions
 # * lowest-version - The path to the lowest versioned duplicate is highlighted
@@ -211,6 +212,8 @@ allow = [
 ]
 # List of crates to deny
 deny = [
+    # Linking to openssl is painful
+    { name = "openssl" },
     # Each entry the name of a crate and a version range. If version is
     # not specified, all versions will be matched.
     #{ name = "ansi_term", version = "=0.11.0" },
