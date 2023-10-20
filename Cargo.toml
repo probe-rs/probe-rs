@@ -63,7 +63,7 @@ libftdi1 = { stage = ["run"] }
 "libusb-1.0-0" = { stage = ["run"] }
 
 [workspace.metadata.dist.dependencies.homebrew]
-libusb = { stage = ["build", "run"]}
+libusb = { stage = ["build", "run"], targets = ["x86_64-apple-darwin"] }
 
 # The profile that 'cargo dist' will build with
 [profile.dist]
