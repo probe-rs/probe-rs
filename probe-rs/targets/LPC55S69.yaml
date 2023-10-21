@@ -365,7 +365,7 @@ flash_algorithms:
     flash_properties:
       address_range:
         start: 0x0
-        end: 0x98000
+        end: 0x9d800
       page_size: 0x200
       erased_byte_value: 0xff
       program_page_timeout: 300
