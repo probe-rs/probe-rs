@@ -513,7 +513,7 @@ pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> V
 
         match region.memory_type {
             MemoryType::Ram => {
-                if let Some(MemoryRegion::Ram(existing_region)) = mem_map.iter_mut().find(|existing_region| { 
+                if let Some(MemoryRegion::Ram(existing_region)) = mem_map.iter_mut().find(|existing_region| {
                         matches!(existing_region, MemoryRegion::Ram(ram_region) if ram_region.name == Some(region.name.clone()))
                     })
                 {
