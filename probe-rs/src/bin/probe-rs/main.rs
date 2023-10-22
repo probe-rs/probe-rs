@@ -79,7 +79,7 @@ enum Subcommand {
     /// Measure the throughput of the selected debug probe
     Benchmark(cmd::benchmark::Cmd),
     /// Profile on-target runtime performance of target ELF program
-    Profile(cmd::profile::Cmd),
+    Profile(cmd::profile::ProfileCmd),
     Read(cmd::read::Cmd),
     Write(cmd::write::Cmd),
 }

@@ -25,7 +25,7 @@ use crate::util::flash::run_flash_download;
 use tracing::info;
 
 #[derive(clap::Parser)]
-pub struct Cmd {
+pub struct ProfileCmd {
     #[clap(flatten)]
     run: super::run::Cmd,
     /// Flash the ELF before profiling
@@ -71,7 +71,7 @@ impl core::fmt::Display for ProfileMethod {
     }
 }
 
-impl Cmd {
+impl ProfileCmd {
     pub fn run(self) -> anyhow::Result<()> {
         let (mut session, probe_options) = self.run.probe_options.simple_attach()?;
 
