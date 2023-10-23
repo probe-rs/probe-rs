@@ -31,10 +31,11 @@ pub fn list_cmsisdap_devices() -> Vec<DebugProbeInfo> {
     if let Ok(api) = hidapi::HidApi::new() {
         for device in api.device_list() {
             if let Some(info) = get_cmsisdap_hid_info(device) {
-                if !probes
-                    .iter()
-                    .any(|p| p.vendor_id == info.vendor_id && p.product_id == info.product_id)
-                {
+                if !probes.iter().any(|p| {
+                    p.vendor_id == info.vendor_id
+                        && p.product_id == info.product_id
+                        && p.serial_number == info.serial_number
+                }) {
                     tracing::trace!("Adding new HID-only probe {:?}", info);
                     probes.push(info)
                 } else {
