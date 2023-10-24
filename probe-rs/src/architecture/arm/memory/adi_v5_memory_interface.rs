@@ -213,6 +213,7 @@ where
         //   HPROT[3] == 0   - non-bufferable access
 
         CSW {
+            DbgSwEnable: 0b1,
             HNONSEC: !self.ap_information.supports_hnonsec as u8,
             PROT: 0b10,
             CACHE: 0b11,
