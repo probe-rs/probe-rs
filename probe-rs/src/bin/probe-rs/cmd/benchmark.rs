@@ -249,10 +249,7 @@ impl DataType {
     }
 
     pub fn compare_data(&self) -> Option<usize> {
-        fn compare_data_inner<T: PartialEq>(
-            sample_data: &[T],
-            read_data: &[T],
-        ) -> Option<usize> {
+        fn compare_data_inner<T: PartialEq>(sample_data: &[T], read_data: &[T]) -> Option<usize> {
             let mismatch = sample_data
                 .iter()
                 .zip(read_data.iter())
