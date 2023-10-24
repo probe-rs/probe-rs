@@ -56,11 +56,11 @@ pub struct Cmd {
 }
 
 fn parse_usize(src: &str) -> Result<usize, ParseIntError> {
-    usize::from_str_radix(src, 10)
+    src.parse::<usize>()
 }
 
 fn parse_int(src: &str) -> Result<u32, ParseIntError> {
-    u32::from_str_radix(src, 10)
+    src.parse::<u32>()
 }
 
 fn parse_hex(src: &str) -> Result<u64, ParseIntError> {
@@ -157,7 +157,7 @@ impl Cmd {
     ) -> Result<(), anyhow::Error> {
         let mut probe = common_options.attach_probe()?;
         let target = common_options.get_target_selector()?;
-        Ok(if probe.set_speed(speed).is_ok() {
+        if probe.set_speed(speed).is_ok() {
             let mut session = common_options.attach_session(probe, target)?;
             let mut test = TestData::new(address, word_size, size);
             println!(
@@ -200,10 +200,12 @@ impl Cmd {
                     iterations
                 )
             }
-            println!("");
+            // Insert another blank line to visually seperate results
+            println!();
         } else {
             println!("failed to set speed {}", speed);
-        })
+        }
+        Ok(())
     }
 }
 
@@ -248,8 +250,8 @@ impl DataType {
 
     pub fn compare_data(&self) -> Option<usize> {
         fn compare_data_inner<T: PartialEq>(
-            sample_data: &Vec<T>,
-            read_data: &Vec<T>,
+            sample_data: &[T],
+            read_data: &[T],
         ) -> Option<usize> {
             let mismatch = sample_data
                 .iter()
@@ -349,11 +351,11 @@ impl TestData {
 
 /// Calculate arithmetic mean for data
 fn mean(data: &[f64]) -> Option<f64> {
-    let sum = data.iter().sum::<f64>() as f64;
-    let count = data.len();
+    let sum = data.iter().sum::<f64>();
+    let count = data.len() as f64;
 
     match count {
-        positive if positive > 0 => Some(sum / count as f64),
+        positive if positive > 0.0 => Some(sum / count),
         _ => None,
     }
 }
@@ -365,7 +367,7 @@ fn std_deviation(data: &[f64]) -> Option<f64> {
             let variance = data
                 .iter()
                 .map(|value| {
-                    let diff = data_mean - (*value as f64);
+                    let diff = data_mean - *value;
 
                     diff * diff
                 })
