@@ -7,6 +7,7 @@ use anyhow::Context;
 use probe_rs::MemoryInterface;
 use rand::prelude::*;
 
+use crate::util::common_options::LoadedProbeOptions;
 use crate::util::common_options::ProbeOptions;
 
 const PROBE_SPEEDS: [u32; 10] = [320, 640, 960, 3200, 6400, 9600, 32000, 64000, 96000, 320000];
@@ -97,81 +98,114 @@ impl Cmd {
         } else {
             speeds.extend_from_slice(&PROBE_SPEEDS);
         };
-        let mut first_pass = true;
+        // if we can't print basic info, we're probably not going to succeed with testing so bubble up the error
+        Cmd::print_info(&common_options)?;
 
         for speed in speeds
             .iter()
             .filter(|speed| (self.min_speed..=max_speed).contains(*speed))
         {
             for size in TEST_SIZES {
-                let mut probe = common_options.attach_probe()?;
-
-                let protocol_name = probe
-                    .protocol()
-                    .map(|p| p.to_string())
-                    .unwrap_or_else(|| "not specified".to_string());
-
-                let target = common_options.get_target_selector()?;
-                let probe_name = probe.get_name();
-
-                if probe.set_speed(*speed).is_ok() {
-                    let mut session = common_options.attach_session(probe, target)?;
-                    let target_name = session.target().name.clone();
-                    if first_pass {
-                        first_pass = false;
+                let res = Cmd::benchmark(
+                    &common_options,
+                    *speed,
+                    size,
+                    self.address,
+                    self.word_size,
+                    self.iterations,
+                );
+                match res {
+                    core::result::Result::Ok(_) => {}
+                    core::result::Result::Err(e) => {
                         println!(
-                            "Probe: type {}, protocol {}, target chip {}\n",
-                            probe_name, protocol_name, target_name
-                        );
-                    }
-                    let mut test = TestData::new(self.address, self.word_size, size);
-                    println!(
-                        "Test: Speed {}, Word size {}bit, Data length {} bytes, Number of iterations {}",
-                        speed, self.word_size, test.data_type.size() * size, self.iterations
-                    );
-                    let mut core = session.core(0).context("Failed to attach to core")?;
-                    core.halt(Duration::from_millis(100))
-                        .context("Halting failed")?;
-
-                    let mut read_results = Vec::<f64>::with_capacity(self.iterations);
-                    let mut write_results = Vec::<f64>::with_capacity(self.iterations);
-                    'inner: for _ in 0..self.iterations {
-                        test.block_write(&mut core)?;
-                        test.block_read(&mut core)?;
-                        let verify_success = test.block_verify();
-                        if verify_success {
-                            read_results.push(test.read_throughput);
-                            write_results.push(test.write_throughput);
-                        } else {
-                            eprintln!("Verification failed.");
-                            break 'inner;
-                        }
-                    }
-                    println!(
-                        "Results: Read: {:.2} bytes/s Std Dev {:.2}, Write: {:.2} bytes/s Std Dev {:.2}",
-                        mean(&read_results).expect("invalid mean"),
-                        std_deviation(&read_results).expect("invalid std deviation"),
-                        mean(&write_results).expect("invalid mean"),
-                        std_deviation(&write_results).expect("invalid std deviation")
-                    );
-                    if read_results.len() != self.iterations
-                        || write_results.len() != self.iterations
-                    {
-                        println!(
-                            "Warning: {} reads and {} writes successful (out of {} iterations)",
-                            read_results.len(),
-                            write_results.len(),
-                            self.iterations
+                            "Test failed for speed {} size {} word_size {}bit - {}",
+                            speed, size, self.word_size, e
                         )
                     }
-                    println!("");
-                } else {
-                    println!("failed to set speed {}", speed);
                 }
             }
         }
 
         Ok(())
+    }
+
+    /// Print probe and target info
+    fn print_info(common_options: &LoadedProbeOptions) -> anyhow::Result<()> {
+        let probe = common_options.attach_probe()?;
+        let protocol_name = probe
+            .protocol()
+            .map(|p| p.to_string())
+            .unwrap_or_else(|| "not specified".to_string());
+
+        let target = common_options.get_target_selector()?;
+        let probe_name = probe.get_name();
+        let session = common_options.attach_session(probe, target)?;
+        let target_name = session.target().name.clone();
+        println!(
+            "Probe: Probe type {}, debug interface {}, target chip {}\n",
+            probe_name, protocol_name, target_name
+        );
+        Ok(())
+    }
+
+    /// Run a specific benchmark
+    fn benchmark(
+        common_options: &LoadedProbeOptions,
+        speed: u32,
+        size: usize,
+        address: u64,
+        word_size: u32,
+        iterations: usize,
+    ) -> Result<(), anyhow::Error> {
+        let mut probe = common_options.attach_probe()?;
+        let target = common_options.get_target_selector()?;
+        Ok(if probe.set_speed(speed).is_ok() {
+            let mut session = common_options.attach_session(probe, target)?;
+            let mut test = TestData::new(address, word_size, size);
+            println!(
+                "Test: Speed {}, Word size {}bit, Data length {} bytes, Number of iterations {}",
+                speed,
+                word_size,
+                test.data_type.size() * size,
+                iterations
+            );
+            let mut core = session.core(0).context("Failed to attach to core")?;
+            core.halt(Duration::from_millis(100))
+                .context("Halting failed")?;
+
+            let mut read_results = Vec::<f64>::with_capacity(iterations);
+            let mut write_results = Vec::<f64>::with_capacity(iterations);
+            'inner: for _ in 0..iterations {
+                test.block_write(&mut core)?;
+                test.block_read(&mut core)?;
+                let verify_success = test.block_verify();
+                if verify_success {
+                    read_results.push(test.read_throughput);
+                    write_results.push(test.write_throughput);
+                } else {
+                    eprintln!("Verification failed.");
+                    break 'inner;
+                }
+            }
+            println!(
+                "Results: Read: {:.2} bytes/s Std Dev {:.2}, Write: {:.2} bytes/s Std Dev {:.2}",
+                mean(&read_results).expect("invalid mean"),
+                std_deviation(&read_results).expect("invalid std deviation"),
+                mean(&write_results).expect("invalid mean"),
+                std_deviation(&write_results).expect("invalid std deviation")
+            );
+            if read_results.len() != iterations || write_results.len() != iterations {
+                println!(
+                    "Warning: {} reads and {} writes successful (out of {} iterations)",
+                    read_results.len(),
+                    write_results.len(),
+                    iterations
+                )
+            }
+            println!("");
+        } else {
+            println!("failed to set speed {}", speed);
+        })
     }
 }
 
