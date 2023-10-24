@@ -81,8 +81,6 @@ struct TestData {
     address: u64,
     word_qty: usize,
     pub data_type: DataType,
-    pub read_throughput: f64,
-    pub write_throughput: f64,
 }
 
 impl Cmd {
@@ -176,12 +174,12 @@ impl Cmd {
             let mut read_results = Vec::<f64>::with_capacity(iterations);
             let mut write_results = Vec::<f64>::with_capacity(iterations);
             'inner: for _ in 0..iterations {
-                test.block_write(&mut core)?;
-                test.block_read(&mut core)?;
+                let write_throughput = test.block_write(&mut core)?;
+                let read_throughput = test.block_read(&mut core)?;
                 let verify_success = test.block_verify();
                 if verify_success {
-                    read_results.push(test.read_throughput);
-                    write_results.push(test.write_throughput);
+                    read_results.push(read_throughput);
+                    write_results.push(write_throughput);
                 } else {
                     eprintln!("Verification failed.");
                     break 'inner;
@@ -288,8 +286,6 @@ impl TestData {
             address,
             data_type,
             word_qty,
-            read_throughput: 0.0,
-            write_throughput: 0.0,
         }
     }
 
@@ -308,7 +304,8 @@ impl TestData {
         }
     }
 
-    fn block_read(&mut self, core: &mut probe_rs::Core) -> Result<(), anyhow::Error> {
+    /// Read the requested block of data. Return data throughput, or error
+    fn block_read(&mut self, core: &mut probe_rs::Core) -> Result<f64, anyhow::Error> {
         let read_start = Instant::now();
         match &mut self.data_type {
             DataType::U8(_, ref mut readback_data) => core
@@ -323,12 +320,13 @@ impl TestData {
         }
         let read_duration = read_start.elapsed();
         let data_size_bytes = self.data_type.size() * self.word_qty;
-        self.read_throughput = (data_size_bytes as f64) / read_duration.as_secs_f64();
+        let read_throughput = (data_size_bytes as f64) / read_duration.as_secs_f64();
 
-        Ok(())
+        Ok(read_throughput)
     }
 
-    fn block_write(&mut self, core: &mut probe_rs::Core) -> Result<(), anyhow::Error> {
+    /// Write the requested block of data. Return data throughput, or error
+    fn block_write(&mut self, core: &mut probe_rs::Core) -> Result<f64, anyhow::Error> {
         let write_start = Instant::now();
         match &self.data_type {
             DataType::U8(ref test_data, _) => core
@@ -344,9 +342,8 @@ impl TestData {
         let write_duration = write_start.elapsed();
         let data_size_bytes = self.data_type.size() * self.word_qty;
         let write_throughput = (data_size_bytes as f64) / write_duration.as_secs_f64();
-        self.write_throughput = write_throughput;
 
-        Ok(())
+        Ok(write_throughput)
     }
 }
 
