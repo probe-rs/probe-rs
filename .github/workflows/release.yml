@@ -60,7 +60,7 @@ jobs:
       - name: Install Rust
         run: rustup update "1.73.0" --no-self-update && rustup default "1.73.0"
       - name: Install cargo-dist
-        run: "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.4.0-prerelease.2/cargo-dist-installer.sh | sh"
+        run: "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.4.0-prerelease.3/cargo-dist-installer.sh | sh"
       - id: plan
         run: |
           cargo dist plan ${{ !github.event.pull_request && format('--tag={0}', github.ref_name) || '' }} --output-format=json > dist-manifest.json
@@ -108,16 +108,9 @@ jobs:
         run: |
           ${{ matrix.packages_install }}
       - name: Build artifacts
-        if: ${{ hashFiles('Brewfile') == '' }}
         run: |
           # Actually do builds and make zips and whatnot
           cargo dist build ${{ needs.plan.outputs.tag-flag }} --print=linkage --output-format=json ${{ matrix.dist_args }} > dist-manifest.json
-          echo "cargo dist ran successfully"
-      - name: Build artifacts (using Brewfile)
-        if: ${{ hashFiles('Brewfile') != '' }}
-        run: |
-          # Actually do builds and make zips and whatnot
-          brew bundle exec -- cargo dist build ${{ needs.plan.outputs.tag-flag }} --print=linkage --output-format=json ${{ matrix.dist_args }} > dist-manifest.json
           echo "cargo dist ran successfully"
       - id: cargo-dist
         name: Post-build
@@ -153,7 +146,7 @@ jobs:
       - name: Install Rust
         run: rustup update "1.73.0" --no-self-update && rustup default "1.73.0"
       - name: Install cargo-dist
-        run: "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.4.0-prerelease.2/cargo-dist-installer.sh | sh"
+        run: "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.4.0-prerelease.3/cargo-dist-installer.sh | sh"
       # Get all the local artifacts for the global tasks to use (for e.g. checksums)
       - name: Fetch local artifacts
         uses: actions/download-artifact@v3
