@@ -34,6 +34,7 @@ gdb-server = ["dep:gdbstub", "dep:itertools"]
 rtt = ["dep:kmp"]
 
 cli = [
+    "vendored-libusb",
     "gdb-server",
 
     "dep:log",
