@@ -520,6 +520,7 @@ pub trait ArmDebugSequence: Send + Sync {
         // CMSIS says this is only necessary to do inside the `if powered_down`, but
         // without it here, nRF52840 faults in the next access.
         let mut abort = Abort(0);
+        abort.set_dapabort(true);
         abort.set_orunerrclr(true);
         abort.set_wderrclr(true);
         abort.set_stkerrclr(true);

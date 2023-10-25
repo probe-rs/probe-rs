@@ -523,6 +523,16 @@ impl CmsisDap {
                     Ack::Wait => {
                         tracing::trace!("wait",);
 
+                        let mut abort = Abort(0);
+                        abort.set_dapabort(true);
+
+                        RawDapAccess::raw_write_register(
+                            self,
+                            PortType::DebugPort,
+                            Abort::ADDRESS,
+                            abort.into(),
+                        )?;
+
                         return Err(DapError::WaitResponse.into());
                     }
                 }
