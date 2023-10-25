@@ -257,7 +257,7 @@ fn armv8a_core_start(
     cti_base: Option<u64>,
 ) -> Result<(), ArmError> {
     use crate::architecture::arm::core::armv8a_debug_regs::{
-        CtiControl, CtiGate, CtiOuten, Edlar, Edscr,
+        CtiControl, CtiGate, CtiOuten, Edlar, Edscr, Oslar,
     };
 
     let debug_base =
@@ -273,6 +273,10 @@ fn armv8a_core_start(
     // Lock OS register access to prevent race conditions
     let address = Edlar::get_mmio_address_from_base(debug_base)?;
     core.write_word_32(address, Edlar(0).into())?;
+
+    // Unlock the OS Lock to enable access to debug registers
+    let address = Oslar::get_mmio_address_from_base(debug_base)?;
+    core.write_word_32(address, Oslar(0).into())?;
 
     // Configure CTI
     let mut cticontrol = CtiControl(0);
