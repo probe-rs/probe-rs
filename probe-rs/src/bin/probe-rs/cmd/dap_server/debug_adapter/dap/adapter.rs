@@ -994,15 +994,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // VSCode sends multiple StackTrace requests, which lead to out of synch frame_id numbers.
         // We only refresh the stacktrace when the `startFrame` is 0 and `levels` is 1.
         if levels == 1 && start_frame == 0 {
-            let pc = match target_core
-                .core
-                .read_core_reg(target_core.core.program_counter())
-            {
-                Ok(pc) => pc,
-                Err(error) => {
-                    return self.send_response::<()>(request, Err(DebuggerError::ProbeRs(error)))
-                }
-            };
             tracing::debug!(
                 "Updating the stack frame data for core #{}",
                 target_core.core.id()
@@ -1011,7 +1002,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             target_core.core_data.stack_frames = target_core
                 .core_data
                 .debug_info
-                .unwind(&mut target_core.core, pc)?;
+                .unwind(&mut target_core.core)?;
         }
         // Update the `levels` to the number of available frames if it is 0.
         if levels == 0 {

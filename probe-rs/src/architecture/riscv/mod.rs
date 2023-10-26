@@ -23,7 +23,6 @@ pub use registers::PC;
 pub(crate) mod assembly;
 pub mod communication_interface;
 mod dtm;
-pub(crate) mod exception_handling;
 pub mod sequences;
 
 /// A interface to operate RISC-V cores.

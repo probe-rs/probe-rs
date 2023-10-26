@@ -2,7 +2,7 @@ use super::{
     function_die::FunctionDie, get_sequential_key, unit_info::UnitInfo, unit_info::UnitIter,
     variable::*, DebugError, DebugRegisters, SourceLocation, StackFrame, VariableCache,
 };
-use crate::core::UnwindRule;
+use crate::core::{exception_handler_for_core, UnwindRule};
 use crate::{
     core::Core,
     core::{ExceptionInfo, ExceptionInterface, RegisterRole, RegisterValue},
@@ -285,7 +285,7 @@ impl DebugInfo {
     /// This saves a lot of overhead when a user only wants to see the `[VariableName::LocalScope]` or `[VariableName::Registers]` while stepping through code (the most common use cases)
     pub(crate) fn create_static_scope_cache(
         &self,
-        core: &mut Core<'_>,
+        core: &mut dyn MemoryInterface,
         unit_info: &UnitInfo,
     ) -> Result<VariableCache, DebugError> {
         let mut static_variable_cache = VariableCache::new();
@@ -309,7 +309,7 @@ impl DebugInfo {
     /// Creates the unpopulated cache for `function` variables
     pub(crate) fn create_function_scope_cache(
         &self,
-        core: &mut Core<'_>,
+        core: &mut dyn MemoryInterface,
         die_cursor_state: &FunctionDie,
         unit_info: &UnitInfo,
     ) -> Result<VariableCache, DebugError> {
@@ -496,7 +496,7 @@ impl DebugInfo {
     /// This function will also populate the `DebugInfo::VariableCache` with in scope `Variable`s for each `StackFrame`, while taking into account the appropriate strategy for lazy-loading of variables.
     pub(crate) fn get_stackframe_info(
         &self,
-        core: &mut Core<'_>,
+        core: &mut dyn MemoryInterface,
         address: u64,
         exception_info: &Option<ExceptionInfo>,
         unwind_registers: &registers::DebugRegisters,
@@ -704,19 +704,27 @@ impl DebugInfo {
     /// - Similarly, certain error conditions encountered in `StackFrameIterator` will also break out of the unwind loop.
     /// Note: In addition to populating the `StackFrame`s, this function will also populate the `DebugInfo::VariableCache` with `Variable`s for available Registers as well as static and function variables.
     /// TODO: Separate logic for stackframe creation and cache population
-    pub fn unwind(&self, core: &mut Core, address: u64) -> Result<Vec<StackFrame>, crate::Error> {
-        let mut stack_frames = Vec::<StackFrame>::new();
-        let mut unwind_registers = registers::DebugRegisters::from_core(core);
+    pub fn unwind(&self, core: &mut Core<'_>) -> Result<Vec<StackFrame>, crate::Error> {
+        let initial_registers = DebugRegisters::from_core(core);
+        let exception_handler = exception_handler_for_core(core.core_type());
+        let instruction_set = core.instruction_set().ok();
 
-        if unwind_registers
-            .get_program_counter()
-            .map_or_else(|| true, |pc| pc.value != Some(RegisterValue::U64(address)))
-        {
-            return Err(crate::Error::Other(anyhow::anyhow!("UNWIND: Attempting to perform an unwind for address: {:#018x}, which does not match the core register program counter.", address)));
-        }
+        self.unwind_impl(initial_registers, core, exception_handler, instruction_set)
+    }
+
+    fn unwind_impl(
+        &self,
+        initial_registers: registers::DebugRegisters,
+        memory: &mut dyn MemoryInterface,
+        exception_handler: Box<dyn ExceptionInterface>,
+        instruction_set: Option<InstructionSet>,
+    ) -> Result<Vec<StackFrame>, crate::Error> {
+        let mut stack_frames = Vec::<StackFrame>::new();
 
         let mut unwind_context: Box<UnwindContext<DwarfReader>> =
             Box::new(gimli::UnwindContext::new());
+
+        let mut unwind_registers = initial_registers;
 
         // Unwind [StackFrame]'s for as long as we can unwind a valid PC value.
         'unwind: while let Some(frame_pc_register_value) = unwind_registers
@@ -727,7 +735,9 @@ impl DebugInfo {
             // - If we are at an exception hanlder frame, we need to overwrite the unwind registers with the exception context.
             // - If for some reason we cannot determine the exception context, we silently continue with the rest of the unwind.
             // At worst, the unwind will be able to unwind the stack to the frame of the most recent exception handler.
-            let exception_info = match core.exception_details(&unwind_registers) {
+            let exception_info = match exception_handler
+                .exception_details(memory, &unwind_registers)
+            {
                 Ok(Some(exception_info)) => {
                     tracing::trace!(
                         "UNWIND: Found exception context: {}",
@@ -757,35 +767,14 @@ impl DebugInfo {
             );
 
             // PART 1-a: Prepare the `StackFrame` that holds the current frame information.
-            let return_frame = match self.get_stackframe_info(
-                core,
+
+            let mut cached_stack_frames = match self.get_stackframe_info(
+                memory,
                 frame_pc,
                 &exception_info,
                 &unwind_registers,
             ) {
-                Ok(mut cached_stack_frames) => {
-                    while cached_stack_frames.len() > 1 {
-                        // If we encountered INLINED functions (all `StackFrames`s in this Vec, except for the last one, which is the containing NON-INLINED function), these are simply added to the list of stack_frames we return.
-                        #[allow(clippy::unwrap_used)]
-                        let inlined_frame = cached_stack_frames.pop().unwrap(); // unwrap is safe while .len() > 1
-                        tracing::trace!(
-                            "UNWIND: Found inlined function - name={}, pc={}",
-                            inlined_frame.function_name,
-                            inlined_frame.pc
-                        );
-                        stack_frames.push(inlined_frame);
-                    }
-                    if cached_stack_frames.len() == 1 {
-                        // If there is only one stack frame, then it is a NON-INLINED function, and we will attempt to unwind further.
-                        #[allow(clippy::unwrap_used)]
-                        cached_stack_frames.pop().unwrap() // unwrap is safe for .len==1
-                    } else {
-                        // Obviously something has gone wrong and zero stackframes were returned in the vector.
-                        tracing::error!("UNWIND: No `StackFrame` information: available");
-                        // There is no point in continuing with the unwind, so let's get out of here.
-                        break;
-                    }
-                }
+                Ok(cached_stack_frames) => cached_stack_frames,
                 Err(e) => {
                     tracing::error!("UNWIND: Unable to complete `StackFrame` information: {}", e);
                     // There is no point in continuing with the unwind, so let's get out of here.
@@ -793,47 +782,76 @@ impl DebugInfo {
                 }
             };
 
-            // Part 1-b: Check LR values to determine if we can continue unwinding.
-            if let Some(check_return_address) = unwind_registers.get_return_address() {
-                if check_return_address.is_max_value() || check_return_address.is_zero() {
-                    // When we encounter the starting (after reset) return address, we've reached the bottom of the stack, so no more unwinding after this.
-                    stack_frames.push(return_frame);
-                    tracing::trace!("UNWIND: Stack unwind complete - Reached the 'Reset' value of the LR register.");
-                    break;
-                } else {
-                    // Part 1-c: If the target current frame is an exception handler, we need to update the `unwind_registers` to match the frame that invoked the exception handler.
-                    if let Some(exception_info) = exception_info {
-                        tracing::trace!(
-                            "UNWIND: Stack unwind reached an exception handler {}",
-                            exception_info.description
-                        );
-                        if let Some(exception_info) = core.exception_details(&unwind_registers)? {
-                            tracing::trace!(
-                                "UNWIND: Found exception context: {}",
-                                exception_info.description
-                            );
-                            // If we are at an exception hanlder frame, we need to overwrite the unwind registers.
-                            // This will allow us to continue unwinding from the exception handler frame.
-                            unwind_registers = exception_info.calling_frame_registers;
+            while cached_stack_frames.len() > 1 {
+                // If we encountered INLINED functions (all `StackFrames`s in this Vec, except for the last one, which is the containing NON-INLINED function), these are simply added to the list of stack_frames we return.
+                #[allow(clippy::unwrap_used)]
+                let inlined_frame = cached_stack_frames.pop().unwrap(); // unwrap is safe while .len() > 1
+                tracing::trace!(
+                    "UNWIND: Found inlined function - name={}, pc={}",
+                    inlined_frame.function_name,
+                    inlined_frame.pc
+                );
+                stack_frames.push(inlined_frame);
+            }
 
-                            // Now that we've optionally updated the `unwind_registers` to match the exception handler, we can continue.
-                            stack_frames.push(return_frame);
-                            tracing::trace!(
-                                    "UNWIND: Stack unwind will attempt to unwind the frame that invoked {}.", exception_info.description
-                                );
-                            continue;
-                        } else {
-                            tracing::trace!(
-                                "UNWIND: No exception context found. Stack unwind will continue."
-                            )
-                        }
-                    }
-                }
+            let return_frame = if cached_stack_frames.len() == 1 {
+                // If there is only one stack frame, then it is a NON-INLINED function, and we will attempt to unwind further.
+                #[allow(clippy::unwrap_used)]
+                cached_stack_frames.pop().unwrap() // unwrap is safe for .len==1
             } else {
+                // Obviously something has gone wrong and zero stackframes were returned in the vector.
+                tracing::error!("UNWIND: No `StackFrame` information: available");
+                // There is no point in continuing with the unwind, so let's get out of here.
+                break;
+            };
+
+            // Part 1-b: Check LR values to determine if we can continue unwinding.
+            let Some(check_return_address) = unwind_registers.get_return_address() else {
                 // If the debug info rules result in a None return address, we cannot continue unwinding.
                 stack_frames.push(return_frame);
                 tracing::trace!("UNWIND: Stack unwind complete - LR register value is 'None.");
                 break;
+            };
+
+            if check_return_address.is_max_value() || check_return_address.is_zero() {
+                // When we encounter the starting (after reset) return address, we've reached the bottom of the stack, so no more unwinding after this.
+                stack_frames.push(return_frame);
+                tracing::trace!(
+                    "UNWIND: Stack unwind complete - Reached the 'Reset' value of the LR register."
+                );
+                break;
+            }
+
+            // Part 1-c: If the target current frame is an exception handler, we need to update the `unwind_registers` to match the frame that invoked the exception handler.
+            if let Some(exception_info) = exception_info {
+                tracing::trace!(
+                    "UNWIND: Stack unwind reached an exception handler {}",
+                    exception_info.description
+                );
+
+                if let Some(exception_info) =
+                    exception_handler.exception_details(memory, &unwind_registers)?
+                {
+                    tracing::trace!(
+                        "UNWIND: Found exception context: {}",
+                        exception_info.description
+                    );
+                    // If we are at an exception hanlder frame, we need to overwrite the unwind registers.
+                    // This will allow us to continue unwinding from the exception handler frame.
+                    unwind_registers = exception_info.calling_frame_registers;
+
+                    // Now that we've optionally updated the `unwind_registers` to match the exception handler, we can continue.
+                    stack_frames.push(return_frame);
+                    tracing::trace!(
+                        "UNWIND: Stack unwind will attempt to unwind the frame that invoked {}.",
+                        exception_info.description
+                    );
+                    continue;
+                } else {
+                    tracing::trace!(
+                        "UNWIND: No exception context found. Stack unwind will continue."
+                    )
+                }
             }
 
             // PART 2: Setup the registers for the next iteration (a.k.a. unwind previous frame, a.k.a. "callee", in the call stack).
@@ -894,7 +912,8 @@ impl DebugInfo {
                             Some(unwind_info),
                             unwind_cfa,
                             &mut unwound_return_address,
-                            core,
+                            memory,
+                            instruction_set,
                         )
                         .is_break()
                         {
@@ -923,7 +942,8 @@ impl DebugInfo {
                                 None,
                                 None,
                                 &mut unwound_return_address,
-                                core,
+                                memory,
+                                instruction_set,
                             )
                             .is_break()
                             {
@@ -1255,7 +1275,8 @@ fn unwind_register(
     unwind_info: Option<&gimli::UnwindTableRow<DwarfReader, gimli::StoreOnHeap>>,
     unwind_cfa: Option<u64>,
     unwound_return_address: &mut Option<RegisterValue>,
-    core: &mut Core,
+    core: &mut dyn MemoryInterface,
+    instruction_set: Option<InstructionSet>,
 ) -> ControlFlow<(), ()> {
     use gimli::read::RegisterRule::*;
     // If we do not have unwind info, or there is no register rule, then use UnwindRule::Undefined.
@@ -1312,7 +1333,7 @@ fn unwind_register(
                     unwound_return_address.and_then(|return_address| {
                         unwind_program_counter_register(
                             return_address,
-                            core,
+                            instruction_set,
                             &mut register_rule_string,
                         )
                     })
@@ -1426,7 +1447,7 @@ fn unwind_register(
 /// Helper function to determine the program counter value for the previous frame.
 fn unwind_program_counter_register(
     return_address: RegisterValue,
-    core: &mut Core<'_>,
+    instruction_set: Option<InstructionSet>,
     register_rule_string: &mut String,
 ) -> Option<RegisterValue> {
     if return_address.is_max_value() || return_address.is_zero() {
@@ -1435,7 +1456,7 @@ fn unwind_program_counter_register(
     } else {
         match return_address {
             RegisterValue::U32(return_address) => {
-                if matches!(core.instruction_set(), Ok(InstructionSet::Thumb2)) {
+                if instruction_set == Some(InstructionSet::Thumb2) {
                     // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section A5.1.2: We have to clear the last bit to ensure the PC is half-word aligned. (on ARM architecture, when in Thumb state for certain instruction types will set the LSB to 1)
                     *register_rule_string = "PC=(unwound LR & !0b1) (dwarf Undefined)".to_string();
                     Some(RegisterValue::U32(return_address & !0b1))

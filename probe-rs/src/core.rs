@@ -25,7 +25,7 @@ pub struct CoreInformation {
 }
 
 /// A generic interface to control a MCU core.
-pub trait CoreInterface: MemoryInterface + ExceptionInterface {
+pub trait CoreInterface: MemoryInterface {
     /// Numerical ID of the core. Can be used as an argument to `Session::core()`.
     fn id(&self) -> usize;
 
@@ -252,9 +252,36 @@ pub trait ExceptionInterface {
     /// A return value of `Ok(None)` indicates that the given frame was called from within the current thread,
     /// and the unwind should continue normally.
     fn exception_details(
-        &mut self,
+        &self,
+        _memory: &mut dyn MemoryInterface,
         _stackframe_registers: &DebugRegisters,
-    ) -> Result<Option<ExceptionInfo>, Error> {
+    ) -> Result<Option<ExceptionInfo>, Error>;
+
+    /// Using the `stackframe_registers` for a "called frame", retrieve updated register values for the "calling frame".
+    fn calling_frame_registers(
+        &self,
+        _memory: &mut dyn MemoryInterface,
+        _stackframe_registers: &crate::debug::DebugRegisters,
+    ) -> Result<crate::debug::DebugRegisters, crate::Error>;
+
+    /// Convert the architecture specific exception number into a human readable description.
+    /// Where possible, the implementation may read additional registers from the core, to provide additional context.
+    fn exception_description(
+        &self,
+        _memory: &mut dyn MemoryInterface,
+        _stackframe_registers: &crate::debug::DebugRegisters,
+    ) -> Result<String, crate::Error>;
+}
+
+/// Placeholder for exception handling for cores where handling exceptions is not yet supported.
+pub struct UnimplementedExceptionHandler;
+
+impl ExceptionInterface for UnimplementedExceptionHandler {
+    fn exception_details(
+        &self,
+        _memory: &mut dyn MemoryInterface,
+        _stackframe_registers: &DebugRegisters,
+    ) -> anyhow::Result<Option<ExceptionInfo>, Error> {
         // For architectures where the exception handling has not been implemented in probe-rs,
         // this will result in maintaining the current `unwind` behavior, i.e. unwinding will stop
         // when the first frame is reached that was called from an exception handler.
@@ -263,48 +290,41 @@ pub trait ExceptionInterface {
         ))
     }
 
-    /// Using the `stackframe_registers` for a "called frame", retrieve updated register values for the "calling frame".
     fn calling_frame_registers(
-        &mut self,
+        &self,
+        _memory: &mut dyn MemoryInterface,
         _stackframe_registers: &crate::debug::DebugRegisters,
-    ) -> Result<crate::debug::DebugRegisters, crate::Error> {
+    ) -> anyhow::Result<crate::debug::DebugRegisters, crate::Error> {
         Err(Error::NotImplemented(
             "Not implemented for this architecture.",
         ))
     }
 
-    /// Convert the architecture specific exception number into a human readable description.
-    /// Where possible, the implementation may read additional registers from the core, to provide additional context.
     fn exception_description(
-        &mut self,
+        &self,
+        _memory: &mut dyn MemoryInterface,
         _stackframe_registers: &crate::debug::DebugRegisters,
-    ) -> Result<String, crate::Error> {
+    ) -> anyhow::Result<String, crate::Error> {
         Err(Error::NotImplemented(
             "Not implemented for this architecture.",
         ))
     }
 }
 
-impl<'probe> ExceptionInterface for Core<'probe> {
-    fn exception_details(
-        &mut self,
-        stackframe_registers: &DebugRegisters,
-    ) -> Result<Option<ExceptionInfo>, Error> {
-        self.inner.exception_details(stackframe_registers)
-    }
-
-    fn calling_frame_registers(
-        &mut self,
-        stackframe_registers: &crate::debug::DebugRegisters,
-    ) -> Result<crate::debug::DebugRegisters, crate::Error> {
-        self.inner.calling_frame_registers(stackframe_registers)
-    }
-
-    fn exception_description(
-        &mut self,
-        _stackframe_registers: &crate::debug::DebugRegisters,
-    ) -> Result<String, crate::Error> {
-        self.inner.exception_description(_stackframe_registers)
+pub(crate) fn exception_handler_for_core(core_type: CoreType) -> Box<dyn ExceptionInterface> {
+    match core_type {
+        CoreType::Armv6m => {
+            Box::new(crate::architecture::arm::core::exception_handling::ArmV6MExceptionHandler {})
+        }
+        CoreType::Armv7m | CoreType::Armv7em => {
+            Box::new(crate::architecture::arm::core::exception_handling::ArmV7MExceptionHandler {})
+        }
+        CoreType::Armv8m => Box::new(
+            crate::architecture::arm::core::exception_handling::armv8m::ArmV8MExceptionHandler,
+        ),
+        CoreType::Armv7a | CoreType::Armv8a | CoreType::Riscv => {
+            Box::new(UnimplementedExceptionHandler)
+        }
     }
 }
 

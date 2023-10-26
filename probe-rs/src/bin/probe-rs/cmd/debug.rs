@@ -501,13 +501,8 @@ impl DebugCli {
             function: |cli_data, _args| {
                 match cli_data.state {
                     DebugState::Halted(ref mut halted_state) => {
-                        let program_counter: u64 = cli_data
-                            .core
-                            .read_core_reg(cli_data.core.program_counter())?;
-
                         if let Some(di) = &mut cli_data.debug_info {
-                            halted_state.stack_frames =
-                                di.unwind(&mut cli_data.core, program_counter).unwrap();
+                            halted_state.stack_frames = di.unwind(&mut cli_data.core).unwrap();
 
                             halted_state.frame_indices =
                                 halted_state.stack_frames.iter().map(|sf| sf.id).collect();
