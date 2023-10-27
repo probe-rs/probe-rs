@@ -188,6 +188,7 @@ ratatui = { version = "0.23.0", default-features = false, features = [
     "crossterm",
 ], optional = true }
 uf2-decode = "0.2.0"
+nusb = "0.1.0"
 
 [build-dependencies]
 bincode = "1.3.3"

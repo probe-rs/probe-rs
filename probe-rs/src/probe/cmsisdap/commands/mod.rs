@@ -28,7 +28,7 @@ pub enum CmsisDapError {
     #[error("Requested SWO mode is not available on this probe")]
     SwoModeNotAvailable,
     #[error("USB Error reading SWO data.")]
-    SwoReadError(#[source] rusb::Error),
+    SwoReadError(#[source] CommonUsberror),
     #[error("Could not determine a suitable packet size for this probe")]
     NoPacketSize,
     #[error("Invalid IDCODE detected")]
@@ -42,7 +42,7 @@ pub enum SendError {
     #[error("Error in the USB HID access")]
     HidApi(#[from] hidapi::HidError),
     #[error("Error in the USB access")]
-    UsbError(rusb::Error),
+    UsbError(#[from] CommonUsberror),
     #[error("Not enough data in response from probe")]
     NotEnoughData,
     #[error("Status can only be 0x00 or 0xFF")]
@@ -67,7 +67,7 @@ impl From<rusb::Error> for SendError {
     fn from(error: rusb::Error) -> Self {
         match error {
             rusb::Error::Timeout => SendError::Timeout,
-            other => SendError::UsbError(other),
+            other => SendError::UsbError(other.into()),
         }
     }
 }
@@ -90,12 +90,59 @@ pub enum CmsisDapDevice {
     /// Stores an rusb device handle, out/in EP addresses, maximum DAP packet size,
     /// and an optional SWO streaming EP address and SWO maximum packet size.
     V2 {
-        handle: rusb::DeviceHandle<rusb::Context>,
+        handle: UsbHandle,
         out_ep: u8,
         in_ep: u8,
         max_packet_size: usize,
         swo_ep: Option<(u8, usize)>,
     },
+}
+
+pub enum UsbHandle {
+    Rusb(rusb::DeviceHandle<rusb::Context>),
+    Nusb(nusb::Interface),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum CommonUsberror {
+    #[error(transparent)]
+    Rusb(#[from] rusb::Error),
+    #[error(transparent)]
+    Nusb(nusb::Error),
+}
+
+impl UsbHandle {
+    fn write_bulk(
+        &self,
+        endpoint: u8,
+        buf: &[u8],
+        timeout: Duration,
+    ) -> Result<usize, CommonUsberror> {
+        let bytes_written = match self {
+            UsbHandle::Rusb(handle) => handle.write_bulk(endpoint, buf, timeout)?,
+            UsbHandle::Nusb(handle) => {
+                todo!("Implement nusb write_bulk")
+            }
+        };
+
+        Ok(bytes_written)
+    }
+
+    fn read_bulk(
+        &self,
+        endpoint: u8,
+        buf: &mut [u8],
+        timeout: Duration,
+    ) -> Result<usize, CommonUsberror> {
+        let bytes_read = match self {
+            UsbHandle::Rusb(handle) => handle.read_bulk(endpoint, buf, timeout)?,
+            UsbHandle::Nusb(handle) => {
+                todo!("Implement nusb read_bulk")
+            }
+        };
+
+        Ok(bytes_read)
+    }
 }
 
 impl CmsisDapDevice {
@@ -242,7 +289,7 @@ impl CmsisDapDevice {
                             buf.truncate(n);
                             Ok(buf)
                         }
-                        Err(rusb::Error::Timeout) => {
+                        Err(CommonUsberror::Rusb(rusb::Error::Timeout)) => {
                             buf.truncate(0);
                             Ok(buf)
                         }
