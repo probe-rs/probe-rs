@@ -5,6 +5,10 @@ use crate::{
 };
 use bitfield::bitfield;
 
+/// Registers which are stored stock when an exception occurs.
+///
+/// - Section B1.5.6, ARMv6-M Architecture Reference Manual
+///
 pub(crate) static EXCEPTION_STACK_REGISTERS: &[RegisterRole] = &[
     RegisterRole::Core("R0"),
     RegisterRole::Core("R1"),

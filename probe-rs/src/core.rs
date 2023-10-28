@@ -236,6 +236,7 @@ impl<'probe> MemoryInterface for Core<'probe> {
 /// A struct containing key information about an exception.
 /// The exception details are architecture specific, and the abstraction is handled in the
 /// architecture specific implementations of [`crate::core::ExceptionInterface`].
+#[derive(Debug, PartialEq)]
 pub struct ExceptionInfo {
     /// A human readable explanation for the exception.
     pub description: String,
@@ -253,23 +254,23 @@ pub trait ExceptionInterface {
     /// and the unwind should continue normally.
     fn exception_details(
         &self,
-        _memory: &mut dyn MemoryInterface,
-        _stackframe_registers: &DebugRegisters,
+        memory: &mut dyn MemoryInterface,
+        stackframe_registers: &DebugRegisters,
     ) -> Result<Option<ExceptionInfo>, Error>;
 
     /// Using the `stackframe_registers` for a "called frame", retrieve updated register values for the "calling frame".
     fn calling_frame_registers(
         &self,
-        _memory: &mut dyn MemoryInterface,
-        _stackframe_registers: &crate::debug::DebugRegisters,
+        memory: &mut dyn MemoryInterface,
+        stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<crate::debug::DebugRegisters, crate::Error>;
 
     /// Convert the architecture specific exception number into a human readable description.
     /// Where possible, the implementation may read additional registers from the core, to provide additional context.
     fn exception_description(
         &self,
-        _memory: &mut dyn MemoryInterface,
-        _stackframe_registers: &crate::debug::DebugRegisters,
+        memory: &mut dyn MemoryInterface,
+        stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<String, crate::Error>;
 }
 
