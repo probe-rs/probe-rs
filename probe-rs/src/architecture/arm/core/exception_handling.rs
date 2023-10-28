@@ -94,7 +94,7 @@ mod test {
     use super::ArmV6MExceptionHandler;
     use crate::{
         architecture::arm::core::registers::cortex_m::{CORTEX_M_CORE_REGISTERS, PC, RA, SP, XPSR},
-        core::{ExceptionInfo, ExceptionInterface},
+        core::ExceptionInterface,
         debug::{DebugRegister, DebugRegisters},
         MemoryInterface, RegisterValue,
     };
@@ -158,19 +158,23 @@ mod test {
             todo!()
         }
 
-        fn read_word_64(&mut self, address: u64) -> anyhow::Result<u64, crate::Error> {
+        fn read_word_64(&mut self, _address: u64) -> anyhow::Result<u64, crate::Error> {
             todo!()
         }
 
-        fn read_word_32(&mut self, address: u64) -> anyhow::Result<u32, crate::Error> {
+        fn read_word_32(&mut self, _address: u64) -> anyhow::Result<u32, crate::Error> {
             todo!()
         }
 
-        fn read_word_8(&mut self, address: u64) -> anyhow::Result<u8, crate::Error> {
+        fn read_word_8(&mut self, _address: u64) -> anyhow::Result<u8, crate::Error> {
             todo!()
         }
 
-        fn read_64(&mut self, address: u64, data: &mut [u64]) -> anyhow::Result<(), crate::Error> {
+        fn read_64(
+            &mut self,
+            _address: u64,
+            _data: &mut [u64],
+        ) -> anyhow::Result<(), crate::Error> {
             todo!()
         }
 
@@ -209,11 +213,13 @@ mod test {
 
             let mut entries = self.ranges.range(range);
 
-            let (entry_addr, entry) = entries.next().expect(&format!(
-                "No entries for range {:#010x} - {:#010x}",
-                address,
-                address + data.len() as u64
-            ));
+            let (entry_addr, entry) = entries.next().unwrap_or_else(|| {
+                panic!(
+                    "No entries for range {:#010x} - {:#010x}",
+                    address,
+                    address + data.len() as u64
+                )
+            });
 
             match entry {
                 MockMemoryEntry::Start(index) if *entry_addr == address => {
@@ -244,34 +250,34 @@ mod test {
                     let stored_data = &self.values[*index];
 
                     let end_addr = entry_addr;
-                    let entry_addr = end_addr - (stored_data.len() as u64 - 1);
+                    let _entry_addr = end_addr - (stored_data.len() as u64 - 1);
 
                     todo!()
                 }
             }
         }
 
-        fn write_word_64(&mut self, address: u64, data: u64) -> anyhow::Result<(), crate::Error> {
+        fn write_word_64(&mut self, _address: u64, _data: u64) -> anyhow::Result<(), crate::Error> {
             todo!()
         }
 
-        fn write_word_32(&mut self, address: u64, data: u32) -> anyhow::Result<(), crate::Error> {
+        fn write_word_32(&mut self, _address: u64, _data: u32) -> anyhow::Result<(), crate::Error> {
             todo!()
         }
 
-        fn write_word_8(&mut self, address: u64, data: u8) -> anyhow::Result<(), crate::Error> {
+        fn write_word_8(&mut self, _address: u64, _data: u8) -> anyhow::Result<(), crate::Error> {
             todo!()
         }
 
-        fn write_64(&mut self, address: u64, data: &[u64]) -> anyhow::Result<(), crate::Error> {
+        fn write_64(&mut self, _address: u64, _data: &[u64]) -> anyhow::Result<(), crate::Error> {
             todo!()
         }
 
-        fn write_32(&mut self, address: u64, data: &[u32]) -> anyhow::Result<(), crate::Error> {
+        fn write_32(&mut self, _address: u64, _data: &[u32]) -> anyhow::Result<(), crate::Error> {
             todo!()
         }
 
-        fn write_8(&mut self, address: u64, data: &[u8]) -> anyhow::Result<(), crate::Error> {
+        fn write_8(&mut self, _address: u64, _data: &[u8]) -> anyhow::Result<(), crate::Error> {
             todo!()
         }
 
