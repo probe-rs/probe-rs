@@ -34,7 +34,6 @@ gdb-server = ["dep:gdbstub", "dep:itertools"]
 rtt = ["dep:kmp"]
 
 cli = [
-    "vendored-libusb",
     "gdb-server",
 
     "dep:log",
@@ -218,4 +217,4 @@ replace = "[unreleased]: https://github.com/probe-rs/probe-rs/compare/v{{version
 
 # Config for 'cargo dist'
 [package.metadata.dist]
-features = ["cli"]
+features = ["cli", "vendored-libusb"]
