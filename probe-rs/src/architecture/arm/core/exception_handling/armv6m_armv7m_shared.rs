@@ -5,7 +5,7 @@ use crate::{
 };
 use bitfield::bitfield;
 
-/// Registers which are stored stock when an exception occurs.
+/// Registers which are stored on the stack when an exception occurs.
 ///
 /// - Section B1.5.6, ARMv6-M Architecture Reference Manual
 ///
@@ -103,5 +103,16 @@ pub(crate) fn calling_frame_registers(
             .get_register_mut_by_role(register_role)?
             .value = Some(RegisterValue::U32(calling_stack_registers[i]));
     }
+
+    // Adjust stack pointer
+    let sp = calling_frame_registers
+        .get_register_mut_by_role(&crate::core::RegisterRole::StackPointer)?;
+
+    if let Some(sp_value) = &mut sp.value {
+        sp_value
+            .increment_address(4 * EXCEPTION_STACK_REGISTERS.len())
+            .unwrap();
+    }
+
     Ok(calling_frame_registers)
 }

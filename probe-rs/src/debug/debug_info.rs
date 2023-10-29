@@ -5,7 +5,7 @@ use super::{
 use crate::core::{exception_handler_for_core, UnwindRule};
 use crate::{
     core::Core,
-    core::{ExceptionInfo, ExceptionInterface, RegisterRole, RegisterValue},
+    core::{ExceptionInterface, RegisterRole, RegisterValue},
     debug::{registers, source_statement::SourceStatements},
     MemoryInterface,
 };
@@ -498,29 +498,22 @@ impl DebugInfo {
         &self,
         core: &mut dyn MemoryInterface,
         address: u64,
-        exception_info: &Option<ExceptionInfo>,
         unwind_registers: &registers::DebugRegisters,
     ) -> Result<Vec<StackFrame>, DebugError> {
         let mut units = self.get_units();
 
-        let unknown_function = if let Some(exception_info) = exception_info {
-            exception_info.description.to_string()
-        } else {
-            // When reporting the address, we format it as a hex string, with the width matching
-            // the configured size of the datatype used in the `RegisterValue` address.
-            format!(
-                "<unknown function @ {:#0width$x}>",
-                address,
-                width = (unwind_registers.get_address_size_bytes() * 2 + 2)
-            )
-        };
-        let stack_frame_registers = unwind_registers.clone();
+        // When reporting the address, we format it as a hex string, with the width matching
+        // the configured size of the datatype used in the `RegisterValue` address.
+        let unknown_function = format!(
+            "<unknown function @ {:#0width$x}>",
+            address,
+            width = (unwind_registers.get_address_size_bytes() * 2 + 2)
+        );
 
         let mut frames = Vec::new();
 
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
-            let functions =
-                unit_info.get_function_dies(address, Some(&stack_frame_registers), true)?;
+            let functions = unit_info.get_function_dies(address, Some(&unwind_registers), true)?;
 
             if functions.is_empty() {
                 continue;
@@ -596,7 +589,7 @@ impl DebugInfo {
                         id: get_sequential_key(),
                         function_name,
                         source_location: inlined_caller_source_location,
-                        registers: stack_frame_registers.clone(),
+                        registers: unwind_registers.clone(),
                         pc: inlined_call_site,
                         frame_base: function_die.frame_base,
                         is_inlined: function_die.is_inline(),
@@ -656,7 +649,7 @@ impl DebugInfo {
                 id: get_sequential_key(),
                 function_name,
                 source_location: function_location,
-                registers: stack_frame_registers.clone(),
+                registers: unwind_registers.clone(),
                 pc: match unwind_registers.get_address_size_bytes() {
                     4 => RegisterValue::U32(address as u32),
                     8 => RegisterValue::U64(address),
@@ -670,26 +663,7 @@ impl DebugInfo {
 
             break;
         }
-
-        if frames.is_empty() {
-            Ok(vec![StackFrame {
-                id: get_sequential_key(),
-                function_name: unknown_function,
-                source_location: self.get_source_location(address),
-                registers: stack_frame_registers,
-                pc: match unwind_registers.get_address_size_bytes() {
-                    4 => RegisterValue::U32(address as u32),
-                    8 => RegisterValue::U64(address),
-                    _ => RegisterValue::from(address),
-                },
-                frame_base: None,
-                is_inlined: false,
-                static_variables: None,
-                local_variables: None,
-            }])
-        } else {
-            Ok(frames)
-        }
+        Ok(frames)
     }
 
     /// Performs the logical unwind of the stack and returns a `Vec<StackFrame>`
@@ -760,7 +734,7 @@ impl DebugInfo {
             // PART 1: Construct the `StackFrame` for the current pc.
             let frame_pc = frame_pc_register_value
                 .try_into()
-                .map_err(|error| crate::Error::Register(format!("Cannot convert register value for program counter to a 64-bit integeer value: {:?}", error)))?;
+                .map_err(|error| crate::Error::Register(format!("Cannot convert register value for program counter to a 64-bit integer value: {:?}", error)))?;
             tracing::trace!(
                 "UNWIND: Will generate `StackFrame` for function at address (PC) {}",
                 frame_pc,
@@ -768,19 +742,18 @@ impl DebugInfo {
 
             // PART 1-a: Prepare the `StackFrame` that holds the current frame information.
 
-            let mut cached_stack_frames = match self.get_stackframe_info(
-                memory,
-                frame_pc,
-                &exception_info,
-                &unwind_registers,
-            ) {
-                Ok(cached_stack_frames) => cached_stack_frames,
-                Err(e) => {
-                    tracing::error!("UNWIND: Unable to complete `StackFrame` information: {}", e);
-                    // There is no point in continuing with the unwind, so let's get out of here.
-                    break;
-                }
-            };
+            let mut cached_stack_frames =
+                match self.get_stackframe_info(memory, frame_pc, &unwind_registers) {
+                    Ok(cached_stack_frames) => cached_stack_frames,
+                    Err(e) => {
+                        tracing::error!(
+                            "UNWIND: Unable to complete `StackFrame` information: {}",
+                            e
+                        );
+                        // There is no point in continuing with the unwind, so let's get out of here.
+                        break;
+                    }
+                };
 
             while cached_stack_frames.len() > 1 {
                 // If we encountered INLINED functions (all `StackFrames`s in this Vec, except for the last one, which is the containing NON-INLINED function), these are simply added to the list of stack_frames we return.
@@ -794,15 +767,62 @@ impl DebugInfo {
                 stack_frames.push(inlined_frame);
             }
 
-            let return_frame = if cached_stack_frames.len() == 1 {
-                // If there is only one stack frame, then it is a NON-INLINED function, and we will attempt to unwind further.
-                #[allow(clippy::unwrap_used)]
-                cached_stack_frames.pop().unwrap() // unwrap is safe for .len==1
-            } else {
-                // Obviously something has gone wrong and zero stackframes were returned in the vector.
-                tracing::error!("UNWIND: No `StackFrame` information: available");
-                // There is no point in continuing with the unwind, so let's get out of here.
-                break;
+            let mut only_exception = false;
+
+            let return_frame = match cached_stack_frames.pop() {
+                Some(frame) => frame,
+                None => {
+                    if let Some(exception_info) = &exception_info {
+                        only_exception = true;
+                        let address = frame_pc;
+
+                        let previous_regs = unwind_registers.clone();
+
+                        let exception_frame = StackFrame {
+                            id: get_sequential_key(),
+                            function_name: exception_info.description.clone(),
+                            source_location: None,
+                            registers: previous_regs,
+                            pc: match unwind_registers.get_address_size_bytes() {
+                                4 => RegisterValue::U32(address as u32),
+                                8 => RegisterValue::U64(address),
+                                _ => RegisterValue::from(address),
+                            },
+                            frame_base: None,
+                            is_inlined: false,
+                            static_variables: None,
+                            local_variables: None,
+                        };
+
+                        exception_frame
+                    } else {
+                        let address = frame_pc;
+
+                        // When reporting the address, we format it as a hex string, with the width matching
+                        // the configured size of the datatype used in the `RegisterValue` address.
+                        let unknown_function = format!(
+                            "<unknown function @ {:#0width$x}>",
+                            address,
+                            width = (unwind_registers.get_address_size_bytes() * 2 + 2)
+                        );
+
+                        StackFrame {
+                            id: get_sequential_key(),
+                            function_name: unknown_function,
+                            source_location: self.get_source_location(address),
+                            registers: unwind_registers.clone(),
+                            pc: match unwind_registers.get_address_size_bytes() {
+                                4 => RegisterValue::U32(address as u32),
+                                8 => RegisterValue::U64(address),
+                                _ => RegisterValue::from(address),
+                            },
+                            frame_base: None,
+                            is_inlined: false,
+                            static_variables: None,
+                            local_variables: None,
+                        }
+                    }
+                }
             };
 
             // Part 1-b: Check LR values to determine if we can continue unwinding.
@@ -829,28 +849,19 @@ impl DebugInfo {
                     exception_info.description
                 );
 
-                if let Some(exception_info) =
-                    exception_handler.exception_details(memory, &unwind_registers)?
-                {
-                    tracing::trace!(
-                        "UNWIND: Found exception context: {}",
-                        exception_info.description
-                    );
-                    // If we are at an exception hanlder frame, we need to overwrite the unwind registers.
+                tracing::trace!(
+                    "UNWIND: Stack unwind will attempt to unwind the frame that invoked {}.",
+                    exception_info.description
+                );
+
+                // Now that we've optionally updated the `unwind_registers` to match the exception handler, we can continue.
+                if only_exception {
+                    // If we are at an exception handler frame, we need to overwrite the unwind registers.
                     // This will allow us to continue unwinding from the exception handler frame.
                     unwind_registers = exception_info.calling_frame_registers;
 
-                    // Now that we've optionally updated the `unwind_registers` to match the exception handler, we can continue.
                     stack_frames.push(return_frame);
-                    tracing::trace!(
-                        "UNWIND: Stack unwind will attempt to unwind the frame that invoked {}.",
-                        exception_info.description
-                    );
                     continue;
-                } else {
-                    tracing::trace!(
-                        "UNWIND: No exception context found. Stack unwind will continue."
-                    )
                 }
             }
 
@@ -861,67 +872,12 @@ impl DebugInfo {
                 return_frame.source_location
             );
             // PART 2-a: get the `gimli::FrameDescriptorEntry` for this address and then the unwind info associated with this row.
-            match get_unwind_info(&mut unwind_context, &self.frame_section, frame_pc) {
-                Ok(unwind_info) => {
-                    // Because we will be updating the `unwind_registers` with previous frame unwind info, we need to keep a copy of the current frame's registers that can be used to resolve [DWARF](https://dwarfstd.org) expressions.
-                    let callee_frame_registers = unwind_registers.clone();
-                    // PART 2-b: Determine the CFA (canonical frame address) to use for this unwind row.
-                    let unwind_cfa = match unwind_info.cfa() {
-                        gimli::CfaRule::RegisterAndOffset { register, offset } => {
-                            let reg_val = unwind_registers
-                                .get_register_by_dwarf_id(register.0)
-                                .and_then(|register| register.value);
-                            match reg_val {
-                                Some(reg_val) => {
-                                    if reg_val.is_zero() {
-                                        // If we encounter this rule for CFA, it implies the scenario depends on a FP/frame pointer to continue successfully.
-                                        // Therefore, if reg_val is zero (i.e. FP is zero), then we do not have enough information to determine the CFA by rule.
-                                        stack_frames.push(return_frame);
-                                        tracing::trace!("UNWIND: Stack unwind complete - The FP register value unwound to a value of zero.");
-                                        break;
-                                    }
-                                    let unwind_cfa = add_to_address(
-                                        reg_val.try_into()?,
-                                        *offset,
-                                        unwind_registers.get_address_size_bytes(),
-                                    );
-                                    tracing::trace!(
-                                        "UNWIND - CFA : {:#010x}\tRule: {:?}",
-                                        unwind_cfa,
-                                        unwind_info.cfa()
-                                    );
-                                    Some(unwind_cfa)
-                                }
-                                None => {
-                                    tracing::error!("UNWIND: `StackFrameIterator` unable to determine the unwind CFA: Missing value of register {}",register.0);
-                                    stack_frames.push(return_frame);
-                                    break;
-                                }
-                            }
-                        }
-                        gimli::CfaRule::Expression(_) => unimplemented!(),
-                    };
-
-                    // PART 2-c: Unwind registers for the "previous/calling" frame.
-                    // We sometimes need to keep a copy of the LR value to calculate the PC. For both ARM, and RISCV, The LR will be unwound before the PC, so we can reference it safely.
-                    let mut unwound_return_address: Option<RegisterValue> = None;
-                    for debug_register in unwind_registers.0.iter_mut() {
-                        if unwind_register(
-                            debug_register,
-                            &callee_frame_registers,
-                            Some(unwind_info),
-                            unwind_cfa,
-                            &mut unwound_return_address,
-                            memory,
-                            instruction_set,
-                        )
-                        .is_break()
-                        {
-                            stack_frames.push(return_frame);
-                            break 'unwind;
-                        };
-                    }
-                }
+            let unwind_info = match get_unwind_info(
+                &mut unwind_context,
+                &self.frame_section,
+                frame_pc,
+            ) {
+                Ok(unwind_info) => unwind_info,
                 Err(error) => {
                     // We cannot do stack unwinding if we do not have debug info. However, there is one case where we can continue. When the following conditions are met:
                     // 1. The current frame is the first frame in the stack, AND ...
@@ -935,6 +891,7 @@ impl DebugInfo {
                             callee_frame_registers
                                 .get_return_address()
                                 .and_then(|lr| lr.value);
+
                         if let Some(calling_pc) = unwind_registers.get_program_counter_mut() {
                             if unwind_register(
                                 calling_pc,
@@ -955,6 +912,9 @@ impl DebugInfo {
                                 stack_frames.push(return_frame);
                                 continue 'unwind;
                             };
+                        } else {
+                            stack_frames.push(return_frame);
+                            continue 'unwind;
                         }
                     } else {
                         stack_frames.push(return_frame);
@@ -963,7 +923,105 @@ impl DebugInfo {
                     }
                 }
             };
+
+            // Because we will be updating the `unwind_registers` with previous frame unwind info, we need to keep a copy of the current frame's registers that can be used to resolve [DWARF](https://dwarfstd.org) expressions.
+            let callee_frame_registers = unwind_registers.clone();
+            // PART 2-b: Determine the CFA (canonical frame address) to use for this unwind row.
+            let unwind_cfa = match unwind_info.cfa() {
+                gimli::CfaRule::RegisterAndOffset { register, offset } => {
+                    let reg_val = unwind_registers
+                        .get_register_by_dwarf_id(register.0)
+                        .and_then(|register| register.value);
+                    match reg_val {
+                        Some(reg_val) => {
+                            if reg_val.is_zero() {
+                                // If we encounter this rule for CFA, it implies the scenario depends on a FP/frame pointer to continue successfully.
+                                // Therefore, if reg_val is zero (i.e. FP is zero), then we do not have enough information to determine the CFA by rule.
+                                stack_frames.push(return_frame);
+                                tracing::trace!("UNWIND: Stack unwind complete - The FP register value unwound to a value of zero.");
+                                break;
+                            }
+                            let unwind_cfa = add_to_address(
+                                reg_val.try_into()?,
+                                *offset,
+                                unwind_registers.get_address_size_bytes(),
+                            );
+                            tracing::trace!(
+                                "UNWIND - CFA : {:#010x}\tRule: {:?}",
+                                unwind_cfa,
+                                unwind_info.cfa()
+                            );
+                            Some(unwind_cfa)
+                        }
+                        None => {
+                            tracing::error!("UNWIND: `StackFrameIterator` unable to determine the unwind CFA: Missing value of register {}",register.0);
+                            stack_frames.push(return_frame);
+                            break;
+                        }
+                    }
+                }
+                gimli::CfaRule::Expression(_) => unimplemented!(),
+            };
+
+            // PART 2-c: Unwind registers for the "previous/calling" frame.
+            // We sometimes need to keep a copy of the LR value to calculate the PC. For both ARM, and RISCV, The LR will be unwound before the PC, so we can reference it safely.
+            let mut unwound_return_address: Option<RegisterValue> = None;
+            for debug_register in unwind_registers.0.iter_mut() {
+                if unwind_register(
+                    debug_register,
+                    &callee_frame_registers,
+                    Some(unwind_info),
+                    unwind_cfa,
+                    &mut unwound_return_address,
+                    memory,
+                    instruction_set,
+                )
+                .is_break()
+                {
+                    stack_frames.push(return_frame);
+                    break 'unwind;
+                };
+            }
+
             stack_frames.push(return_frame);
+
+            // Check if we unwound over an exception handler
+            if let Some(value) = unwind_registers.get_program_counter().and_then(|s| s.value) {
+                let value: u32 = value.try_into().unwrap();
+
+                if (value >> 28) & 0xf == 0xf {
+                    let ra = unwind_registers
+                        .get_register_mut_by_role(&RegisterRole::ReturnAddress)
+                        .unwrap();
+                    ra.value = Some(RegisterValue::U32(value));
+
+                    // Now, how do we handle this.
+                    if let Some(details) =
+                        exception_handler.exception_details(memory, &unwind_registers)?
+                    {
+                        unwind_registers = details.calling_frame_registers;
+                        let address = frame_pc;
+
+                        let exception_frame = StackFrame {
+                            id: get_sequential_key(),
+                            function_name: details.description.clone(),
+                            source_location: None,
+                            registers: unwind_registers.clone(),
+                            pc: match unwind_registers.get_address_size_bytes() {
+                                4 => RegisterValue::U32(address as u32),
+                                8 => RegisterValue::U64(address),
+                                _ => RegisterValue::from(address),
+                            },
+                            frame_base: None,
+                            is_inlined: false,
+                            static_variables: None,
+                            local_variables: None,
+                        };
+
+                        stack_frames.push(exception_frame);
+                    }
+                }
+            }
         }
 
         Ok(stack_frames)

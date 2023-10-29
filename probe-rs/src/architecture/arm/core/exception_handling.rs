@@ -113,8 +113,6 @@ mod test {
         fn add_range(&mut self, address: u64, data: Vec<u8>) {
             assert!(!data.is_empty());
 
-            let range = address..(address + data.len() as u64);
-
             match self
                 .values
                 .binary_search_by_key(&address, |(addr, _data)| *addr)
@@ -473,7 +471,7 @@ mod test {
             DebugRegister {
                 dwarf_id: None,
                 core_register: &SP,
-                value: Some(RegisterValue::U32(inital_sp)), // TODO: Why is this not changed here, the stack pointer does actually change
+                value: Some(RegisterValue::U32(inital_sp + 0x20)), // Stack pointer has to be adjusted to account for the registers stored on the stack
             },
             DebugRegister {
                 dwarf_id: None,
@@ -619,8 +617,8 @@ mod test {
         assert_eq!(first_frame.registers, expected_regs);
 
         let next_frame = &frames[1];
+        assert_eq!(next_frame.function_name, "SVCall");
         assert_eq!(next_frame.pc, RegisterValue::U32(0x00000182));
-        assert_eq!(next_frame.function_name, "Supervisor call.");
 
         // Expected stack frame(s):
         // Frame 0: __cortex_m_rt_SVCall_trampoline @ 0x00000182
@@ -751,6 +749,136 @@ mod test {
                 0x2001ffc8, 0x0000018b, 0x2001fff0, 0xfffffff9, 0x00000001, 0x2001ffcf, 0x20000044,
                 0x20000044, 0x00000000, 0x0000017f, 0x00000180, 0x21000000, 0x2001fff8, 0x00000161,
                 0x00000000, 0x0000013d,
+            ],
+        );
+
+        let exception_handler = Box::new(ArmV6MExceptionHandler {});
+
+        let frames = debug_info
+            .unwind_impl(
+                regs,
+                &mut dummy_mem,
+                exception_handler,
+                Some(probe_rs_target::InstructionSet::Thumb2),
+            )
+            .unwrap();
+
+        assert_eq!(frames[0].pc, RegisterValue::U32(0x000001a4));
+
+        assert_eq!(
+            frames[1].function_name,
+            "__cortex_m_rt_SVCall_trampoline".to_string()
+        );
+
+        assert_eq!(frames[1].pc, RegisterValue::U32(0x0000018A)); // <-- This seems wrong, this is the instruction *after* the jump into the topmost frame
+
+        assert_eq!(
+            frames[1]
+                .registers
+                .get_frame_pointer()
+                .and_then(|r| r.value),
+            Some(RegisterValue::U32(0x2001ffc8))
+        );
+
+        let printed_backtrace = frames
+            .into_iter()
+            .map(|f| f.to_string())
+            .collect::<Vec<String>>()
+            .join("");
+
+        insta::assert_snapshot!(printed_backtrace);
+    }
+
+    #[test]
+    fn unwinding_in_exception_trampoline() {
+        let path = Path::new("./exceptions");
+
+        let base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+
+        let path = base_dir.join(path);
+
+        println!("Path: {}", path.display());
+
+        let debug_info = DebugInfo::from_file(&path).unwrap();
+
+        // Registers:
+        // R0        : 0x00000001
+        // R1        : 0x2001ffcf
+        // R2        : 0x20000044
+        // R3        : 0x20000044
+        // R4        : 0x00000000
+        // R5        : 0x00000000
+        // R6        : 0x00000000
+        // R7        : 0x2001fff0
+        // R8        : 0x00000000
+        // R9        : 0x00000000
+        // R10       : 0x00000000
+        // R11       : 0x00000000
+        // R12       : 0x00000000
+        // R13       : 0x2001ffc8
+        // R14       : 0xfffffff9
+        // R15       : 0x00000184
+        // MSP       : 0x2001ffc8
+        // PSP       : 0x00000000
+        // XPSR      : 0x2100000b
+        // EXTRA     : 0x00000000
+        // FPSCR     : 0x00000000
+
+        let values: Vec<_> = [
+            0x00000001, // R0
+            0x2001ffcf, // R1
+            0x20000044, // R2
+            0x20000044, // R3
+            0x00000000, // R4
+            0x00000000, // R5
+            0x00000000, // R6
+            0x2001fff0, // R7
+            0x00000000, // R8
+            0x00000000, // R9
+            0x00000000, // R10
+            0x00000000, // R11
+            0x00000000, // R12
+            0x2001ffc8, // R13
+            0xfffffff9, // R14
+            0x00000184, // R15
+            0x2001ffc8, // MSP
+            0x00000000, // PSP
+            0x2100000b, // XPSR
+        ]
+        .into_iter()
+        .enumerate()
+        .map(|(id, r)| DebugRegister {
+            dwarf_id: Some(id as u16),
+            core_register: CORTEX_M_CORE_REGISTERS.core_register(id),
+            value: Some(RegisterValue::U32(r)),
+        })
+        .collect();
+
+        let regs = DebugRegisters(values);
+
+        let mut dummy_mem = MockMemory::new();
+
+        // Stack:
+        // 0x2001ffc8 = 0x2001fff0
+        // 0x2001ffcc = 0xfffffff9
+        // 0x2001ffd0 = 0x00000001
+        // 0x2001ffd4 = 0x2001ffcf
+        // 0x2001ffd8 = 0x20000044
+        // 0x2001ffdc = 0x20000044
+        // 0x2001ffe0 = 0x00000000
+        // 0x2001ffe4 = 0x0000017f
+        // 0x2001ffe8 = 0x00000180
+        // 0x2001ffec = 0x21000000
+        // 0x2001fff0 = 0x2001fff8
+        // 0x2001fff4 = 0x00000161
+        // 0x2001fff8 = 0x00000000
+        // 0x2001fffc = 0x0000013d
+
+        dummy_mem.add_word_range(
+            0x2001_ffc8,
+            &[
+                0x2001fff0, 0xfffffff9, 0x00000001, 0x2001ffcf, 0x20000044, 0x20000044, 0x00000000,
+                0x0000017f, 0x00000180, 0x21000000, 0x2001fff8, 0x00000161, 0x00000000, 0x0000013d,
             ],
         );
 

@@ -16,7 +16,7 @@ use probe_rs::{
     debug::{
         debug_info::DebugInfo, registers::DebugRegisters, stack_frame::StackFrame, VariableName,
     },
-    Core, CoreRegister, CoreType, InstructionSet, MemoryInterface, RegisterId, RegisterValue,
+    Core, CoreType, InstructionSet, MemoryInterface, RegisterId, RegisterValue,
 };
 use rustyline::DefaultEditor;
 
