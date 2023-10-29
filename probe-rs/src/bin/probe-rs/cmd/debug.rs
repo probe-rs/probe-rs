@@ -546,6 +546,8 @@ impl DebugCli {
                                     }
                                 }
                             }
+
+                            println!();
                         } else {
                             println!("No debug information present!");
                         }
@@ -563,19 +565,36 @@ impl DebugCli {
             help_text: "Show CPU register values",
 
             function: |cli_data, _args| {
-                let register_file = cli_data.core.registers();
+                match &cli_data.state {
+                    DebugState::Running => println!("Core must be halted for this command."),
+                    DebugState::Halted(state) => {
+                        if let Some(current_frame) = state.get_current_frame() {
+                            let registers = &current_frame.registers;
 
-                let psr_iter: Box<dyn Iterator<Item = &CoreRegister>> = match register_file.psr() {
-                    Some(psr) => Box::new(std::iter::once(psr)),
-                    None => Box::new(std::iter::empty::<&CoreRegister>()),
-                };
+                            for register in &registers.0 {
+                                print!("{:10}: ", register.core_register.name());
 
-                let iter = register_file.core_registers().chain(psr_iter);
+                                if let Some(value) = &register.value {
+                                    println!("{:#}", value);
+                                } else {
+                                    println!("{}", "X".repeat(10));
+                                }
+                            }
+                        } else {
+                            let register_file = cli_data.core.registers();
 
-                for register in iter {
-                    let value: RegisterValue = cli_data.core.read_core_reg(register)?;
+                            for register in register_file.core_registers() {
+                                let value: RegisterValue = cli_data.core.read_core_reg(register)?;
 
-                    println!("{:10}: {:#}", register.name(), value);
+                                println!("{:10}: {:#}", register.name(), value);
+                            }
+
+                            if let Some(psr) = register_file.psr() {
+                                let value: RegisterValue = cli_data.core.read_core_reg(psr)?;
+                                println!("{:10}: {:#}", psr.name(), value);
+                            }
+                        }
+                    }
                 }
 
                 Ok(CliState::Continue)
@@ -716,7 +735,10 @@ impl DebugCli {
                         if halted_state.current_frame < halted_state.frame_indices.len() - 1 {
                             halted_state.current_frame += 1;
                         } else {
-                            println!("Already at top-most frame.");
+                            println!(
+                                "Already at top-most frame. current frame: {}, indices: {:?}",
+                                halted_state.current_frame, halted_state.frame_indices
+                            );
                         }
                     }
                 }
@@ -893,25 +915,35 @@ impl<'p> CliData<'p> {
 
     /// Fill out DebugStatus for a given core
     fn update_debug_status_from_core(&mut self) -> Result<(), CliError> {
-        // TODO: In halted state we should get the backtrace here.
         let status = self.core.status()?;
 
-        self.state = match status {
+        match status {
             probe_rs::CoreStatus::Halted(_) => {
                 let registers = DebugRegisters::from_core(&mut self.core);
-                DebugState::Halted(HaltedState {
-                    program_counter: registers
-                        .get_program_counter()
-                        .and_then(|reg| reg.value)
-                        .unwrap_or_default()
-                        .try_into()?,
-                    current_frame: 0,
-                    frame_indices: vec![1],
-                    stack_frames: vec![],
-                })
+                let pc: u64 = registers
+                    .get_program_counter()
+                    .and_then(|reg| reg.value)
+                    .unwrap_or_default()
+                    .try_into()?;
+
+                // If the core was running before, or the PC changed, we need to update the state
+                let core_state_changed = matches!(self.state, DebugState::Running)
+                    || matches!(self.state, DebugState::Halted(HaltedState { program_counter, .. }) if program_counter != pc);
+
+                // TODO: We should resolve the stack frames here
+                if core_state_changed {
+                    self.state = DebugState::Halted(HaltedState {
+                        program_counter: pc,
+                        current_frame: 0,
+                        frame_indices: vec![1],
+                        stack_frames: vec![],
+                    });
+                }
             }
-            _other => DebugState::Running,
-        };
+            _other => {
+                self.state = DebugState::Running;
+            }
+        }
 
         Ok(())
     }
@@ -920,10 +952,11 @@ impl<'p> CliData<'p> {
         match self.state {
             DebugState::Running => println!("Core is running."),
             DebugState::Halted(ref mut halted_state) => {
-                let pc = halted_state.program_counter;
                 if let Some(current_stack_frame) = halted_state.get_current_frame() {
+                    let pc = current_stack_frame.pc;
+
                     println!(
-                        "Frame {}: {} () @ {:#010x}",
+                        "Frame {}: {} () @ {:#}",
                         halted_state.current_frame, current_stack_frame.function_name, pc,
                     );
                 }

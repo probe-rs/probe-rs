@@ -89,35 +89,25 @@ impl ExceptionInterface for ArmV7MExceptionHandler {
 #[cfg(test)]
 mod test {
     use pretty_assertions::assert_eq;
-    use std::collections::BTreeMap;
+    use std::path::{Path, PathBuf};
 
     use super::ArmV6MExceptionHandler;
     use crate::{
         architecture::arm::core::registers::cortex_m::{CORTEX_M_CORE_REGISTERS, PC, RA, SP, XPSR},
         core::ExceptionInterface,
-        debug::{DebugRegister, DebugRegisters},
+        debug::{DebugInfo, DebugRegister, DebugRegisters},
         MemoryInterface, RegisterValue,
     };
 
-    #[derive(Debug, PartialEq)]
-    enum MockMemoryEntry {
-        Start(usize),
-        End(usize),
-    }
-
     #[derive(Debug)]
     struct MockMemory {
-        ranges: BTreeMap<u64, MockMemoryEntry>,
-
-        values: Vec<Vec<u8>>,
+        /// Sorted list of ranges
+        values: Vec<(u64, Vec<u8>)>,
     }
 
     impl MockMemory {
         fn new() -> Self {
-            MockMemory {
-                ranges: BTreeMap::new(),
-                values: Vec::new(),
-            }
+            MockMemory { values: Vec::new() }
         }
 
         fn add_range(&mut self, address: u64, data: Vec<u8>) {
@@ -125,20 +115,45 @@ mod test {
 
             let range = address..(address + data.len() as u64);
 
-            let existing_entries = self.ranges.range(range.clone());
+            match self
+                .values
+                .binary_search_by_key(&address, |(addr, _data)| *addr)
+            {
+                Ok(index) => {
+                    panic!("Failed to add data at {:#010x} - {:#010x}, already exists at {:#010x} - {:#010x}", address, address + data.len() as u64, self.values[index].0, self.values[index].0 + self.values[index].1.len() as u64);
+                }
+                Err(index) => {
+                    // This is the index where the new entry should be inserted,
+                    // but we first have to check on both sides, if this would overlap with existing entries
 
-            let entries: Vec<_> = existing_entries.into_iter().collect();
+                    if index > 0 {
+                        let previous_entry = &self.values[index - 1];
 
-            if entries.is_empty() {
-                let new_index = self.values.len();
-                self.values.push(data);
+                        assert!(
+                            previous_entry.0 + previous_entry.1.len() as u64 <= address,
+                            "Failed to add data at {:#010x} - {:#010x}, overlaps with existing entry at {:#010x} - {:#010x}",
+                            address,
+                            address + data.len() as u64,
+                            previous_entry.0,
+                            previous_entry.0 + previous_entry.1.len() as u64
+                        );
+                    }
 
-                self.ranges
-                    .insert(range.start, MockMemoryEntry::Start(new_index));
-                self.ranges
-                    .insert(range.end - 1, MockMemoryEntry::End(new_index));
-            } else {
-                panic!("New range would overlap {} entries", entries.len());
+                    if index + 1 < self.values.len() {
+                        let next_entry = &self.values[index + 1];
+
+                        assert!(
+                            next_entry.0 >= address + data.len() as u64,
+                            "Failed to add data at {:#010x} - {:#010x}, overlaps with existing entry at {:#010x} - {:#010x}",
+                            address,
+                            address + data.len() as u64,
+                            next_entry.0,
+                            next_entry.0 + next_entry.1.len() as u64
+                        );
+                    }
+
+                    self.values.insert(index, (address, data));
+                }
             }
         }
 
@@ -151,19 +166,26 @@ mod test {
 
             self.add_range(address, bytes);
         }
+
+        fn missing_range(&self, start: u64, end: u64) -> ! {
+            panic!("No entry for range {:#010x} - {:#010x}", start, end);
+        }
     }
 
     impl MemoryInterface for MockMemory {
         fn supports_native_64bit_access(&mut self) -> bool {
-            todo!()
+            false
         }
 
         fn read_word_64(&mut self, _address: u64) -> anyhow::Result<u64, crate::Error> {
             todo!()
         }
 
-        fn read_word_32(&mut self, _address: u64) -> anyhow::Result<u32, crate::Error> {
-            todo!()
+        fn read_word_32(&mut self, address: u64) -> anyhow::Result<u32, crate::Error> {
+            let mut bytes = [0u8; 4];
+            self.read_8(address, &mut bytes)?;
+
+            Ok(u32::from_le_bytes(bytes))
         }
 
         fn read_word_8(&mut self, _address: u64) -> anyhow::Result<u8, crate::Error> {
@@ -191,69 +213,45 @@ mod test {
         }
 
         fn read_8(&mut self, address: u64, data: &mut [u8]) -> anyhow::Result<(), crate::Error> {
-            let range = address..address + data.len() as u64;
+            let stored_data = match self
+                .values
+                .binary_search_by_key(&address, |(addr, _data)| *addr)
+            {
+                Ok(index) => {
+                    // Found entry with matching start address
 
-            assert!(!data.is_empty());
+                    &self.values[index].1
+                }
+                Err(0) => self.missing_range(address, address + data.len() as u64),
+                Err(index) => {
+                    let previous_entry = &self.values[index - 1];
 
-            assert!(
-                range.start <= *self.ranges.last_key_value().unwrap().0,
-                "No entries for range {:#010x} - {:#010x}",
-                address,
-                address + data.len() as u64
-            );
+                    // address:        10  - 12
+                    // previous_entry  8   - 11
 
-            assert!(
-                range.end >= *self.ranges.first_key_value().unwrap().0,
-                "No entries for range {:#010x} - {:#010x} (first key: {:#010x}, end: {:#010x})",
-                address,
-                address + data.len() as u64,
-                self.ranges.first_key_value().unwrap().0,
-                range.end,
-            );
+                    // reading from 10 -> reading from 8 + 2
 
-            let mut entries = self.ranges.range(range);
+                    let offset = address - previous_entry.0;
 
-            let (entry_addr, entry) = entries.next().unwrap_or_else(|| {
-                panic!(
-                    "No entries for range {:#010x} - {:#010x}",
-                    address,
-                    address + data.len() as u64
-                )
-            });
-
-            match entry {
-                MockMemoryEntry::Start(index) if *entry_addr == address => {
-                    let stored_data = &self.values[*index];
-
-                    if stored_data.len() >= data.len() {
-                        data.copy_from_slice(&stored_data[..data.len()]);
-                        Ok(())
-                    } else {
-                        data[..stored_data.len()].copy_from_slice(stored_data);
-
-                        self.read_8(
-                            address + stored_data.len() as u64,
-                            &mut data[stored_data.len()..],
-                        )
+                    if offset >= previous_entry.1.len() as u64 {
+                        // The requested range is not covered by the previous entry
+                        self.missing_range(address, address + data.len() as u64)
                     }
-                }
-                MockMemoryEntry::Start(_) => {
-                    panic!(
-                        "Missing data for range {:010x} - {:010x}",
-                        address, entry_addr
-                    );
-                }
-                MockMemoryEntry::End(index) => {
-                    // In this case, we know that the corresponding start entry is before address,
-                    // otherwise we would have found that one.
 
-                    let stored_data = &self.values[*index];
-
-                    let end_addr = entry_addr;
-                    let _entry_addr = end_addr - (stored_data.len() as u64 - 1);
-
-                    todo!()
+                    &previous_entry.1[offset as usize..]
                 }
+            };
+
+            if stored_data.len() >= data.len() {
+                data.copy_from_slice(&stored_data[..data.len()]);
+                Ok(())
+            } else {
+                data[..stored_data.len()].copy_from_slice(stored_data);
+
+                self.read_8(
+                    address + stored_data.len() as u64,
+                    &mut data[stored_data.len()..],
+                )
             }
         }
 
@@ -287,6 +285,26 @@ mod test {
 
         fn flush(&mut self) -> anyhow::Result<(), crate::Error> {
             todo!()
+        }
+    }
+
+    #[test]
+    fn mock_memory_read() {
+        let mut mock_memory = MockMemory::new();
+
+        let values = [
+            0x00000001, 0x2001ffcf, 0x20000044, 0x20000044, 0x00000000, 0x0000017f, 0x00000180,
+            0x21000000, 0x2001fff8, 0x00000161, 0x00000000, 0x0000013d,
+        ];
+
+        mock_memory.add_word_range(0x2001_ffd0, &values);
+
+        for (offset, expected) in values.iter().enumerate() {
+            let actual = mock_memory
+                .read_word_32(0x2001_ffd0 + (offset * 4) as u64)
+                .unwrap();
+
+            assert_eq!(actual, *expected);
         }
     }
 
@@ -483,5 +501,276 @@ mod test {
         }
 
         assert_eq!(actual_registers.0.len(), expected_registers.0.len());
+    }
+
+    #[test]
+    fn unwinding_first_instruction_after_exception() {
+        let path = Path::new("./exceptions");
+
+        let base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+
+        let path = base_dir.join(path);
+
+        println!("Path: {}", path.display());
+
+        let debug_info = DebugInfo::from_file(&path).unwrap();
+
+        // Registers:
+        // R0        : 0x00000001
+        // R1        : 0x2001ffcf
+        // R2        : 0x20000044
+        // R3        : 0x20000044
+        // R4        : 0x00000000
+        // R5        : 0x00000000
+        // R6        : 0x00000000
+        // R7        : 0x2001fff0
+        // R8        : 0x00000000
+        // R9        : 0x00000000
+        // R10       : 0x00000000
+        // R11       : 0x00000000
+        // R12       : 0x00000000
+        // R13       : 0x2001ffd0
+        // R14       : 0xfffffff9
+        // R15       : 0x00000182
+        // MSP       : 0x2001ffd0
+        // PSP       : 0x00000000
+        // XPSR      : 0x2100000b
+        // EXTRA     : 0x00000000
+        // FPSCR     : 0x00000000
+
+        let values: Vec<_> = [
+            0x00000001, // R0
+            0x2001ffcf, // R1
+            0x20000044, // R2
+            0x20000044, // R3
+            0x00000000, // R4
+            0x00000000, // R5
+            0x00000000, // R6
+            0x2001fff0, // R7
+            0x00000000, // R8
+            0x00000000, // R9
+            0x00000000, // R10
+            0x00000000, // R11
+            0x00000000, // R12
+            0x2001ffd0, // R13
+            0xfffffff9, // R14
+            0x00000182, // R15
+            0x2001ffd0, // MSP
+            0x00000000, // PSP
+            0x2100000b, // XPSR
+        ]
+        .into_iter()
+        .enumerate()
+        .map(|(id, r)| DebugRegister {
+            dwarf_id: Some(id as u16),
+            core_register: CORTEX_M_CORE_REGISTERS.core_register(id),
+            value: Some(RegisterValue::U32(r)),
+        })
+        .collect();
+
+        let regs = DebugRegisters(values);
+
+        let expected_regs = regs.clone();
+
+        let mut dummy_mem = MockMemory::new();
+
+        // Stack:
+        // 0x2001ffd0 = 0x00000001
+        // 0x2001ffd4 = 0x2001ffcf
+        // 0x2001ffd8 = 0x20000044
+        // 0x2001ffdc = 0x20000044
+        // 0x2001ffe0 = 0x00000000
+        // 0x2001ffe4 = 0x0000017f
+        // 0x2001ffe8 = 0x00000180
+        // 0x2001ffec = 0x21000000
+        // 0x2001fff0 = 0x2001fff8
+        // 0x2001fff4 = 0x00000161
+        // 0x2001fff8 = 0x00000000
+        // 0x2001fffc = 0x0000013d
+
+        dummy_mem.add_word_range(
+            0x2001_ffd0,
+            &[
+                0x00000001, 0x2001ffcf, 0x20000044, 0x20000044, 0x00000000, 0x0000017f, 0x00000180,
+                0x21000000, 0x2001fff8, 0x00000161, 0x00000000, 0x0000013d,
+            ],
+        );
+
+        let exception_handler = Box::new(ArmV6MExceptionHandler {});
+
+        let frames = debug_info
+            .unwind_impl(
+                regs,
+                &mut dummy_mem,
+                exception_handler,
+                Some(probe_rs_target::InstructionSet::Thumb2),
+            )
+            .unwrap();
+
+        let first_frame = &frames[0];
+
+        assert_eq!(first_frame.pc, RegisterValue::U32(0x00000182));
+
+        assert_eq!(
+            first_frame.function_name,
+            "__cortex_m_rt_SVCall_trampoline".to_string()
+        );
+
+        assert_eq!(first_frame.registers, expected_regs);
+
+        let next_frame = &frames[1];
+        assert_eq!(next_frame.pc, RegisterValue::U32(0x00000182));
+        assert_eq!(next_frame.function_name, "Supervisor call.");
+
+        // Expected stack frame(s):
+        // Frame 0: __cortex_m_rt_SVCall_trampoline @ 0x00000182
+        //        /home/dominik/code/probe-rs/probe-rs-repro/nrf/exceptions/src/main.rs:22:1
+        //
+        // <--- A frame seems to be missing here, to indicate the exception entry
+        //
+        // Frame 1: __cortex_m_rt_main @ 0x00000180   (<--- This should be 0x17e)
+        //        /home/dominik/code/probe-rs/probe-rs-repro/nrf/exceptions/src/main.rs:19:5
+        // Frame 2: __cortex_m_rt_main_trampoline @ 0x00000160
+        //        /home/dominik/code/probe-rs/probe-rs-repro/nrf/exceptions/src/main.rs:11:1
+        // Frame 3: memmove @ 0x0000013c
+        // Frame 4: memmove @ 0x0000013c
+
+        // Registers in frame 1:
+        // R0        : 0x00000001
+        // R1        : 0x2001ffcf
+        // R2        : 0x20000044
+        // R3        : 0x20000044
+        // R4        : 0x00000000
+        // R5        : 0x00000000
+        // R6        : 0x00000000
+        // R7        : 0x2001fff0
+        // R8        : 0x00000000
+        // R9        : 0x00000000
+        // R10       : 0x00000000
+        // R11       : 0x00000000
+        // R12       : 0x00000000
+        // R13       : 0x2001fff0
+        // R14       : 0x0000017f
+        // R15       : 0x0000017e
+        // MSP       : 0x2001fff0
+        // PSP       : 0x00000000
+        // XPSR      : 0x21000000
+        // EXTRA     : 0x00000000
+        // XPSR      : 0x21000000
+    }
+
+    #[test]
+    fn unwinding_in_exception_handler() {
+        let path = Path::new("./exceptions");
+
+        let base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+
+        let path = base_dir.join(path);
+
+        println!("Path: {}", path.display());
+
+        let debug_info = DebugInfo::from_file(&path).unwrap();
+
+        // Registers:
+        // R0        : 0x00000001
+        // R1        : 0x2001ff9f
+        // R2        : 0x20000047
+        // R3        : 0x20000047
+        // R4        : 0x00000000
+        // R5        : 0x00000000
+        // R6        : 0x00000000
+        // R7        : 0x2001ffc0
+        // R8        : 0x00000000
+        // R9        : 0x00000000
+        // R10       : 0x00000000
+        // R11       : 0x00000000
+        // R12       : 0x00000000
+        // R13       : 0x2001ffc0
+        // R14       : 0x0000042f
+        // R15       : 0x000001a4
+        // MSP       : 0x2001ffc0
+        // PSP       : 0x00000000
+        // XPSR      : 0x2100000b
+        // EXTRA     : 0x00000000
+
+        let values: Vec<_> = [
+            0x00000001, // R0
+            0x2001ff9f, // R1
+            0x20000047, // R2
+            0x20000047, // R3
+            0x00000000, // R4
+            0x00000000, // R5
+            0x00000000, // R6
+            0x2001ffc0, // R7
+            0x00000000, // R8
+            0x00000000, // R9
+            0x00000000, // R10
+            0x00000000, // R11
+            0x00000000, // R12
+            0x2001ffc0, // R13
+            0x0000042f, // R14
+            0x000001a4, // R15
+            0x2001ffc0, // MSP
+            0x00000000, // PSP
+            0x2100000b, // XPSR
+        ]
+        .into_iter()
+        .enumerate()
+        .map(|(id, r)| DebugRegister {
+            dwarf_id: Some(id as u16),
+            core_register: CORTEX_M_CORE_REGISTERS.core_register(id),
+            value: Some(RegisterValue::U32(r)),
+        })
+        .collect();
+
+        let regs = DebugRegisters(values);
+
+        let mut dummy_mem = MockMemory::new();
+
+        // Stack:
+        // 0x2001ffc0 = 0x2001ffc8
+        // 0x2001ffc4 = 0x0000018b
+        // 0x2001ffc8 = 0x2001fff0
+        // 0x2001ffcc = 0xfffffff9
+        // 0x2001ffd0 = 0x00000001
+        // 0x2001ffd4 = 0x2001ffcf
+        // 0x2001ffd8 = 0x20000044
+        // 0x2001ffdc = 0x20000044
+        // 0x2001ffe0 = 0x00000000
+        // 0x2001ffe4 = 0x0000017f
+        // 0x2001ffe8 = 0x00000180
+        // 0x2001ffec = 0x21000000
+        // 0x2001fff0 = 0x2001fff8
+        // 0x2001fff4 = 0x00000161
+        // 0x2001fff8 = 0x00000000
+        // 0x2001fffc = 0x0000013d
+
+        dummy_mem.add_word_range(
+            0x2001_ffc0,
+            &[
+                0x2001ffc8, 0x0000018b, 0x2001fff0, 0xfffffff9, 0x00000001, 0x2001ffcf, 0x20000044,
+                0x20000044, 0x00000000, 0x0000017f, 0x00000180, 0x21000000, 0x2001fff8, 0x00000161,
+                0x00000000, 0x0000013d,
+            ],
+        );
+
+        let exception_handler = Box::new(ArmV6MExceptionHandler {});
+
+        let frames = debug_info
+            .unwind_impl(
+                regs,
+                &mut dummy_mem,
+                exception_handler,
+                Some(probe_rs_target::InstructionSet::Thumb2),
+            )
+            .unwrap();
+
+        let printed_backtrace = frames
+            .into_iter()
+            .map(|f| f.to_string())
+            .collect::<Vec<String>>()
+            .join("");
+
+        insta::assert_snapshot!(printed_backtrace);
     }
 }

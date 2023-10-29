@@ -712,7 +712,7 @@ impl DebugInfo {
         self.unwind_impl(initial_registers, core, exception_handler, instruction_set)
     }
 
-    fn unwind_impl(
+    pub(crate) fn unwind_impl(
         &self,
         initial_registers: registers::DebugRegisters,
         memory: &mut dyn MemoryInterface,
