@@ -4,7 +4,7 @@ use colored::Colorize;
 use probe_rs::{
     config::MemoryRegion,
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format},
-    Architecture, Core, MemoryInterface, Session,
+    Architecture, Core, MemoryInterface, ReadOnlyMemoryInterface, Session,
 };
 
 pub mod stepping;

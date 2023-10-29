@@ -6,7 +6,7 @@ use std::{
 };
 
 use anyhow::Context;
-use probe_rs::MemoryInterface;
+use probe_rs::{MemoryInterface, ReadOnlyMemoryInterface};
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;

@@ -1,6 +1,6 @@
 use crate::{
-    architecture::arm::sequences::ArmDebugSequence, debug::DebugRegisters, error, CoreType, Error,
-    InstructionSet, MemoryInterface, Target,
+    architecture::arm::sequences::ArmDebugSequence, debug::DebugRegisters, error,
+    memory::ReadOnlyMemoryInterface, CoreType, Error, InstructionSet, MemoryInterface, Target,
 };
 use anyhow::{anyhow, Result};
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
@@ -164,6 +164,40 @@ pub trait CoreInterface: MemoryInterface {
 }
 
 impl<'probe> MemoryInterface for Core<'probe> {
+    fn write_word_64(&mut self, addr: u64, data: u64) -> Result<(), Error> {
+        self.inner.write_word_64(addr, data)
+    }
+
+    fn write_word_32(&mut self, addr: u64, data: u32) -> Result<(), Error> {
+        self.inner.write_word_32(addr, data)
+    }
+
+    fn write_word_8(&mut self, addr: u64, data: u8) -> Result<(), Error> {
+        self.inner.write_word_8(addr, data)
+    }
+
+    fn write_64(&mut self, addr: u64, data: &[u64]) -> Result<(), Error> {
+        self.inner.write_64(addr, data)
+    }
+
+    fn write_32(&mut self, addr: u64, data: &[u32]) -> Result<(), Error> {
+        self.inner.write_32(addr, data)
+    }
+
+    fn write_8(&mut self, addr: u64, data: &[u8]) -> Result<(), Error> {
+        self.inner.write_8(addr, data)
+    }
+
+    fn write(&mut self, addr: u64, data: &[u8]) -> Result<(), Error> {
+        self.inner.write(addr, data)
+    }
+
+    fn flush(&mut self) -> Result<(), Error> {
+        self.inner.flush()
+    }
+}
+
+impl<'probe> ReadOnlyMemoryInterface for Core<'probe> {
     fn supports_native_64bit_access(&mut self) -> bool {
         self.inner.supports_native_64bit_access()
     }
@@ -196,40 +230,8 @@ impl<'probe> MemoryInterface for Core<'probe> {
         self.inner.read(address, data)
     }
 
-    fn write_word_64(&mut self, addr: u64, data: u64) -> Result<(), Error> {
-        self.inner.write_word_64(addr, data)
-    }
-
-    fn write_word_32(&mut self, addr: u64, data: u32) -> Result<(), Error> {
-        self.inner.write_word_32(addr, data)
-    }
-
-    fn write_word_8(&mut self, addr: u64, data: u8) -> Result<(), Error> {
-        self.inner.write_word_8(addr, data)
-    }
-
-    fn write_64(&mut self, addr: u64, data: &[u64]) -> Result<(), Error> {
-        self.inner.write_64(addr, data)
-    }
-
-    fn write_32(&mut self, addr: u64, data: &[u32]) -> Result<(), Error> {
-        self.inner.write_32(addr, data)
-    }
-
-    fn write_8(&mut self, addr: u64, data: &[u8]) -> Result<(), Error> {
-        self.inner.write_8(addr, data)
-    }
-
-    fn write(&mut self, addr: u64, data: &[u8]) -> Result<(), Error> {
-        self.inner.write(addr, data)
-    }
-
     fn supports_8bit_transfers(&self) -> Result<bool, error::Error> {
         self.inner.supports_8bit_transfers()
-    }
-
-    fn flush(&mut self) -> Result<(), Error> {
-        self.inner.flush()
     }
 }
 
@@ -254,14 +256,14 @@ pub trait ExceptionInterface {
     /// and the unwind should continue normally.
     fn exception_details(
         &self,
-        memory: &mut dyn MemoryInterface,
+        memory: &mut dyn ReadOnlyMemoryInterface,
         stackframe_registers: &DebugRegisters,
     ) -> Result<Option<ExceptionInfo>, Error>;
 
     /// Using the `stackframe_registers` for a "called frame", retrieve updated register values for the "calling frame".
     fn calling_frame_registers(
         &self,
-        memory: &mut dyn MemoryInterface,
+        memory: &mut dyn ReadOnlyMemoryInterface,
         stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<crate::debug::DebugRegisters, crate::Error>;
 
@@ -269,7 +271,7 @@ pub trait ExceptionInterface {
     /// Where possible, the implementation may read additional registers from the core, to provide additional context.
     fn exception_description(
         &self,
-        memory: &mut dyn MemoryInterface,
+        memory: &mut dyn ReadOnlyMemoryInterface,
         stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<String, crate::Error>;
 }
@@ -280,7 +282,7 @@ pub struct UnimplementedExceptionHandler;
 impl ExceptionInterface for UnimplementedExceptionHandler {
     fn exception_details(
         &self,
-        _memory: &mut dyn MemoryInterface,
+        _memory: &mut dyn ReadOnlyMemoryInterface,
         _stackframe_registers: &DebugRegisters,
     ) -> anyhow::Result<Option<ExceptionInfo>, Error> {
         // For architectures where the exception handling has not been implemented in probe-rs,
@@ -293,7 +295,7 @@ impl ExceptionInterface for UnimplementedExceptionHandler {
 
     fn calling_frame_registers(
         &self,
-        _memory: &mut dyn MemoryInterface,
+        _memory: &mut dyn ReadOnlyMemoryInterface,
         _stackframe_registers: &crate::debug::DebugRegisters,
     ) -> anyhow::Result<crate::debug::DebugRegisters, crate::Error> {
         Err(Error::NotImplemented(
@@ -303,7 +305,7 @@ impl ExceptionInterface for UnimplementedExceptionHandler {
 
     fn exception_description(
         &self,
-        _memory: &mut dyn MemoryInterface,
+        _memory: &mut dyn ReadOnlyMemoryInterface,
         _stackframe_registers: &crate::debug::DebugRegisters,
     ) -> anyhow::Result<String, crate::Error> {
         Err(Error::NotImplemented(

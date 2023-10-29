@@ -1,5 +1,5 @@
 use super::*;
-use crate::Error;
+use crate::{memory::ReadOnlyMemoryInterface, Error};
 use anyhow::anyhow;
 use std::collections::HashMap;
 
@@ -43,7 +43,7 @@ impl VariableCache {
         &mut self,
         parent_key: Option<i64>,
         cache_variable: Variable,
-        core: &mut dyn MemoryInterface,
+        core: &mut dyn ReadOnlyMemoryInterface,
     ) -> Result<Variable, Error> {
         let mut variable_to_add = cache_variable.clone();
         // Validate that the parent_key exists ...

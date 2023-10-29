@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use super::RiscvDebugSequence;
-use crate::MemoryInterface;
+use crate::{memory::ReadOnlyMemoryInterface, MemoryInterface};
 
 /// The debug sequence implementation for the ESP32C3.
 pub struct ESP32C3(());

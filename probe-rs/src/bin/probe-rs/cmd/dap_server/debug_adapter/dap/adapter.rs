@@ -29,7 +29,7 @@ use probe_rs::{
         VerifiedBreakpoint,
     },
     Architecture::Riscv,
-    CoreStatus, Error, HaltReason, MemoryInterface, RegisterValue,
+    CoreStatus, Error, HaltReason, MemoryInterface, ReadOnlyMemoryInterface, RegisterValue,
 };
 use serde::{de::DeserializeOwned, Serialize};
 use std::{convert::TryInto, path::Path, str, string::ToString, time::Duration};

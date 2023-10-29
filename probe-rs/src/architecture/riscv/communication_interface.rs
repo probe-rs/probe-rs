@@ -1717,6 +1717,61 @@ impl RiscvValue for u128 {
 }
 
 impl MemoryInterface for RiscvCommunicationInterface {
+    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), crate::error::Error> {
+        let address = valid_32bit_address(address)?;
+        let low_word = data as u32;
+        let high_word = (data >> 32) as u32;
+
+        self.write_word(address, low_word)?;
+        self.write_word(address + 4, high_word)
+    }
+
+    fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), crate::Error> {
+        let address = valid_32bit_address(address)?;
+        self.write_word(address, data)
+    }
+
+    fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), crate::Error> {
+        let address = valid_32bit_address(address)?;
+        self.write_word(address, data)
+    }
+
+    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), crate::error::Error> {
+        let address = valid_32bit_address(address)?;
+        tracing::debug!("write_64 to {:#08x}", address);
+
+        for (i, d) in data.iter().enumerate() {
+            self.write_word_64((address + (i as u32 * 8)).into(), *d)?;
+        }
+
+        Ok(())
+    }
+
+    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), crate::Error> {
+        let address = valid_32bit_address(address)?;
+        tracing::debug!("write_32 to {:#08x}", address);
+
+        self.write_multiple(address, data)
+    }
+
+    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), crate::Error> {
+        let address = valid_32bit_address(address)?;
+        tracing::debug!("write_8 to {:#08x}", address);
+
+        self.write_multiple(address, data)
+    }
+
+    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), crate::Error> {
+        let address = valid_32bit_address(address)?;
+        self.write_multiple(address, data)
+    }
+
+    fn flush(&mut self) -> Result<(), crate::Error> {
+        Ok(())
+    }
+}
+
+impl ReadOnlyMemoryInterface for RiscvCommunicationInterface {
     fn supports_native_64bit_access(&mut self) -> bool {
         false
     }
@@ -1769,61 +1824,8 @@ impl MemoryInterface for RiscvCommunicationInterface {
         self.read_multiple(address, data)
     }
 
-    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), crate::error::Error> {
-        let address = valid_32bit_address(address)?;
-        let low_word = data as u32;
-        let high_word = (data >> 32) as u32;
-
-        self.write_word(address, low_word)?;
-        self.write_word(address + 4, high_word)
-    }
-
-    fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), crate::Error> {
-        let address = valid_32bit_address(address)?;
-        self.write_word(address, data)
-    }
-
-    fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), crate::Error> {
-        let address = valid_32bit_address(address)?;
-        self.write_word(address, data)
-    }
-
-    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), crate::error::Error> {
-        let address = valid_32bit_address(address)?;
-        tracing::debug!("write_64 to {:#08x}", address);
-
-        for (i, d) in data.iter().enumerate() {
-            self.write_word_64((address + (i as u32 * 8)).into(), *d)?;
-        }
-
-        Ok(())
-    }
-
-    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), crate::Error> {
-        let address = valid_32bit_address(address)?;
-        tracing::debug!("write_32 to {:#08x}", address);
-
-        self.write_multiple(address, data)
-    }
-
-    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), crate::Error> {
-        let address = valid_32bit_address(address)?;
-        tracing::debug!("write_8 to {:#08x}", address);
-
-        self.write_multiple(address, data)
-    }
-
-    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), crate::Error> {
-        let address = valid_32bit_address(address)?;
-        self.write_multiple(address, data)
-    }
-
     fn supports_8bit_transfers(&self) -> Result<bool, crate::Error> {
         Ok(true)
-    }
-
-    fn flush(&mut self) -> Result<(), crate::Error> {
-        Ok(())
     }
 }
 

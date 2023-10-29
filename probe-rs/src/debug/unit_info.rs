@@ -3,7 +3,7 @@ use super::{
     function_die::FunctionDie, registers, variable::*, DebugError, DebugRegisters, SourceLocation,
     VariableCache,
 };
-use crate::{core::Core, core::RegisterValue, MemoryInterface};
+use crate::{core::Core, core::RegisterValue, memory::ReadOnlyMemoryInterface};
 use gimli::{AttributeValue::Language, Location, UnitOffset};
 use num_traits::Zero;
 

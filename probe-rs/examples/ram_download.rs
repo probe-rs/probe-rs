@@ -1,4 +1,7 @@
-use probe_rs::{config::TargetSelector, MemoryInterface, Permissions, Probe, WireProtocol};
+use probe_rs::{
+    config::TargetSelector, MemoryInterface, Permissions, Probe, ReadOnlyMemoryInterface,
+    WireProtocol,
+};
 
 use clap::Parser;
 use std::num::ParseIntError;

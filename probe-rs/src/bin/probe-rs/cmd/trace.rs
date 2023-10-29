@@ -3,7 +3,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::time::Instant;
 
-use probe_rs::MemoryInterface;
+use probe_rs::ReadOnlyMemoryInterface;
 use scroll::{Pwrite, LE};
 
 use crate::util::{common_options::ProbeOptions, parse_u64};

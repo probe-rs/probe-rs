@@ -28,7 +28,7 @@ pub use self::{
     debug_info::*, debug_step::SteppingMode, registers::*, stack_frame::StackFrame, variable::*,
     variable_cache::VariableCache,
 };
-use crate::{core::Core, MemoryInterface};
+use crate::{core::Core, memory::ReadOnlyMemoryInterface, MemoryInterface};
 use gimli::DebuggingInformationEntry;
 use std::{
     io,

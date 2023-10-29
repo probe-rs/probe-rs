@@ -1,3 +1,4 @@
+use crate::memory::ReadOnlyMemoryInterface;
 use crate::rtt::Error;
 use crate::{config::MemoryRegion, Core, MemoryInterface};
 use scroll::{Pread, LE};

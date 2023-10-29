@@ -1,4 +1,4 @@
-use crate::MemoryInterface;
+use crate::memory::ReadOnlyMemoryInterface;
 
 use super::armv6m_armv7m_shared::Xpsr;
 
@@ -42,7 +42,7 @@ impl From<u32> for ExceptionReason {
 }
 
 pub fn exception_description(
-    _memory_interface: &mut dyn MemoryInterface,
+    _memory_interface: &mut dyn ReadOnlyMemoryInterface,
     stackframe_registers: &crate::debug::DebugRegisters,
 ) -> Result<String, crate::Error> {
     // Load the provided xPSR register as a bitfield.

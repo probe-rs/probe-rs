@@ -11,7 +11,7 @@ use capstone::{
 use num_traits::Zero;
 use probe_rs::{
     debug::{ColumnType, SourceLocation},
-    CoreType, InstructionSet, MemoryInterface,
+    CoreType, InstructionSet, ReadOnlyMemoryInterface,
 };
 use std::{fmt::Write, time::Duration};
 

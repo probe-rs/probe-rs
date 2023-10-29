@@ -3,11 +3,11 @@ use super::{
     variable::*, DebugError, DebugRegisters, SourceLocation, StackFrame, VariableCache,
 };
 use crate::core::{exception_handler_for_core, UnwindRule};
+use crate::memory::ReadOnlyMemoryInterface;
 use crate::{
     core::Core,
     core::{ExceptionInterface, RegisterRole, RegisterValue},
     debug::{registers, source_statement::SourceStatements},
-    MemoryInterface,
 };
 use ::gimli::{FileEntry, LineProgramHeader, UnwindContext};
 use gimli::{BaseAddresses, ColumnType, DebugFrame, UnwindSection};
@@ -285,7 +285,7 @@ impl DebugInfo {
     /// This saves a lot of overhead when a user only wants to see the `[VariableName::LocalScope]` or `[VariableName::Registers]` while stepping through code (the most common use cases)
     pub(crate) fn create_static_scope_cache(
         &self,
-        core: &mut dyn MemoryInterface,
+        core: &mut dyn ReadOnlyMemoryInterface,
         unit_info: &UnitInfo,
     ) -> Result<VariableCache, DebugError> {
         let mut static_variable_cache = VariableCache::new();
@@ -309,7 +309,7 @@ impl DebugInfo {
     /// Creates the unpopulated cache for `function` variables
     pub(crate) fn create_function_scope_cache(
         &self,
-        core: &mut dyn MemoryInterface,
+        core: &mut dyn ReadOnlyMemoryInterface,
         die_cursor_state: &FunctionDie,
         unit_info: &UnitInfo,
     ) -> Result<VariableCache, DebugError> {
@@ -496,7 +496,7 @@ impl DebugInfo {
     /// This function will also populate the `DebugInfo::VariableCache` with in scope `Variable`s for each `StackFrame`, while taking into account the appropriate strategy for lazy-loading of variables.
     pub(crate) fn get_stackframe_info(
         &self,
-        core: &mut dyn MemoryInterface,
+        core: &mut dyn ReadOnlyMemoryInterface,
         address: u64,
         unwind_registers: &registers::DebugRegisters,
     ) -> Result<Vec<StackFrame>, DebugError> {
@@ -513,7 +513,7 @@ impl DebugInfo {
         let mut frames = Vec::new();
 
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
-            let functions = unit_info.get_function_dies(address, Some(&unwind_registers), true)?;
+            let functions = unit_info.get_function_dies(address, Some(unwind_registers), true)?;
 
             if functions.is_empty() {
                 continue;
@@ -689,7 +689,7 @@ impl DebugInfo {
     pub(crate) fn unwind_impl(
         &self,
         initial_registers: registers::DebugRegisters,
-        memory: &mut dyn MemoryInterface,
+        memory: &mut dyn ReadOnlyMemoryInterface,
         exception_handler: Box<dyn ExceptionInterface>,
         instruction_set: Option<InstructionSet>,
     ) -> Result<Vec<StackFrame>, crate::Error> {
@@ -778,7 +778,7 @@ impl DebugInfo {
 
                         let previous_regs = unwind_registers.clone();
 
-                        let exception_frame = StackFrame {
+                        StackFrame {
                             id: get_sequential_key(),
                             function_name: exception_info.description.clone(),
                             source_location: None,
@@ -792,9 +792,7 @@ impl DebugInfo {
                             is_inlined: false,
                             static_variables: None,
                             local_variables: None,
-                        };
-
-                        exception_frame
+                        }
                     } else {
                         let address = frame_pc;
 
@@ -1333,7 +1331,7 @@ fn unwind_register(
     unwind_info: Option<&gimli::UnwindTableRow<DwarfReader, gimli::StoreOnHeap>>,
     unwind_cfa: Option<u64>,
     unwound_return_address: &mut Option<RegisterValue>,
-    core: &mut dyn MemoryInterface,
+    core: &mut dyn ReadOnlyMemoryInterface,
     instruction_set: Option<InstructionSet>,
 ) -> ControlFlow<(), ()> {
     use gimli::read::RegisterRule::*;

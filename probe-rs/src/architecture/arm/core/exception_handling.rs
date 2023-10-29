@@ -3,7 +3,8 @@
 use crate::{
     core::{ExceptionInfo, ExceptionInterface},
     debug::DebugRegisters,
-    Error, MemoryInterface,
+    memory::ReadOnlyMemoryInterface,
+    Error,
 };
 pub(crate) mod armv6m;
 /// Where applicable, this defines shared logic for implementing exception handling accross the various ARMv6-m and ARMv7-m [`crate::CoreType`]'s.
@@ -19,7 +20,7 @@ pub struct ArmV6MExceptionHandler {}
 impl ExceptionInterface for ArmV6MExceptionHandler {
     fn exception_details(
         &self,
-        memory_interface: &mut dyn MemoryInterface,
+        memory_interface: &mut dyn ReadOnlyMemoryInterface,
         stackframe_registers: &DebugRegisters,
     ) -> Result<Option<ExceptionInfo>, Error> {
         armv6m_armv7m_shared::exception_details(self, memory_interface, stackframe_registers)
@@ -27,7 +28,7 @@ impl ExceptionInterface for ArmV6MExceptionHandler {
 
     fn calling_frame_registers(
         &self,
-        memory_interface: &mut dyn MemoryInterface,
+        memory_interface: &mut dyn ReadOnlyMemoryInterface,
         stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<crate::debug::DebugRegisters, crate::Error> {
         armv6m_armv7m_shared::calling_frame_registers(memory_interface, stackframe_registers)
@@ -35,7 +36,7 @@ impl ExceptionInterface for ArmV6MExceptionHandler {
 
     fn exception_description(
         &self,
-        memory_interface: &mut dyn MemoryInterface,
+        memory_interface: &mut dyn ReadOnlyMemoryInterface,
         stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<String, crate::Error> {
         crate::architecture::arm::core::exception_handling::armv6m::exception_description(
@@ -51,7 +52,7 @@ pub struct ArmV7MExceptionHandler {}
 impl ExceptionInterface for ArmV7MExceptionHandler {
     fn exception_details(
         &self,
-        memory_interface: &mut dyn MemoryInterface,
+        memory_interface: &mut dyn ReadOnlyMemoryInterface,
         stackframe_registers: &DebugRegisters,
     ) -> Result<Option<ExceptionInfo>, Error> {
         armv6m_armv7m_shared::exception_details(self, memory_interface, stackframe_registers)
@@ -59,7 +60,7 @@ impl ExceptionInterface for ArmV7MExceptionHandler {
 
     fn calling_frame_registers(
         &self,
-        memory_interface: &mut dyn MemoryInterface,
+        memory_interface: &mut dyn ReadOnlyMemoryInterface,
         stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<crate::debug::DebugRegisters, crate::Error> {
         armv6m_armv7m_shared::calling_frame_registers(memory_interface, stackframe_registers)
@@ -67,7 +68,7 @@ impl ExceptionInterface for ArmV7MExceptionHandler {
 
     fn exception_description(
         &self,
-        memory_interface: &mut dyn MemoryInterface,
+        memory_interface: &mut dyn ReadOnlyMemoryInterface,
         stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<String, crate::Error> {
         // Load the provided xPSR register as a bitfield.
@@ -96,7 +97,8 @@ mod test {
         architecture::arm::core::registers::cortex_m::{CORTEX_M_CORE_REGISTERS, PC, RA, SP, XPSR},
         core::ExceptionInterface,
         debug::{DebugInfo, DebugRegister, DebugRegisters},
-        MemoryInterface, RegisterValue,
+        memory::ReadOnlyMemoryInterface,
+        RegisterValue,
     };
 
     #[derive(Debug)]
@@ -170,7 +172,7 @@ mod test {
         }
     }
 
-    impl MemoryInterface for MockMemory {
+    impl ReadOnlyMemoryInterface for MockMemory {
         fn supports_native_64bit_access(&mut self) -> bool {
             false
         }
@@ -253,36 +255,8 @@ mod test {
             }
         }
 
-        fn write_word_64(&mut self, _address: u64, _data: u64) -> anyhow::Result<(), crate::Error> {
-            todo!()
-        }
-
-        fn write_word_32(&mut self, _address: u64, _data: u32) -> anyhow::Result<(), crate::Error> {
-            todo!()
-        }
-
-        fn write_word_8(&mut self, _address: u64, _data: u8) -> anyhow::Result<(), crate::Error> {
-            todo!()
-        }
-
-        fn write_64(&mut self, _address: u64, _data: &[u64]) -> anyhow::Result<(), crate::Error> {
-            todo!()
-        }
-
-        fn write_32(&mut self, _address: u64, _data: &[u32]) -> anyhow::Result<(), crate::Error> {
-            todo!()
-        }
-
-        fn write_8(&mut self, _address: u64, _data: &[u8]) -> anyhow::Result<(), crate::Error> {
-            todo!()
-        }
-
-        fn supports_8bit_transfers(&self) -> anyhow::Result<bool, crate::Error> {
-            todo!()
-        }
-
-        fn flush(&mut self) -> anyhow::Result<(), crate::Error> {
-            todo!()
+        fn supports_8bit_transfers(&self) -> Result<bool, crate::Error> {
+            Ok(true)
         }
     }
 
