@@ -1,5 +1,5 @@
 ---
-source: probe-rs/src/architecture/arm/core/exception_handling.rs
+source: probe-rs/src/debug/debug_info.rs
 expression: printed_backtrace
 ---
 Frame: __cortex_m_rt_SVCall

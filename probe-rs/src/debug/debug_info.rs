@@ -1561,3 +1561,498 @@ fn add_to_address(address: u64, offset: i64, address_size_in_bytes: usize) -> u6
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use std::path::{Path, PathBuf};
+
+    use crate::{
+        architecture::arm::core::{
+            exception_handling::{ArmV6MExceptionHandler, ArmV7MExceptionHandler},
+            registers::cortex_m::CORTEX_M_CORE_REGISTERS,
+        },
+        debug::{DebugInfo, DebugRegister, DebugRegisters},
+        test::MockMemory,
+        RegisterValue,
+    };
+
+    fn debug_info(filename: &str) -> DebugInfo {
+        let path = Path::new(filename);
+
+        let mut base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        base_dir.push("tests");
+
+        let path = base_dir.join(path);
+
+        DebugInfo::from_file(&path).unwrap()
+    }
+
+    #[test]
+    fn unwinding_first_instruction_after_exception() {
+        let debug_info = debug_info("exceptions");
+
+        // Registers:
+        // R0        : 0x00000001
+        // R1        : 0x2001ffcf
+        // R2        : 0x20000044
+        // R3        : 0x20000044
+        // R4        : 0x00000000
+        // R5        : 0x00000000
+        // R6        : 0x00000000
+        // R7        : 0x2001fff0
+        // R8        : 0x00000000
+        // R9        : 0x00000000
+        // R10       : 0x00000000
+        // R11       : 0x00000000
+        // R12       : 0x00000000
+        // R13       : 0x2001ffd0
+        // R14       : 0xfffffff9
+        // R15       : 0x00000182
+        // MSP       : 0x2001ffd0
+        // PSP       : 0x00000000
+        // XPSR      : 0x2100000b
+        // EXTRA     : 0x00000000
+        // FPSCR     : 0x00000000
+
+        let values: Vec<_> = [
+            0x00000001, // R0
+            0x2001ffcf, // R1
+            0x20000044, // R2
+            0x20000044, // R3
+            0x00000000, // R4
+            0x00000000, // R5
+            0x00000000, // R6
+            0x2001fff0, // R7
+            0x00000000, // R8
+            0x00000000, // R9
+            0x00000000, // R10
+            0x00000000, // R11
+            0x00000000, // R12
+            0x2001ffd0, // R13
+            0xfffffff9, // R14
+            0x00000182, // R15
+            0x2001ffd0, // MSP
+            0x00000000, // PSP
+            0x2100000b, // XPSR
+        ]
+        .into_iter()
+        .enumerate()
+        .map(|(id, r)| DebugRegister {
+            dwarf_id: Some(id as u16),
+            core_register: CORTEX_M_CORE_REGISTERS.core_register(id),
+            value: Some(RegisterValue::U32(r)),
+        })
+        .collect();
+
+        let regs = DebugRegisters(values);
+
+        let expected_regs = regs.clone();
+
+        let mut mocked_mem = MockMemory::new();
+
+        // Stack:
+        // 0x2001ffd0 = 0x00000001
+        // 0x2001ffd4 = 0x2001ffcf
+        // 0x2001ffd8 = 0x20000044
+        // 0x2001ffdc = 0x20000044
+        // 0x2001ffe0 = 0x00000000
+        // 0x2001ffe4 = 0x0000017f
+        // 0x2001ffe8 = 0x00000180
+        // 0x2001ffec = 0x21000000
+        // 0x2001fff0 = 0x2001fff8
+        // 0x2001fff4 = 0x00000161
+        // 0x2001fff8 = 0x00000000
+        // 0x2001fffc = 0x0000013d
+
+        mocked_mem.add_word_range(
+            0x2001_ffd0,
+            &[
+                0x00000001, 0x2001ffcf, 0x20000044, 0x20000044, 0x00000000, 0x0000017f, 0x00000180,
+                0x21000000, 0x2001fff8, 0x00000161, 0x00000000, 0x0000013d,
+            ],
+        );
+
+        let exception_handler = Box::new(ArmV6MExceptionHandler {});
+
+        let frames = debug_info
+            .unwind_impl(
+                regs,
+                &mut mocked_mem,
+                exception_handler,
+                Some(probe_rs_target::InstructionSet::Thumb2),
+            )
+            .unwrap();
+
+        let first_frame = &frames[0];
+
+        assert_eq!(first_frame.pc, RegisterValue::U32(0x00000182));
+
+        assert_eq!(
+            first_frame.function_name,
+            "__cortex_m_rt_SVCall_trampoline".to_string()
+        );
+
+        assert_eq!(first_frame.registers, expected_regs);
+
+        let next_frame = &frames[1];
+        assert_eq!(next_frame.function_name, "SVCall");
+        assert_eq!(next_frame.pc, RegisterValue::U32(0x00000182));
+
+        // Expected stack frame(s):
+        // Frame 0: __cortex_m_rt_SVCall_trampoline @ 0x00000182
+        //        /home/dominik/code/probe-rs/probe-rs-repro/nrf/exceptions/src/main.rs:22:1
+        //
+        // <--- A frame seems to be missing here, to indicate the exception entry
+        //
+        // Frame 1: __cortex_m_rt_main @ 0x00000180   (<--- This should be 0x17e)
+        //        /home/dominik/code/probe-rs/probe-rs-repro/nrf/exceptions/src/main.rs:19:5
+        // Frame 2: __cortex_m_rt_main_trampoline @ 0x00000160
+        //        /home/dominik/code/probe-rs/probe-rs-repro/nrf/exceptions/src/main.rs:11:1
+        // Frame 3: memmove @ 0x0000013c
+        // Frame 4: memmove @ 0x0000013c
+
+        // Registers in frame 1:
+        // R0        : 0x00000001
+        // R1        : 0x2001ffcf
+        // R2        : 0x20000044
+        // R3        : 0x20000044
+        // R4        : 0x00000000
+        // R5        : 0x00000000
+        // R6        : 0x00000000
+        // R7        : 0x2001fff0
+        // R8        : 0x00000000
+        // R9        : 0x00000000
+        // R10       : 0x00000000
+        // R11       : 0x00000000
+        // R12       : 0x00000000
+        // R13       : 0x2001fff0
+        // R14       : 0x0000017f
+        // R15       : 0x0000017e
+        // MSP       : 0x2001fff0
+        // PSP       : 0x00000000
+        // XPSR      : 0x21000000
+        // EXTRA     : 0x00000000
+        // XPSR      : 0x21000000
+    }
+
+    #[test]
+    fn unwinding_in_exception_handler() {
+        let debug_info = debug_info("exceptions");
+
+        // Registers:
+        // R0        : 0x00000001
+        // R1        : 0x2001ff9f
+        // R2        : 0x20000047
+        // R3        : 0x20000047
+        // R4        : 0x00000000
+        // R5        : 0x00000000
+        // R6        : 0x00000000
+        // R7        : 0x2001ffc0
+        // R8        : 0x00000000
+        // R9        : 0x00000000
+        // R10       : 0x00000000
+        // R11       : 0x00000000
+        // R12       : 0x00000000
+        // R13       : 0x2001ffc0
+        // R14       : 0x0000042f
+        // R15       : 0x000001a4
+        // MSP       : 0x2001ffc0
+        // PSP       : 0x00000000
+        // XPSR      : 0x2100000b
+        // EXTRA     : 0x00000000
+
+        let values: Vec<_> = [
+            0x00000001, // R0
+            0x2001ff9f, // R1
+            0x20000047, // R2
+            0x20000047, // R3
+            0x00000000, // R4
+            0x00000000, // R5
+            0x00000000, // R6
+            0x2001ffc0, // R7
+            0x00000000, // R8
+            0x00000000, // R9
+            0x00000000, // R10
+            0x00000000, // R11
+            0x00000000, // R12
+            0x2001ffc0, // R13
+            0x0000042f, // R14
+            0x000001a4, // R15
+            0x2001ffc0, // MSP
+            0x00000000, // PSP
+            0x2100000b, // XPSR
+        ]
+        .into_iter()
+        .enumerate()
+        .map(|(id, r)| DebugRegister {
+            dwarf_id: Some(id as u16),
+            core_register: CORTEX_M_CORE_REGISTERS.core_register(id),
+            value: Some(RegisterValue::U32(r)),
+        })
+        .collect();
+
+        let regs = DebugRegisters(values);
+
+        let mut dummy_mem = MockMemory::new();
+
+        // Stack:
+        // 0x2001ffc0 = 0x2001ffc8
+        // 0x2001ffc4 = 0x0000018b
+        // 0x2001ffc8 = 0x2001fff0
+        // 0x2001ffcc = 0xfffffff9
+        // 0x2001ffd0 = 0x00000001
+        // 0x2001ffd4 = 0x2001ffcf
+        // 0x2001ffd8 = 0x20000044
+        // 0x2001ffdc = 0x20000044
+        // 0x2001ffe0 = 0x00000000
+        // 0x2001ffe4 = 0x0000017f
+        // 0x2001ffe8 = 0x00000180
+        // 0x2001ffec = 0x21000000
+        // 0x2001fff0 = 0x2001fff8
+        // 0x2001fff4 = 0x00000161
+        // 0x2001fff8 = 0x00000000
+        // 0x2001fffc = 0x0000013d
+
+        dummy_mem.add_word_range(
+            0x2001_ffc0,
+            &[
+                0x2001ffc8, 0x0000018b, 0x2001fff0, 0xfffffff9, 0x00000001, 0x2001ffcf, 0x20000044,
+                0x20000044, 0x00000000, 0x0000017f, 0x00000180, 0x21000000, 0x2001fff8, 0x00000161,
+                0x00000000, 0x0000013d,
+            ],
+        );
+
+        let exception_handler = Box::new(ArmV6MExceptionHandler {});
+
+        let frames = debug_info
+            .unwind_impl(
+                regs,
+                &mut dummy_mem,
+                exception_handler,
+                Some(probe_rs_target::InstructionSet::Thumb2),
+            )
+            .unwrap();
+
+        assert_eq!(frames[0].pc, RegisterValue::U32(0x000001a4));
+
+        assert_eq!(
+            frames[1].function_name,
+            "__cortex_m_rt_SVCall_trampoline".to_string()
+        );
+
+        assert_eq!(frames[1].pc, RegisterValue::U32(0x0000018A)); // <-- This seems wrong, this is the instruction *after* the jump into the topmost frame
+
+        assert_eq!(
+            frames[1]
+                .registers
+                .get_frame_pointer()
+                .and_then(|r| r.value),
+            Some(RegisterValue::U32(0x2001ffc8))
+        );
+
+        let printed_backtrace = frames
+            .into_iter()
+            .map(|f| f.to_string())
+            .collect::<Vec<String>>()
+            .join("");
+
+        insta::assert_snapshot!(printed_backtrace);
+    }
+
+    #[test]
+    fn unwinding_in_exception_trampoline() {
+        let debug_info = debug_info("exceptions");
+
+        // Registers:
+        // R0        : 0x00000001
+        // R1        : 0x2001ffcf
+        // R2        : 0x20000044
+        // R3        : 0x20000044
+        // R4        : 0x00000000
+        // R5        : 0x00000000
+        // R6        : 0x00000000
+        // R7        : 0x2001fff0
+        // R8        : 0x00000000
+        // R9        : 0x00000000
+        // R10       : 0x00000000
+        // R11       : 0x00000000
+        // R12       : 0x00000000
+        // R13       : 0x2001ffc8
+        // R14       : 0xfffffff9
+        // R15       : 0x00000184
+        // MSP       : 0x2001ffc8
+        // PSP       : 0x00000000
+        // XPSR      : 0x2100000b
+        // EXTRA     : 0x00000000
+        // FPSCR     : 0x00000000
+
+        let values: Vec<_> = [
+            0x00000001, // R0
+            0x2001ffcf, // R1
+            0x20000044, // R2
+            0x20000044, // R3
+            0x00000000, // R4
+            0x00000000, // R5
+            0x00000000, // R6
+            0x2001fff0, // R7
+            0x00000000, // R8
+            0x00000000, // R9
+            0x00000000, // R10
+            0x00000000, // R11
+            0x00000000, // R12
+            0x2001ffc8, // R13
+            0xfffffff9, // R14
+            0x00000184, // R15
+            0x2001ffc8, // MSP
+            0x00000000, // PSP
+            0x2100000b, // XPSR
+        ]
+        .into_iter()
+        .enumerate()
+        .map(|(id, r)| DebugRegister {
+            dwarf_id: Some(id as u16),
+            core_register: CORTEX_M_CORE_REGISTERS.core_register(id),
+            value: Some(RegisterValue::U32(r)),
+        })
+        .collect();
+
+        let regs = DebugRegisters(values);
+
+        let mut dummy_mem = MockMemory::new();
+
+        // Stack:
+        // 0x2001ffc8 = 0x2001fff0
+        // 0x2001ffcc = 0xfffffff9
+        // 0x2001ffd0 = 0x00000001
+        // 0x2001ffd4 = 0x2001ffcf
+        // 0x2001ffd8 = 0x20000044
+        // 0x2001ffdc = 0x20000044
+        // 0x2001ffe0 = 0x00000000
+        // 0x2001ffe4 = 0x0000017f
+        // 0x2001ffe8 = 0x00000180
+        // 0x2001ffec = 0x21000000
+        // 0x2001fff0 = 0x2001fff8
+        // 0x2001fff4 = 0x00000161
+        // 0x2001fff8 = 0x00000000
+        // 0x2001fffc = 0x0000013d
+
+        dummy_mem.add_word_range(
+            0x2001_ffc8,
+            &[
+                0x2001fff0, 0xfffffff9, 0x00000001, 0x2001ffcf, 0x20000044, 0x20000044, 0x00000000,
+                0x0000017f, 0x00000180, 0x21000000, 0x2001fff8, 0x00000161, 0x00000000, 0x0000013d,
+            ],
+        );
+
+        let exception_handler = Box::new(ArmV6MExceptionHandler {});
+
+        let frames = debug_info
+            .unwind_impl(
+                regs,
+                &mut dummy_mem,
+                exception_handler,
+                Some(probe_rs_target::InstructionSet::Thumb2),
+            )
+            .unwrap();
+
+        let printed_backtrace = frames
+            .into_iter()
+            .map(|f| f.to_string())
+            .collect::<Vec<String>>()
+            .join("");
+
+        insta::assert_snapshot!(printed_backtrace);
+    }
+
+    #[test]
+    fn unwinding_inlined() {
+        let debug_info = debug_info("inlined-functions");
+
+        // Registers:
+        // R0        : 0xfffffecc
+        // R1        : 0x00000001
+        // R2        : 0x00000000
+        // R3        : 0x40008140
+        // R4        : 0x000f4240
+        // R5        : 0xfffffec0
+        // R6        : 0x00000000
+        // R7        : 0x20003ff0
+        // R8        : 0x00000000
+        // R9        : 0x00000000
+        // R10       : 0x00000000
+        // R11       : 0x00000000
+        // R12       : 0x5000050c
+        // R13       : 0x20003ff0
+        // R14       : 0x00200000
+        // R15       : 0x000002e4
+        // MSP       : 0x20003ff0
+        // PSP       : 0x00000000
+        // XPSR      : 0x61000000
+        // EXTRA     : 0x00000000
+        // FPSCR     : 0x00000000
+
+        let values: Vec<_> = [
+            0xfffffecc, // R0
+            0x00000001, // R1
+            0x00000000, // R2
+            0x40008140, // R3
+            0x000f4240, // R4
+            0xfffffec0, // R5
+            0x00000000, // R6
+            0x20003ff0, // R7
+            0x00000000, // R8
+            0x00000000, // R9
+            0x00000000, // R10
+            0x00000000, // R11
+            0x5000050c, // R12
+            0x20003ff0, // R13
+            0x00200000, // R14
+            0x000002e4, // R15
+            0x20003ff0, // MSP
+            0x00000000, // PSP
+            0x61000000, // XPSR
+        ]
+        .into_iter()
+        .enumerate()
+        .map(|(id, r)| DebugRegister {
+            dwarf_id: Some(id as u16),
+            core_register: CORTEX_M_CORE_REGISTERS.core_register(id),
+            value: Some(RegisterValue::U32(r)),
+        })
+        .collect();
+
+        let regs = DebugRegisters(values);
+
+        let mut dummy_mem = MockMemory::new();
+
+        // Stack:
+        // 0x20003ff0 = 0x20003ff8
+        // 0x20003ff4 = 0x00000161
+        // 0x20003ff8 = 0x00000000
+        // 0x20003ffc = 0x0000013d
+
+        dummy_mem.add_word_range(
+            0x2000_3ff0,
+            &[0x20003ff8, 0x00000161, 0x00000000, 0x0000013d],
+        );
+
+        let exception_handler = Box::new(ArmV7MExceptionHandler {});
+
+        let frames = debug_info
+            .unwind_impl(
+                regs,
+                &mut dummy_mem,
+                exception_handler,
+                Some(probe_rs_target::InstructionSet::Thumb2),
+            )
+            .unwrap();
+
+        let printed_backtrace = frames
+            .into_iter()
+            .map(|f| f.to_string())
+            .collect::<Vec<String>>()
+            .join("");
+
+        insta::assert_snapshot!(printed_backtrace);
+    }
+}
