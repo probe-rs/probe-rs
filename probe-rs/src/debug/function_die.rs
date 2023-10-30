@@ -1,5 +1,3 @@
-use gimli::DwAt;
-
 use super::{debug_info, extract_file, unit_info::UnitInfo, ColumnType, SourceLocation};
 
 pub(crate) type FunctionDieType<'abbrev, 'unit> =

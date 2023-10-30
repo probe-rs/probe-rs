@@ -52,7 +52,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         stackframe_registers: Option<&DebugRegisters>,
         find_inlined: bool,
     ) -> Result<Vec<FunctionDie>, DebugError> {
-        tracing::trace!("Searching Function DIE for address {}", address);
+        tracing::trace!("Searching Function DIE for address {:#x}", address);
 
         let mut entries_cursor = self.unit.entries();
         while let Ok(Some((_depth, current))) = entries_cursor.next_dfs() {
