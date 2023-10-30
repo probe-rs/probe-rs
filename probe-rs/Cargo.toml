@@ -72,8 +72,6 @@ cli = [
     "dep:addr2line",
 ]
 
-vendored-libusb = ["rusb/vendored"]
-
 # Enable all built in targets.
 builtin-targets = []
 
@@ -95,11 +93,10 @@ gimli = { version = "0.28.1", default-features = false, features = [
     "read",
     "std",
 ] }
-hidapi = { version = "2.4.1", default-features = false, features = [
-    "linux-static-hidraw",
-] }
+hidapi = { version = "2.4.1", default-features = false, features = [ "linux-native" ] }
 ihex = "3.0.0"
-jaylink = "0.3.0"
+jaylink = { git = "https://github.com/Dirbaio/jaylink", rev = "15001acd2f3443423ee6994e039743aa0059a061", features = ["nusb"]}
+#jaylink = { path = "../jaylink", features = ["nusb"]}
 jep106 = "0.2.8"
 kmp = { version = "0.1", optional = true }
 once_cell = "1.19.0"
@@ -111,7 +108,9 @@ object = { version = "0.32.2", default-features = false, features = [
     "std",
 ] }
 paste = "1.0.14"
-rusb = "0.9.3"
+nusb = { version = "0.1.3" }
+futures-lite = "1.13.0"
+async-io = "2.1.0"
 scroll = "0.12.0"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"

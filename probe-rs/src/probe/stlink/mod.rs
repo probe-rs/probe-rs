@@ -1171,7 +1171,13 @@ pub(crate) enum StlinkError {
     #[error("Unaligned")]
     UnalignedAddress,
     #[error("USB")]
-    Usb(#[from] rusb::Error),
+    Usb(Box<dyn std::error::Error + Sync + Send>),
+}
+
+impl From<nusb::Error> for StlinkError {
+    fn from(e: nusb::Error) -> Self {
+        StlinkError::Usb(Box::new(e))
+    }
 }
 
 impl From<StlinkError> for DebugProbeError {

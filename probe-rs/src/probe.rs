@@ -1,5 +1,6 @@
 pub(crate) mod arm_jtag;
 pub(crate) mod common;
+pub(crate) mod usb_util;
 
 pub(crate) mod cmsisdap;
 pub(crate) mod espusbjtag;
@@ -103,7 +104,7 @@ impl fmt::Display for BatchCommand {
 pub enum DebugProbeError {
     /// Something with the USB communication went wrong.
     #[error("USB Communication Error")]
-    Usb(#[source] Option<Box<dyn std::error::Error + Send + Sync>>),
+    Usb(#[source] std::io::Error),
     /// The firmware of the probe is outdated. This error is especially prominent with ST-Links.
     /// You can use their official updater utility to update your probe firmware.
     #[error("The firmware on the probe is outdated, and not supported by probe-rs.")]
@@ -186,9 +187,9 @@ pub enum ProbeCreationError {
     /// Some error with HID API occurred.
     #[error("{0}")]
     HidApi(#[from] hidapi::HidError),
-    /// Some error with rusb occurred.
+    /// Some USB error occurred.
     #[error("{0}")]
-    Rusb(#[from] rusb::Error),
+    Usb(std::io::Error),
     /// An error specific with the selected probe occurred.
     #[error("An error specific to a probe type occurred: {0}")]
     ProbeSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
