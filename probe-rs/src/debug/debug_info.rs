@@ -553,8 +553,6 @@ impl DebugInfo {
                 if let Some(inlined_call_site) = inlined_call_site {
                     tracing::debug!("UNWIND: Call site: {:?}", inlined_caller_source_location);
 
-                    tracing::trace!("UNWIND: Function name: {}", function_name);
-
                     // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
                     // Resolve the statics that belong to the compilation unit that this function is in.
                     let static_variables = self
@@ -736,8 +734,8 @@ impl DebugInfo {
                 .try_into()
                 .map_err(|error| crate::Error::Register(format!("Cannot convert register value for program counter to a 64-bit integer value: {:?}", error)))?;
             tracing::trace!(
-                "UNWIND: Will generate `StackFrame` for function at address (PC) {}",
-                frame_pc,
+                "UNWIND: Will generate `StackFrame` for function at address (PC) {:#}",
+                frame_pc_register_value
             );
 
             // PART 1-a: Prepare the `StackFrame` that holds the current frame information.

@@ -81,8 +81,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 }
                             } else {
                                 tracing::trace!(
-                                "No stackframe registers provided, skipping frame_base calculation for function DIE."
-                            );
+                                    "No stackframe registers provided, skipping frame_base calculation for function DIE."
+                                );
                             }
 
                             let parent_frame_base = die.frame_base;
@@ -104,7 +104,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     tracing::debug!("No inlined function found!");
                                 } else {
                                     tracing::debug!(
-                                        "{} inlined functions for address {}",
+                                        "{} inlined functions for address {:#x}",
                                         inlined_functions.len(),
                                         address
                                     );

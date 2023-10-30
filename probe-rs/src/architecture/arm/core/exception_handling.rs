@@ -94,7 +94,10 @@ mod test {
 
     use super::ArmV6MExceptionHandler;
     use crate::{
-        architecture::arm::core::registers::cortex_m::{CORTEX_M_CORE_REGISTERS, PC, RA, SP, XPSR},
+        architecture::arm::core::{
+            exception_handling::ArmV7MExceptionHandler,
+            registers::cortex_m::{CORTEX_M_CORE_REGISTERS, PC, RA, SP, XPSR},
+        },
         core::ExceptionInterface,
         debug::{DebugInfo, DebugRegister, DebugRegisters},
         memory::ReadOnlyMemoryInterface,
@@ -857,6 +860,104 @@ mod test {
         );
 
         let exception_handler = Box::new(ArmV6MExceptionHandler {});
+
+        let frames = debug_info
+            .unwind_impl(
+                regs,
+                &mut dummy_mem,
+                exception_handler,
+                Some(probe_rs_target::InstructionSet::Thumb2),
+            )
+            .unwrap();
+
+        let printed_backtrace = frames
+            .into_iter()
+            .map(|f| f.to_string())
+            .collect::<Vec<String>>()
+            .join("");
+
+        insta::assert_snapshot!(printed_backtrace);
+    }
+
+    #[test]
+    fn unwinding_inlined() {
+        let path = Path::new("./inlined-functions");
+
+        let base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+
+        let path = base_dir.join(path);
+
+        let debug_info = DebugInfo::from_file(&path).unwrap();
+
+        // Registers:
+        // R0        : 0xfffffecc
+        // R1        : 0x00000001
+        // R2        : 0x00000000
+        // R3        : 0x40008140
+        // R4        : 0x000f4240
+        // R5        : 0xfffffec0
+        // R6        : 0x00000000
+        // R7        : 0x20003ff0
+        // R8        : 0x00000000
+        // R9        : 0x00000000
+        // R10       : 0x00000000
+        // R11       : 0x00000000
+        // R12       : 0x5000050c
+        // R13       : 0x20003ff0
+        // R14       : 0x00200000
+        // R15       : 0x000002e4
+        // MSP       : 0x20003ff0
+        // PSP       : 0x00000000
+        // XPSR      : 0x61000000
+        // EXTRA     : 0x00000000
+        // FPSCR     : 0x00000000
+
+        let values: Vec<_> = [
+            0xfffffecc, // R0
+            0x00000001, // R1
+            0x00000000, // R2
+            0x40008140, // R3
+            0x000f4240, // R4
+            0xfffffec0, // R5
+            0x00000000, // R6
+            0x20003ff0, // R7
+            0x00000000, // R8
+            0x00000000, // R9
+            0x00000000, // R10
+            0x00000000, // R11
+            0x5000050c, // R12
+            0x20003ff0, // R13
+            0x00200000, // R14
+            0x000002e4, // R15
+            0x20003ff0, // MSP
+            0x00000000, // PSP
+            0x61000000, // XPSR
+        ]
+        .into_iter()
+        .enumerate()
+        .map(|(id, r)| DebugRegister {
+            dwarf_id: Some(id as u16),
+            core_register: CORTEX_M_CORE_REGISTERS.core_register(id),
+            value: Some(RegisterValue::U32(r)),
+        })
+        .collect();
+
+        let regs = DebugRegisters(values);
+
+        let mut dummy_mem = MockMemory::new();
+
+        // Stack:
+        // 0x20003ff0 = 0x20003ff8
+        // 0x20003ff4 = 0x00000161
+        // 0x20003ff8 = 0x00000000
+        // 0x20003ffc = 0x0000013d
+
+        dummy_mem.add_word_range(
+            0x2000_3ff0,
+            &[0x20003ff8, 0x00000161, 0x00000000, 0x0000013d],
+        );
+
+        let exception_handler = Box::new(ArmV7MExceptionHandler {});
 
         let frames = debug_info
             .unwind_impl(
