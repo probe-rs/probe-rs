@@ -224,7 +224,7 @@ pub trait ReadOnlyMemoryInterface {
     /// guarantee which kind of memory access is used. The function might also read more
     /// data than requested, e.g. when the start address is not aligned to a 32-bit boundary.
     ///
-    /// For more control, the `read_x` functiongs, e.g. [`MemoryInterface::read_32()`], can be
+    /// For more control, the `read_x` functiongs, e.g. [`ReadOnlyMemoryInterface::read_32()`], can be
     /// used.
     ///
     ///  Generally faster than `read_8`.
