@@ -284,7 +284,7 @@ impl ExceptionInterface for UnimplementedExceptionHandler {
         &self,
         _memory: &mut dyn ReadOnlyMemoryInterface,
         _stackframe_registers: &DebugRegisters,
-    ) -> anyhow::Result<Option<ExceptionInfo>, Error> {
+    ) -> Result<Option<ExceptionInfo>, Error> {
         // For architectures where the exception handling has not been implemented in probe-rs,
         // this will result in maintaining the current `unwind` behavior, i.e. unwinding will stop
         // when the first frame is reached that was called from an exception handler.
@@ -297,7 +297,7 @@ impl ExceptionInterface for UnimplementedExceptionHandler {
         &self,
         _memory: &mut dyn ReadOnlyMemoryInterface,
         _stackframe_registers: &crate::debug::DebugRegisters,
-    ) -> anyhow::Result<crate::debug::DebugRegisters, crate::Error> {
+    ) -> Result<crate::debug::DebugRegisters, crate::Error> {
         Err(Error::NotImplemented(
             "Not implemented for this architecture.",
         ))
@@ -307,7 +307,7 @@ impl ExceptionInterface for UnimplementedExceptionHandler {
         &self,
         _memory: &mut dyn ReadOnlyMemoryInterface,
         _stackframe_registers: &crate::debug::DebugRegisters,
-    ) -> anyhow::Result<String, crate::Error> {
+    ) -> Result<String, crate::Error> {
         Err(Error::NotImplemented(
             "Not implemented for this architecture.",
         ))

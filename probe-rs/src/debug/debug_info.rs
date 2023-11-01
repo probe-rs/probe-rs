@@ -309,7 +309,7 @@ impl DebugInfo {
     /// Creates the unpopulated cache for `function` variables
     pub(crate) fn create_function_scope_cache(
         &self,
-        core: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn ReadOnlyMemoryInterface,
         die_cursor_state: &FunctionDie,
         unit_info: &UnitInfo,
     ) -> Result<VariableCache, DebugError> {
@@ -328,7 +328,7 @@ impl DebugInfo {
         );
         function_root_variable.variable_node_type = VariableNodeType::DirectLookup;
         function_root_variable.name = VariableName::LocalScopeRoot;
-        function_variable_cache.cache_variable(None, function_root_variable, core)?;
+        function_variable_cache.cache_variable(None, function_root_variable, memory)?;
         Ok(function_variable_cache)
     }
 
@@ -336,7 +336,7 @@ impl DebugInfo {
     pub fn cache_deferred_variables(
         &self,
         cache: &mut VariableCache,
-        core: &mut Core<'_>,
+        memory: &mut Core<'_>,
         parent_variable: &mut Variable,
         stack_frame_registers: &DebugRegisters,
         frame_base: Option<u64>,
@@ -369,7 +369,7 @@ impl DebugInfo {
                                 unit_info.unit.header.offset().as_debug_info_offset(),
                                 Some(referenced_node.entry().offset()),
                             ),
-                            core,
+                            memory,
                         )?;
 
                         match &parent_variable.name {
@@ -389,7 +389,7 @@ impl DebugInfo {
                             referenced_node,
                             parent_variable,
                             referenced_variable,
-                            core,
+                            memory,
                             stack_frame_registers,
                             frame_base,
                             cache,
@@ -427,13 +427,13 @@ impl DebugInfo {
                         temporary_variable = cache.cache_variable(
                             Some(parent_variable.variable_key),
                             temporary_variable,
-                            core,
+                            memory,
                         )?;
 
                         temporary_variable = unit_info.process_tree(
                             parent_node,
                             temporary_variable,
-                            core,
+                            memory,
                             stack_frame_registers,
                             frame_base,
                             cache,
@@ -467,7 +467,7 @@ impl DebugInfo {
                         temporary_variable = cache.cache_variable(
                             Some(parent_variable.variable_key),
                             temporary_variable,
-                            core,
+                            memory,
                         )?;
 
                         let parent_node = type_tree.root()?;
@@ -475,7 +475,7 @@ impl DebugInfo {
                         temporary_variable = unit_info.process_tree(
                             parent_node,
                             temporary_variable,
-                            core,
+                            memory,
                             stack_frame_registers,
                             frame_base,
                             cache,
@@ -496,7 +496,7 @@ impl DebugInfo {
     /// This function will also populate the `DebugInfo::VariableCache` with in scope `Variable`s for each `StackFrame`, while taking into account the appropriate strategy for lazy-loading of variables.
     pub(crate) fn get_stackframe_info(
         &self,
-        core: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn ReadOnlyMemoryInterface,
         address: u64,
         unwind_registers: &registers::DebugRegisters,
     ) -> Result<Vec<StackFrame>, DebugError> {
@@ -556,7 +556,7 @@ impl DebugInfo {
                     // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
                     // Resolve the statics that belong to the compilation unit that this function is in.
                     let static_variables = self
-                        .create_static_scope_cache(core, &unit_info)
+                        .create_static_scope_cache(memory, &unit_info)
                         .map_or_else(
                             |error| {
                                 tracing::error!(
@@ -570,7 +570,7 @@ impl DebugInfo {
 
                     // Next, resolve and cache the function variables.
                     let local_variables = self
-                        .create_function_scope_cache(core, function_die, &unit_info)
+                        .create_function_scope_cache(memory, function_die, &unit_info)
                         .map_or_else(
                             |error| {
                                 tracing::error!(
@@ -616,7 +616,7 @@ impl DebugInfo {
             // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
             // Resolve the statics that belong to the compilation unit that this function is in.
             let static_variables = self
-                .create_static_scope_cache(core, &unit_info)
+                .create_static_scope_cache(memory, &unit_info)
                 .map_or_else(
                     |error| {
                         tracing::error!(
@@ -630,7 +630,7 @@ impl DebugInfo {
 
             // Next, resolve and cache the function variables.
             let local_variables = self
-                .create_function_scope_cache(core, last_function, &unit_info)
+                .create_function_scope_cache(memory, last_function, &unit_info)
                 .map_or_else(
                     |error| {
                         tracing::error!(
@@ -1329,7 +1329,7 @@ fn unwind_register(
     unwind_info: Option<&gimli::UnwindTableRow<DwarfReader, gimli::StoreOnHeap>>,
     unwind_cfa: Option<u64>,
     unwound_return_address: &mut Option<RegisterValue>,
-    core: &mut dyn ReadOnlyMemoryInterface,
+    memory: &mut dyn ReadOnlyMemoryInterface,
     instruction_set: Option<InstructionSet>,
 ) -> ControlFlow<(), ()> {
     use gimli::read::RegisterRule::*;
@@ -1431,12 +1431,14 @@ fn unwind_register(
                 let result = match address_size {
                     4 => {
                         let mut buff = [0u8; 4];
-                        core.read(previous_frame_register_address, &mut buff)
+                        memory
+                            .read(previous_frame_register_address, &mut buff)
                             .map(|_| RegisterValue::U32(u32::from_le_bytes(buff)))
                     }
                     8 => {
                         let mut buff = [0u8; 8];
-                        core.read(previous_frame_register_address, &mut buff)
+                        memory
+                            .read(previous_frame_register_address, &mut buff)
                             .map(|_| RegisterValue::U64(u64::from_le_bytes(buff)))
                     }
                     _ => {

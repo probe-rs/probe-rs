@@ -87,7 +87,7 @@ impl Cfsr {
     /// Additional information about a Bus Fault, or Ok(None) if the fault was not a Bus Fault.
     fn bus_fault_description(
         &self,
-        core: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn ReadOnlyMemoryInterface,
     ) -> Result<Option<String>, Error> {
         let source = if self.bf_exception_entry() {
             "Derived fault on exception entry"
@@ -109,7 +109,7 @@ impl Cfsr {
         Ok(Some(if self.bf_address_register_valid() {
             format!(
                 "BusFault ({source}) at location: {:#010x}",
-                core.read_word_32(Bfar::get_mmio_address())?
+                memory.read_word_32(Bfar::get_mmio_address())?
             )
         } else {
             format!("BusFault ({source})")
@@ -119,7 +119,7 @@ impl Cfsr {
     /// Additional information about a MemManage Fault, or Ok(None) if the fault was not a MemManage Fault.
     fn memory_management_fault_description(
         &self,
-        core: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn ReadOnlyMemoryInterface,
     ) -> Result<Option<String>, Error> {
         let source = if self.mm_data_access_violation() {
             "Data access violation"
@@ -139,7 +139,7 @@ impl Cfsr {
         Ok(Some(if self.mm_address_register_valid() {
             format!(
                 "MemManage Fault({source}) at location: {:#010x}",
-                core.read_word_32(Mmfar::get_mmio_address())?
+                memory.read_word_32(Mmfar::get_mmio_address())?
             )
         } else {
             format!("MemManage Fault({source})")
@@ -216,24 +216,24 @@ impl ExceptionReason {
     /// HFSR and CFSR registers.
     pub(crate) fn expanded_description(
         &self,
-        core: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn ReadOnlyMemoryInterface,
     ) -> Result<String, Error> {
         match self {
             ExceptionReason::ThreadMode => Ok("No active exception.".to_string()),
             ExceptionReason::Reset => Ok("Reset handler.".to_string()),
             ExceptionReason::NonMaskableInterrupt => Ok("Non maskable interrupt.".to_string()),
             ExceptionReason::HardFault => {
-                let hfsr = Hfsr(core.read_word_32(Hfsr::get_mmio_address())?);
+                let hfsr = Hfsr(memory.read_word_32(Hfsr::get_mmio_address())?);
                 let description = if hfsr.debug_event() {
                     "Synchronous debug fault.".to_string()
                 } else if hfsr.escalation_forced() {
                     let description = "Escalated ";
-                    let cfsr = Cfsr(core.read_word_32(Cfsr::get_mmio_address())?);
+                    let cfsr = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?);
                     if let Some(source) = cfsr.usage_fault_description()? {
                         format!("{description}{source}")
-                    } else if let Some(source) = cfsr.bus_fault_description(core)? {
+                    } else if let Some(source) = cfsr.bus_fault_description(memory)? {
                         format!("{description}{source}")
-                    } else if let Some(source) = cfsr.memory_management_fault_description(core)? {
+                    } else if let Some(source) = cfsr.memory_management_fault_description(memory)? {
                         format!("{description}{source}")
                     } else {
                         format!("{description}from an unknown source")
@@ -246,8 +246,8 @@ impl ExceptionReason {
                 Ok(format!("HardFault handler. Cause: {description}."))
             }
             ExceptionReason::MemoryManagementFault => {
-                if let Some(source) =
-                    Cfsr(core.read_word_32(Cfsr::get_mmio_address())?).usage_fault_description()?
+                if let Some(source) = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?)
+                    .usage_fault_description()?
                 {
                     Ok(source)
                 } else {
@@ -255,8 +255,8 @@ impl ExceptionReason {
                 }
             }
             ExceptionReason::BusFault => {
-                if let Some(source) = Cfsr(core.read_word_32(Cfsr::get_mmio_address())?)
-                    .bus_fault_description(core)?
+                if let Some(source) = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?)
+                    .bus_fault_description(memory)?
                 {
                     Ok(source)
                 } else {
@@ -264,8 +264,8 @@ impl ExceptionReason {
                 }
             }
             ExceptionReason::UsageFault => {
-                if let Some(source) =
-                    Cfsr(core.read_word_32(Cfsr::get_mmio_address())?).usage_fault_description()?
+                if let Some(source) = Cfsr(memory.read_word_32(Cfsr::get_mmio_address())?)
+                    .usage_fault_description()?
                 {
                     Ok(source)
                 } else {

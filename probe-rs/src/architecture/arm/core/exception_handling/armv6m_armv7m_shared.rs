@@ -51,7 +51,7 @@ bitfield! {
 
 /// Decode the exception information.
 pub(crate) fn exception_details(
-    core: &dyn ExceptionInterface,
+    memory: &dyn ExceptionInterface,
     memory_interface: &mut dyn ReadOnlyMemoryInterface,
     stackframe_registers: &DebugRegisters,
 ) -> Result<Option<ExceptionInfo>, Error> {
@@ -72,8 +72,8 @@ pub(crate) fn exception_details(
         // This is an exception frame.
 
         Ok(Some(ExceptionInfo {
-            description: core.exception_description(memory_interface, stackframe_registers)?,
-            calling_frame_registers: core
+            description: memory.exception_description(memory_interface, stackframe_registers)?,
+            calling_frame_registers: memory
                 .calling_frame_registers(memory_interface, stackframe_registers)?,
         }))
     } else {
@@ -87,12 +87,12 @@ pub(crate) fn exception_details(
 /// This function will read the values of the registers from the stack and update the passed `stackframe_registers` with the new values.
 // TODO: probe-rs does not currently do anything with the floating point registers. When support is added, please note that the list of registers to read is different for cores that have the floating point extension.
 pub(crate) fn calling_frame_registers(
-    core: &mut dyn ReadOnlyMemoryInterface,
+    memory: &mut dyn ReadOnlyMemoryInterface,
     stackframe_registers: &crate::debug::DebugRegisters,
 ) -> Result<crate::debug::DebugRegisters, crate::Error> {
     let mut calling_stack_registers = vec![0u32; EXCEPTION_STACK_REGISTERS.len()];
 
-    core.read_32(
+    memory.read_32(
         stackframe_registers
             .get_register_value_by_role(&crate::core::RegisterRole::StackPointer)?,
         &mut calling_stack_registers,
