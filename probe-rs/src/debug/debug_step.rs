@@ -329,7 +329,7 @@ impl SteppingMode {
                             function.low_pc,
                             function.high_pc
                         );
-                        if function.get_attribute(gimli::DW_AT_noreturn).is_some() {
+                        if function.attribute(gimli::DW_AT_noreturn).is_some() {
                             return Err(DebugError::Other(anyhow::anyhow!(
                         "Function {:?} is marked as `noreturn`. Cannot step out of this function.",
                         function.function_name()

@@ -1,17 +1,19 @@
-use super::{debug_info, extract_file, unit_info::UnitInfo, ColumnType, SourceLocation};
+use super::{
+    debug_info, extract_file, unit_info::UnitInfo, ColumnType, EndianReader, SourceLocation,
+};
 
-pub(crate) type FunctionDieType<'abbrev, 'unit> =
+pub(crate) type Die<'abbrev, 'unit> =
     gimli::DebuggingInformationEntry<'abbrev, 'unit, debug_info::GimliReader, usize>;
 
 /// Reference to a DIE for a function
 pub(crate) struct FunctionDie<'abbrev, 'unit, 'unit_info, 'debug_info> {
     pub(crate) unit_info: &'unit_info UnitInfo<'debug_info>,
 
-    pub(crate) function_die: FunctionDieType<'abbrev, 'unit>,
+    pub(crate) function_die: Die<'abbrev, 'unit>,
 
     /// Only present for inlined functions, where this is a reference
     /// to the declaration of the function.
-    pub(crate) abstract_die: Option<FunctionDieType<'abbrev, 'unit>>,
+    pub(crate) abstract_die: Option<Die<'abbrev, 'unit>>,
     /// The address of the first instruction in this function.
     pub(crate) low_pc: u64,
     /// The address of the first instruction after this funciton.
@@ -26,76 +28,72 @@ pub(crate) struct FunctionDie<'abbrev, 'unit, 'unit_info, 'debug_info> {
 impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
     FunctionDie<'abbrev, 'unit, 'unit_info, 'debug_info>
 {
+    /// Create a new function DIE reference.
     pub(crate) fn new(
-        die: FunctionDieType<'abbrev, 'unit>,
+        die: Die<'abbrev, 'unit>,
         unit_info: &'unit_info UnitInfo<'debug_info>,
-    ) -> Option<Self> {
+    ) -> Self {
         let tag = die.tag();
 
         match tag {
-            gimli::DW_TAG_subprogram => Some(Self {
+            gimli::DW_TAG_subprogram => Self {
                 unit_info,
                 function_die: die,
                 abstract_die: None,
                 low_pc: 0,
                 high_pc: 0,
                 frame_base: None,
-            }),
+            },
             other_tag => {
-                tracing::error!("FunctionDie has to has to have Tag DW_TAG_subprogram, but tag is {:?}. This is a bug, please report it.", other_tag.static_string());
-                None
+                unreachable!("FunctionDie has to has to have Tag DW_TAG_subprogram, but tag is {:?}. This is a bug, please report it.", other_tag.static_string())
             }
         }
     }
 
+    /// Creates a new inlined function DIE reference.
     pub(crate) fn new_inlined(
-        concrete_die: FunctionDieType<'abbrev, 'unit>,
-        abstract_die: FunctionDieType<'abbrev, 'unit>,
+        concrete_die: Die<'abbrev, 'unit>,
+        abstract_die: Die<'abbrev, 'unit>,
         unit_info: &'unit_info UnitInfo<'debug_info>,
-    ) -> Option<Self> {
+    ) -> Self {
         let tag = concrete_die.tag();
 
-        match tag {
-            gimli::DW_TAG_inlined_subroutine => Some(Self {
-                unit_info,
-                function_die: concrete_die,
-                abstract_die: Some(abstract_die),
-                low_pc: 0,
-                high_pc: 0,
-                frame_base: None,
-            }),
-            other_tag => {
-                tracing::error!("FunctionDie has to has to have Tag DW_TAG_inlined_subroutine, but tag is {:?}. This is a bug, please report it.", other_tag.static_string());
-                None
-            }
+        let gimli::DW_TAG_inlined_subroutine = tag else {
+            unreachable!("FunctionDie has to has to have Tag DW_TAG_inlined_subroutine, but tag is {:?}. This is a bug, please report it.", tag.static_string());
+        };
+        Self {
+            unit_info,
+            function_die: concrete_die,
+            abstract_die: Some(abstract_die),
+            low_pc: 0,
+            high_pc: 0,
+            frame_base: None,
         }
     }
 
+    /// Returns whether this is an inlined function DIE reference.
     pub(crate) fn is_inline(&self) -> bool {
         self.abstract_die.is_some()
     }
 
+    /// Returns the function name described by the die.
     pub(crate) fn function_name(&self) -> Option<String> {
-        if let Some(fn_name_attr) = self.get_attribute(gimli::DW_AT_name) {
-            match fn_name_attr.value() {
-                gimli::AttributeValue::DebugStrRef(fn_name_ref) => {
-                    match self.unit_info.debug_info.dwarf.string(fn_name_ref) {
-                        Ok(fn_name_raw) => Some(String::from_utf8_lossy(&fn_name_raw).to_string()),
-                        Err(error) => {
-                            tracing::debug!("No value for DW_AT_name: {:?}: error", error);
-
-                            None
-                        }
-                    }
-                }
-                value => {
-                    tracing::debug!("Unexpected attribute value for DW_AT_name: {:?}", value);
-                    None
-                }
-            }
-        } else {
+        let Some(fn_name_attr) = self.attribute(gimli::DW_AT_name) else {
             tracing::debug!("DW_AT_name attribute not found, unable to retrieve function name");
-            None
+            return None;
+        };
+        let value = fn_name_attr.value();
+        let gimli::AttributeValue::DebugStrRef(fn_name_ref) = value else {
+            tracing::debug!("Unexpected attribute value for DW_AT_name: {:?}", value);
+            return None;
+        };
+        match self.unit_info.debug_info.dwarf.string(fn_name_ref) {
+            Ok(fn_name_raw) => Some(String::from_utf8_lossy(&fn_name_raw).to_string()),
+            Err(error) => {
+                tracing::debug!("No value for DW_AT_name: {:?}: error", error);
+
+                None
+            }
         }
     }
 
@@ -108,7 +106,7 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
             return None;
         }
 
-        let file_name_attr = self.get_attribute(gimli::DW_AT_call_file)?;
+        let file_name_attr = self.attribute(gimli::DW_AT_call_file)?;
 
         let (directory, file) = extract_file(
             self.unit_info.debug_info,
@@ -116,11 +114,11 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
             file_name_attr.value(),
         )?;
         let line = self
-            .get_attribute(gimli::DW_AT_call_line)
+            .attribute(gimli::DW_AT_call_line)
             .and_then(|line| line.udata_value());
 
         let column =
-            self.get_attribute(gimli::DW_AT_call_column)
+            self.attribute(gimli::DW_AT_call_column)
                 .map(|column| match column.udata_value() {
                     None => ColumnType::LeftEdge,
                     Some(c) => ColumnType::Column(c),
@@ -136,27 +134,25 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
     }
 
     /// Resolve an attribute by looking through both the origin or abstract die entries.
-    pub(crate) fn get_attribute(
+    pub(crate) fn attribute(
         &self,
         attribute_name: gimli::DwAt,
     ) -> Option<debug_info::GimliAttribute> {
-        let attribute = self
-            .function_die
-            .attr(attribute_name)
-            .map_or(None, |attribute| attribute);
+        Self::attr_ok(&self.function_die, attribute_name).or_else(|| {
+            // For inlined function, the *abstract instance* has to be checked if we cannot find the
+            // attribute on the *concrete instance*.
 
-        // For inlined function, the *abstract instance* has to be checked if we cannot find the
-        // attribute on the *concrete instance*.
-        if self.is_inline() && attribute.is_none() {
-            if let Some(origin) = self.abstract_die.as_ref() {
-                origin
-                    .attr(attribute_name)
-                    .map_or(None, |attribute| attribute)
-            } else {
-                None
+            if !self.is_inline() {
+                return None;
             }
-        } else {
-            attribute
-        }
+            self.abstract_die
+                .as_ref()
+                .and_then(|origin| Self::attr_ok(origin, attribute_name))
+        })
+    }
+
+    /// Returns an attribute with converting the Result type to a simple Option.
+    fn attr_ok(die: &Die, attribute_name: gimli::DwAt) -> Option<gimli::Attribute<EndianReader>> {
+        die.attr(attribute_name).map_or(None, |attribute| attribute)
     }
 }

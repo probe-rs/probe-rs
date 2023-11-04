@@ -378,7 +378,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                 .collect_vec()
                 .chunks(2)
                 .map(|c| {
-                    let start = if let Some(start) = c.get(0) {
+                    let start = if let Some(start) = c.first() {
                         parse_int::parse::<u64>(start)
                             .map_err(|e| DebuggerError::UserMessage(e.to_string()))?
                     } else {
@@ -387,7 +387,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                         ));
                     };
 
-                    let size = if let Some(size) = c.get(0) {
+                    let size = if let Some(size) = c.get(1) {
                         parse_int::parse::<u64>(size)
                             .map_err(|e| DebuggerError::UserMessage(e.to_string()))?
                     } else {

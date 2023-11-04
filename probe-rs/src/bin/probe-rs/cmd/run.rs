@@ -8,13 +8,11 @@ use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
 use itertools::Itertools;
-use probe_rs::architecture::arm::core::registers::cortex_m::CORTEX_M_CORE_REGSISTERS;
-use probe_rs::config::{get_target_by_name, TargetSelector};
-use probe_rs::debug::{CoreAdapter, DebugInfo};
+use probe_rs::debug::DebugInfo;
 use probe_rs::flashing::{FileDownloadError, Format};
 use probe_rs::{
-    BreakpointCause, Core, CoreDump, CoreInterface, CoreRegister, HaltReason, SemihostingCommand,
-    Target, VectorCatchCondition,
+    BreakpointCause, Core, CoreInterface, CoreRegister, HaltReason, SemihostingCommand,
+    VectorCatchCondition,
 };
 use probe_rs_target::MemoryRegion;
 use signal_hook::consts::signal;
@@ -192,7 +190,7 @@ fn run_loop(
 fn poll_stacktrace(core: &mut Core<'_>, path: &Path) -> Result<bool> {
     let status = core.status()?;
     let registers = core.registers();
-    let pc_register = registers.pc().expect("a program counter register");
+    let program_counter_register = registers.pc().expect("a program counter register");
     match status {
         probe_rs::CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
             SemihostingCommand::ExitSuccess,
@@ -204,8 +202,12 @@ fn poll_stacktrace(core: &mut Core<'_>, path: &Path) -> Result<bool> {
         )),
         probe_rs::CoreStatus::Halted(_reason) => {
             // Try and give the user some info as to why it halted.
-            // TODO:
-            // print_stacktrace(path, pc_register)?;
+            print_stacktrace(
+                path,
+                core,
+                core.registers().all_registers().collect_vec(),
+                program_counter_register,
+            )?;
             // Report this as an error
             Err(anyhow!("CPU halted unexpectedly."))
         }
@@ -217,19 +219,6 @@ fn poll_stacktrace(core: &mut Core<'_>, path: &Path) -> Result<bool> {
             Ok(false)
         }
     }
-}
-
-fn print_stacktrace_from_core(
-    core: &mut Core<'_>,
-    program_counter_register: &CoreRegister,
-    path: &Path,
-) -> Result<(), anyhow::Error> {
-    print_stacktrace(
-        path,
-        core,
-        core.registers().all_registers().collect_vec(),
-        program_counter_register,
-    )
 }
 
 /// Prints the stacktrace of the current execution state.
@@ -335,34 +324,4 @@ fn attach_to_rtt(
     }
     log::error!("Failed to attach to RTT continuing...");
     None
-}
-
-#[cfg(test)]
-mod test {
-    use std::path::Path;
-
-    use itertools::Itertools;
-    use probe_rs::{
-        architecture::arm::core::registers::cortex_m::CORTEX_M_CORE_REGSISTERS, CoreDump,
-    };
-
-    use super::print_stacktrace;
-
-    #[test]
-    fn test_print_stacktrace() {
-        let mut core_dump = CoreDump::load(Path::new("./tests/coredump")).unwrap();
-
-        let program_counter_register = CORTEX_M_CORE_REGSISTERS
-            .core_registers()
-            .find(|r| r.register_has_role(probe_rs::RegisterRole::ProgramCounter))
-            .unwrap();
-
-        print_stacktrace(
-            Path::new("./tests/gpio-hal-blinky"),
-            &mut core_dump,
-            CORTEX_M_CORE_REGSISTERS.all_registers().collect_vec(),
-            program_counter_register,
-        )
-        .unwrap();
-    }
 }

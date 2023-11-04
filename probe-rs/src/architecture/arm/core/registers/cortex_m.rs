@@ -1,3 +1,5 @@
+//! General Cortex-M registers present on all Cortex-M cores.
+
 use crate::{
     core::{RegisterDataType, RegisterRole, UnwindRule},
     CoreRegister, CoreRegisters, RegisterId,
@@ -39,6 +41,7 @@ pub(crate) const XPSR: CoreRegister = CoreRegister {
     unwind_rule: UnwindRule::Preserve,
 };
 
+/// All off the Cortex-M core registers.
 pub static CORTEX_M_CORE_REGSISTERS: Lazy<CoreRegisters> = Lazy::new(|| {
     CoreRegisters::new(
         ARM32_COMMON_REGS_SET

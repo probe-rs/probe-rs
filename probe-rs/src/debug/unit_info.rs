@@ -1,10 +1,10 @@
 use super::{
     debug_info::*, extract_byte_size, extract_file, extract_line, extract_name,
-    function_die::FunctionDie, registers, variable::*, DebugError, DebugRegisters, SourceLocation,
-    VariableCache,
+    function_die::FunctionDie, registers, variable::*, DebugError, DebugRegisters, EndianReader,
+    SourceLocation, VariableCache,
 };
-use crate::{core::RegisterValue, MemoryInterface};
-use gimli::{AttributeValue::Language, Location, UnitOffset};
+use crate::{core::RegisterValue, CoreInterface, Error, MemoryInterface};
+use gimli::{AttributeValue::Language, EvaluationResult, Location, UnitOffset};
 use num_traits::Zero;
 
 pub(crate) type UnitIter =
@@ -23,25 +23,23 @@ pub(crate) struct UnitInfo<'debuginfo> {
 }
 
 impl<'debuginfo> UnitInfo<'debuginfo> {
-    /// Retrieve the value of the DW_AT_language attribute of the compilation unit.
-    /// This is used to influence logic for special cases related to the way the debug_info is generated.
-    /// In the unlikely event that we are unable to retrieve the language, we assume Rust,
-    /// so that other logic can follow the default behaviour.
+    /// Retrieve the value of the `DW_AT_language` attribute of the compilation unit.
+    ///
+    /// In the unlikely event that we are unable to retrieve the language, we assume Rust.
     pub(crate) fn get_language(&self) -> gimli::DwLang {
-        if let Ok(Some(Language(unit_language))) = self
+        let Ok(Some(Language(unit_language))) = self
             .unit
             .header
             .entries_tree(&self.unit.abbreviations, None)
             .and_then(|mut tree| tree.root()?.entry().attr_value(gimli::DW_AT_language))
-        {
-            unit_language
-        } else {
+        else {
             tracing::warn!("Unable to retrieve DW_AT_language attribute, assuming Rust.");
-            gimli::DW_LANG_Rust
-        }
+            return gimli::DW_LANG_Rust;
+        };
+        unit_language
     }
 
-    /// Get the DIE for the function containing the given address.
+    /// Get the DIEs for the function containing the given address.
     ///
     /// If `stackframe_registers` is not `None`, then the function DIE's will have valid frame_base values calculated from the `DW_AT_frame_base` attribute.
     /// If `find_inlined` is `false`, then the result will contain a single [`FunctionDie`]
@@ -57,71 +55,60 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
 
         let mut entries_cursor = self.unit.entries();
         while let Ok(Some((_depth, current))) = entries_cursor.next_dfs() {
-            if current.tag() == gimli::DW_TAG_subprogram {
-                let mut ranges = self.debug_info.dwarf.die_ranges(&self.unit, current)?;
+            if current.tag() != gimli::DW_TAG_subprogram {
+                continue;
+            }
+            let mut ranges = self.debug_info.dwarf.die_ranges(&self.unit, current)?;
 
-                while let Ok(Some(ranges)) = ranges.next() {
-                    if ranges.begin <= address && address < ranges.end {
-                        // Check if we are actually in an inlined function
-
-                        if let Some(mut die) = FunctionDie::new(current.clone(), self) {
-                            die.low_pc = ranges.begin;
-                            die.high_pc = ranges.end;
-                            // Extract the frame_base for this function DIE.
-                            if let Some(stackframe_registers) = stackframe_registers {
-                                if let Ok(ExpressionResult::Location(VariableLocation::Address(
-                                    address,
-                                ))) = self.extract_location(
-                                    current,
-                                    &VariableLocation::Unknown,
-                                    adapter,
-                                    stackframe_registers,
-                                    None,
-                                ) {
-                                    die.frame_base = Some(address);
-                                }
-                            } else {
-                                tracing::trace!(
-                                "No stackframe registers provided, skipping frame_base calculation for function DIE."
-                            );
-                            }
-
-                            let parent_frame_base = die.frame_base;
-                            let mut functions = vec![die];
-
-                            if find_inlined {
-                                tracing::debug!(
-                                    "Found DIE, now checking for inlined functions: name={:?}",
-                                    functions[0].function_name()
-                                );
-
-                                let inlined_functions = self.find_inlined_functions(
-                                    address,
-                                    parent_frame_base,
-                                    current.offset(),
-                                )?;
-
-                                if inlined_functions.is_empty() {
-                                    tracing::debug!("No inlined function found!");
-                                } else {
-                                    tracing::debug!(
-                                        "{} inlined functions for address {}",
-                                        inlined_functions.len(),
-                                        address
-                                    );
-                                    functions.extend(inlined_functions.into_iter());
-                                }
-
-                                return Ok(functions);
-                            } else {
-                                tracing::debug!(
-                                    "Found DIE: name={:?}",
-                                    functions[0].function_name()
-                                );
-                            }
-                            return Ok(functions);
-                        }
+            while let Ok(Some(ranges)) = ranges.next() {
+                if !(ranges.begin <= address && address < ranges.end) {
+                    continue;
+                }
+                // Check if we are actually in an inlined function
+                let mut die = FunctionDie::new(current.clone(), self);
+                die.low_pc = ranges.begin;
+                die.high_pc = ranges.end;
+                // Extract the frame_base for this function DIE.
+                if let Some(stackframe_registers) = stackframe_registers {
+                    if let Ok(ExpressionResult::Location(VariableLocation::Address(address))) = self
+                        .extract_location(
+                            current,
+                            &VariableLocation::Unknown,
+                            adapter,
+                            stackframe_registers,
+                            None,
+                        )
+                    {
+                        die.frame_base = Some(address);
                     }
+
+                    let parent_frame_base = die.frame_base;
+                    let mut functions = vec![die];
+
+                    tracing::debug!("Found DIE: name={:?}", functions[0].function_name());
+
+                    if find_inlined {
+                        tracing::debug!("Checking for inlined functions");
+
+                        let inlined_functions = self.find_inlined_functions(
+                            address,
+                            parent_frame_base,
+                            current.offset(),
+                        )?;
+
+                        if inlined_functions.is_empty() {
+                            tracing::debug!("No inlined function found!");
+                        } else {
+                            tracing::debug!(
+                                "{} inlined functions for address {}",
+                                inlined_functions.len(),
+                                address
+                            );
+                        }
+
+                        functions.extend(inlined_functions.into_iter());
+                    }
+                    return Ok(functions);
                 }
             }
         }
@@ -138,64 +125,57 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         offset: UnitOffset,
     ) -> Result<Vec<FunctionDie>, DebugError> {
         let mut current_depth = 0;
-
         let mut abort_depth = 0;
-
         let mut functions = Vec::new();
 
-        if let Ok(mut cursor) = self.unit.entries_at_offset(offset) {
-            while let Ok(Some((depth, current))) = cursor.next_dfs() {
-                current_depth += depth;
+        // If we don't have any entries at our unit offset, return an empty vector.
+        let Ok(mut cursor) = self.unit.entries_at_offset(offset) else {
+            return Ok(vec![]);
+        };
+        while let Ok(Some((depth, current))) = cursor.next_dfs() {
+            current_depth += depth;
+            if current_depth < abort_depth {
+                break;
+            }
 
-                if current_depth < abort_depth {
-                    break;
-                }
+            // Skip anything that is not an inlined subroutine.
+            if current.tag() != gimli::DW_TAG_inlined_subroutine {
+                continue;
+            }
+            let mut ranges = self.debug_info.dwarf.die_ranges(&self.unit, current)?;
 
-                if current.tag() == gimli::DW_TAG_inlined_subroutine {
-                    let mut ranges = self.debug_info.dwarf.die_ranges(&self.unit, current)?;
+            while let Ok(Some(ranges)) = ranges.next() {
+                if !(ranges.begin <= address && address < ranges.end) {
+                    continue;
+                };
+                // Check if we are actually in an inlined function
 
-                    while let Ok(Some(ranges)) = ranges.next() {
-                        if ranges.begin <= address && address < ranges.end {
-                            // Check if we are actually in an inlined function
+                // We don't have to search further up in the tree, if there are multiple inlined functions,
+                // they will be children of the current function.
+                abort_depth = current_depth;
 
-                            // We don't have to search further up in the tree, if there are multiple inlined functions,
-                            // they will be children of the current function.
-                            abort_depth = current_depth;
+                // Find the abstract definition
+                let Ok(Some(abstract_origin)) = current.attr(gimli::DW_AT_abstract_origin) else {
+                    tracing::warn!("No abstract origin for inlined function, skipping.");
+                    return Ok(vec![]);
+                };
+                let abstract_origin_value = abstract_origin.value();
+                let gimli::AttributeValue::UnitRef(unit_ref) = abstract_origin_value else {
+                    tracing::warn!(
+                        "Unsupported DW_AT_abstract_origin value: {:?}",
+                        abstract_origin_value
+                    );
+                    continue;
+                };
+                let Ok(abstract_die) = self.unit.entry(unit_ref) else {
+                    continue;
+                };
+                let mut die = FunctionDie::new_inlined(current.clone(), abstract_die.clone(), self);
+                die.low_pc = ranges.begin;
+                die.high_pc = ranges.end;
+                die.frame_base = parent_frame_base;
 
-                            // Find the abstract definition
-                            if let Ok(Some(abstract_origin)) =
-                                current.attr(gimli::DW_AT_abstract_origin)
-                            {
-                                match abstract_origin.value() {
-                                    gimli::AttributeValue::UnitRef(unit_ref) => {
-                                        if let Ok(abstract_die) = self.unit.entry(unit_ref) {
-                                            if let Some(mut die) = FunctionDie::new_inlined(
-                                                current.clone(),
-                                                abstract_die.clone(),
-                                                self,
-                                            ) {
-                                                die.low_pc = ranges.begin;
-                                                die.high_pc = ranges.end;
-                                                die.frame_base = parent_frame_base;
-
-                                                functions.push(die);
-                                            }
-                                        }
-                                    }
-                                    other_value => tracing::warn!(
-                                        "Unsupported DW_AT_abstract_origin value: {:?}",
-                                        other_value
-                                    ),
-                                }
-                            } else {
-                                tracing::warn!(
-                                    "No abstract origin for inlined function, skipping."
-                                );
-                                return Ok(vec![]);
-                            }
-                        }
-                    }
-                }
+                functions.push(die);
             }
         }
 
@@ -211,7 +191,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         tree_node: &mut gimli::EntriesTreeNode<GimliReader>,
         parent_variable: &mut Variable,
         mut child_variable: Variable,
-        adapter: &mut impl MemoryInterface,
+        adapter: &mut impl CoreInterface,
         stack_frame_registers: &registers::DebugRegisters,
         frame_base: Option<u64>,
         cache: &mut VariableCache,
@@ -537,7 +517,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         &self,
         parent_node: gimli::EntriesTreeNode<GimliReader>,
         mut parent_variable: Variable,
-        adapter: &mut impl MemoryInterface,
+        adapter: &mut impl CoreInterface,
         stack_frame_registers: &registers::DebugRegisters,
         frame_base: Option<u64>,
         cache: &mut VariableCache,
@@ -852,7 +832,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         node: gimli::EntriesTreeNode<GimliReader>,
         parent_variable: &Variable,
         mut child_variable: Variable,
-        adapter: &mut impl MemoryInterface,
+        adapter: &mut impl CoreInterface,
         stack_frame_registers: &registers::DebugRegisters,
         frame_base: Option<u64>,
         cache: &mut VariableCache,
@@ -1302,7 +1282,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         unit_ref: UnitOffset,
         cache: &mut VariableCache,
         child_variable: &mut Variable,
-        adapter: &mut impl MemoryInterface,
+        adapter: &mut impl CoreInterface,
         array_member_index: i64,
         stack_frame_registers: &DebugRegisters,
         frame_base: Option<u64>,
@@ -1731,7 +1711,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         }
     }
 
-    /// Update a [Variable] location, given a gimli::Expression
+    /// Tries to get the result of a DWARF expression in the form of a Piece.
     pub(crate) fn expression_to_piece(
         &self,
         adapter: &mut impl MemoryInterface,
@@ -1740,83 +1720,25 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         frame_base: Option<u64>,
     ) -> Result<Vec<gimli::Piece<GimliReader, usize>>, DebugError> {
         let mut evaluation = expression.evaluation(self.unit.encoding());
-        // go for evaluation
         let mut result = evaluation.evaluate()?;
 
         loop {
-            use gimli::EvaluationResult::*;
-
             result = match result {
-                Complete => break,
-                RequiresMemory { address, size, .. } => {
-                    let mut buff = vec![0u8; size as usize];
-                    adapter.read(address, &mut buff).map_err(|error| {
-                            DebugError::UnwindIncompleteResults {message: format!("Unexpected error while reading debug expressions from target memory: {error:?}. Please report this as a bug.")}
-                        })?;
-                    match size {
-                            1 => evaluation.resume_with_memory(gimli::Value::U8(buff[0]))?,
-                            2 => {
-                                evaluation.resume_with_memory(gimli::Value::U16(u16::from_le_bytes(buff.try_into().map_err(|error| {
-                                    DebugError::UnwindIncompleteResults {message: format!("Unexpected error while dereferencing debug expressions from target memory: {error:?}. Please report this as a bug.")}
-                                })?)))?
-                            }
-                            4 => {
-                                evaluation.resume_with_memory(gimli::Value::U32(u32::from_le_bytes(buff.try_into().map_err(|error| {
-                                    DebugError::UnwindIncompleteResults {message: format!("Unexpected error while dereferencing debug expressions from target memory: {error:?}. Please report this as a bug.")}
-                                })?)))?
-                            }
-                            x => {
-                                return Err(DebugError::UnwindIncompleteResults {
-                            message: format!("Unimplemented: Requested memory with size {x}, which is not supported yet."
-                                )});
-                            }
-                        }
+                EvaluationResult::Complete => return Ok(evaluation.result()),
+                EvaluationResult::RequiresMemory { address, size, .. } => {
+                    read_memory(size, adapter, address, &mut evaluation)?
                 }
-                RequiresFrameBase => {
-                    let frame_base = if let Some(frame_base) = frame_base {
-                        frame_base
-                    } else {
-                        return Err(DebugError::UnwindIncompleteResults {message: "Cannot unwind `Variable` location without a valid frame base address.)".to_string()});
-                    };
-
-                    match evaluation.resume_with_frame_base(frame_base) {
-                        Ok(evaluation_result) => evaluation_result,
-                        Err(error) => {
-                            return Err(DebugError::UnwindIncompleteResults {
-                                message: format!(
-                                    "Error while calculating `Variable::memory_location`:{error}."
-                                ),
-                            })
-                        }
+                EvaluationResult::RequiresFrameBase => {
+                    match provide_frame_base(frame_base, &mut evaluation) {
+                        Ok(value) => value,
+                        Err(value) => return value,
                     }
                 }
-                RequiresRegister {
+                EvaluationResult::RequiresRegister {
                     register,
                     base_type,
-                } => {
-                    let raw_value = match stack_frame_registers
-                        .get_register_by_dwarf_id(register.0)
-                        .and_then(|reg| reg.value)
-                    {
-                        Some(raw_value) => {
-                            if base_type != gimli::UnitOffset(0) {
-                                return Err(DebugError::UnwindIncompleteResults {
-                                    message: format!("Unimplemented: Support for type {base_type:?} in `RequiresRegister` request is not yet implemented."
-                                )});
-                            }
-                            raw_value
-                        }
-                        None => {
-                            return Err(DebugError::UnwindIncompleteResults {
-                                    message: format!("Error while calculating `Variable::memory_location`. No value for register #:{}.",
-                                    register.0
-                                )});
-                        }
-                    };
-
-                    evaluation.resume_with_register(gimli::Value::Generic(raw_value.try_into()?))?
-                }
-                RequiresRelocatedAddress(address_index) => {
+                } => provide_register(stack_frame_registers, register, base_type, &mut evaluation)?,
+                EvaluationResult::RequiresRelocatedAddress(address_index) => {
                     // The address_index as an offset from 0, so just pass it into the next step.
                     evaluation.resume_with_relocated_address(address_index)?
                 }
@@ -1827,7 +1749,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 }
             }
         }
-        Ok(evaluation.result())
     }
 
     /// A helper function, to handle memory_location for special cases, such as array members, pointers, and intermediate nodes.
@@ -1863,31 +1784,11 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             } else {
                 child_variable.memory_location = VariableLocation::Unavailable;
             }
-        } else if child_variable.memory_location == VariableLocation::Unknown
-            && parent_variable.memory_location.valid()
-        {
+        } else if child_variable.memory_location == VariableLocation::Unknown {
             // Non-array members can inherit their memory location from their parent, but only if the parent has a valid memory location.
 
             // Overriding clippy, to defer the processing of `self.has_address_pointer()` until after the `||` conditions.
-            #[allow(clippy::blocks_in_if_conditions)]
-            // Address Pointer Conditions (any of):
-            // 1. Variable names that start with '*' (e.g '*__0), AND the variable is a variant of the parent.
-            // 2. Pointer names that start with '*' (e.g. '*const u8')
-            // 3. Pointers to base types (includes &str types)
-            // 4. Pointers to variable names that start with `*` 
-            // 5. Pointers to types with refrenced memory addresses (e.g. variants, generics, arrays, etc.)
-            if (matches!(child_variable.name.clone(), VariableName::Named(var_name) if var_name.starts_with('*'))
-                    && matches!(parent_variable.role, VariantRole::VariantPart(_)))
-                || matches!(&parent_variable.type_name, VariableType::Pointer(Some(pointer_name)) if pointer_name.starts_with('*'))
-                || (matches!(&parent_variable.type_name, VariableType::Pointer(_))
-                    && (matches!(child_variable.type_name, VariableType::Base(_))
-                        || matches!(child_variable.type_name.clone(), VariableType::Struct(type_name) if type_name.starts_with("&str"))
-                        || matches!(child_variable.name.clone(), VariableName::Named(var_name) if var_name.starts_with('*'))
-                        || self.has_address_pointer(unit_ref).unwrap_or_else(|error| {
-                            child_variable.set_value(VariableValue::Error(format!("Failed to determine if a struct has variant or generic type fields: {error}")));
-                            false
-                        })))
-            {
+            if self.is_pointer(child_variable, parent_variable, unit_ref) {
                 match &parent_variable.memory_location {
                     VariableLocation::Address(address) => {
                         // Now, retrieve the location by reading the adddress pointed to by the parent variable.
@@ -1903,15 +1804,42 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     }
                     other => {
                         child_variable.memory_location = VariableLocation::Unsupported(format!(
-                            "Location {other:?} not supported for referenced variables."));
+                            "Location {other:?} not supported for referenced variables."
+                        ));
                     }
                 }
             } else {
-                // If the parent variable is not a pointer, or it is a pointer to the actual data location 
+                // If the parent variable is not a pointer, or it is a pointer to the actual data location
                 // (not the address of the data location) then it can inherit it's memory location from it's parent.
                 child_variable.memory_location = parent_variable.memory_location.clone();
             }
         }
+    }
+
+    /// Returns `true` if the variable is a pointer, `false` otherwise.
+    fn is_pointer(
+        &self,
+        child_variable: &mut Variable,
+        parent_variable: &Variable,
+        unit_ref: UnitOffset,
+    ) -> bool {
+        // Address Pointer Conditions (any of):
+        // 1. Variable names that start with '*' (e.g '*__0), AND the variable is a variant of the parent.
+        // 2. Pointer names that start with '*' (e.g. '*const u8')
+        // 3. Pointers to base types (includes &str types)
+        // 4. Pointers to variable names that start with `*`
+        // 5. Pointers to types with refrenced memory addresses (e.g. variants, generics, arrays, etc.)
+        (matches!(child_variable.name.clone(), VariableName::Named(var_name) if var_name.starts_with('*'))
+                && matches!(parent_variable.role, VariantRole::VariantPart(_)))
+            || matches!(&parent_variable.type_name, VariableType::Pointer(Some(pointer_name)) if pointer_name.starts_with('*'))
+            || (matches!(&parent_variable.type_name, VariableType::Pointer(_))
+                && (matches!(child_variable.type_name, VariableType::Base(_))
+                    || matches!(child_variable.type_name.clone(), VariableType::Struct(type_name) if type_name.starts_with("&str"))
+                    || matches!(child_variable.name.clone(), VariableName::Named(var_name) if var_name.starts_with('*'))
+                    || self.has_address_pointer(unit_ref).unwrap_or_else(|error| {
+                        child_variable.set_value(VariableValue::Error(format!("Failed to determine if a struct has variant or generic type fields: {error}")));
+                        false
+                    })))
     }
 
     /// A helper function to determine if the type we are referencing requires a pointer to the address of the referenced variable (e.g. variants, generics, arrays, etc.)
@@ -1936,4 +1864,102 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         }
         Ok(false)
     }
+}
+
+/// Gets necessary register informations for the DWARF resolver.
+fn provide_register(
+    stack_frame_registers: &DebugRegisters,
+    register: gimli::Register,
+    base_type: UnitOffset,
+    evaluation: &mut gimli::Evaluation<EndianReader>,
+) -> Result<EvaluationResult<EndianReader>, DebugError> {
+    let raw_value = match stack_frame_registers
+        .get_register_by_dwarf_id(register.0)
+        .and_then(|reg| reg.value)
+    {
+        Some(raw_value) => {
+            if base_type != gimli::UnitOffset(0) {
+                return Err(DebugError::UnwindIncompleteResults {
+                    message: format!("Unimplemented: Support for type {base_type:?} in `RequiresRegister` request is not yet implemented."
+                )});
+            }
+            raw_value
+        }
+        None => {
+            return Err(DebugError::UnwindIncompleteResults {
+                    message: format!("Error while calculating `Variable::memory_location`. No value for register #:{}.",
+                    register.0
+                )});
+        }
+    };
+    Ok(evaluation.resume_with_register(gimli::Value::Generic(raw_value.try_into()?))?)
+}
+
+/// Gets necessary framebase informations for the DWARF resolver.
+fn provide_frame_base(
+    frame_base: Option<u64>,
+    evaluation: &mut gimli::Evaluation<EndianReader>,
+) -> Result<
+    EvaluationResult<EndianReader>,
+    Result<Vec<gimli::Piece<EndianReader, usize>>, DebugError>,
+> {
+    let frame_base = if let Some(frame_base) = frame_base {
+        frame_base
+    } else {
+        return Err(Err(DebugError::UnwindIncompleteResults {
+            message: "Cannot unwind `Variable` location without a valid frame base address.)"
+                .to_string(),
+        }));
+    };
+    Ok(match evaluation.resume_with_frame_base(frame_base) {
+        Ok(evaluation_result) => evaluation_result,
+        Err(error) => {
+            return Err(Err(DebugError::UnwindIncompleteResults {
+                message: format!("Error while calculating `Variable::memory_location`:{error}."),
+            }))
+        }
+    })
+}
+
+/// Reads memory requested by the DWARF resolver.
+fn read_memory(
+    size: u8,
+    adapter: &mut impl MemoryInterface,
+    address: u64,
+    evaluation: &mut gimli::Evaluation<EndianReader>,
+) -> Result<EvaluationResult<EndianReader>, DebugError> {
+    fn decode_error(error: Vec<u8>) -> DebugError {
+        DebugError::UnwindIncompleteResults {
+            message: format!("Unexpected error while dereferencing debug expressions from target memory: {error:?}. Please report this as a bug.")
+        }
+    }
+
+    fn read_error(error: Error) -> DebugError {
+        DebugError::UnwindIncompleteResults {
+            message: format!("Unexpected error while reading debug expressions from target memory: {error:?}. Please report this as a bug.")
+        }
+    }
+
+    fn size_error(x: u8) -> DebugError {
+        DebugError::UnwindIncompleteResults {
+            message: format!(
+                "Unimplemented: Requested memory with size {x}, which is not supported yet."
+            ),
+        }
+    }
+
+    let mut buff = vec![0u8; size as usize];
+    adapter.read(address, &mut buff).map_err(read_error)?;
+    Ok(match size {
+        1 => evaluation.resume_with_memory(gimli::Value::U8(buff[0]))?,
+        2 => evaluation.resume_with_memory(gimli::Value::U16(u16::from_le_bytes(
+            buff.try_into().map_err(decode_error)?,
+        )))?,
+        4 => evaluation.resume_with_memory(gimli::Value::U32(u32::from_le_bytes(
+            buff.try_into().map_err(decode_error)?,
+        )))?,
+        x => {
+            return Err(size_error(x));
+        }
+    })
 }

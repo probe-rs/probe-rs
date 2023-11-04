@@ -1,10 +1,10 @@
 use super::*;
-use crate::Error;
+use crate::{CoreInterface, Error};
 use anyhow::anyhow;
 use std::collections::HashMap;
 
 /// VariableCache stores available `Variable`s, and provides methods to create and navigate the parent-child relationships of the Variables.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct VariableCache {
     pub(crate) variable_hash_map: HashMap<i64, Variable>,
 }
@@ -43,7 +43,7 @@ impl VariableCache {
         &mut self,
         parent_key: Option<i64>,
         cache_variable: Variable,
-        adapter: &mut impl MemoryInterface,
+        adapter: &mut impl CoreInterface,
     ) -> Result<Variable, Error> {
         let mut variable_to_add = cache_variable.clone();
         // Validate that the parent_key exists ...

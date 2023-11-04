@@ -3,7 +3,7 @@ use crate::core::RegisterValue;
 use std;
 
 /// A full stack frame with all its information contained.
-#[derive(Debug)]
+#[derive(Debug, Default, PartialEq)]
 pub struct StackFrame {
     /// The stackframe ID.
     pub id: i64,

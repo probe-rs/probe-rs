@@ -38,6 +38,9 @@ use std::{
     vec,
 };
 
+/// A simplified type alias of the [`gimli::EndianReader`] type.
+pub type EndianReader = gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>;
+
 /// An error occurred while debugging the target.
 #[derive(Debug, thiserror::Error)]
 pub enum DebugError {
@@ -109,7 +112,7 @@ pub fn get_sequential_key() -> i64 {
 }
 
 /// A specific location in source code.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SourceLocation {
     /// The line number in the source file with zero based indexing.
     pub line: Option<u64>,

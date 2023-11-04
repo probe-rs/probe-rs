@@ -340,7 +340,7 @@ impl DebugInfo {
     pub fn cache_deferred_variables(
         &self,
         cache: &mut VariableCache,
-        adapter: &mut impl MemoryInterface,
+        adapter: &mut impl CoreInterface,
         parent_variable: &mut Variable,
         stack_frame_registers: &DebugRegisters,
         frame_base: Option<u64>,
@@ -1506,9 +1506,6 @@ fn add_to_address(address: u64, offset: i64, address_size_in_bytes: usize) -> u6
     }
 }
 
-/// An adapter to interface a microchip core like structure.
-pub trait CoreAdapter: CoreInterface {}
-
 impl CoreInterface for CoreDump {
     fn instruction_set(&mut self) -> Result<InstructionSet, error::Error> {
         Ok(self.instruction_set)
@@ -1737,5 +1734,33 @@ impl ExceptionInterface for CoreDump {
         crate::architecture::arm::core::exception_handling::armv6m::exception_description(
             stackframe_registers,
         )
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::path::Path;
+
+    use crate::{architecture::arm::core::registers::cortex_m::CORTEX_M_CORE_REGSISTERS, CoreDump};
+
+    use super::DebugInfo;
+
+    #[test]
+    fn test_print_stacktrace() {
+        let elf_path = Path::new("./tests/gpio-hal-blinky");
+        let mut adapter = CoreDump::load(Path::new("./tests/coredump")).unwrap();
+
+        let registers = CORTEX_M_CORE_REGSISTERS.all_registers().collect::<Vec<_>>();
+        let program_counter_register = CORTEX_M_CORE_REGSISTERS
+            .core_registers()
+            .find(|r| r.register_has_role(crate::RegisterRole::ProgramCounter))
+            .unwrap();
+
+        let debug_info = DebugInfo::from_file(elf_path).unwrap();
+        let stack_frames = debug_info
+            .unwind(&mut adapter, registers, program_counter_register)
+            .unwrap();
+
+        insta::assert_debug_snapshot!(stack_frames);
     }
 }

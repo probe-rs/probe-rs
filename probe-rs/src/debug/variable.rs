@@ -50,11 +50,12 @@ impl std::fmt::Display for VariableValue {
 }
 
 impl VariableValue {
-    /// A VariableValue is valid if it doesn't contain an Info or a Warning.
+    /// Returns `true` if the variable resolver did not encounter an error, `false` otherwise.
     pub fn is_valid(&self) -> bool {
         !matches!(self, VariableValue::Error(_))
     }
-    /// No value or error is present
+
+    /// Returns `true` if no value or error is present, `false` otherwise.
     pub fn is_empty(&self) -> bool {
         matches!(self, VariableValue::Empty)
     }
@@ -63,7 +64,9 @@ impl VariableValue {
 /// The type of variable we have at hand.
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub enum VariableName {
-    /// Top-level variable for static variables, child of a stack frame variable, and holds all the static scoped variables which are directly visible to the compile unit of the frame.
+    /// Top-level variable for static variables, child of a stack frame variable,
+    /// and holds all the static scoped variables which are directly visible to the
+    /// compile unit of the frame.
     StaticScopeRoot,
     /// Top-level variable for registers, child of a stack frame variable.
     RegistersRoot,
@@ -176,7 +179,7 @@ pub enum VariableType {
 }
 
 impl VariableType {
-    /// A Rust PhantomData type used as a marker for to "act like" they own a specific type.
+    /// Is this variable of a Rust PhantomData marker type?
     pub fn is_phantom_data(&self) -> bool {
         match self {
             VariableType::Struct(name) => name.starts_with("PhantomData"),
@@ -184,7 +187,7 @@ impl VariableType {
         }
     }
 
-    /// This variable is a reference to another variable.
+    /// Is this variable is a reference to another variable?
     pub fn is_reference(&self) -> bool {
         match self {
             VariableType::Pointer(Some(name)) => name.starts_with('&'),
@@ -192,7 +195,7 @@ impl VariableType {
         }
     }
 
-    /// This variable is an array, and requires special processing during
+    /// Is this variable an array?
     pub fn is_array(&self) -> bool {
         matches!(self, VariableType::Array { .. })
     }
@@ -516,7 +519,7 @@ impl Variable {
     /// Evaluate the variable's result if possible and set self.value, or else set self.value as the error String.
     pub fn extract_value(
         &mut self,
-        adapter: &mut impl MemoryInterface,
+        adapter: &mut impl CoreInterface,
         variable_cache: &variable_cache::VariableCache,
     ) {
         if let VariableValue::Error(_) = self.value {

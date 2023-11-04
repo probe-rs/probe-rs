@@ -1,82 +1,91 @@
-// use probe_rs::debug::{debug_info::DebugInfo, DebugError};
+use std::path::Path;
 
-// type TestResult = Result<(), DebugError>;
+use probe_rs::{
+    debug::{debug_info::DebugInfo, DebugError},
+    CoreDump,
+};
 
-// #[test]
-// fn function_name_of_inlined_function_1() -> TestResult {
-//     let di = DebugInfo::from_file("tests/inlined-function").unwrap();
+type TestResult = Result<(), DebugError>;
 
-//     let address = 0x15e;
+#[test]
+fn function_name_of_inlined_function_1() -> TestResult {
+    let mut adapter = CoreDump::load(Path::new("./tests/coredump")).unwrap();
+    let di = DebugInfo::from_file("tests/inlined-function").unwrap();
 
-//     let expected_name = "blink_on";
+    let address = 0x15e;
 
-//     let name = di.function_name(address, true)?.unwrap();
+    let expected_name = "blink_on";
 
-//     assert_eq!(expected_name, name);
+    let name = di.function_name(&mut adapter, address, true)?.unwrap();
 
-//     Ok(())
-// }
+    assert_eq!(expected_name, name);
 
-// #[test]
-// fn name_of_function_containing_inlined_function_1() -> TestResult {
-//     let di = DebugInfo::from_file("tests/inlined-function").unwrap();
+    Ok(())
+}
 
-//     let address = 0x15e;
+#[test]
+fn name_of_function_containing_inlined_function_1() -> TestResult {
+    let mut adapter = CoreDump::load(Path::new("./tests/coredump")).unwrap();
+    let di = DebugInfo::from_file("tests/inlined-function").unwrap();
 
-//     let expected_name = "__cortex_m_rt_main";
+    let address = 0x15e;
 
-//     let name = di.function_name(address, false)?.unwrap();
+    let expected_name = "__cortex_m_rt_main";
 
-//     assert_eq!(expected_name, name);
+    let name = di.function_name(&mut adapter, address, false)?.unwrap();
 
-//     Ok(())
-// }
+    assert_eq!(expected_name, name);
 
-// #[test]
-// fn function_name_of_inlined_function_2() -> TestResult {
-//     let di = DebugInfo::from_file("tests/inlined-function").unwrap();
+    Ok(())
+}
 
-//     let address = 0x154;
+#[test]
+fn function_name_of_inlined_function_2() -> TestResult {
+    let mut adapter = CoreDump::load(Path::new("./tests/coredump")).unwrap();
+    let di = DebugInfo::from_file("tests/inlined-function").unwrap();
 
-//     let expected_name = "__cortex_m_rt_main";
+    let address = 0x154;
 
-//     let name = di.function_name(address, true)?.unwrap();
+    let expected_name = "__cortex_m_rt_main";
 
-//     assert_eq!(expected_name, name);
+    let name = di.function_name(&mut adapter, address, true)?.unwrap();
 
-//     Ok(())
-// }
+    assert_eq!(expected_name, name);
 
-// #[test]
-// fn name_of_function_containing_inlined_function_2() -> TestResult {
-//     let di = DebugInfo::from_file("tests/inlined-function").unwrap();
+    Ok(())
+}
 
-//     let address = 0x154;
+#[test]
+fn name_of_function_containing_inlined_function_2() -> TestResult {
+    let mut adapter = CoreDump::load(Path::new("./tests/coredump")).unwrap();
+    let di = DebugInfo::from_file("tests/inlined-function").unwrap();
 
-//     let expected_name = "__cortex_m_rt_main";
+    let address = 0x154;
 
-//     let name = di.function_name(address, false)?.unwrap();
+    let expected_name = "__cortex_m_rt_main";
 
-//     assert_eq!(expected_name, name);
+    let name = di.function_name(&mut adapter, address, false)?.unwrap();
 
-//     Ok(())
-// }
+    assert_eq!(expected_name, name);
 
-// #[test]
-// fn function_name_of_non_inlined_function() -> TestResult {
-//     let di = DebugInfo::from_file("tests/inlined-function").unwrap();
+    Ok(())
+}
 
-//     let address = 0xf4;
+#[test]
+fn function_name_of_non_inlined_function() -> TestResult {
+    let mut adapter = CoreDump::load(Path::new("./tests/coredump")).unwrap();
+    let di = DebugInfo::from_file("tests/inlined-function").unwrap();
 
-//     let expected_name = "blink_off";
+    let address = 0xf4;
 
-//     let name = di.function_name(address, true)?.unwrap();
+    let expected_name = "blink_off";
 
-//     assert_eq!(expected_name, name);
+    let name = di.function_name(&mut adapter, address, true)?.unwrap();
 
-//     // The function is not inlined, so we should receive the same name in both cases
-//     let name = di.function_name(address, false)?.unwrap();
-//     assert_eq!(expected_name, name);
+    assert_eq!(expected_name, name);
 
-//     Ok(())
-// }
+    // The function is not inlined, so we should receive the same name in both cases
+    let name = di.function_name(&mut adapter, address, false)?.unwrap();
+    assert_eq!(expected_name, name);
+    Ok(())
+}
