@@ -32,8 +32,9 @@ use probe_rs::{
     CoreStatus, Error, HaltReason, MemoryInterface, RegisterValue,
 };
 use serde::{de::DeserializeOwned, Serialize};
-use std::{convert::TryInto, path::Path, str, string::ToString, time::Duration};
-use typed_path::NativePathBuf;
+use typed_path::{NativePathBuf, TypedPath};
+
+use std::{convert::TryInto, str, string::ToString, time::Duration};
 
 /// Progress ID used for progress reporting when the debug adapter protocol is used.
 type ProgressId = i64;
@@ -768,7 +769,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         let mut created_breakpoints: Vec<Breakpoint> = Vec::new(); // For returning in the Response
 
-        if let Some(source_path) = args.source.path.as_ref().map(Path::new) {
+        if let Some(source_path) = args.source.path.as_ref() {
             // Always clear existing breakpoints for the specified `[crate::debug_adapter::dap_types::Source]` before setting new ones.
             // The DAP Specification doesn't make allowances for deleting and setting individual breakpoints for a specific `Source`.
             match target_core.clear_breakpoints(BreakpointType::SourceBreakpoint {
@@ -787,12 +788,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
             }
 
-            let source_path = NativePathBuf::from(
-                source_path
-                    .to_str()
-                    .expect("Only UTF-8 paths are supported"),
-            )
-            .to_typed_path_buf();
+            // Assume that the path is native to the current OS
+            let source_path = NativePathBuf::from(source_path).to_typed_path_buf();
 
             if let Some(requested_breakpoints) = args.breakpoints.as_ref() {
                 for bp in requested_breakpoints {
