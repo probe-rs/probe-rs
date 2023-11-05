@@ -8,6 +8,7 @@ pub(crate) mod fake_probe;
 pub(crate) mod ftdi;
 pub(crate) mod jlink;
 pub(crate) mod stlink;
+pub(crate) mod wlink;
 
 use self::espusbjtag::list_espjtag_devices;
 use crate::architecture::arm::ArmError;
@@ -255,6 +256,8 @@ impl Probe {
 
         list.extend(list_espjtag_devices());
 
+        list.extend(wlink::list_wlink_devices());
+
         list
     }
 
@@ -284,7 +287,12 @@ impl Probe {
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),
         };
-        match espusbjtag::EspUsbJtag::new_from_selector(selector) {
+        match espusbjtag::EspUsbJtag::new_from_selector(selector.clone()) {
+            Ok(link) => return Ok(Probe::from_specific_probe(link)),
+            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
+            Err(e) => return Err(e),
+        };
+        match wlink::WchLink::new_from_selector(selector) {
             Ok(link) => return Ok(Probe::from_specific_probe(link)),
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),
@@ -677,6 +685,8 @@ pub enum DebugProbeType {
     JLink,
     /// Built in RISC-V ESP JTAG debug probe
     EspJtag,
+    /// WCH-Link
+    WchLink,
 }
 
 /// Gathers some information about a debug probe which was found during a scan.
