@@ -32,7 +32,7 @@ use probe_rs::{
     CoreStatus, Error, HaltReason, MemoryInterface, RegisterValue,
 };
 use serde::{de::DeserializeOwned, Serialize};
-use typed_path::{NativePathBuf};
+use typed_path::NativePathBuf;
 
 use std::{convert::TryInto, str, string::ToString, time::Duration};
 
