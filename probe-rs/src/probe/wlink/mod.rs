@@ -67,7 +67,7 @@ impl fmt::Display for WchLinkVariant {
 }
 
 impl WchLinkVariant {
-    pub fn try_from_u8(value: u8) -> Result<Self, WchLinkError> {
+    fn try_from_u8(value: u8) -> Result<Self, WchLinkError> {
         match value {
             1 => Ok(Self::Ch549),
             2 => Ok(Self::ECh32v305),
@@ -130,6 +130,20 @@ impl RiscvChip {
             0x49 => Some(RiscvChip::CH641),
             _ => None,
         }
+    }
+
+    pub fn support_flash_protect(&self) -> bool {
+        matches!(
+            self,
+            RiscvChip::CH32V103
+                | RiscvChip::CH32V20X
+                | RiscvChip::CH32V30X
+                | RiscvChip::CH32V003
+                | RiscvChip::CH643
+                | RiscvChip::CH32L103
+                | RiscvChip::CH32X035
+                | RiscvChip::CH641
+        )
     }
 }
 
@@ -261,9 +275,12 @@ impl DebugProbe for WchLink {
 
         tracing::info!("attached riscvchip {:?}", self.chip_family);
 
-        let chip_type = resp.chip_id;
+        self.chip_id = resp.chip_id;
 
-        self.chip_id = chip_type;
+        if self.chip_family.support_flash_protect() {
+            self.device.send_command(commands::CheckFlashProtection)?;
+            self.device.send_command(commands::UnprotectFlash)?;
+        }
 
         Ok(())
     }
@@ -320,9 +337,7 @@ impl DebugProbe for WchLink {
         &mut self,
         _scan_chain: Vec<ScanChainElement>,
     ) -> Result<(), DebugProbeError> {
-        return Err(DebugProbeError::CommandNotSupportedByProbe(
-            "Setting Scan Chain is not supported by WCH-LinkRV",
-        ));
+        Ok(())
     }
 }
 
@@ -443,7 +458,7 @@ fn get_wlink_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
 
     let d_desc = device.device_descriptor().ok()?;
     let handle = device.open().ok()?;
-    let language = handle.read_languages(timeout).ok()?.get(0).cloned()?;
+    let language = handle.read_languages(timeout).ok()?.first().cloned()?;
 
     let prod_str = handle
         .read_product_string(language, &d_desc, timeout)
@@ -489,8 +504,6 @@ pub fn list_wlink_devices() -> Vec<DebugProbeInfo> {
 
 #[derive(thiserror::Error, Debug)]
 pub(crate) enum WchLinkError {
-    #[error("Device's read-protect status is enabled")]
-    ReadProtected,
     #[error("Unknown WCH-Link device(new variant?)")]
     UnknownDevice,
     #[error("Firmware version is not supported.")]
@@ -501,8 +514,6 @@ pub(crate) enum WchLinkError {
     NotEnoughBytesRead { is: usize, should: usize },
     #[error("Usb endpoint not found.")]
     EndpointNotFound,
-    #[error("Command failed from the device.")]
-    CommandFailed,
     #[error("Invalid payload.")]
     InvalidPayload,
     #[error("Protocl error.")]

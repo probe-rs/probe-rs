@@ -175,23 +175,19 @@ impl WchLinkCommand for DetachChip {
 /// Set speed
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
+#[derive(Default)]
 pub enum Speed {
     /// 400kHz
     Low = 0x03,
     /// 4000kHz
     Medium = 0x02,
     /// 6000kHz
+    #[default]
     High = 0x01,
 }
 
-impl Default for Speed {
-    fn default() -> Self {
-        Speed::High
-    }
-}
-
 impl Speed {
-    pub fn to_khz(&self) -> u32 {
+    pub fn to_khz(self) -> u32 {
         match self {
             Speed::Low => 400,
             Speed::Medium => 4000,
@@ -228,20 +224,20 @@ impl WchLinkCommand for SetSpeed {
 /// RISC-V DMI operations
 #[derive(Debug)]
 pub enum DmiOp {
-    DmiNop,
-    DmiRead { addr: u8 },
-    DmiWrite { addr: u8, data: u32 },
+    Nop,
+    Read { addr: u8 },
+    Write { addr: u8, data: u32 },
 }
 
 impl DmiOp {
     pub fn nop() -> Self {
-        Self::DmiNop
+        Self::Nop
     }
     pub fn read(addr: u8) -> Self {
-        Self::DmiRead { addr }
+        Self::Read { addr }
     }
     pub fn write(addr: u8, data: u32) -> Self {
-        Self::DmiWrite { addr, data }
+        Self::Write { addr, data }
     }
 }
 
@@ -271,14 +267,14 @@ impl WchLinkCommand for DmiOp {
     fn payload(&self) -> Vec<u8> {
         let mut bytes = vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
         match self {
-            DmiOp::DmiNop => {
+            DmiOp::Nop => {
                 bytes[5] = DMI_OP_NOP;
             }
-            DmiOp::DmiRead { addr } => {
+            DmiOp::Read { addr } => {
                 bytes[0] = *addr;
                 bytes[5] = DMI_OP_READ;
             }
-            DmiOp::DmiWrite { addr, data } => {
+            DmiOp::Write { addr, data } => {
                 bytes[0] = *addr;
                 bytes[5] = DMI_OP_WRITE;
                 bytes[1..5].copy_from_slice(&data.to_be_bytes());
@@ -300,8 +296,26 @@ impl WchLinkCommand for ResetTarget {
     }
 }
 
-pub struct GetCodeFlashProtection;
+/// Check flash protection status
+#[derive(Debug)]
+pub struct CheckFlashProtection;
+impl WchLinkCommand for CheckFlashProtection {
+    const COMMAND_ID: CommandId = CommandId::ConfigChip;
+    type Response = u8;
 
-pub struct SetCodeFlashProtection {
-    protected: bool,
+    fn payload(&self) -> Vec<u8> {
+        vec![0x01]
+    }
+}
+
+/// Unprotect flash
+#[derive(Debug)]
+pub struct UnprotectFlash;
+impl WchLinkCommand for UnprotectFlash {
+    const COMMAND_ID: CommandId = CommandId::ConfigChip;
+    type Response = ();
+
+    fn payload(&self) -> Vec<u8> {
+        vec![0x02]
+    }
 }
