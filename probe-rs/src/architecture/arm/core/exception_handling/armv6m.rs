@@ -1,10 +1,6 @@
-use crate::{
-    core::{ExceptionInfo, ExceptionInterface},
-    debug::DebugRegisters,
-    Error,
-};
+use crate::MemoryInterface;
 
-use super::armv6m_armv7m_shared::{calling_frame_registers, exception_details, Xpsr};
+use super::armv6m_armv7m_shared::Xpsr;
 
 /// Decode the exception number.
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -45,37 +41,21 @@ impl From<u32> for ExceptionReason {
     }
 }
 
-impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv6m::Armv6m<'probe> {
-    fn calling_frame_registers(
-        &mut self,
-        stackframe_registers: &crate::debug::DebugRegisters,
-    ) -> Result<crate::debug::DebugRegisters, crate::Error> {
-        calling_frame_registers(self, stackframe_registers)
-    }
+pub fn exception_description(
+    _memory_interface: &mut dyn MemoryInterface,
+    stackframe_registers: &crate::debug::DebugRegisters,
+) -> Result<String, crate::Error> {
+    // Load the provided xPSR register as a bitfield.
+    let exception_number = Xpsr(
+        stackframe_registers
+            .get_register_value_by_role(&crate::core::RegisterRole::ProcessorStatus)?
+            as u32,
+    )
+    .exception_number();
 
-    fn exception_description(
-        &mut self,
-        stackframe_registers: &crate::debug::DebugRegisters,
-    ) -> Result<String, crate::Error> {
-        // Load the provided xPSR register as a bitfield.
-        let exception_number = Xpsr(
-            stackframe_registers
-                .get_register_value_by_role(&crate::core::RegisterRole::ProcessorStatus)?
-                as u32,
-        )
-        .exception_number();
-
-        // TODO: Some ARMv6-M cores (e.g. the Cortex-M0) do not have HFSR and CFGR registers, so we cannot
-        //       determine the cause of the hard fault. We should add a check for this, and return a more
-        //       helpful error message in this case (I'm not sure this is possible).
-        //       Until then, this will return a generic error message for all hard faults on this architecture.
-        Ok(format!("{:?}", ExceptionReason::from(exception_number)))
-    }
-
-    fn exception_details(
-        &mut self,
-        stackframe_registers: &DebugRegisters,
-    ) -> Result<Option<ExceptionInfo>, Error> {
-        exception_details(self, stackframe_registers)
-    }
+    // TODO: Some ARMv6-M cores (e.g. the Cortex-M0) do not have HFSR and CFGR registers, so we cannot
+    //       determine the cause of the hard fault. We should add a check for this, and return a more
+    //       helpful error message in this case (I'm not sure this is possible).
+    //       Until then, this will return a generic error message for all hard faults on this architecture.
+    Ok(format!("{:?}", ExceptionReason::from(exception_number)))
 }

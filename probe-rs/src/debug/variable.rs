@@ -514,7 +514,7 @@ impl Variable {
     /// Evaluate the variable's result if possible and set self.value, or else set self.value as the error String.
     pub fn extract_value(
         &mut self,
-        core: &mut Core<'_>,
+        memory: &mut dyn MemoryInterface,
         variable_cache: &variable_cache::VariableCache,
     ) {
         if let VariableValue::Error(_) = self.value {
@@ -525,7 +525,7 @@ impl Variable {
         {
             // Special handling for SVD registers.
             // Because we cache the SVD structure once per sesion, we have to re-read the actual register values whenever queried.
-            match core.read_word_32(self.memory_location.memory_address().unwrap_or(u64::MAX)) {
+            match memory.read_word_32(self.memory_location.memory_address().unwrap_or(u64::MAX)) {
                 Ok(u32_value) => self.value = VariableValue::Valid(u32_value.to_le().to_string()),
                 Err(error) => {
                     self.value = VariableValue::Error(format!(
@@ -569,67 +569,67 @@ impl Variable {
                 match name.as_str() {
                     "!" => VariableValue::Valid("<Never returns>".to_string()),
                     "()" => VariableValue::Valid("()".to_string()),
-                    "bool" => bool::get_value(self, core, variable_cache).map_or_else(
+                    "bool" => bool::get_value(self, memory, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "char" => char::get_value(self, core, variable_cache).map_or_else(
+                    "char" => char::get_value(self, memory, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "i8" => i8::get_value(self, core, variable_cache).map_or_else(
+                    "i8" => i8::get_value(self, memory, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "i16" => i16::get_value(self, core, variable_cache).map_or_else(
+                    "i16" => i16::get_value(self, memory, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "i32" => i32::get_value(self, core, variable_cache).map_or_else(
+                    "i32" => i32::get_value(self, memory, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "i64" => i64::get_value(self, core, variable_cache).map_or_else(
+                    "i64" => i64::get_value(self, memory, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "i128" => i128::get_value(self, core, variable_cache).map_or_else(
+                    "i128" => i128::get_value(self, memory, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "isize" => isize::get_value(self, core, variable_cache).map_or_else(
+                    "isize" => isize::get_value(self, memory, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "u8" => u8::get_value(self, core, variable_cache).map_or_else(
+                    "u8" => u8::get_value(self, memory, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "u16" => u16::get_value(self, core, variable_cache).map_or_else(
+                    "u16" => u16::get_value(self, memory, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "u32" => u32::get_value(self, core, variable_cache).map_or_else(
+                    "u32" => u32::get_value(self, memory, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "u64" => u64::get_value(self, core, variable_cache).map_or_else(
+                    "u64" => u64::get_value(self, memory, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "u128" => u128::get_value(self, core, variable_cache).map_or_else(
+                    "u128" => u128::get_value(self, memory, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "usize" => usize::get_value(self, core, variable_cache).map_or_else(
+                    "usize" => usize::get_value(self, memory, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "f32" => f32::get_value(self, core, variable_cache).map_or_else(
+                    "f32" => f32::get_value(self, memory, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
-                    "f64" => f64::get_value(self, core, variable_cache).map_or_else(
+                    "f64" => f64::get_value(self, memory, variable_cache).map_or_else(
                         |err| VariableValue::Error(format!("{err:?}")),
                         |value| VariableValue::Valid(value.to_string()),
                     ),
@@ -638,7 +638,7 @@ impl Variable {
                 }
             }
             VariableType::Struct(name) if name == "&str" => {
-                String::get_value(self, core, variable_cache).map_or_else(
+                String::get_value(self, memory, variable_cache).map_or_else(
                     |err| VariableValue::Error(format!("{err:?}")),
                     VariableValue::Valid,
                 )
@@ -872,7 +872,7 @@ trait Value {
     /// The MS DAP protocol passes the value as a string, so this trait is here to provide the memory read logic before returning it as a string.
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError>
     where
@@ -891,10 +891,10 @@ trait Value {
 impl Value for bool {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
-        let mem_data = core.read_word_8(variable.memory_location.memory_address()?)?;
+        let mem_data = memory.read_word_8(variable.memory_location.memory_address()?)?;
         let ret_value: bool = mem_data != 0;
         Ok(ret_value)
     }
@@ -922,10 +922,10 @@ impl Value for bool {
 impl Value for char {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
-        let mem_data = core.read_word_32(variable.memory_location.memory_address()?)?;
+        let mem_data = memory.read_word_32(variable.memory_location.memory_address()?)?;
         if let Some(return_value) = char::from_u32(mem_data) {
             Ok(return_value)
         } else {
@@ -956,7 +956,7 @@ impl Value for char {
 impl Value for String {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        memory: &mut dyn MemoryInterface,
         variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut str_value: String = "".to_owned();
@@ -1012,7 +1012,7 @@ impl Value for String {
                         // A string with length 0 doesn't need to be read from memory.
                     } else {
                         let mut buff = vec![0u8; string_length];
-                        core.read(string_location, &mut buff)?;
+                        memory.read(string_location, &mut buff)?;
                         str_value = core::str::from_utf8(&buff)?.to_owned();
                     }
                 }
@@ -1034,11 +1034,11 @@ impl Value for String {
 impl Value for i8 {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 1];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = i8::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1066,11 +1066,11 @@ impl Value for i8 {
 impl Value for i16 {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 2];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = i16::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1094,11 +1094,11 @@ impl Value for i16 {
 impl Value for i32 {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = i32::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1122,11 +1122,11 @@ impl Value for i32 {
 impl Value for i64 {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 8];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = i64::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1150,11 +1150,11 @@ impl Value for i64 {
 impl Value for i128 {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 16];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = i128::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1178,11 +1178,11 @@ impl Value for i128 {
 impl Value for isize {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
         // TODO: We can get the actual WORD length from [DWARF] instead of assuming `u32`
         let ret_value = i32::from_le_bytes(buff);
         Ok(ret_value as isize)
@@ -1210,11 +1210,11 @@ impl Value for isize {
 impl Value for u8 {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 1];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = u8::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1242,11 +1242,11 @@ impl Value for u8 {
 impl Value for u16 {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 2];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = u16::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1270,11 +1270,11 @@ impl Value for u16 {
 impl Value for u32 {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = u32::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1298,11 +1298,11 @@ impl Value for u32 {
 impl Value for u64 {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 8];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = u64::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1326,11 +1326,11 @@ impl Value for u64 {
 impl Value for u128 {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 16];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = u128::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1354,11 +1354,11 @@ impl Value for u128 {
 impl Value for usize {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
         // TODO: We can get the actual WORD length from [DWARF] instead of assuming `u32`
         let ret_value = u32::from_le_bytes(buff);
         Ok(ret_value as usize)
@@ -1386,11 +1386,11 @@ impl Value for usize {
 impl Value for f32 {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = f32::from_le_bytes(buff);
         Ok(ret_value)
     }
@@ -1414,11 +1414,11 @@ impl Value for f32 {
 impl Value for f64 {
     fn get_value(
         variable: &Variable,
-        core: &mut Core<'_>,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 8];
-        core.read(variable.memory_location.memory_address()?, &mut buff)?;
+        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
         let ret_value = f64::from_le_bytes(buff);
         Ok(ret_value)
     }

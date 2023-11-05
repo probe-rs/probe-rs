@@ -46,7 +46,7 @@ impl DebugRegister {
 }
 
 /// All the registers required for debug related operations.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DebugRegisters(pub Vec<DebugRegister>);
 
 impl DebugRegisters {

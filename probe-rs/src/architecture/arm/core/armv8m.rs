@@ -3,7 +3,7 @@
 use super::{
     cortex_m::{IdPfr1, Mvfr0},
     registers::cortex_m::{
-        CORTEX_M_CORE_REGSISTERS, CORTEX_M_WITH_FP_CORE_REGSISTERS, FP, PC, RA, SP,
+        CORTEX_M_CORE_REGISTERS, CORTEX_M_WITH_FP_CORE_REGISTERS, FP, PC, RA, SP,
     },
     CortexMState, Dfsr,
 };
@@ -402,9 +402,9 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
     fn registers(&self) -> &'static CoreRegisters {
         if self.state.fp_present {
-            &CORTEX_M_WITH_FP_CORE_REGSISTERS
+            &CORTEX_M_WITH_FP_CORE_REGISTERS
         } else {
-            &CORTEX_M_CORE_REGSISTERS
+            &CORTEX_M_CORE_REGISTERS
         }
     }
 

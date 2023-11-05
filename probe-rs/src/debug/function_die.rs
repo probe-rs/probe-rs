@@ -145,18 +145,42 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
             .attr(attribute_name)
             .map_or(None, |attribute| attribute);
 
+        if attribute.is_some() {
+            return attribute;
+        }
+
         // For inlined function, the *abstract instance* has to be checked if we cannot find the
         // attribute on the *concrete instance*.
-        if self.is_inline() && attribute.is_none() {
+        if self.is_inline() {
             if let Some(origin) = self.abstract_die.as_ref() {
-                origin
+                // Try to get the attribute directly
+                match origin
                     .attr(attribute_name)
                     .map_or(None, |attribute| attribute)
-            } else {
-                None
+                {
+                    Some(attribute) => return Some(attribute),
+                    None => {
+                        let specification_attr =
+                            origin.attr(gimli::DW_AT_specification).ok().flatten()?;
+
+                        match specification_attr.value() {
+                            gimli::AttributeValue::UnitRef(unit_ref) => {
+                                if let Ok(specification) = self.unit_info.unit.entry(unit_ref) {
+                                    return specification
+                                        .attr(attribute_name)
+                                        .map_or(None, |attribute| attribute);
+                                }
+                            }
+                            other_value => tracing::warn!(
+                                "Unsupported DW_AT_speficiation value: {:?}",
+                                other_value
+                            ),
+                        }
+                    }
+                }
             }
-        } else {
-            attribute
         }
+
+        None
     }
 }
