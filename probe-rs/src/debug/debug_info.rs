@@ -9,18 +9,16 @@ use crate::{
     debug::{registers, source_statement::SourceStatements},
     MemoryInterface,
 };
-use ::gimli::{FileEntry, LineProgramHeader, UnwindContext};
-use gimli::{BaseAddresses, ColumnType, DebugFrame, UnwindSection};
+use gimli::{
+    BaseAddresses, ColumnType, DebugFrame, FileEntry, LineProgramHeader, UnwindContext,
+    UnwindSection,
+};
 use object::read::{Object, ObjectSection};
 use probe_rs_target::InstructionSet;
+use typed_path::{TypedPath, TypedPathBuf};
+
 use std::{
-    borrow,
-    cmp::Ordering,
-    convert::TryInto,
-    num::NonZeroU64,
-    ops::ControlFlow,
-    path::{Path, PathBuf},
-    rc::Rc,
+    borrow, cmp::Ordering, convert::TryInto, num::NonZeroU64, ops::ControlFlow, path::Path, rc::Rc,
     str::from_utf8,
 };
 
@@ -953,13 +951,13 @@ impl DebugInfo {
     /// given a source file, a line and optionally a column.
     pub fn get_breakpoint_location(
         &self,
-        path: &Path,
+        path: &TypedPathBuf,
         line: u64,
         column: Option<u64>,
     ) -> Result<VerifiedBreakpoint, DebugError> {
         tracing::debug!(
             "Looking for breakpoint location for {}:{}:{}",
-            path.display(),
+            path.to_path().display(),
             line,
             column
                 .map(|c| c.to_string())
@@ -1118,9 +1116,12 @@ impl DebugInfo {
                 }
             }
         }
+
+        let p = path.to_path();
+
         Err(DebugError::Other(anyhow::anyhow!(
-            "No valid breakpoint information found for file: {:?}, line: {:?}, column: {:?}",
-            path,
+            "No valid breakpoint information found for file: {}, line: {:?}, column: {:?}",
+            p.display(),
             line,
             column
         )))
@@ -1133,19 +1134,23 @@ impl DebugInfo {
         unit: &gimli::read::Unit<DwarfReader>,
         header: &LineProgramHeader<DwarfReader>,
         file_entry: &FileEntry<DwarfReader>,
-    ) -> Option<PathBuf> {
+    ) -> Option<TypedPathBuf> {
         let file_name_attr_string = self.dwarf.attr_string(unit, file_entry.path_name()).ok()?;
+        let name_path = from_utf8(&file_name_attr_string).ok()?;
+
         let dir_name_attr_string = file_entry
             .directory(header)
             .and_then(|dir| self.dwarf.attr_string(unit, dir).ok());
 
-        let name_path = Path::new(from_utf8(&file_name_attr_string).ok()?);
-        let dir_path =
-            dir_name_attr_string.and_then(|dir_name| from_utf8(&dir_name).ok().map(PathBuf::from));
+        let dir_path = dir_name_attr_string.and_then(|dir_name| {
+            from_utf8(&dir_name)
+                .ok()
+                .map(|p| TypedPath::derive(p).to_path_buf())
+        });
 
         let mut combined_path = match dir_path {
             Some(dir_path) => dir_path.join(name_path),
-            None => name_path.to_owned(),
+            None => TypedPath::derive(name_path).to_path_buf(),
         };
 
         if combined_path.is_relative() {
@@ -1155,7 +1160,7 @@ impl DebugInfo {
                 .map(|dir| from_utf8(dir))
                 .transpose()
                 .ok()?
-                .map(PathBuf::from);
+                .map(TypedPath::derive);
             if let Some(comp_dir) = comp_dir {
                 combined_path = comp_dir.join(&combined_path);
             }
@@ -1169,12 +1174,12 @@ impl DebugInfo {
         unit: &gimli::read::Unit<DwarfReader>,
         header: &LineProgramHeader<DwarfReader>,
         file_entry: &FileEntry<DwarfReader>,
-    ) -> Option<(Option<String>, Option<PathBuf>)> {
+    ) -> Option<(Option<String>, Option<TypedPathBuf>)> {
         let combined_path = self.get_path(unit, header, file_entry)?;
 
         let file_name = combined_path
             .file_name()
-            .map(|name| name.to_string_lossy().into_owned());
+            .map(|name| String::from_utf8_lossy(name).into_owned());
 
         let directory = combined_path.parent().map(|p| p.to_path_buf());
 
@@ -1187,26 +1192,11 @@ impl DebugInfo {
 /// If for some reason (e.g., the paths don't exist) the canonicalization fails, the original equality check is used.
 /// We do this to maximize the chances of finding a match where the secondary path can be given as
 /// an absolute, relative, or partial path.
-pub(crate) fn canonical_path_eq(primary_path: &Path, secondary_path: &Path) -> bool {
-    primary_path
-        .canonicalize()
-        .ok()
-        .and_then(|canonical_primary_path| {
-            secondary_path
-                .canonicalize()
-                .ok()
-                .map(|canonical_secondary_path| {
-                    tracing::debug!(
-                        "Canonical path equality: Using `{canonical_primary_path:?}.eq({canonical_secondary_path:?})` to compare paths.");
-                    canonical_primary_path.eq(&canonical_secondary_path)
-                })
-        })
-        .unwrap_or_else(|| {
-            // If for some reason we can't canonicalize the paths, fall back to the original equality check.
-            tracing::debug!(
-                "Original path equality: Using `{primary_path:?}.eq({secondary_path:?})` to compare paths.");
-            primary_path.eq(secondary_path)
-        })
+pub(crate) fn canonical_path_eq(
+    primary_path: &TypedPathBuf,
+    secondary_path: &TypedPathBuf,
+) -> bool {
+    primary_path.normalize() == secondary_path.normalize()
 }
 
 /// Get a handle to the [`gimli::UnwindTableRow`] for this call frame, so that we can reference it to unwind register values.

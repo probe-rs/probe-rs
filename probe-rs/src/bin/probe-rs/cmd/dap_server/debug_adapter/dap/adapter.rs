@@ -33,6 +33,7 @@ use probe_rs::{
 };
 use serde::{de::DeserializeOwned, Serialize};
 use std::{convert::TryInto, path::Path, str, string::ToString, time::Duration};
+use typed_path::NativePathBuf;
 
 /// Progress ID used for progress reporting when the debug adapter protocol is used.
 type ProgressId = i64;
@@ -786,6 +787,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
             }
 
+            let source_path = NativePathBuf::from(
+                source_path
+                    .to_str()
+                    .expect("Only UTF-8 paths are supported"),
+            )
+            .to_typed_path_buf();
+
             if let Some(requested_breakpoints) = args.breakpoints.as_ref() {
                 for bp in requested_breakpoints {
                     // Some overrides to improve breakpoint accuracy when `DebugInfo::get_breakpoint_location()` has to select the best from multiple options
@@ -805,7 +813,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     };
 
                     match target_core.verify_and_set_breakpoint(
-                        source_path,
+                        &source_path,
                         requested_breakpoint_line,
                         requested_breakpoint_column,
                         &args.source,

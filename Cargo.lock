@@ -2542,6 +2542,7 @@ dependencies = [
  "time",
  "tracing",
  "tracing-subscriber",
+ "typed-path",
  "uf2-decode",
 ]
 
@@ -4010,6 +4011,12 @@ dependencies = [
  "cfg-if",
  "static_assertions",
 ]
+
+[[package]]
+name = "typed-path"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a90726108dab678edab76459751e1cc7c597c3484a6384d6423191255fa641b"
 
 [[package]]
 name = "typenum"
