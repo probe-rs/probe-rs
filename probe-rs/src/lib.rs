@@ -35,8 +35,7 @@
 //!
 //! ```no_run
 //! # use probe_rs::Error;
-//! use probe_rs::{Session, Permissions};
-//! use probe_rs::{MemoryInterface, ReadOnlyMemoryInterface};
+//! use probe_rs::{Session, Permissions, MemoryInterface};
 //!
 //! let mut session = Session::auto_attach("nrf52", Permissions::default())?;
 //! let mut core = session.core(0)?;
