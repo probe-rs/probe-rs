@@ -10,7 +10,6 @@ Released 2023-10-12
 ### Added
 
  - rtthost: Add --version
- - Added experimental support for WCH-Link probe (#1437)
 
 ### Changed
 
