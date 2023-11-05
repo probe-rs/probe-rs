@@ -8,7 +8,7 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ap::{AccessPort, AccessPortError, ApAccess, GenericAp, MemoryAp, DRW, IDR, TAR},
+        ap::{AccessPort, AccessPortError, ApAccess, GenericAp, MemoryAp, CSW, DRW, IDR, TAR},
         communication_interface::{FlushableArmAccess, Initialized},
         core::armv7m::{Aircr, Demcr, Dhcsr},
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
@@ -120,7 +120,8 @@ impl ArmDebugSequence for LPC55Sxx {
         _core_type: crate::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        let mut reset_vector = 0xffff_ffff;
+        let mut reset_vector: u32 = 0xffff_ffff;
+        let mut reset_vector_addr = 0x0000_0004;
         let mut demcr = Demcr(interface.read_word_32(Demcr::get_mmio_address())?);
 
         demcr.set_vc_corereset(false);
@@ -164,11 +165,18 @@ impl ArmDebugSequence for LPC55Sxx {
         if (interface.read_word_32(0x4003_4fe0)? & 0xB) == 0 {
             tracing::info!("No Error reading Flash Word with Reset Vector");
 
-            reset_vector = interface.read_word_32(0x0000_0004)?;
+            if (interface.read_word_32(0x400a_cffc)? & 0xC != 0x8)
+                || (interface.read_word_32(0x400a_cff8)? & 0xC != 0x8)
+            {
+                // ENABLE_SECURE_CHECKING is set to restrictive mode, access secure addresses
+                reset_vector_addr = 0x10000004;
+            }
+
+            reset_vector = interface.read_word_32(reset_vector_addr)?;
         }
 
         if reset_vector != 0xffff_ffff {
-            tracing::info!("Breakpoint on user application reset vector");
+            tracing::info!("Breakpoint on user application reset vector: {reset_vector:#010x}");
 
             interface.write_word_32(0xE000_2008, reset_vector | 1)?;
             interface.write_word_32(0xE000_2000, 3)?;
@@ -224,7 +232,7 @@ impl ArmDebugSequence for LPC55Sxx {
         }
 
         if let Err(e) = result {
-            tracing::debug!("Error requesting reset: {:?}", e);
+            tracing::warn!("Error requesting reset: {:?}", e);
         }
 
         tracing::info!("Waiting after reset");
@@ -240,9 +248,16 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmProbe) -> Result<(), ArmError> 
     thread::sleep(Duration::from_millis(10));
 
     let dp = memory.ap().ap_address().dp;
+    let ap = memory.ap();
     let interface = memory.get_arm_communication_interface()?;
 
-    enable_debug_mailbox(interface, dp)?;
+    let ap0_csw: CSW = interface.read_ap_register(ap)?;
+
+    let ap0_disabled = ap0_csw.DeviceEn == 0;
+
+    if ap0_disabled {
+        enable_debug_mailbox(interface, dp)?;
+    }
 
     let mut timeout = true;
 
@@ -271,6 +286,7 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmProbe) -> Result<(), ArmError> 
         dhcsr.set_c_halt(true);
         dhcsr.set_c_debugen(true);
 
+        tracing::debug!("Force halt until finding a proper catch.");
         memory.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
     }
 
