@@ -7,7 +7,7 @@ use crate::{
     core::{
         Architecture, BreakpointCause, CoreInformation, CoreRegisters, RegisterId, RegisterValue,
     },
-    memory::{valid_32bit_address, ReadOnlyMemoryInterface},
+    memory::valid_32bit_address,
     memory_mapped_bitfield_register, CoreInterface, CoreRegister, CoreStatus, CoreType, Error,
     HaltReason, InstructionSet, MemoryInterface,
 };
@@ -680,40 +680,6 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 }
 
 impl<'probe> MemoryInterface for Riscv32<'probe> {
-    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
-        self.interface.write_word_64(address, data)
-    }
-
-    fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
-        self.interface.write_word_32(address, data)
-    }
-
-    fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
-        self.interface.write_word_8(address, data)
-    }
-
-    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
-        self.interface.write_64(address, data)
-    }
-
-    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
-        self.interface.write_32(address, data)
-    }
-
-    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        self.interface.write_8(address, data)
-    }
-
-    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        self.interface.write(address, data)
-    }
-
-    fn flush(&mut self) -> Result<(), Error> {
-        self.interface.flush()
-    }
-}
-
-impl<'probe> ReadOnlyMemoryInterface for Riscv32<'probe> {
     fn supports_native_64bit_access(&mut self) -> bool {
         self.interface.supports_native_64bit_access()
     }
@@ -742,8 +708,40 @@ impl<'probe> ReadOnlyMemoryInterface for Riscv32<'probe> {
         self.interface.read_8(address, data)
     }
 
+    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
+        self.interface.write_word_64(address, data)
+    }
+
+    fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
+        self.interface.write_word_32(address, data)
+    }
+
+    fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
+        self.interface.write_word_8(address, data)
+    }
+
+    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
+        self.interface.write_64(address, data)
+    }
+
+    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
+        self.interface.write_32(address, data)
+    }
+
+    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
+        self.interface.write_8(address, data)
+    }
+
+    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
+        self.interface.write(address, data)
+    }
+
     fn supports_8bit_transfers(&self) -> Result<bool, Error> {
         self.interface.supports_8bit_transfers()
+    }
+
+    fn flush(&mut self) -> Result<(), Error> {
+        self.interface.flush()
     }
 }
 

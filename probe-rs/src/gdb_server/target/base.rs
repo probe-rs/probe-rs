@@ -1,7 +1,6 @@
 use super::desc::GdbRegisterSource;
 use super::{GdbErrorExt, RuntimeTarget};
 use crate::gdb_server::arch::{RuntimeRegId, RuntimeRegisters};
-use crate::memory::ReadOnlyMemoryInterface;
 use crate::{Core, Error, MemoryInterface};
 use gdbstub::common::Tid;
 use gdbstub::target::ext::base::multithread::MultiThreadBase;

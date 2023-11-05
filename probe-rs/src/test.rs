@@ -1,6 +1,6 @@
 //! Helpers for testing the crate
 
-use crate::ReadOnlyMemoryInterface;
+use crate::MemoryInterface;
 
 #[derive(Debug)]
 pub(crate) struct MockMemory {
@@ -73,7 +73,7 @@ impl MockMemory {
     }
 }
 
-impl ReadOnlyMemoryInterface for MockMemory {
+impl MemoryInterface for MockMemory {
     fn supports_native_64bit_access(&mut self) -> bool {
         false
     }
@@ -154,6 +154,34 @@ impl ReadOnlyMemoryInterface for MockMemory {
 
     fn supports_8bit_transfers(&self) -> Result<bool, crate::Error> {
         Ok(true)
+    }
+
+    fn write_word_64(&mut self, _address: u64, _data: u64) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_word_32(&mut self, _address: u64, _data: u32) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_word_8(&mut self, _address: u64, _data: u8) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_64(&mut self, _address: u64, _data: &[u64]) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_32(&mut self, _address: u64, _data: &[u32]) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_8(&mut self, _address: u64, _data: &[u8]) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn flush(&mut self) -> anyhow::Result<(), crate::Error> {
+        todo!()
     }
 }
 

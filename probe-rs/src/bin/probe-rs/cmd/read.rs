@@ -1,4 +1,4 @@
-use probe_rs::ReadOnlyMemoryInterface;
+use probe_rs::MemoryInterface;
 
 use crate::util::common_options::{ProbeOptions, ReadWriteBitWidth, ReadWriteOptions};
 use crate::CoreOptions;

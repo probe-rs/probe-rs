@@ -4,7 +4,112 @@ use anyhow::{anyhow, Result};
 use scroll::Pread;
 
 /// An interface to be implemented for drivers that allow target memory access.
-pub trait MemoryInterface: ReadOnlyMemoryInterface {
+pub trait MemoryInterface {
+    /// Does this interface support native 64-bit wide accesses
+    ///
+    /// If false all 64-bit operations may be split into 32 or 8 bit operations.
+    /// Most callers will not need to pivot on this but it can be useful for
+    /// picking the fastest bulk data transfer method.
+    fn supports_native_64bit_access(&mut self) -> bool;
+
+    /// Read a 64bit word of at `address`.
+    ///
+    /// The address where the read should be performed at has to be word aligned.
+    /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
+    fn read_word_64(&mut self, address: u64) -> Result<u64, Error>;
+
+    /// Read a 32bit word of at `address`.
+    ///
+    /// The address where the read should be performed at has to be word aligned.
+    /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
+    fn read_word_32(&mut self, address: u64) -> Result<u32, Error>;
+
+    /// Read an 8bit word of at `address`.
+    fn read_word_8(&mut self, address: u64) -> Result<u8, Error>;
+
+    /// Read a block of 64bit words at `address`.
+    ///
+    /// The number of words read is `data.len()`.
+    /// The address where the read should be performed at has to be word aligned.
+    /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
+    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error>;
+
+    /// Read a block of 32bit words at `address`.
+    ///
+    /// The number of words read is `data.len()`.
+    /// The address where the read should be performed at has to be word aligned.
+    /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
+    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error>;
+
+    /// Read a block of 8bit words at `address`.
+    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error>;
+
+    /// Reads bytes using 64 bit memory access. Address must be 64 bit aligned
+    /// and data must be an exact multiple of 8.
+    fn read_mem_64bit(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
+        // Default implementation uses `read_64`, then converts u64 values back
+        // to bytes. Assumes target is little endian. May be overridden to
+        // provide an implementation that avoids heap allocation and endian
+        // conversions. Must be overridden for big endian targets.
+        if data.len() % 8 != 0 {
+            return Err(Error::Other(anyhow!(
+                "Call to read_mem_64bit with data.len() not a multiple of 8"
+            )));
+        }
+        let mut buffer = vec![0u64; data.len() / 8];
+        self.read_64(address, &mut buffer)?;
+        for (bytes, value) in data.chunks_exact_mut(8).zip(buffer.iter()) {
+            bytes.copy_from_slice(&u64::to_le_bytes(*value));
+        }
+        Ok(())
+    }
+
+    /// Reads bytes using 32 bit memory access. Address must be 32 bit aligned
+    /// and data must be an exact multiple of 4.
+    fn read_mem_32bit(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
+        // Default implementation uses `read_32`, then converts u32 values back
+        // to bytes. Assumes target is little endian. May be overridden to
+        // provide an implementation that avoids heap allocation and endian
+        // conversions. Must be overridden for big endian targets.
+        if data.len() % 4 != 0 {
+            return Err(Error::Other(anyhow!(
+                "Call to read_mem_32bit with data.len() not a multiple of 4"
+            )));
+        }
+        let mut buffer = vec![0u32; data.len() / 4];
+        self.read_32(address, &mut buffer)?;
+        for (bytes, value) in data.chunks_exact_mut(4).zip(buffer.iter()) {
+            bytes.copy_from_slice(&u32::to_le_bytes(*value));
+        }
+        Ok(())
+    }
+
+    /// Read data from `address`.
+    ///
+    /// This function tries to use the fastest way of reading data, so there is no
+    /// guarantee which kind of memory access is used. The function might also read more
+    /// data than requested, e.g. when the start address is not aligned to a 32-bit boundary.
+    ///
+    /// For more control, the `read_x` functiongs, e.g. [`MemoryInterface::read_32()`], can be
+    /// used.
+    ///
+    ///  Generally faster than `read_8`.
+    fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
+        if self.supports_native_64bit_access() && address % 8 == 0 && data.len() % 8 == 0 {
+            // Avoid heap allocation and copy if we don't need it.
+            self.read_mem_64bit(address, data)?;
+        } else if address % 4 == 0 && data.len() % 4 == 0 {
+            // Avoid heap allocation and copy if we don't need it.
+            self.read_mem_32bit(address, data)?;
+        } else {
+            let start_extra_count = (address % 4) as usize;
+            let mut buffer = vec![0u8; (start_extra_count + data.len() + 3) / 4 * 4];
+            self.read_mem_32bit(address - start_extra_count as u64, &mut buffer)?;
+            data.copy_from_slice(&buffer[start_extra_count..start_extra_count + data.len()]);
+        }
+        Ok(())
+    }
+
     /// Write a 64bit word at `address`.
     ///
     /// The address where the write should be performed at has to be word aligned.
@@ -128,6 +233,9 @@ pub trait MemoryInterface: ReadOnlyMemoryInterface {
         Ok(())
     }
 
+    /// Returns whether the current platform supports native 8bit transfers.
+    fn supports_8bit_transfers(&self) -> Result<bool, Error>;
+
     /// Flush any outstanding operations.
     ///
     /// For performance, debug probe implementations may choose to batch writes;
@@ -137,157 +245,9 @@ pub trait MemoryInterface: ReadOnlyMemoryInterface {
     fn flush(&mut self) -> Result<(), Error>;
 }
 
-/// Trait for read-only memory access.
-pub trait ReadOnlyMemoryInterface {
-    /// Does this interface support native 64-bit wide accesses
-    ///
-    /// If false all 64-bit operations may be split into 32 or 8 bit operations.
-    /// Most callers will not need to pivot on this but it can be useful for
-    /// picking the fastest bulk data transfer method.
-    fn supports_native_64bit_access(&mut self) -> bool;
-
-    /// Read a 64bit word of at `address`.
-    ///
-    /// The address where the read should be performed at has to be word aligned.
-    /// Returns `AccessPortError::MemoryNotAligned` if this does not hold true.
-    fn read_word_64(&mut self, address: u64) -> Result<u64, Error>;
-
-    /// Read a 32bit word of at `address`.
-    ///
-    /// The address where the read should be performed at has to be word aligned.
-    /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
-    fn read_word_32(&mut self, address: u64) -> Result<u32, Error>;
-
-    /// Read an 8bit word of at `address`.
-    fn read_word_8(&mut self, address: u64) -> Result<u8, Error>;
-
-    /// Read a block of 64bit words at `address`.
-    ///
-    /// The number of words read is `data.len()`.
-    /// The address where the read should be performed at has to be word aligned.
-    /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
-    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error>;
-
-    /// Read a block of 32bit words at `address`.
-    ///
-    /// The number of words read is `data.len()`.
-    /// The address where the read should be performed at has to be word aligned.
-    /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
-    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error>;
-
-    /// Read a block of 8bit words at `address`.
-    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error>;
-
-    /// Reads bytes using 64 bit memory access. Address must be 64 bit aligned
-    /// and data must be an exact multiple of 8.
-    fn read_mem_64bit(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
-        // Default implementation uses `read_64`, then converts u64 values back
-        // to bytes. Assumes target is little endian. May be overridden to
-        // provide an implementation that avoids heap allocation and endian
-        // conversions. Must be overridden for big endian targets.
-        if data.len() % 8 != 0 {
-            return Err(Error::Other(anyhow!(
-                "Call to read_mem_64bit with data.len() not a multiple of 8"
-            )));
-        }
-        let mut buffer = vec![0u64; data.len() / 8];
-        self.read_64(address, &mut buffer)?;
-        for (bytes, value) in data.chunks_exact_mut(8).zip(buffer.iter()) {
-            bytes.copy_from_slice(&u64::to_le_bytes(*value));
-        }
-        Ok(())
-    }
-
-    /// Reads bytes using 32 bit memory access. Address must be 32 bit aligned
-    /// and data must be an exact multiple of 4.
-    fn read_mem_32bit(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
-        // Default implementation uses `read_32`, then converts u32 values back
-        // to bytes. Assumes target is little endian. May be overridden to
-        // provide an implementation that avoids heap allocation and endian
-        // conversions. Must be overridden for big endian targets.
-        if data.len() % 4 != 0 {
-            return Err(Error::Other(anyhow!(
-                "Call to read_mem_32bit with data.len() not a multiple of 4"
-            )));
-        }
-        let mut buffer = vec![0u32; data.len() / 4];
-        self.read_32(address, &mut buffer)?;
-        for (bytes, value) in data.chunks_exact_mut(4).zip(buffer.iter()) {
-            bytes.copy_from_slice(&u32::to_le_bytes(*value));
-        }
-        Ok(())
-    }
-
-    /// Read data from `address`.
-    ///
-    /// This function tries to use the fastest way of reading data, so there is no
-    /// guarantee which kind of memory access is used. The function might also read more
-    /// data than requested, e.g. when the start address is not aligned to a 32-bit boundary.
-    ///
-    /// For more control, the `read_x` functiongs, e.g. [`ReadOnlyMemoryInterface::read_32()`], can be
-    /// used.
-    ///
-    ///  Generally faster than `read_8`.
-    fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
-        if self.supports_native_64bit_access() && address % 8 == 0 && data.len() % 8 == 0 {
-            // Avoid heap allocation and copy if we don't need it.
-            self.read_mem_64bit(address, data)?;
-        } else if address % 4 == 0 && data.len() % 4 == 0 {
-            // Avoid heap allocation and copy if we don't need it.
-            self.read_mem_32bit(address, data)?;
-        } else {
-            let start_extra_count = (address % 4) as usize;
-            let mut buffer = vec![0u8; (start_extra_count + data.len() + 3) / 4 * 4];
-            self.read_mem_32bit(address - start_extra_count as u64, &mut buffer)?;
-            data.copy_from_slice(&buffer[start_extra_count..start_extra_count + data.len()]);
-        }
-        Ok(())
-    }
-
-    /// Returns whether the current platform supports native 8bit transfers.
-    fn supports_8bit_transfers(&self) -> Result<bool, Error>;
-}
-
 impl<T> MemoryInterface for &mut T
 where
     T: MemoryInterface,
-{
-    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
-        (*self).write_word_64(address, data)
-    }
-
-    fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
-        (*self).write_word_32(address, data)
-    }
-
-    fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
-        (*self).write_word_8(address, data)
-    }
-
-    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
-        (*self).write_64(address, data)
-    }
-
-    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
-        (*self).write_32(address, data)
-    }
-
-    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        (*self).write_8(address, data)
-    }
-
-    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        (*self).write(address, data)
-    }
-
-    fn flush(&mut self) -> Result<(), Error> {
-        (*self).flush()
-    }
-}
-
-impl<T> ReadOnlyMemoryInterface for &mut T
-where
-    T: ReadOnlyMemoryInterface,
 {
     fn supports_native_64bit_access(&mut self) -> bool {
         (*self).supports_native_64bit_access()
@@ -320,8 +280,41 @@ where
     fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
         (*self).read(address, data)
     }
+
+    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
+        (*self).write_word_64(address, data)
+    }
+
+    fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
+        (*self).write_word_32(address, data)
+    }
+
+    fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
+        (*self).write_word_8(address, data)
+    }
+
+    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
+        (*self).write_64(address, data)
+    }
+
+    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
+        (*self).write_32(address, data)
+    }
+
+    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
+        (*self).write_8(address, data)
+    }
+
+    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
+        (*self).write(address, data)
+    }
+
     fn supports_8bit_transfers(&self) -> Result<bool, Error> {
-        ReadOnlyMemoryInterface::supports_8bit_transfers(*self)
+        MemoryInterface::supports_8bit_transfers(*self)
+    }
+
+    fn flush(&mut self) -> Result<(), Error> {
+        (*self).flush()
     }
 }
 

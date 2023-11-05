@@ -15,7 +15,6 @@ use super::ArmError;
 use super::{ApAddress, ApInformation, DpAddress, MemoryApInformation};
 use crate::architecture::arm::core::armv6m::Demcr;
 use crate::architecture::arm::{ArmProbeInterface, SwoConfig, SwoMode};
-use crate::memory::ReadOnlyMemoryInterface;
 use crate::{Core, Error, MemoryInterface, MemoryMappedRegister};
 
 pub use self::itm::Itm;

@@ -1,8 +1,7 @@
 use crate::{
     core::{ExceptionInfo, ExceptionInterface},
     debug::DebugRegisters,
-    memory::ReadOnlyMemoryInterface,
-    memory_mapped_bitfield_register, Error, MemoryMappedRegister,
+    memory_mapped_bitfield_register, Error, MemoryInterface, MemoryMappedRegister,
 };
 
 use super::armv6m_armv7m_shared::{calling_frame_registers, exception_details, Xpsr};
@@ -87,7 +86,7 @@ impl Cfsr {
     /// Additional information about a Bus Fault, or Ok(None) if the fault was not a Bus Fault.
     fn bus_fault_description(
         &self,
-        memory: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn MemoryInterface,
     ) -> Result<Option<String>, Error> {
         let source = if self.bf_exception_entry() {
             "Derived fault on exception entry"
@@ -119,7 +118,7 @@ impl Cfsr {
     /// Additional information about a MemManage Fault, or Ok(None) if the fault was not a MemManage Fault.
     fn memory_management_fault_description(
         &self,
-        memory: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn MemoryInterface,
     ) -> Result<Option<String>, Error> {
         let source = if self.mm_data_access_violation() {
             "Data access violation"
@@ -216,7 +215,7 @@ impl ExceptionReason {
     /// HFSR and CFSR registers.
     pub(crate) fn expanded_description(
         &self,
-        memory: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn MemoryInterface,
     ) -> Result<String, Error> {
         match self {
             ExceptionReason::ThreadMode => Ok("No active exception.".to_string()),
@@ -287,7 +286,7 @@ impl ExceptionReason {
 impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv7m::Armv7m<'probe> {
     fn calling_frame_registers(
         &self,
-        memory_interface: &mut dyn ReadOnlyMemoryInterface,
+        memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<crate::debug::DebugRegisters, crate::Error> {
         calling_frame_registers(memory_interface, stackframe_registers)
@@ -295,7 +294,7 @@ impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv7m::Armv
 
     fn exception_description(
         &self,
-        memory_interface: &mut dyn ReadOnlyMemoryInterface,
+        memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<String, crate::Error> {
         // Load the provided xPSR register as a bitfield.
@@ -314,7 +313,7 @@ impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv7m::Armv
 
     fn exception_details(
         &self,
-        memory_interface: &mut dyn ReadOnlyMemoryInterface,
+        memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &DebugRegisters,
     ) -> Result<Option<ExceptionInfo>, Error> {
         exception_details(self, memory_interface, stackframe_registers)

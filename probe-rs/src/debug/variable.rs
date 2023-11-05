@@ -514,7 +514,7 @@ impl Variable {
     /// Evaluate the variable's result if possible and set self.value, or else set self.value as the error String.
     pub fn extract_value(
         &mut self,
-        memory: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn MemoryInterface,
         variable_cache: &variable_cache::VariableCache,
     ) {
         if let VariableValue::Error(_) = self.value {
@@ -872,7 +872,7 @@ trait Value {
     /// The MS DAP protocol passes the value as a string, so this trait is here to provide the memory read logic before returning it as a string.
     fn get_value(
         variable: &Variable,
-        memory: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError>
     where
@@ -891,7 +891,7 @@ trait Value {
 impl Value for bool {
     fn get_value(
         variable: &Variable,
-        memory: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mem_data = memory.read_word_8(variable.memory_location.memory_address()?)?;
@@ -922,7 +922,7 @@ impl Value for bool {
 impl Value for char {
     fn get_value(
         variable: &Variable,
-        memory: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mem_data = memory.read_word_32(variable.memory_location.memory_address()?)?;
@@ -956,7 +956,7 @@ impl Value for char {
 impl Value for String {
     fn get_value(
         variable: &Variable,
-        memory: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn MemoryInterface,
         variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut str_value: String = "".to_owned();
@@ -1034,7 +1034,7 @@ impl Value for String {
 impl Value for i8 {
     fn get_value(
         variable: &Variable,
-        memory: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 1];
@@ -1066,7 +1066,7 @@ impl Value for i8 {
 impl Value for i16 {
     fn get_value(
         variable: &Variable,
-        memory: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 2];
@@ -1094,7 +1094,7 @@ impl Value for i16 {
 impl Value for i32 {
     fn get_value(
         variable: &Variable,
-        memory: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
@@ -1122,7 +1122,7 @@ impl Value for i32 {
 impl Value for i64 {
     fn get_value(
         variable: &Variable,
-        memory: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 8];
@@ -1150,7 +1150,7 @@ impl Value for i64 {
 impl Value for i128 {
     fn get_value(
         variable: &Variable,
-        memory: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 16];
@@ -1178,7 +1178,7 @@ impl Value for i128 {
 impl Value for isize {
     fn get_value(
         variable: &Variable,
-        memory: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
@@ -1210,7 +1210,7 @@ impl Value for isize {
 impl Value for u8 {
     fn get_value(
         variable: &Variable,
-        memory: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 1];
@@ -1242,7 +1242,7 @@ impl Value for u8 {
 impl Value for u16 {
     fn get_value(
         variable: &Variable,
-        memory: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 2];
@@ -1270,7 +1270,7 @@ impl Value for u16 {
 impl Value for u32 {
     fn get_value(
         variable: &Variable,
-        memory: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
@@ -1298,7 +1298,7 @@ impl Value for u32 {
 impl Value for u64 {
     fn get_value(
         variable: &Variable,
-        memory: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 8];
@@ -1326,7 +1326,7 @@ impl Value for u64 {
 impl Value for u128 {
     fn get_value(
         variable: &Variable,
-        memory: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 16];
@@ -1354,7 +1354,7 @@ impl Value for u128 {
 impl Value for usize {
     fn get_value(
         variable: &Variable,
-        memory: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
@@ -1386,7 +1386,7 @@ impl Value for usize {
 impl Value for f32 {
     fn get_value(
         variable: &Variable,
-        memory: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 4];
@@ -1414,7 +1414,7 @@ impl Value for f32 {
 impl Value for f64 {
     fn get_value(
         variable: &Variable,
-        memory: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn MemoryInterface,
         _variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut buff = [0u8; 8];

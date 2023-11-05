@@ -21,7 +21,7 @@ use crate::{
     },
     core::{CoreRegisters, MemoryMappedRegister, RegisterId, RegisterValue},
     error::Error,
-    memory::{valid_32bit_address, ReadOnlyMemoryInterface},
+    memory::valid_32bit_address,
     Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType,
     InstructionSet, MemoryInterface,
 };
@@ -823,74 +823,6 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
 }
 
 impl<'probe> MemoryInterface for Armv7a<'probe> {
-    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), crate::error::Error> {
-        let data_low = data as u32;
-        let data_high = (data >> 32) as u32;
-
-        self.write_word_32(address, data_low)?;
-        self.write_word_32(address + 4, data_high)
-    }
-
-    fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
-        let address = valid_32bit_address(address)?;
-
-        // STC p14, c5, [r0], #4
-        let instr = build_stc(14, 5, 0, 4);
-
-        // Save r0
-        self.prepare_r0_for_clobber()?;
-
-        // Load r0 with the address to write to
-        self.set_r0(address)?;
-
-        // Write to [r0]
-        self.execute_instruction_with_input(instr, data)
-    }
-
-    fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
-        // Find the word this is in and its byte offset
-        let byte_offset = address % 4;
-        let word_start = address - byte_offset;
-
-        // Get the current word value
-        let current_word = self.read_word_32(word_start)?;
-        let mut word_bytes = current_word.to_le_bytes();
-        word_bytes[byte_offset as usize] = data;
-
-        self.write_word_32(word_start, u32::from_le_bytes(word_bytes))
-    }
-
-    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), crate::error::Error> {
-        for (i, word) in data.iter().enumerate() {
-            self.write_word_64(address + ((i as u64) * 8), *word)?;
-        }
-
-        Ok(())
-    }
-
-    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
-        for (i, word) in data.iter().enumerate() {
-            self.write_word_32(address + ((i as u64) * 4), *word)?;
-        }
-
-        Ok(())
-    }
-
-    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
-        for (i, byte) in data.iter().enumerate() {
-            self.write_word_8(address + ((i as u64) * 4), *byte)?;
-        }
-
-        Ok(())
-    }
-
-    fn flush(&mut self) -> Result<(), Error> {
-        // Nothing to do - this runs through the CPU which automatically handles any caching
-        Ok(())
-    }
-}
-
-impl<'probe> ReadOnlyMemoryInterface for Armv7a<'probe> {
     fn supports_native_64bit_access(&mut self) -> bool {
         false
     }
@@ -954,8 +886,74 @@ impl<'probe> ReadOnlyMemoryInterface for Armv7a<'probe> {
         Ok(())
     }
 
+    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), crate::error::Error> {
+        let data_low = data as u32;
+        let data_high = (data >> 32) as u32;
+
+        self.write_word_32(address, data_low)?;
+        self.write_word_32(address + 4, data_high)
+    }
+
+    fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
+        let address = valid_32bit_address(address)?;
+
+        // STC p14, c5, [r0], #4
+        let instr = build_stc(14, 5, 0, 4);
+
+        // Save r0
+        self.prepare_r0_for_clobber()?;
+
+        // Load r0 with the address to write to
+        self.set_r0(address)?;
+
+        // Write to [r0]
+        self.execute_instruction_with_input(instr, data)
+    }
+
+    fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
+        // Find the word this is in and its byte offset
+        let byte_offset = address % 4;
+        let word_start = address - byte_offset;
+
+        // Get the current word value
+        let current_word = self.read_word_32(word_start)?;
+        let mut word_bytes = current_word.to_le_bytes();
+        word_bytes[byte_offset as usize] = data;
+
+        self.write_word_32(word_start, u32::from_le_bytes(word_bytes))
+    }
+
+    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), crate::error::Error> {
+        for (i, word) in data.iter().enumerate() {
+            self.write_word_64(address + ((i as u64) * 8), *word)?;
+        }
+
+        Ok(())
+    }
+
+    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
+        for (i, word) in data.iter().enumerate() {
+            self.write_word_32(address + ((i as u64) * 4), *word)?;
+        }
+
+        Ok(())
+    }
+
+    fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
+        for (i, byte) in data.iter().enumerate() {
+            self.write_word_8(address + ((i as u64) * 4), *byte)?;
+        }
+
+        Ok(())
+    }
+
     fn supports_8bit_transfers(&self) -> Result<bool, Error> {
         Ok(false)
+    }
+
+    fn flush(&mut self) -> Result<(), Error> {
+        // Nothing to do - this runs through the CPU which automatically handles any caching
+        Ok(())
     }
 }
 

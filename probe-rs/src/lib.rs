@@ -98,7 +98,7 @@ pub use crate::core::{
     RegisterRole, RegisterValue, SemihostingCommand, SpecificCoreState, VectorCatchCondition,
 };
 pub use crate::error::Error;
-pub use crate::memory::{MemoryInterface, ReadOnlyMemoryInterface};
+pub use crate::memory::MemoryInterface;
 pub use crate::probe::{
     AttachMethod, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType,
     Probe, ProbeCreationError, WireProtocol,

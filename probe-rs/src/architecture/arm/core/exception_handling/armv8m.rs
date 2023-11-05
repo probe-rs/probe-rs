@@ -1,7 +1,7 @@
 use crate::{
     core::{ExceptionInfo, ExceptionInterface},
     debug::DebugRegisters,
-    memory::ReadOnlyMemoryInterface,
+    memory::MemoryInterface,
     memory_mapped_bitfield_register, Error, MemoryMappedRegister, RegisterValue,
 };
 use bitfield::bitfield;
@@ -108,7 +108,7 @@ impl Cfsr {
     /// Additional information about a Bus Fault, or Ok(None) if the fault was not a Bus Fault.
     fn bus_fault_description(
         &self,
-        memory: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn MemoryInterface,
     ) -> Result<Option<String>, Error> {
         let source = if self.bf_exception_entry() {
             "Derived fault on exception entry"
@@ -140,7 +140,7 @@ impl Cfsr {
     /// Additional information about a MemManage Fault, or Ok(None) if the fault was not a MemManage Fault.
     fn memory_management_fault_description(
         &self,
-        memory: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn MemoryInterface,
     ) -> Result<Option<String>, Error> {
         let source = if self.mm_data_access_violation() {
             "Data access violation"
@@ -195,7 +195,7 @@ impl Sfsr {
     /// Additional information about a Secure Fault, or Ok(None) if the fault was not a Secure Fault.
     fn secure_fault_description(
         &self,
-        memory: &mut dyn ReadOnlyMemoryInterface,
+        memory: &mut dyn MemoryInterface,
     ) -> Result<Option<String>, Error> {
         let source = if self.lazy_state_error() {
             "Fault occurred during lazy state activation or deactivation"
@@ -305,10 +305,7 @@ impl From<u32> for ExceptionReason {
 impl ExceptionReason {
     /// Expands the exception reason, by providing additional information about the exception from the
     /// HFSR, CFSR, and SFSR registers.
-    fn expanded_description(
-        &self,
-        memory: &mut dyn ReadOnlyMemoryInterface,
-    ) -> Result<String, Error> {
+    fn expanded_description(&self, memory: &mut dyn MemoryInterface) -> Result<String, Error> {
         match self {
             ExceptionReason::ThreadMode => Ok("No active exception.".to_string()),
             ExceptionReason::Reset => Ok("Reset handler.".to_string()),
@@ -388,7 +385,7 @@ pub struct ArmV8MExceptionHandler;
 impl ExceptionInterface for ArmV8MExceptionHandler {
     fn calling_frame_registers(
         &self,
-        memory_interface: &mut dyn ReadOnlyMemoryInterface,
+        memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<crate::debug::DebugRegisters, crate::Error> {
         let mut calling_stack_registers = vec![0u32; EXCEPTION_STACK_REGISTERS.len()];
@@ -439,7 +436,7 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
 
     fn exception_description(
         &self,
-        memory_interface: &mut dyn ReadOnlyMemoryInterface,
+        memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<String, crate::Error> {
         // Load the provided xPSR register as a bitfield.
@@ -458,7 +455,7 @@ impl ExceptionInterface for ArmV8MExceptionHandler {
 
     fn exception_details(
         &self,
-        memory_interface: &mut dyn ReadOnlyMemoryInterface,
+        memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &DebugRegisters,
     ) -> Result<Option<ExceptionInfo>, Error> {
         let stack_frame_return_address: u32 = get_stack_frame_return_address(stackframe_registers)?;

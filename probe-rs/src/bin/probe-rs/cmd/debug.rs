@@ -10,6 +10,7 @@ use num_traits::Num;
 use parse_int::parse;
 use probe_rs::architecture::arm::ap::AccessPortError;
 use probe_rs::flashing::FileDownloadError;
+use probe_rs::DebugProbeError;
 use probe_rs::{
     architecture::arm::Dump,
     debug::{
@@ -17,7 +18,6 @@ use probe_rs::{
     },
     Core, CoreType, InstructionSet, MemoryInterface, RegisterId, RegisterValue,
 };
-use probe_rs::{DebugProbeError, ReadOnlyMemoryInterface};
 use rustyline::DefaultEditor;
 
 use crate::{util::common_options::ProbeOptions, CoreOptions};
@@ -511,7 +511,7 @@ impl DebugCli {
                                 print!("Frame {}: {} @ {}", i, frame.function_name, frame.pc);
 
                                 if frame.is_inlined {
-                                    print!(" (inline)");
+                                    print!(" inline");
                                 }
                                 println!();
 
@@ -956,7 +956,7 @@ impl<'p> CliData<'p> {
                     let pc = current_stack_frame.pc;
 
                     println!(
-                        "Frame {}: {} @ {:#}",
+                        "Frame {}: {} () @ {:#}",
                         halted_state.current_frame, current_stack_frame.function_name, pc,
                     );
                 }

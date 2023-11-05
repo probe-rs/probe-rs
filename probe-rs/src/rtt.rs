@@ -47,8 +47,7 @@ pub use channel::*;
 pub mod channels;
 pub use channels::Channels;
 
-use crate::memory::ReadOnlyMemoryInterface;
-use crate::{config::MemoryRegion, Core};
+use crate::{config::MemoryRegion, Core, MemoryInterface};
 use scroll::{Pread, LE};
 use std::borrow::Cow;
 use std::collections::BTreeMap;

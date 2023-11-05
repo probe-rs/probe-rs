@@ -3,8 +3,7 @@
 use crate::{
     core::{ExceptionInfo, ExceptionInterface},
     debug::DebugRegisters,
-    memory::ReadOnlyMemoryInterface,
-    Error,
+    Error, MemoryInterface,
 };
 pub(crate) mod armv6m;
 /// Where applicable, this defines shared logic for implementing exception handling accross the various ARMv6-m and ARMv7-m [`crate::CoreType`]'s.
@@ -20,7 +19,7 @@ pub struct ArmV6MExceptionHandler {}
 impl ExceptionInterface for ArmV6MExceptionHandler {
     fn exception_details(
         &self,
-        memory_interface: &mut dyn ReadOnlyMemoryInterface,
+        memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &DebugRegisters,
     ) -> Result<Option<ExceptionInfo>, Error> {
         armv6m_armv7m_shared::exception_details(self, memory_interface, stackframe_registers)
@@ -28,7 +27,7 @@ impl ExceptionInterface for ArmV6MExceptionHandler {
 
     fn calling_frame_registers(
         &self,
-        memory_interface: &mut dyn ReadOnlyMemoryInterface,
+        memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<crate::debug::DebugRegisters, crate::Error> {
         armv6m_armv7m_shared::calling_frame_registers(memory_interface, stackframe_registers)
@@ -36,7 +35,7 @@ impl ExceptionInterface for ArmV6MExceptionHandler {
 
     fn exception_description(
         &self,
-        memory_interface: &mut dyn ReadOnlyMemoryInterface,
+        memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<String, crate::Error> {
         crate::architecture::arm::core::exception_handling::armv6m::exception_description(
@@ -52,7 +51,7 @@ pub struct ArmV7MExceptionHandler {}
 impl ExceptionInterface for ArmV7MExceptionHandler {
     fn exception_details(
         &self,
-        memory_interface: &mut dyn ReadOnlyMemoryInterface,
+        memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &DebugRegisters,
     ) -> Result<Option<ExceptionInfo>, Error> {
         armv6m_armv7m_shared::exception_details(self, memory_interface, stackframe_registers)
@@ -60,7 +59,7 @@ impl ExceptionInterface for ArmV7MExceptionHandler {
 
     fn calling_frame_registers(
         &self,
-        memory_interface: &mut dyn ReadOnlyMemoryInterface,
+        memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<crate::debug::DebugRegisters, crate::Error> {
         armv6m_armv7m_shared::calling_frame_registers(memory_interface, stackframe_registers)
@@ -68,7 +67,7 @@ impl ExceptionInterface for ArmV7MExceptionHandler {
 
     fn exception_description(
         &self,
-        memory_interface: &mut dyn ReadOnlyMemoryInterface,
+        memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<String, crate::Error> {
         // Load the provided xPSR register as a bitfield.

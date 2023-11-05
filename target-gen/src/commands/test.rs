@@ -7,7 +7,7 @@ use std::time::Instant;
 use anyhow::{anyhow, Context, Result};
 use colored::Colorize;
 use probe_rs::flashing::erase_all;
-use probe_rs::ReadOnlyMemoryInterface;
+use probe_rs::MemoryInterface;
 use probe_rs::{
     flashing::{erase_sectors, DownloadOptions, FlashLoader, FlashProgress},
     Permissions, Session,

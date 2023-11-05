@@ -12,7 +12,7 @@ use super::{
     extract_from_elf, BinOptions, DownloadOptions, FileDownloadError, FlashError, Flasher,
     IdfOptions,
 };
-use crate::memory::{MemoryInterface, ReadOnlyMemoryInterface};
+use crate::memory::MemoryInterface;
 use crate::session::Session;
 use crate::Target;
 

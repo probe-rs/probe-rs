@@ -5,7 +5,7 @@ use super::{
     FlashAlgorithm, FlashBuilder, FlashError, FlashFill, FlashLayout, FlashPage, FlashProgress,
 };
 use crate::config::NvmRegion;
-use crate::memory::{MemoryInterface, ReadOnlyMemoryInterface};
+use crate::memory::MemoryInterface;
 use crate::{core::CoreRegisters, session::Session, Core, InstructionSet};
 use std::time::Instant;
 use std::{fmt::Debug, time::Duration};
