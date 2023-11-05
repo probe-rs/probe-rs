@@ -776,8 +776,6 @@ impl DebugInfo {
 
                         let previous_regs = unwind_registers.clone();
 
-                        
-
                         StackFrame {
                             id: get_sequential_key(),
                             function_name: exception_info.description.clone(),
