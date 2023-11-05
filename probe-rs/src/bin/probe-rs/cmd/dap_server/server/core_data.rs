@@ -1,4 +1,4 @@
-use std::{fs::File, path::Path};
+use std::fs::File;
 
 use super::session_data::{self, ActiveBreakpoint, BreakpointType, SourceLocationScope};
 use crate::cmd::dap_server::{
@@ -22,6 +22,7 @@ use probe_rs::{
     Core, CoreStatus, Error, HaltReason,
 };
 use time::UtcOffset;
+use typed_path::TypedPathBuf;
 
 /// [CoreData] is used to cache data needed by the debugger, on a per-core basis.
 pub struct CoreData {
@@ -306,7 +307,7 @@ impl<'p> CoreHandle<'p> {
     /// The Result<> contains the "verified" `address` and `SourceLocation` where the breakpoint that was set.
     pub(crate) fn verify_and_set_breakpoint(
         &mut self,
-        source_path: &Path,
+        source_path: &TypedPathBuf,
         requested_breakpoint_line: u64,
         requested_breakpoint_column: Option<u64>,
         requested_source: &Source,
@@ -358,22 +359,23 @@ impl<'p> CoreHandle<'p> {
                 location: SourceLocationScope::Specific(source_location),
             } = breakpoint.breakpoint_type
             {
-                if let Err(breakpoint_error) =
-                    source_location
-                        .combined_path()
-                        .as_ref()
-                        .map(|requested_path| {
-                            self.verify_and_set_breakpoint(
-                                requested_path,
-                                source_location.line.unwrap_or(0),
-                                source_location.column.map(|col| match col {
-                                    ColumnType::LeftEdge => 0_u64,
-                                    ColumnType::Column(c) => c,
-                                }),
-                                &source,
-                            )
-                        })
-                {
+                let breakpoint_err = source_location
+                    .combined_typed_path()
+                    .as_ref()
+                    .ok_or_else(|| DebuggerError::Other(anyhow!("Unable to get source location")))
+                    .and_then(|requested_path| {
+                        self.verify_and_set_breakpoint(
+                            requested_path,
+                            source_location.line.unwrap_or(0),
+                            source_location.column.map(|col| match col {
+                                ColumnType::LeftEdge => 0_u64,
+                                ColumnType::Column(c) => c,
+                            }),
+                            &source,
+                        )
+                    });
+
+                if let Err(breakpoint_error) = breakpoint_err {
                     return Err(DebuggerError::Other(anyhow!(
                         "Failed to recompute breakpoint at {source_location:?} in {source:?}. Error: {breakpoint_error:?}"
                     )));

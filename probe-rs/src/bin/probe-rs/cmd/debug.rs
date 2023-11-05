@@ -520,7 +520,7 @@ impl DebugCli {
                                         print!("       ");
 
                                         if let Some(dir) = &location.directory {
-                                            print!("{}", dir.display());
+                                            print!("{}", dir.to_path().display());
                                         }
 
                                         if let Some(file) = &location.file {

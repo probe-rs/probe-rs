@@ -1,4 +1,4 @@
-//! Sequences for ATSAM D5x/E5x target families
+//! Sequences for ATSAM D1x/D2x/DAx/D5x/E5x target families
 
 use super::{ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence};
 use crate::{
@@ -23,19 +23,23 @@ bitfield! {
     pub struct DsuCtrl(u8);
     impl Debug;
     /// Chip-Erase
-    /// Writing a '0' to this bit has no effect.
+    ///
+    /// Writing a '0' to this bit has no effect.\
     /// Writing a '1' to this bit starts the Chip-Erase operation.
     pub _, set_ce: 4;
     /// Memory Built-In Self-Test
-    /// Writing a '0' to this bit has no effect.
+    ///
+    /// Writing a '0' to this bit has no effect.\
     /// Writing a '1' to this bit starts the memory BIST algorithm.
     pub _, set_mbist: 3;
     /// 32-bit Cyclic Redundancy Check
-    /// Writing a '0' to this bit has no effect.
+    ///
+    /// Writing a '0' to this bit has no effect.\
     /// Writing a '1' to this bit starts the cyclic redundancy check algorithm.
     pub _, set_crc: 2;
     /// Software Reset
-    /// Writing a '0' to this bit has no effect.
+    ///
+    /// Writing a '0' to this bit has no effect.\
     /// Writing a '1' to this bit resets the module.
     pub _, set_swrst: 0;
 }
@@ -58,38 +62,48 @@ impl From<DsuCtrl> for u8 {
 }
 
 bitfield! {
-    /// Device Service Unit Control Register, DSU - CTRL
+    /// Device Service Unit Status A Register, DSU - STATUSA
     #[derive(Copy, Clone)]
     pub struct DsuStatusA(u8);
     impl Debug;
     /// Protection Error
-    /// Writing a '0' to this bit has no effect.
-    /// Writing a '1' to this bit clears the Protection Error bit.
+    ///
     /// This bit is set when a command that is not allowed in Protected state is issued.
+    ///
+    /// Writing a '0' to this bit has no effect.\
+    /// Writing a '1' to this bit clears the Protection Error bit.
     pub perr, set_perr: 4;
 
     /// Failure
-    /// Writing a '0' to this bit has no effect.
-    /// Writing a '1' to this bit clears the Failure bit.
+    ///
     /// This bit is set when a DSU operation failure is detected.
+    ///
+    /// Writing a '0' to this bit has no effect.\
+    /// Writing a '1' to this bit clears the Failure bit.
     pub fail, set_fail: 3;
 
     /// Bus Error
-    /// Writing a '0' to this bit has no effect.
-    /// Writing a '1' to this bit clears the Bus Error bit.
+    ///
     /// This bit is set when a bus error is detected.
+    ///
+    /// Writing a '0' to this bit has no effect.\
+    /// Writing a '1' to this bit clears the Bus Error bit.
     pub berr, set_berr: 2;
 
     /// CPU Reset Phase Extension
-    /// Writing a '0' to this bit has no effect.
-    /// Writing a '1' to this bit clears the CPU Reset Phase Extension bit.
+    ///
     /// This bit is set when a debug adapter Cold-Plugging is detected, which extends the CPU Reset phase.
+    ///
+    /// Writing a '0' to this bit has no effect.\
+    /// Writing a '1' to this bit clears the CPU Reset Phase Extension bit.
     pub crstext, set_crstext: 1;
 
     /// Done
-    /// Writing a '0' to this bit has no effect.
-    /// Writing a '1' to this bit clears the Done bit.
+    ///
     /// This bit is set when a DSU operation is completed.
+    ///
+    /// Writing a '0' to this bit has no effect.\
+    /// Writing a '1' to this bit clears the Done bit.
     pub done, set_done: 0;
 }
 
@@ -111,34 +125,43 @@ impl DsuStatusA {
 }
 
 bitfield! {
-    /// Device Service Unit Control Register, DSU - CTRL
+    /// Device Service Unit Status B Register, DSU - STATUSB
     #[derive(Copy, Clone)]
     pub struct DsuStatusB(u8);
     impl Debug;
 
     /// Chip Erase Locked
-    /// This bit is set when Chip Erase is locked.
+    ///
+    /// This feature is not available on SAMD1x, SAMD2x, SAMDAx
+    ///
+    /// This bit is set when Chip Erase is locked.\
     /// This bit is cleared when Chip Erase is unlocked.
     pub celck, _: 5;
     /// Hot-Plugging Enable
-    /// This bit is set when Hot-Plugging is enabled.
-    /// This bit is cleared when Hot-Plugging is disabled. This is the case when the SWCLK function is changed.
-    /// Only a power-reset or a external reset can set it again.
+    ///
+    /// This bit is set when Hot-Plugging is enabled.\
+    /// This bit is cleared when Hot-Plugging is disabled. This is the case when
+    /// the SWCLK function is changed. Only a power-reset or a external reset
+    /// can set it again.
     pub hpe, _: 4;
     /// Debug Communication Channel 1 Dirty
-    /// This bit is set when DCC is written.
+    ///
+    /// This bit is set when DCC is written.\
     /// This bit is cleared when DCC is read.
     pub dccd1, _: 3;
     /// Debug Communication Channel 0 Dirty
-    /// This bit is set when DCC is written.
+    ///
+    /// This bit is set when DCC is written.\
     /// This bit is cleared when DCC is read.
     pub dccd0, _: 2;
     /// Debugger Present
-    /// This bit is set when a debugger probe is detected.
+    ///
+    /// This bit is set when a debugger probe is detected.\
     /// This bit is never cleared.
     pub dbgpres, _: 1;
     /// Protected
-    /// This bit is set at power-up when the device is protected.
+    ///
+    /// This bit is set at power-up when the device is protected.\
     /// This bit is never cleared.
     pub prot, _: 0;
 
@@ -187,11 +210,11 @@ impl<'a> architecture::arm::communication_interface::SwdSequence for SwdSequence
     }
 }
 
-/// Marker struct indicating initialization sequencing for ATSAM D5x/E5x family parts.
-pub struct AtSAME5x {}
+/// Marker struct indicating initialization sequencing for Atmel/Microchip ATSAM family parts.
+pub struct AtSAM {}
 
-impl AtSAME5x {
-    /// Create the sequencer for the ATSAM D5x/E5x family of parts.
+impl AtSAM {
+    /// Create the sequencer for the ATSAM family of parts.
     pub fn create() -> Arc<Self> {
         Arc::new(Self {})
     }
@@ -344,8 +367,8 @@ impl AtSAME5x {
     }
 }
 
-impl ArmDebugSequence for AtSAME5x {
-    /// `reset_hardware_assert` for ATSAM D5x/E5x devices
+impl ArmDebugSequence for AtSAM {
+    /// `reset_hardware_assert` for ATSAM devices
     ///
     /// Instead of keeping `nReset` asserted, the device is instead put into CPU Reset Extension
     /// which will keep the CPU Core in reset until manually released by the debugger probe.
@@ -357,7 +380,7 @@ impl ArmDebugSequence for AtSAME5x {
         self.reset_hardware_with_extension(&mut shim)
     }
 
-    /// `reset_hardware_deassert` for ATSAM D5x/E5x devices
+    /// `reset_hardware_deassert` for ATSAM devices
     ///
     /// Instead of de-asserting `nReset` here (this was already done during the CPU Reset Extension process),
     /// the device is released from Reset Extension.
@@ -377,7 +400,7 @@ impl ArmDebugSequence for AtSAME5x {
         self.release_reset_extension(memory)
     }
 
-    /// `debug_device_unlock` for ATSAM D5x/E5x devices
+    /// `debug_device_unlock` for ATSAM devices
     ///
     /// First check the device lock status by querying its Device Service Unit (DSU).
     /// If the device is already unlocked then return `Ok` directly.
@@ -410,7 +433,7 @@ impl ArmDebugSequence for AtSAME5x {
     }
 }
 
-impl DebugEraseSequence for AtSAME5x {
+impl DebugEraseSequence for AtSAM {
     fn erase_all(&self, interface: &mut dyn ArmProbeInterface) -> Result<(), ArmError> {
         let mem_ap = MemoryAp::new(ApAddress {
             dp: DpAddress::Default,
@@ -419,6 +442,6 @@ impl DebugEraseSequence for AtSAME5x {
 
         let mut memory = interface.memory_interface(mem_ap)?;
 
-        AtSAME5x::erase_all(self, &mut *memory, &Permissions::new().allow_erase_all())
+        AtSAM::erase_all(self, &mut *memory, &Permissions::new().allow_erase_all())
     }
 }

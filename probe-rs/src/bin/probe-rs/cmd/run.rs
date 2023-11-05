@@ -232,7 +232,7 @@ fn print_stacktrace(core: &mut Core<'_>, path: &Path) -> Result<(), anyhow::Erro
                 print!("       ");
 
                 if let Some(dir) = &location.directory {
-                    print!("{}", dir.display());
+                    print!("{}", dir.to_path().display());
                 }
 
                 if let Some(file) = &location.file {

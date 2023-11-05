@@ -148,7 +148,7 @@ pub(crate) fn render_diagnostics(error: OperationError) {
                 vec![
                     "Did you spell the name of your chip correctly? Capitalization does not matter."
                         .into(),
-                    "Maybe your chip is not supported yet. You could add it yourself with our tool here: https://github.com/probe-rs/target-gen.".into(),
+                    "Maybe your chip is not supported yet. You could add it yourself with our tool here: https://github.com/probe-rs/probe-rs/tree/master/target-gen.".into(),
                     "You can list all the available chips by running `probe-rs chip list`.".into(),
                 ],
             ),

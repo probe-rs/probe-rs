@@ -1,6 +1,6 @@
 //! Debug sequences to operate special requirements ARM targets.
 
-pub mod atsame5x;
+pub mod atsam;
 pub mod efm32xg2;
 pub mod infineon;
 mod nrf;
