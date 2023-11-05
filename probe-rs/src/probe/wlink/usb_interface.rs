@@ -4,7 +4,7 @@ use rusb::{DeviceHandle, UsbContext};
 
 use crate::{DebugProbeError, DebugProbeSelector, ProbeCreationError};
 
-use super::{get_wlink_info, WchLinkError};
+use super::{commands::WchLinkCommand, get_wlink_info, WchLinkError};
 
 const ENDPOINT_OUT: u8 = 0x01;
 const ENDPOINT_IN: u8 = 0x81;
@@ -25,7 +25,7 @@ impl WchLinkUsbDevice {
 
         let context = rusb::Context::new()?;
 
-        tracing::debug!("Acquired libusb context.");
+        tracing::trace!("Acquired libusb context.");
         let device = context
             .devices()?
             .iter()
@@ -43,19 +43,19 @@ impl WchLinkUsbDevice {
 
         let mut device_handle = device.open()?;
 
-        tracing::debug!("Aquired handle for probe");
+        tracing::trace!("Aquired handle for probe");
 
         let config = device.active_config_descriptor()?;
 
-        tracing::debug!("Active config descriptor: {:?}", &config);
+        tracing::trace!("Active config descriptor: {:?}", &config);
 
         let descriptor = device.device_descriptor()?;
 
-        tracing::debug!("Device descriptor: {:?}", &descriptor);
+        tracing::trace!("Device descriptor: {:?}", &descriptor);
 
         device_handle.claim_interface(0)?;
 
-        tracing::debug!("Claimed interface 0 of USB device.");
+        tracing::trace!("Claimed interface 0 of USB device.");
 
         let mut endpoint_out = false;
         let mut endpoint_in = false;
@@ -91,32 +91,30 @@ impl WchLinkUsbDevice {
         self.device_handle.release_interface(0)
     }
 
-    pub(crate) fn write_command(
+    pub(crate) fn send_command<C: WchLinkCommand + std::fmt::Debug>(
         &mut self,
-        cmd: &[u8],
-        timeout: Duration,
-    ) -> Result<Vec<u8>, DebugProbeError> {
-        tracing::trace!(
-            "Sending command {:02x?} to WCH-Link, timeout: {:?}",
-            cmd,
-            timeout
-        );
+        cmd: C,
+    ) -> Result<C::Response, DebugProbeError> {
+        tracing::debug!("Sending command: {:?}", cmd);
 
-        // Command phase.
+        let mut rxbuf = [0u8; 64];
+        let len = cmd.to_bytes(&mut rxbuf)?;
+
+        let timeout = Duration::from_millis(100);
+
         let written_bytes = self
             .device_handle
-            .write_bulk(ENDPOINT_OUT, cmd, timeout)
+            .write_bulk(ENDPOINT_OUT, &rxbuf[..len], timeout)
             .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))?;
 
-        if written_bytes != cmd.len() {
+        if written_bytes != len {
             return Err(WchLinkError::NotEnoughBytesWritten {
                 is: written_bytes,
-                should: cmd.len(),
+                should: len,
             }
             .into());
         }
 
-        // data in phase.
         let mut rxbuf = [0u8; 64];
         let read_bytes = self
             .device_handle
@@ -138,63 +136,9 @@ impl WchLinkUsbDevice {
             .into());
         }
 
-        tracing::trace!(
-            "Receive response {:02x?} from WCH-Link",
-            &rxbuf[..read_bytes]
-        );
-        Ok(rxbuf[..read_bytes].to_vec())
-    }
+        let response = cmd.parse_response(&rxbuf[..read_bytes])?;
 
-    pub(crate) fn write(
-        &mut self,
-        cmd: &[u8],
-        read_data: &mut [u8],
-        timeout: Duration,
-    ) -> Result<(), DebugProbeError> {
-        tracing::trace!(
-            "Sending command {:02x?} to WCH-Link, timeout: {:?}",
-            cmd,
-            timeout
-        );
-
-        // Command phase.
-        let written_bytes = self
-            .device_handle
-            .write_bulk(ENDPOINT_OUT, cmd, timeout)
-            .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))?;
-
-        if written_bytes != cmd.len() {
-            return Err(WchLinkError::NotEnoughBytesWritten {
-                is: written_bytes,
-                should: cmd.len(),
-            }
-            .into());
-        }
-
-        // data in phase.
-        let mut remaining_bytes = read_data.len();
-        let mut read_index = 0;
-
-        while remaining_bytes > 0 {
-            let read_bytes = self
-                .device_handle
-                .read_bulk(ENDPOINT_IN, &mut read_data[read_index..], timeout)
-                .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))?;
-
-            read_index += read_bytes;
-            remaining_bytes -= read_bytes;
-
-            if remaining_bytes > 0 {
-                tracing::trace!(
-                    "Read {} bytes, {} bytes remaining, buf {:02x?}",
-                    read_bytes,
-                    remaining_bytes,
-                    &read_data[..read_index]
-                );
-            }
-        }
-        tracing::trace!("Receive response {:02x?} from WCH-Link", read_data);
-        Ok(())
+        Ok(response)
     }
 }
 
