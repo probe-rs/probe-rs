@@ -1,26 +1,26 @@
-//! Sequences for the ESP32C6.
+//! Sequences for the ESP32C6/ESP32H2.
 
 use std::sync::Arc;
 
 use super::RiscvDebugSequence;
 use crate::MemoryInterface;
 
-/// The debug sequence implementation for the ESP32C6.
-pub struct ESP32C6(());
+/// The debug sequence implementation for the ESP32C6/ESP32H2.
+pub struct ESP32C6H2(());
 
-impl ESP32C6 {
-    /// Creates a new debug sequence handle for the ESP32C6.
+impl ESP32C6H2 {
+    /// Creates a new debug sequence handle for the ESP32C6/ESP32H2.
     pub fn create() -> Arc<dyn RiscvDebugSequence> {
         Arc::new(Self(()))
     }
 }
 
-impl RiscvDebugSequence for ESP32C6 {
+impl RiscvDebugSequence for ESP32C6H2 {
     fn on_connect(
         &self,
         interface: &mut crate::architecture::riscv::communication_interface::RiscvCommunicationInterface,
     ) -> Result<(), crate::Error> {
-        tracing::info!("Disabling esp32c6 watchdogs...");
+        tracing::info!("Disabling esp32c6/esp32h2 watchdogs...");
         // disable super wdt
         interface.write_word_32(0x600B1C20, 0x50D83AA1u32)?; // write protection off
         let current = interface.read_word_32(0x600B_1C1C)?;
