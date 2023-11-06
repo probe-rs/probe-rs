@@ -157,6 +157,16 @@ memory_mapped_bitfield_register! {
 }
 
 memory_mapped_bitfield_register! {
+    /// OSLAR_EL1 - OS Lock Access Register
+    pub struct Oslar(u32);
+    0x300,"OSLAR_EL1",
+    impl From;
+
+    /// Lock value
+    pub oslk, set_oslk: 1, 0;
+}
+
+memory_mapped_bitfield_register! {
     /// DBGBVR - Breakpoint Value Register
     pub struct Dbgbvr(u32);
     0x400, "DBGBVR",

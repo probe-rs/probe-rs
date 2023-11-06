@@ -364,24 +364,40 @@ impl RiscvCommunicationInterface {
 
         let max_hart_index = 2u32.pow(self.state.hartsellen as u32);
 
+        // Hart 0 exists on every chip
         let mut num_harts = 1;
 
-        // Hart 0 exists on every chip
-        for hart_index in 1..max_hart_index {
-            let mut control = Dmcontrol(0);
-            control.set_dmactive(true);
-            control.set_hartsel(hart_index);
+        // Check if anynonexistent is avaliable.
+        // Some chips that have only one hart do not implement anynonexistent and allnonexistent.
+        // So let's check max hart index to see if we can use it reliably,
+        // or else we will assume only one hart exists.
+        let mut control = Dmcontrol(0);
+        control.set_dmactive(true);
+        control.set_hartsel(max_hart_index - 1);
+        self.write_dm_register(control)?;
 
-            self.write_dm_register(control)?;
+        // Check if the anynonexistent works
+        let status: Dmstatus = self.read_dm_register()?;
 
-            // Check if the current hart exists
-            let status: Dmstatus = self.read_dm_register()?;
+        if status.anynonexistent() {
+            for hart_index in 1..max_hart_index {
+                let mut control = Dmcontrol(0);
+                control.set_dmactive(true);
+                control.set_hartsel(hart_index);
 
-            if status.anynonexistent() {
-                break;
+                self.write_dm_register(control)?;
+
+                // Check if the current hart exists
+                let status: Dmstatus = self.read_dm_register()?;
+
+                if status.anynonexistent() {
+                    break;
+                }
+
+                num_harts += 1;
             }
-
-            num_harts += 1;
+        } else {
+            tracing::debug!("anynonexistent not supported, assuming only one hart exists")
         }
 
         tracing::debug!("Number of harts: {}", num_harts);

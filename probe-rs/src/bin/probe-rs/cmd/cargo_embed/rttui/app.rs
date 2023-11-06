@@ -415,7 +415,7 @@ impl<'defmt> App<'defmt> {
 }
 
 fn layout_chunks(
-    f: &mut ratatui::Frame<'_, CrosstermBackend<std::io::Stdout>>,
+    f: &mut ratatui::Frame,
     has_down_channel: bool,
 ) -> std::rc::Rc<[ratatui::prelude::Rect]> {
     let constraints = if has_down_channel {
@@ -435,7 +435,7 @@ fn layout_chunks(
 }
 
 fn render_tabs(
-    f: &mut ratatui::Frame<'_, CrosstermBackend<std::io::Stdout>>,
+    f: &mut ratatui::Frame,
     chunk: ratatui::prelude::Rect,
     tabs: &[ChannelState<'_>],
     current_tab: usize,

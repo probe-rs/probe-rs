@@ -142,6 +142,17 @@ pub enum MemoryRegion {
     Nvm(NvmRegion),
 }
 
+impl MemoryRegion {
+    /// Get the cores to which this memory region belongs.
+    pub fn cores(&self) -> &[String] {
+        match self {
+            MemoryRegion::Ram(region) => &region.cores,
+            MemoryRegion::Generic(region) => &region.cores,
+            MemoryRegion::Nvm(region) => &region.cores,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

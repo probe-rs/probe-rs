@@ -185,8 +185,6 @@ fn run_loop(
 /// polling should continue, or an error.
 fn poll_stacktrace(core: &mut Core<'_>, path: &Path) -> Result<bool> {
     let status = core.status()?;
-    let registers = core.registers();
-    let pc_register = registers.pc().expect("a program counter register");
     match status {
         probe_rs::CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
             SemihostingCommand::ExitSuccess,
@@ -198,7 +196,7 @@ fn poll_stacktrace(core: &mut Core<'_>, path: &Path) -> Result<bool> {
         )),
         probe_rs::CoreStatus::Halted(_reason) => {
             // Try and give the user some info as to why it halted.
-            print_stacktrace(core, pc_register, path)?;
+            print_stacktrace(core, path)?;
             // Report this as an error
             Err(anyhow!("CPU halted unexpectedly."))
         }
@@ -213,17 +211,14 @@ fn poll_stacktrace(core: &mut Core<'_>, path: &Path) -> Result<bool> {
 }
 
 /// Prints the stacktrace of the current execution state.
-fn print_stacktrace(
-    core: &mut Core<'_>,
-    pc_register: &probe_rs::CoreRegister,
-    path: &Path,
-) -> Result<(), anyhow::Error> {
+fn print_stacktrace(core: &mut Core<'_>, path: &Path) -> Result<(), anyhow::Error> {
     let Some(debug_info) = DebugInfo::from_file(path).ok() else {
         log::error!("No debug info found.");
         return Ok(());
     };
-    let program_counter: u64 = core.read_core_reg(pc_register)?;
-    let stack_frames = debug_info.unwind(core, program_counter).unwrap();
+
+    let stack_frames = debug_info.unwind(core).unwrap();
+
     for (i, frame) in stack_frames.iter().enumerate() {
         print!("Frame {}: {} @ {}", i, frame.function_name, frame.pc);
 
@@ -237,7 +232,7 @@ fn print_stacktrace(
                 print!("       ");
 
                 if let Some(dir) = &location.directory {
-                    print!("{}", dir.display());
+                    print!("{}", dir.to_path().display());
                 }
 
                 if let Some(file) = &location.file {

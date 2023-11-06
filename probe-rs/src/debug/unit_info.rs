@@ -52,7 +52,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         stackframe_registers: Option<&DebugRegisters>,
         find_inlined: bool,
     ) -> Result<Vec<FunctionDie>, DebugError> {
-        tracing::trace!("Searching Function DIE for address {}", address);
+        tracing::trace!("Searching Function DIE for address {:#x}", address);
 
         let mut entries_cursor = self.unit.entries();
         while let Ok(Some((_depth, current))) = entries_cursor.next_dfs() {
@@ -81,8 +81,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 }
                             } else {
                                 tracing::trace!(
-                                "No stackframe registers provided, skipping frame_base calculation for function DIE."
-                            );
+                                    "No stackframe registers provided, skipping frame_base calculation for function DIE."
+                                );
                             }
 
                             let parent_frame_base = die.frame_base;
@@ -104,7 +104,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     tracing::debug!("No inlined function found!");
                                 } else {
                                     tracing::debug!(
-                                        "{} inlined functions for address {}",
+                                        "{} inlined functions for address {:#x}",
                                         inlined_functions.len(),
                                         address
                                     );

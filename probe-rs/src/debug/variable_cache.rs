@@ -43,7 +43,7 @@ impl VariableCache {
         &mut self,
         parent_key: Option<i64>,
         cache_variable: Variable,
-        core: &mut Core<'_>,
+        core: &mut dyn MemoryInterface,
     ) -> Result<Variable, Error> {
         let mut variable_to_add = cache_variable.clone();
         // Validate that the parent_key exists ...

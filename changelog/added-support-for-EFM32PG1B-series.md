@@ -1,0 +1,1 @@
+Added support for EFM32PG1B series microcontrollers.

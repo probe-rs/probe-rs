@@ -1,6 +1,6 @@
 //! Debug sequences to operate special requirements ARM targets.
 
-pub mod atsame5x;
+pub mod atsam;
 pub mod efm32xg2;
 pub mod infineon;
 mod nrf;
@@ -257,7 +257,7 @@ fn armv8a_core_start(
     cti_base: Option<u64>,
 ) -> Result<(), ArmError> {
     use crate::architecture::arm::core::armv8a_debug_regs::{
-        CtiControl, CtiGate, CtiOuten, Edlar, Edscr,
+        CtiControl, CtiGate, CtiOuten, Edlar, Edscr, Oslar,
     };
 
     let debug_base =
@@ -273,6 +273,10 @@ fn armv8a_core_start(
     // Lock OS register access to prevent race conditions
     let address = Edlar::get_mmio_address_from_base(debug_base)?;
     core.write_word_32(address, Edlar(0).into())?;
+
+    // Unlock the OS Lock to enable access to debug registers
+    let address = Oslar::get_mmio_address_from_base(debug_base)?;
+    core.write_word_32(address, Oslar(0).into())?;
 
     // Configure CTI
     let mut cticontrol = CtiControl(0);
@@ -520,6 +524,7 @@ pub trait ArmDebugSequence: Send + Sync {
         // CMSIS says this is only necessary to do inside the `if powered_down`, but
         // without it here, nRF52840 faults in the next access.
         let mut abort = Abort(0);
+        abort.set_dapabort(true);
         abort.set_orunerrclr(true);
         abort.set_wderrclr(true);
         abort.set_stkerrclr(true);

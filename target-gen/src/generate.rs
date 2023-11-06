@@ -152,11 +152,13 @@ where
             .map(create_core)
             .collect::<Result<Vec<_>>>()?;
 
+        let memory_map = get_mem_map(&device, &cores);
+
         family.variants.push(Chip {
             name: device_name,
             part: None,
             cores,
-            memory_map: get_mem_map(&device),
+            memory_map,
             flash_algorithms: flash_algorithm_names,
             rtt_scan_ranges: None,
             scan_chain: None, // TODO, parse from sdf
@@ -464,7 +466,7 @@ struct DeviceMemory {
 /// Extracts the memory regions in the package.
 /// The new memory regions are sorted by memory type, then by boot memory, then by start address,
 /// with correctly assigned cores/processor names.
-pub(crate) fn get_mem_map(device: &Device) -> Vec<MemoryRegion> {
+pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> Vec<MemoryRegion> {
     let mut device_memories: Vec<DeviceMemory> = device
         .memories
         .0
@@ -492,50 +494,68 @@ pub(crate) fn get_mem_map(device: &Device) -> Vec<MemoryRegion> {
     // Sort by memory type, then by processor name, then by boot memory, then by start address.
     device_memories.sort();
 
+    let all_cores: Vec<_> = cores.iter().map(|core| core.name.clone()).collect();
+
+    let is_multi_core = cores.len() > 1;
+
     // Convert DeviceMemory's to MemoryRegion's, and assign cores to shared reqions.
     let mut mem_map = vec![];
     for region in &device_memories {
-        let current_core = region
+        if is_multi_core && region.p_name.is_none() {
+            log::warn!("Device {}, memory region {} has no processor name, but this is required for a multicore device. Assigning memory to all cores!", device.name, region.name);
+        }
+
+        let cores = region
             .p_name
             .as_ref()
-            .map(|s| s.to_ascii_lowercase())
-            .unwrap_or_else(|| "main".to_string());
+            .map(|s| vec![s.to_ascii_lowercase()])
+            .unwrap_or_else(|| all_cores.clone());
+
         match region.memory_type {
-            MemoryType::Ram => if let Some(MemoryRegion::Ram(existing_region)) = mem_map.iter_mut().find(|existing_region|{
-                matches!(existing_region, MemoryRegion::Ram(ram_region) if ram_region.name == Some(region.name.clone()))})
+            MemoryType::Ram => {
+                if let Some(MemoryRegion::Ram(existing_region)) = mem_map.iter_mut().find(|existing_region| {
+                        matches!(existing_region, MemoryRegion::Ram(ram_region) if ram_region.name == Some(region.name.clone()))
+                    })
                 {
-                    existing_region.cores.push(current_core);
+                    existing_region.cores.extend_from_slice(&cores);
                 } else {
                     mem_map.push(MemoryRegion::Ram(RamRegion {
                     name: Some(region.name.clone()),
                     range: region.memory_start..region.memory_end,
                     is_boot_memory: region.is_boot_memory,
-                    cores: vec![current_core],
+                    cores,
                     }));
-                },
-            MemoryType::Nvm => if let Some(MemoryRegion::Nvm(existing_region)) = mem_map.iter_mut().find(|existing_region|{
-                matches!(existing_region, MemoryRegion::Nvm(nvm_region) if nvm_region.name == Some(region.name.clone()))})
+                }
+            },
+            MemoryType::Nvm => {
+                if let Some(MemoryRegion::Nvm(existing_region)) = mem_map.iter_mut().find(|existing_region| {
+                        matches!(existing_region, MemoryRegion::Nvm(nvm_region) if nvm_region.name == Some(region.name.clone()))
+                    })
                 {
-                    existing_region.cores.push(current_core);
+                    existing_region.cores.extend_from_slice(&cores);
                 } else {
                     mem_map.push(MemoryRegion::Nvm(NvmRegion {
                     name: Some(region.name.clone()),
                     range: region.memory_start..region.memory_end,
                     is_boot_memory: region.is_boot_memory,
-                    cores: vec![current_core],
+                    cores,
                     }));
-                },
-            MemoryType::Generic => if let Some(MemoryRegion::Generic(existing_region)) = mem_map.iter_mut().find(|existing_region|{
-                matches!(existing_region, MemoryRegion::Generic(generic_region) if generic_region.name == Some(region.name.clone()))})
+                }
+            },
+            MemoryType::Generic => {
+                if let Some(MemoryRegion::Generic(existing_region)) = mem_map.iter_mut().find(|existing_region| {
+                        matches!(existing_region, MemoryRegion::Generic(generic_region) if generic_region.name == Some(region.name.clone()))
+                    })
                 {
-                    existing_region.cores.push(current_core);
+                    existing_region.cores.extend_from_slice(&cores);
                 } else {
                     mem_map.push(MemoryRegion::Generic(GenericRegion {
                     name: Some(region.name.clone()),
                     range: region.memory_start..region.memory_end,
-                    cores: vec![current_core],
+                    cores,
                     }));
-                },
+                }
+            },
         };
     }
     mem_map

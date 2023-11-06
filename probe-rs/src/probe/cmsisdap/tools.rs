@@ -31,10 +31,11 @@ pub fn list_cmsisdap_devices() -> Vec<DebugProbeInfo> {
     if let Ok(api) = hidapi::HidApi::new() {
         for device in api.device_list() {
             if let Some(info) = get_cmsisdap_hid_info(device) {
-                if !probes
-                    .iter()
-                    .any(|p| p.vendor_id == info.vendor_id && p.product_id == info.product_id)
-                {
+                if !probes.iter().any(|p| {
+                    p.vendor_id == info.vendor_id
+                        && p.product_id == info.product_id
+                        && p.serial_number == info.serial_number
+                }) {
                     tracing::trace!("Adding new HID-only probe {:?}", info);
                     probes.push(info)
                 } else {
@@ -54,7 +55,7 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
     let timeout = Duration::from_millis(100);
     let d_desc = device.device_descriptor().ok()?;
     let handle = device.open().ok()?;
-    let language = handle.read_languages(timeout).ok()?.get(0).cloned()?;
+    let language = handle.read_languages(timeout).ok()?.first().cloned()?;
     let prod_str = handle
         .read_product_string(language, &d_desc, timeout)
         .ok()?;
@@ -63,7 +64,7 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
         .ok();
 
     // Most CMSIS-DAP probes say something like "CMSIS-DAP"
-    let cmsis_dap_product = is_cmsis_dap(&prod_str);
+    let cmsis_dap_product = is_cmsis_dap(&prod_str) || is_known_cmsis_dap_dev(&d_desc);
 
     // Iterate all interfaces, looking for:
     // 1. Any with CMSIS-DAP in their interface string
@@ -156,7 +157,7 @@ pub fn open_v2_device(device: Device<rusb::Context>) -> Option<CmsisDapDevice> {
     let vid = d_desc.vendor_id();
     let pid = d_desc.product_id();
     let mut handle = device.open().ok()?;
-    let language = handle.read_languages(timeout).ok()?.get(0).cloned()?;
+    let language = handle.read_languages(timeout).ok()?.first().cloned()?;
 
     // Go through interfaces to try and find a v2 interface.
     // The CMSIS-DAPv2 spec says that v2 interfaces should use a specific
@@ -293,7 +294,7 @@ pub fn open_device_from_selector(
 
             let timeout = Duration::from_millis(100);
             let sn_str = match handle.read_languages(timeout) {
-                Ok(langs) => langs.get(0).and_then(|lang| {
+                Ok(langs) => langs.first().and_then(|lang| {
                     handle
                         .read_serial_number_string(*lang, &d_desc, timeout)
                         .ok()
@@ -388,5 +389,17 @@ pub fn open_device_from_selector(
 /// in them. As devices spell CMIS DAP differently we go through known
 /// spellings/patterns looking for a match
 fn is_cmsis_dap(id: &str) -> bool {
-    id.contains("CMSIS-DAP") || id.contains("CMSIS_DAP") || id.contains("WCH-Link")
+    id.contains("CMSIS-DAP") || id.contains("CMSIS_DAP")
+}
+
+/// Some devices don't have a CMSIS-DAP interface string, but are still
+/// CMSIS-DAP probes. We hardcode a list of known VID/PID pairs here.
+fn is_known_cmsis_dap_dev(device_descriptor: &DeviceDescriptor) -> bool {
+    // - 1a86:8012 WCH-Link in DAP mode, This shares the same description string as the
+    //   WCH-Link in RV mode, so we have to check by vendor ID and product ID.
+    const KNOWN_DAPS: &[(u16, u16)] = &[(0x1a86, 0x8012)];
+
+    KNOWN_DAPS.iter().any(|&(vid, pid)| {
+        device_descriptor.vendor_id() == vid && device_descriptor.product_id() == pid
+    })
 }

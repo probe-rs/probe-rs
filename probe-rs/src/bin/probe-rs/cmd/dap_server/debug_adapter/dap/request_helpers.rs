@@ -270,48 +270,58 @@ pub(crate) fn get_capstone(target_core: &mut CoreHandle) -> Result<Capstone, Deb
 /// A helper function to greate a [`Source`] struct from a [`SourceLocation`]
 pub(crate) fn get_dap_source(source_location: &SourceLocation) -> Option<Source> {
     // Attempt to construct the path for the source code
-    source_location.directory.as_ref().map(|path| {
-        let mut path = if path.is_relative() {
-            if let Ok(current_path) = std::env::current_dir() {
-                current_path.join(path)
-            } else {
-                path.to_owned()
-            }
-        } else {
-            path.to_owned()
-        };
+    let directory = source_location.directory.as_ref()?;
 
-        if let Some(file) = &source_location.file {
-            path.push(file);
+    // Try to convert the path to the native Path of the current OS,
+    // and then check if the source file exists
+    if let Ok(mut native_path) = std::path::PathBuf::try_from(directory.clone()) {
+        if native_path.is_relative() {
+            if let Ok(current_dir) = std::env::current_dir() {
+                native_path = current_dir.join(native_path);
+            }
         }
 
-        if path.exists() {
-            Source {
+        if native_path.exists() {
+            Some(Source {
                 name: source_location.file.clone(),
-                path: Some(path.to_string_lossy().to_string()),
+                path: Some(native_path.to_string_lossy().to_string()),
                 source_reference: None,
                 presentation_hint: None,
                 origin: None,
                 sources: None,
                 adapter_data: None,
                 checksums: None,
-            }
+            })
         } else {
-            Source {
+            Some(Source {
                 name: source_location
                     .file
                     .clone()
                     .map(|file_name| format!("<unavailable>: {file_name}")),
-                path: Some(path.to_string_lossy().to_string()),
+                path: Some(native_path.to_string_lossy().to_string()),
                 source_reference: None,
                 presentation_hint: Some("deemphasize".to_string()),
                 origin: None,
                 sources: None,
                 adapter_data: None,
                 checksums: None,
-            }
+            })
         }
-    })
+    } else {
+        Some(Source {
+            name: source_location
+                .file
+                .clone()
+                .map(|file_name| format!("<unavailable>: {file_name}")),
+            path: Some(directory.to_string_lossy().to_string()),
+            source_reference: None,
+            presentation_hint: Some("deemphasize".to_string()),
+            origin: None,
+            sources: None,
+            adapter_data: None,
+            checksums: None,
+        })
+    }
 }
 
 /// Provides halt functionality that is re-used elsewhere, in context of multiple DAP Requests
