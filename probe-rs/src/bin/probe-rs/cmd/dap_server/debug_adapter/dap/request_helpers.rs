@@ -281,6 +281,10 @@ pub(crate) fn get_dap_source(source_location: &SourceLocation) -> Option<Source>
             }
         }
 
+        if let Some(file_name) = source_location.file.as_ref() {
+            native_path = native_path.join(file_name);
+        }
+
         if native_path.exists() {
             Some(Source {
                 name: source_location.file.clone(),
