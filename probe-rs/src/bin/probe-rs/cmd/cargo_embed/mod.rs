@@ -375,7 +375,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
             / 1_000_000;
 
         let logname = format!("{name}_{chip_name}_{timestamp_millis}");
-        let mut app = rttui::app::App::new(rtt, &config, logname)?;
+        let mut app = rttui::app::App::new(rtt, &config, logname, defmt_state.as_ref())?;
         loop {
             {
                 let mut session_handle = session.lock().unwrap();
@@ -383,7 +383,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
 
                 app.poll_rtt(&mut core, offset)?;
 
-                app.render(defmt_state.as_ref());
+                app.render();
                 if app.handle_event(&mut core) {
                     logging::println("Shutting down.");
                     return Ok(());
@@ -483,9 +483,7 @@ impl DefmtInformation {
                 location_information: locs,
             })
         } else {
-            log::error!(
-            "Defmt enabled in rtt channel config, but defmt table couldn't be loaded from binary."
-        );
+            log::error!("Defmt enabled in rtt channel config, but defmt table couldn't be loaded from binary.");
             None
         };
 

@@ -1,10 +1,14 @@
 use crate::{
-    core::{CoreInterface, ExceptionInfo, RegisterRole},
+    core::{ExceptionInfo, ExceptionInterface, RegisterRole},
     debug::DebugRegisters,
-    Error, RegisterValue,
+    Error, MemoryInterface, RegisterValue,
 };
 use bitfield::bitfield;
 
+/// Registers which are stored on the stack when an exception occurs.
+///
+/// - Section B1.5.6, ARMv6-M Architecture Reference Manual
+///
 pub(crate) static EXCEPTION_STACK_REGISTERS: &[RegisterRole] = &[
     RegisterRole::Core("R0"),
     RegisterRole::Core("R1"),
@@ -45,8 +49,9 @@ bitfield! {
 }
 
 /// Decode the exception information.
-pub(crate) fn exception_details<T: CoreInterface>(
-    core: &mut T,
+pub(crate) fn exception_details(
+    memory: &dyn ExceptionInterface,
+    memory_interface: &mut dyn MemoryInterface,
     stackframe_registers: &DebugRegisters,
 ) -> Result<Option<ExceptionInfo>, Error> {
     let frame_return_address: u32 = stackframe_registers
@@ -66,8 +71,9 @@ pub(crate) fn exception_details<T: CoreInterface>(
         // This is an exception frame.
 
         Ok(Some(ExceptionInfo {
-            description: core.exception_description(stackframe_registers)?,
-            calling_frame_registers: core.calling_frame_registers(stackframe_registers)?,
+            description: memory.exception_description(memory_interface, stackframe_registers)?,
+            calling_frame_registers: memory
+                .calling_frame_registers(memory_interface, stackframe_registers)?,
         }))
     } else {
         // This is a normal function return.
@@ -79,21 +85,34 @@ pub(crate) fn exception_details<T: CoreInterface>(
 /// The registers are stored in that list in the order they are defined in the `EXCEPTION_STACK_REGISTERS` array.
 /// This function will read the values of the registers from the stack and update the passed `stackframe_registers` with the new values.
 // TODO: probe-rs does not currently do anything with the floating point registers. When support is added, please note that the list of registers to read is different for cores that have the floating point extension.
-pub(crate) fn calling_frame_registers<T: CoreInterface>(
-    core: &mut T,
+pub(crate) fn calling_frame_registers(
+    memory: &mut dyn MemoryInterface,
     stackframe_registers: &crate::debug::DebugRegisters,
 ) -> Result<crate::debug::DebugRegisters, crate::Error> {
     let mut calling_stack_registers = vec![0u32; EXCEPTION_STACK_REGISTERS.len()];
-    core.read_32(
+
+    memory.read_32(
         stackframe_registers
             .get_register_value_by_role(&crate::core::RegisterRole::StackPointer)?,
         &mut calling_stack_registers,
     )?;
+
     let mut calling_frame_registers = stackframe_registers.clone();
     for (i, register_role) in EXCEPTION_STACK_REGISTERS.iter().enumerate() {
         calling_frame_registers
             .get_register_mut_by_role(register_role)?
             .value = Some(RegisterValue::U32(calling_stack_registers[i]));
     }
+
+    // Adjust stack pointer
+    let sp = calling_frame_registers
+        .get_register_mut_by_role(&crate::core::RegisterRole::StackPointer)?;
+
+    if let Some(sp_value) = &mut sp.value {
+        sp_value
+            .increment_address(4 * EXCEPTION_STACK_REGISTERS.len())
+            .unwrap();
+    }
+
     Ok(calling_frame_registers)
 }

@@ -35,8 +35,7 @@
 //!
 //! ```no_run
 //! # use probe_rs::Error;
-//! use probe_rs::{Session, Permissions};
-//! use probe_rs::MemoryInterface;
+//! use probe_rs::{Session, Permissions, MemoryInterface};
 //!
 //! let mut session = Session::auto_attach("nrf52", Permissions::default())?;
 //! let mut core = session.core(0)?;
@@ -88,6 +87,8 @@ mod probe;
 pub mod rtt;
 #[warn(missing_docs)]
 mod session;
+#[cfg(test)]
+mod test;
 
 pub use crate::config::{CoreType, InstructionSet, Target};
 pub use crate::core::{
