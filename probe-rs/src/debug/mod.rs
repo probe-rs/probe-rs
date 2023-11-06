@@ -29,7 +29,10 @@ pub use self::{
     variable_cache::VariableCache,
 };
 use crate::{core::Core, MemoryInterface};
+
 use gimli::DebuggingInformationEntry;
+use typed_path::TypedPathBuf;
+
 use std::{
     io,
     path::PathBuf,
@@ -121,7 +124,7 @@ pub struct SourceLocation {
     /// The file name of the source file.
     pub file: Option<String>,
     /// The directory of the source file.
-    pub directory: Option<PathBuf>,
+    pub directory: Option<TypedPathBuf>,
     /// The address of the first instruction associated with the source code
     pub low_pc: Option<u32>,
     /// The address of the first location past the last instruction associated with the source code
@@ -130,22 +133,31 @@ pub struct SourceLocation {
 
 impl SourceLocation {
     /// The full path of the source file, combining the `directory` and `file` fields.
-    /// If the path does not resolve to an existing file, and error is returned.
+    /// If the path does not resolve to an existing file, an error is returned.
     pub fn combined_path(&self) -> Result<PathBuf, DebugError> {
-        if let Some(valid_path) = self.directory.as_ref().and_then(|dir| {
-            self.file
-                .as_ref()
-                .map(|file| dir.join(file))
-                .filter(|path| path.exists())
-        }) {
-            Ok(valid_path)
-        } else {
-            Err(DebugError::Other(anyhow::anyhow!(
-                "Unable to find source file for directory {:?} and file {:?}",
-                self.directory,
-                self.file
-            )))
+        let combined_path = self.combined_typed_path();
+
+        if let Some(native_path) = combined_path.and_then(|p| PathBuf::try_from(p).ok()) {
+            if native_path.exists() {
+                return Ok(native_path);
+            }
         }
+
+        Err(DebugError::Other(anyhow::anyhow!(
+            "Unable to find source file for directory {:?} and file {:?}",
+            self.directory,
+            self.file
+        )))
+    }
+
+    /// Get the full path of the source file
+    pub fn combined_typed_path(&self) -> Option<TypedPathBuf> {
+        let combined_path = self
+            .directory
+            .as_ref()
+            .and_then(|dir| self.file.as_ref().map(|file| dir.join(file)));
+
+        combined_path
     }
 }
 
@@ -154,7 +166,7 @@ fn extract_file(
     debug_info: &DebugInfo,
     unit: &gimli::Unit<GimliReader>,
     attribute_value: gimli::AttributeValue<GimliReader>,
-) -> Option<(PathBuf, String)> {
+) -> Option<(TypedPathBuf, String)> {
     match attribute_value {
         gimli::AttributeValue::FileIndex(index) => unit.line_program.as_ref().and_then(|ilnp| {
             let header = ilnp.header();

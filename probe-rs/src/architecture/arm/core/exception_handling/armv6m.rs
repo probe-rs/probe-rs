@@ -1,10 +1,6 @@
-use crate::{
-    core::{ExceptionInfo, ExceptionInterface},
-    debug::DebugRegisters,
-    Error,
-};
+use crate::MemoryInterface;
 
-use super::armv6m_armv7m_shared::{calling_frame_registers, exception_details, Xpsr};
+use super::armv6m_armv7m_shared::Xpsr;
 
 /// Decode the exception number.
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -45,30 +41,8 @@ impl From<u32> for ExceptionReason {
     }
 }
 
-impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv6m::Armv6m<'probe> {
-    fn calling_frame_registers(
-        &mut self,
-        stackframe_registers: &crate::debug::DebugRegisters,
-    ) -> Result<crate::debug::DebugRegisters, crate::Error> {
-        calling_frame_registers(self, stackframe_registers)
-    }
-
-    fn exception_description(
-        &mut self,
-        stackframe_registers: &crate::debug::DebugRegisters,
-    ) -> Result<String, crate::Error> {
-        exception_description(stackframe_registers)
-    }
-
-    fn exception_details(
-        &mut self,
-        stackframe_registers: &DebugRegisters,
-    ) -> Result<Option<ExceptionInfo>, Error> {
-        exception_details(self, stackframe_registers)
-    }
-}
-
 pub fn exception_description(
+    _memory_interface: &mut dyn MemoryInterface,
     stackframe_registers: &crate::debug::DebugRegisters,
 ) -> Result<String, crate::Error> {
     // Load the provided xPSR register as a bitfield.

@@ -225,6 +225,28 @@ impl ChipFamily {
                     }
                 }
             }
+
+            let core_names: Vec<_> = variant.cores.iter().map(|core| &core.name).collect();
+
+            for memory in &variant.memory_map {
+                // Ensure that the memory is assigned to a core, and that all the cores exist
+
+                for core in memory.cores() {
+                    if !core_names.contains(&core) {
+                        return Err(format!(
+                            "Variant {}, memory region {:?} is assigned to a non-existent core {}",
+                            variant.name, memory, core
+                        ));
+                    }
+                }
+
+                assert!(
+                    !memory.cores().is_empty(),
+                    "Variant {}, memory region {:?} is not assigned to a core",
+                    variant.name,
+                    memory
+                );
+            }
         }
 
         Ok(())

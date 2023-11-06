@@ -1,10 +1,14 @@
 use crate::{
-    architecture::arm::sequences::ArmDebugSequence, debug::DebugRegisters, error, CoreType, Error,
-    InstructionSet, MemoryInterface, Target,
+    architecture::arm::{
+        core::registers::cortex_m::CORTEX_M_CORE_REGISTERS, sequences::ArmDebugSequence,
+    },
+    debug::DebugRegisters,
+    error, CoreType, Error, InstructionSet, MemoryInterface, Target,
 };
 use anyhow::anyhow;
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
 use probe_rs_target::{ArmCoreAccessOptions, RiscvCoreAccessOptions};
+use scroll::Pread;
 use std::{
     collections::HashMap,
     fs::OpenOptions,
@@ -32,7 +36,7 @@ pub struct CoreInformation {
 }
 
 /// A generic interface to control a MCU core.
-pub trait CoreInterface: MemoryInterface + ExceptionInterface {
+pub trait CoreInterface: MemoryInterface {
     /// Numerical ID of the core. Can be used as an argument to `Session::core()`.
     fn id(&self) -> usize;
 
@@ -206,6 +210,208 @@ impl CoreDump {
     }
 }
 
+impl CoreInterface for CoreDump {
+    fn instruction_set(&mut self) -> Result<InstructionSet, error::Error> {
+        Ok(self.instruction_set)
+    }
+
+    fn read_core_reg(&mut self, register: RegisterId) -> Result<RegisterValue, error::Error> {
+        Ok(self.registers[&register])
+    }
+
+    fn id(&self) -> usize {
+        todo!()
+    }
+
+    fn wait_for_core_halted(&mut self, _timeout: std::time::Duration) -> Result<(), error::Error> {
+        todo!()
+    }
+
+    fn core_halted(&mut self) -> Result<bool, error::Error> {
+        todo!()
+    }
+
+    fn status(&mut self) -> Result<crate::CoreStatus, error::Error> {
+        todo!()
+    }
+
+    fn halt(
+        &mut self,
+        _timeout: std::time::Duration,
+    ) -> Result<crate::CoreInformation, error::Error> {
+        todo!()
+    }
+
+    fn run(&mut self) -> Result<(), error::Error> {
+        todo!()
+    }
+
+    fn reset(&mut self) -> Result<(), error::Error> {
+        todo!()
+    }
+
+    fn reset_and_halt(
+        &mut self,
+        _timeout: std::time::Duration,
+    ) -> Result<crate::CoreInformation, error::Error> {
+        todo!()
+    }
+
+    fn step(&mut self) -> Result<crate::CoreInformation, error::Error> {
+        todo!()
+    }
+
+    fn write_core_reg(
+        &mut self,
+        _address: crate::core::registers::RegisterId,
+        _value: crate::core::registers::RegisterValue,
+    ) -> Result<(), error::Error> {
+        todo!()
+    }
+
+    fn available_breakpoint_units(&mut self) -> Result<u32, error::Error> {
+        todo!()
+    }
+
+    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, error::Error> {
+        todo!()
+    }
+
+    fn enable_breakpoints(&mut self, _state: bool) -> Result<(), error::Error> {
+        todo!()
+    }
+
+    fn set_hw_breakpoint(&mut self, _unit_index: usize, _addrr: u64) -> Result<(), error::Error> {
+        todo!()
+    }
+
+    fn clear_hw_breakpoint(&mut self, _unit_index: usize) -> Result<(), error::Error> {
+        todo!()
+    }
+
+    fn registers(&self) -> &'static crate::core::registers::CoreRegisters {
+        // TODO: determine correct registers
+        &CORTEX_M_CORE_REGISTERS
+    }
+
+    fn program_counter(&self) -> &'static CoreRegister {
+        todo!()
+    }
+
+    fn frame_pointer(&self) -> &'static CoreRegister {
+        todo!()
+    }
+
+    fn stack_pointer(&self) -> &'static CoreRegister {
+        todo!()
+    }
+
+    fn return_address(&self) -> &'static CoreRegister {
+        todo!()
+    }
+
+    fn hw_breakpoints_enabled(&self) -> bool {
+        todo!()
+    }
+
+    fn architecture(&self) -> probe_rs_target::Architecture {
+        todo!()
+    }
+
+    fn core_type(&self) -> probe_rs_target::CoreType {
+        // TODO: determine correct type
+        probe_rs_target::CoreType::Armv6m
+    }
+
+    fn fpu_support(&mut self) -> Result<bool, error::Error> {
+        todo!()
+    }
+
+    fn reset_catch_set(&mut self) -> Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn reset_catch_clear(&mut self) -> Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn debug_core_stop(&mut self) -> Result<(), crate::Error> {
+        todo!()
+    }
+}
+
+impl MemoryInterface for CoreDump {
+    fn supports_native_64bit_access(&mut self) -> bool {
+        self.supports_native_64bit_access
+    }
+
+    fn read_word_64(&mut self, _address: u64) -> anyhow::Result<u64, crate::Error> {
+        todo!()
+    }
+
+    fn read_word_32(&mut self, _address: u64) -> anyhow::Result<u32, crate::Error> {
+        todo!()
+    }
+
+    fn read_word_8(&mut self, _address: u64) -> anyhow::Result<u8, crate::Error> {
+        todo!()
+    }
+
+    fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn read_32(&mut self, address: u64, data: &mut [u32]) -> anyhow::Result<(), crate::Error> {
+        for (range, memory) in &self.data {
+            if range.contains(&address) && range.contains(&(address + data.len() as u64 * 4)) {
+                for (n, data) in data.iter_mut().enumerate() {
+                    *data = memory
+                        .pread_with((address - range.start) as usize + n * 4, scroll::LE)
+                        .map_err(|e| anyhow!("{e}"))?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_word_64(&mut self, _address: u64, _data: u64) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_word_32(&mut self, _address: u64, _data: u32) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_word_8(&mut self, _address: u64, _data: u8) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_64(&mut self, _address: u64, _data: &[u64]) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_32(&mut self, _address: u64, _data: &[u32]) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_8(&mut self, _address: u64, _data: &[u8]) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn supports_8bit_transfers(&self) -> anyhow::Result<bool, crate::Error> {
+        todo!()
+    }
+
+    fn flush(&mut self) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+}
+
 impl<'probe> MemoryInterface for Core<'probe> {
     fn supports_native_64bit_access(&mut self) -> bool {
         self.inner.supports_native_64bit_access()
@@ -279,6 +485,7 @@ impl<'probe> MemoryInterface for Core<'probe> {
 /// A struct containing key information about an exception.
 /// The exception details are architecture specific, and the abstraction is handled in the
 /// architecture specific implementations of [`crate::core::ExceptionInterface`].
+#[derive(Debug, PartialEq)]
 pub struct ExceptionInfo {
     /// A human readable explanation for the exception.
     pub description: String,
@@ -295,7 +502,34 @@ pub trait ExceptionInterface {
     /// A return value of `Ok(None)` indicates that the given frame was called from within the current thread,
     /// and the unwind should continue normally.
     fn exception_details(
-        &mut self,
+        &self,
+        memory: &mut dyn MemoryInterface,
+        stackframe_registers: &DebugRegisters,
+    ) -> Result<Option<ExceptionInfo>, Error>;
+
+    /// Using the `stackframe_registers` for a "called frame", retrieve updated register values for the "calling frame".
+    fn calling_frame_registers(
+        &self,
+        memory: &mut dyn MemoryInterface,
+        stackframe_registers: &crate::debug::DebugRegisters,
+    ) -> Result<crate::debug::DebugRegisters, crate::Error>;
+
+    /// Convert the architecture specific exception number into a human readable description.
+    /// Where possible, the implementation may read additional registers from the core, to provide additional context.
+    fn exception_description(
+        &self,
+        memory: &mut dyn MemoryInterface,
+        stackframe_registers: &crate::debug::DebugRegisters,
+    ) -> Result<String, crate::Error>;
+}
+
+/// Placeholder for exception handling for cores where handling exceptions is not yet supported.
+pub struct UnimplementedExceptionHandler;
+
+impl ExceptionInterface for UnimplementedExceptionHandler {
+    fn exception_details(
+        &self,
+        _memory: &mut dyn MemoryInterface,
         _stackframe_registers: &DebugRegisters,
     ) -> Result<Option<ExceptionInfo>, Error> {
         // For architectures where the exception handling has not been implemented in probe-rs,
@@ -306,9 +540,9 @@ pub trait ExceptionInterface {
         ))
     }
 
-    /// Using the `stackframe_registers` for a "called frame", retrieve updated register values for the "calling frame".
     fn calling_frame_registers(
-        &mut self,
+        &self,
+        _memory: &mut dyn MemoryInterface,
         _stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<crate::debug::DebugRegisters, crate::Error> {
         Err(Error::NotImplemented(
@@ -316,10 +550,9 @@ pub trait ExceptionInterface {
         ))
     }
 
-    /// Convert the architecture specific exception number into a human readable description.
-    /// Where possible, the implementation may read additional registers from the core, to provide additional context.
     fn exception_description(
-        &mut self,
+        &self,
+        _memory: &mut dyn MemoryInterface,
         _stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<String, crate::Error> {
         Err(Error::NotImplemented(
@@ -328,26 +561,20 @@ pub trait ExceptionInterface {
     }
 }
 
-impl<'probe> ExceptionInterface for Core<'probe> {
-    fn exception_details(
-        &mut self,
-        stackframe_registers: &DebugRegisters,
-    ) -> Result<Option<ExceptionInfo>, Error> {
-        self.inner.exception_details(stackframe_registers)
-    }
-
-    fn calling_frame_registers(
-        &mut self,
-        stackframe_registers: &crate::debug::DebugRegisters,
-    ) -> Result<crate::debug::DebugRegisters, crate::Error> {
-        self.inner.calling_frame_registers(stackframe_registers)
-    }
-
-    fn exception_description(
-        &mut self,
-        _stackframe_registers: &crate::debug::DebugRegisters,
-    ) -> Result<String, crate::Error> {
-        self.inner.exception_description(_stackframe_registers)
+pub(crate) fn exception_handler_for_core(core_type: CoreType) -> Box<dyn ExceptionInterface> {
+    match core_type {
+        CoreType::Armv6m => {
+            Box::new(crate::architecture::arm::core::exception_handling::ArmV6MExceptionHandler {})
+        }
+        CoreType::Armv7m | CoreType::Armv7em => {
+            Box::new(crate::architecture::arm::core::exception_handling::ArmV7MExceptionHandler {})
+        }
+        CoreType::Armv8m => Box::new(
+            crate::architecture::arm::core::exception_handling::armv8m::ArmV8MExceptionHandler,
+        ),
+        CoreType::Armv7a | CoreType::Armv8a | CoreType::Riscv => {
+            Box::new(UnimplementedExceptionHandler)
+        }
     }
 }
 

@@ -20,7 +20,7 @@ pub enum RegisterDataType {
 /// This is used to label the register with a specific role that it plays during program execution and exception handling.
 /// This denotes the purpose of a register (e.g. `return address`),
 /// while the [`CoreRegister::name`] will contain the architecture specific label of the register.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RegisterRole {
     /// The default role for a register, with the name as defined by the architecture.
     Core(&'static str),
@@ -102,7 +102,7 @@ pub enum UnwindRule {
 
 /// Describes a core (or CPU / hardware) register with its properties.
 /// Each architecture will have a set of general purpose registers, and potentially some special purpose registers. It also happens that some general purpose registers can be used for special purposes. For instance, some ARM variants allows the `LR` (link register / return address) to be used as general purpose register `R14`."
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CoreRegister {
     // /// Some architectures have multiple names for the same register, depending on the context and the role of the register.
     pub(crate) id: RegisterId,
@@ -111,6 +111,18 @@ pub struct CoreRegister {
     pub(crate) data_type: RegisterDataType,
     /// For unwind purposes (debug and/or exception handling), we need to know how values are preserved between function calls. (Applies to ARM and RISC-V)
     pub unwind_rule: UnwindRule,
+}
+
+impl PartialOrd for CoreRegister {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.id.cmp(&other.id))
+    }
+}
+
+impl Ord for CoreRegister {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.id.cmp(&other.id)
+    }
 }
 
 impl Display for CoreRegister {

@@ -1,6 +1,4 @@
-use super::{
-    debug_info, extract_file, unit_info::UnitInfo, ColumnType, EndianReader, SourceLocation,
-};
+use super::{debug_info, extract_file, unit_info::UnitInfo, ColumnType, SourceLocation};
 
 pub(crate) type Die<'abbrev, 'unit> =
     gimli::DebuggingInformationEntry<'abbrev, 'unit, debug_info::GimliReader, usize>;
@@ -138,21 +136,47 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
         &self,
         attribute_name: gimli::DwAt,
     ) -> Option<debug_info::GimliAttribute> {
-        Self::attr_ok(&self.function_die, attribute_name).or_else(|| {
-            // For inlined function, the *abstract instance* has to be checked if we cannot find the
-            // attribute on the *concrete instance*.
+        let attribute = self
+            .function_die
+            .attr(attribute_name)
+            .map_or(None, |attribute| attribute);
 
-            if !self.is_inline() {
-                return None;
+        if attribute.is_some() {
+            return attribute;
+        }
+
+        // For inlined function, the *abstract instance* has to be checked if we cannot find the
+        // attribute on the *concrete instance*.
+        if self.is_inline() {
+            if let Some(origin) = self.abstract_die.as_ref() {
+                // Try to get the attribute directly
+                match origin
+                    .attr(attribute_name)
+                    .map_or(None, |attribute| attribute)
+                {
+                    Some(attribute) => return Some(attribute),
+                    None => {
+                        let specification_attr =
+                            origin.attr(gimli::DW_AT_specification).ok().flatten()?;
+
+                        match specification_attr.value() {
+                            gimli::AttributeValue::UnitRef(unit_ref) => {
+                                if let Ok(specification) = self.unit_info.unit.entry(unit_ref) {
+                                    return specification
+                                        .attr(attribute_name)
+                                        .map_or(None, |attribute| attribute);
+                                }
+                            }
+                            other_value => tracing::warn!(
+                                "Unsupported DW_AT_speficiation value: {:?}",
+                                other_value
+                            ),
+                        }
+                    }
+                }
             }
-            self.abstract_die
-                .as_ref()
-                .and_then(|origin| Self::attr_ok(origin, attribute_name))
-        })
-    }
+        }
 
-    /// Returns an attribute with converting the Result type to a simple Option.
-    fn attr_ok(die: &Die, attribute_name: gimli::DwAt) -> Option<gimli::Attribute<EndianReader>> {
-        die.attr(attribute_name).map_or(None, |attribute| attribute)
+        None
     }
 }

@@ -13,7 +13,7 @@ use std::{
     fs::create_dir,
     path::{Path, PathBuf},
 };
-use tracing_subscriber::EnvFilter;
+use tracing_subscriber::{filter::LevelFilter, EnvFilter};
 
 use crate::commands::{
     elf::{cmd_elf, serialize_to_yaml_file},
@@ -113,7 +113,11 @@ pub fn parse_u64(input: &str) -> Result<u64, ParseIntError> {
 fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .compact()
-        .with_env_filter(EnvFilter::from_default_env())
+        .with_env_filter(
+            EnvFilter::builder()
+                .with_default_directive(LevelFilter::WARN.into())
+                .from_env_lossy(),
+        )
         .init();
 
     let options = TargetGen::parse();

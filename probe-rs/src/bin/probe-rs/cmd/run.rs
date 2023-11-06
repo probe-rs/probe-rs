@@ -7,12 +7,10 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
-use itertools::Itertools;
 use probe_rs::debug::DebugInfo;
 use probe_rs::flashing::{FileDownloadError, Format};
 use probe_rs::{
-    BreakpointCause, Core, CoreInterface, CoreRegister, HaltReason, SemihostingCommand,
-    VectorCatchCondition,
+    BreakpointCause, Core, CoreInterface, HaltReason, SemihostingCommand, VectorCatchCondition,
 };
 use probe_rs_target::MemoryRegion;
 use signal_hook::consts::signal;
@@ -189,8 +187,6 @@ fn run_loop(
 /// polling should continue, or an error.
 fn poll_stacktrace(core: &mut Core<'_>, path: &Path) -> Result<bool> {
     let status = core.status()?;
-    let registers = core.registers();
-    let program_counter_register = registers.pc().expect("a program counter register");
     match status {
         probe_rs::CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
             SemihostingCommand::ExitSuccess,
@@ -202,12 +198,7 @@ fn poll_stacktrace(core: &mut Core<'_>, path: &Path) -> Result<bool> {
         )),
         probe_rs::CoreStatus::Halted(_reason) => {
             // Try and give the user some info as to why it halted.
-            print_stacktrace(
-                path,
-                core,
-                core.registers().all_registers().collect_vec(),
-                program_counter_register,
-            )?;
+            print_stacktrace(path, core)?;
             // Report this as an error
             Err(anyhow!("CPU halted unexpectedly."))
         }
@@ -222,19 +213,12 @@ fn poll_stacktrace(core: &mut Core<'_>, path: &Path) -> Result<bool> {
 }
 
 /// Prints the stacktrace of the current execution state.
-fn print_stacktrace(
-    path: &Path,
-    adapter: &mut impl CoreInterface,
-    registers: Vec<&CoreRegister>,
-    program_counter_register: &CoreRegister,
-) -> Result<(), anyhow::Error> {
+fn print_stacktrace(path: &Path, adapter: &mut impl CoreInterface) -> Result<(), anyhow::Error> {
     let Some(debug_info) = DebugInfo::from_file(path).ok() else {
         log::error!("No debug info found.");
         return Ok(());
     };
-    let stack_frames = debug_info
-        .unwind(adapter, registers, program_counter_register)
-        .unwrap();
+    let stack_frames = debug_info.unwind(adapter).unwrap();
     for (i, frame) in stack_frames.iter().enumerate() {
         print!("Frame {}: {} @ {}", i, frame.function_name, frame.pc);
 
@@ -248,7 +232,7 @@ fn print_stacktrace(
                 print!("       ");
 
                 if let Some(dir) = &location.directory {
-                    print!("{}", dir.display());
+                    print!("{}", dir.to_path().display());
                 }
 
                 if let Some(file) = &location.file {

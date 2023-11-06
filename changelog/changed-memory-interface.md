@@ -1,0 +1,1 @@
+The read operations from the `MemoryInterface` trait are moved into a separte `ReadOnlyMemoryInterface` trait, so that it is clear which code actually changes memory.

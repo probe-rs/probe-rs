@@ -35,13 +35,19 @@ impl std::fmt::Display for StackFrame {
         // Header info for the StackFrame
         writeln!(f, "Frame: {}", self.function_name)?;
         if let Some(si) = &self.source_location {
+            let separator = match &si.directory {
+                Some(path) if path.is_windows() => '\\',
+                _ => '/',
+            };
+
             write!(
                 f,
-                "\t{}/{}",
+                "\t{}{}{}",
                 si.directory
                     .as_ref()
                     .map(|p| p.to_string_lossy())
                     .unwrap_or_else(|| std::borrow::Cow::from("<unknown dir>")),
+                separator,
                 si.file.as_ref().unwrap_or(&"<unknown file>".to_owned())
             )?;
 

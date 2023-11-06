@@ -42,7 +42,7 @@ pub(crate) const XPSR: CoreRegister = CoreRegister {
 };
 
 /// All off the Cortex-M core registers.
-pub static CORTEX_M_CORE_REGSISTERS: Lazy<CoreRegisters> = Lazy::new(|| {
+pub(crate) static CORTEX_M_CORE_REGISTERS: Lazy<CoreRegisters> = Lazy::new(|| {
     CoreRegisters::new(
         ARM32_COMMON_REGS_SET
             .iter()
@@ -51,7 +51,7 @@ pub static CORTEX_M_CORE_REGSISTERS: Lazy<CoreRegisters> = Lazy::new(|| {
     )
 });
 
-pub(crate) static CORTEX_M_WITH_FP_CORE_REGSISTERS: Lazy<CoreRegisters> = Lazy::new(|| {
+pub(crate) static CORTEX_M_WITH_FP_CORE_REGISTERS: Lazy<CoreRegisters> = Lazy::new(|| {
     CoreRegisters::new(
         ARM32_COMMON_REGS_SET
             .iter()

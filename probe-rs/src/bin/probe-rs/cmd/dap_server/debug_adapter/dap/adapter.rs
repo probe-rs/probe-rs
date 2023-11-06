@@ -20,7 +20,6 @@ use crate::util::rtt;
 use anyhow::{anyhow, Result};
 use base64::{engine::general_purpose as base64_engine, Engine as _};
 use dap_types::*;
-use itertools::Itertools;
 use num_traits::Zero;
 use parse_int::parse;
 use probe_rs::{
@@ -33,7 +32,9 @@ use probe_rs::{
     CoreStatus, Error, HaltReason, MemoryInterface, RegisterValue,
 };
 use serde::{de::DeserializeOwned, Serialize};
-use std::{convert::TryInto, path::Path, str, string::ToString, time::Duration};
+use typed_path::NativePathBuf;
+
+use std::{convert::TryInto, str, string::ToString, time::Duration};
 
 /// Progress ID used for progress reporting when the debug adapter protocol is used.
 type ProgressId = i64;
@@ -768,7 +769,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         let mut created_breakpoints: Vec<Breakpoint> = Vec::new(); // For returning in the Response
 
-        if let Some(source_path) = args.source.path.as_ref().map(Path::new) {
+        if let Some(source_path) = args.source.path.as_ref() {
             // Always clear existing breakpoints for the specified `[crate::debug_adapter::dap_types::Source]` before setting new ones.
             // The DAP Specification doesn't make allowances for deleting and setting individual breakpoints for a specific `Source`.
             match target_core.clear_breakpoints(BreakpointType::SourceBreakpoint {
@@ -786,6 +787,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     )
                 }
             }
+
+            // Assume that the path is native to the current OS
+            let source_path = NativePathBuf::from(source_path).to_typed_path_buf();
 
             if let Some(requested_breakpoints) = args.breakpoints.as_ref() {
                 for bp in requested_breakpoints {
@@ -806,7 +810,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     };
 
                     match target_core.verify_and_set_breakpoint(
-                        source_path,
+                        &source_path,
                         requested_breakpoint_line,
                         requested_breakpoint_column,
                         &args.source,
@@ -995,18 +999,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // VSCode sends multiple StackTrace requests, which lead to out of synch frame_id numbers.
         // We only refresh the stacktrace when the `startFrame` is 0 and `levels` is 1.
         if levels == 1 && start_frame == 0 {
-            let pc = target_core.core.program_counter();
             tracing::debug!(
                 "Updating the stack frame data for core #{}",
                 target_core.core.id()
             );
 
-            let registers = target_core.core.registers().all_registers().collect_vec();
-            target_core.core_data.stack_frames =
-                target_core
-                    .core_data
-                    .debug_info
-                    .unwind(&mut target_core.core, registers, pc)?;
+            target_core.core_data.stack_frames = target_core
+                .core_data
+                .debug_info
+                .unwind(&mut target_core.core)?;
         }
         // Update the `levels` to the number of available frames if it is 0.
         if levels == 0 {
