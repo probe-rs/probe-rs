@@ -1,5 +1,3 @@
-use crate::CoreInterface;
-
 use super::*;
 use anyhow::anyhow;
 use gimli::{DebugInfoOffset, UnitOffset};
@@ -355,7 +353,7 @@ impl Variable {
     /// Currently this only works for base data types. There is no provision in the MS DAP API to catch this client side, so we can only respond with a 'gentle' error message if the user attemtps unsupported data types.
     pub fn update_value(
         &self,
-        adapter: &mut impl CoreInterface,
+        memory: &mut impl MemoryInterface,
         variable_cache: &mut variable_cache::VariableCache,
         new_value: String,
     ) -> Result<String, DebugError> {
@@ -381,22 +379,22 @@ impl Variable {
             // We have everything we need to update the variable value.
             let update_result = match &self.type_name {
                 VariableType::Base(name) => match name.as_str() {
-                    "bool" => bool::update_value(self, adapter, new_value.as_str()),
-                    "char" => char::update_value(self, adapter, new_value.as_str()),
-                    "i8" => i8::update_value(self, adapter, new_value.as_str()),
-                    "i16" => i16::update_value(self, adapter, new_value.as_str()),
-                    "i32" => i32::update_value(self, adapter, new_value.as_str()),
-                    "i64" => i64::update_value(self, adapter, new_value.as_str()),
-                    "i128" => i128::update_value(self, adapter, new_value.as_str()),
-                    "isize" => isize::update_value(self, adapter, new_value.as_str()),
-                    "u8" => u8::update_value(self, adapter, new_value.as_str()),
-                    "u16" => u16::update_value(self, adapter, new_value.as_str()),
-                    "u32" => u32::update_value(self, adapter, new_value.as_str()),
-                    "u64" => u64::update_value(self, adapter, new_value.as_str()),
-                    "u128" => u128::update_value(self, adapter, new_value.as_str()),
-                    "usize" => usize::update_value(self, adapter, new_value.as_str()),
-                    "f32" => f32::update_value(self, adapter, new_value.as_str()),
-                    "f64" => f64::update_value(self, adapter, new_value.as_str()),
+                    "bool" => bool::update_value(self, memory, new_value.as_str()),
+                    "char" => char::update_value(self, memory, new_value.as_str()),
+                    "i8" => i8::update_value(self, memory, new_value.as_str()),
+                    "i16" => i16::update_value(self, memory, new_value.as_str()),
+                    "i32" => i32::update_value(self, memory, new_value.as_str()),
+                    "i64" => i64::update_value(self, memory, new_value.as_str()),
+                    "i128" => i128::update_value(self, memory, new_value.as_str()),
+                    "isize" => isize::update_value(self, memory, new_value.as_str()),
+                    "u8" => u8::update_value(self, memory, new_value.as_str()),
+                    "u16" => u16::update_value(self, memory, new_value.as_str()),
+                    "u32" => u32::update_value(self, memory, new_value.as_str()),
+                    "u64" => u64::update_value(self, memory, new_value.as_str()),
+                    "u128" => u128::update_value(self, memory, new_value.as_str()),
+                    "usize" => usize::update_value(self, memory, new_value.as_str()),
+                    "f32" => f32::update_value(self, memory, new_value.as_str()),
+                    "f64" => f64::update_value(self, memory, new_value.as_str()),
                     other => Err(DebugError::UnwindIncompleteResults {
                         message: format!("Unsupported datatype: {other}. Please only update variables with a base data type."),
                     }),
@@ -412,7 +410,7 @@ impl Variable {
                     variable_cache.cache_variable(
                         cache_variable.parent_key,
                         cache_variable,
-                        adapter,
+                        memory,
                     )?;
                     new_value
                 }
@@ -888,7 +886,7 @@ trait Value {
     /// - The input format of the [Variable.value] is a [String], and the impl of this trait must convert the memory value appropriately before storing.
     fn update_value(
         variable: &Variable,
-        adapter: &mut impl MemoryInterface,
+        memory: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError>;
 }
@@ -906,10 +904,10 @@ impl Value for bool {
 
     fn update_value(
         variable: &Variable,
-        adapter: &mut impl MemoryInterface,
+        memory: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        adapter
+        memory
             .write_word_8(
                 variable.memory_location.memory_address()?,
                 <bool as FromStr>::from_str(new_value).map_err(|error| {
@@ -941,10 +939,10 @@ impl Value for char {
 
     fn update_value(
         variable: &Variable,
-        adapter: &mut impl MemoryInterface,
+        memory: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        adapter
+        memory
             .write_word_32(
                 variable.memory_location.memory_address()?,
                 <char as FromStr>::from_str(new_value).map_err(|error| {
@@ -1032,7 +1030,7 @@ impl Value for String {
 
     fn update_value(
         _variable: &Variable,
-        _adapter: &mut impl MemoryInterface,
+        _memory: &mut impl MemoryInterface,
         _new_value: &str,
     ) -> Result<(), DebugError> {
         Err(DebugError::UnwindIncompleteResults { message:"Unsupported datatype: \"String\". Please only update variables with a base data type.".to_string()})
@@ -1052,10 +1050,10 @@ impl Value for i8 {
 
     fn update_value(
         variable: &Variable,
-        adapter: &mut impl MemoryInterface,
+        memory: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        adapter
+        memory
             .write_word_8(
                 variable.memory_location.memory_address()?,
                 <i8 as FromStr>::from_str(new_value).map_err(|error| {
@@ -1085,7 +1083,7 @@ impl Value for i16 {
 
     fn update_value(
         variable: &Variable,
-        adapter: &mut impl MemoryInterface,
+        memory: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         let buff = i16::to_le_bytes(<i16 as FromStr>::from_str(new_value).map_err(|error| {
@@ -1093,7 +1091,7 @@ impl Value for i16 {
                 message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
-        adapter
+        memory
             .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),
@@ -1114,7 +1112,7 @@ impl Value for i32 {
 
     fn update_value(
         variable: &Variable,
-        adapter: &mut impl MemoryInterface,
+        memory: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         let buff = i32::to_le_bytes(<i32 as FromStr>::from_str(new_value).map_err(|error| {
@@ -1122,7 +1120,7 @@ impl Value for i32 {
                 message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
-        adapter
+        memory
             .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),
@@ -1143,7 +1141,7 @@ impl Value for i64 {
 
     fn update_value(
         variable: &Variable,
-        adapter: &mut impl MemoryInterface,
+        memory: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         let buff = i64::to_le_bytes(<i64 as FromStr>::from_str(new_value).map_err(|error| {
@@ -1151,7 +1149,7 @@ impl Value for i64 {
                 message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
-        adapter
+        memory
             .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),
@@ -1172,7 +1170,7 @@ impl Value for i128 {
 
     fn update_value(
         variable: &Variable,
-        adapter: &mut impl MemoryInterface,
+        memory: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         let buff = i128::to_le_bytes(<i128 as FromStr>::from_str(new_value).map_err(|error| {
@@ -1180,7 +1178,7 @@ impl Value for i128 {
                 message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
-        adapter
+        memory
             .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),
@@ -1202,7 +1200,7 @@ impl Value for isize {
 
     fn update_value(
         variable: &Variable,
-        adapter: &mut impl MemoryInterface,
+        memory: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         let buff =
@@ -1213,7 +1211,7 @@ impl Value for isize {
                     ),
                 }
             })?);
-        adapter
+        memory
             .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),
@@ -1234,10 +1232,10 @@ impl Value for u8 {
 
     fn update_value(
         variable: &Variable,
-        adapter: &mut impl MemoryInterface,
+        memory: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        adapter
+        memory
             .write_word_8(
                 variable.memory_location.memory_address()?,
                 <u8 as FromStr>::from_str(new_value).map_err(|error| {
@@ -1267,7 +1265,7 @@ impl Value for u16 {
 
     fn update_value(
         variable: &Variable,
-        adapter: &mut impl MemoryInterface,
+        memory: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         let buff = u16::to_le_bytes(<u16 as FromStr>::from_str(new_value).map_err(|error| {
@@ -1275,7 +1273,7 @@ impl Value for u16 {
                 message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
-        adapter
+        memory
             .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),
@@ -1296,7 +1294,7 @@ impl Value for u32 {
 
     fn update_value(
         variable: &Variable,
-        adapter: &mut impl MemoryInterface,
+        memory: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         let buff = u32::to_le_bytes(<u32 as FromStr>::from_str(new_value).map_err(|error| {
@@ -1304,7 +1302,7 @@ impl Value for u32 {
                 message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
-        adapter
+        memory
             .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),
@@ -1325,7 +1323,7 @@ impl Value for u64 {
 
     fn update_value(
         variable: &Variable,
-        adapter: &mut impl MemoryInterface,
+        memory: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         let buff = u64::to_le_bytes(<u64 as FromStr>::from_str(new_value).map_err(|error| {
@@ -1333,7 +1331,7 @@ impl Value for u64 {
                 message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
-        adapter
+        memory
             .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),
@@ -1354,7 +1352,7 @@ impl Value for u128 {
 
     fn update_value(
         variable: &Variable,
-        adapter: &mut impl MemoryInterface,
+        memory: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         let buff = u128::to_le_bytes(<u128 as FromStr>::from_str(new_value).map_err(|error| {
@@ -1362,7 +1360,7 @@ impl Value for u128 {
                 message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
-        adapter
+        memory
             .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),
@@ -1384,7 +1382,7 @@ impl Value for usize {
 
     fn update_value(
         variable: &Variable,
-        adapter: &mut impl MemoryInterface,
+        memory: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         let buff =
@@ -1395,7 +1393,7 @@ impl Value for usize {
                     ),
                 }
             })?);
-        adapter
+        memory
             .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),
@@ -1416,7 +1414,7 @@ impl Value for f32 {
 
     fn update_value(
         variable: &Variable,
-        adapter: &mut impl MemoryInterface,
+        memory: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         let buff = f32::to_le_bytes(<f32 as FromStr>::from_str(new_value).map_err(|error| {
@@ -1424,7 +1422,7 @@ impl Value for f32 {
                 message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
-        adapter
+        memory
             .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),
@@ -1445,7 +1443,7 @@ impl Value for f64 {
 
     fn update_value(
         variable: &Variable,
-        adapter: &mut impl MemoryInterface,
+        memory: &mut impl MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
         let buff = f64::to_le_bytes(<f64 as FromStr>::from_str(new_value).map_err(|error| {
@@ -1453,7 +1451,7 @@ impl Value for f64 {
                 message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
             }
         })?);
-        adapter
+        memory
             .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),

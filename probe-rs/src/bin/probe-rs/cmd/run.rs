@@ -198,7 +198,7 @@ fn poll_stacktrace(core: &mut Core<'_>, path: &Path) -> Result<bool> {
         )),
         probe_rs::CoreStatus::Halted(_reason) => {
             // Try and give the user some info as to why it halted.
-            print_stacktrace(path, core)?;
+            print_stacktrace(core, path)?;
             // Report this as an error
             Err(anyhow!("CPU halted unexpectedly."))
         }
@@ -213,12 +213,12 @@ fn poll_stacktrace(core: &mut Core<'_>, path: &Path) -> Result<bool> {
 }
 
 /// Prints the stacktrace of the current execution state.
-fn print_stacktrace(path: &Path, adapter: &mut impl CoreInterface) -> Result<(), anyhow::Error> {
+fn print_stacktrace(core: &mut impl CoreInterface, path: &Path) -> Result<(), anyhow::Error> {
     let Some(debug_info) = DebugInfo::from_file(path).ok() else {
         log::error!("No debug info found.");
         return Ok(());
     };
-    let stack_frames = debug_info.unwind(adapter).unwrap();
+    let stack_frames = debug_info.unwind(core).unwrap();
     for (i, frame) in stack_frames.iter().enumerate() {
         print!("Frame {}: {} @ {}", i, frame.function_name, frame.pc);
 

@@ -37,15 +37,15 @@ impl SteppingMode {
     /// - Currently, no special provision is made for the effect of interrupts that get triggered during stepping. The user must ensure that interrupts are disabled during stepping, or accept that stepping may be diverted by the interrupt processing on the core.
     pub fn step(
         &self,
-        adapter: &mut impl CoreInterface,
+        core: &mut impl CoreInterface,
         debug_info: &DebugInfo,
     ) -> Result<(CoreStatus, u64), DebugError> {
-        let mut core_status = adapter
+        let mut core_status = core
             .status()
             .map_err(|error| DebugError::Other(anyhow::anyhow!(error)))?;
         let mut program_counter = match core_status {
-            CoreStatus::Halted(_) => adapter
-                .read_core_reg(adapter.program_counter().id())?
+            CoreStatus::Halted(_) => core
+                .read_core_reg(core.program_counter().id())?
                 .try_into()?,
             _ => {
                 return Err(DebugError::Other(anyhow::anyhow!(
@@ -54,9 +54,7 @@ impl SteppingMode {
             }
         };
         let origin_program_counter = program_counter;
-        let mut return_address = adapter
-            .read_core_reg(adapter.return_address().id())?
-            .try_into()?;
+        let mut return_address = core.read_core_reg(core.return_address().id())?.try_into()?;
 
         // Sometimes the target program_counter is at a location where the debug_info program row data does not contain valid statements for halt points.
         // When DebugError::NoValidHaltLocation happens, we will step to the next instruction and try again(until we can reasonably expect to have passed out of an epilogue), before giving up.
@@ -65,24 +63,25 @@ impl SteppingMode {
             match match self {
                 SteppingMode::StepInstruction => {
                     // First deal with the the fast/easy case.
-                    program_counter = adapter.step()?.pc;
-                    core_status = adapter.status()?;
+                    program_counter = core.step()?.pc;
+                    core_status = core.status()?;
                     return Ok((core_status, program_counter));
                 }
                 SteppingMode::IntoStatement => {
-                    self.get_halt_location(adapter, debug_info, program_counter, None)
+                    self.get_halt_location(core, debug_info, program_counter, None)
                 }
                 SteppingMode::BreakPoint => {
-                    self.get_halt_location(adapter, debug_info, program_counter, None)
+                    self.get_halt_location(core, debug_info, program_counter, None)
                 }
-                SteppingMode::OverStatement | SteppingMode::OutOfStatement => self
-                    .get_halt_location(adapter, debug_info, program_counter, Some(return_address)),
+                SteppingMode::OverStatement | SteppingMode::OutOfStatement => {
+                    self.get_halt_location(core, debug_info, program_counter, Some(return_address))
+                }
             } {
                 Ok((post_step_target_address, _)) => {
                     target_address = post_step_target_address;
                     // Re-read the program_counter, because it may have changed during the `get_halt_location` call.
-                    program_counter = adapter
-                        .read_core_reg(adapter.program_counter().id())?
+                    program_counter = core
+                        .read_core_reg(core.program_counter().id())?
                         .try_into()?;
                     break;
                 }
@@ -97,16 +96,15 @@ impl SteppingMode {
                             pc_at_error,
                             message
                         );
-                        program_counter = adapter.step()?.pc;
-                        return_address = adapter
-                            .read_core_reg(adapter.return_address().id())?
-                            .try_into()?;
+                        program_counter = core.step()?.pc;
+                        return_address =
+                            core.read_core_reg(core.return_address().id())?.try_into()?;
                         continue;
                     }
                     other_error => {
-                        core_status = adapter.status()?;
-                        program_counter = adapter
-                            .read_core_reg(adapter.program_counter().id())?
+                        core_status = core.status()?;
+                        program_counter = core
+                            .read_core_reg(core.program_counter().id())?
                             .try_into()?;
                         tracing::error!("Error during step ({:?}): {}", self, other_error);
                         return Ok((core_status, program_counter));
@@ -138,7 +136,7 @@ impl SteppingMode {
                     target_address,
                 );
 
-                run_to_address(program_counter, target_address, adapter)?
+                run_to_address(program_counter, target_address, core)?
             }
             None => {
                 return Err(DebugError::NoValidHaltLocation {
@@ -174,7 +172,7 @@ impl SteppingMode {
     pub(crate) fn get_halt_location(
         &self,
         // The core is not required when we are only looking for the next valid breakpoint ( `SteppingMode::Breakpoint` ).
-        adapter: &mut impl CoreInterface,
+        core: &mut impl CoreInterface,
         debug_info: &DebugInfo,
         program_counter: u64,
         return_address: Option<u64>,
@@ -252,19 +250,14 @@ impl SteppingMode {
                         } else {
                             source_statements_iter.next().and_then(|next_line| {
                                 SteppingMode::BreakPoint
-                                    .get_halt_location(
-                                        adapter,
-                                        debug_info,
-                                        next_line.low_pc(),
-                                        None,
-                                    )
+                                    .get_halt_location(core, debug_info, next_line.low_pc(), None)
                                     .ok()
                             })
                         }
                     })
                     .or_else(|| {
                         SteppingMode::OutOfStatement
-                            .get_halt_location(adapter, debug_info, program_counter, return_address)
+                            .get_halt_location(core, debug_info, program_counter, return_address)
                             .ok()
                     })
                 {
@@ -294,7 +287,7 @@ impl SteppingMode {
                 {
                     let inclusive_range = current_source_statement.instruction_range.start
                         ..=current_source_statement.instruction_range.end;
-                    let (core_status, new_pc) = step_to_address(inclusive_range, adapter)?;
+                    let (core_status, new_pc) = step_to_address(inclusive_range, core)?;
                     if new_pc == current_source_statement.instruction_range.end {
                         // We have halted at the address after the current statement, so we can conclude there was no branching calls in this sequence.
                         tracing::debug!("Stepping into next statement, but no branching calls found. Stepped to next available statement.");
@@ -314,12 +307,12 @@ impl SteppingMode {
                     }
 
                     return SteppingMode::BreakPoint
-                        .get_halt_location(adapter, debug_info, new_pc, None);
+                        .get_halt_location(core, debug_info, new_pc, None);
                 }
             }
             SteppingMode::OutOfStatement => {
                 if let Ok(function_dies) =
-                    program_unit.get_function_dies(adapter, program_counter, None, true)
+                    program_unit.get_function_dies(core, program_counter, None, true)
                 {
                     // We want the first qualifying (PC is in range) function from the back of this list, to access the 'innermost' functions first.
                     if let Some(function) = function_dies.iter().next_back() {
@@ -340,9 +333,9 @@ impl SteppingMode {
                             if function.is_inline() {
                                 // Step_out_address for inlined functions, is the first available breakpoint address after the last statement in the inline function.
                                 let (_, next_instruction_address) =
-                                    run_to_address(program_counter, function.high_pc, adapter)?;
+                                    run_to_address(program_counter, function.high_pc, core)?;
                                 return SteppingMode::BreakPoint.get_halt_location(
-                                    adapter,
+                                    core,
                                     debug_info,
                                     next_instruction_address,
                                     None,
@@ -354,7 +347,7 @@ impl SteppingMode {
                                     );
                                 // Step_out_address for non-inlined functions is the first available breakpoint address after the return address.
                                 return SteppingMode::BreakPoint.get_halt_location(
-                                    adapter,
+                                    core,
                                     debug_info,
                                     return_address,
                                     None,
@@ -385,7 +378,7 @@ impl SteppingMode {
 fn run_to_address(
     mut program_counter: u64,
     target_address: u64,
-    adapter: &mut impl CoreInterface,
+    core: &mut impl CoreInterface,
 ) -> Result<(CoreStatus, u64), DebugError> {
     Ok(if target_address < program_counter {
         // We are not able to calculate a step_out_address. Notify the user to try something else.
@@ -396,30 +389,28 @@ fn run_to_address(
     } else if target_address == program_counter {
         // No need to step further. e.g. For inline functions we have already stepped to the best available target address..
         (
-            adapter.status()?,
-            adapter
-                .read_core_reg(adapter.program_counter().id())?
+            core.status()?,
+            core.read_core_reg(core.program_counter().id())?
                 .try_into()?,
         )
-    } else if adapter.set_hw_breakpoint(0, target_address).is_ok() {
-        adapter.run()?;
+    } else if core.set_hw_breakpoint(0, target_address).is_ok() {
+        core.run()?;
         // It is possible that we are stepping over long running instructions.
-        match adapter.wait_for_core_halted(Duration::from_millis(1000)) {
+        match core.wait_for_core_halted(Duration::from_millis(1000)) {
             Ok(()) => {
                 // We have hit the target address, so all is good.
                 // NOTE: It is conceivable that the core has halted, but we have not yet stepped to the target address. (e.g. the user tries to step out of a function, but there is another breakpoint active before the end of the function.)
                 //       This is a legitimate situation, so we clear the breakpoint at the target address, and pass control back to the user
-                adapter.clear_hw_breakpoint(0)?;
+                core.clear_hw_breakpoint(0)?;
                 (
-                    adapter.status()?,
-                    adapter
-                        .read_core_reg(adapter.program_counter().id())?
+                    core.status()?,
+                    core.read_core_reg(core.program_counter().id())?
                         .try_into()?,
                 )
             }
             Err(error) => {
-                program_counter = adapter.halt(Duration::from_millis(500))?.pc;
-                adapter.clear_hw_breakpoint(0)?;
+                program_counter = core.halt(Duration::from_millis(500))?.pc;
+                core.clear_hw_breakpoint(0)?;
                 if matches!(
                     error,
                     crate::Error::Arm(ArmError::Timeout) | crate::Error::Riscv(RiscvError::Timeout)
@@ -430,7 +421,7 @@ fn run_to_address(
                         target_address,
                         program_counter
                     );
-                    (adapter.status()?, program_counter)
+                    (core.status()?, program_counter)
                 } else {
                     // Something else is wrong.
                     return Err(DebugError::Other(anyhow::anyhow!(
@@ -445,7 +436,7 @@ fn run_to_address(
     } else {
         // If we don't have breakpoints to use, we have to rely on single stepping.
         // TODO: In theory, this could go on for a long time. Should we consider NOT allowing this kind of stepping if there are no breakpoints available?
-        step_to_address(target_address..=u64::MAX, adapter)?
+        step_to_address(target_address..=u64::MAX, core)?
     })
 }
 
@@ -456,11 +447,11 @@ fn run_to_address(
 /// - We encounter an error (e.g. the core locks up)
 fn step_to_address(
     target_address_range: RangeInclusive<u64>,
-    adapter: &mut impl CoreInterface,
+    core: &mut impl CoreInterface,
 ) -> Result<(CoreStatus, u64), DebugError> {
-    while target_address_range.contains(&adapter.step()?.pc) {
+    while target_address_range.contains(&core.step()?.pc) {
         // Single step the core until we get to the target_address;
-        match adapter.status()? {
+        match core.status()? {
             CoreStatus::Halted(halt_reason) => match halt_reason {
                 HaltReason::Step | HaltReason::Request => continue,
                 HaltReason::Breakpoint(_) => {
@@ -471,16 +462,15 @@ fn step_to_address(
                     break;
                 }
                 // This is a recoverable error kind, and can be reported to the user higher up in the call stack.
-                other_halt_reason => return Err(DebugError::NoValidHaltLocation{message: format!("Target halted unexpectedly before we reached the destination address of a step operation: {other_halt_reason:?}"), pc_at_error: adapter.read_core_reg(adapter.program_counter().id())?.try_into()?}),
+                other_halt_reason => return Err(DebugError::NoValidHaltLocation{message: format!("Target halted unexpectedly before we reached the destination address of a step operation: {other_halt_reason:?}"), pc_at_error: core.read_core_reg(core.program_counter().id())?.try_into()?}),
             },
             // This is not a recoverable error, and will result in the debug session ending (we have no predicatable way of successfully continuing the session)
             other_status => return Err(DebugError::Other(anyhow::anyhow!("Target failed to reach the destination address of a step operation: {:?}", other_status))),
         }
     }
     Ok((
-        adapter.status()?,
-        adapter
-            .read_core_reg(adapter.program_counter().id())?
+        core.status()?,
+        core.read_core_reg(core.program_counter().id())?
             .try_into()?,
     ))
 }
