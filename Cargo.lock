@@ -2454,7 +2454,6 @@ dependencies = [
  "probe-rs-target",
  "rand",
  "ratatui",
- "reqwest",
  "ron",
  "rusb",
  "rustyline",
