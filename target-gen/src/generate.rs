@@ -312,7 +312,7 @@ pub(crate) async fn visit_arm_file(
     only_supported_familes: bool,
 ) -> Vec<ChipFamily> {
     let url = format!(
-        "{url}/{vendor}.{name}.{version}.pack",
+        "{url}{vendor}.{name}.{version}.pack",
         url = pack.url,
         vendor = pack.vendor,
         name = pack.name,
