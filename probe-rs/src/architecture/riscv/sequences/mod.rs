@@ -4,7 +4,7 @@ use super::communication_interface::RiscvCommunicationInterface;
 use std::sync::Arc;
 
 pub mod esp32c3;
-pub mod esp32c6;
+pub mod esp32c6h2;
 
 /// A interface to operate debug sequences for RISC-V targets.
 ///
