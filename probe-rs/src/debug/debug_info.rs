@@ -2052,8 +2052,8 @@ mod test {
 
     #[test]
     fn test_print_stacktrace() {
-        let elf_path = Path::new("./tests/gpio-hal-blinky");
-        let mut adapter = CoreDump::load(Path::new("./tests/coredump")).unwrap();
+        let elf_path = Path::new("./tests/gpio-hal-blinky/elf");
+        let mut adapter = CoreDump::load(Path::new("./tests/gpio-hal-blinky/coredump")).unwrap();
 
         let debug_info = DebugInfo::from_file(elf_path).unwrap();
         let stack_frames = debug_info.unwind(&mut adapter).unwrap();

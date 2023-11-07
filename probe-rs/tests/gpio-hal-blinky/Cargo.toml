@@ -1,0 +1,37 @@
+[package]
+name = "gpio-hal-blinky"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+embedded-hal = "0.2.4"
+cortex-m-rt = "0.7"
+cortex-m = { version = "0.7", features = [
+    "critical-section-single-core",
+    "inline-asm",
+] }
+panic-halt = "0.2.0"
+rtt-target = "0.4"
+defmt = "0.3.1"
+
+[dependencies.microbit]
+path = "../../microbit"
+optional = true
+
+[dependencies.microbit-v2]
+path = "../../microbit-v2"
+optional = true
+
+[features]
+v1 = ["microbit"]
+v2 = ["microbit-v2"]
+
+default = ["defmt-default"]
+
+# do NOT modify these features
+defmt-default = []
+defmt-trace = []
+defmt-debug = []
+defmt-info = []
+defmt-warn = []
+defmt-error = []

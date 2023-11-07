@@ -16,10 +16,12 @@ use std::{fmt::Display, path::Path, str::FromStr, time::Duration};
 /// The response body is used to populate the response to the client.
 /// The handler returns a Result<[`Response`], [`DebuggerError`]>.
 /// We use the [`Response`] type here, so that we can have a consistent interface for processing the result as follows:
-/// - The `command`, `success`, annd `message` fields are the most commonly used fields for all the REPL commands.
+/// - The `command`, `success`, and `message` fields are the most commonly used fields for all the REPL commands.
 /// - The `body` field is used if we need to pass back other DAP body types, e.g. [`BreakpointEventBody`].
 /// - The remainder of the fields are unused/ignored.
 /// The majority of the REPL command results will be populated into the response body.
+///
+/// TODO: Make this less confusing by having a different struct for this.
 pub(crate) type ReplHandler = fn(
     target_core: &mut CoreHandle,
     command_arguments: &str,
@@ -369,13 +371,23 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
         args: Some(&[
             ReplCommandArgs::Optional("memory start address"),
             ReplCommandArgs::Optional("memory size in bytes"),
+            ReplCommandArgs::Optional("path"),
         ]),
         handler: |target_core, command_arguments, _request_arguments| {
-            let input_arguments = command_arguments.split_whitespace();
-            let location = Path::new("./coredump");
+            let input_arguments = command_arguments.split_whitespace().collect_vec();
+
+            // If we get an odd number of arguments, treat all n * 2 args at the start as memory blocks
+            // and the last argument as the path tho store the coredump at.
+            let location = Path::new(
+                if input_arguments.len() % 2 != 0 {
+                    input_arguments.last().copied()
+                } else {
+                    None
+                }
+                .unwrap_or("./coredump"),
+            );
 
             let ranges = input_arguments
-                .collect_vec()
                 .chunks(2)
                 .map(|c| {
                     let start = if let Some(start) = c.first() {

@@ -785,7 +785,7 @@ impl DebugCli {
             help_text: "Dump the core memory & registers",
 
             function: |cli_data, args| {
-                let location = Path::new("./coredump");
+                let location = Path::new(args.first().copied().unwrap_or("./coredump"));
 
                 let ranges = args
                     .chunks(2)

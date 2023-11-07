@@ -929,9 +929,7 @@ impl<'probe> Core<'probe> {
     ///
     /// # Arguments
     ///
-    /// * `stack`: The stack memory that was allocated and should be dumped.
-    /// * `heap`: The heap memory that was allocated and should be dumped.
-    /// * `additional_memory`: Additional memory ranges that should be dumped.
+    /// * `ranges`: Memory ranges that should be dumped.
     pub fn dump(&mut self, ranges: Vec<Range<u64>>) -> Result<CoreDump, Error> {
         let instruction_set = self.instruction_set()?;
 
