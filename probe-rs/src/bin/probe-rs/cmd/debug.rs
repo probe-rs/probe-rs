@@ -10,6 +10,7 @@ use capstone::{
 use num_traits::Num;
 use parse_int::parse;
 use probe_rs::architecture::arm::ap::AccessPortError;
+use probe_rs::exception_handler_for_core;
 use probe_rs::flashing::FileDownloadError;
 use probe_rs::DebugProbeError;
 use probe_rs::{
@@ -502,7 +503,18 @@ impl DebugCli {
                 match cli_data.state {
                     DebugState::Halted(ref mut halted_state) => {
                         if let Some(di) = &mut cli_data.debug_info {
-                            halted_state.stack_frames = di.unwind(&mut cli_data.core).unwrap();
+                            let initial_registers = DebugRegisters::from_core(&mut cli_data.core);
+                            let exception_interface =
+                                exception_handler_for_core(cli_data.core.core_type());
+                            let instruction_set = cli_data.core.instruction_set().ok();
+                            halted_state.stack_frames = di
+                                .unwind(
+                                    &mut cli_data.core,
+                                    initial_registers,
+                                    exception_interface.as_ref(),
+                                    instruction_set,
+                                )
+                                .unwrap();
 
                             halted_state.frame_indices =
                                 halted_state.stack_frames.iter().map(|sf| sf.id).collect();

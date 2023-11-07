@@ -28,6 +28,7 @@ use probe_rs::{
         ColumnType, DebugRegisters, SourceLocation, SteppingMode, VariableName, VariableNodeType,
         VerifiedBreakpoint,
     },
+    exception_handler_for_core,
     Architecture::Riscv,
     CoreStatus, Error, HaltReason, MemoryInterface, RegisterValue,
 };
@@ -1004,10 +1005,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 target_core.core.id()
             );
 
-            target_core.core_data.stack_frames = target_core
-                .core_data
-                .debug_info
-                .unwind(&mut target_core.core)?;
+            let initial_registers = DebugRegisters::from_core(&mut target_core.core);
+            let exception_interface = exception_handler_for_core(target_core.core.core_type());
+            let instruction_set = target_core.core.instruction_set().ok();
+            target_core.core_data.stack_frames = target_core.core_data.debug_info.unwind(
+                &mut target_core.core,
+                initial_registers,
+                exception_interface.as_ref(),
+                instruction_set,
+            )?;
         }
         // Update the `levels` to the number of available frames if it is 0.
         if levels == 0 {

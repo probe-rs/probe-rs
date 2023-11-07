@@ -2,8 +2,7 @@ use super::{
     function_die::FunctionDie, get_sequential_key, unit_info::UnitInfo, unit_info::UnitIter,
     variable::*, DebugError, DebugRegisters, SourceLocation, StackFrame, VariableCache,
 };
-use crate::core::{exception_handler_for_core, UnwindRule};
-use crate::CoreInterface;
+use crate::core::UnwindRule;
 use crate::{
     core::{ExceptionInterface, RegisterRole, RegisterValue},
     debug::{registers, source_statement::SourceStatements},
@@ -676,11 +675,13 @@ impl DebugInfo {
     /// - Similarly, certain error conditions encountered in `StackFrameIterator` will also break out of the unwind loop.
     /// Note: In addition to populating the `StackFrame`s, this function will also populate the `DebugInfo::VariableCache` with `Variable`s for available Registers as well as static and function variables.
     /// TODO: Separate logic for stackframe creation and cache population
-    pub fn unwind(&self, core: &mut impl CoreInterface) -> Result<Vec<StackFrame>, crate::Error> {
-        let initial_registers = DebugRegisters::from_core(core);
-        let exception_handler = exception_handler_for_core(core.core_type());
-        let instruction_set = core.instruction_set().ok();
-
+    pub fn unwind(
+        &self,
+        core: &mut impl MemoryInterface,
+        initial_registers: DebugRegisters,
+        exception_handler: &dyn ExceptionInterface,
+        instruction_set: Option<InstructionSet>,
+    ) -> Result<Vec<StackFrame>, crate::Error> {
         self.unwind_impl(initial_registers, core, exception_handler, instruction_set)
     }
 
@@ -688,7 +689,7 @@ impl DebugInfo {
         &self,
         initial_registers: registers::DebugRegisters,
         memory: &mut impl MemoryInterface,
-        exception_handler: Box<dyn ExceptionInterface>,
+        exception_handler: &dyn ExceptionInterface,
         instruction_set: Option<InstructionSet>,
     ) -> Result<Vec<StackFrame>, crate::Error> {
         let mut stack_frames = Vec::<StackFrame>::new();
@@ -1565,6 +1566,7 @@ mod test {
             exception_handling::{ArmV6MExceptionHandler, ArmV7MExceptionHandler},
             registers::cortex_m::CORTEX_M_CORE_REGISTERS,
         },
+        core::exception_handler_for_core,
         debug::{DebugInfo, DebugRegister, DebugRegisters},
         test::MockMemory,
         CoreDump, RegisterValue,
@@ -1672,7 +1674,7 @@ mod test {
             .unwind_impl(
                 regs,
                 &mut mocked_mem,
-                exception_handler,
+                exception_handler.as_ref(),
                 Some(probe_rs_target::InstructionSet::Thumb2),
             )
             .unwrap();
@@ -1822,7 +1824,7 @@ mod test {
             .unwind_impl(
                 regs,
                 &mut dummy_mem,
-                exception_handler,
+                exception_handler.as_ref(),
                 Some(probe_rs_target::InstructionSet::Thumb2),
             )
             .unwrap();
@@ -1944,7 +1946,7 @@ mod test {
             .unwind_impl(
                 regs,
                 &mut dummy_mem,
-                exception_handler,
+                exception_handler.as_ref(),
                 Some(probe_rs_target::InstructionSet::Thumb2),
             )
             .unwrap();
@@ -2036,7 +2038,7 @@ mod test {
             .unwind_impl(
                 regs,
                 &mut dummy_mem,
-                exception_handler,
+                exception_handler.as_ref(),
                 Some(probe_rs_target::InstructionSet::Thumb2),
             )
             .unwrap();
@@ -2056,7 +2058,19 @@ mod test {
         let mut adapter = CoreDump::load(Path::new("./tests/gpio-hal-blinky/coredump")).unwrap();
 
         let debug_info = DebugInfo::from_file(elf_path).unwrap();
-        let stack_frames = debug_info.unwind(&mut adapter).unwrap();
+
+        let initial_registers = adapter.debug_registers();
+        let exception_handler = exception_handler_for_core(adapter.core_type());
+        let instruction_set = adapter.instruction_set();
+
+        let stack_frames = debug_info
+            .unwind(
+                &mut adapter,
+                initial_registers,
+                exception_handler.as_ref(),
+                instruction_set,
+            )
+            .unwrap();
 
         let printed_backtrace = stack_frames
             .into_iter()

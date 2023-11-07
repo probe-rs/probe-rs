@@ -6,7 +6,7 @@ Frame: timer_running<nrf51_pac::TIMER0>
 	/Users/noah/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:396
 Frame: wait<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
 	/Users/noah/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:266:12
-Frame: <unknown function @ 0x0000023c>
+Frame: <unknown function @ 0x0000023d>
 	/Users/noah/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:145:22
 Frame: delay_us<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
 	/Users/noah/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:325:6

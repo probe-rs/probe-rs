@@ -7,10 +7,11 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
-use probe_rs::debug::DebugInfo;
+use probe_rs::debug::{DebugInfo, DebugRegisters};
 use probe_rs::flashing::{FileDownloadError, Format};
 use probe_rs::{
-    BreakpointCause, Core, CoreInterface, HaltReason, SemihostingCommand, VectorCatchCondition,
+    exception_handler_for_core, BreakpointCause, Core, CoreInterface, HaltReason,
+    SemihostingCommand, VectorCatchCondition,
 };
 use probe_rs_target::MemoryRegion;
 use signal_hook::consts::signal;
@@ -218,7 +219,17 @@ fn print_stacktrace(core: &mut impl CoreInterface, path: &Path) -> Result<(), an
         log::error!("No debug info found.");
         return Ok(());
     };
-    let stack_frames = debug_info.unwind(core).unwrap();
+    let initial_registers = DebugRegisters::from_core(core);
+    let exception_interface = exception_handler_for_core(core.core_type());
+    let instruction_set = core.instruction_set().ok();
+    let stack_frames = debug_info
+        .unwind(
+            core,
+            initial_registers,
+            exception_interface.as_ref(),
+            instruction_set,
+        )
+        .unwrap();
     for (i, frame) in stack_frames.iter().enumerate() {
         print!("Frame {}: {} @ {}", i, frame.function_name, frame.pc);
 

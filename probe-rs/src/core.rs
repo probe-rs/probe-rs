@@ -2,7 +2,7 @@ use crate::{
     architecture::arm::{
         core::registers::cortex_m::CORTEX_M_CORE_REGISTERS, sequences::ArmDebugSequence,
     },
-    debug::DebugRegisters,
+    debug::{DebugRegister, DebugRegisters},
     error, CoreType, Error, InstructionSet, MemoryInterface, Target,
 };
 use anyhow::anyhow;
@@ -208,135 +208,48 @@ impl CoreDump {
         })?;
         rmp_serde::from_read(&file).map_err(Error::DecodingCoreDump)
     }
-}
 
-impl CoreInterface for CoreDump {
-    fn instruction_set(&mut self) -> Result<InstructionSet, error::Error> {
-        Ok(self.instruction_set)
+    /// Read all registers defined in [`crate::core::CoreRegisters`] from the given core.
+    pub fn debug_registers(&self) -> DebugRegisters {
+        let mut debug_registers = Vec::<DebugRegister>::new();
+        for (dwarf_id, core_register) in CORTEX_M_CORE_REGISTERS.core_registers().enumerate() {
+            // Check to ensure the register type is compatible with u64.
+            if matches!(core_register.data_type(), RegisterDataType::UnsignedInteger(size_in_bits) if size_in_bits <= 64)
+            {
+                debug_registers.push(DebugRegister {
+                    core_register,
+                    // The DWARF register ID is only valid for the first 32 registers.
+                    dwarf_id: if dwarf_id < 32 {
+                        Some(dwarf_id as u16)
+                    } else {
+                        None
+                    },
+                    value: match self.registers.get(&core_register.id()) {
+                        Some(register_value) => Some(*register_value),
+                        None => {
+                            tracing::warn!("Failed to read value for register {:?}", core_register);
+                            None
+                        }
+                    },
+                });
+            } else {
+                tracing::trace!(
+                    "Unwind will use the default rule for this register : {:?}",
+                    core_register
+                );
+            }
+        }
+        DebugRegisters(debug_registers)
     }
 
-    fn read_core_reg(&mut self, register: RegisterId) -> Result<RegisterValue, error::Error> {
-        Ok(self.registers[&register])
+    /// Returns the type of the core.
+    pub fn core_type(&self) -> CoreType {
+        CoreType::Armv6m
     }
 
-    fn id(&self) -> usize {
-        todo!()
-    }
-
-    fn wait_for_core_halted(&mut self, _timeout: std::time::Duration) -> Result<(), error::Error> {
-        todo!()
-    }
-
-    fn core_halted(&mut self) -> Result<bool, error::Error> {
-        todo!()
-    }
-
-    fn status(&mut self) -> Result<crate::CoreStatus, error::Error> {
-        todo!()
-    }
-
-    fn halt(
-        &mut self,
-        _timeout: std::time::Duration,
-    ) -> Result<crate::CoreInformation, error::Error> {
-        todo!()
-    }
-
-    fn run(&mut self) -> Result<(), error::Error> {
-        todo!()
-    }
-
-    fn reset(&mut self) -> Result<(), error::Error> {
-        todo!()
-    }
-
-    fn reset_and_halt(
-        &mut self,
-        _timeout: std::time::Duration,
-    ) -> Result<crate::CoreInformation, error::Error> {
-        todo!()
-    }
-
-    fn step(&mut self) -> Result<crate::CoreInformation, error::Error> {
-        todo!()
-    }
-
-    fn write_core_reg(
-        &mut self,
-        _address: crate::core::registers::RegisterId,
-        _value: crate::core::registers::RegisterValue,
-    ) -> Result<(), error::Error> {
-        todo!()
-    }
-
-    fn available_breakpoint_units(&mut self) -> Result<u32, error::Error> {
-        todo!()
-    }
-
-    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, error::Error> {
-        todo!()
-    }
-
-    fn enable_breakpoints(&mut self, _state: bool) -> Result<(), error::Error> {
-        todo!()
-    }
-
-    fn set_hw_breakpoint(&mut self, _unit_index: usize, _addrr: u64) -> Result<(), error::Error> {
-        todo!()
-    }
-
-    fn clear_hw_breakpoint(&mut self, _unit_index: usize) -> Result<(), error::Error> {
-        todo!()
-    }
-
-    fn registers(&self) -> &'static crate::core::registers::CoreRegisters {
-        // TODO: determine correct registers
-        &CORTEX_M_CORE_REGISTERS
-    }
-
-    fn program_counter(&self) -> &'static CoreRegister {
-        todo!()
-    }
-
-    fn frame_pointer(&self) -> &'static CoreRegister {
-        todo!()
-    }
-
-    fn stack_pointer(&self) -> &'static CoreRegister {
-        todo!()
-    }
-
-    fn return_address(&self) -> &'static CoreRegister {
-        todo!()
-    }
-
-    fn hw_breakpoints_enabled(&self) -> bool {
-        todo!()
-    }
-
-    fn architecture(&self) -> probe_rs_target::Architecture {
-        todo!()
-    }
-
-    fn core_type(&self) -> probe_rs_target::CoreType {
-        // TODO: determine correct type
-        probe_rs_target::CoreType::Armv6m
-    }
-
-    fn fpu_support(&mut self) -> Result<bool, error::Error> {
-        todo!()
-    }
-
-    fn reset_catch_set(&mut self) -> Result<(), crate::Error> {
-        todo!()
-    }
-
-    fn reset_catch_clear(&mut self) -> Result<(), crate::Error> {
-        todo!()
-    }
-
-    fn debug_core_stop(&mut self) -> Result<(), crate::Error> {
-        todo!()
+    /// Returns the currently active instruction-set
+    pub fn instruction_set(&self) -> Option<InstructionSet> {
+        Some(InstructionSet::A32)
     }
 }
 
@@ -561,7 +474,8 @@ impl ExceptionInterface for UnimplementedExceptionHandler {
     }
 }
 
-pub(crate) fn exception_handler_for_core(core_type: CoreType) -> Box<dyn ExceptionInterface> {
+/// Creates a new exception interface for the [`CoreType`] at hand.
+pub fn exception_handler_for_core(core_type: CoreType) -> Box<dyn ExceptionInterface> {
     match core_type {
         CoreType::Armv6m => {
             Box::new(crate::architecture::arm::core::exception_handling::ArmV6MExceptionHandler {})
