@@ -1459,8 +1459,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 | gimli::DW_AT_frame_base
                 | gimli::DW_AT_data_member_location => match attr.value() {
                     gimli::AttributeValue::Exprloc(expression) => {
-                        let supports_native_64bit_access = memory.supports_native_64bit_access();
-                        return match self.evaluate_expression(memory,supports_native_64bit_access ,expression, stack_frame_registers, frame_base) {
+                        return match self.evaluate_expression(memory , expression, stack_frame_registers, frame_base) {
                             Ok(result) => Ok(result),
                             Err(error) => {
                                 if matches!(error, DebugError::UnwindIncompleteResults { message: _ }) {
@@ -1519,11 +1518,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         }
                                     }
                                     if let Some(valid_expression) = expression {
-
-                                        let supports_native_64bit_access = memory.supports_native_64bit_access();
                                         return match self.evaluate_expression(
                                             memory,
-                                            supports_native_64bit_access,
                                             valid_expression,
                                             stack_frame_registers,
                                             frame_base,
@@ -1595,7 +1591,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     pub(crate) fn evaluate_expression(
         &self,
         memory: &mut impl MemoryInterface,
-        supports_native_64bit_access: bool,
         expression: gimli::Expression<GimliReader>,
         stack_frame_registers: &registers::DebugRegisters,
         frame_base: Option<u64>,
@@ -1619,7 +1614,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 Location::Address { address } => {
                     if address.is_zero() {
                         Ok(ExpressionResult::Location(VariableLocation::Error("The value of this variable may have been optimized out of the debug info, by the compiler.".to_string())))
-                    } else if !supports_native_64bit_access {
+                    } else if !memory.supports_native_64bit_access() {
                         if *address < u32::MAX as u64 {
                             Ok(ExpressionResult::Location(VariableLocation::Address(
                                 *address,
@@ -1675,7 +1670,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     {
                         match address.try_into() {
                             Ok(location) => {
-                                if !supports_native_64bit_access {
+                                if !memory.supports_native_64bit_access() {
                                     if location < u32::MAX as u64 {
                                         Ok(ExpressionResult::Location(VariableLocation::Address(
                                             location,
