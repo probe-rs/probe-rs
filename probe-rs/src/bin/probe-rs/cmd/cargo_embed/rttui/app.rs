@@ -20,7 +20,10 @@ use std::{
     time::Duration,
 };
 
-use super::super::{config, DefmtInformation};
+use super::{
+    super::{config, DefmtInformation},
+    channel::ChannelData,
+};
 
 use super::{
     channel::{ChannelState, DataFormat},
@@ -30,8 +33,8 @@ use super::{
 use event::KeyModifiers;
 
 /// App holds the state of the application
-pub struct App {
-    tabs: Vec<ChannelState>,
+pub struct App<'defmt> {
+    tabs: Vec<ChannelState<'defmt>>,
     current_tab: usize,
 
     terminal: Terminal<CrosstermBackend<std::io::Stdout>>,
@@ -49,28 +52,44 @@ fn pull_channel<C: RttChannel>(channels: &mut Vec<C>, n: usize) -> Option<C> {
     c.map(|c| channels.remove(c))
 }
 
-impl App {
+impl<'defmt> App<'defmt> {
     pub fn new(
         mut rtt: probe_rs::rtt::Rtt,
         config: &config::Config,
         logname: String,
+        defmt_state: Option<&'defmt DefmtInformation>,
     ) -> Result<Self> {
         let mut tabs = Vec::new();
         if !config.rtt.channels.is_empty() {
             let mut up_channels = rtt.up_channels().drain().collect::<Vec<_>>();
             let mut down_channels = rtt.down_channels().drain().collect::<Vec<_>>();
+
             for channel in &config.rtt.channels {
+                let data = match channel.format {
+                    DataFormat::String => ChannelData::new_string(config.rtt.show_timestamps),
+                    DataFormat::BinaryLE => ChannelData::new_binary(),
+                    DataFormat::Defmt => {
+                        let defmt_information = defmt_state.ok_or_else(|| {
+                            anyhow!("Defmt information required for defmt channel {:?}", channel)
+                        })?;
+                        let stream_decoder = defmt_information.table.new_stream_decoder();
+
+                        ChannelData::new_defmt(stream_decoder, defmt_information)
+                    }
+                };
+
                 tabs.push(ChannelState::new(
                     channel.up.and_then(|up| pull_channel(&mut up_channels, up)),
                     channel
                         .down
                         .and_then(|down| pull_channel(&mut down_channels, down)),
                     channel.name.clone(),
-                    config.rtt.show_timestamps,
-                    channel.format,
+                    data,
                 ))
             }
         } else {
+            // Display all detected channels as String channels
+
             let up_channels = rtt.up_channels().drain();
             let mut down_channels = rtt.down_channels().drain().collect::<Vec<_>>();
             for channel in up_channels {
@@ -79,8 +98,7 @@ impl App {
                     Some(channel),
                     pull_channel(&mut down_channels, number),
                     None,
-                    config.rtt.show_timestamps,
-                    DataFormat::String,
+                    ChannelData::new_string(config.rtt.show_timestamps),
                 ));
             }
 
@@ -89,8 +107,7 @@ impl App {
                     None,
                     Some(channel),
                     None,
-                    config.rtt.show_timestamps,
-                    DataFormat::String,
+                    ChannelData::new_string(config.rtt.show_timestamps),
                 ));
             }
         }
@@ -156,199 +173,73 @@ impl App {
         None
     }
 
-    pub fn render(&mut self, defmt_state: Option<&DefmtInformation>) {
+    pub fn render(&mut self) {
         let input = self.current_tab().input().to_owned();
         let has_down_channel = self.current_tab().has_down_channel();
         let scroll_offset = self.current_tab().scroll_offset();
-        let messages = self.current_tab().messages().clone();
-        let data = self.current_tab().data().clone();
-
-        log::debug!("Data length: {}", data.len());
 
         let tabs = &self.tabs;
         let current_tab = self.current_tab;
         let mut height = 0;
         let mut messages_wrapped: Vec<String> = Vec::new();
 
-        match tabs[current_tab].format() {
-            DataFormat::String => {
-                self.terminal
-                    .draw(|f| {
-                        let constraints = if has_down_channel {
-                            &[
-                                Constraint::Length(1),
-                                Constraint::Min(1),
-                                Constraint::Length(1),
-                            ][..]
-                        } else {
-                            &[Constraint::Length(1), Constraint::Min(1)][..]
-                        };
-                        let chunks = Layout::default()
-                            .direction(Direction::Vertical)
-                            .margin(0)
-                            .constraints(constraints)
-                            .split(f.size());
+        self.terminal
+            .draw(|f| {
+                let chunks = layout_chunks(f, has_down_channel);
+                render_tabs(f, chunks[0], tabs, current_tab);
 
-                        let tab_names = tabs
-                            .iter()
-                            .map(|t| Line::from(t.name()))
-                            .collect::<Vec<_>>();
-                        let tabs = Tabs::new(tab_names)
-                            .select(current_tab)
-                            .style(Style::default().fg(Color::Black).bg(Color::Yellow))
-                            .highlight_style(
-                                Style::default()
-                                    .fg(Color::Green)
-                                    .bg(Color::Yellow)
-                                    .add_modifier(Modifier::BOLD),
-                            );
-                        f.render_widget(tabs, chunks[0]);
-
-                        height = chunks[1].height as usize;
-
+                height = chunks[1].height as usize;
+                match tabs[current_tab].data() {
+                    ChannelData::String { data: messages, .. } => {
                         // We need to collect to generate message_num :(
                         messages_wrapped = messages
                             .iter()
                             .flat_map(|m| textwrap::wrap(m, chunks[1].width as usize))
                             .map(|s| s.into_owned())
                             .collect();
-
-                        let message_num = messages_wrapped.len();
-
-                        let messages: Vec<ListItem> = messages_wrapped
-                            .iter()
-                            .skip(message_num - (height + scroll_offset).min(message_num))
-                            .take(height)
-                            .map(|s| ListItem::new(vec![Line::from(Span::raw(s))]))
-                            .collect();
-
-                        let messages = List::new(messages.as_slice())
-                            .block(Block::default().borders(Borders::NONE));
-                        f.render_widget(messages, chunks[1]);
-
-                        if has_down_channel {
-                            let input = Paragraph::new(Line::from(vec![Span::raw(input.clone())]))
-                                .style(Style::default().fg(Color::Yellow).bg(Color::Blue));
-                            f.render_widget(input, chunks[2]);
-                        }
-                    })
-                    .unwrap();
-
-                let message_num = messages_wrapped.len();
-                let scroll_offset = self.tabs[self.current_tab].scroll_offset();
-                if message_num < height + scroll_offset {
-                    self.current_tab_mut()
-                        .set_scroll_offset(message_num - height.min(message_num));
-                }
-            }
-            binle_or_defmt => {
-                self.terminal
-                    .draw(|f| {
-                        let constraints = if has_down_channel {
-                            &[
-                                Constraint::Length(1),
-                                Constraint::Min(1),
-                                Constraint::Length(1),
-                            ][..]
-                        } else {
-                            &[Constraint::Length(1), Constraint::Min(1)][..]
-                        };
-                        let chunks = Layout::default()
-                            .direction(Direction::Vertical)
-                            .margin(0)
-                            .constraints(constraints)
-                            .split(f.size());
-
-                        let tab_names = tabs
-                            .iter()
-                            .map(|t| Line::from(t.name()))
-                            .collect::<Vec<_>>();
-                        let tabs = Tabs::new(tab_names)
-                            .select(current_tab)
-                            .style(Style::default().fg(Color::Black).bg(Color::Yellow))
-                            .highlight_style(
-                                Style::default()
-                                    .fg(Color::Green)
-                                    .bg(Color::Yellow)
-                                    .add_modifier(Modifier::BOLD),
-                            );
-                        f.render_widget(tabs, chunks[0]);
-
-                        height = chunks[1].height as usize;
-
+                    }
+                    ChannelData::Binary { data } => {
                         // probably pretty bad
-                        match binle_or_defmt {
-                            DataFormat::BinaryLE => {
-                                messages_wrapped.push(data.iter().fold(
-                                    String::new(),
-                                    |mut output, byte| {
-                                        let _ = write(&mut output, format_args!("{byte:#04x}, "));
-                                        output
-                                    },
-                                ));
-                            }
-                            DataFormat::Defmt => {
-                                let defmt_state = defmt_state.as_ref().expect(
-                                "Running rtt in defmt mode but table or locations could not be loaded.",
-                            );
-                                let mut stream_decoder = defmt_state.table.new_stream_decoder();
-                                stream_decoder.received(&data);
-                                while let Ok(frame) = stream_decoder.decode()
-                                {
-                                    // NOTE(`[]` indexing) all indices in `table` have already been
-                                    // verified to exist in the `locs` map.
-                                    let loc = defmt_state.location_information.as_ref().map(|locs| &locs[&frame.index()]);
+                        messages_wrapped.push(data.iter().fold(
+                            String::new(),
+                            |mut output, byte| {
+                                let _ = write(&mut output, format_args!("{byte:#04x}, "));
+                                output
+                            },
+                        ));
+                    }
 
-                                    messages_wrapped.push(format!("{}", frame.display(false)));
-                                    if let Some(loc) = loc {
-                                        let relpath = if let Ok(relpath) =
-                                            loc.file.strip_prefix(&std::env::current_dir().unwrap())
-                                        {
-                                            relpath
-                                        } else {
-                                            // not relative; use full path
-                                            &loc.file
-                                        };
-
-                                        messages_wrapped.push(format!(
-                                            "└─ {}:{}",
-                                            relpath.display(),
-                                            loc.line
-                                        ));
-                                    }
-                                }
-                            }
-                            DataFormat::String => unreachable!("You encountered a bug. Please open an issue on Github."),
-                        }
-
-                        let message_num = messages_wrapped.len();
-
-                        let messages: Vec<ListItem> = messages_wrapped
-                            .iter()
-                            .skip(message_num - (height + scroll_offset).min(message_num))
-                            .take(height)
-                            .map(|s| ListItem::new(vec![Line::from(Span::raw(s))]))
-                            .collect();
-
-                        let messages = List::new(messages.as_slice())
-                            .block(Block::default().borders(Borders::NONE));
-                        f.render_widget(messages, chunks[1]);
-
-                        if has_down_channel {
-                            let input = Paragraph::new(Line::from(vec![Span::raw(input.clone())]))
-                                .style(Style::default().fg(Color::Yellow).bg(Color::Blue));
-                            f.render_widget(input, chunks[2]);
-                        }
-                    })
-                    .unwrap();
+                    ChannelData::Defmt { messages, .. } => {
+                        messages_wrapped.extend_from_slice(messages);
+                    }
+                };
 
                 let message_num = messages_wrapped.len();
-                let scroll_offset = self.tabs[self.current_tab].scroll_offset();
-                if message_num < height + scroll_offset {
-                    self.current_tab_mut()
-                        .set_scroll_offset(message_num - height.min(message_num));
+
+                let messages: Vec<ListItem> = messages_wrapped
+                    .iter()
+                    .skip(message_num - (height + scroll_offset).min(message_num))
+                    .take(height)
+                    .map(|s| ListItem::new(vec![Line::from(Span::raw(s))]))
+                    .collect();
+
+                let messages =
+                    List::new(messages.as_slice()).block(Block::default().borders(Borders::NONE));
+                f.render_widget(messages, chunks[1]);
+
+                if has_down_channel {
+                    let input = Paragraph::new(Line::from(vec![Span::raw(input.clone())]))
+                        .style(Style::default().fg(Color::Yellow).bg(Color::Blue));
+                    f.render_widget(input, chunks[2]);
                 }
-            }
+            })
+            .unwrap();
+
+        let message_num = messages_wrapped.len();
+        let scroll_offset = self.tabs[self.current_tab].scroll_offset();
+        if message_num < height + scroll_offset {
+            self.current_tab_mut()
+                .set_scroll_offset(message_num - height.min(message_num));
         }
     }
 
@@ -362,63 +253,89 @@ impl App {
 
                     if let Some(path) = &self.history_path {
                         for (i, tab) in self.tabs.iter().enumerate() {
-                            if tab.format() == DataFormat::Defmt {
-                                eprintln!("Not saving tab {} as saving defmt logs is currently unsupported.", i + 1);
-                                continue;
-                            }
-
-                            let extension = match tab.format() {
-                                DataFormat::String => "txt",
-                                DataFormat::BinaryLE => "dat",
-                                DataFormat::Defmt => unreachable!(),
-                            };
-
-                            let name = format!("{}_channel{}.{}", self.logname, i, extension);
-                            let sanitize_options = sanitize_filename::Options {
-                                replacement: "_",
-                                ..Default::default()
-                            };
-                            let sanitized_name =
-                                sanitize_filename::sanitize_with_options(name, sanitize_options);
-                            let final_path = path.join(sanitized_name);
-
-                            match std::fs::File::create(&final_path) {
-                                Ok(mut file) => {
-                                    match tab.format() {
-                                        DataFormat::String => {
-                                            for line in tab.messages() {
-                                                match writeln!(file, "{line}") {
-                                                    Ok(_) => {}
-                                                    Err(e) => {
-                                                        eprintln!(
-                                                            "\nError writing log channel {i}: {e}"
-                                                        );
-                                                        continue;
-                                                    }
-                                                }
-                                            }
+                            match tab.data() {
+                                ChannelData::Defmt { .. } => {
+                                    eprintln!("Not saving tab {} as saving defmt logs is currently unsupported.", i + 1);
+                                    continue;
+                                }
+                                ChannelData::String {
+                                    data,
+                                    last_line_done: _,
+                                    show_timestamps: _,
+                                } => {
+                                    let extension = "txt";
+                                    let name =
+                                        format!("{}_channel{}.{}", self.logname, i, extension);
+                                    let sanitize_options = sanitize_filename::Options {
+                                        replacement: "_",
+                                        ..Default::default()
+                                    };
+                                    let sanitized_name = sanitize_filename::sanitize_with_options(
+                                        name,
+                                        sanitize_options,
+                                    );
+                                    let final_path = path.join(sanitized_name);
+                                    let mut file = match std::fs::File::create(&final_path) {
+                                        Ok(file) => file,
+                                        Err(e) => {
+                                            eprintln!(
+                                                "\nCould not create log file {}: {}",
+                                                final_path.display(),
+                                                e
+                                            );
+                                            continue;
                                         }
-                                        DataFormat::BinaryLE => match file.write(tab.data()) {
+                                    };
+                                    for line in data {
+                                        match writeln!(file, "{line}") {
                                             Ok(_) => {}
                                             Err(e) => {
                                                 eprintln!("\nError writing log channel {i}: {e}");
                                                 continue;
                                             }
-                                        },
-                                        DataFormat::Defmt => unreachable!(),
-                                    };
-
+                                        }
+                                    }
                                     // Flush file
                                     if let Err(e) = file.flush() {
                                         eprintln!("Error writing log channel {i}: {e}")
                                     }
                                 }
-                                Err(e) => {
-                                    eprintln!(
-                                        "\nCould not create log file {}: {}",
-                                        final_path.display(),
-                                        e
+
+                                ChannelData::Binary { data, .. } => {
+                                    let extension = "dat";
+                                    let name =
+                                        format!("{}_channel{}.{}", self.logname, i, extension);
+                                    let sanitize_options = sanitize_filename::Options {
+                                        replacement: "_",
+                                        ..Default::default()
+                                    };
+                                    let sanitized_name = sanitize_filename::sanitize_with_options(
+                                        name,
+                                        sanitize_options,
                                     );
+                                    let final_path = path.join(sanitized_name);
+                                    let mut file = match std::fs::File::create(&final_path) {
+                                        Ok(file) => file,
+                                        Err(e) => {
+                                            eprintln!(
+                                                "\nCould not create log file {}: {}",
+                                                final_path.display(),
+                                                e
+                                            );
+                                            continue;
+                                        }
+                                    };
+                                    match file.write(data) {
+                                        Ok(_) => {}
+                                        Err(e) => {
+                                            eprintln!("\nError writing log channel {i}: {e}");
+                                            continue;
+                                        }
+                                    }
+                                    // Flush file
+                                    if let Err(e) = file.flush() {
+                                        eprintln!("Error writing log channel {i}: {e}")
+                                    }
                                 }
                             }
                         }
@@ -467,11 +384,11 @@ impl App {
         }
     }
 
-    pub fn current_tab(&self) -> &ChannelState {
+    pub fn current_tab(&self) -> &ChannelState<'defmt> {
         &self.tabs[self.current_tab]
     }
 
-    pub fn current_tab_mut(&mut self) -> &mut ChannelState {
+    pub fn current_tab_mut(&mut self) -> &mut ChannelState<'defmt> {
         &mut self.tabs[self.current_tab]
     }
 
@@ -495,6 +412,48 @@ impl App {
     pub fn push_rtt(&mut self, core: &mut Core) {
         self.tabs[self.current_tab].push_rtt(core);
     }
+}
+
+fn layout_chunks(
+    f: &mut ratatui::Frame,
+    has_down_channel: bool,
+) -> std::rc::Rc<[ratatui::prelude::Rect]> {
+    let constraints = if has_down_channel {
+        &[
+            Constraint::Length(1),
+            Constraint::Min(1),
+            Constraint::Length(1),
+        ][..]
+    } else {
+        &[Constraint::Length(1), Constraint::Min(1)][..]
+    };
+    Layout::default()
+        .direction(Direction::Vertical)
+        .margin(0)
+        .constraints(constraints)
+        .split(f.size())
+}
+
+fn render_tabs(
+    f: &mut ratatui::Frame,
+    chunk: ratatui::prelude::Rect,
+    tabs: &[ChannelState<'_>],
+    current_tab: usize,
+) {
+    let tab_names = tabs
+        .iter()
+        .map(|t| Line::from(t.name()))
+        .collect::<Vec<_>>();
+    let tabs = Tabs::new(tab_names)
+        .select(current_tab)
+        .style(Style::default().fg(Color::Black).bg(Color::Yellow))
+        .highlight_style(
+            Style::default()
+                .fg(Color::Green)
+                .bg(Color::Yellow)
+                .add_modifier(Modifier::BOLD),
+        );
+    f.render_widget(tabs, chunk);
 }
 
 pub fn clean_up_terminal() {

@@ -19,7 +19,7 @@ use crate::architecture::arm::{
     },
     ApAddress, DpAddress,
 };
-use crate::architecture::riscv::sequences::{esp32c3::ESP32C3, esp32c6::ESP32C6};
+use crate::architecture::riscv::sequences::{esp32c3::ESP32C3, esp32c6h2::ESP32C6H2};
 use crate::architecture::riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence};
 use crate::flashing::FlashLoader;
 use probe_rs_target::{Architecture, ChipFamily, MemoryRange};
@@ -142,9 +142,9 @@ impl Target {
         } else if chip.name.starts_with("esp32c3") {
             tracing::warn!("Using custom sequence for ESP32C3");
             debug_sequence = DebugSequence::Riscv(ESP32C3::create());
-        } else if chip.name.starts_with("esp32c6") {
-            tracing::warn!("Using custom sequence for ESP32C6");
-            debug_sequence = DebugSequence::Riscv(ESP32C6::create());
+        } else if chip.name.starts_with("esp32c6") || chip.name.starts_with("esp32h2") {
+            tracing::warn!("Using custom sequence for ESP32C6/ESP32H2");
+            debug_sequence = DebugSequence::Riscv(ESP32C6H2::create());
         } else if chip.name.starts_with("nRF5340") {
             tracing::warn!("Using custom sequence for nRF5340");
             debug_sequence = DebugSequence::Arm(Nrf5340::create());
