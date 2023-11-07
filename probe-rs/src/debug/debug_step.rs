@@ -171,7 +171,6 @@ impl SteppingMode {
     /// NOTE about errors returned: Sometimes the target program_counter is at a location where the debug_info program row data does not contain valid statements for halt points, and we will return a DebugError::NoValidHaltLocation . In this case, we recommend the consumer of this API step the core to the next instruction and try again, with a resasonable retry limit. All other error kinds are should be treated as non recoverable errors.
     pub(crate) fn get_halt_location(
         &self,
-        // The core is not required when we are only looking for the next valid breakpoint ( `SteppingMode::Breakpoint` ).
         core: &mut impl CoreInterface,
         debug_info: &DebugInfo,
         program_counter: u64,

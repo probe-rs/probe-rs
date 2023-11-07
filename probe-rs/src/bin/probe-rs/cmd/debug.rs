@@ -12,6 +12,7 @@ use parse_int::parse;
 use probe_rs::architecture::arm::ap::AccessPortError;
 use probe_rs::exception_handler_for_core;
 use probe_rs::flashing::FileDownloadError;
+use probe_rs::CoreDumpError;
 use probe_rs::DebugProbeError;
 use probe_rs::{
     debug::{
@@ -108,6 +109,9 @@ enum CliError {
     },
     #[error(transparent)]
     ProbeRs(#[from] probe_rs::Error),
+    /// Errors related to the handling of core dumps.
+    #[error("An error with a CoreDump occured")]
+    CoreDump(#[from] CoreDumpError),
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }

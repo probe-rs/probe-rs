@@ -7,7 +7,8 @@ mod server;
 
 use anyhow::{Context, Result};
 use probe_rs::{
-    architecture::arm::ap::AccessPortError, flashing::FileDownloadError, DebugProbeError, Error,
+    architecture::arm::ap::AccessPortError, flashing::FileDownloadError, CoreDumpError,
+    DebugProbeError, Error,
 };
 use server::startup::debug;
 use std::{env::var, fs::File, io::stderr};
@@ -40,6 +41,10 @@ pub enum DebuggerError {
     Other(#[from] anyhow::Error),
     #[error(transparent)]
     ProbeRs(#[from] Error),
+
+    /// Errors related to the handling of core dumps.
+    #[error("An error with a CoreDump occured")]
+    CoreDump(#[from] CoreDumpError),
     #[error("{0}")]
     /// A message that is intended to be displayed to the user, and does not unwind nested errors.
     /// It is intended to communicate helpful "correct and try again" information to users.

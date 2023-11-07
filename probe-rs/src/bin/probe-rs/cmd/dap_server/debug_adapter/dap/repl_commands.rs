@@ -394,21 +394,17 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                         parse_int::parse::<u64>(start)
                             .map_err(|e| DebuggerError::UserMessage(e.to_string()))?
                     } else {
-                        return Err(DebuggerError::UserMessage(
-                            "A stack start is required.".to_string(),
-                        ));
+                        unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.")
                     };
 
                     let size = if let Some(size) = c.get(1) {
                         parse_int::parse::<u64>(size)
                             .map_err(|e| DebuggerError::UserMessage(e.to_string()))?
                     } else {
-                        return Err(DebuggerError::UserMessage(
-                            "A memory size is required.".to_string(),
-                        ));
+                        unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.")
                     };
 
-                    Ok(start..start + size)
+                    Ok::<_, DebuggerError>(start..start + size)
                 })
                 .collect::<Result<Vec<_>, _>>()?;
 

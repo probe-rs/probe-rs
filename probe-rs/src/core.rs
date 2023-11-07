@@ -189,24 +189,27 @@ pub struct CoreDump {
 
 impl CoreDump {
     /// Store the dumped core to a file.
-    pub fn store(&self, path: &Path) -> Result<(), Error> {
+    pub fn store(&self, path: &Path) -> Result<(), CoreDumpError> {
         let mut file = OpenOptions::new()
             .create(true)
             .write(true)
             .open(path)
             .map_err(|e| {
-                Error::CoreDumpFileWrite(e, dunce::canonicalize(path).unwrap_or(PathBuf::new()))
+                CoreDumpError::CoreDumpFileWrite(
+                    e,
+                    dunce::canonicalize(path).unwrap_or(PathBuf::new()),
+                )
             })?;
-        rmp_serde::encode::write_named(&mut file, self).map_err(Error::EncodingCoreDump)?;
+        rmp_serde::encode::write_named(&mut file, self).map_err(CoreDumpError::EncodingCoreDump)?;
         Ok(())
     }
 
     /// Load the dumped core from a file.
-    pub fn load(path: &Path) -> Result<Self, Error> {
+    pub fn load(path: &Path) -> Result<Self, CoreDumpError> {
         let file = OpenOptions::new().read(true).open(path).map_err(|e| {
-            Error::CoreDumpFileRead(e, dunce::canonicalize(path).unwrap_or(PathBuf::new()))
+            CoreDumpError::CoreDumpFileRead(e, dunce::canonicalize(path).unwrap_or(PathBuf::new()))
         })?;
-        rmp_serde::from_read(&file).map_err(Error::DecodingCoreDump)
+        rmp_serde::from_read(&file).map_err(CoreDumpError::DecodingCoreDump)
     }
 
     /// Read all registers defined in [`crate::core::CoreRegisters`] from the given core.
@@ -323,6 +326,23 @@ impl MemoryInterface for CoreDump {
     fn flush(&mut self) -> anyhow::Result<(), crate::Error> {
         todo!()
     }
+}
+
+/// The overarching error type which contains all possible errors as variants.
+#[derive(thiserror::Error, Debug)]
+pub enum CoreDumpError {
+    /// Opening the file for writing the core dump failed.
+    #[error("Opening {1} for writing the core dump failed.")]
+    CoreDumpFileWrite(std::io::Error, PathBuf),
+    /// Opening the file for reading the core dump failed.
+    #[error("Opening {1} for reading the core dump failed.")]
+    CoreDumpFileRead(std::io::Error, PathBuf),
+    /// Encoding the coredump MessagePack failed.
+    #[error("Encoding the coredump MessagePack failed.")]
+    EncodingCoreDump(rmp_serde::encode::Error),
+    /// Decoding the coredump MessagePack failed.
+    #[error("Decoding the coredump MessagePack failed.")]
+    DecodingCoreDump(rmp_serde::decode::Error),
 }
 
 impl<'probe> MemoryInterface for Core<'probe> {

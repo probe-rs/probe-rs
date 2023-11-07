@@ -1,7 +1,5 @@
 #![warn(missing_docs)]
 
-use std::path::PathBuf;
-
 use crate::architecture::arm::ArmError;
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::config::RegistryError;
@@ -47,18 +45,7 @@ pub enum Error {
     /// the other architectures later.
     #[error("This capability has not yet been implemented for this architecture: {0}")]
     NotImplemented(&'static str),
-    /// Opening the file for writing the core dump failed.
-    #[error("Opening {1} for writing the core dump failed.")]
-    CoreDumpFileWrite(std::io::Error, PathBuf),
-    /// Opening the file for reading the core dump failed.
-    #[error("Opening {1} for reading the core dump failed.")]
-    CoreDumpFileRead(std::io::Error, PathBuf),
-    /// Encoding the coredump MessagePack failed.
-    #[error("Encoding the coredump MessagePack failed.")]
-    EncodingCoreDump(rmp_serde::encode::Error),
-    /// Decoding the coredump MessagePack failed.
-    #[error("Decoding the coredump MessagePack failed.")]
-    DecodingCoreDump(rmp_serde::decode::Error),
+
     /// Any other error occurred.
     #[error(transparent)]
     Other(#[from] anyhow::Error),
