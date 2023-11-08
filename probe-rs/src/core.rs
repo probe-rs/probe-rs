@@ -195,10 +195,7 @@ impl CoreDump {
             .write(true)
             .open(path)
             .map_err(|e| {
-                CoreDumpError::CoreDumpFileWrite(
-                    e,
-                    dunce::canonicalize(path).unwrap_or(PathBuf::new()),
-                )
+                CoreDumpError::CoreDumpFileWrite(e, dunce::canonicalize(path).unwrap_or_default())
             })?;
         rmp_serde::encode::write_named(&mut file, self).map_err(CoreDumpError::EncodingCoreDump)?;
         Ok(())
@@ -207,7 +204,7 @@ impl CoreDump {
     /// Load the dumped core from a file.
     pub fn load(path: &Path) -> Result<Self, CoreDumpError> {
         let file = OpenOptions::new().read(true).open(path).map_err(|e| {
-            CoreDumpError::CoreDumpFileRead(e, dunce::canonicalize(path).unwrap_or(PathBuf::new()))
+            CoreDumpError::CoreDumpFileRead(e, dunce::canonicalize(path).unwrap_or_default())
         })?;
         rmp_serde::from_read(&file).map_err(CoreDumpError::DecodingCoreDump)
     }
