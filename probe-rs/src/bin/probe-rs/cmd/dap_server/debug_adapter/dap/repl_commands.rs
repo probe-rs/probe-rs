@@ -374,20 +374,20 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
             ReplCommandArgs::Optional("path"),
         ]),
         handler: |target_core, command_arguments, _request_arguments| {
-            let input_arguments = command_arguments.split_whitespace().collect_vec();
+            let mut args = command_arguments.split_whitespace().collect_vec();
 
             // If we get an odd number of arguments, treat all n * 2 args at the start as memory blocks
             // and the last argument as the path tho store the coredump at.
             let location = Path::new(
-                if input_arguments.len() % 2 != 0 {
-                    input_arguments.last().copied()
+                if args.len() % 2 != 0 {
+                    args.pop()
                 } else {
                     None
                 }
                 .unwrap_or("./coredump"),
             );
 
-            let ranges = input_arguments
+            let ranges = args
                 .chunks(2)
                 .map(|c| {
                     let start = if let Some(start) = c.first() {

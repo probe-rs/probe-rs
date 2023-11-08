@@ -801,7 +801,18 @@ impl DebugCli {
             help_text: "Dump the core memory & registers",
 
             function: |cli_data, args| {
-                let location = Path::new(args.first().copied().unwrap_or("./coredump"));
+                let mut args = args.to_vec();
+                
+                // If we get an odd number of arguments, treat all n * 2 args at the start as memory blocks
+                // and the last argument as the path tho store the coredump at.
+                let location = Path::new(
+                    if args.len() % 2 != 0 {
+                        args.pop()
+                    } else {
+                        None
+                    }
+                    .unwrap_or("./coredump"),
+                );
 
                 let ranges = args
                     .chunks(2)
@@ -816,7 +827,7 @@ impl DebugCli {
                                 }
                             })?
                         } else {
-                            return Err(CliError::MissingArgument);
+                            unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.")
                         };
 
                         let size = if let Some(size) = c.get(1) {
@@ -828,10 +839,10 @@ impl DebugCli {
                                 }
                             })?
                         } else {
-                            return Err(CliError::MissingArgument);
+                            unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.")
                         };
 
-                        Ok(start..start + size)
+                        Ok::<_, CliError>(start..start + size)
                     })
                     .collect::<Result<Vec<_>, _>>()?;
 
