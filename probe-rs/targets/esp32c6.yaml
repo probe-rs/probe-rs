@@ -6,6 +6,9 @@ manufacturer:
 variants:
   - name: esp32c6
     part: null
+    scan_chain:
+      - name: main
+        ir_len: 5
     cores:
       - name: main
         type: riscv
