@@ -413,7 +413,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
             Ok(Response {
                 command: "dump".to_string(),
                 success: true,
-                message: None,
+                message: Some(format!("Core dump successfully stored at {location:?}",)),
                 type_: "response".to_string(),
                 request_seq: 0,
                 seq: 0,

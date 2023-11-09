@@ -2,20 +2,22 @@
 source: probe-rs/src/debug/debug_info.rs
 expression: printed_backtrace
 ---
+Frame: read<nrf51_pac::timer0::events_compare::EVENTS_COMPARE_SPEC>
+	/Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf51-pac-0.10.1/src/generic.rs:64:27
 Frame: timer_running<nrf51_pac::TIMER0>
-	/Users/noah/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:396
+	/Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:397:9
 Frame: wait<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
-	/Users/noah/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:266:12
-Frame: <unknown function @ 0x0000023d>
-	/Users/noah/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:145:22
+	/Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:266:12
+Frame: <unknown function @ 0x0000019c>
+	/Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:145:22
 Frame: delay_us<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
-	/Users/noah/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:325:6
+	/Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:325:6
 Frame: delay_ms<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
-	/Users/noah/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:298:6
+	/Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:298:6
 Frame: delay_ms<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
-	/Users/noah/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:307:6
+	/Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:307:6
 Frame: __cortex_m_rt_main
-	/Users/noah/repos/microbit/examples/gpio-hal-blinky/src/main.rs:21:9
+	/Users/yatekii/repos/microbit/examples/gpio-hal-blinky/src/main.rs:23:9
 Frame: __cortex_m_rt_main_trampoline
-	/Users/noah/repos/microbit/examples/gpio-hal-blinky/src/main.rs:10:1
+	/Users/yatekii/repos/microbit/examples/gpio-hal-blinky/src/main.rs:10:1
 
