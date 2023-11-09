@@ -1,4 +1,4 @@
-//! Sequences for the ESP32C3.
+//! Sequences for the ESP32C3/ESP32C3.
 
 use std::sync::Arc;
 
@@ -6,22 +6,21 @@ use super::RiscvDebugSequence;
 use crate::MemoryInterface;
 
 /// The debug sequence implementation for the ESP32C3.
-#[derive(Debug)]
-pub struct ESP32C3(());
+pub struct ESP32C2C3(());
 
-impl ESP32C3 {
+impl ESP32C2C3 {
     /// Creates a new debug sequence handle for the ESP32C3.
     pub fn create() -> Arc<dyn RiscvDebugSequence> {
         Arc::new(Self(()))
     }
 }
 
-impl RiscvDebugSequence for ESP32C3 {
+impl RiscvDebugSequence for ESP32C2C3 {
     fn on_connect(
         &self,
         interface: &mut crate::architecture::riscv::communication_interface::RiscvCommunicationInterface,
     ) -> Result<(), crate::Error> {
-        tracing::info!("Disabling esp32c3 watchdogs...");
+        tracing::info!("Disabling esp32c2/esp32c3 watchdogs...");
         // disable super wdt
         interface.write_word_32(0x600080B0, 0x8F1D312Au32)?; // write protection off
         let current = interface.read_word_32(0x600080AC)?;
