@@ -2057,10 +2057,11 @@ mod test {
 
     #[test]
     fn test_print_stacktrace() {
-        let elf_path = Path::new("./tests/gpio-hal-blinky/elf");
-        let mut adapter = CoreDump::load(Path::new("./tests/gpio-hal-blinky/coredump")).unwrap();
+        let elf = Path::new("./tests/gpio-hal-blinky/elf");
+        let coredump = include_bytes!("../../tests/gpio-hal-blinky/coredump");
 
-        let debug_info = DebugInfo::from_file(elf_path).unwrap();
+        let mut adapter = CoreDump::load_raw(coredump).unwrap();
+        let debug_info = DebugInfo::from_file(elf).unwrap();
 
         let initial_registers = adapter.debug_registers();
         let exception_handler = exception_handler_for_core(adapter.core_type());
@@ -2071,7 +2072,7 @@ mod test {
                 &mut adapter,
                 initial_registers,
                 exception_handler.as_ref(),
-                instruction_set,
+                Some(instruction_set),
             )
             .unwrap();
 

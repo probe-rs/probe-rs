@@ -641,6 +641,12 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         )))
     }
 
+    fn floating_point_register_count(&mut self) -> Result<Option<usize>, crate::error::Error> {
+        Err(crate::error::Error::Other(anyhow::anyhow!(
+            "Fpu detection not yet implemented"
+        )))
+    }
+
     fn id(&self) -> usize {
         self.id
     }

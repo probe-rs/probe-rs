@@ -19,6 +19,7 @@ members = [
     "xtask",
     "target-gen",
 ]
+exclude = ["probe-rs/tests/gpio-hal-blinky"]
 
 [workspace.dependencies]
 probe-rs = { path = "probe-rs", version = "0.21.1" }

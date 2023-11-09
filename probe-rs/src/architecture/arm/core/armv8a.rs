@@ -811,6 +811,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
             pc: pc_value.try_into()?,
         })
     }
+
     fn run(&mut self) -> Result<(), Error> {
         if matches!(self.state.current_state, CoreStatus::Running) {
             return Ok(());
@@ -1122,6 +1123,11 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
     fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
         // Always available for v8-a
         Ok(true)
+    }
+
+    fn floating_point_register_count(&mut self) -> Result<Option<usize>, crate::error::Error> {
+        // Always available for v8-a
+        Ok(self.state.fp_reg_count)
     }
 
     fn id(&self) -> usize {

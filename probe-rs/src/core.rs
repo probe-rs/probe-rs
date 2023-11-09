@@ -1,6 +1,17 @@
 use crate::{
-    architecture::arm::{
-        core::registers::cortex_m::CORTEX_M_CORE_REGISTERS, sequences::ArmDebugSequence,
+    architecture::{
+        arm::{
+            core::registers::{
+                aarch32::{
+                    AARCH32_CORE_REGSISTERS, AARCH32_WITH_FP_16_CORE_REGSISTERS,
+                    AARCH32_WITH_FP_32_CORE_REGSISTERS,
+                },
+                aarch64::AARCH64_CORE_REGSISTERS,
+                cortex_m::{CORTEX_M_CORE_REGISTERS, CORTEX_M_WITH_FP_CORE_REGISTERS},
+            },
+            sequences::ArmDebugSequence,
+        },
+        riscv::registers::RISCV_CORE_REGSISTERS,
     },
     debug::{DebugRegister, DebugRegisters},
     error, CoreType, Error, InstructionSet, MemoryInterface, Target,
@@ -143,6 +154,11 @@ pub trait CoreInterface: MemoryInterface {
     /// decision for some core types.
     fn fpu_support(&mut self) -> Result<bool, error::Error>;
 
+    /// Determine the number of floating point registers.
+    /// This must be queried while halted as this is a runtime
+    /// decision for some core types.
+    fn floating_point_register_count(&mut self) -> Result<Option<usize>, crate::error::Error>;
+
     /// Set the reset catch setting.
     ///
     /// This configures the core to halt after a reset.
@@ -185,6 +201,12 @@ pub struct CoreDump {
     pub instruction_set: InstructionSet,
     /// Whether or not the target supports native 64 bit support (64bit architectures)
     pub supports_native_64bit_access: bool,
+    /// The type of core we have at hand.
+    pub core_type: CoreType,
+    /// Whether this core supports floating point.
+    pub fpu_support: bool,
+    /// The number of floating point registers.
+    pub floating_point_register_count: Option<usize>,
 }
 
 impl CoreDump {
@@ -209,10 +231,49 @@ impl CoreDump {
         rmp_serde::from_read(&file).map_err(CoreDumpError::DecodingCoreDump)
     }
 
+    /// Load the dumped core from a file.
+    pub fn load_raw(data: &[u8]) -> Result<Self, CoreDumpError> {
+        rmp_serde::from_slice(data).map_err(CoreDumpError::DecodingCoreDump)
+    }
+
     /// Read all registers defined in [`crate::core::CoreRegisters`] from the given core.
     pub fn debug_registers(&self) -> DebugRegisters {
+        let reg_list = match self.core_type {
+            CoreType::Armv6m => &CORTEX_M_CORE_REGISTERS,
+            CoreType::Armv7a => match self.floating_point_register_count {
+                Some(16) => &AARCH32_WITH_FP_16_CORE_REGSISTERS,
+                Some(32) => &AARCH32_WITH_FP_32_CORE_REGSISTERS,
+                _ => &AARCH32_CORE_REGSISTERS,
+            },
+            CoreType::Armv7m => {
+                if self.fpu_support {
+                    &CORTEX_M_WITH_FP_CORE_REGISTERS
+                } else {
+                    &CORTEX_M_CORE_REGISTERS
+                }
+            }
+            CoreType::Armv7em => {
+                if self.fpu_support {
+                    &CORTEX_M_WITH_FP_CORE_REGISTERS
+                } else {
+                    &CORTEX_M_CORE_REGISTERS
+                }
+            }
+            // TODO: This can be wrong if the CPU is 32 bit. For lack of better design at the time of writing this code
+            // this differentiation has been omitted.
+            CoreType::Armv8a => &AARCH64_CORE_REGSISTERS,
+            CoreType::Armv8m => {
+                if self.fpu_support {
+                    &CORTEX_M_WITH_FP_CORE_REGISTERS
+                } else {
+                    &CORTEX_M_CORE_REGISTERS
+                }
+            }
+            CoreType::Riscv => &RISCV_CORE_REGSISTERS,
+        };
+
         let mut debug_registers = Vec::<DebugRegister>::new();
-        for (dwarf_id, core_register) in CORTEX_M_CORE_REGISTERS.core_registers().enumerate() {
+        for (dwarf_id, core_register) in reg_list.core_registers().enumerate() {
             // Check to ensure the register type is compatible with u64.
             if matches!(core_register.data_type(), RegisterDataType::UnsignedInteger(size_in_bits) if size_in_bits <= 64)
             {
@@ -244,12 +305,12 @@ impl CoreDump {
 
     /// Returns the type of the core.
     pub fn core_type(&self) -> CoreType {
-        CoreType::Armv6m
+        self.core_type
     }
 
     /// Returns the currently active instruction-set
-    pub fn instruction_set(&self) -> Option<InstructionSet> {
-        Some(InstructionSet::A32)
+    pub fn instruction_set(&self) -> InstructionSet {
+        self.instruction_set
     }
 }
 
@@ -838,6 +899,12 @@ impl<'probe> Core<'probe> {
         self.inner.fpu_support()
     }
 
+    /// Determine the number of floating point registers.
+    /// This must be queried while halted as this is a runtime decision for some core types.
+    pub fn floating_point_register_count(&mut self) -> Result<Option<usize>, error::Error> {
+        self.inner.floating_point_register_count()
+    }
+
     pub(crate) fn reset_catch_clear(&mut self) -> Result<(), Error> {
         self.inner.reset_catch_clear()
     }
@@ -863,8 +930,10 @@ impl<'probe> Core<'probe> {
     /// * `ranges`: Memory ranges that should be dumped.
     pub fn dump(&mut self, ranges: Vec<Range<u64>>) -> Result<CoreDump, Error> {
         let instruction_set = self.instruction_set()?;
-
+        let core_type = self.core_type();
         let supports_native_64bit_access = self.supports_native_64bit_access();
+        let fpu_support = self.fpu_support()?;
+        let floating_point_register_count = self.floating_point_register_count()?;
 
         let mut registers = HashMap::new();
         for register in self.registers().all_registers() {
@@ -884,6 +953,9 @@ impl<'probe> Core<'probe> {
             data,
             instruction_set,
             supports_native_64bit_access,
+            core_type,
+            fpu_support,
+            floating_point_register_count,
         })
     }
 }
@@ -998,6 +1070,10 @@ impl<'probe> CoreInterface for Core<'probe> {
 
     fn fpu_support(&mut self) -> Result<bool, error::Error> {
         self.fpu_support()
+    }
+
+    fn floating_point_register_count(&mut self) -> Result<Option<usize>, crate::error::Error> {
+        self.floating_point_register_count()
     }
 
     fn reset_catch_set(&mut self) -> Result<(), Error> {
