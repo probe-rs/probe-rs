@@ -1575,6 +1575,13 @@ mod test {
         CoreDump, RegisterValue,
     };
 
+    fn get_path_for_test_files(filename: &str) -> PathBuf {
+        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        path.push("tests");
+        path.push(filename);
+        path
+    }
+
     fn debug_info(filename: &str) -> DebugInfo {
         let path = Path::new(filename);
 
