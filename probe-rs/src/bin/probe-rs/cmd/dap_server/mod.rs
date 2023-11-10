@@ -72,7 +72,7 @@ pub struct Cmd {
     /// Some editors and IDEs expect the debug adapter processes to exit at the end of every debug
     /// session (on receiving a `Disconnect` or `Terminate` request).
     ///
-    /// OTHERWISE the probe-rs will persist and continue to listen for new DAP client connections
+    /// OTHERWISE probe-rs will persist and continue to listen for new DAP client connections
     /// ("multi-session" mode), and it becomes the user's responsibility to terminate the debug
     /// adapter process.
     #[clap(long, alias("vscode"))]
