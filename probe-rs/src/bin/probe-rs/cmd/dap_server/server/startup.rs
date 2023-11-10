@@ -80,7 +80,8 @@ pub fn debug(
                         tracing::error!("probe-rs-debugger enountered unexpected `DebuggerStatus` in debug() execution. Please report this as a bug.");
                     }
                 }
-                // Terminate this process if it was started by VSCode
+                // Terminate after a single debug session. This is the behavour expected by VSCode
+                // if it started probe-rs as a child process.
                 if single_session {
                     break;
                 }

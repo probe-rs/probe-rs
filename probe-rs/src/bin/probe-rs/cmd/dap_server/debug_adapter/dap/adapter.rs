@@ -40,6 +40,8 @@ use std::{convert::TryInto, str, string::ToString, time::Duration};
 /// Progress ID used for progress reporting when the debug adapter protocol is used.
 type ProgressId = i64;
 
+/// A Debug Adapter Protocol "Debug Adapter"
+/// https://microsoft.github.io/debug-adapter-protocol/overview
 pub struct DebugAdapter<P: ProtocolAdapter> {
     pub(crate) halt_after_reset: bool,
     /// NOTE: VSCode sends a 'threads' request when it receives the response from the `ConfigurationDone` request, irrespective of target state.
@@ -273,7 +275,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         offset: None,
                     })),
                 )?;
-                // TODO: This doesn't trigger the UI to reload the variables effected. Investigate if we can force it in some other way, or if it is a known issue.
+                // TODO: This doesn't trigger the VSCode UI to reload the variables effected.
+                // Investigate if we can force it in some other way, or if it is a known issue.
                 self.send_event(
                     "memory",
                     Some(MemoryEventBody {
