@@ -775,6 +775,16 @@ impl Debugger {
         let initialize_arguments =
             get_arguments::<InitializeRequestArguments, _>(debug_adapter, &initialize_request)?;
 
+        // Enable quirks specific to particular DAP clients...
+        if let Some(client_id) = initialize_arguments.client_id {
+            if client_id == "vscode" {
+                tracing::info!(
+                    "DAP client reports its 'ClientID' is 'vscode', enabling vscode_quirks."
+                );
+                debug_adapter.vscode_quirks = true;
+            }
+        }
+
         if !(initialize_arguments.columns_start_at_1.unwrap_or(true)
             && initialize_arguments.lines_start_at_1.unwrap_or(true))
         {
