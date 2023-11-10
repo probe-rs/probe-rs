@@ -55,17 +55,18 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
 
         let mut entries_cursor = self.unit.entries();
         while let Ok(Some((_depth, current))) = entries_cursor.next_dfs() {
-            if current.tag() != gimli::DW_TAG_subprogram {
+            let Some(die) = FunctionDie::new(current.clone(), self) else {
                 continue;
-            }
+            };
+
             let mut ranges = self.debug_info.dwarf.die_ranges(&self.unit, current)?;
 
             while let Ok(Some(ranges)) = ranges.next() {
                 if !(ranges.begin <= address && address < ranges.end) {
                     continue;
                 }
+                let mut die = die.clone();
                 // Check if we are actually in an inlined function
-                let mut die = FunctionDie::new(current.clone(), self);
                 die.low_pc = ranges.begin;
                 die.high_pc = ranges.end;
                 // Extract the frame_base for this function DIE.
@@ -142,6 +143,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             if current.tag() != gimli::DW_TAG_inlined_subroutine {
                 continue;
             }
+
             let mut ranges = self.debug_info.dwarf.die_ranges(&self.unit, current)?;
 
             while let Ok(Some(ranges)) = ranges.next() {
@@ -167,10 +169,13 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     );
                     continue;
                 };
-                let Ok(abstract_die) = self.unit.entry(unit_ref) else {
+
+                let Some(mut die) = self.unit.entry(unit_ref).ok().and_then(|abstract_die| {
+                    FunctionDie::new_inlined(current.clone(), abstract_die.clone(), self)
+                }) else {
                     continue;
                 };
-                let mut die = FunctionDie::new_inlined(current.clone(), abstract_die.clone(), self);
+
                 die.low_pc = ranges.begin;
                 die.high_pc = ranges.end;
                 die.frame_base = parent_frame_base;

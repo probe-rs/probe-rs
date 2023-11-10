@@ -4,6 +4,7 @@ pub(crate) type Die<'abbrev, 'unit> =
     gimli::DebuggingInformationEntry<'abbrev, 'unit, debug_info::GimliReader, usize>;
 
 /// Reference to a DIE for a function
+#[derive(Clone)]
 pub(crate) struct FunctionDie<'abbrev, 'unit, 'unit_info, 'debug_info> {
     pub(crate) unit_info: &'unit_info UnitInfo<'debug_info>,
 
@@ -30,22 +31,21 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
     pub(crate) fn new(
         die: Die<'abbrev, 'unit>,
         unit_info: &'unit_info UnitInfo<'debug_info>,
-    ) -> Self {
+    ) -> Option<Self> {
         let tag = die.tag();
 
-        match tag {
-            gimli::DW_TAG_subprogram => Self {
-                unit_info,
-                function_die: die,
-                abstract_die: None,
-                low_pc: 0,
-                high_pc: 0,
-                frame_base: None,
-            },
-            other_tag => {
-                unreachable!("FunctionDie has to has to have Tag DW_TAG_subprogram, but tag is {:?}. This is a bug, please report it.", other_tag.static_string())
-            }
-        }
+        let gimli::DW_TAG_subprogram = tag else {
+            tracing::error!("FunctionDie has to has to have tag DW_TAG_subprogram, but tag is {:?}. This is a bug, please report it.", tag.static_string());
+            return None;
+        };
+        Some(Self {
+            unit_info,
+            function_die: die,
+            abstract_die: None,
+            low_pc: 0,
+            high_pc: 0,
+            frame_base: None,
+        })
     }
 
     /// Creates a new inlined function DIE reference.
@@ -53,20 +53,21 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
         concrete_die: Die<'abbrev, 'unit>,
         abstract_die: Die<'abbrev, 'unit>,
         unit_info: &'unit_info UnitInfo<'debug_info>,
-    ) -> Self {
+    ) -> Option<Self> {
         let tag = concrete_die.tag();
 
         let gimli::DW_TAG_inlined_subroutine = tag else {
-            unreachable!("FunctionDie has to has to have Tag DW_TAG_inlined_subroutine, but tag is {:?}. This is a bug, please report it.", tag.static_string());
+            tracing::error!("FunctionDie has to has to have Tag DW_TAG_inlined_subroutine, but tag is {:?}. This is a bug, please report it.", tag.static_string());
+            return None;
         };
-        Self {
+        Some(Self {
             unit_info,
             function_die: concrete_die,
             abstract_die: Some(abstract_die),
             low_pc: 0,
             high_pc: 0,
             frame_base: None,
-        }
+        })
     }
 
     /// Returns whether this is an inlined function DIE reference.
