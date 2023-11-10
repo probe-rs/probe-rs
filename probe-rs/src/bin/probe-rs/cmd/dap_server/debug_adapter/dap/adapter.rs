@@ -1808,7 +1808,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         id
     }
 
-    pub fn start_progress(&mut self, title: &str, request_id: Option<i64>) -> Result<ProgressId> {
+    pub fn start_progress(
+        &mut self,
+        title: &str,
+        request_id: Option<ProgressId>,
+    ) -> Result<ProgressId> {
         anyhow::ensure!(
             self.supports_progress_reporting,
             "Progress reporting is not supported by client."
