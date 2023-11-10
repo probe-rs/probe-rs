@@ -55,9 +55,13 @@ The `cargo-flash` utility can be used as a cargo subcommand to download a compil
 
 If you are looking for a more extended debugging experience, please have a look at [cargo-embed](https://probe.rs/docs/tools/cargo-embed/) which provides support for GDB, RTT, and config files.
 
-### VSCode
+### Editors and IDEs
 
-We have implemented the [Microsoft DAP protocol](https://microsoft.github.io/debug-adapter-protocol/). This makes embedded debugging via probe-rs available in modern code editors implementing the standard, such as VSCode. Please see the [website](https://probe.rs/docs/tools/vscode/) for more information.
+We have implemented the [Microsoft Debug Adapter Protocol (DAP)](https://microsoft.github.io/debug-adapter-protocol/). This makes embedded debugging via probe-rs available in modern code editors implementing the standard, such as VSCode. The DAP website includes [a list of editors and IDEs which support DAP](https://microsoft.github.io/debug-adapter-protocol/implementors/tools/).
+
+#### VSCode
+
+The probe-rs website includes [VSCode configuration instructions](https://probe.rs/docs/tools/vscode/).
 
 ## Usage Examples
 

@@ -32,7 +32,7 @@ impl std::str::FromStr for TargetSessionType {
 
 pub fn debug(
     port: u16,
-    vscode: bool,
+    single_session: bool,
     log_info_message: &str,
     timestamp_offset: UtcOffset,
 ) -> Result<()> {
@@ -80,8 +80,9 @@ pub fn debug(
                         tracing::error!("probe-rs-debugger enountered unexpected `DebuggerStatus` in debug() execution. Please report this as a bug.");
                     }
                 }
-                // Terminate this process if it was started by VSCode
-                if vscode {
+                // Terminate after a single debug session. This is the behavour expected by VSCode
+                // if it started probe-rs as a child process.
+                if single_session {
                     break;
                 }
             }

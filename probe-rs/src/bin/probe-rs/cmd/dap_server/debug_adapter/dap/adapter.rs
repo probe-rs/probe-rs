@@ -40,6 +40,8 @@ use std::{convert::TryInto, str, string::ToString, time::Duration};
 /// Progress ID used for progress reporting when the debug adapter protocol is used.
 type ProgressId = i64;
 
+/// A Debug Adapter Protocol "Debug Adapter"
+/// https://microsoft.github.io/debug-adapter-protocol/overview
 pub struct DebugAdapter<P: ProtocolAdapter> {
     pub(crate) halt_after_reset: bool,
     /// NOTE: VSCode sends a 'threads' request when it receives the response from the `ConfigurationDone` request, irrespective of target state.
@@ -64,12 +66,16 @@ pub struct DebugAdapter<P: ProtocolAdapter> {
     pub(crate) lines_start_at_1: bool,
     /// DWARF spec at Sect 2.14 uses 1 based numbering, with a 0 indicating not-specified. We will follow that standard, and translate incoming requests depending on the DAP Client treatment of 0 or 1 based numbering.
     pub(crate) columns_start_at_1: bool,
+    /// Flag to indicate that workarounds for VSCode-specific spec deviations etc. should be
+    /// enabled.
+    pub(crate) vscode_quirks: bool,
     adapter: P,
 }
 
 impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub fn new(adapter: P) -> DebugAdapter<P> {
         DebugAdapter {
+            vscode_quirks: false,
             halt_after_reset: false,
             configuration_done: false,
             all_cores_halted: true,
@@ -189,8 +195,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 break;
             }
         }
-        if !result_buffer.is_empty() || arguments.count.is_zero() {
-            // Currently, VSCode sends a request with count=0 after the last successful one ... so let's ignore it.
+        // Currently, VSCode sends a request with count=0 after the last successful one ... so
+        // let's ignore it.
+        if !result_buffer.is_empty() || (self.vscode_quirks && arguments.count.is_zero()) {
             let response = base64_engine::STANDARD.encode(&result_buffer);
             self.send_response(
                 request,
@@ -268,7 +275,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         offset: None,
                     })),
                 )?;
-                // TODO: This doesn't trigger the UI to reload the variables effected. Investigate if we can force it in some other way, or if it is a known issue.
+                // TODO: This doesn't trigger the VSCode UI to reload the variables effected.
+                // Investigate if we can force it in some other way, or if it is a known issue.
                 self.send_event(
                     "memory",
                     Some(MemoryEventBody {
@@ -998,8 +1006,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let start_frame = arguments.start_frame.unwrap_or(0);
 
         // VSCode sends multiple StackTrace requests, which lead to out of synch frame_id numbers.
-        // We only refresh the stacktrace when the `startFrame` is 0 and `levels` is 1.
-        if levels == 1 && start_frame == 0 {
+        // If our client is VSCode, then we only refresh the stacktrace when the `startFrame` is 0
+        // and `levels` is 1.
+        if !self.vscode_quirks || (levels == 1 && start_frame == 0) {
             tracing::debug!(
                 "Updating the stack frame data for core #{}",
                 target_core.core.id()
@@ -1808,7 +1817,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         id
     }
 
-    pub fn start_progress(&mut self, title: &str, request_id: Option<i64>) -> Result<ProgressId> {
+    pub fn start_progress(
+        &mut self,
+        title: &str,
+        request_id: Option<ProgressId>,
+    ) -> Result<ProgressId> {
         anyhow::ensure!(
             self.supports_progress_reporting,
             "Progress reporting is not supported by client."
