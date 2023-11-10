@@ -69,15 +69,20 @@ pub struct Cmd {
     #[clap(long)]
     port: u16,
 
-    /// The debug adapter processed was launched by VSCode, and should terminate itself at the end of every debug session (when receiving `Disconnect` or `Terminate` Request from VSCode). The "false"(default) state of this option implies that the process was launched (and will be managed) by the user.
-    #[clap(long, hide = true)]
-    vscode: bool,
+    /// Some editors and IDEs expect the debug adapter processes to exit at the end of every debug
+    /// session (on receiving a `Disconnect` or `Terminate` request).
+    ///
+    /// OTHERWISE the probe-rs will persist and continue to listen for new DAP client connections
+    /// ("multi-session" mode), and it becomes the user's responsibility to terminate the debug
+    /// adapter process.
+    #[clap(long, alias("vscode"))]
+    single_session: bool,
 }
 
 pub fn run(cmd: Cmd, time_offset: UtcOffset) -> Result<()> {
     let log_info_message = setup_logging(time_offset)?;
 
-    debug(cmd.port, cmd.vscode, &log_info_message, time_offset)
+    debug(cmd.port, cmd.single_session, &log_info_message, time_offset)
 }
 
 /// Setup logging, according to the following rules.

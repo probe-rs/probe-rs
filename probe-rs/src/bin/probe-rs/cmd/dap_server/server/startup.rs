@@ -32,7 +32,7 @@ impl std::str::FromStr for TargetSessionType {
 
 pub fn debug(
     port: u16,
-    vscode: bool,
+    single_session: bool,
     log_info_message: &str,
     timestamp_offset: UtcOffset,
 ) -> Result<()> {
@@ -81,7 +81,7 @@ pub fn debug(
                     }
                 }
                 // Terminate this process if it was started by VSCode
-                if vscode {
+                if single_session {
                     break;
                 }
             }
