@@ -2,9 +2,8 @@ use super::{
     function_die::FunctionDie, get_sequential_key, unit_info::UnitInfo, unit_info::UnitIter,
     variable::*, DebugError, DebugRegisters, SourceLocation, StackFrame, VariableCache,
 };
-use crate::core::{exception_handler_for_core, UnwindRule};
+use crate::core::UnwindRule;
 use crate::{
-    core::Core,
     core::{ExceptionInterface, RegisterRole, RegisterValue},
     debug::{registers, source_statement::SourceStatements},
     MemoryInterface,
@@ -101,15 +100,19 @@ impl DebugInfo {
     /// ## Inlined functions
     /// Multiple nested inline functions could exist at the given address.
     /// This function will currently return the innermost function in that case.
+    // TODO: This function takes a memory interface. This seems odd, but gimly sometimes needs to read memory to resolve.
+    // Maybe this can be factored out if we can be sure that memory is never read for this usecase.
+    // Until we have more tests we cannot be sure tho and it should stay like this.
     pub fn function_name(
         &self,
+        memory: &mut impl MemoryInterface,
         address: u64,
         find_inlined: bool,
     ) -> Result<Option<String>, DebugError> {
         let mut units = self.dwarf.units();
 
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
-            let mut functions = unit_info.get_function_dies(address, None, find_inlined)?;
+            let mut functions = unit_info.get_function_dies(memory, address, None, find_inlined)?;
 
             // Use the last functions from the list, this is the function which most closely
             // corresponds to the PC in case of multiple inlined functions.
@@ -283,7 +286,7 @@ impl DebugInfo {
     /// This saves a lot of overhead when a user only wants to see the `[VariableName::LocalScope]` or `[VariableName::Registers]` while stepping through code (the most common use cases)
     pub(crate) fn create_static_scope_cache(
         &self,
-        core: &mut dyn MemoryInterface,
+        memory: &mut dyn MemoryInterface,
         unit_info: &UnitInfo,
     ) -> Result<VariableCache, DebugError> {
         let mut static_variable_cache = VariableCache::new();
@@ -299,7 +302,7 @@ impl DebugInfo {
             );
             static_root_variable.variable_node_type = VariableNodeType::DirectLookup;
             static_root_variable.name = VariableName::StaticScopeRoot;
-            static_variable_cache.cache_variable(None, static_root_variable, core)?;
+            static_variable_cache.cache_variable(None, static_root_variable, memory)?;
         }
         Ok(static_variable_cache)
     }
@@ -334,7 +337,7 @@ impl DebugInfo {
     pub fn cache_deferred_variables(
         &self,
         cache: &mut VariableCache,
-        memory: &mut Core<'_>,
+        memory: &mut impl MemoryInterface,
         parent_variable: &mut Variable,
         stack_frame_registers: &DebugRegisters,
         frame_base: Option<u64>,
@@ -494,7 +497,7 @@ impl DebugInfo {
     /// This function will also populate the `DebugInfo::VariableCache` with in scope `Variable`s for each `StackFrame`, while taking into account the appropriate strategy for lazy-loading of variables.
     pub(crate) fn get_stackframe_info(
         &self,
-        memory: &mut dyn MemoryInterface,
+        memory: &mut impl MemoryInterface,
         address: u64,
         unwind_registers: &registers::DebugRegisters,
     ) -> Result<Vec<StackFrame>, DebugError> {
@@ -511,7 +514,8 @@ impl DebugInfo {
         let mut frames = Vec::new();
 
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
-            let functions = unit_info.get_function_dies(address, Some(unwind_registers), true)?;
+            let functions =
+                unit_info.get_function_dies(memory, address, Some(unwind_registers), true)?;
 
             if functions.is_empty() {
                 continue;
@@ -674,19 +678,21 @@ impl DebugInfo {
     /// - Similarly, certain error conditions encountered in `StackFrameIterator` will also break out of the unwind loop.
     /// Note: In addition to populating the `StackFrame`s, this function will also populate the `DebugInfo::VariableCache` with `Variable`s for available Registers as well as static and function variables.
     /// TODO: Separate logic for stackframe creation and cache population
-    pub fn unwind(&self, core: &mut Core<'_>) -> Result<Vec<StackFrame>, crate::Error> {
-        let initial_registers = DebugRegisters::from_core(core);
-        let exception_handler = exception_handler_for_core(core.core_type());
-        let instruction_set = core.instruction_set().ok();
-
+    pub fn unwind(
+        &self,
+        core: &mut impl MemoryInterface,
+        initial_registers: DebugRegisters,
+        exception_handler: &dyn ExceptionInterface,
+        instruction_set: Option<InstructionSet>,
+    ) -> Result<Vec<StackFrame>, crate::Error> {
         self.unwind_impl(initial_registers, core, exception_handler, instruction_set)
     }
 
     pub(crate) fn unwind_impl(
         &self,
         initial_registers: registers::DebugRegisters,
-        memory: &mut dyn MemoryInterface,
-        exception_handler: Box<dyn ExceptionInterface>,
+        memory: &mut impl MemoryInterface,
+        exception_handler: &dyn ExceptionInterface,
         instruction_set: Option<InstructionSet>,
     ) -> Result<Vec<StackFrame>, crate::Error> {
         let mut stack_frames = Vec::<StackFrame>::new();
@@ -1563,9 +1569,10 @@ mod test {
             exception_handling::{ArmV6MExceptionHandler, ArmV7MExceptionHandler},
             registers::cortex_m::CORTEX_M_CORE_REGISTERS,
         },
+        core::exception_handler_for_core,
         debug::{DebugInfo, DebugRegister, DebugRegisters},
         test::MockMemory,
-        RegisterValue,
+        CoreDump, RegisterValue,
     };
 
     fn debug_info(filename: &str) -> DebugInfo {
@@ -1670,7 +1677,7 @@ mod test {
             .unwind_impl(
                 regs,
                 &mut mocked_mem,
-                exception_handler,
+                exception_handler.as_ref(),
                 Some(probe_rs_target::InstructionSet::Thumb2),
             )
             .unwrap();
@@ -1820,7 +1827,7 @@ mod test {
             .unwind_impl(
                 regs,
                 &mut dummy_mem,
-                exception_handler,
+                exception_handler.as_ref(),
                 Some(probe_rs_target::InstructionSet::Thumb2),
             )
             .unwrap();
@@ -1942,7 +1949,7 @@ mod test {
             .unwind_impl(
                 regs,
                 &mut dummy_mem,
-                exception_handler,
+                exception_handler.as_ref(),
                 Some(probe_rs_target::InstructionSet::Thumb2),
             )
             .unwrap();
@@ -2034,12 +2041,42 @@ mod test {
             .unwind_impl(
                 regs,
                 &mut dummy_mem,
-                exception_handler,
+                exception_handler.as_ref(),
                 Some(probe_rs_target::InstructionSet::Thumb2),
             )
             .unwrap();
 
         let printed_backtrace = frames
+            .into_iter()
+            .map(|f| f.to_string())
+            .collect::<Vec<String>>()
+            .join("");
+
+        insta::assert_snapshot!(printed_backtrace);
+    }
+
+    #[test]
+    fn test_print_stacktrace() {
+        let elf = Path::new("./tests/gpio-hal-blinky/elf");
+        let coredump = include_bytes!("../../tests/gpio-hal-blinky/coredump");
+
+        let mut adapter = CoreDump::load_raw(coredump).unwrap();
+        let debug_info = DebugInfo::from_file(elf).unwrap();
+
+        let initial_registers = adapter.debug_registers();
+        let exception_handler = exception_handler_for_core(adapter.core_type());
+        let instruction_set = adapter.instruction_set();
+
+        let stack_frames = debug_info
+            .unwind(
+                &mut adapter,
+                initial_registers,
+                exception_handler.as_ref(),
+                Some(instruction_set),
+            )
+            .unwrap();
+
+        let printed_backtrace = stack_frames
             .into_iter()
             .map(|f| f.to_string())
             .collect::<Vec<String>>()

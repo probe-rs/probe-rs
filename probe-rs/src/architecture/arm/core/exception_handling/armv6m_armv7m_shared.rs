@@ -50,7 +50,7 @@ bitfield! {
 
 /// Decode the exception information.
 pub(crate) fn exception_details(
-    memory: &dyn ExceptionInterface,
+    exception_interface: &dyn ExceptionInterface,
     memory_interface: &mut dyn MemoryInterface,
     stackframe_registers: &DebugRegisters,
 ) -> Result<Option<ExceptionInfo>, Error> {
@@ -71,8 +71,9 @@ pub(crate) fn exception_details(
         // This is an exception frame.
 
         Ok(Some(ExceptionInfo {
-            description: memory.exception_description(memory_interface, stackframe_registers)?,
-            calling_frame_registers: memory
+            description: exception_interface
+                .exception_description(memory_interface, stackframe_registers)?,
+            calling_frame_registers: exception_interface
                 .calling_frame_registers(memory_interface, stackframe_registers)?,
         }))
     } else {

@@ -775,9 +775,15 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
     }
 
     fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
-        Err(crate::error::Error::Other(anyhow::anyhow!(
-            "Fpu detection not yet implemented"
-        )))
+        if let Some(count) = self.state.fp_reg_count {
+            Ok(count > 0)
+        } else {
+            Ok(false)
+        }
+    }
+
+    fn floating_point_register_count(&mut self) -> Result<Option<usize>, crate::error::Error> {
+        Ok(self.state.fp_reg_count)
     }
 
     fn id(&self) -> usize {

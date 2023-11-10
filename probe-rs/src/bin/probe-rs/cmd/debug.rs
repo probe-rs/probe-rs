@@ -1,5 +1,6 @@
-use std::{fs::File, path::PathBuf};
-use std::{io::prelude::*, time::Duration};
+use std::path::Path;
+use std::path::PathBuf;
+use std::time::Duration;
 
 use anyhow::anyhow;
 use capstone::{
@@ -9,14 +10,15 @@ use capstone::{
 use num_traits::Num;
 use parse_int::parse;
 use probe_rs::architecture::arm::ap::AccessPortError;
+use probe_rs::exception_handler_for_core;
 use probe_rs::flashing::FileDownloadError;
+use probe_rs::CoreDumpError;
 use probe_rs::DebugProbeError;
 use probe_rs::{
-    architecture::arm::Dump,
     debug::{
         debug_info::DebugInfo, registers::DebugRegisters, stack_frame::StackFrame, VariableName,
     },
-    Core, CoreType, InstructionSet, MemoryInterface, RegisterId, RegisterValue,
+    Core, CoreType, InstructionSet, MemoryInterface, RegisterValue,
 };
 use rustyline::DefaultEditor;
 
@@ -107,6 +109,9 @@ enum CliError {
     },
     #[error(transparent)]
     ProbeRs(#[from] probe_rs::Error),
+    /// Errors related to the handling of core dumps.
+    #[error("An error with a CoreDump occured")]
+    CoreDump(#[from] CoreDumpError),
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -502,7 +507,18 @@ impl DebugCli {
                 match cli_data.state {
                     DebugState::Halted(ref mut halted_state) => {
                         if let Some(di) = &mut cli_data.debug_info {
-                            halted_state.stack_frames = di.unwind(&mut cli_data.core).unwrap();
+                            let initial_registers = DebugRegisters::from_core(&mut cli_data.core);
+                            let exception_interface =
+                                exception_handler_for_core(cli_data.core.core_type());
+                            let instruction_set = cli_data.core.instruction_set().ok();
+                            halted_state.stack_frames = di
+                                .unwind(
+                                    &mut cli_data.core,
+                                    initial_registers,
+                                    exception_interface.as_ref(),
+                                    instruction_set,
+                                )
+                                .unwrap();
 
                             halted_state.frame_indices =
                                 halted_state.stack_frames.iter().map(|sf| sf.id).collect();
@@ -768,51 +784,6 @@ impl DebugCli {
         });
 
         cli.add_command(Command {
-            name: "dump",
-            help_text: "Store a dump of the current CPU state",
-
-            function: |cli_data, _args| {
-                // dump all relevant data, stack and regs for now..
-                //
-                // stack beginning -> assume beginning to be hardcoded
-
-                let stack_top: u32 = 0x2000_0000 + 0x4000;
-
-                let stack_bot: u32 = cli_data.core.read_core_reg(cli_data.core.stack_pointer())?;
-                let pc: u32 = cli_data
-                    .core
-                    .read_core_reg(cli_data.core.program_counter())?;
-
-                let mut stack = vec![0u8; (stack_top - stack_bot) as usize];
-
-                cli_data.core.read(stack_bot.into(), &mut stack[..])?;
-
-                let mut dump = Dump::new(stack_bot, stack);
-
-                for i in 0..12 {
-                    dump.regs[i as usize] =
-                        cli_data.core.read_core_reg(Into::<RegisterId>::into(i))?;
-                }
-
-                dump.regs[13] = stack_bot;
-                dump.regs[14] = cli_data
-                    .core
-                    .read_core_reg(cli_data.core.return_address())?;
-                dump.regs[15] = pc;
-
-                let serialized = ron::ser::to_string(&dump).expect("Failed to serialize dump");
-
-                let mut dump_file = File::create("dump.txt").expect("Failed to create file");
-
-                dump_file
-                    .write_all(serialized.as_bytes())
-                    .expect("Failed to write dump file");
-
-                Ok(CliState::Continue)
-            },
-        });
-
-        cli.add_command(Command {
             name: "reset",
 
             help_text: "Reset the CPU",
@@ -820,6 +791,66 @@ impl DebugCli {
             function: |cli_data, _args| {
                 cli_data.core.halt(Duration::from_millis(100))?;
                 cli_data.core.reset_and_halt(Duration::from_millis(100))?;
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
+            name: "dump",
+            help_text: "Dump the core memory & registers",
+
+            function: |cli_data, args| {
+                let mut args = args.to_vec();
+
+                // If we get an odd number of arguments, treat all n * 2 args at the start as memory blocks
+                // and the last argument as the path tho store the coredump at.
+                let location = Path::new(
+                    if args.len() % 2 != 0 {
+                        args.pop()
+                    } else {
+                        None
+                    }
+                    .unwrap_or("./coredump"),
+                );
+
+                let ranges = args
+                    .chunks(2)
+                    .enumerate()
+                    .map(|(i, c)| {
+                        let start = if let Some(start) = c.first() {
+                            parse_int::parse::<u64>(start).map_err(|e| {
+                                CliError::ArgumentParseError {
+                                    argument_index: i,
+                                    argument: start.to_string(),
+                                    source: e.into(),
+                                }
+                            })?
+                        } else {
+                            unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.")
+                        };
+
+                        let size = if let Some(size) = c.get(1) {
+                            parse_int::parse::<u64>(size).map_err(|e| {
+                                CliError::ArgumentParseError {
+                                    argument_index: i,
+                                    argument: size.to_string(),
+                                    source: e.into(),
+                                }
+                            })?
+                        } else {
+                            unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.")
+                        };
+
+                        Ok::<_, CliError>(start..start + size)
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                println!("Dumping core");
+
+                cli_data.core.dump(ranges)?.store(location)?;
+
+                println!("Done.");
 
                 Ok(CliState::Continue)
             },

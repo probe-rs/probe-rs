@@ -1,11 +1,33 @@
 use crate::{
-    architecture::arm::sequences::ArmDebugSequence, debug::DebugRegisters, error, CoreType, Error,
-    InstructionSet, MemoryInterface, Target,
+    architecture::{
+        arm::{
+            core::registers::{
+                aarch32::{
+                    AARCH32_CORE_REGSISTERS, AARCH32_WITH_FP_16_CORE_REGSISTERS,
+                    AARCH32_WITH_FP_32_CORE_REGSISTERS,
+                },
+                aarch64::AARCH64_CORE_REGSISTERS,
+                cortex_m::{CORTEX_M_CORE_REGISTERS, CORTEX_M_WITH_FP_CORE_REGISTERS},
+            },
+            sequences::ArmDebugSequence,
+        },
+        riscv::registers::RISCV_CORE_REGSISTERS,
+    },
+    debug::{DebugRegister, DebugRegisters},
+    error, CoreType, Error, InstructionSet, MemoryInterface, Target,
 };
-use anyhow::{anyhow, Result};
+use anyhow::anyhow;
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
 use probe_rs_target::{ArmCoreAccessOptions, RiscvCoreAccessOptions};
-use std::{sync::Arc, time::Duration};
+use scroll::Pread;
+use std::{
+    collections::HashMap,
+    fs::OpenOptions,
+    ops::Range,
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Duration,
+};
 
 pub mod core_state;
 pub mod core_status;
@@ -132,6 +154,11 @@ pub trait CoreInterface: MemoryInterface {
     /// decision for some core types.
     fn fpu_support(&mut self) -> Result<bool, error::Error>;
 
+    /// Determine the number of floating point registers.
+    /// This must be queried while halted as this is a runtime
+    /// decision for some core types.
+    fn floating_point_register_count(&mut self) -> Result<Option<usize>, crate::error::Error>;
+
     /// Set the reset catch setting.
     ///
     /// This configures the core to halt after a reset.
@@ -161,6 +188,219 @@ pub trait CoreInterface: MemoryInterface {
     fn disable_vector_catch(&mut self, _condition: VectorCatchCondition) -> Result<(), Error> {
         Err(Error::NotImplemented("vector catch"))
     }
+}
+
+/// A snapshot representation of a core state.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CoreDump {
+    /// The registers we dumped from the core.
+    pub registers: HashMap<RegisterId, RegisterValue>,
+    /// The memory we dumped from the core.
+    pub data: Vec<(Range<u64>, Vec<u8>)>,
+    /// The instruction set of the dumped core.
+    pub instruction_set: InstructionSet,
+    /// Whether or not the target supports native 64 bit support (64bit architectures)
+    pub supports_native_64bit_access: bool,
+    /// The type of core we have at hand.
+    pub core_type: CoreType,
+    /// Whether this core supports floating point.
+    pub fpu_support: bool,
+    /// The number of floating point registers.
+    pub floating_point_register_count: Option<usize>,
+}
+
+impl CoreDump {
+    /// Store the dumped core to a file.
+    pub fn store(&self, path: &Path) -> Result<(), CoreDumpError> {
+        let mut file = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .open(path)
+            .map_err(|e| {
+                CoreDumpError::CoreDumpFileWrite(e, dunce::canonicalize(path).unwrap_or_default())
+            })?;
+        rmp_serde::encode::write_named(&mut file, self).map_err(CoreDumpError::EncodingCoreDump)?;
+        Ok(())
+    }
+
+    /// Load the dumped core from a file.
+    pub fn load(path: &Path) -> Result<Self, CoreDumpError> {
+        let file = OpenOptions::new().read(true).open(path).map_err(|e| {
+            CoreDumpError::CoreDumpFileRead(e, dunce::canonicalize(path).unwrap_or_default())
+        })?;
+        rmp_serde::from_read(&file).map_err(CoreDumpError::DecodingCoreDump)
+    }
+
+    /// Load the dumped core from a file.
+    pub fn load_raw(data: &[u8]) -> Result<Self, CoreDumpError> {
+        rmp_serde::from_slice(data).map_err(CoreDumpError::DecodingCoreDump)
+    }
+
+    /// Read all registers defined in [`crate::core::CoreRegisters`] from the given core.
+    pub fn debug_registers(&self) -> DebugRegisters {
+        let reg_list = match self.core_type {
+            CoreType::Armv6m => &CORTEX_M_CORE_REGISTERS,
+            CoreType::Armv7a => match self.floating_point_register_count {
+                Some(16) => &AARCH32_WITH_FP_16_CORE_REGSISTERS,
+                Some(32) => &AARCH32_WITH_FP_32_CORE_REGSISTERS,
+                _ => &AARCH32_CORE_REGSISTERS,
+            },
+            CoreType::Armv7m => {
+                if self.fpu_support {
+                    &CORTEX_M_WITH_FP_CORE_REGISTERS
+                } else {
+                    &CORTEX_M_CORE_REGISTERS
+                }
+            }
+            CoreType::Armv7em => {
+                if self.fpu_support {
+                    &CORTEX_M_WITH_FP_CORE_REGISTERS
+                } else {
+                    &CORTEX_M_CORE_REGISTERS
+                }
+            }
+            // TODO: This can be wrong if the CPU is 32 bit. For lack of better design at the time of writing this code
+            // this differentiation has been omitted.
+            CoreType::Armv8a => &AARCH64_CORE_REGSISTERS,
+            CoreType::Armv8m => {
+                if self.fpu_support {
+                    &CORTEX_M_WITH_FP_CORE_REGISTERS
+                } else {
+                    &CORTEX_M_CORE_REGISTERS
+                }
+            }
+            CoreType::Riscv => &RISCV_CORE_REGSISTERS,
+        };
+
+        let mut debug_registers = Vec::<DebugRegister>::new();
+        for (dwarf_id, core_register) in reg_list.core_registers().enumerate() {
+            // Check to ensure the register type is compatible with u64.
+            if matches!(core_register.data_type(), RegisterDataType::UnsignedInteger(size_in_bits) if size_in_bits <= 64)
+            {
+                debug_registers.push(DebugRegister {
+                    core_register,
+                    // The DWARF register ID is only valid for the first 32 registers.
+                    dwarf_id: if dwarf_id < 32 {
+                        Some(dwarf_id as u16)
+                    } else {
+                        None
+                    },
+                    value: match self.registers.get(&core_register.id()) {
+                        Some(register_value) => Some(*register_value),
+                        None => {
+                            tracing::warn!("Failed to read value for register {:?}", core_register);
+                            None
+                        }
+                    },
+                });
+            } else {
+                tracing::trace!(
+                    "Unwind will use the default rule for this register : {:?}",
+                    core_register
+                );
+            }
+        }
+        DebugRegisters(debug_registers)
+    }
+
+    /// Returns the type of the core.
+    pub fn core_type(&self) -> CoreType {
+        self.core_type
+    }
+
+    /// Returns the currently active instruction-set
+    pub fn instruction_set(&self) -> InstructionSet {
+        self.instruction_set
+    }
+}
+
+impl MemoryInterface for CoreDump {
+    fn supports_native_64bit_access(&mut self) -> bool {
+        self.supports_native_64bit_access
+    }
+
+    fn read_word_64(&mut self, _address: u64) -> anyhow::Result<u64, crate::Error> {
+        todo!()
+    }
+
+    fn read_word_32(&mut self, _address: u64) -> anyhow::Result<u32, crate::Error> {
+        todo!()
+    }
+
+    fn read_word_8(&mut self, _address: u64) -> anyhow::Result<u8, crate::Error> {
+        todo!()
+    }
+
+    fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn read_32(&mut self, address: u64, data: &mut [u32]) -> anyhow::Result<(), crate::Error> {
+        for (range, memory) in &self.data {
+            if range.contains(&address) && range.contains(&(address + data.len() as u64 * 4)) {
+                for (n, data) in data.iter_mut().enumerate() {
+                    *data = memory
+                        .pread_with((address - range.start) as usize + n * 4, scroll::LE)
+                        .map_err(|e| anyhow!("{e}"))?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_word_64(&mut self, _address: u64, _data: u64) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_word_32(&mut self, _address: u64, _data: u32) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_word_8(&mut self, _address: u64, _data: u8) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_64(&mut self, _address: u64, _data: &[u64]) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_32(&mut self, _address: u64, _data: &[u32]) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_8(&mut self, _address: u64, _data: &[u8]) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn supports_8bit_transfers(&self) -> anyhow::Result<bool, crate::Error> {
+        todo!()
+    }
+
+    fn flush(&mut self) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+}
+
+/// The overarching error type which contains all possible errors as variants.
+#[derive(thiserror::Error, Debug)]
+pub enum CoreDumpError {
+    /// Opening the file for writing the core dump failed.
+    #[error("Opening {1} for writing the core dump failed.")]
+    CoreDumpFileWrite(std::io::Error, PathBuf),
+    /// Opening the file for reading the core dump failed.
+    #[error("Opening {1} for reading the core dump failed.")]
+    CoreDumpFileRead(std::io::Error, PathBuf),
+    /// Encoding the coredump MessagePack failed.
+    #[error("Encoding the coredump MessagePack failed.")]
+    EncodingCoreDump(rmp_serde::encode::Error),
+    /// Decoding the coredump MessagePack failed.
+    #[error("Decoding the coredump MessagePack failed.")]
+    DecodingCoreDump(rmp_serde::decode::Error),
 }
 
 impl<'probe> MemoryInterface for Core<'probe> {
@@ -312,7 +552,8 @@ impl ExceptionInterface for UnimplementedExceptionHandler {
     }
 }
 
-pub(crate) fn exception_handler_for_core(core_type: CoreType) -> Box<dyn ExceptionInterface> {
+/// Creates a new exception interface for the [`CoreType`] at hand.
+pub fn exception_handler_for_core(core_type: CoreType) -> Box<dyn ExceptionInterface> {
     match core_type {
         CoreType::Armv6m => {
             Box::new(crate::architecture::arm::core::exception_handling::ArmV6MExceptionHandler {})
@@ -340,6 +581,11 @@ pub struct Core<'probe> {
 }
 
 impl<'probe> Core<'probe> {
+    /// Borrow the boxed CoreInterface mutable.
+    pub fn inner_mut(&mut self) -> &mut Box<dyn CoreInterface + 'probe> {
+        &mut self.inner
+    }
+
     /// Create a new [`Core`].
     pub(crate) fn new(core: impl CoreInterface + 'probe) -> Core<'probe> {
         Self {
@@ -653,6 +899,12 @@ impl<'probe> Core<'probe> {
         self.inner.fpu_support()
     }
 
+    /// Determine the number of floating point registers.
+    /// This must be queried while halted as this is a runtime decision for some core types.
+    pub fn floating_point_register_count(&mut self) -> Result<Option<usize>, error::Error> {
+        self.inner.floating_point_register_count()
+    }
+
     pub(crate) fn reset_catch_clear(&mut self) -> Result<(), Error> {
         self.inner.reset_catch_clear()
     }
@@ -669,6 +921,171 @@ impl<'probe> Core<'probe> {
     /// Disables vector catching for the given `condition`
     pub fn disable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
         self.inner.disable_vector_catch(condition)
+    }
+
+    /// Dumps core info with the current state.
+    ///
+    /// # Arguments
+    ///
+    /// * `ranges`: Memory ranges that should be dumped.
+    pub fn dump(&mut self, ranges: Vec<Range<u64>>) -> Result<CoreDump, Error> {
+        let instruction_set = self.instruction_set()?;
+        let core_type = self.core_type();
+        let supports_native_64bit_access = self.supports_native_64bit_access();
+        let fpu_support = self.fpu_support()?;
+        let floating_point_register_count = self.floating_point_register_count()?;
+
+        let mut registers = HashMap::new();
+        for register in self.registers().all_registers() {
+            let value = self.read_core_reg(register.id())?;
+            registers.insert(register.id(), value);
+        }
+
+        let mut data = Vec::new();
+        for range in ranges {
+            let mut values = vec![0; (range.end - range.start) as usize];
+            self.read_8(range.start, &mut values)?;
+            data.push((range, values));
+        }
+
+        Ok(CoreDump {
+            registers,
+            data,
+            instruction_set,
+            supports_native_64bit_access,
+            core_type,
+            fpu_support,
+            floating_point_register_count,
+        })
+    }
+}
+
+impl<'probe> CoreInterface for Core<'probe> {
+    fn id(&self) -> usize {
+        self.id()
+    }
+
+    fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), error::Error> {
+        self.wait_for_core_halted(timeout)
+    }
+
+    fn core_halted(&mut self) -> Result<bool, error::Error> {
+        self.core_halted()
+    }
+
+    fn status(&mut self) -> Result<CoreStatus, error::Error> {
+        self.status()
+    }
+
+    fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
+        self.halt(timeout)
+    }
+
+    fn run(&mut self) -> Result<(), error::Error> {
+        self.run()
+    }
+
+    fn reset(&mut self) -> Result<(), error::Error> {
+        self.reset()
+    }
+
+    fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
+        self.reset_and_halt(timeout)
+    }
+
+    fn step(&mut self) -> Result<CoreInformation, error::Error> {
+        self.step()
+    }
+
+    fn read_core_reg(
+        &mut self,
+        address: registers::RegisterId,
+    ) -> Result<registers::RegisterValue, error::Error> {
+        self.read_core_reg(address)
+    }
+
+    fn write_core_reg(
+        &mut self,
+        address: registers::RegisterId,
+        value: registers::RegisterValue,
+    ) -> Result<(), error::Error> {
+        self.write_core_reg(address, value)
+    }
+
+    fn available_breakpoint_units(&mut self) -> Result<u32, error::Error> {
+        self.available_breakpoint_units()
+    }
+
+    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, error::Error> {
+        todo!()
+    }
+
+    fn enable_breakpoints(&mut self, state: bool) -> Result<(), error::Error> {
+        self.enable_breakpoints(state)
+    }
+
+    fn set_hw_breakpoint(&mut self, _unit_index: usize, addr: u64) -> Result<(), error::Error> {
+        self.set_hw_breakpoint(addr)
+    }
+
+    fn clear_hw_breakpoint(&mut self, _unit_index: usize) -> Result<(), error::Error> {
+        self.clear_all_hw_breakpoints()
+    }
+
+    fn registers(&self) -> &'static registers::CoreRegisters {
+        self.registers()
+    }
+
+    fn program_counter(&self) -> &'static CoreRegister {
+        self.program_counter()
+    }
+
+    fn frame_pointer(&self) -> &'static CoreRegister {
+        self.frame_pointer()
+    }
+
+    fn stack_pointer(&self) -> &'static CoreRegister {
+        self.stack_pointer()
+    }
+
+    fn return_address(&self) -> &'static CoreRegister {
+        self.return_address()
+    }
+
+    fn hw_breakpoints_enabled(&self) -> bool {
+        todo!()
+    }
+
+    fn architecture(&self) -> Architecture {
+        self.architecture()
+    }
+
+    fn core_type(&self) -> CoreType {
+        self.core_type()
+    }
+
+    fn instruction_set(&mut self) -> Result<InstructionSet, error::Error> {
+        self.instruction_set()
+    }
+
+    fn fpu_support(&mut self) -> Result<bool, error::Error> {
+        self.fpu_support()
+    }
+
+    fn floating_point_register_count(&mut self) -> Result<Option<usize>, crate::error::Error> {
+        self.floating_point_register_count()
+    }
+
+    fn reset_catch_set(&mut self) -> Result<(), Error> {
+        todo!()
+    }
+
+    fn reset_catch_clear(&mut self) -> Result<(), Error> {
+        self.reset_catch_clear()
+    }
+
+    fn debug_core_stop(&mut self) -> Result<(), Error> {
+        self.debug_core_stop()
     }
 }
 

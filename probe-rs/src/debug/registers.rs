@@ -1,8 +1,7 @@
 use crate::{
-    core::{Core, RegisterDataType, RegisterId, RegisterRole, RegisterValue},
-    CoreRegister, Error,
+    core::{RegisterDataType, RegisterId, RegisterRole, RegisterValue},
+    CoreInterface, CoreRegister, Error,
 };
-
 /// Stores the relevant information from [`crate::core::CoreRegister`] for use in debug operations,
 /// as well as additional information required during debug.
 #[derive(Debug, Clone, PartialEq)]
@@ -46,15 +45,15 @@ impl DebugRegister {
 }
 
 /// All the registers required for debug related operations.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct DebugRegisters(pub Vec<DebugRegister>);
 
 impl DebugRegisters {
     /// Read all registers defined in [`crate::core::CoreRegisters`] from the given core.
-    pub fn from_core(core: &mut Core) -> Self {
+    pub fn from_core(core: &mut impl CoreInterface) -> Self {
         let mut debug_registers = Vec::<DebugRegister>::new();
 
-        for (dwarf_id, core_register) in core.registers().all_registers().enumerate() {
+        for (dwarf_id, core_register) in core.registers().core_registers().enumerate() {
             // Check to ensure the register type is compatible with u64.
             if matches!(core_register.data_type(), RegisterDataType::UnsignedInteger(size_in_bits) if size_in_bits <= 64)
             {
@@ -66,8 +65,8 @@ impl DebugRegisters {
                     } else {
                         None
                     },
-                    value: match core.read_core_reg(core_register.id) {
-                        Ok::<RegisterValue, Error>(register_value) => Some(register_value),
+                    value: match core.read_core_reg(core_register.id()) {
+                        Ok::<RegisterValue, _>(register_value) => Some(register_value),
                         Err(e) => {
                             tracing::warn!(
                                 "Failed to read value for register {:?}: {}",
@@ -108,7 +107,7 @@ impl DebugRegisters {
     }
 
     /// Get the program counter.
-    pub fn get_program_counter(&self) -> Option<&DebugRegister> {
+    pub fn get_program_counter<'b, 'c: 'b>(&'c self) -> Option<&'b DebugRegister> {
         self.0.iter().find(|debug_register| {
             debug_register
                 .core_register
@@ -117,7 +116,7 @@ impl DebugRegisters {
     }
 
     /// Get a mutable reference to the program counter.
-    pub fn get_program_counter_mut(&mut self) -> Option<&mut DebugRegister> {
+    pub fn get_program_counter_mut<'b, 'c: 'b>(&'c mut self) -> Option<&'b mut DebugRegister> {
         self.0.iter_mut().find(|debug_register| {
             debug_register
                 .core_register

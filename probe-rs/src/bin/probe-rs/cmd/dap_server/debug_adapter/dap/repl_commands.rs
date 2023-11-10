@@ -8,17 +8,20 @@ use super::{
     request_helpers::set_instruction_breakpoint,
 };
 use crate::cmd::dap_server::{server::core_data::CoreHandle, DebuggerError};
+use itertools::Itertools;
 use probe_rs::{debug::VariableName, CoreStatus, HaltReason};
-use std::{fmt::Display, str::FromStr, time::Duration};
+use std::{fmt::Display, path::Path, str::FromStr, time::Duration};
 
 /// The handler is a function that takes a reference to the target core, and a reference to the response body.
 /// The response body is used to populate the response to the client.
 /// The handler returns a Result<[`Response`], [`DebuggerError`]>.
 /// We use the [`Response`] type here, so that we can have a consistent interface for processing the result as follows:
-/// - The `command`, `success`, annd `message` fields are the most commonly used fields for all the REPL commands.
+/// - The `command`, `success`, and `message` fields are the most commonly used fields for all the REPL commands.
 /// - The `body` field is used if we need to pass back other DAP body types, e.g. [`BreakpointEventBody`].
 /// - The remainder of the fields are unused/ignored.
 /// The majority of the REPL command results will be populated into the response body.
+///
+/// TODO: Make this less confusing by having a different struct for this.
 pub(crate) type ReplHandler = fn(
     target_core: &mut CoreHandle,
     command_arguments: &str,
@@ -359,6 +362,63 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
             }
 
             memory_read(input_address, gdb_nuf, target_core)
+        },
+    },
+    ReplCommand {
+        command: "dump",
+        help_text: "Create a core dump at a target location",
+        sub_commands: None,
+        args: Some(&[
+            ReplCommandArgs::Optional("memory start address"),
+            ReplCommandArgs::Optional("memory size in bytes"),
+            ReplCommandArgs::Optional("path"),
+        ]),
+        handler: |target_core, command_arguments, _request_arguments| {
+            let mut args = command_arguments.split_whitespace().collect_vec();
+
+            // If we get an odd number of arguments, treat all n * 2 args at the start as memory blocks
+            // and the last argument as the path tho store the coredump at.
+            let location = Path::new(
+                if args.len() % 2 != 0 {
+                    args.pop()
+                } else {
+                    None
+                }
+                .unwrap_or("./coredump"),
+            );
+
+            let ranges = args
+                .chunks(2)
+                .map(|c| {
+                    let start = if let Some(start) = c.first() {
+                        parse_int::parse::<u64>(start)
+                            .map_err(|e| DebuggerError::UserMessage(e.to_string()))?
+                    } else {
+                        unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.")
+                    };
+
+                    let size = if let Some(size) = c.get(1) {
+                        parse_int::parse::<u64>(size)
+                            .map_err(|e| DebuggerError::UserMessage(e.to_string()))?
+                    } else {
+                        unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.")
+                    };
+
+                    Ok::<_, DebuggerError>(start..start + size)
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+
+            target_core.core.dump(ranges)?.store(location)?;
+
+            Ok(Response {
+                command: "dump".to_string(),
+                success: true,
+                message: Some(format!("Core dump successfully stored at {location:?}",)),
+                type_: "response".to_string(),
+                request_seq: 0,
+                seq: 0,
+                body: None,
+            })
         },
     },
 ];

@@ -1,0 +1,16 @@
+[package]
+name = "gpio-hal-blinky"
+version = "0.1.0"
+edition = "2018"
+
+[workspace]
+
+[dependencies]
+embedded-hal = "0.2.4"
+cortex-m-rt = "0.7"
+cortex-m = { version = "0.7", features = [
+    "critical-section-single-core",
+    "inline-asm",
+] }
+panic-halt = "0.2.0"
+microbit = "0.13.0"

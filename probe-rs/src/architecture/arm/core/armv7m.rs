@@ -761,6 +761,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
             pc: pc_value.try_into()?,
         })
     }
+
     fn run(&mut self) -> Result<(), Error> {
         // Before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction.
         self.step()?;
@@ -1052,6 +1053,10 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
 
     fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
         Ok(self.state.fp_present)
+    }
+
+    fn floating_point_register_count(&mut self) -> Result<Option<usize>, crate::error::Error> {
+        Ok(Some(32))
     }
 
     fn id(&self) -> usize {

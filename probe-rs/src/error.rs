@@ -45,6 +45,7 @@ pub enum Error {
     /// the other architectures later.
     #[error("This capability has not yet been implemented for this architecture: {0}")]
     NotImplemented(&'static str),
+
     /// Any other error occurred.
     #[error(transparent)]
     Other(#[from] anyhow::Error),

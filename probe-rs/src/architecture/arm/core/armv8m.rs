@@ -444,6 +444,10 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         Ok(self.state.fp_present)
     }
 
+    fn floating_point_register_count(&mut self) -> Result<Option<usize>, crate::error::Error> {
+        Ok(Some(32))
+    }
+
     fn id(&self) -> usize {
         self.id
     }
