@@ -802,7 +802,7 @@ impl DebugCli {
 
             function: |cli_data, args| {
                 let mut args = args.to_vec();
-                
+
                 // If we get an odd number of arguments, treat all n * 2 args at the start as memory blocks
                 // and the last argument as the path tho store the coredump at.
                 let location = Path::new(
