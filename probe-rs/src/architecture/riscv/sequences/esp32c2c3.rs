@@ -1,4 +1,4 @@
-//! Sequences for the ESP32C3/ESP32C3.
+//! Sequences for the ESP32C2/ESP32C3.
 
 use std::sync::Arc;
 
