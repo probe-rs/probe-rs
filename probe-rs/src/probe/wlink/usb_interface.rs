@@ -95,7 +95,7 @@ impl WchLinkUsbDevice {
         &mut self,
         cmd: C,
     ) -> Result<C::Response, DebugProbeError> {
-        tracing::debug!("Sending command: {:?}", cmd);
+        tracing::trace!("Sending command: {:?}", cmd);
 
         let mut rxbuf = [0u8; 64];
         let len = cmd.to_bytes(&mut rxbuf)?;

@@ -35,7 +35,7 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
         let tag = die.tag();
 
         let gimli::DW_TAG_subprogram = tag else {
-            tracing::error!("FunctionDie has to has to have tag DW_TAG_subprogram, but tag is {:?}. This is a bug, please report it.", tag.static_string());
+            // We only need DIEs for functions, so we can ignore all other DIEs.
             return None;
         };
         Some(Self {
@@ -57,7 +57,7 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
         let tag = concrete_die.tag();
 
         let gimli::DW_TAG_inlined_subroutine = tag else {
-            tracing::error!("FunctionDie has to has to have Tag DW_TAG_inlined_subroutine, but tag is {:?}. This is a bug, please report it.", tag.static_string());
+            // We only need DIEs for inlined functions, so we can ignore all other DIEs.
             return None;
         };
         Some(Self {

@@ -230,7 +230,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
     fn reset_and_halt(
         &mut self,
-        _timeout: Duration,
+        timeout: Duration,
     ) -> Result<crate::core::CoreInformation, crate::Error> {
         tracing::debug!("Resetting core, setting hartreset bit");
 
@@ -273,11 +273,19 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             self.interface.write_dm_register(dmcontrol)?;
         }
 
-        // check that cores have reset
-        let readback: Dmstatus = self.interface.read_dm_register()?;
+        let start = Instant::now();
 
-        if !(readback.allhavereset() && readback.allhalted()) {
-            return Err(RiscvError::RequestNotAcknowledged.into());
+        loop {
+            // check that cores have reset
+            let readback: Dmstatus = self.interface.read_dm_register()?;
+
+            if readback.allhavereset() && readback.allhalted() {
+                break;
+            }
+
+            if start.elapsed() > timeout {
+                return Err(RiscvError::RequestNotAcknowledged.into());
+            }
         }
 
         // acknowledge the reset, clear the halt request
