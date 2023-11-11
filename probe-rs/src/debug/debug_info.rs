@@ -1573,7 +1573,7 @@ mod test {
             registers::cortex_m::CORTEX_M_CORE_REGISTERS,
         },
         core::exception_handler_for_core,
-        debug::{variable, DebugInfo, DebugRegister, DebugRegisters, VariableName},
+        debug::{DebugInfo, DebugRegister, DebugRegisters, VariableName},
         test::MockMemory,
         CoreDump, RegisterValue,
     };
@@ -2133,13 +2133,15 @@ mod test {
                 let mut static_root_variable = variable_cache
                     .get_variable_by_name(&VariableName::StaticScopeRoot)
                     .unwrap();
-                debug_info.cache_deferred_variables(
-                    variable_cache,
-                    &mut adapter,
-                    &mut static_root_variable,
-                    &frame.registers,
-                    frame.frame_base,
-                );
+                debug_info
+                    .cache_deferred_variables(
+                        variable_cache,
+                        &mut adapter,
+                        &mut static_root_variable,
+                        &frame.registers,
+                        frame.frame_base,
+                    )
+                    .unwrap();
 
                 insta::assert_debug_snapshot!(snapshot_name, static_root_variable);
             }
