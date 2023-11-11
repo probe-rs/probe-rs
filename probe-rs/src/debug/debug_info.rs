@@ -1573,7 +1573,7 @@ mod test {
             registers::cortex_m::CORTEX_M_CORE_REGISTERS,
         },
         core::exception_handler_for_core,
-        debug::{DebugInfo, DebugRegister, DebugRegisters, VariableName},
+        debug::{DebugInfo, DebugRegister, DebugRegisters, Variable, VariableCache},
         test::MockMemory,
         CoreDump, RegisterValue,
     };
@@ -1586,10 +1586,49 @@ mod test {
         path
     }
 
-    /// Load the DebugInfo from the `elf_file` for the test.
+    /// Helper function to load the DebugInfo from the `elf_file` for the test.
     /// `elf_file` should be the name of a file(or relative path) in the `tests` directory.
     fn debug_info(elf_file: &str) -> DebugInfo {
         DebugInfo::from_file(get_path_for_test_files(elf_file)).unwrap()
+    }
+
+    /// Helper function to recurse through deferred variables in the variable cache.
+    /// We max out at 10 levels, to ensure we don't recurse infinitely on circular references.
+    fn recurse_deferred_variables(
+        debug_info: &DebugInfo,
+        variable_cache: &mut VariableCache,
+        adapter: &mut CoreDump,
+        parent_variable: &mut Variable,
+        registers: &DebugRegisters,
+        frame_base: Option<u64>,
+        recursion_depth: usize,
+    ) {
+        if recursion_depth < 10 {
+            let children_depth = recursion_depth + 1;
+            debug_info
+                .cache_deferred_variables(
+                    variable_cache,
+                    adapter,
+                    parent_variable,
+                    registers,
+                    frame_base,
+                )
+                .unwrap();
+            for mut child in variable_cache
+                .get_children(Some(parent_variable.variable_key))
+                .unwrap()
+            {
+                recurse_deferred_variables(
+                    debug_info,
+                    variable_cache,
+                    adapter,
+                    &mut child,
+                    registers,
+                    frame_base,
+                    children_depth,
+                );
+            }
+        }
     }
 
     #[test]
@@ -2092,6 +2131,8 @@ mod test {
     }
     #[test]
     fn probe_rs_debug_unwind_tests() {
+        // TODO: The snapshot still has some "MemoryRangeNotFound" errors, which should be fixed.
+        // TODO: I'd like to filter out the RTT buffers ... I don't think their values are useful for the snapshot.
         // TODO: Add more test binaries from `probe-rs-debugger-test` once we agree on this approach.
         for chip_name in ["nRF52833_xxAA"] {
             let debug_info = debug_info(format!("debug-unwind-tests/{chip_name}.elf").as_str());
@@ -2114,37 +2155,38 @@ mod test {
                 )
                 .unwrap();
 
-            let snapshot_base_name = "unwind";
-
-            // Ensure we have the correct frames, and that each frame have the correct registers and values.
-            let mut snapshot_name =
-                format!("{snapshot_base_name}__{chip_name}__stack_frames_and_regsisters");
-            // insta::assert_debug_snapshot!(snapshot_name, stack_frames);
+            let snapshot_name = format!("{chip_name}__full_unwind");
 
             // Expand and validate the static and local variables for each stack frame.
             for frame in stack_frames.iter_mut() {
-                snapshot_name = format!(
-                    "{snapshot_base_name}__{chip_name}__static_variables__{}@{:#010x}",
-                    frame.function_name,
-                    frame.frame_base.unwrap()
-                );
-
-                let mut variable_cache = frame.static_variables.as_mut().unwrap();
-                let mut static_root_variable = variable_cache
-                    .get_variable_by_name(&VariableName::StaticScopeRoot)
-                    .unwrap();
-                debug_info
-                    .cache_deferred_variables(
+                for variable_cache in [
+                    frame.static_variables.as_mut().unwrap(),
+                    frame.local_variables.as_mut().unwrap(),
+                ] {
+                    // Cache the deferred top level children of the of the cache.
+                    let mut parent_variable = variable_cache
+                        .variable_hash_map
+                        .values()
+                        .find(|variable| variable.parent_key.is_none())
+                        .unwrap()
+                        .clone();
+                    recurse_deferred_variables(
+                        &debug_info,
                         variable_cache,
                         &mut adapter,
-                        &mut static_root_variable,
+                        &mut parent_variable,
                         &frame.registers,
                         frame.frame_base,
-                    )
-                    .unwrap();
-
-                insta::assert_debug_snapshot!(snapshot_name, static_root_variable);
+                        0,
+                    );
+                }
             }
+            let stack_frames_dump = stack_frames
+                .iter()
+                .map(|f| format!("{:#?}", f))
+                .collect::<Vec<String>>()
+                .join("\n");
+            insta::assert_debug_snapshot!(snapshot_name, stack_frames_dump);
         }
     }
 }

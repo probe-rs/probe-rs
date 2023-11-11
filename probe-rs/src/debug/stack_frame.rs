@@ -3,7 +3,7 @@ use crate::core::RegisterValue;
 use std;
 
 /// A full stack frame with all its information contained.
-#[derive(Debug, Default, PartialEq)]
+#[derive(Default, PartialEq)]
 pub struct StackFrame {
     /// The stackframe ID.
     pub id: i64,
@@ -59,5 +59,24 @@ impl std::fmt::Display for StackFrame {
             }
         }
         writeln!(f)
+    }
+}
+
+impl std::fmt::Debug for StackFrame {
+    /// Start with printing the `std::fmt::Display impl for StackFrame`,
+    /// then add the static and local variables to the output (these are not included in the `Display` because it would be too noisy ).
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{self}")?;
+        if let Some(statics) = &self.static_variables {
+            writeln!(f, "{}", statics)?;
+        } else {
+            writeln!(f, "No static variables.")?;
+        }
+        if let Some(locals) = &self.local_variables {
+            writeln!(f, "{}", locals)?;
+        } else {
+            writeln!(f, "No local variables.")?;
+        }
+        Ok(())
     }
 }

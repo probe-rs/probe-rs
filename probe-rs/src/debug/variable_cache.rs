@@ -9,6 +9,56 @@ pub struct VariableCache {
     pub(crate) variable_hash_map: HashMap<i64, Variable>,
 }
 
+impl std::fmt::Display for VariableCache {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        // First we have to get the top level variable (no parent) and then recursively print all its children.
+        match self
+            .variable_hash_map
+            .values()
+            .find(|variable| variable.parent_key.is_none())
+        {
+            Some(root_variable) => fmt_recurse_variables(self, root_variable, 0, f)?,
+            None => writeln!(
+                f,
+                "Variable Cache is empty or incorrectly populated. This is a bug."
+            )?,
+        }
+        Ok(())
+    }
+}
+
+/// A helper function to recursively format the `VariableCache`,
+/// and is called by the `std::fmt::Display` impl for `VariableCache`.
+fn fmt_recurse_variables(
+    variable_cache: &VariableCache,
+    parent_variable: &Variable,
+    level: u32,
+    f: &mut std::fmt::Formatter,
+) -> std::fmt::Result {
+    for _indent_level in 0..level {
+        write!(f, " ")?;
+    }
+    let ret = if level == 0 {
+        // Don't print out the top level variable, it's just a container for all the other variables.
+        Ok(())
+    } else {
+        writeln!(
+            f,
+            "-> {} \t= {} \t({})",
+            parent_variable.name,
+            parent_variable.get_value(variable_cache),
+            parent_variable.type_name
+        )
+    };
+    let child_level = level + 1;
+    if let Ok(children) = variable_cache.get_children(Some(parent_variable.variable_key)) {
+        for variable in &children {
+            fmt_recurse_variables(variable_cache, variable, child_level, f)?;
+        }
+    }
+    ret
+}
+
 impl Default for VariableCache {
     fn default() -> Self {
         Self::new()
