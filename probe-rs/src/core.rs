@@ -23,6 +23,7 @@ use scroll::Pread;
 use std::{
     collections::HashMap,
     fs::OpenOptions,
+    mem::size_of_val,
     ops::Range,
     path::{Path, PathBuf},
     sync::Arc,
@@ -314,43 +315,80 @@ impl CoreDump {
     }
 }
 
+/// A helper function for `impl MemoryInterface for CoreDump`.
+/// Look for, and return the starting address and memeory of the range that contains the requested address and size.
+fn get_memory_from_coredump(
+    coredump: &CoreDump,
+    address: u64,
+    size_in_bytes: u64,
+) -> anyhow::Result<(u64, &Vec<u8>), crate::Error> {
+    for (range, memory) in &coredump.data {
+        if range.contains(&address) && range.contains(&(address + size_in_bytes)) {
+            return Ok((range.start, memory));
+        }
+    }
+    // If we get here, then no range with the requested memory address and size was found.
+    Err(crate::Error::MemoryRangeNotFound(address, size_in_bytes))
+}
+
+/// A helper function for `impl MemoryInterface for CoreDump`
+/// Read the requested memory range from the coredump, and return the data in the requested buffer.
+fn read_memory_range<'a, T>(
+    coredump: &'a CoreDump,
+    address: u64,
+    data: &mut [T],
+) -> anyhow::Result<(), crate::Error>
+where
+    <T as scroll::ctx::TryFromCtx<'a, scroll::Endian>>::Error: std::convert::From<scroll::Error>,
+    <T as scroll::ctx::TryFromCtx<'a, scroll::Endian>>::Error: std::fmt::Display,
+    T: scroll::ctx::TryFromCtx<'a, scroll::Endian>,
+{
+    let (memory_offset, memory) =
+        get_memory_from_coredump(coredump, address, (size_of_val(data)) as u64)?;
+    for (n, data) in data.iter_mut().enumerate() {
+        *data = memory
+            .pread_with((address - memory_offset) as usize + n * 4, scroll::LE)
+            .map_err(|e| anyhow!("{e}"))?;
+    }
+    Ok(())
+}
+
 impl MemoryInterface for CoreDump {
     fn supports_native_64bit_access(&mut self) -> bool {
         self.supports_native_64bit_access
     }
 
-    fn read_word_64(&mut self, _address: u64) -> anyhow::Result<u64, crate::Error> {
-        todo!()
+    fn read_word_64(&mut self, address: u64) -> anyhow::Result<u64, crate::Error> {
+        let mut data = [0u64; 1];
+        read_memory_range(self, address, &mut data)?;
+        Ok(data[0])
     }
 
-    fn read_word_32(&mut self, _address: u64) -> anyhow::Result<u32, crate::Error> {
-        todo!()
+    fn read_word_32(&mut self, address: u64) -> anyhow::Result<u32, crate::Error> {
+        let mut data = [0u32; 1];
+        read_memory_range(self, address, &mut data)?;
+        Ok(data[0])
     }
 
-    fn read_word_8(&mut self, _address: u64) -> anyhow::Result<u8, crate::Error> {
-        todo!()
+    fn read_word_8(&mut self, address: u64) -> anyhow::Result<u8, crate::Error> {
+        let mut data = [0u8; 1];
+        read_memory_range(self, address, &mut data)?;
+        Ok(data[0])
     }
 
-    fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> anyhow::Result<(), crate::Error> {
-        todo!()
-    }
-
-    fn read_32(&mut self, address: u64, data: &mut [u32]) -> anyhow::Result<(), crate::Error> {
-        for (range, memory) in &self.data {
-            if range.contains(&address) && range.contains(&(address + data.len() as u64 * 4)) {
-                for (n, data) in data.iter_mut().enumerate() {
-                    *data = memory
-                        .pread_with((address - range.start) as usize + n * 4, scroll::LE)
-                        .map_err(|e| anyhow!("{e}"))?;
-                }
-            }
-        }
-
+    fn read_64(&mut self, address: u64, data: &mut [u64]) -> anyhow::Result<(), crate::Error> {
+        read_memory_range(self, address, data)?;
         Ok(())
     }
 
-    fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> anyhow::Result<(), crate::Error> {
-        todo!()
+    fn read_32(&mut self, address: u64, data: &mut [u32]) -> anyhow::Result<(), crate::Error> {
+        read_memory_range(self, address, data)?;
+        Ok(())
+    }
+
+    fn read_8(&mut self, address: u64, data: &mut [u8]) -> anyhow::Result<(), crate::Error> {
+        read_memory_range(self, address, data)?;
+        Ok(())
     }
 
     fn write_word_64(&mut self, _address: u64, _data: u64) -> anyhow::Result<(), crate::Error> {

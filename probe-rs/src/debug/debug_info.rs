@@ -1562,7 +1562,10 @@ fn add_to_address(address: u64, offset: i64, address_size_in_bytes: usize) -> u6
 
 #[cfg(test)]
 mod test {
-    use std::path::{Path, PathBuf};
+    use std::{
+        fs,
+        path::{Path, PathBuf},
+    };
 
     use crate::{
         architecture::arm::core::{
@@ -1570,27 +1573,23 @@ mod test {
             registers::cortex_m::CORTEX_M_CORE_REGISTERS,
         },
         core::exception_handler_for_core,
-        debug::{DebugInfo, DebugRegister, DebugRegisters},
+        debug::{variable, DebugInfo, DebugRegister, DebugRegisters, VariableName},
         test::MockMemory,
         CoreDump, RegisterValue,
     };
 
-    fn get_path_for_test_files(filename: &str) -> PathBuf {
+    /// Helper function to get the path to a file in the `tests` directory.
+    fn get_path_for_test_files(relative_file: &str) -> PathBuf {
         let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         path.push("tests");
-        path.push(filename);
+        path.push(relative_file);
         path
     }
 
-    fn debug_info(filename: &str) -> DebugInfo {
-        let path = Path::new(filename);
-
-        let mut base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        base_dir.push("tests");
-
-        let path = base_dir.join(path);
-
-        DebugInfo::from_file(path).unwrap()
+    /// Load the DebugInfo from the `elf_file` for the test.
+    /// `elf_file` should be the name of a file(or relative path) in the `tests` directory.
+    fn debug_info(elf_file: &str) -> DebugInfo {
+        DebugInfo::from_file(get_path_for_test_files(elf_file)).unwrap()
     }
 
     #[test]
@@ -2090,5 +2089,60 @@ mod test {
             .join("");
 
         insta::assert_snapshot!(printed_backtrace);
+    }
+    #[test]
+    fn probe_rs_debug_unwind_tests() {
+        // TODO: Add more test binaries from `probe-rs-debugger-test` once we agree on this approach.
+        for chip_name in ["nRF52833_xxAA"] {
+            let debug_info = debug_info(format!("debug-unwind-tests/{chip_name}.elf").as_str());
+            let coredump = fs::read(get_path_for_test_files(
+                format!("debug-unwind-tests/{chip_name}.coredump").as_str(),
+            ))
+            .unwrap();
+            let mut adapter = CoreDump::load_raw(&coredump).unwrap();
+
+            let initial_registers = adapter.debug_registers();
+            let exception_handler = exception_handler_for_core(adapter.core_type());
+            let instruction_set = adapter.instruction_set();
+
+            let mut stack_frames = debug_info
+                .unwind(
+                    &mut adapter,
+                    initial_registers,
+                    exception_handler.as_ref(),
+                    Some(instruction_set),
+                )
+                .unwrap();
+
+            let snapshot_base_name = "unwind";
+
+            // Ensure we have the correct frames, and that each frame have the correct registers and values.
+            let mut snapshot_name =
+                format!("{snapshot_base_name}__{chip_name}__stack_frames_and_regsisters");
+            // insta::assert_debug_snapshot!(snapshot_name, stack_frames);
+
+            // Expand and validate the static and local variables for each stack frame.
+            for frame in stack_frames.iter_mut() {
+                snapshot_name = format!(
+                    "{snapshot_base_name}__{chip_name}__static_variables__{}@{:#010x}",
+                    frame.function_name,
+                    frame.frame_base.unwrap()
+                );
+
+                let mut variable_cache = frame.static_variables.as_mut().unwrap();
+                let mut static_root_variable = variable_cache
+                    .get_variable_by_name(&VariableName::StaticScopeRoot)
+                    .unwrap();
+                debug_info.cache_deferred_variables(
+                    variable_cache,
+                    &mut adapter,
+                    &mut static_root_variable,
+                    &frame.registers,
+                    frame.frame_base,
+                );
+
+                insta::assert_debug_snapshot!(snapshot_name, static_root_variable);
+            }
+        }
     }
 }

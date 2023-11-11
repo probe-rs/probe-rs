@@ -45,6 +45,9 @@ pub enum Error {
     /// the other architectures later.
     #[error("This capability has not yet been implemented for this architecture: {0}")]
     NotImplemented(&'static str),
+    /// The memory range request was not found in the memory interface provide.
+    #[error("No available memory at address {0:#x} of size {1:#x}")]
+    MemoryRangeNotFound(u64, u64),
 
     /// Any other error occurred.
     #[error(transparent)]
