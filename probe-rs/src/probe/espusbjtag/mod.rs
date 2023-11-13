@@ -86,7 +86,7 @@ impl EspUsbJtag {
             if idcode == [0xFF, 0xFF, 0xFF, 0xFF] {
                 break;
             }
-            idcodes.push(u32::from_le_bytes((&idcode[..]).try_into().unwrap()));
+            idcodes.push(u32::from_le_bytes((idcode).try_into().unwrap()));
         }
 
         tracing::info!(
