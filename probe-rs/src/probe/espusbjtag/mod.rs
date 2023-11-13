@@ -3,7 +3,6 @@ mod protocol;
 use std::{
     convert::TryInto,
     iter,
-    time::{Duration, Instant},
 };
 
 use crate::{
@@ -14,9 +13,10 @@ use crate::{
         },
         riscv::communication_interface::{RiscvCommunicationInterface, RiscvError},
     },
-    probe::common::bits_to_byte,
+    probe::common::{bits_to_byte, extract_ir_lengths},
     DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
 };
+use bitvec::prelude::*;
 
 use crate::probe::common::BitIter;
 
@@ -42,6 +42,91 @@ pub(crate) struct EspUsbJtag {
 impl EspUsbJtag {
     fn idle_cycles(&self) -> u8 {
         self.jtag_idle_cycles
+    }
+
+    fn scan(&mut self) -> Result<Vec<super::ScanChainElement>, DebugProbeError> {
+        let chain = self.reset_scan()?;
+        Ok(chain
+            .0
+            .iter()
+            .zip(chain.1.iter())
+            .map(|(&id, &ir)| ScanChainElement {
+                ir_len: Some(ir as u8),
+                name: Some(format!("{:#010x}", id)),
+            })
+            .collect())
+    }
+
+    fn reset_scan(&mut self) -> Result<(Vec<u32>, Vec<usize>), super::DebugProbeError> {
+        let max_chain = 8;
+
+        tracing::debug!("Resetting JTAG chain using trst");
+        // TODO this isn't actually needed, we should only do this when AttachUnderReset it supplied
+        // self.protocol.set_reset(true, true)?;
+        // self.protocol.set_reset(false, false)?;
+
+        tracing::debug!("Resetting JTAG chain by setting tms high for 5 bits");
+
+        // Reset JTAG chain (5 times TMS high), and enter idle state afterwards
+        let tms = vec![true, true, true, true, true, false];
+        let tdi = iter::repeat(true).take(6);
+
+        let response: Vec<_> = self.protocol.jtag_io(tms, tdi, true)?.collect();
+
+        tracing::debug!("Response to reset: {:?}", response);
+
+        let input = Vec::from_iter(iter::repeat(0xFFu8).take(4 * max_chain));
+        let response = self.write_dr(&input, 4 * max_chain * 8).unwrap();
+
+        tracing::trace!("DR: {:?}", response);
+
+        let mut idcodes = Vec::new();
+
+        for idcode in response.chunks(4) {
+            if idcode.len() != 4 {
+                panic!("Bad length");
+            }
+            if idcode == [0xFF, 0xFF, 0xFF, 0xFF] {
+                break;
+            }
+            idcodes.push(u32::from_le_bytes((&idcode[..]).try_into().unwrap()));
+        }
+
+        tracing::info!(
+            "JTAG dr scan complete, found {} TAPS. {:?}",
+            idcodes.len(),
+            idcodes
+        );
+
+        let input = Vec::from_iter(iter::repeat(0xffu8).take(idcodes.len()));
+        let response = self.write_ir(&input, idcodes.len() * 8).unwrap();
+
+        let bits: Vec<bool> = BitIter::new(&response, input.len() * 8).collect();
+
+        let mut bv = BitVec::new(); // TODO with cap
+        let expected = if let Some(ref chain) = self.scan_chain {
+            bv.extend(
+                bits.iter()
+                    .take(chain.iter().map(|s| s.ir_len.unwrap() as usize).sum()),
+            );
+            Some(
+                chain
+                    .iter()
+                    .map(|s| s.ir_len.unwrap() as usize)
+                    .collect::<Vec<usize>>(),
+            )
+        } else {
+            bv.extend(bits.iter());
+            None
+        };
+
+        tracing::info!("ir scan: {}", bv.as_bitslice());
+
+        let ir_lens =
+            extract_ir_lengths(bv.as_bitslice(), idcodes.len(), expected.as_deref()).unwrap();
+        tracing::info!("Detected IR lens: {:?}", ir_lens);
+
+        Ok((idcodes, ir_lens))
     }
 
     fn read_dr(&mut self, register_bits: usize) -> Result<Vec<u8>, DebugProbeError> {
@@ -96,22 +181,37 @@ impl EspUsbJtag {
     /// IR register might have an odd length, so the data
     /// will be truncated to `len` bits. If data has less
     /// than `len` bits, an error will be returned.
-    fn write_ir(&mut self, data: &[u8], len: usize) -> Result<(), DebugProbeError> {
-        if len >= 8 {
-            return Err(DebugProbeError::NotImplemented(
-                "Not yet implemented for IR registers larger than 8 bit",
-            ));
-        }
+    fn write_ir(&mut self, data: &[u8], len: usize) -> Result<Vec<u8>, DebugProbeError> {
+        let tms_enter_ir_shift = [true, true, false, false];
 
         self.prepare_write_ir(data, len)?;
-        let response = self.protocol.flush()?;
+        let mut response = self.protocol.flush()?;
         tracing::trace!("Response: {:?}", response);
 
         // TODO: Why only store the first 8 bits?
         self.current_ir_reg = data[0] as u32;
 
-        // Maybe we could return the previous state of the IR register here...
-        Ok(())
+        let mut response = response.iter();
+        let _remainder = response.split_off(tms_enter_ir_shift.len());
+
+        let mut remaining_bits = len;
+
+        let mut result = Vec::new();
+
+        while remaining_bits >= 8 {
+            let byte = bits_to_byte(response.split_off(8)) as u8;
+            result.push(byte);
+            remaining_bits -= 8;
+        }
+
+        // Handle leftover bytes
+        if remaining_bits > 0 {
+            result.push(bits_to_byte(response.split_off(remaining_bits)) as u8);
+        }
+
+        tracing::trace!("result: {:?}", result);
+
+        Ok(result)
     }
 
     fn prepare_write_ir(&mut self, data: &[u8], len: usize) -> Result<usize, DebugProbeError> {
@@ -483,36 +583,12 @@ impl DebugProbe for EspUsbJtag {
     fn attach(&mut self) -> Result<(), super::DebugProbeError> {
         tracing::debug!("Attaching to ESP USB JTAG");
 
-        // TODO: Maybe can be left in protocol altogether.
+        let taps = self.scan()?;
+        tracing::info!("Found {} taps on reset scan", taps.len());
 
-        // try some JTAG stuff
-
-        tracing::debug!("Resetting JTAG chain using trst");
-        self.protocol.set_reset(true, true)?;
-        self.protocol.set_reset(false, false)?;
-
-        tracing::debug!("Resetting JTAG chain by setting tms high for 5 bits");
-
-        // Reset JTAG chain (5 times TMS high), and enter idle state afterwards
-        let tms = vec![true, true, true, true, true, false];
-        let tdi = iter::repeat(false).take(6);
-
-        let response: Vec<_> = self.protocol.jtag_io(tms, tdi, false)?.collect();
-
-        tracing::debug!("Response to reset: {:?}", response);
-
-        // try to read the idcode until we have some non-zero bytes
-        let start = Instant::now();
-        let idcode = loop {
-            let idcode_bytes = self.read_dr(32)?;
-            if idcode_bytes.iter().any(|&x| x != 0)
-                || Instant::now().duration_since(start) > Duration::from_secs(1)
-            {
-                break u32::from_le_bytes((&idcode_bytes[..]).try_into().unwrap());
-            }
-        };
-
-        tracing::info!("JTAG IDCODE: {:#010x}", idcode);
+        for t in taps {
+            tracing::info!("{:?}", t);
+        }
 
         Ok(())
     }
