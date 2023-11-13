@@ -2,22 +2,70 @@
 source: probe-rs/src/debug/debug_info.rs
 expression: printed_backtrace
 ---
-Frame: wait<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>
-	/home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:266:12
-Frame: delay<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>
-	/home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:145:22
-Frame: delay_us<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>
-	/home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:324:9
-Frame: delay_ms<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>
-	/home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:297:14
-Frame: delay_ms<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>
-	/home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:306:14
-Frame: __cortex_m_rt_main
-	/home/dominik/code/probe-rs/probe-rs-repro/nrf/inlined-functions/src/main.rs:20:15
-Frame: __cortex_m_rt_main_trampoline
-	/home/dominik/code/probe-rs/probe-rs-repro/nrf/inlined-functions/src/main.rs:7:1
-Frame: <unknown function @ 0x0000013c>
-
-Frame: <unknown function @ 0x0000013c>
-
+Frame:
+ function:        wait<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>
+ source_location:
+  directory: /home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src
+  file: Some("timer.rs")
+  line: Some(266)
+  column: Some(Column(12))
+ frame_base:      Some(20003ff0)
+Frame:
+ function:        delay<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>
+ source_location:
+  directory: /home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src
+  file: Some("timer.rs")
+  line: Some(145)
+  column: Some(Column(22))
+ frame_base:      Some(20003ff0)
+Frame:
+ function:        delay_us<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>
+ source_location:
+  directory: /home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src
+  file: Some("timer.rs")
+  line: Some(324)
+  column: Some(Column(9))
+ frame_base:      Some(20003ff0)
+Frame:
+ function:        delay_ms<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>
+ source_location:
+  directory: /home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src
+  file: Some("timer.rs")
+  line: Some(297)
+  column: Some(Column(14))
+ frame_base:      Some(20003ff0)
+Frame:
+ function:        delay_ms<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>
+ source_location:
+  directory: /home/dominik/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src
+  file: Some("timer.rs")
+  line: Some(306)
+  column: Some(Column(14))
+ frame_base:      Some(20003ff0)
+Frame:
+ function:        __cortex_m_rt_main
+ source_location:
+  directory: /home/dominik/code/probe-rs/probe-rs-repro/nrf/inlined-functions/src
+  file: Some("main.rs")
+  line: Some(20)
+  column: Some(Column(15))
+ frame_base:      Some(20003ff0)
+Frame:
+ function:        __cortex_m_rt_main_trampoline
+ source_location:
+  directory: /home/dominik/code/probe-rs/probe-rs-repro/nrf/inlined-functions/src
+  file: Some("main.rs")
+  line: Some(7)
+  column: Some(Column(1))
+ frame_base:      Some(20003ff8)
+Frame:
+ function:        <unknown function @ 0x0000013c>
+ source_location:
+None
+ frame_base:      None
+Frame:
+ function:        <unknown function @ 0x0000013c>
+ source_location:
+None
+ frame_base:      None
 

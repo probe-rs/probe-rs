@@ -105,14 +105,13 @@ impl DebugInfo {
     // Until we have more tests we cannot be sure tho and it should stay like this.
     pub fn function_name(
         &self,
-        memory: &mut impl MemoryInterface,
         address: u64,
         find_inlined: bool,
     ) -> Result<Option<String>, DebugError> {
         let mut units = self.dwarf.units();
 
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
-            let mut functions = unit_info.get_function_dies(memory, address, None, find_inlined)?;
+            let mut functions = unit_info.get_function_dies(address, find_inlined)?;
 
             // Use the last functions from the list, this is the function which most closely
             // corresponds to the PC in case of multiple inlined functions.
@@ -302,6 +301,7 @@ impl DebugInfo {
             );
             static_root_variable.variable_node_type = VariableNodeType::DirectLookup;
             static_root_variable.name = VariableName::StaticScopeRoot;
+
             static_variable_cache.cache_variable(None, static_root_variable, memory)?;
         }
         Ok(static_variable_cache)
@@ -514,19 +514,19 @@ impl DebugInfo {
         let mut frames = Vec::new();
 
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
-            let functions =
-                unit_info.get_function_dies(memory, address, Some(unwind_registers), true)?;
+            let functions = unit_info.get_function_dies(address, true)?;
 
             if functions.is_empty() {
                 continue;
             }
 
+            // The first function is the non-inlined function, and the rest are inlined functions.
+            // The frame base only exists for the non-inlined function, so we can reuse it for all the inlined functions.
+            let frame_base = functions[0].frame_base(memory, unwind_registers)?;
+
             // Handle all functions which contain further inlined functions. For
             // these functions, the location is the call site of the inlined function.
             for (index, function_die) in functions[0..functions.len() - 1].iter().enumerate() {
-                let mut inlined_call_site: Option<RegisterValue> = None;
-                let mut inlined_caller_source_location: Option<SourceLocation> = None;
-
                 let function_name = function_die
                     .function_name()
                     .unwrap_or_else(|| unknown_function.clone());
@@ -542,17 +542,15 @@ impl DebugInfo {
 
                 if next_function.low_pc > address_size && next_function.low_pc < u32::MAX.into() {
                     // The first instruction of the inlined function is used as the call site
-                    inlined_call_site = Some(RegisterValue::from(next_function.low_pc));
+                    let inlined_call_site = RegisterValue::from(next_function.low_pc);
 
                     tracing::debug!(
                         "UNWIND: Callsite for inlined function {:?}",
                         next_function.function_name()
                     );
 
-                    inlined_caller_source_location = next_function.inline_call_location();
-                }
+                    let inlined_caller_source_location = next_function.inline_call_location();
 
-                if let Some(inlined_call_site) = inlined_call_site {
                     tracing::debug!("UNWIND: Call site: {:?}", inlined_caller_source_location);
 
                     // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
@@ -585,13 +583,12 @@ impl DebugInfo {
                         );
 
                     frames.push(StackFrame {
-                        // MS DAP Specification requires the id to be unique accross all threads, so using  so using unique `Variable::variable_key` of the `stackframe_root_variable` as the id.
                         id: get_sequential_key(),
                         function_name,
                         source_location: inlined_caller_source_location,
                         registers: unwind_registers.clone(),
                         pc: inlined_call_site,
-                        frame_base: function_die.frame_base,
+                        frame_base,
                         is_inlined: function_die.is_inline(),
                         static_variables,
                         local_variables,
@@ -645,7 +642,6 @@ impl DebugInfo {
                 );
 
             frames.push(StackFrame {
-                // MS DAP Specification requires the id to be unique accross all threads, so using  so using unique `Variable::variable_key` of the `stackframe_root_variable` as the id.
                 id: get_sequential_key(),
                 function_name,
                 source_location: function_location,
@@ -655,7 +651,7 @@ impl DebugInfo {
                     8 => RegisterValue::U64(address),
                     _ => RegisterValue::from(address),
                 },
-                frame_base: last_function.frame_base,
+                frame_base,
                 is_inlined: last_function.is_inline(),
                 static_variables,
                 local_variables,
@@ -1570,7 +1566,7 @@ mod test {
             registers::cortex_m::CORTEX_M_CORE_REGISTERS,
         },
         core::exception_handler_for_core,
-        debug::{DebugInfo, DebugRegister, DebugRegisters},
+        debug::{stack_frame::TestFormatter, DebugInfo, DebugRegister, DebugRegisters},
         test::MockMemory,
         CoreDump, RegisterValue,
     };
@@ -1851,7 +1847,7 @@ mod test {
 
         let printed_backtrace = frames
             .into_iter()
-            .map(|f| f.to_string())
+            .map(|f| TestFormatter(&f).to_string())
             .collect::<Vec<String>>()
             .join("");
 
@@ -1956,7 +1952,7 @@ mod test {
 
         let printed_backtrace = frames
             .into_iter()
-            .map(|f| f.to_string())
+            .map(|f| TestFormatter(&f).to_string())
             .collect::<Vec<String>>()
             .join("");
 
@@ -2048,7 +2044,7 @@ mod test {
 
         let printed_backtrace = frames
             .into_iter()
-            .map(|f| f.to_string())
+            .map(|f| TestFormatter(&f).to_string())
             .collect::<Vec<String>>()
             .join("");
 
@@ -2078,7 +2074,7 @@ mod test {
 
         let printed_backtrace = stack_frames
             .into_iter()
-            .map(|f| f.to_string())
+            .map(|f| TestFormatter(&f).to_string())
             .collect::<Vec<String>>()
             .join("");
 
