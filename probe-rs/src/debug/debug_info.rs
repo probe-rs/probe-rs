@@ -2131,8 +2131,8 @@ mod test {
     }
     #[test]
     fn probe_rs_debug_unwind_tests() {
-        // TODO: Add more test binaries from `probe-rs-debugger-test` once we agree on this approach.
-        for chip_name in ["nRF52833_xxAA"] {
+        // TODO: Add RISC-V tests.
+        for chip_name in ["nRF52833_xxAA", "RP2040"] {
             let debug_info = debug_info(format!("debug-unwind-tests/{chip_name}.elf").as_str());
             let coredump = fs::read(get_path_for_test_files(
                 format!("debug-unwind-tests/{chip_name}.coredump").as_str(),

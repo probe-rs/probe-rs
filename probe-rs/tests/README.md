@@ -12,6 +12,7 @@ The source code for the tests can be found at locations below. Please note that 
     cargo build --target thumbv7em-none-eabihf --features STM32H745ZITx --locked
     ```
 - `debug-unwind-tests` 
-  - This binary was created using the `nRF52833_xxAA` binary of the [probe-rs-debugger testing application](https://github.com/probe-rs/probe-rs-debugger-test). 
+  - This binary was created using the various chip specific binaries of the [probe-rs-debugger testing application](https://github.com/probe-rs/probe-rs-debugger-test). 
     - To reproduce the coredump and elf files, clone commit `TODO: add commit number when ready` of the above repository, and then follow the steps in the `README.md` file in the root of that repository.
+    - In the case of tests failing, use [cargo insta review](https://insta.rs/docs/quickstart/) to easily compare changes.
 
