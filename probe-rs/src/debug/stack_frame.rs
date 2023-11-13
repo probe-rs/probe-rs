@@ -2,6 +2,9 @@ use super::*;
 use crate::core::RegisterValue;
 use std;
 
+#[cfg(test)]
+pub use test::TestFormatter;
+
 /// A full stack frame with all its information contained.
 #[derive(Debug, Default, PartialEq)]
 pub struct StackFrame {
@@ -63,30 +66,34 @@ impl std::fmt::Display for StackFrame {
 }
 
 #[cfg(test)]
-pub struct TestFormatter<'s>(pub &'s StackFrame);
+mod test {
+    use super::StackFrame;
 
-#[cfg(test)]
-impl<'s> std::fmt::Display for TestFormatter<'s> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "Frame:")?;
-        writeln!(f, " function:        {}", self.0.function_name)?;
+    /// Helper struct used to format a StackFrame for testing.
+    pub struct TestFormatter<'s>(pub &'s StackFrame);
 
-        writeln!(f, " source_location: ")?;
-        match &self.0.source_location {
-            Some(location) => {
-                write!(f, "  directory: ")?;
-                match location.directory.as_ref() {
-                    Some(l) => writeln!(f, "{}", l.to_path().display())?,
-                    None => writeln!(f, "None")?,
+    impl<'s> std::fmt::Display for TestFormatter<'s> {
+        fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            writeln!(f, "Frame:")?;
+            writeln!(f, " function:        {}", self.0.function_name)?;
+
+            writeln!(f, " source_location:")?;
+            match &self.0.source_location {
+                Some(location) => {
+                    write!(f, "  directory: ")?;
+                    match location.directory.as_ref() {
+                        Some(l) => writeln!(f, "{}", l.to_path().display())?,
+                        None => writeln!(f, "None")?,
+                    }
+                    writeln!(f, "  file: {:?}", location.file)?;
+                    writeln!(f, "  line: {:?}", location.line)?;
+                    writeln!(f, "  column: {:?}", location.column)?;
                 }
-                writeln!(f, "  file: {:?}", location.file)?;
-                writeln!(f, "  line: {:?}", location.line)?;
-                writeln!(f, "  column: {:?}", location.column)?;
+                None => writeln!(f, "None")?,
             }
-            None => writeln!(f, "None")?,
-        }
-        writeln!(f, " frame_base:      {:08x?}", self.0.frame_base)?;
+            writeln!(f, " frame_base:      {:08x?}", self.0.frame_base)?;
 
-        Ok(())
+            Ok(())
+        }
     }
 }

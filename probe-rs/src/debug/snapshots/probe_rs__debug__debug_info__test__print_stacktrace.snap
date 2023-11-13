@@ -4,7 +4,7 @@ expression: printed_backtrace
 ---
 Frame:
  function:        read<nrf51_pac::timer0::events_compare::EVENTS_COMPARE_SPEC>
- source_location: 
+ source_location:
   directory: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf51-pac-0.10.1/src
   file: Some("generic.rs")
   line: Some(64)
@@ -12,7 +12,7 @@ Frame:
  frame_base:      Some(20003f38)
 Frame:
  function:        timer_running<nrf51_pac::TIMER0>
- source_location: 
+ source_location:
   directory: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src
   file: Some("timer.rs")
   line: Some(397)
@@ -20,7 +20,7 @@ Frame:
  frame_base:      Some(20003f38)
 Frame:
  function:        wait<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
- source_location: 
+ source_location:
   directory: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src
   file: Some("timer.rs")
   line: Some(266)
@@ -28,7 +28,7 @@ Frame:
  frame_base:      Some(20003f50)
 Frame:
  function:        <unknown function @ 0x0000019c>
- source_location: 
+ source_location:
   directory: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src
   file: Some("timer.rs")
   line: Some(145)
@@ -36,7 +36,7 @@ Frame:
  frame_base:      Some(20003f78)
 Frame:
  function:        delay_us<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
- source_location: 
+ source_location:
   directory: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src
   file: Some("timer.rs")
   line: Some(325)
@@ -44,7 +44,7 @@ Frame:
  frame_base:      Some(20003f88)
 Frame:
  function:        delay_ms<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
- source_location: 
+ source_location:
   directory: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src
   file: Some("timer.rs")
   line: Some(298)
@@ -52,7 +52,7 @@ Frame:
  frame_base:      Some(20003fa8)
 Frame:
  function:        delay_ms<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
- source_location: 
+ source_location:
   directory: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src
   file: Some("timer.rs")
   line: Some(307)
@@ -60,7 +60,7 @@ Frame:
  frame_base:      Some(20003fc0)
 Frame:
  function:        __cortex_m_rt_main
- source_location: 
+ source_location:
   directory: /Users/yatekii/repos/microbit/examples/gpio-hal-blinky/src
   file: Some("main.rs")
   line: Some(23)
@@ -68,7 +68,7 @@ Frame:
  frame_base:      Some(20003ff0)
 Frame:
  function:        __cortex_m_rt_main_trampoline
- source_location: 
+ source_location:
   directory: /Users/yatekii/repos/microbit/examples/gpio-hal-blinky/src
   file: Some("main.rs")
   line: Some(10)
