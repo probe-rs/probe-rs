@@ -7,7 +7,6 @@ use once_cell::sync::Lazy;
 /// The program counter register.
 pub const PC: CoreRegister = CoreRegister {
     roles: &[RegisterRole::Core("pc"), RegisterRole::ProgramCounter],
-    /// This is a CSR register
     id: RegisterId(0x7b1),
     data_type: RegisterDataType::UnsignedInteger(32),
     unwind_rule: UnwindRule::Clear,
