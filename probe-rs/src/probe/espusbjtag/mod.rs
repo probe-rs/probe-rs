@@ -1,9 +1,6 @@
 mod protocol;
 
-use std::{
-    convert::TryInto,
-    iter,
-};
+use std::{convert::TryInto, iter};
 
 use crate::{
     architecture::{
@@ -120,11 +117,11 @@ impl EspUsbJtag {
             None
         };
 
-        tracing::info!("ir scan: {}", bv.as_bitslice());
+        tracing::trace!("ir scan: {}", bv.as_bitslice());
 
         let ir_lens =
             extract_ir_lengths(bv.as_bitslice(), idcodes.len(), expected.as_deref()).unwrap();
-        tracing::info!("Detected IR lens: {:?}", ir_lens);
+        tracing::trace!("Detected IR lens: {:?}", ir_lens);
 
         Ok((idcodes, ir_lens))
     }

@@ -415,8 +415,8 @@ pub(crate) fn extract_ir_lengths(
 
 #[cfg(test)]
 mod tests {
-    use bitvec::prelude::*;
     use super::*;
+    use bitvec::prelude::*;
 
     const ARM_TAP: IdCode = IdCode(0x4BA00477);
     const STM_BS_TAP: IdCode = IdCode(0x06433041);
