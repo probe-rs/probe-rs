@@ -61,3 +61,32 @@ impl std::fmt::Display for StackFrame {
         writeln!(f)
     }
 }
+
+#[cfg(test)]
+pub struct TestFormatter<'s>(pub &'s StackFrame);
+
+#[cfg(test)]
+impl<'s> std::fmt::Display for TestFormatter<'s> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        writeln!(f, "Frame:")?;
+        writeln!(f, " function:        {}", self.0.function_name)?;
+
+        writeln!(f, " source_location: ")?;
+        match &self.0.source_location {
+            Some(location) => {
+                write!(f, "  directory: ")?;
+                match location.directory.as_ref() {
+                    Some(l) => writeln!(f, "{}", l.to_path().display())?,
+                    None => writeln!(f, "None")?,
+                }
+                writeln!(f, "  file: {:?}", location.file)?;
+                writeln!(f, "  line: {:?}", location.line)?;
+                writeln!(f, "  column: {:?}", location.column)?;
+            }
+            None => writeln!(f, "None")?,
+        }
+        writeln!(f, " frame_base:      {:08x?}", self.0.frame_base)?;
+
+        Ok(())
+    }
+}

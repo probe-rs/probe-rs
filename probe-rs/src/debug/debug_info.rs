@@ -1570,7 +1570,7 @@ mod test {
             registers::cortex_m::CORTEX_M_CORE_REGISTERS,
         },
         core::exception_handler_for_core,
-        debug::{DebugInfo, DebugRegister, DebugRegisters},
+        debug::{stack_frame::TestFormatter, DebugInfo, DebugRegister, DebugRegisters},
         test::MockMemory,
         CoreDump, RegisterValue,
     };
@@ -1851,7 +1851,7 @@ mod test {
 
         let printed_backtrace = frames
             .into_iter()
-            .map(|f| f.to_string())
+            .map(|f| TestFormatter(&f).to_string())
             .collect::<Vec<String>>()
             .join("");
 
@@ -1956,7 +1956,7 @@ mod test {
 
         let printed_backtrace = frames
             .into_iter()
-            .map(|f| f.to_string())
+            .map(|f| TestFormatter(&f).to_string())
             .collect::<Vec<String>>()
             .join("");
 
@@ -2048,7 +2048,7 @@ mod test {
 
         let printed_backtrace = frames
             .into_iter()
-            .map(|f| f.to_string())
+            .map(|f| TestFormatter(&f).to_string())
             .collect::<Vec<String>>()
             .join("");
 
@@ -2078,7 +2078,7 @@ mod test {
 
         let printed_backtrace = stack_frames
             .into_iter()
-            .map(|f| f.to_string())
+            .map(|f| TestFormatter(&f).to_string())
             .collect::<Vec<String>>()
             .join("");
 

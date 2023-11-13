@@ -1,0 +1,23 @@
+---
+source: probe-rs/src/debug/debug_info.rs
+expression: printed_backtrace
+---
+wait<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>
+  frame_base: None
+delay<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>
+  frame_base: None
+delay_us<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>
+  frame_base: None
+delay_ms<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>
+  frame_base: None
+delay_ms<nrf52833_pac::TIMER0, nrf_hal_common::timer::OneShot>
+  frame_base: None
+__cortex_m_rt_main
+  frame_base: Some(20003ff0)
+__cortex_m_rt_main_trampoline
+  frame_base: Some(20003ff8)
+<unknown function @ 0x0000013c>
+  frame_base: None
+<unknown function @ 0x0000013c>
+  frame_base: None
+
