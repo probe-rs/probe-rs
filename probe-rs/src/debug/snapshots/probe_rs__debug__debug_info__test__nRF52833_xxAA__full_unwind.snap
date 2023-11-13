@@ -2,8 +2,7 @@
 source: probe-rs/src/debug/debug_info.rs
 expression: stack_frames
 ---
-- id: 3
-  function_name: test_deep_stack
+- function_name: test_deep_stack
   source_location:
     line: 343
     column:
@@ -765,8 +764,7 @@ expression: stack_frames
             type_name:
               Base: usize
             value: "6"
-- id: 6
-  function_name: test_deep_stack
+- function_name: test_deep_stack
   source_location:
     line: 337
     column:
@@ -1520,8 +1518,7 @@ expression: stack_frames
             type_name:
               Base: usize
             value: "5"
-- id: 9
-  function_name: test_deep_stack
+- function_name: test_deep_stack
   source_location:
     line: 337
     column:
@@ -2275,8 +2272,7 @@ expression: stack_frames
             type_name:
               Base: usize
             value: "4"
-- id: 12
-  function_name: test_deep_stack
+- function_name: test_deep_stack
   source_location:
     line: 337
     column:
@@ -3030,8 +3026,7 @@ expression: stack_frames
             type_name:
               Base: usize
             value: "3"
-- id: 15
-  function_name: test_deep_stack
+- function_name: test_deep_stack
   source_location:
     line: 337
     column:
@@ -3785,8 +3780,7 @@ expression: stack_frames
             type_name:
               Base: usize
             value: "2"
-- id: 18
-  function_name: test_deep_stack
+- function_name: test_deep_stack
   source_location:
     line: 337
     column:
@@ -4540,8 +4534,7 @@ expression: stack_frames
             type_name:
               Base: usize
             value: "1"
-- id: 21
-  function_name: setup_data_types
+- function_name: setup_data_types
   source_location:
     line: 324
     column:
@@ -7835,8 +7828,7 @@ expression: stack_frames
                                         type_name:
                                           Base: usize
                                         value: "1"
-- id: 24
-  function_name: __cortex_m_rt_main
+- function_name: __cortex_m_rt_main
   source_location:
     line: 51
     column:
@@ -8063,8 +8055,7 @@ expression: stack_frames
       - name: LocalScopeRoot
         type_name: Unknown
         value: Unknown
-- id: 27
-  function_name: __cortex_m_rt_main_trampoline
+- function_name: __cortex_m_rt_main_trampoline
   source_location:
     line: 48
     column:
