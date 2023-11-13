@@ -9,7 +9,7 @@ use std::{
 };
 
 /// The type of data stored in a register, with size in bits encapsulated in the enum.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub enum RegisterDataType {
     /// Unsigned integer data, with size in bits encapsulated.
     UnsignedInteger(usize),
@@ -20,7 +20,7 @@ pub enum RegisterDataType {
 /// This is used to label the register with a specific role that it plays during program execution and exception handling.
 /// This denotes the purpose of a register (e.g. `return address`),
 /// while the [`CoreRegister::name`] will contain the architecture specific label of the register.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum RegisterRole {
     /// The default role for a register, with the name as defined by the architecture.
     Core(&'static str),
@@ -102,7 +102,7 @@ pub enum UnwindRule {
 
 /// Describes a core (or CPU / hardware) register with its properties.
 /// Each architecture will have a set of general purpose registers, and potentially some special purpose registers. It also happens that some general purpose registers can be used for special purposes. For instance, some ARM variants allows the `LR` (link register / return address) to be used as general purpose register `R14`."
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct CoreRegister {
     // /// Some architectures have multiple names for the same register, depending on the context and the role of the register.
     pub(crate) id: RegisterId,
@@ -110,6 +110,7 @@ pub struct CoreRegister {
     pub(crate) roles: &'static [RegisterRole],
     pub(crate) data_type: RegisterDataType,
     /// For unwind purposes (debug and/or exception handling), we need to know how values are preserved between function calls. (Applies to ARM and RISC-V)
+    #[serde(skip_serializing)]
     pub unwind_rule: UnwindRule,
 }
 

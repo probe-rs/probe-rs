@@ -60,7 +60,7 @@ impl VariableValue {
 }
 
 /// The type of variable we have at hand.
-#[derive(Debug, PartialEq, Eq, Clone, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Default, Serialize)]
 pub enum VariableName {
     /// Top-level variable for static variables, child of a stack frame variable,
     /// and holds all the static scoped variables which are directly visible to the
@@ -150,7 +150,7 @@ impl VariableNodeType {
 }
 
 /// The variants of VariableType allows us to streamline the conditional logic that requires specific handling depending on the nature of the variable.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
 pub enum VariableType {
     /// A variable with a Rust base datatype.
     Base(String),

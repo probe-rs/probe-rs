@@ -1,6 +1,7 @@
 use super::*;
 use crate::Error;
 use anyhow::anyhow;
+use serde::{Serialize, Serializer};
 use std::collections::HashMap;
 
 /// VariableCache stores available `Variable`s, and provides methods to create and navigate the parent-child relationships of the Variables.
@@ -9,54 +10,56 @@ pub struct VariableCache {
     pub(crate) variable_hash_map: HashMap<i64, Variable>,
 }
 
-impl std::fmt::Display for VariableCache {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        // First we have to get the top level variable (no parent) and then recursively print all its children.
-        match self
-            .variable_hash_map
-            .values()
-            .find(|variable| variable.parent_key.is_none())
-        {
-            Some(root_variable) => fmt_recurse_variables(self, root_variable, 0, f)?,
-            None => writeln!(
-                f,
-                "Variable Cache is empty or incorrectly populated. This is a bug."
-            )?,
-        }
-        Ok(())
-    }
-}
+impl Serialize for VariableCache {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        use serde::ser::SerializeStruct;
 
-/// A helper function to recursively format the `VariableCache`,
-/// and is called by the `std::fmt::Display` impl for `VariableCache`.
-fn fmt_recurse_variables(
-    variable_cache: &VariableCache,
-    parent_variable: &Variable,
-    level: u32,
-    f: &mut std::fmt::Formatter,
-) -> std::fmt::Result {
-    for _indent_level in 0..level {
-        write!(f, " ")?;
-    }
-    let ret = if level == 0 {
-        // Don't print out the top level variable, it's just a container for all the other variables.
-        Ok(())
-    } else {
-        writeln!(
-            f,
-            "-> {} \t= {} \t({})",
-            parent_variable.name,
-            parent_variable.get_value(variable_cache),
-            parent_variable.type_name
-        )
-    };
-    let child_level = level + 1;
-    if let Ok(children) = variable_cache.get_children(Some(parent_variable.variable_key)) {
-        for variable in &children {
-            fmt_recurse_variables(variable_cache, variable, child_level, f)?;
+        /// This is a modified version of the [`Variable`] struct, to be used for serialization as a recursive tree node.
+        #[derive(Serialize)]
+        struct VariableTreeNode {
+            name: VariableName,
+            type_name: VariableType,
+            /// To eliminate noise, we will only show values for base data types and strings.
+            value: String,
+            /// ONLY If there are children.
+            #[serde(skip_serializing_if = "Vec::is_empty")]
+            children: Vec<VariableTreeNode>,
         }
+
+        /// A helper function to recursively build the variable tree with `VariableTreeNode` entries.
+        fn recurse_variables(
+            variable_cache: &VariableCache,
+            parent_variable_key: Option<i64>,
+        ) -> Vec<VariableTreeNode> {
+            variable_cache
+                .get_children(parent_variable_key)
+                .unwrap()
+                .iter()
+                .map(|child_variable: &Variable| VariableTreeNode {
+                    name: child_variable.name.clone(),
+                    type_name: child_variable.type_name.clone(),
+                    value: if child_variable.range_upper_bound > 50 {
+                        format!("Data types with more than 50 members are excluded from this output. This variable has {} child members.", child_variable.range_upper_bound)
+                    } else {
+                        child_variable.get_value(variable_cache)
+                    },
+                    children: if child_variable.range_upper_bound > 50 {
+                        // Empty Vec's will show as variables with no children.
+                        Vec::new()
+                    } else {
+                        recurse_variables(variable_cache, Some(child_variable.variable_key))
+                    },
+                                    })
+                .collect::<Vec<VariableTreeNode>>()
+        }
+
+        let mut state = serializer.serialize_struct("Variables", 1)?;
+        state.serialize_field("Child Variables", &recurse_variables(self, None))?;
+        state.end()
     }
-    ret
 }
 
 impl Default for VariableCache {

@@ -2132,7 +2132,6 @@ mod test {
     #[test]
     fn probe_rs_debug_unwind_tests() {
         // TODO: The snapshot still has some "MemoryRangeNotFound" errors, which should be fixed.
-        // TODO: I'd like to filter out the RTT buffers ... I don't think their values are useful for the snapshot.
         // TODO: Add more test binaries from `probe-rs-debugger-test` once we agree on this approach.
         for chip_name in ["nRF52833_xxAA"] {
             let debug_info = debug_info(format!("debug-unwind-tests/{chip_name}.elf").as_str());
@@ -2181,12 +2180,10 @@ mod test {
                     );
                 }
             }
-            let stack_frames_dump = stack_frames
-                .iter()
-                .map(|f| format!("{:#?}", f))
-                .collect::<Vec<String>>()
-                .join("\n");
-            insta::assert_debug_snapshot!(snapshot_name, stack_frames_dump);
+
+            // Using YAML output because it is easier to read than the default snapshot output,
+            // and also because they provide better diffs.
+            insta::assert_yaml_snapshot!(snapshot_name, stack_frames);
         }
     }
 }
