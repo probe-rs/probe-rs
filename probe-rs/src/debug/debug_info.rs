@@ -2131,7 +2131,6 @@ mod test {
     }
     #[test]
     fn probe_rs_debug_unwind_tests() {
-        // TODO: The snapshot still has some "MemoryRangeNotFound" errors, which should be fixed.
         // TODO: Add more test binaries from `probe-rs-debugger-test` once we agree on this approach.
         for chip_name in ["nRF52833_xxAA"] {
             let debug_info = debug_info(format!("debug-unwind-tests/{chip_name}.elf").as_str());
