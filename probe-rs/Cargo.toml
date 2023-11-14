@@ -214,8 +214,3 @@ replace = "[unreleased]: https://github.com/probe-rs/probe-rs/compare/v{{version
 # Config for 'cargo dist'
 [package.metadata.dist]
 features = ["cli", "vendored-libusb"]
-
-# Optimize `insta`, since we use it a lot in tests.
-[profile.dev.package]
-insta.opt-level = 3
-similar.opt-level = 3
