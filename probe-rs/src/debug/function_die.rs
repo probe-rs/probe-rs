@@ -1,4 +1,10 @@
-use super::{debug_info, extract_file, unit_info::UnitInfo, ColumnType, SourceLocation};
+use crate::MemoryInterface;
+
+use super::{
+    debug_info, extract_file,
+    unit_info::{ExpressionResult, UnitInfo},
+    ColumnType, DebugError, DebugRegisters, SourceLocation, VariableLocation,
+};
 
 pub(crate) type Die<'abbrev, 'unit> =
     gimli::DebuggingInformationEntry<'abbrev, 'unit, debug_info::GimliReader, usize>;
@@ -17,11 +23,6 @@ pub(crate) struct FunctionDie<'abbrev, 'unit, 'unit_info, 'debug_info> {
     pub(crate) low_pc: u64,
     /// The address of the first instruction after this funciton.
     pub(crate) high_pc: u64,
-    /// The DWARF debug info defines a `DW_AT_frame_base` attribute which can be used to calculate the memory location of variables in a stack frame.
-    /// The rustc compiler, has a compile flag, `-C force-frame-pointers`, which when set to `on`, will usually result in this being a pointer to the register value of the platform frame pointer.
-    /// However, some isa's (e.g. RISCV) uses a default of `-C force-frame-pointers off` and will then use the stack pointer as the frame base address.
-    /// We store the frame_base of the relevant non-inlined parent function, to ensure correct calculation of the [`Variable::memory_location`] values.
-    pub frame_base: Option<u64>,
 }
 
 impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
@@ -44,7 +45,6 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
             abstract_die: None,
             low_pc: 0,
             high_pc: 0,
-            frame_base: None,
         })
     }
 
@@ -66,7 +66,6 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
             abstract_die: Some(abstract_die),
             low_pc: 0,
             high_pc: 0,
-            frame_base: None,
         })
     }
 
@@ -179,5 +178,23 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
         }
 
         None
+    }
+
+    /// Try to retrieve the frame base for this function
+    pub fn frame_base(
+        &self,
+        memory: &mut impl MemoryInterface,
+        stackframe_registers: &DebugRegisters,
+    ) -> Result<Option<u64>, DebugError> {
+        match self.unit_info.extract_location(
+            &self.function_die,
+            &VariableLocation::Unknown,
+            memory,
+            stackframe_registers,
+            None,
+        )? {
+            ExpressionResult::Location(VariableLocation::Address(address)) => Ok(Some(address)),
+            _ => Ok(None),
+        }
     }
 }

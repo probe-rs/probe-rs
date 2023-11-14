@@ -310,9 +310,7 @@ impl SteppingMode {
                 }
             }
             SteppingMode::OutOfStatement => {
-                if let Ok(function_dies) =
-                    program_unit.get_function_dies(core, program_counter, None, true)
-                {
+                if let Ok(function_dies) = program_unit.get_function_dies(program_counter, true) {
                     // We want the first qualifying (PC is in range) function from the back of this list, to access the 'innermost' functions first.
                     if let Some(function) = function_dies.iter().next_back() {
                         tracing::trace!(

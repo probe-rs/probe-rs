@@ -41,14 +41,11 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
 
     /// Get the DIEs for the function containing the given address.
     ///
-    /// If `stackframe_registers` is not `None`, then the function DIE's will have valid frame_base values calculated from the `DW_AT_frame_base` attribute.
     /// If `find_inlined` is `false`, then the result will contain a single [`FunctionDie`]
     /// If `find_inlined` is `true`, then the result will contain a  [`Vec<FunctionDie>`], where the innermost (deepest in the stack) function die is the last entry in the Vec.
     pub(crate) fn get_function_dies(
         &self,
-        memory: &mut impl MemoryInterface,
         address: u64,
-        stackframe_registers: Option<&DebugRegisters>,
         find_inlined: bool,
     ) -> Result<Vec<FunctionDie>, DebugError> {
         tracing::trace!("Searching Function DIE for address {:#x}", address);
@@ -69,48 +66,31 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 // Check if we are actually in an inlined function
                 die.low_pc = ranges.begin;
                 die.high_pc = ranges.end;
+
                 // Extract the frame_base for this function DIE.
-                if let Some(stackframe_registers) = stackframe_registers {
-                    if let Ok(ExpressionResult::Location(VariableLocation::Address(address))) = self
-                        .extract_location(
-                            current,
-                            &VariableLocation::Unknown,
-                            memory,
-                            stackframe_registers,
-                            None,
-                        )
-                    {
-                        die.frame_base = Some(address);
+                let mut functions = vec![die];
+
+                tracing::debug!("Found DIE: name={:?}", functions[0].function_name());
+
+                if find_inlined {
+                    tracing::debug!("Checking for inlined functions");
+
+                    let inlined_functions =
+                        self.find_inlined_functions(address, current.offset())?;
+
+                    if inlined_functions.is_empty() {
+                        tracing::debug!("No inlined function found!");
+                    } else {
+                        tracing::debug!(
+                            "{} inlined functions for address {}",
+                            inlined_functions.len(),
+                            address
+                        );
                     }
 
-                    let parent_frame_base = die.frame_base;
-                    let mut functions = vec![die];
-
-                    tracing::debug!("Found DIE: name={:?}", functions[0].function_name());
-
-                    if find_inlined {
-                        tracing::debug!("Checking for inlined functions");
-
-                        let inlined_functions = self.find_inlined_functions(
-                            address,
-                            parent_frame_base,
-                            current.offset(),
-                        )?;
-
-                        if inlined_functions.is_empty() {
-                            tracing::debug!("No inlined function found!");
-                        } else {
-                            tracing::debug!(
-                                "{} inlined functions for address {}",
-                                inlined_functions.len(),
-                                address
-                            );
-                        }
-
-                        functions.extend(inlined_functions.into_iter());
-                    }
-                    return Ok(functions);
+                    functions.extend(inlined_functions.into_iter());
                 }
+                return Ok(functions);
             }
         }
         Ok(vec![])
@@ -121,8 +101,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
     pub(crate) fn find_inlined_functions(
         &self,
         address: u64,
-        // Inlined functions use the same frame_base as their containing function.
-        parent_frame_base: Option<u64>,
         offset: UnitOffset,
     ) -> Result<Vec<FunctionDie>, DebugError> {
         let mut current_depth = 0;
@@ -178,7 +156,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
 
                 die.low_pc = ranges.begin;
                 die.high_pc = ranges.end;
-                die.frame_base = parent_frame_base;
 
                 functions.push(die);
             }
