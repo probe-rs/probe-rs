@@ -114,7 +114,7 @@ pub fn get_sequential_key() -> i64 {
     CACHE_KEY.fetch_add(1, Ordering::SeqCst)
 }
 
-fn typed_path_to_string<S>(path: &Option<TypedPathBuf>, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_typed_path<S>(path: &Option<TypedPathBuf>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
