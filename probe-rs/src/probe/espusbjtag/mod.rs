@@ -15,8 +15,6 @@ use crate::{
 };
 use bitvec::prelude::*;
 
-use crate::probe::common::BitIter;
-
 use self::protocol::ProtocolHandler;
 
 use super::JTAGAccess;
@@ -88,31 +86,25 @@ impl EspUsbJtag {
         );
 
         let input = Vec::from_iter(iter::repeat(0xffu8).take(idcodes.len()));
-        let response = self.write_ir(&input, idcodes.len() * 8).unwrap();
+        let mut response = self.write_ir(&input, idcodes.len() * 8).unwrap();
 
-        let bits: Vec<bool> = BitIter::new(&response, input.len() * 8).collect();
-
-        let mut bv = BitVec::new(); // TODO with cap
         let expected = if let Some(ref chain) = self.scan_chain {
-            bv.extend(
-                bits.iter()
-                    .take(chain.iter().map(|s| s.ir_len.unwrap() as usize).sum()),
-            );
-            Some(
-                chain
-                    .iter()
-                    .map(|s| s.ir_len.unwrap() as usize)
-                    .collect::<Vec<usize>>(),
-            )
+            let expected = chain
+                .iter()
+                .map(|s| s.ir_len)
+                .flatten()
+                .map(|s| s as usize)
+                .collect::<Vec<usize>>();
+            response.truncate(expected.iter().sum());
+            Some(expected)
         } else {
-            bv.extend(bits.iter());
             None
         };
 
-        tracing::trace!("ir scan: {}", bv.as_bitslice());
+        tracing::trace!("ir scan: {}", response.as_bitslice());
 
         let ir_lens =
-            extract_ir_lengths(bv.as_bitslice(), idcodes.len(), expected.as_deref()).unwrap();
+            extract_ir_lengths(response.as_bitslice(), idcodes.len(), expected.as_deref()).unwrap();
         tracing::trace!("Detected IR lens: {:?}", ir_lens);
 
         Ok((idcodes, ir_lens))
@@ -122,7 +114,7 @@ impl EspUsbJtag {
     /// IR register might have an odd length, so the data
     /// will be truncated to `len` bits. If data has less
     /// than `len` bits, an error will be returned.
-    fn write_ir(&mut self, data: &[u8], len: usize) -> Result<Vec<u8>, DebugProbeError> {
+    fn write_ir(&mut self, data: &[u8], len: usize) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
         let tms_enter_ir_shift = [true, true, false, false];
 
         self.prepare_write_ir(data, len)?;
@@ -132,27 +124,9 @@ impl EspUsbJtag {
         // TODO: Why only store the first 8 bits?
         self.current_ir_reg = data[0] as u32;
 
-        let mut response = response.iter();
-        let _remainder = response.split_off(tms_enter_ir_shift.len());
+        let response = response.split_off(tms_enter_ir_shift.len());
 
-        let mut remaining_bits = len;
-
-        let mut result = Vec::new();
-
-        while remaining_bits >= 8 {
-            let byte = bits_to_byte(response.split_off(8)) as u8;
-            result.push(byte);
-            remaining_bits -= 8;
-        }
-
-        // Handle leftover bytes
-        if remaining_bits > 0 {
-            result.push(bits_to_byte(response.split_off(remaining_bits)) as u8);
-        }
-
-        tracing::trace!("result: {:?}", result);
-
-        Ok(result)
+        Ok(response)
     }
 
     fn prepare_write_ir(&mut self, data: &[u8], len: usize) -> Result<usize, DebugProbeError> {
@@ -230,36 +204,19 @@ impl EspUsbJtag {
 
     fn write_dr(&mut self, data: &[u8], register_bits: usize) -> Result<Vec<u8>, DebugProbeError> {
         self.prepare_write_dr(data, register_bits)?;
-        let mut response = self.protocol.flush()?;
-        self.recieve_write_dr(response.iter(), register_bits)
+        let response = self.protocol.flush()?;
+        self.recieve_write_dr(response, register_bits)
     }
 
     fn recieve_write_dr(
         &mut self,
-        mut response: BitIter,
+        mut response: BitVec<u8, Lsb0>,
         register_bits: usize,
     ) -> Result<Vec<u8>, DebugProbeError> {
         let tms_enter_shift = [true, false, false]; // TODO taken from below, make a const in future
-
-        let _remainder = response.split_off(tms_enter_shift.len());
-
-        let mut remaining_bits = register_bits;
-
-        let mut result = Vec::new();
-
-        while remaining_bits >= 8 {
-            let byte = bits_to_byte(response.split_off(8)) as u8;
-            result.push(byte);
-            remaining_bits -= 8;
-        }
-
-        // Handle leftover bytes
-        if remaining_bits > 0 {
-            result.push(bits_to_byte(response.split_off(remaining_bits)) as u8);
-        }
-
-        tracing::trace!("result: {:?}", result);
-
+        let response = response.split_off(tms_enter_shift.len());
+        let result = bitvec_to_vec(response, register_bits);
+        tracing::trace!("recieve_write_dr result: {:?}", result);
         Ok(result)
     }
 
@@ -369,12 +326,34 @@ impl EspUsbJtag {
         let tms = vec![true, true, true, true, true, false];
         let tdi = iter::repeat(true).take(6);
 
-        let response: Vec<_> = self.protocol.jtag_io(tms, tdi, true)?.collect();
+        let response = self.protocol.jtag_io(tms, tdi, true)?;
 
-        tracing::debug!("Response to reset: {:?}", response);
+        tracing::debug!("Response to reset: {}", response);
 
         Ok(())
     }
+}
+
+fn bitvec_to_vec(mut response: BitVec<u8, Lsb0>, bits: usize) -> Vec<u8> {
+    let mut remaining_bits = bits;
+
+    let mut result = Vec::new();
+
+    while remaining_bits >= 8 {
+        let split = response.split_off(8);
+        let byte = bits_to_byte(response) as u8;
+        response = split;
+        result.push(byte);
+        remaining_bits -= 8;
+    }
+
+    // Handle leftover bits
+    if remaining_bits > 0 {
+        let _split = response.split_off(remaining_bits);
+        result.push(bits_to_byte(response) as u8);
+    }
+
+    result
 }
 
 pub struct DeferredRegisterWrite {
@@ -466,18 +445,17 @@ impl JTAGAccess for EspUsbJtag {
             .flush()
             .map_err(|e| super::BatchExecutionError::new(e.into(), Vec::new()))?;
         tracing::debug!("Got responses! Took {:?}! Processing...", t1.elapsed());
-        let mut response = response.iter();
-
         let mut responses = Vec::with_capacity(bits.len());
 
         for (index, bit) in bits.into_iter().enumerate() {
             if let Some(ir_bits) = bit.write_ir_bits {
-                _ = response.split_off(ir_bits);
+                response = response.split_off(ir_bits);
             }
-            let dr_resp = response.split_off(bit.write_dr_bits_total);
+            let split = response.split_off(bit.write_dr_bits_total);
             let v = self
-                .recieve_write_dr(dr_resp, bit.write_dr_bits)
+                .recieve_write_dr(response, bit.write_dr_bits)
                 .map_err(|e| super::BatchExecutionError::new(e.into(), responses.clone()))?;
+            response = split;
 
             let transform = writes[index].transform;
             let t =
