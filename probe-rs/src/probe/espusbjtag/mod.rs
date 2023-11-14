@@ -91,8 +91,7 @@ impl EspUsbJtag {
         let expected = if let Some(ref chain) = self.scan_chain {
             let expected = chain
                 .iter()
-                .map(|s| s.ir_len)
-                .flatten()
+                .filter_map(|s| s.ir_len)
                 .map(|s| s as usize)
                 .collect::<Vec<usize>>();
             response.truncate(expected.iter().sum());
