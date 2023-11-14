@@ -17,7 +17,7 @@ use bitvec::prelude::*;
 
 use self::protocol::ProtocolHandler;
 
-use super::JTAGAccess;
+use super::{JTAGAccess, JtagChainItem};
 
 use probe_rs_target::ScanChainElement;
 pub use protocol::list_espjtag_devices;
@@ -39,15 +39,15 @@ impl EspUsbJtag {
         self.jtag_idle_cycles
     }
 
-    fn scan(&mut self) -> Result<Vec<super::ScanChainElement>, DebugProbeError> {
+    fn scan(&mut self) -> Result<Vec<super::JtagChainItem>, DebugProbeError> {
         let chain = self.reset_scan()?;
         Ok(chain
             .0
             .iter()
             .zip(chain.1.iter())
-            .map(|(&id, &ir)| ScanChainElement {
-                ir_len: Some(ir as u8),
-                name: Some(format!("{:#010x}", id)),
+            .map(|(&id, &ir)| JtagChainItem {
+                irlen: ir,
+                idcode: id,
             })
             .collect())
     }
