@@ -1578,7 +1578,7 @@ mod test {
         CoreDump, RegisterValue,
     };
 
-    /// Helper function to get the path to a file in the `tests` directory.
+    /// Get the full path to a file in the `tests` directory.
     fn get_path_for_test_files(relative_file: &str) -> PathBuf {
         let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         path.push("tests");
@@ -1586,13 +1586,14 @@ mod test {
         path
     }
 
-    /// Helper function to load the DebugInfo from the `elf_file` for the test.
+    /// Load the DebugInfo from the `elf_file` for the test.
     /// `elf_file` should be the name of a file(or relative path) in the `tests` directory.
-    fn debug_info(elf_file: &str) -> DebugInfo {
+    fn load_test_elf_as_debug_info(elf_file: &str) -> DebugInfo {
         DebugInfo::from_file(get_path_for_test_files(elf_file)).unwrap()
     }
 
-    /// Helper function to recurse through deferred variables in the variable cache.
+    /// Recursively process the deferred variables in the variable cache,
+    /// and add their children to the cache.
     /// We max out at 10 levels, to ensure we don't recurse infinitely on circular references.
     fn recurse_deferred_variables(
         debug_info: &DebugInfo,
@@ -1633,7 +1634,7 @@ mod test {
 
     #[test]
     fn unwinding_first_instruction_after_exception() {
-        let debug_info = debug_info("exceptions");
+        let debug_info = load_test_elf_as_debug_info("exceptions");
 
         // Registers:
         // R0        : 0x00000001
@@ -1781,7 +1782,7 @@ mod test {
 
     #[test]
     fn unwinding_in_exception_handler() {
-        let debug_info = debug_info("exceptions");
+        let debug_info = load_test_elf_as_debug_info("exceptions");
 
         // Registers:
         // R0        : 0x00000001
@@ -1905,7 +1906,7 @@ mod test {
 
     #[test]
     fn unwinding_in_exception_trampoline() {
-        let debug_info = debug_info("exceptions");
+        let debug_info = load_test_elf_as_debug_info("exceptions");
 
         // Registers:
         // R0        : 0x00000001
@@ -2010,7 +2011,7 @@ mod test {
 
     #[test]
     fn unwinding_inlined() {
-        let debug_info = debug_info("inlined-functions");
+        let debug_info = load_test_elf_as_debug_info("inlined-functions");
 
         // Registers:
         // R0        : 0xfffffecc
@@ -2129,12 +2130,13 @@ mod test {
 
         insta::assert_snapshot!(printed_backtrace);
     }
-    
+
     #[test]
     fn probe_rs_debug_unwind_tests() {
         // TODO: Add RISC-V tests.
         for chip_name in ["nRF52833_xxAA", "RP2040"] {
-            let debug_info = debug_info(format!("debug-unwind-tests/{chip_name}.elf").as_str());
+            let debug_info =
+                load_test_elf_as_debug_info(format!("debug-unwind-tests/{chip_name}.elf").as_str());
             let coredump = fs::read(get_path_for_test_files(
                 format!("debug-unwind-tests/{chip_name}.coredump").as_str(),
             ))

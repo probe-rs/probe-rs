@@ -134,7 +134,7 @@ pub struct SourceLocation {
     /// The file name of the source file.
     pub file: Option<String>,
     /// The directory of the source file.
-    #[serde(serialize_with = "typed_path_to_string")]
+    #[serde(serialize_with = "serialize_typed_path")]
     pub directory: Option<TypedPathBuf>,
     /// The address of the first instruction associated with the source code
     pub low_pc: Option<u32>,
