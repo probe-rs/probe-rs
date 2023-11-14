@@ -915,6 +915,15 @@ pub struct JtagWriteCommand {
     pub transform: fn(Vec<u8>) -> Result<CommandResult, crate::Error>,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct ChainParams {
+    pub irpre: usize,
+    pub irpost: usize,
+    pub drpre: usize,
+    pub drpost: usize,
+    pub irlen: usize,
+}
+
 #[derive(thiserror::Error, Debug)]
 pub struct BatchExecutionError {
     #[source]

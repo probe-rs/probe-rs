@@ -20,20 +20,11 @@ mod commands;
 
 use self::commands::{JtagCommand, WriteRegisterCommand};
 
-use super::{BatchExecutionError, CommandResult};
+use super::{BatchExecutionError, ChainParams, CommandResult};
 
 #[derive(Debug)]
 struct JtagChainItem {
     idcode: u32,
-    irlen: usize,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub(super) struct ChainParams {
-    irpre: usize,
-    irpost: usize,
-    drpre: usize,
-    drpost: usize,
     irlen: usize,
 }
 

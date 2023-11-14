@@ -59,18 +59,10 @@ impl EspUsbJtag {
 
         tracing::debug!("Resetting JTAG chain using trst");
         // TODO this isn't actually needed, we should only do this when AttachUnderReset it supplied
-        // self.protocol.set_reset(true, true)?;
-        // self.protocol.set_reset(false, false)?;
+        self.protocol.set_reset(true, true)?;
+        self.protocol.set_reset(false, false)?;
 
-        tracing::debug!("Resetting JTAG chain by setting tms high for 5 bits");
-
-        // Reset JTAG chain (5 times TMS high), and enter idle state afterwards
-        let tms = vec![true, true, true, true, true, false];
-        let tdi = iter::repeat(true).take(6);
-
-        let response: Vec<_> = self.protocol.jtag_io(tms, tdi, true)?.collect();
-
-        tracing::debug!("Response to reset: {:?}", response);
+        self.jtag_reset()?;
 
         let input = Vec::from_iter(iter::repeat(0xFFu8).take(4 * max_chain));
         let response = self.write_dr(&input, 4 * max_chain * 8).unwrap();
@@ -124,54 +116,6 @@ impl EspUsbJtag {
         tracing::trace!("Detected IR lens: {:?}", ir_lens);
 
         Ok((idcodes, ir_lens))
-    }
-
-    fn read_dr(&mut self, register_bits: usize) -> Result<Vec<u8>, DebugProbeError> {
-        tracing::debug!("Read {} bits from DR", register_bits);
-
-        let tms_enter_shift = [true, false, false];
-
-        // Last bit of data is shifted out when we exit the SHIFT-DR State.
-        let tms_shift_out_value = iter::repeat(false).take(register_bits - 1);
-
-        let tms_enter_idle = [true, true, false];
-
-        let mut tms = Vec::with_capacity(register_bits + 7);
-
-        tms.extend_from_slice(&tms_enter_shift);
-        tms.extend(tms_shift_out_value);
-        tms.extend_from_slice(&tms_enter_idle);
-
-        let tdi = iter::repeat(false).take(tms.len() + self.idle_cycles() as usize);
-
-        // We have to stay in the idle cycle a bit
-        tms.extend(iter::repeat(false).take(self.idle_cycles() as usize));
-
-        let mut response = self.protocol.jtag_io(tms, tdi, true)?;
-        let mut response = response.iter();
-
-        tracing::trace!("Response: {:?}", response);
-
-        let _remainder = response.split_off(tms_enter_shift.len());
-
-        let mut remaining_bits = register_bits;
-
-        let mut result = Vec::new();
-
-        while remaining_bits >= 8 {
-            let byte = bits_to_byte(response.split_off(8)) as u8;
-            result.push(byte);
-            remaining_bits -= 8;
-        }
-
-        // Handle leftover bytes
-        if remaining_bits > 0 {
-            result.push(bits_to_byte(response.split_off(remaining_bits)) as u8);
-        }
-
-        tracing::debug!("Read from DR: {:?}", result);
-
-        Ok(result)
     }
 
     /// Write IR register with the specified data. The
@@ -417,6 +361,20 @@ impl EspUsbJtag {
             write_dr_bits: len as usize,
         })
     }
+
+    fn jtag_reset(&mut self) -> Result<(), DebugProbeError> {
+        tracing::debug!("Resetting JTAG chain by setting tms high for 5 bits");
+
+        // Reset JTAG chain (5 times TMS high), and enter idle state afterwards
+        let tms = vec![true, true, true, true, true, false];
+        let tdi = iter::repeat(true).take(6);
+
+        let response: Vec<_> = self.protocol.jtag_io(tms, tdi, true)?.collect();
+
+        tracing::debug!("Response to reset: {:?}", response);
+
+        Ok(())
+    }
 }
 
 pub struct DeferredRegisterWrite {
@@ -448,8 +406,9 @@ impl JTAGAccess for EspUsbJtag {
             self.write_ir(&address_bits[..1], 5)?;
         }
 
-        // read DR register
-        self.read_dr(len as usize)
+        // read DR register by transfering len bits to the chain
+        let data: Vec<u8> = iter::repeat(0).take((len as usize + 7) / 8).collect();
+        self.write_dr(&data, len as usize)
     }
 
     /// Write the data register
