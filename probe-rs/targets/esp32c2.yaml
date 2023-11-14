@@ -1,6 +1,6 @@
 name: esp32c2
 manufacturer:
-  cc: 0x0B
+  cc: 0x0C
   id: 0x12
 variants:
   - name: esp32c2
