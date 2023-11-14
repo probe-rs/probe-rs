@@ -1,6 +1,6 @@
 use std::{fmt::Debug, time::Duration};
 
-use bitvec::{vec::BitVec, slice::BitSlice, prelude::*};
+use bitvec::{prelude::*, slice::BitSlice, vec::BitVec};
 use rusb::{request_type, Context, Device, Direction, TransferType, UsbContext};
 
 use crate::{
