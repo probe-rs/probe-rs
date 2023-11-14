@@ -226,7 +226,6 @@ pub(crate) fn extract_ir_lengths(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bitvec::prelude::*;
 
     const ARM_TAP: IdCode = IdCode(0x4BA00477);
     const STM_BS_TAP: IdCode = IdCode(0x06433041);
@@ -296,24 +295,5 @@ mod tests {
         let idcodes = extract_idcodes(&dr).unwrap();
 
         assert_eq!(idcodes, vec![Some(ARM_TAP), None, Some(STM_BS_TAP)]);
-    }
-
-    #[test]
-    fn owned_collect() {
-        let one = [true, true, true, true, true, true, true, true, true];
-        let two = [true, true, true, true, true, true, true, true, true];
-
-        let bits = one.into_iter().chain(two);
-
-        let s = bits
-            .clone()
-            .map(|bit| if bit { '1' } else { '0' })
-            .collect::<String>();
-
-        let x: OwnedBitIter = bits.clone().collect();
-
-        println!("Actual: {}, Owned: {:?} : {:?}", s, x, x.buf);
-
-        assert!(bits.eq(x))
     }
 }
