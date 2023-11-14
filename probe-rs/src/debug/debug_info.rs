@@ -1569,7 +1569,10 @@ mod test {
             registers::cortex_m::CORTEX_M_CORE_REGISTERS,
         },
         core::exception_handler_for_core,
-        debug::{stack_frame::TestFormatter, DebugInfo, DebugRegister, DebugRegisters, Variable, VariableCache},
+        debug::{
+            stack_frame::TestFormatter, DebugInfo, DebugRegister, DebugRegisters, Variable,
+            VariableCache,
+        },
         test::MockMemory,
         CoreDump, RegisterValue,
     };
