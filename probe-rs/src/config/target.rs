@@ -341,7 +341,7 @@ impl From<Target> for TargetSelector {
 /// It can differentiate between ARM and RISC-V for now.
 /// Currently, only the ARM variant does something sensible;
 /// RISC-V will be ignored when encountered.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum DebugSequence {
     /// An ARM debug sequence.
     Arm(Arc<dyn ArmDebugSequence>),

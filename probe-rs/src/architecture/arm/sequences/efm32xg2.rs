@@ -16,6 +16,7 @@ use super::ArmDebugSequence;
 /// The sequence handle for the EFM32 Series 2 family.
 ///
 /// Uses a breakpoint on the reset vector for the reset catch.
+#[derive(Debug)]
 pub struct EFM32xG2(());
 
 impl EFM32xG2 {

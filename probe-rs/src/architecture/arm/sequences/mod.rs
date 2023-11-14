@@ -15,6 +15,7 @@ pub mod stm32h7;
 
 use std::{
     error::Error,
+    fmt::Debug,
     sync::Arc,
     thread,
     time::{Duration, Instant},
@@ -61,6 +62,7 @@ impl ArmDebugSequenceError {
 }
 
 /// The default sequences that is used for ARM chips that do not specify a specific sequence.
+#[derive(Debug)]
 pub struct DefaultArmSequence(pub(crate) ());
 
 impl DefaultArmSequence {
@@ -407,7 +409,7 @@ fn cortex_m_reset_system(interface: &mut dyn ArmProbe) -> Result<(), ArmError> {
 /// A interface to operate debug sequences for ARM targets.
 ///
 /// Should be implemented on a custom handle for chips that require special sequence code.
-pub trait ArmDebugSequence: Send + Sync {
+pub trait ArmDebugSequence: Send + Sync + Debug {
     /// Assert a system-wide reset line nRST. This is based on the
     /// `ResetHardwareAssert` function from the [ARM SVD Debug Description].
     ///

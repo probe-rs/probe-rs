@@ -211,6 +211,7 @@ impl<'a> architecture::arm::communication_interface::SwdSequence for SwdSequence
 }
 
 /// Marker struct indicating initialization sequencing for Atmel/Microchip ATSAM family parts.
+#[derive(Debug)]
 pub struct AtSAM {}
 
 impl AtSAM {

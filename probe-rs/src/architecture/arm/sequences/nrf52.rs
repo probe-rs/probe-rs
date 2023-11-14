@@ -27,6 +27,7 @@ const ERASEALLSTATUS: u8 = 0x08;
 const APPROTECTSTATUS: u8 = 0x0C;
 
 /// Marker struct indicating initialization sequencing for nRF52 family parts.
+#[derive(Debug)]
 pub struct Nrf52 {}
 
 impl Nrf52 {

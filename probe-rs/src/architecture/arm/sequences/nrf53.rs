@@ -11,6 +11,7 @@ use crate::architecture::arm::{
 };
 
 /// The sequence handle for the nRF5340.
+#[derive(Debug)]
 pub struct Nrf5340(());
 
 impl Nrf5340 {

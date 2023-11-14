@@ -21,6 +21,7 @@ use crate::architecture::arm::{
 };
 
 /// Marker structure for most ARMv7 STM32 devices.
+#[derive(Debug)]
 pub struct Stm32Armv7 {}
 
 impl Stm32Armv7 {

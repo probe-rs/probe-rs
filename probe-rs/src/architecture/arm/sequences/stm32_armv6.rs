@@ -12,6 +12,7 @@ use crate::architecture::arm::{
 };
 
 /// Supported families for custom sequences on ARMv6 STM32 devices.
+#[derive(Debug)]
 pub enum Stm32Armv6Family {
     /// STM32F0 family
     F0,
@@ -24,6 +25,7 @@ pub enum Stm32Armv6Family {
 }
 
 /// Marker structure for ARMv6 STM32 devices.
+#[derive(Debug)]
 pub struct Stm32Armv6 {
     family: Stm32Armv6Family,
 }
