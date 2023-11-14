@@ -2129,6 +2129,7 @@ mod test {
 
         insta::assert_snapshot!(printed_backtrace);
     }
+    
     #[test]
     fn probe_rs_debug_unwind_tests() {
         // TODO: Add RISC-V tests.
