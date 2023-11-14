@@ -18,7 +18,7 @@ use bitvec::prelude::*;
 
 use self::protocol::ProtocolHandler;
 
-use super::{JTAGAccess, JtagChainItem};
+use super::{JTAGAccess, JtagChainItem, ChainParams};
 
 use probe_rs_target::ScanChainElement;
 pub use protocol::list_espjtag_devices;
@@ -33,6 +33,7 @@ pub(crate) struct EspUsbJtag {
 
     current_ir_reg: u32,
     scan_chain: Option<Vec<ScanChainElement>>,
+    chain_params: Option<ChainParams>,
 }
 
 impl EspUsbJtag {
@@ -419,6 +420,7 @@ impl DebugProbe for EspUsbJtag {
             jtag_idle_cycles: 0,
             current_ir_reg: 1,
             scan_chain: None,
+            chain_params: None
         }))
     }
 
@@ -461,9 +463,37 @@ impl DebugProbe for EspUsbJtag {
         let taps = self.scan()?;
         tracing::info!("Found {} taps on reset scan", taps.len());
 
-        for t in taps {
-            tracing::info!("{:?}", t);
+        let selected = 0;
+        if taps.len() > 1 {
+            tracing::warn!("More than on tap detected, defaulting to tap0")
         }
+
+        let mut params = ChainParams {
+            irpre: 0,
+            irpost: 0,
+            drpre: 0,
+            drpost: 0,
+            irlen: 0,
+        };
+
+        let mut found = false;
+        for (index, tap) in taps.iter().enumerate() {
+            tracing::info!("{:?}", tap);
+            if index == selected {
+                params.irlen = tap.irlen;
+                found = true;
+            } else if found {
+                params.irpost += tap.irlen;
+                params.drpost += 1;
+            } else {
+                params.irpre += tap.irlen;
+                params.drpre += 1;
+            }
+        }
+
+        tracing::info!("Setting chain params: {:?}", params);
+
+        self.chain_params = Some(params);
 
         Ok(())
     }
