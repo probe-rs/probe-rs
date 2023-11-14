@@ -1558,10 +1558,7 @@ fn add_to_address(address: u64, offset: i64, address_size_in_bytes: usize) -> u6
 
 #[cfg(test)]
 mod test {
-    use std::{
-        fs,
-        path::{Path, PathBuf},
-    };
+    use std::path::{Path, PathBuf};
 
     use crate::{
         architecture::arm::core::{
@@ -2136,11 +2133,10 @@ mod test {
         for chip_name in ["nRF52833_xxAA", "RP2040"] {
             let debug_info =
                 load_test_elf_as_debug_info(format!("debug-unwind-tests/{chip_name}.elf").as_str());
-            let coredump = fs::read(get_path_for_test_files(
+            let mut adapter = CoreDump::load(&get_path_for_test_files(
                 format!("debug-unwind-tests/{chip_name}.coredump").as_str(),
             ))
             .unwrap();
-            let mut adapter = CoreDump::load_raw(&coredump).unwrap();
 
             let initial_registers = adapter.debug_registers();
             let exception_handler = exception_handler_for_core(adapter.core_type());
