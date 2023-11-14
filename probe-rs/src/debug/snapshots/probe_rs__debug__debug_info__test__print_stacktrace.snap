@@ -2,22 +2,76 @@
 source: probe-rs/src/debug/debug_info.rs
 expression: printed_backtrace
 ---
-Frame: read<nrf51_pac::timer0::events_compare::EVENTS_COMPARE_SPEC>
-	/Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf51-pac-0.10.1/src/generic.rs:64:27
-Frame: timer_running<nrf51_pac::TIMER0>
-	/Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:397:9
-Frame: wait<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
-	/Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:266:12
-Frame: <unknown function @ 0x0000019c>
-	/Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:145:22
-Frame: delay_us<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
-	/Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:325:6
-Frame: delay_ms<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
-	/Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:298:6
-Frame: delay_ms<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
-	/Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src/timer.rs:307:6
-Frame: __cortex_m_rt_main
-	/Users/yatekii/repos/microbit/examples/gpio-hal-blinky/src/main.rs:23:9
-Frame: __cortex_m_rt_main_trampoline
-	/Users/yatekii/repos/microbit/examples/gpio-hal-blinky/src/main.rs:10:1
+Frame:
+ function:        read<nrf51_pac::timer0::events_compare::EVENTS_COMPARE_SPEC>
+ source_location:
+  directory: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf51-pac-0.10.1/src
+  file: Some("generic.rs")
+  line: Some(64)
+  column: Some(Column(27))
+ frame_base:      Some(20003f38)
+Frame:
+ function:        timer_running<nrf51_pac::TIMER0>
+ source_location:
+  directory: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src
+  file: Some("timer.rs")
+  line: Some(397)
+  column: Some(Column(9))
+ frame_base:      Some(20003f38)
+Frame:
+ function:        wait<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
+ source_location:
+  directory: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src
+  file: Some("timer.rs")
+  line: Some(266)
+  column: Some(Column(12))
+ frame_base:      Some(20003f50)
+Frame:
+ function:        <unknown function @ 0x0000019c>
+ source_location:
+  directory: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src
+  file: Some("timer.rs")
+  line: Some(145)
+  column: Some(Column(22))
+ frame_base:      Some(20003f78)
+Frame:
+ function:        delay_us<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
+ source_location:
+  directory: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src
+  file: Some("timer.rs")
+  line: Some(325)
+  column: Some(Column(6))
+ frame_base:      Some(20003f88)
+Frame:
+ function:        delay_ms<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
+ source_location:
+  directory: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src
+  file: Some("timer.rs")
+  line: Some(298)
+  column: Some(Column(6))
+ frame_base:      Some(20003fa8)
+Frame:
+ function:        delay_ms<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
+ source_location:
+  directory: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src
+  file: Some("timer.rs")
+  line: Some(307)
+  column: Some(Column(6))
+ frame_base:      Some(20003fc0)
+Frame:
+ function:        __cortex_m_rt_main
+ source_location:
+  directory: /Users/yatekii/repos/microbit/examples/gpio-hal-blinky/src
+  file: Some("main.rs")
+  line: Some(23)
+  column: Some(Column(9))
+ frame_base:      Some(20003ff0)
+Frame:
+ function:        __cortex_m_rt_main_trampoline
+ source_location:
+  directory: /Users/yatekii/repos/microbit/examples/gpio-hal-blinky/src
+  file: Some("main.rs")
+  line: Some(10)
+  column: Some(Column(1))
+ frame_base:      Some(20003ff8)
 
