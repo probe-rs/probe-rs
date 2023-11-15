@@ -10,8 +10,9 @@ use crate::architecture::arm::{
     DapAccess,
 };
 use crate::session::MissingPermissions;
+use std::fmt::Debug;
 
-pub trait Nrf: Sync + Send {
+pub trait Nrf: Sync + Send + Debug {
     /// Returns the ahb_ap and ctrl_ap of every core
     fn core_aps(&self, interface: &mut dyn ArmProbe) -> Vec<(ApAddress, ApAddress)>;
 

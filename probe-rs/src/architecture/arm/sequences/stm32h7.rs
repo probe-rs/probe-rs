@@ -36,6 +36,7 @@ enum TraceFunnelId {
 }
 
 /// Marker struct indicating initialization sequencing for STM32H7 family parts.
+#[derive(Debug)]
 pub struct Stm32h7 {}
 
 impl Stm32h7 {

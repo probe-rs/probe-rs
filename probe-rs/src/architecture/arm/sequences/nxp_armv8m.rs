@@ -54,6 +54,7 @@ use super::ArmDebugSequence;
 // defined in the CMSIS Pack for MIMXRT595S, but should be compatible with
 // all parts in this series. The implementation closely follows the CMSIS Pack
 // structure and its comments for ease of comparison.
+#[derive(Debug)]
 pub struct MIMXRT5xxS {}
 
 impl MIMXRT5xxS {
