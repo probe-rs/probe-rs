@@ -10,7 +10,7 @@ use crate::{
         },
         riscv::communication_interface::{RiscvCommunicationInterface, RiscvError},
     },
-    probe::common::{bits_to_byte, extract_ir_lengths},
+    probe::common::extract_ir_lengths,
     DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
 };
 use bitvec::prelude::*;
@@ -213,8 +213,10 @@ impl EspUsbJtag {
         register_bits: usize,
     ) -> Result<Vec<u8>, DebugProbeError> {
         let tms_enter_shift = [true, false, false]; // TODO taken from below, make a const in future
-        let response = response.split_off(tms_enter_shift.len());
-        let result = bitvec_to_vec(response, register_bits);
+        let mut response = response.split_off(tms_enter_shift.len());
+        response.truncate(register_bits);
+        response.force_align();
+        let result = response.into_vec();
         tracing::trace!("recieve_write_dr result: {:?}", result);
         Ok(result)
     }
@@ -331,28 +333,6 @@ impl EspUsbJtag {
 
         Ok(())
     }
-}
-
-fn bitvec_to_vec(mut response: BitVec<u8, Lsb0>, bits: usize) -> Vec<u8> {
-    let mut remaining_bits = bits;
-
-    let mut result = Vec::new();
-
-    while remaining_bits >= 8 {
-        let split = response.split_off(8);
-        let byte = bits_to_byte(response) as u8;
-        response = split;
-        result.push(byte);
-        remaining_bits -= 8;
-    }
-
-    // Handle leftover bits
-    if remaining_bits > 0 {
-        let _split = response.split_off(remaining_bits);
-        result.push(bits_to_byte(response) as u8);
-    }
-
-    result
 }
 
 pub struct DeferredRegisterWrite {
