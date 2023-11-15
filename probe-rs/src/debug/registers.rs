@@ -4,7 +4,7 @@ use crate::{
 };
 /// Stores the relevant information from [`crate::core::CoreRegister`] for use in debug operations,
 /// as well as additional information required during debug.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct DebugRegister {
     /// To lookup platform specific details of core register definitions.
     pub core_register: &'static CoreRegister,
@@ -45,7 +45,7 @@ impl DebugRegister {
 }
 
 /// All the registers required for debug related operations.
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize)]
 pub struct DebugRegisters(pub Vec<DebugRegister>);
 
 impl DebugRegisters {

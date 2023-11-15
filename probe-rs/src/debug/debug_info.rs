@@ -1566,25 +1566,71 @@ mod test {
             registers::cortex_m::CORTEX_M_CORE_REGISTERS,
         },
         core::exception_handler_for_core,
-        debug::{stack_frame::TestFormatter, DebugInfo, DebugRegister, DebugRegisters},
+        debug::{
+            stack_frame::TestFormatter, DebugInfo, DebugRegister, DebugRegisters, Variable,
+            VariableCache,
+        },
         test::MockMemory,
         CoreDump, RegisterValue,
     };
 
-    fn debug_info(filename: &str) -> DebugInfo {
-        let path = Path::new(filename);
+    /// Get the full path to a file in the `tests` directory.
+    fn get_path_for_test_files(relative_file: &str) -> PathBuf {
+        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        path.push("tests");
+        path.push(relative_file);
+        path
+    }
 
-        let mut base_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        base_dir.push("tests");
+    /// Load the DebugInfo from the `elf_file` for the test.
+    /// `elf_file` should be the name of a file(or relative path) in the `tests` directory.
+    fn load_test_elf_as_debug_info(elf_file: &str) -> DebugInfo {
+        DebugInfo::from_file(get_path_for_test_files(elf_file)).unwrap()
+    }
 
-        let path = base_dir.join(path);
-
-        DebugInfo::from_file(path).unwrap()
+    /// Recursively process the deferred variables in the variable cache,
+    /// and add their children to the cache.
+    /// We max out at 10 levels, to ensure we don't recurse infinitely on circular references.
+    fn recurse_deferred_variables(
+        debug_info: &DebugInfo,
+        variable_cache: &mut VariableCache,
+        adapter: &mut CoreDump,
+        parent_variable: &mut Variable,
+        registers: &DebugRegisters,
+        frame_base: Option<u64>,
+        recursion_depth: usize,
+    ) {
+        if recursion_depth < 10 {
+            let children_depth = recursion_depth + 1;
+            debug_info
+                .cache_deferred_variables(
+                    variable_cache,
+                    adapter,
+                    parent_variable,
+                    registers,
+                    frame_base,
+                )
+                .unwrap();
+            for mut child in variable_cache
+                .get_children(Some(parent_variable.variable_key))
+                .unwrap()
+            {
+                recurse_deferred_variables(
+                    debug_info,
+                    variable_cache,
+                    adapter,
+                    &mut child,
+                    registers,
+                    frame_base,
+                    children_depth,
+                );
+            }
+        }
     }
 
     #[test]
     fn unwinding_first_instruction_after_exception() {
-        let debug_info = debug_info("exceptions");
+        let debug_info = load_test_elf_as_debug_info("exceptions");
 
         // Registers:
         // R0        : 0x00000001
@@ -1732,7 +1778,7 @@ mod test {
 
     #[test]
     fn unwinding_in_exception_handler() {
-        let debug_info = debug_info("exceptions");
+        let debug_info = load_test_elf_as_debug_info("exceptions");
 
         // Registers:
         // R0        : 0x00000001
@@ -1856,7 +1902,7 @@ mod test {
 
     #[test]
     fn unwinding_in_exception_trampoline() {
-        let debug_info = debug_info("exceptions");
+        let debug_info = load_test_elf_as_debug_info("exceptions");
 
         // Registers:
         // R0        : 0x00000001
@@ -1961,7 +2007,7 @@ mod test {
 
     #[test]
     fn unwinding_inlined() {
-        let debug_info = debug_info("inlined-functions");
+        let debug_info = load_test_elf_as_debug_info("inlined-functions");
 
         // Registers:
         // R0        : 0xfffffecc
@@ -2079,5 +2125,62 @@ mod test {
             .join("");
 
         insta::assert_snapshot!(printed_backtrace);
+    }
+
+    #[test]
+    fn probe_rs_debug_unwind_tests() {
+        // TODO: Add RISC-V tests.
+        for chip_name in ["nRF52833_xxAA", "RP2040"] {
+            let debug_info =
+                load_test_elf_as_debug_info(format!("debug-unwind-tests/{chip_name}.elf").as_str());
+            let mut adapter = CoreDump::load(&get_path_for_test_files(
+                format!("debug-unwind-tests/{chip_name}.coredump").as_str(),
+            ))
+            .unwrap();
+
+            let initial_registers = adapter.debug_registers();
+            let exception_handler = exception_handler_for_core(adapter.core_type());
+            let instruction_set = adapter.instruction_set();
+
+            let mut stack_frames = debug_info
+                .unwind(
+                    &mut adapter,
+                    initial_registers,
+                    exception_handler.as_ref(),
+                    Some(instruction_set),
+                )
+                .unwrap();
+
+            let snapshot_name = format!("{chip_name}__full_unwind");
+
+            // Expand and validate the static and local variables for each stack frame.
+            for frame in stack_frames.iter_mut() {
+                for variable_cache in [
+                    frame.static_variables.as_mut().unwrap(),
+                    frame.local_variables.as_mut().unwrap(),
+                ] {
+                    // Cache the deferred top level children of the of the cache.
+                    let mut parent_variable = variable_cache
+                        .variable_hash_map
+                        .values()
+                        .find(|variable| variable.parent_key.is_none())
+                        .unwrap()
+                        .clone();
+                    recurse_deferred_variables(
+                        &debug_info,
+                        variable_cache,
+                        &mut adapter,
+                        &mut parent_variable,
+                        &frame.registers,
+                        frame.frame_base,
+                        0,
+                    );
+                }
+            }
+
+            // Using YAML output because it is easier to read than the default snapshot output,
+            // and also because they provide better diffs.
+            insta::assert_yaml_snapshot!(snapshot_name, stack_frames);
+        }
     }
 }

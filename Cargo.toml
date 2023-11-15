@@ -72,3 +72,8 @@ libftdi1 = { stage = ["run"] }
 [profile.dist]
 inherits = "release"
 lto = "thin"
+
+# Optimize `insta`, since we use it a lot in tests.
+[profile.dev.package]
+insta.opt-level = 3
+similar.opt-level = 3

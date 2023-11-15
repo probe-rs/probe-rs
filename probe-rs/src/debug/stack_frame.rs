@@ -6,9 +6,10 @@ use std;
 pub use test::TestFormatter;
 
 /// A full stack frame with all its information contained.
-#[derive(Debug, Default, PartialEq)]
+#[derive(Default, PartialEq, Serialize)]
 pub struct StackFrame {
     /// The stackframe ID.
+    #[serde(skip_serializing)]
     pub id: i64,
     /// The name of the function this stackframe belongs to.
     pub function_name: String,

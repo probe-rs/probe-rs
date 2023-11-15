@@ -45,16 +45,13 @@ pub enum Error {
     /// the other architectures later.
     #[error("This capability has not yet been implemented for this architecture: {0}")]
     NotImplemented(&'static str),
-
     /// Any other error occurred.
     #[error(transparent)]
     Other(#[from] anyhow::Error),
-
     // TODO: Errors below should be core specific
     /// A timeout occurred during an operation
     #[error("A timeout occurred.")]
     Timeout,
-
     /// Unaligned memory access
     #[error("Alignment error")]
     MemoryNotAligned {

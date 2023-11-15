@@ -91,7 +91,7 @@ pub enum DebugError {
 }
 
 /// A copy of [`gimli::ColumnType`] which uses [`u64`] instead of [`NonZeroU64`](std::num::NonZeroU64).
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize)]
 pub enum ColumnType {
     /// The `LeftEdge` means that the statement begins at the start of the new line.
     LeftEdge,
@@ -114,8 +114,18 @@ pub fn get_sequential_key() -> i64 {
     CACHE_KEY.fetch_add(1, Ordering::SeqCst)
 }
 
+fn serialize_typed_path<S>(path: &Option<TypedPathBuf>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    match path {
+        Some(path) => serializer.serialize_str(&path.to_string_lossy()),
+        None => serializer.serialize_none(),
+    }
+}
+
 /// A specific location in source code.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct SourceLocation {
     /// The line number in the source file with zero based indexing.
     pub line: Option<u64>,
@@ -124,6 +134,7 @@ pub struct SourceLocation {
     /// The file name of the source file.
     pub file: Option<String>,
     /// The directory of the source file.
+    #[serde(serialize_with = "serialize_typed_path")]
     pub directory: Option<TypedPathBuf>,
     /// The address of the first instruction associated with the source code
     pub low_pc: Option<u32>,

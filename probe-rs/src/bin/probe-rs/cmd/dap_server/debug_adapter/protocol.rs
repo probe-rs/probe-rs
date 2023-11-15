@@ -369,7 +369,7 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
                             send_telemetry: Some(false),
                             show_user: Some(true),
                             url_label: Some("Documentation".to_string()),
-                            url: Some("https://probe.rs/docs/tools/vscode/".to_string()),
+                            url: Some("https://probe.rs/docs/tools/debugger/".to_string()),
                         }),
                     },
                 };

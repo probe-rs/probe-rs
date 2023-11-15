@@ -1,12 +1,65 @@
 use super::*;
 use crate::Error;
 use anyhow::anyhow;
+use serde::{Serialize, Serializer};
 use std::collections::HashMap;
 
 /// VariableCache stores available `Variable`s, and provides methods to create and navigate the parent-child relationships of the Variables.
 #[derive(Debug, PartialEq)]
 pub struct VariableCache {
     pub(crate) variable_hash_map: HashMap<i64, Variable>,
+}
+
+impl Serialize for VariableCache {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        use serde::ser::SerializeStruct;
+
+        /// This is a modified version of the [`Variable`] struct, to be used for serialization as a recursive tree node.
+        #[derive(Serialize)]
+        struct VariableTreeNode {
+            name: VariableName,
+            type_name: VariableType,
+            /// To eliminate noise, we will only show values for base data types and strings.
+            value: String,
+            /// ONLY If there are children.
+            #[serde(skip_serializing_if = "Vec::is_empty")]
+            children: Vec<VariableTreeNode>,
+        }
+
+        /// A helper function to recursively build the variable tree with `VariableTreeNode` entries.
+        fn recurse_variables(
+            variable_cache: &VariableCache,
+            parent_variable_key: Option<i64>,
+        ) -> Vec<VariableTreeNode> {
+            variable_cache
+                .get_children(parent_variable_key)
+                .unwrap()
+                .iter()
+                .map(|child_variable: &Variable| VariableTreeNode {
+                    name: child_variable.name.clone(),
+                    type_name: child_variable.type_name.clone(),
+                    value: if child_variable.range_upper_bound > 50 {
+                        format!("Data types with more than 50 members are excluded from this output. This variable has {} child members.", child_variable.range_upper_bound)
+                    } else {
+                        child_variable.get_value(variable_cache)
+                    },
+                    children: if child_variable.range_upper_bound > 50 {
+                        // Empty Vec's will show as variables with no children.
+                        Vec::new()
+                    } else {
+                        recurse_variables(variable_cache, Some(child_variable.variable_key))
+                    },
+                                    })
+                .collect::<Vec<VariableTreeNode>>()
+        }
+
+        let mut state = serializer.serialize_struct("Variables", 1)?;
+        state.serialize_field("Child Variables", &recurse_variables(self, None))?;
+        state.end()
+    }
 }
 
 impl Default for VariableCache {

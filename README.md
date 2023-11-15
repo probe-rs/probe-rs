@@ -61,7 +61,7 @@ We have implemented the [Microsoft Debug Adapter Protocol (DAP)](https://microso
 
 #### VSCode
 
-The probe-rs website includes [VSCode configuration instructions](https://probe.rs/docs/tools/vscode/).
+The probe-rs website includes [VSCode configuration instructions](https://probe.rs/docs/tools/debugger/).
 
 ## Usage Examples
 

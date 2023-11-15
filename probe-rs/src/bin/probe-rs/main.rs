@@ -47,7 +47,7 @@ struct Cli {
 
 #[derive(clap::Subcommand)]
 enum Subcommand {
-    /// Debug Adapter Protocol (DAP) server. See https://probe.rs/docs/tools/vscode/
+    /// Debug Adapter Protocol (DAP) server. See https://probe.rs/docs/tools/debugger/
     DapServer(cmd::dap_server::Cmd),
     /// List all connected debug probes
     List(cmd::list::Cmd),
