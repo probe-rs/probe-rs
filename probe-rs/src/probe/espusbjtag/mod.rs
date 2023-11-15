@@ -18,7 +18,7 @@ use bitvec::prelude::*;
 
 use self::protocol::ProtocolHandler;
 
-use super::{JTAGAccess, JtagChainItem, ChainParams};
+use super::{ChainParams, JTAGAccess, JtagChainItem};
 
 use probe_rs_target::ScanChainElement;
 pub use protocol::list_espjtag_devices;
@@ -125,7 +125,11 @@ impl EspUsbJtag {
         // TODO: Why only store the first 8 bits?
         self.current_ir_reg = data[0] as u32;
 
-        let response = response.split_off(tms_enter_ir_shift.len());
+        let mut response = response.split_off(tms_enter_ir_shift.len());
+        if let Some(ref params) = self.chain_params {
+            response = response.split_off(params.irpre); // cut the prepended bypass commands
+        }
+        response.truncate(len); // cut the post pended bypass commands
 
         Ok(response)
     }
@@ -151,7 +155,13 @@ impl EspUsbJtag {
             BitVec::with_capacity(tms_enter_ir_shift.len() + len + tms_enter_idle.len());
 
         tms.extend_from_bitslice(&tms_enter_ir_shift);
+        if let Some(ref params) = self.chain_params {
+            tms.extend(iter::repeat(false).take(params.irpre))
+        }
         tms.extend(tms_data);
+        if let Some(ref params) = self.chain_params {
+            tms.extend(iter::repeat(false).take(params.irpost))
+        }
         tms.extend_from_bitslice(&tms_enter_idle);
 
         let tdi_enter_ir_shift = bitvec![0, 0, 0, 0];
@@ -165,8 +175,18 @@ impl EspUsbJtag {
 
         tdi.extend_from_bitslice(&tdi_enter_ir_shift);
 
+        // Add BYPASS commands before shifting out data where required
+        if let Some(ref params) = self.chain_params {
+            tdi.extend(iter::repeat(true).take(params.irpre))
+        }
+
         let bs = &data.as_bits::<Lsb0>()[..len];
         tdi.extend_from_bitslice(bs);
+
+        // Add BYPASS commands after shifting out data
+        if let Some(ref params) = self.chain_params {
+            tdi.extend(iter::repeat(true).take(params.irpost))
+        }
 
         tdi.extend_from_bitslice(&tdi_enter_idle);
 
@@ -192,6 +212,11 @@ impl EspUsbJtag {
     ) -> Result<Vec<u8>, DebugProbeError> {
         let tms_enter_shift = [true, false, false]; // TODO taken from below, make a const in future
         let mut response = response.split_off(tms_enter_shift.len());
+
+        if let Some(ref params) = self.chain_params {
+            response = response.split_off(params.drpre); // cut the prepended bypass command dummy bits
+        }
+
         response.truncate(register_bits);
         response.force_align();
         let result = response.into_vec();
@@ -221,7 +246,13 @@ impl EspUsbJtag {
         let mut tms: BitVec<u8, Lsb0> = BitVec::with_capacity(register_bits + 7);
 
         tms.extend_from_bitslice(&tms_enter_shift);
+        if let Some(ref params) = self.chain_params {
+            tms.extend(iter::repeat(false).take(params.drpre))
+        }
         tms.extend(tms_shift_out_value);
+        if let Some(ref params) = self.chain_params {
+            tms.extend(iter::repeat(false).take(params.drpost))
+        }
         tms.extend_from_bitslice(&tms_enter_idle);
 
         let tdi_enter_shift = bitvec![0, 0, 0];
@@ -233,8 +264,18 @@ impl EspUsbJtag {
 
         tdi.extend_from_bitslice(&tdi_enter_shift);
 
+        // dummy bits to account for bypasses
+        if let Some(ref params) = self.chain_params {
+            tdi.extend(iter::repeat(true).take(params.drpre))
+        }
+
         let bs = &data.as_bits::<Lsb0>()[..register_bits];
         tdi.extend_from_bitslice(bs);
+
+        // dummy bits to account for bypasses
+        if let Some(ref params) = self.chain_params {
+            tdi.extend(iter::repeat(true).take(params.drpost))
+        }
 
         tdi.extend_from_bitslice(&tdi_enter_idle);
 
@@ -420,7 +461,7 @@ impl DebugProbe for EspUsbJtag {
             jtag_idle_cycles: 0,
             current_ir_reg: 1,
             scan_chain: None,
-            chain_params: None
+            chain_params: None,
         }))
     }
 
