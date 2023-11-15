@@ -13,6 +13,7 @@ use crate::{
     probe::common::extract_ir_lengths,
     DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
 };
+use anyhow::anyhow;
 use bitvec::prelude::*;
 
 use self::protocol::ProtocolHandler;
@@ -131,66 +132,42 @@ impl EspUsbJtag {
     fn prepare_write_ir(&mut self, data: &[u8], len: usize) -> Result<usize, DebugProbeError> {
         tracing::debug!("Write IR: {:?}, len={}", data, len);
 
-        // Check the bit length, enough data has to be
-        // available
-        if data.len() * 8 < len {
-            todo!("Proper error for incorrect length");
+        // Check the bit length, enough data has to be available
+        if data.len() * 8 < len || len == 0 {
+            return Err(DebugProbeError::Other(anyhow!("Invalid data length")));
         }
 
-        // At least one bit has to be sent
-        if len < 1 {
-            todo!("Proper error for incorrect length");
-        }
-
-        let tms_enter_ir_shift = [true, true, false, false];
+        let tms_enter_ir_shift = bitvec![1, 1, 0, 0];
 
         // The last bit will be transmitted when exiting the shift state,
         // so we need to stay in the shift state for one period less than
         // we have bits to transmit.
         let tms_data = iter::repeat(false).take(len - 1);
 
-        let tms_enter_idle = [true, true, false];
+        let tms_enter_idle = bitvec![1, 1, 0];
 
-        let mut tms = Vec::with_capacity(tms_enter_ir_shift.len() + len + tms_enter_idle.len());
+        let mut tms: BitVec<u8, Lsb0> =
+            BitVec::with_capacity(tms_enter_ir_shift.len() + len + tms_enter_idle.len());
 
-        tms.extend_from_slice(&tms_enter_ir_shift);
+        tms.extend_from_bitslice(&tms_enter_ir_shift);
         tms.extend(tms_data);
-        tms.extend_from_slice(&tms_enter_idle);
+        tms.extend_from_bitslice(&tms_enter_idle);
 
-        let tdi_enter_ir_shift = [false, false, false, false];
+        let tdi_enter_ir_shift = bitvec![0, 0, 0, 0];
 
         // This is one less than the enter idle for tms, because
         // the last bit is transmitted when exiting the IR shift state
-        let tdi_enter_idle = [false, false];
+        let tdi_enter_idle = bitvec![0, 0];
 
-        let mut tdi = Vec::with_capacity(tdi_enter_ir_shift.len() + len + tdi_enter_idle.len());
+        let mut tdi: BitVec<u8, Lsb0> =
+            BitVec::with_capacity(tdi_enter_ir_shift.len() + len + tdi_enter_idle.len());
 
-        tdi.extend_from_slice(&tdi_enter_ir_shift);
+        tdi.extend_from_bitslice(&tdi_enter_ir_shift);
 
-        let num_bytes = len / 8;
+        let bs = &data.as_bits::<Lsb0>()[..len];
+        tdi.extend_from_bitslice(bs);
 
-        let num_bits = len - (num_bytes * 8);
-
-        for bytes in &data[..num_bytes] {
-            let mut byte = *bytes;
-
-            for _ in 0..8 {
-                tdi.push(byte & 1 == 1);
-
-                byte >>= 1;
-            }
-        }
-
-        if num_bits > 0 {
-            let mut remaining_byte = data[num_bytes];
-
-            for _ in 0..num_bits {
-                tdi.push(remaining_byte & 1 == 1);
-                remaining_byte >>= 1;
-            }
-        }
-
-        tdi.extend_from_slice(&tdi_enter_idle);
+        tdi.extend_from_bitslice(&tdi_enter_idle);
 
         tracing::trace!("tms: {:?}", tms);
         tracing::trace!("tdi: {:?}", tdi);
@@ -228,52 +205,37 @@ impl EspUsbJtag {
     ) -> Result<usize, DebugProbeError> {
         tracing::debug!("Write DR: {:?}, len={}", data, register_bits);
 
-        let tms_enter_shift = [true, false, false];
+        // Check the bit length, enough data has to be available
+        if data.len() * 8 < register_bits || register_bits == 0 {
+            return Err(DebugProbeError::Other(anyhow!("Invalid data length")));
+        }
+
+        let tms_enter_shift = bitvec![1, 0, 0];
 
         // Last bit of data is shifted out when we exi the SHIFT-DR State
         let tms_shift_out_value = iter::repeat(false).take(register_bits - 1);
 
-        let tms_enter_idle = [true, true, false];
+        let tms_enter_idle = bitvec![1, 1, 0];
 
-        let mut tms = Vec::with_capacity(register_bits + 7);
+        let mut tms: BitVec<u8, Lsb0> = BitVec::with_capacity(register_bits + 7);
 
-        tms.extend_from_slice(&tms_enter_shift);
+        tms.extend_from_bitslice(&tms_enter_shift);
         tms.extend(tms_shift_out_value);
-        tms.extend_from_slice(&tms_enter_idle);
+        tms.extend_from_bitslice(&tms_enter_idle);
 
-        let tdi_enter_shift = [false, false, false];
+        let tdi_enter_shift = bitvec![0, 0, 0];
 
-        let tdi_enter_idle = [false, false];
+        let tdi_enter_idle = bitvec![0, 0];
 
-        let mut tdi =
-            Vec::with_capacity(tdi_enter_shift.len() + tdi_enter_idle.len() + register_bits);
+        let mut tdi: BitVec<u8, Lsb0> =
+            BitVec::with_capacity(tdi_enter_shift.len() + tdi_enter_idle.len() + register_bits);
 
-        tdi.extend_from_slice(&tdi_enter_shift);
+        tdi.extend_from_bitslice(&tdi_enter_shift);
 
-        let num_bytes = register_bits / 8;
+        let bs = &data.as_bits::<Lsb0>()[..register_bits];
+        tdi.extend_from_bitslice(bs);
 
-        let num_bits = register_bits - (num_bytes * 8);
-
-        for bytes in &data[..num_bytes] {
-            let mut byte = *bytes;
-
-            for _ in 0..8 {
-                tdi.push(byte & 1 == 1);
-
-                byte >>= 1;
-            }
-        }
-
-        if num_bits > 0 {
-            let mut remaining_byte = data[num_bytes];
-
-            for _ in 0..num_bits {
-                tdi.push(remaining_byte & 1 == 1);
-                remaining_byte >>= 1;
-            }
-        }
-
-        tdi.extend_from_slice(&tdi_enter_idle);
+        tdi.extend_from_bitslice(&tdi_enter_idle);
 
         // We need to stay in the idle cycle a bit
         tms.extend(iter::repeat(false).take(self.idle_cycles() as usize));
