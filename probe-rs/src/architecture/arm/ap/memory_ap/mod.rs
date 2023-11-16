@@ -353,15 +353,19 @@ impl CSW {
     /// ```text
     /// HPROT[0] == 1   - data           access
     /// HPROT[1] == 1   - privileged     access
-    /// HPROT[2] == 0   - non-cacheable  access
-    /// HPROT[3] == 0   - non-bufferable access
+    /// HPROT[2] == 0   - non-bufferable access
+    /// HPROT[3] == 1   - cacheable      access
     /// ```
+    ///
+    /// Setting cacheable indicates the request must not bypass the cache,
+    /// to ensure we observe the same state as the CPU core. On cores without
+    /// cache the bit is RAZ/WI.
     pub fn new(data_size: DataSize) -> Self {
         CSW {
             DbgSwEnable: 0b1,
             HNONSEC: 0b1,
             PROT: 0b110,
-            CACHE: 0b11,
+            CACHE: 0b1011,
             AddrInc: AddressIncrement::Single,
             SIZE: data_size,
             ..Default::default()
