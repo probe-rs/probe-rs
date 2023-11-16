@@ -15,6 +15,7 @@ use crate::{
 };
 use anyhow::anyhow;
 use bitvec::prelude::*;
+use num_traits::WrappingSub;
 
 use self::protocol::ProtocolHandler;
 
@@ -31,7 +32,8 @@ pub(crate) struct EspUsbJtag {
     /// accesses to the DMI register
     jtag_idle_cycles: u8,
 
-    current_ir_reg: u32,
+    current_ir_reg: u8,
+    max_ir_address: u8,
     scan_chain: Option<Vec<ScanChainElement>>,
     chain_params: Option<ChainParams>,
 }
@@ -122,9 +124,6 @@ impl EspUsbJtag {
         let mut response = self.protocol.flush()?;
         tracing::trace!("Response: {:?}", response);
 
-        // TODO: Why only store the first 8 bits?
-        self.current_ir_reg = data[0] as u32;
-
         let mut response = response.split_off(tms_enter_ir_shift.len());
         if let Some(ref params) = self.chain_params {
             response = response.split_off(params.irpre); // cut the prepended bypass commands
@@ -210,8 +209,7 @@ impl EspUsbJtag {
         mut response: BitVec<u8, Lsb0>,
         register_bits: usize,
     ) -> Result<Vec<u8>, DebugProbeError> {
-        let tms_enter_shift = [true, false, false]; // TODO taken from below, make a const in future
-        let mut response = response.split_off(tms_enter_shift.len());
+        let mut response = response.split_off(3); // split off tms_enter_shift from the response
 
         if let Some(ref params) = self.chain_params {
             response = response.split_off(params.drpre); // cut the prepended bypass command dummy bits
@@ -296,19 +294,18 @@ impl EspUsbJtag {
         data: &[u8],
         len: u32,
     ) -> Result<DeferredRegisterWrite, DebugProbeError> {
-        let address_bits = address.to_le_bytes();
-
-        // TODO: This is limited to 5 bit addresses for now
-        if address > 0x1f {
-            return Err(DebugProbeError::NotImplemented(
-                "JTAG Register addresses are fixed to 5 bits",
-            ));
+        if address > self.max_ir_address.into() {
+            return Err(DebugProbeError::Other(anyhow!(
+                "Invalid instruction register access: {}",
+                address
+            )));
         }
+        let address = address.to_le_bytes()[0];
 
         let write_ir_bits = if self.current_ir_reg != address {
             // Write IR register
-            let def = self.prepare_write_ir(&address_bits[..1], 5)?;
-            self.current_ir_reg = data[0] as u32;
+            let def = self.prepare_write_ir(&[address], 5)?;
+            self.current_ir_reg = address;
             Some(def)
         } else {
             None
@@ -354,18 +351,18 @@ impl JTAGAccess for EspUsbJtag {
 
     /// Read the data register
     fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
-        let address_bits = address.to_le_bytes();
-
-        // TODO: This is limited to 5 bit addresses for now
-        if address > 0x1f {
-            return Err(DebugProbeError::NotImplemented(
-                "JTAG Register addresses are fixed to 5 bits",
-            ));
+        if address > self.max_ir_address.into() {
+            return Err(DebugProbeError::Other(anyhow!(
+                "Invalid instruction register access: {}",
+                address
+            )));
         }
+        let address = address.to_le_bytes()[0];
 
         if self.current_ir_reg != address {
             // Write IR register
-            self.write_ir(&address_bits[..1], 5)?;
+            self.write_ir(&[address], 5)?;
+            self.current_ir_reg = address;
         }
 
         // read DR register by transfering len bits to the chain
@@ -380,18 +377,18 @@ impl JTAGAccess for EspUsbJtag {
         data: &[u8],
         len: u32,
     ) -> Result<Vec<u8>, DebugProbeError> {
-        let address_bits = address.to_le_bytes();
-
-        // TODO: This is limited to 5 bit addresses for now
-        if address > 0x1f {
-            return Err(DebugProbeError::NotImplemented(
-                "JTAG Register addresses are fixed to 5 bits",
-            ));
+        if address > self.max_ir_address.into() {
+            return Err(DebugProbeError::Other(anyhow!(
+                "Invalid instruction register access: {}",
+                address
+            )));
         }
+        let address = address.to_le_bytes()[0];
 
         if self.current_ir_reg != address {
             // Write IR register
-            self.write_ir(&address_bits[..1], 5)?;
+            self.write_ir(&[address], 5)?;
+            self.current_ir_reg = address;
         }
 
         // write DR register
@@ -460,6 +457,8 @@ impl DebugProbe for EspUsbJtag {
             protocol,
             jtag_idle_cycles: 0,
             current_ir_reg: 1,
+            // default to 5, as most Espressif chips have an irlen of 5
+            max_ir_address: 5,
             scan_chain: None,
             chain_params: None,
         }))
@@ -534,6 +533,9 @@ impl DebugProbe for EspUsbJtag {
 
         tracing::info!("Setting chain params: {:?}", params);
 
+        // set the max address to the max number of bits irlen can represent
+        self.max_ir_address = ((1 << params.irlen).wrapping_sub(&1)) as u8;
+        tracing::debug!("Setting max_ir_address to {}", self.max_ir_address);
         self.chain_params = Some(params);
 
         Ok(())
