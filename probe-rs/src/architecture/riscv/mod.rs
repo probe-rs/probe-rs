@@ -9,7 +9,7 @@ use crate::{
     },
     memory::valid_32bit_address,
     memory_mapped_bitfield_register, CoreInterface, CoreRegister, CoreStatus, CoreType, Error,
-    HaltReason, InstructionSet, MemoryInterface,
+    HaltReason, InstructionSet, MemoryInterface, MemoryMappedRegister,
 };
 use anyhow::{anyhow, Result};
 use bitfield::bitfield;
@@ -700,16 +700,27 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         }
     }
 
-    fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
-        Err(crate::error::Error::Other(anyhow::anyhow!(
-            "Fpu detection not yet implemented"
-        )))
+    /// Returns the number of fpu registers defined in this register file, or `None` if there are none.
+    fn floating_point_register_count(&mut self) -> Result<Option<usize>, Error> {
+        let fpu_register_count = self
+            .registers()
+            .all_registers()
+            .filter(|r| r.register_has_role(crate::RegisterRole::FloatingPoint))
+            .count();
+        Ok(if fpu_register_count > 0 {
+            Some(fpu_register_count)
+        } else {
+            None
+        })
     }
 
-    fn floating_point_register_count(&mut self) -> Result<Option<usize>, crate::error::Error> {
-        Err(crate::error::Error::Other(anyhow::anyhow!(
-            "Fpu detection not yet implemented"
-        )))
+    fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
+        // Read the extensions from the Machine ISA regiseter.
+        let isa_extensions =
+            Misa::from(self.read_csr(Misa::get_mmio_address() as u16)?).extensions();
+        // Mask for the D, F and Q extension bits.
+        let mask = (1 << 3) | (1 << 5) | (1 << 16);
+        Ok(isa_extensions & mask != 0)
     }
 
     fn id(&self) -> usize {
@@ -995,10 +1006,11 @@ bitfield! {
     load, set_load: 0;
 }
 
-bitfield! {
+memory_mapped_bitfield_register! {
     /// Isa and Extensions (see RISC-V Privileged Spec, 3.1.1)
     pub struct Misa(u32);
-    impl Debug;
+    0x301, "misa",
+    impl From;
 
     /// Machine XLEN
     mxl, _: 31, 30;

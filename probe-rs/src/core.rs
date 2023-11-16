@@ -346,7 +346,7 @@ impl CoreDump {
             self.get_memory_from_coredump(address, (size_of_val(data)) as u64)?;
         for (n, data) in data.iter_mut().enumerate() {
             *data = memory
-                .pread_with((address - memory_offset) as usize + n * 4, scroll::LE)
+                .pread_with::<T>((address - memory_offset) as usize + n * 4, scroll::LE)
                 .map_err(|e| anyhow!("{e}"))?;
         }
         Ok(())
