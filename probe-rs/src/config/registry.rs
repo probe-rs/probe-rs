@@ -110,6 +110,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 flash_algorithms: vec![],
                 rtt_scan_ranges: None,
                 scan_chain: Some(vec![]),
+                default_format: Default::default(),
             }],
             flash_algorithms: vec![],
             source: TargetDescriptionSource::Generic,

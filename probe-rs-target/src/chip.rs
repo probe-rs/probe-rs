@@ -58,6 +58,8 @@ pub struct Chip {
     /// ref: `<https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/sdf_pg.html#sdf_element_scanchain>`
     #[serde(default)]
     pub scan_chain: Option<Vec<ScanChainElement>>,
+    /// The default format for this chip
+    pub default_format: Option<String>,
 }
 
 impl Chip {
@@ -77,6 +79,7 @@ impl Chip {
             flash_algorithms: vec![],
             rtt_scan_ranges: None,
             scan_chain: Some(vec![]),
+            default_format: Default::default(),
         }
     }
 }

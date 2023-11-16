@@ -733,7 +733,7 @@ impl Debugger {
         });
 
         download_options.progress = flash_progress;
-
+        let target = session_data.session.target().clone();
         let flash_result = download_file_with_options(
             &mut session_data.session,
             path_to_elf,
@@ -741,7 +741,7 @@ impl Debugger {
                 .flashing_config
                 .format_options
                 .clone()
-                .into_format()?,
+                .into_format(&target)?,
             download_options,
         );
 
