@@ -11,6 +11,7 @@ use crate::architecture::arm::{
 };
 
 /// The sequence handle for the nRF9160.
+#[derive(Debug)]
 pub struct Nrf9160(());
 
 impl Nrf9160 {

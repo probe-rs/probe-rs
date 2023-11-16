@@ -209,14 +209,18 @@ where
         // The CACHE bits are set for the following AHB access:
         //   HPROT[0] == 1   - data           access
         //   HPROT[1] == 1   - privileged     access
-        //   HPROT[2] == 0   - non-cacheable  access
-        //   HPROT[3] == 0   - non-bufferable access
+        //   HPROT[2] == 0   - non-bufferable access
+        //   HPROT[3] == 1   - cacheable      access
+        //
+        // Setting cacheable indicates the request must not bypass the cache,
+        // to ensure we observe the same state as the CPU core. On cores without
+        // cache the bit is RAZ/WI.
 
         CSW {
             DbgSwEnable: 0b1,
             HNONSEC: !self.ap_information.supports_hnonsec as u8,
             PROT: 0b10,
-            CACHE: 0b11,
+            CACHE: 0b1011,
             AddrInc: AddressIncrement::Single,
             SIZE: data_size,
             ..Default::default()

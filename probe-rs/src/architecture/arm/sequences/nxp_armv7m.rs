@@ -88,6 +88,7 @@ fn debug_port_start(
 }
 
 /// The sequence handle for the LPC55Sxx family.
+#[derive(Debug)]
 pub struct LPC55Sxx(());
 
 impl LPC55Sxx {
@@ -347,6 +348,7 @@ fn enable_debug_mailbox(
 ///
 /// If the design changes such that the kind of reset isn't in our control, we'll
 /// need to handle those cases.
+#[derive(Debug)]
 pub struct MIMXRT10xx(());
 
 impl MIMXRT10xx {
@@ -424,6 +426,7 @@ impl ArmDebugSequence for MIMXRT10xx {
 /// Debug sequences for MIMXRT11xx MCUs.
 ///
 /// Currently only supports the Cortex M7.
+#[derive(Debug)]
 pub struct MIMXRT11xx(());
 
 impl MIMXRT11xx {

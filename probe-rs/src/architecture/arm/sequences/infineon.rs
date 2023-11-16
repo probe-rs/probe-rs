@@ -15,6 +15,7 @@ use crate::{DebugProbeError, MemoryMappedRegister};
 use super::ArmDebugSequence;
 
 /// An Infineon XMC4xxx MCU.
+#[derive(Debug)]
 pub struct XMC4000 {
     reset_state: Mutex<Option<ResetState>>,
 }
@@ -28,6 +29,7 @@ impl XMC4000 {
     }
 }
 
+#[derive(Debug)]
 enum ResetState {
     /// We are commanding a "Warm Reset Halt", per XMC4700/XMC4800 reference manual v1.3 § 28.4.2.
     ///
