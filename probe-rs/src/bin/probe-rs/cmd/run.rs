@@ -10,7 +10,7 @@ use anyhow::{anyhow, Context, Result};
 use probe_rs::debug::{DebugInfo, DebugRegisters};
 use probe_rs::flashing::{FileDownloadError, Format};
 use probe_rs::{
-    exception_handler_for_core, BreakpointCause, Core, CoreInterface, HaltReason,
+    exception_handler_for_core, BreakpointCause, Core, CoreInterface, Error, HaltReason,
     SemihostingCommand, VectorCatchCondition,
 };
 use probe_rs_target::MemoryRegion;
@@ -94,8 +94,9 @@ impl Cmd {
 
         if run_download {
             core.reset_and_halt(Duration::from_millis(100))?;
-            if let Err(e) = core.enable_vector_catch(VectorCatchCondition::All) {
-                tracing::error!("Failed to enable_vector_catch: {:?}", e);
+            match core.enable_vector_catch(VectorCatchCondition::All) {
+                Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
+                Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
             }
             core.run()?;
         }
