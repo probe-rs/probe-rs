@@ -20,7 +20,8 @@ use crate::architecture::arm::{
     ApAddress, DpAddress,
 };
 use crate::architecture::riscv::sequences::{
-    esp32c3::ESP32C3, esp32c6h2::ESP32C6H2, DefaultRiscvSequence, RiscvDebugSequence,
+    esp32c2::ESP32C2, esp32c3::ESP32C3, esp32c6h2::ESP32C6H2, DefaultRiscvSequence,
+    RiscvDebugSequence,
 };
 use crate::flashing::FlashLoader;
 use probe_rs_target::{Architecture, ChipFamily, MemoryRange};
@@ -127,6 +128,8 @@ impl Target {
             || chip.name.starts_with("EFR32ZG2")
         {
             DebugSequence::Arm(EFM32xG2::create())
+        } else if chip.name.starts_with("esp32c2") {
+            DebugSequence::Riscv(ESP32C2::create())
         } else if chip.name.starts_with("esp32c3") {
             DebugSequence::Riscv(ESP32C3::create())
         } else if chip.name.starts_with("esp32c6") || chip.name.starts_with("esp32h2") {
