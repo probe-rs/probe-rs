@@ -2127,6 +2127,41 @@ mod test {
         insta::assert_snapshot!(printed_backtrace);
     }
 
+    // This is a temporary test, to solicit help in tracking down a bug with the CoreDump on RISC-V.
+    #[test]
+    fn riscv_coredump_problem() {
+        use crate::memory::MemoryInterface;
+        // Use the same address for both cases. As far as I can tell, the single read coredump
+        // starts producing zero values after the first 0x18000 bytes.
+        let address = 0x3FC80000 + 0x18000;
+
+        // Read a 32-bit value from the "bad" coredump.
+        let mut singe_read_coredump = CoreDump::load(&get_path_for_test_files(
+            format!("debug-unwind-tests/single_read_bad.coredump").as_str(),
+        ))
+        .unwrap();
+        let bad_data = &mut [0u32; 0x4];
+        for i in 0..0x4 {
+            bad_data[i] = singe_read_coredump
+                .read_word_32((address + (i * 4)) as u64)
+                .unwrap();
+        }
+
+        // Read a 32-bit value, at the same address, from the "good" coredump.
+        let mut two_part_coredump = CoreDump::load(&get_path_for_test_files(
+            format!("debug-unwind-tests/two_part_read_ok.coredump").as_str(),
+        ))
+        .unwrap();
+        let good_data = &mut [0u32; 0x4];
+        for i in 0..0x4 {
+            good_data[i] = two_part_coredump
+                .read_word_32((address + (i * 4)) as u64)
+                .unwrap();
+        }
+
+        assert_eq!(bad_data, good_data);
+    }
+
     #[test_case("RP2040"; "Armv6-m using RP2040")]
     #[test_case("nRF52833_xxAA"; "Armv7-m using nRF52833_xxAA")]
     fn probe_rs_debug_unwind_tests(chip_name: &str) {
