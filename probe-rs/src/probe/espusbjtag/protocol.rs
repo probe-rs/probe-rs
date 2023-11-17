@@ -303,11 +303,7 @@ impl ProtocolHandler {
             self.receive_buffer()?;
         }
 
-        // TODO avoid clone here?
-        let resp = self.response.clone();
-        self.response.clear();
-
-        Ok(resp)
+        Ok(std::mem::replace(&mut self.response, BitVec::new()))
     }
 
     /// Writes a command one or multiple times into the raw buffer we send to the USB EP later

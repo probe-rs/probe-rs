@@ -80,7 +80,7 @@ pub enum ScanChainError {
 }
 
 /// Convert a list of start positions to a list of lengths.
-fn starts_to_lens(starts: &[usize], total: usize) -> Vec<usize> {
+fn starts_to_lengths(starts: &[usize], total: usize) -> Vec<usize> {
     let mut lens: Vec<usize> = starts.windows(2).map(|w| w[1] - w[0]).collect();
     lens.push(total - lens.iter().sum::<usize>());
     lens
@@ -132,8 +132,8 @@ pub(crate) fn extract_idcodes(
 /// If expected IR lengths are provided, specify them in `expected`, and they are
 /// verified against the IR scan and then returned.
 ///
-/// Valid IRs in the capture must start with `10` (a 1 in the least-significant,
-/// and therefore first, bit). However, IRs may contain `10` in other positions, so we
+/// Valid IRs in the capture must start with `0b10` (a 1 in the least-significant,
+/// and therefore first, bit). However, IRs may contain `0b10` in other positions, so we
 /// can only find a superset of all possible start positions. If this happens to match
 /// the number of taps, or there is only one tap, we can find all IR lengths. Otherwise,
 /// they must be provided, and are then checked.
@@ -204,7 +204,7 @@ pub(crate) fn extract_ir_lengths(
                 Err(ScanChainError::InvalidIR)
             } else {
                 tracing::debug!("Verified provided IR lengths against IR scan");
-                Ok(starts_to_lens(&exp_starts, ir.len()))
+                Ok(starts_to_lengths(&exp_starts, ir.len()))
             }
         }
     } else if n_taps == 1 {
@@ -214,7 +214,7 @@ pub(crate) fn extract_ir_lengths(
     } else if n_taps == starts.len() {
         // If the number of possible starts matches the number of TAPs,
         // we can unambiguously find all lengths.
-        let irlens = starts_to_lens(&starts, ir.len());
+        let irlens = starts_to_lengths(&starts, ir.len());
         tracing::info!("IR lengths are unambiguous: {irlens:?}");
         Ok(irlens)
     } else {
