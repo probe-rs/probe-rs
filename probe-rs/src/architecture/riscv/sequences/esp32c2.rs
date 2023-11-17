@@ -6,6 +6,7 @@ use super::RiscvDebugSequence;
 use crate::MemoryInterface;
 
 /// The debug sequence implementation for the ESP32C2.
+#[derive(Debug)]
 pub struct ESP32C2(());
 
 impl ESP32C2 {

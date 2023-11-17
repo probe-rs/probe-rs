@@ -20,9 +20,9 @@ use crate::architecture::arm::{
     ApAddress, DpAddress,
 };
 use crate::architecture::riscv::sequences::{
-    esp32c2::ESP32C2, esp32c3::ESP32C3, esp32c6h2::ESP32C6H2,
+    esp32c2::ESP32C2, esp32c3::ESP32C3, esp32c6h2::ESP32C6H2, DefaultRiscvSequence,
+    RiscvDebugSequence,
 };
-use crate::architecture::riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence};
 use crate::flashing::FlashLoader;
 use probe_rs_target::{Architecture, ChipFamily, MemoryRange};
 use std::sync::Arc;
@@ -127,14 +127,11 @@ impl Target {
             || chip.name.starts_with("EFR32MG2")
             || chip.name.starts_with("EFR32ZG2")
         {
-            tracing::warn!("Using custom sequence for EFM32 Series 2");
-            debug_sequence = DebugSequence::Arm(EFM32xG2::create());
+            DebugSequence::Arm(EFM32xG2::create())
         } else if chip.name.starts_with("esp32c2") {
-            tracing::warn!("Using custom sequence for ESP32C2");
-            debug_sequence = DebugSequence::Riscv(ESP32C2::create());
+            DebugSequence::Riscv(ESP32C2::create())
         } else if chip.name.starts_with("esp32c3") {
-            tracing::warn!("Using custom sequence for ESP32C3");
-            debug_sequence = DebugSequence::Riscv(ESP32C3::create());
+            DebugSequence::Riscv(ESP32C3::create())
         } else if chip.name.starts_with("esp32c6") || chip.name.starts_with("esp32h2") {
             DebugSequence::Riscv(ESP32C6H2::create())
         } else if chip.name.starts_with("nRF5340") {
