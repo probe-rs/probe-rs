@@ -1,13 +1,14 @@
 use super::*;
 use crate::Error;
 use anyhow::anyhow;
+use gimli::{UnitOffset, UnitSectionOffset};
 use serde::{Serialize, Serializer};
 use std::collections::HashMap;
 
 /// VariableCache stores available `Variable`s, and provides methods to create and navigate the parent-child relationships of the Variables.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct VariableCache {
-    pub(crate) variable_hash_map: HashMap<i64, Variable>,
+    variable_hash_map: HashMap<i64, Variable>,
 }
 
 impl Serialize for VariableCache {
@@ -62,25 +63,75 @@ impl Serialize for VariableCache {
     }
 }
 
-impl Default for VariableCache {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl VariableCache {
-    /// Creates a new [`VariableCache`].
-    pub fn new() -> Self {
-        VariableCache {
-            variable_hash_map: HashMap::new(),
-        }
+    /// Create a cache for static variables for the given unit
+    pub fn new_static_cache(header_offset: UnitSectionOffset, entries_offset: UnitOffset) -> Self {
+        let mut static_root_variable =
+            Variable::new(header_offset.as_debug_info_offset(), Some(entries_offset));
+        static_root_variable.variable_node_type = VariableNodeType::DirectLookup;
+        static_root_variable.name = VariableName::StaticScopeRoot;
+
+        let key = get_sequential_key();
+
+        static_root_variable.variable_key = key;
+
+        let cache = VariableCache {
+            variable_hash_map: HashMap::from([(key, static_root_variable)]),
+        };
+
+        cache
+    }
+
+    /// Create a cache for local variables for the given DIE
+    pub fn new_local_cache(header_offset: UnitSectionOffset, entries_offset: UnitOffset) -> Self {
+        let mut local_root_variable =
+            Variable::new(header_offset.as_debug_info_offset(), Some(entries_offset));
+        local_root_variable.variable_node_type = VariableNodeType::DirectLookup;
+        local_root_variable.name = VariableName::LocalScopeRoot;
+
+        let key = get_sequential_key();
+        local_root_variable.variable_key = key;
+
+        let cache = VariableCache {
+            variable_hash_map: HashMap::from([(key, local_root_variable)]),
+        };
+
+        cache
+    }
+
+    /// Create a new cache for SVD variables
+    pub fn new_svd_cache() -> Result<Self, crate::Error> {
+        let mut device_root_variable = Variable::new(None, None);
+        device_root_variable.variable_node_type = VariableNodeType::DoNotRecurse;
+        device_root_variable.name = VariableName::PeripheralScopeRoot;
+
+        let key = get_sequential_key();
+        device_root_variable.variable_key = key;
+
+        let svd_cache = VariableCache {
+            variable_hash_map: HashMap::from([(key, device_root_variable)]),
+        };
+
+        Ok(svd_cache)
+    }
+
+    /// Get the root variable of the cache
+    pub fn root_variable(&self) -> Option<Variable> {
+        self.variable_hash_map
+            .values()
+            .find(|variable| variable.parent_key.is_none())
+            .cloned()
     }
 
     /// Returns the number of `Variable`s in the cache.
     // These caches are constructed with a single root variable, so this should never be empty.
-    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         self.variable_hash_map.len()
+    }
+
+    /// Returns `true` if the cache is empty.
+    pub fn is_empty(&self) -> bool {
+        self.variable_hash_map.is_empty()
     }
 
     /// Performs an *add* or *update* of a `probe_rs::debug::Variable` to the cache, consuming the input and returning a Clone.
@@ -94,18 +145,16 @@ impl VariableCache {
     /// - If appropriate, the `Variable::value` is updated from the core memory, and can be used by the calling function.
     pub fn cache_variable(
         &mut self,
-        parent_key: Option<i64>,
+        parent_key: i64,
         cache_variable: Variable,
         memory: &mut dyn MemoryInterface,
     ) -> Result<Variable, Error> {
         let mut variable_to_add = cache_variable.clone();
         // Validate that the parent_key exists ...
-        if let Some(new_parent_key) = parent_key {
-            if self.variable_hash_map.contains_key(&new_parent_key) {
-                variable_to_add.parent_key = parent_key;
-            } else {
-                return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {}. Please report this as a bug", variable_to_add.name, new_parent_key).into());
-            }
+        if self.variable_hash_map.contains_key(&parent_key) {
+            variable_to_add.parent_key = Some(parent_key);
+        } else {
+            return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {}. Please report this as a bug", variable_to_add.name, parent_key).into());
         }
 
         // Is this an *add* or *update* operation?
@@ -307,5 +356,41 @@ impl VariableCache {
             return Err(anyhow!("Failed to remove a `VariableCache` entry with key: {}. Please report this as a bug.", variable_key).into());
         };
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use gimli::{DebugInfoOffset, UnitOffset};
+
+    use crate::debug::{
+        VariableCache, VariableLocation, VariableName, VariableNodeType, VariableType, VariantRole,
+    };
+
+    #[test]
+    fn static_cache() {
+        let c = VariableCache::new_static_cache(DebugInfoOffset(0).into(), UnitOffset(0));
+
+        let cache_variable = c.root_variable().unwrap();
+
+        println!("{:#?}", cache_variable);
+
+        assert_eq!(cache_variable.parent_key, None);
+        assert_eq!(cache_variable.name, VariableName::StaticScopeRoot);
+        assert_eq!(cache_variable.type_name, VariableType::Unknown);
+        assert_eq!(
+            cache_variable.variable_node_type,
+            VariableNodeType::DirectLookup
+        );
+
+        assert_eq!(cache_variable.get_value(&c), "Unknown");
+
+        assert_eq!(cache_variable.source_location, None);
+        assert_eq!(cache_variable.memory_location, VariableLocation::Unknown);
+        assert_eq!(cache_variable.byte_size, None);
+        assert_eq!(cache_variable.member_index, None);
+        assert_eq!(cache_variable.range_lower_bound, 0);
+        assert_eq!(cache_variable.range_upper_bound, 0);
+        assert_eq!(cache_variable.role, VariantRole::NonVariant);
     }
 }

@@ -40,7 +40,7 @@ pub(crate) enum SourceLocationScope {
 
 /// Provide the storage and methods to handle various [`BreakpointType`]
 #[derive(Clone, Debug)]
-pub(crate) struct ActiveBreakpoint {
+pub struct ActiveBreakpoint {
     pub(crate) breakpoint_type: BreakpointType,
     pub(crate) address: u64,
 }

@@ -408,7 +408,9 @@ impl Variable {
                     let mut cache_variable = self.clone();
                     cache_variable.value = VariableValue::Valid(new_value.clone());
                     variable_cache.cache_variable(
-                        cache_variable.parent_key,
+                        cache_variable
+                            .parent_key
+                            .expect("All variables have a parent"),
                         cache_variable,
                         memory,
                     )?;
@@ -523,7 +525,9 @@ impl Variable {
         if let VariableValue::Error(_) = self.value {
             // Nothing more to do ...
             return;
-        } else if self.variable_node_type == VariableNodeType::SvdRegister
+        }
+
+        if self.variable_node_type == VariableNodeType::SvdRegister
             || self.variable_node_type == VariableNodeType::SvdField
         {
             // Special handling for SVD registers.
@@ -539,7 +543,9 @@ impl Variable {
                 }
             }
             return;
-        } else if !self.value.is_empty()
+        }
+
+        if !self.value.is_empty()
         // The value was set explicitly, so just leave it as is, or it was an error, so don't attempt anything else
         || !self.memory_location.valid()
         // This may just be that we are early on in the process of `Variable` evaluation
@@ -548,7 +554,9 @@ impl Variable {
         {
             // Quick exit if we don't really need to do much more.
             return;
-        } else if self.variable_node_type.is_deferred() {
+        }
+
+        if self.variable_node_type.is_deferred() {
             // And we have not previously assigned the value, then assign the type and address as the value
             self.value =
                 VariableValue::Valid(format!("{} @ {}", self.type_name, self.memory_location));
