@@ -915,6 +915,23 @@ pub struct JtagWriteCommand {
     pub transform: fn(Vec<u8>) -> Result<CommandResult, crate::Error>,
 }
 
+/// Represents a Jtag Tap within the chain.
+#[derive(Debug)]
+pub struct JtagChainItem {
+    pub idcode: u32,
+    pub irlen: usize,
+}
+
+/// Chain parameters to select a target tap within the chain.
+#[derive(Clone, Copy, Debug)]
+pub struct ChainParams {
+    pub irpre: usize,
+    pub irpost: usize,
+    pub drpre: usize,
+    pub drpost: usize,
+    pub irlen: usize,
+}
+
 #[derive(thiserror::Error, Debug)]
 pub struct BatchExecutionError {
     #[source]

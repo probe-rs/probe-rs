@@ -4,10 +4,13 @@ manufacturer:
   id: 0x12
 variants:
   - name: esp32h2
+    scan_chain:
+    - name: main
+      ir_len: 5
     cores:
-      - name: main
-        type: riscv
-        core_access_options: !Riscv {}
+    - name: main
+      type: riscv
+      core_access_options: !Riscv {}
     memory_map:
       - !Nvm
         range: #16 Mb Max addressable Flash size
