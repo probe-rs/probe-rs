@@ -1,0 +1,1 @@
+cli/run: Fix a bug where the last messages printed by the code before crashing (like a panic message) did not get printed.
