@@ -124,9 +124,14 @@ pub struct FormatOptions {
 }
 
 impl FormatOptions {
+    /// If a format is provided, use it.
+    /// If a target has a preferred format, we use that.
+    /// Finally, if neither of the above cases are true, we default for [`Format::default()`].
     pub fn into_format(self, target: &Target) -> anyhow::Result<Format> {
-        // If a format is provided, use it, else fallback to the targets default format
-        let format = self.format.unwrap_or_else(|| target.default_format.clone());
+        let format = self.format.unwrap_or_else(|| match target.default_format {
+            probe_rs_target::BinaryFormat::Idf => Format::Idf(Default::default()),
+            probe_rs_target::BinaryFormat::Raw => Default::default(),
+        });
         Ok(match format {
             Format::Bin(_) => Format::Bin(BinOptions {
                 base_address: self.base_address,

@@ -1,34 +1,30 @@
 use super::{
     Core, MemoryRegion, RawFlashAlgorithm, RegistryError, ScanChainElement, TargetDescriptionSource,
 };
+use crate::architecture::arm::{
+    ap::MemoryAp,
+    sequences::{
+        atsam::AtSAM,
+        efm32xg2::EFM32xG2,
+        infineon::XMC4000,
+        nrf52::Nrf52,
+        nrf53::Nrf5340,
+        nrf91::Nrf9160,
+        nxp_armv7m::{LPC55Sxx, MIMXRT10xx, MIMXRT11xx},
+        nxp_armv8m::MIMXRT5xxS,
+        stm32_armv6::{Stm32Armv6, Stm32Armv6Family},
+        stm32_armv7::Stm32Armv7,
+        stm32h7::Stm32h7,
+        ArmDebugSequence, DefaultArmSequence,
+    },
+    ApAddress, DpAddress,
+};
 use crate::architecture::riscv::sequences::{
     esp32c2::ESP32C2, esp32c3::ESP32C3, esp32c6h2::ESP32C6H2, DefaultRiscvSequence,
     RiscvDebugSequence,
 };
 use crate::flashing::FlashLoader;
-use crate::{
-    architecture::arm::{
-        ap::MemoryAp,
-        sequences::{
-            atsam::AtSAM,
-            efm32xg2::EFM32xG2,
-            infineon::XMC4000,
-            nrf52::Nrf52,
-            nrf53::Nrf5340,
-            nrf91::Nrf9160,
-            nxp_armv7m::{LPC55Sxx, MIMXRT10xx, MIMXRT11xx},
-            nxp_armv8m::MIMXRT5xxS,
-            stm32_armv6::{Stm32Armv6, Stm32Armv6Family},
-            stm32_armv7::Stm32Armv7,
-            stm32h7::Stm32h7,
-            ArmDebugSequence, DefaultArmSequence,
-        },
-        ApAddress, DpAddress,
-    },
-    flashing::Format,
-};
-use probe_rs_target::{Architecture, ChipFamily, MemoryRange};
-use std::str::FromStr;
+use probe_rs_target::{Architecture, BinaryFormat, ChipFamily, MemoryRange};
 use std::sync::Arc;
 
 /// This describes a complete target with a fixed chip model and variant.
@@ -58,7 +54,7 @@ pub struct Target {
     /// the number devices in the scan chain and their ir lengths.
     pub scan_chain: Option<Vec<ScanChainElement>>,
     /// The default executable format for the target.
-    pub default_format: Format,
+    pub default_format: BinaryFormat,
 }
 
 impl std::fmt::Debug for Target {
@@ -226,11 +222,7 @@ impl Target {
             debug_sequence,
             rtt_scan_regions,
             scan_chain: chip.scan_chain.clone(),
-            default_format: chip
-                .default_format
-                .as_ref()
-                .map(|s| Format::from_str(s).expect("default_format in chip definition is invalid"))
-                .unwrap_or_default(),
+            default_format: chip.default_binary_format.clone().unwrap_or_default(),
         })
     }
 

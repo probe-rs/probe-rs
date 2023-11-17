@@ -7,7 +7,7 @@ variants:
     scan_chain:
     - name: main
       ir_len: 5
-    default_format: idf
+    default_binary_format: idf
     cores:
     - name: main
       type: riscv
