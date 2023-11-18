@@ -343,12 +343,14 @@ impl<'p> CoreHandle<'p> {
     pub(crate) fn recompute_breakpoints(&mut self) -> Result<(), DebuggerError> {
         let target_breakpoints = self.core_data.breakpoints.clone();
         for breakpoint in target_breakpoints
-            .iter().filter(|&breakpoint| {
+            .iter()
+            .filter(|&breakpoint| {
                 matches!(
                     breakpoint.breakpoint_type,
                     BreakpointType::SourceBreakpoint { .. }
                 )
-            }).cloned()
+            })
+            .cloned()
         {
             self.clear_breakpoint(breakpoint.address)?;
             if let BreakpointType::SourceBreakpoint {
