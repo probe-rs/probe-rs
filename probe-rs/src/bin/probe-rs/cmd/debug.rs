@@ -518,8 +518,11 @@ impl DebugCli {
                                 )
                                 .unwrap();
 
-                            halted_state.frame_indices =
-                                halted_state.stack_frames.iter().map(|sf| sf.id).collect();
+                            halted_state.frame_indices = halted_state
+                                .stack_frames
+                                .iter()
+                                .map(|sf| sf.id.into())
+                                .collect();
 
                             for (i, frame) in halted_state.stack_frames.iter().enumerate() {
                                 print!("Frame {}: {} @ {}", i, frame.function_name, frame.pc);

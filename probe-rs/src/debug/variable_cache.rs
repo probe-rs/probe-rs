@@ -8,9 +8,9 @@ use std::collections::HashMap;
 /// VariableCache stores available `Variable`s, and provides methods to create and navigate the parent-child relationships of the Variables.
 #[derive(Debug, Clone, PartialEq)]
 pub struct VariableCache {
-    root_variable_key: i64,
+    root_variable_key: ObjectRef,
 
-    variable_hash_map: HashMap<i64, Variable>,
+    variable_hash_map: HashMap<ObjectRef, Variable>,
 }
 
 impl Serialize for VariableCache {
@@ -51,7 +51,7 @@ impl Serialize for VariableCache {
         /// A helper function to recursively build the variable tree with `VariableTreeNode` entries.
         fn recurse_variables(
             variable_cache: &VariableCache,
-            parent_variable_key: i64,
+            parent_variable_key: ObjectRef,
         ) -> Vec<VariableTreeNode> {
             variable_cache
                 .get_children(parent_variable_key)
@@ -87,7 +87,7 @@ impl Serialize for VariableCache {
 
 impl VariableCache {
     fn new(mut variable: Variable) -> Self {
-        let key = get_sequential_key();
+        let key = get_object_reference();
 
         variable.variable_key = key;
 
@@ -155,7 +155,7 @@ impl VariableCache {
     /// - If appropriate, the `Variable::value` is updated from the core memory, and can be used by the calling function.
     pub fn cache_variable(
         &mut self,
-        parent_key: i64,
+        parent_key: ObjectRef,
         cache_variable: Variable,
         memory: &mut dyn MemoryInterface,
     ) -> Result<Variable, Error> {
@@ -164,16 +164,16 @@ impl VariableCache {
         if self.variable_hash_map.contains_key(&parent_key) {
             variable_to_add.parent_key = parent_key;
         } else {
-            return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {}. Please report this as a bug", variable_to_add.name, parent_key).into());
+            return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {:?}. Please report this as a bug", variable_to_add.name, parent_key).into());
         }
 
         // Is this an *add* or *update* operation?
-        let stored_key = if variable_to_add.variable_key == 0 {
+        let stored_key = if variable_to_add.variable_key == ObjectRef::default() {
             // The caller is telling us this is definitely a new `Variable`
-            variable_to_add.variable_key = get_sequential_key();
+            variable_to_add.variable_key = get_object_reference();
 
             tracing::trace!(
-                "VariableCache: Add Variable: key={}, parent={:?}, name={:?}",
+                "VariableCache: Add Variable: key={:?}, parent={:?}, name={:?}",
                 variable_to_add.variable_key,
                 variable_to_add.parent_key,
                 &variable_to_add.name
@@ -184,13 +184,13 @@ impl VariableCache {
                 .variable_hash_map
                 .insert(variable_to_add.variable_key, variable_to_add)
             {
-                return Err(anyhow!("Attempt to insert a new `Variable`:{:?} with a duplicate cache key: {}. Please report this as a bug.", cache_variable.name, old_variable.variable_key).into());
+                return Err(anyhow!("Attempt to insert a new `Variable`:{:?} with a duplicate cache key: {:?}. Please report this as a bug.", cache_variable.name, old_variable.variable_key).into());
             }
             new_entry_key
         } else {
             // Attempt to update an existing `Variable` in the cache
             tracing::trace!(
-                "VariableCache: Update Variable, key={}, name={:?}",
+                "VariableCache: Update Variable, key={:?}, name={:?}",
                 variable_to_add.variable_key,
                 &variable_to_add.name
             );
@@ -207,7 +207,7 @@ impl VariableCache {
 
                 *prev_entry = variable_to_add
             } else {
-                return Err(anyhow!("Attempt to update and existing `Variable`:{:?} with a non-existent cache key: {}. Please report this as a bug.", cache_variable.name, variable_to_add.variable_key).into());
+                return Err(anyhow!("Attempt to update and existing `Variable`:{:?} with a non-existent cache key: {:?}. Please report this as a bug.", cache_variable.name, variable_to_add.variable_key).into());
             }
 
             updated_entry_key
@@ -228,13 +228,13 @@ impl VariableCache {
                 .insert(stored_variable.variable_key, stored_variable.clone())
                 .is_none()
             {
-                Err(anyhow!("Failed to store variable at variable_cache_key: {}. Please report this as a bug.", stored_key).into())
+                Err(anyhow!("Failed to store variable at variable_cache_key: {:?}. Please report this as a bug.", stored_key).into())
             } else {
                 Ok(stored_variable)
             }
         } else {
             Err(anyhow!(
-                "Failed to store variable at variable_cache_key: {}. Please report this as a bug.",
+                "Failed to store variable at variable_cache_key: {:?}. Please report this as a bug.",
                 stored_key
             )
             .into())
@@ -242,7 +242,7 @@ impl VariableCache {
     }
 
     /// Retrieve a clone of a specific `Variable`, using the `variable_key`.
-    pub fn get_variable_by_key(&self, variable_key: i64) -> Option<Variable> {
+    pub fn get_variable_by_key(&self, variable_key: ObjectRef) -> Option<Variable> {
         self.variable_hash_map.get(&variable_key).cloned()
     }
 
@@ -251,7 +251,7 @@ impl VariableCache {
     pub fn get_variable_by_name_and_parent(
         &self,
         variable_name: &VariableName,
-        parent_key: i64,
+        parent_key: ObjectRef,
     ) -> Option<Variable> {
         let mut child_variables = self
             .variable_hash_map
@@ -303,7 +303,7 @@ impl VariableCache {
 
     /// Retrieve `clone`d version of all the children of a `Variable`.
     /// If `parent_key == None`, it will return all the top level variables (no parents) in this cache.
-    pub fn get_children(&self, parent_key: i64) -> Result<Vec<Variable>, Error> {
+    pub fn get_children(&self, parent_key: ObjectRef) -> Result<Vec<Variable>, Error> {
         let mut children: Vec<Variable> = self
             .variable_hash_map
             .values()
@@ -349,7 +349,10 @@ impl VariableCache {
     }
 
     /// Removing an entry's children from the `VariableCache` will recursively remove all their children
-    pub fn remove_cache_entry_children(&mut self, parent_variable_key: i64) -> Result<(), Error> {
+    pub fn remove_cache_entry_children(
+        &mut self,
+        parent_variable_key: ObjectRef,
+    ) -> Result<(), Error> {
         let children = self
             .variable_hash_map
             .values()
@@ -364,10 +367,10 @@ impl VariableCache {
         Ok(())
     }
     /// Removing an entry from the `VariableCache` will recursively remove all its children
-    pub fn remove_cache_entry(&mut self, variable_key: i64) -> Result<(), Error> {
+    pub fn remove_cache_entry(&mut self, variable_key: ObjectRef) -> Result<(), Error> {
         self.remove_cache_entry_children(variable_key)?;
         if self.variable_hash_map.remove(&variable_key).is_none() {
-            return Err(anyhow!("Failed to remove a `VariableCache` entry with key: {}. Please report this as a bug.", variable_key).into());
+            return Err(anyhow!("Failed to remove a `VariableCache` entry with key: {:?}. Please report this as a bug.", variable_key).into());
         };
         Ok(())
     }
@@ -394,7 +397,7 @@ mod test {
 
     fn build_tree(cache: &VariableCache, variable: Variable) -> Tree<String> {
         let mut entry = Tree::new(format!(
-            "{}: name={:?}, type={:?}, value={:?}",
+            "{:?}: name={:?}, type={:?}, value={:?}",
             variable.variable_key,
             variable.name,
             variable.type_name,

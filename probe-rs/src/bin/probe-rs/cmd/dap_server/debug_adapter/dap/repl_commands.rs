@@ -9,7 +9,10 @@ use super::{
 };
 use crate::cmd::dap_server::{server::core_data::CoreHandle, DebuggerError};
 use itertools::Itertools;
-use probe_rs::{debug::VariableName, CoreStatus, HaltReason};
+use probe_rs::{
+    debug::{ObjectRef, VariableName},
+    CoreStatus, HaltReason,
+};
 use std::{fmt::Display, path::Path, str::FromStr, time::Duration};
 
 /// The handler is a function that takes a reference to the target core, and a reference to the response body.
@@ -342,13 +345,17 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
             }
             if input_address == 0 {
                 // No address was specified, so we'll use the frame address, if available.
-                input_address = if let Some(frame_pc) = request_arguments
+
+                let frame_id = request_arguments
                     .frame_id
+                    .and_then(|id| ObjectRef::try_from(id).ok());
+
+                input_address = if let Some(frame_pc) = frame_id
                     .and_then(|frame_id| {
                         target_core
                             .core_data
                             .stack_frames
-                            .iter_mut()
+                            .iter()
                             .find(|stack_frame| stack_frame.id == frame_id)
                     })
                     .map(|stack_frame| stack_frame.pc)

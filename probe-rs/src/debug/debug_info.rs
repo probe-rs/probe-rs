@@ -1,5 +1,6 @@
+use super::ObjectRef;
 use super::{
-    function_die::FunctionDie, get_sequential_key, unit_info::UnitInfo, unit_info::UnitIter,
+    function_die::FunctionDie, get_object_reference, unit_info::UnitInfo, unit_info::UnitIter,
     variable::*, DebugError, DebugRegisters, SourceLocation, StackFrame, VariableCache,
 };
 use crate::core::UnwindRule;
@@ -410,7 +411,7 @@ impl DebugInfo {
                         // For process_tree we need to create a temporary parent that will later be eliminated with VariableCache::adopt_grand_children
                         // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
                         let mut temporary_variable = parent_variable.clone();
-                        temporary_variable.variable_key = 0;
+                        temporary_variable.variable_key = ObjectRef::default();
                         temporary_variable.parent_key = parent_variable.variable_key;
                         temporary_variable = cache.cache_variable(
                             parent_variable.variable_key,
@@ -450,7 +451,7 @@ impl DebugInfo {
                         // For process_tree we need to create a temporary parent that will later be eliminated with VariableCache::adopt_grand_children
                         // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
                         let mut temporary_variable = parent_variable.clone();
-                        temporary_variable.variable_key = 0;
+                        temporary_variable.variable_key = ObjectRef::default();
                         temporary_variable.parent_key = parent_variable.variable_key;
                         temporary_variable = cache.cache_variable(
                             parent_variable.variable_key,
@@ -568,7 +569,7 @@ impl DebugInfo {
                         );
 
                     frames.push(StackFrame {
-                        id: get_sequential_key(),
+                        id: get_object_reference(),
                         function_name,
                         source_location: inlined_caller_source_location,
                         registers: unwind_registers.clone(),
@@ -625,7 +626,7 @@ impl DebugInfo {
                 );
 
             frames.push(StackFrame {
-                id: get_sequential_key(),
+                id: get_object_reference(),
                 function_name,
                 source_location: function_location,
                 registers: unwind_registers.clone(),
@@ -760,7 +761,7 @@ impl DebugInfo {
                         let previous_regs = unwind_registers.clone();
 
                         StackFrame {
-                            id: get_sequential_key(),
+                            id: get_object_reference(),
                             function_name: exception_info.description.clone(),
                             source_location: None,
                             registers: previous_regs,
@@ -786,7 +787,7 @@ impl DebugInfo {
                         );
 
                         StackFrame {
-                            id: get_sequential_key(),
+                            id: get_object_reference(),
                             function_name: unknown_function,
                             source_location: self.get_source_location(address),
                             registers: unwind_registers.clone(),
@@ -982,7 +983,7 @@ impl DebugInfo {
                         let address = frame_pc;
 
                         let exception_frame = StackFrame {
-                            id: get_sequential_key(),
+                            id: get_object_reference(),
                             function_name: details.description.clone(),
                             source_location: None,
                             registers: unwind_registers.clone(),

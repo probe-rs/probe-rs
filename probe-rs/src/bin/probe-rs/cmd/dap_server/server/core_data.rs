@@ -17,7 +17,7 @@ use crate::cmd::dap_server::{
 use crate::util::rtt::{self, ChannelMode, DataFormat, RttActiveTarget};
 use anyhow::{anyhow, Result};
 use probe_rs::{
-    debug::{debug_info::DebugInfo, ColumnType, VerifiedBreakpoint},
+    debug::{debug_info::DebugInfo, ColumnType, ObjectRef, VerifiedBreakpoint},
     rtt::{Rtt, ScanRegion},
     Core, CoreStatus, Error, HaltReason,
 };
@@ -160,7 +160,7 @@ impl<'p> CoreHandle<'p> {
     /// Search available [`probe_rs::debug::StackFrame`]'s for the given `id`
     pub(crate) fn get_stackframe(
         &'p self,
-        id: i64,
+        id: ObjectRef,
     ) -> Option<&'p probe_rs::debug::stack_frame::StackFrame> {
         self.core_data
             .stack_frames

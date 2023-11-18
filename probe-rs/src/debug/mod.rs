@@ -37,7 +37,7 @@ use std::{
     io,
     path::PathBuf,
     str::Utf8Error,
-    sync::atomic::{AtomicI64, Ordering},
+    sync::atomic::{AtomicU32, Ordering},
     vec,
 };
 
@@ -108,10 +108,52 @@ impl From<gimli::ColumnType> for ColumnType {
     }
 }
 
-static CACHE_KEY: AtomicI64 = AtomicI64::new(1);
+/// ObjectReference as defined in the DAP standard.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct ObjectRef(u32);
+
+// TODO: This is not valid, the reference should not have a default value
+impl Default for ObjectRef {
+    fn default() -> Self {
+        ObjectRef(0)
+    }
+}
+
+impl From<ObjectRef> for i64 {
+    fn from(value: ObjectRef) -> Self {
+        value.0 as i64
+    }
+}
+
+impl TryFrom<i64> for ObjectRef {
+    type Error = anyhow::Error;
+
+    fn try_from(value: i64) -> Result<Self, Self::Error> {
+        if value < 0 {
+            Err(anyhow::anyhow!(
+                "ObjectReference must be positive and in range 0..2^31"
+            ))
+        } else {
+            Ok(ObjectRef(value as u32))
+        }
+    }
+}
+
+impl std::str::FromStr for ObjectRef {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let value = s.parse::<u32>()?;
+        Ok(ObjectRef(value))
+    }
+}
+
+static CACHE_KEY: AtomicU32 = AtomicU32::new(1);
 /// Generate a unique key that can be used to assign id's to StackFrame and Variable structs.
-pub fn get_sequential_key() -> i64 {
-    CACHE_KEY.fetch_add(1, Ordering::SeqCst)
+pub fn get_object_reference() -> ObjectRef {
+    let key = CACHE_KEY.fetch_add(1, Ordering::SeqCst);
+    ObjectRef(key)
 }
 
 fn serialize_typed_path<S>(path: &Option<TypedPathBuf>, serializer: S) -> Result<S::Ok, S::Error>

@@ -1,4 +1,7 @@
-use probe_rs::{debug::VariableName, MemoryInterface};
+use probe_rs::{
+    debug::{ObjectRef, VariableName},
+    MemoryInterface,
+};
 
 use crate::cmd::dap_server::{server::core_data::CoreHandle, DebuggerError};
 
@@ -20,8 +23,11 @@ pub(crate) fn get_local_variable(
     variable_name: VariableName,
     gdb_nuf: GdbNuf,
 ) -> Result<Response, DebuggerError> {
-    // Make sure we have a valid StackFrame
-    if let Some(stack_frame) = match evaluate_arguments.frame_id {
+    let frame_ref = evaluate_arguments
+        .frame_id
+        .and_then(|id| ObjectRef::try_from(id).ok());
+
+    let stack_frame = match frame_ref {
         Some(frame_id) => target_core
             .core_data
             .stack_frames
@@ -31,79 +37,80 @@ pub(crate) fn get_local_variable(
             // Use the current frame_id
             target_core.core_data.stack_frames.first_mut()
         }
-    } {
-        if let Some(variable_cache) = stack_frame.local_variables.as_mut() {
-            if let Some(variable) = variable_cache.get_variable_by_name(&variable_name) {
-                let mut response = Response {
-                    command: "variables".to_string(),
-                    success: true,
-                    message: None,
-                    type_: "response".to_string(),
-                    request_seq: 0,
-                    seq: 0,
-                    body: None,
-                };
-                let variable_list = if variable.name == VariableName::LocalScopeRoot {
-                    variable_cache
-                        .get_children(variable.variable_key())
-                        .map_err(|_| {
-                            DebuggerError::UserMessage(format!(
-                                "No local variables available for frame : {}",
-                                stack_frame.function_name
-                            ))
-                        })?
-                } else {
-                    vec![variable]
-                };
-                let mut response_body = EvaluateResponseBody {
-                    result: "".to_string(),
-                    variables_reference: 0,
-                    named_variables: None,
-                    indexed_variables: None,
-                    memory_reference: None,
-                    type_: None,
-                    presentation_hint: None,
-                };
-                response_body.result = "".to_string();
-                for variable in variable_list {
-                    if gdb_nuf.format_specifier == GdbFormat::DapReference {
-                        response_body.memory_reference =
-                            Some(format!("{}", variable.memory_location));
-                        response_body.result = format!(
-                            "{} : {} ",
-                            variable.name,
-                            variable.get_value(variable_cache)
-                        );
-                        response_body.type_ = Some(format!("{:?}", variable.type_name));
-                        response_body.variables_reference = variable.variable_key();
-                    } else {
-                        response_body.result.push_str(&format!(
-                            "\n{} [{} @ {}]: {} ",
-                            variable.name,
-                            variable.type_name,
-                            variable.memory_location,
-                            variable.get_value(variable_cache)
-                        ));
-                    }
-                }
-                response.message = Some(response_body.result.clone());
-                response.body = serde_json::to_value(response_body).ok();
-                Ok(response)
-            } else {
-                Err(DebuggerError::UserMessage(format!(
-                    "No variable named {:?} found for frame: {:?}.",
-                    variable_name, stack_frame.function_name
-                )))
-            }
-        } else {
-            Err(DebuggerError::UserMessage(format!(
-                "No variables available for frame: {:?}.",
-                stack_frame.function_name
-            )))
-        }
+    };
+
+    // Make sure we have a valid StackFrame
+    let Some(stack_frame) = stack_frame else {
+        return Err(DebuggerError::UserMessage("No frame selected.".to_string()));
+    };
+
+    let Some(variable_cache) = stack_frame.local_variables.as_mut() else {
+        return Err(DebuggerError::UserMessage(format!(
+            "No variables available for frame: {:?}.",
+            stack_frame.function_name
+        )));
+    };
+
+    let Some(variable) = variable_cache.get_variable_by_name(&variable_name) else {
+        return Err(DebuggerError::UserMessage(format!(
+            "No variable named {:?} found for frame: {:?}.",
+            variable_name, stack_frame.function_name
+        )));
+    };
+    let mut response = Response {
+        command: "variables".to_string(),
+        success: true,
+        message: None,
+        type_: "response".to_string(),
+        request_seq: 0,
+        seq: 0,
+        body: None,
+    };
+    let variable_list = if variable.name == VariableName::LocalScopeRoot {
+        variable_cache
+            .get_children(variable.variable_key())
+            .map_err(|_| {
+                DebuggerError::UserMessage(format!(
+                    "No local variables available for frame : {}",
+                    stack_frame.function_name
+                ))
+            })?
     } else {
-        Err(DebuggerError::UserMessage("No frame selected.".to_string()))
+        vec![variable]
+    };
+    let mut response_body = EvaluateResponseBody {
+        result: "".to_string(),
+        variables_reference: 0,
+        named_variables: None,
+        indexed_variables: None,
+        memory_reference: None,
+        type_: None,
+        presentation_hint: None,
+    };
+    response_body.result = "".to_string();
+    for variable in variable_list {
+        if gdb_nuf.format_specifier == GdbFormat::DapReference {
+            response_body.memory_reference = Some(format!("{}", variable.memory_location));
+            response_body.result = format!(
+                "{} : {} ",
+                variable.name,
+                variable.get_value(variable_cache)
+            );
+            response_body.type_ = Some(format!("{:?}", variable.type_name));
+            response_body.variables_reference = variable.variable_key().into();
+        } else {
+            response_body.result.push_str(&format!(
+                "\n{} [{} @ {}]: {} ",
+                variable.name,
+                variable.type_name,
+                variable.memory_location,
+                variable.get_value(variable_cache)
+            ));
+        }
     }
+    response.message = Some(response_body.result.clone());
+    response.body = serde_json::to_value(response_body).ok();
+    Ok(response)
 }
 
 /// Read memory at the specified address (hex), using the [`GdbNuf`] specifiers to determine size and format.

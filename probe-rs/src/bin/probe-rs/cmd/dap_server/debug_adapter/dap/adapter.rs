@@ -25,8 +25,8 @@ use parse_int::parse;
 use probe_rs::{
     architecture::{arm::ArmError, riscv::communication_interface::RiscvError},
     debug::{
-        ColumnType, DebugRegisters, SourceLocation, SteppingMode, VariableName, VariableNodeType,
-        VerifiedBreakpoint,
+        ColumnType, DebugRegisters, ObjectRef, SourceLocation, SteppingMode, VariableName,
+        VariableNodeType, VerifiedBreakpoint,
     },
     exception_handler_for_core,
     Architecture::Riscv,
@@ -54,7 +54,8 @@ pub struct DebugAdapter<P: ProtocolAdapter> {
     ///     - send back a threads response, with `all_threads_stopped=Some(false)`, and set [DebugAdapter::configuration_done] to `true`.
     ///   - If it is `true`, it will respond with thread information as expected.
     configuration_done: bool,
-    /// Flag to indicate if all cores of the target are halted. This is used to accurately report the `all_threads_stopped` field in the DAP `StoppedEvent`, as well as to prevent unnecessary polling of core status.
+    /// Flag to indicate if all cores of the target are halted. This is used to accurately report the `all_threads_stopped` field in the DAP `StoppedEvent`,
+    /// as well as to prevent unnecessary polling of core status.
     /// The default is `true`, and will be set to `false` if any of the cores report a status other than `CoreStatus::Halted(_)`.
     pub(crate) all_cores_halted: bool,
     /// Progress ID used for progress reporting when the debug adapter protocol is used.
@@ -62,9 +63,11 @@ pub struct DebugAdapter<P: ProtocolAdapter> {
     /// Flag to indicate if the connected client supports progress reporting.
     pub(crate) supports_progress_reporting: bool,
     /// Flags to improve breakpoint accuracy.
-    /// DWARF spec at Sect 2.14 uses 1 based numbering, with a 0 indicating not-specified. We will follow that standard, and translate incoming requests depending on the DAP Client treatment of 0 or 1 based numbering.
+    /// DWARF spec at Sect 2.14 uses 1 based numbering, with a 0 indicating not-specified. We will follow that standard,
+    /// and translate incoming requests depending on the DAP Client treatment of 0 or 1 based numbering.
     pub(crate) lines_start_at_1: bool,
-    /// DWARF spec at Sect 2.14 uses 1 based numbering, with a 0 indicating not-specified. We will follow that standard, and translate incoming requests depending on the DAP Client treatment of 0 or 1 based numbering.
+    /// DWARF spec at Sect 2.14 uses 1 based numbering, with a 0 indicating not-specified. We will follow that standard,
+    /// and translate incoming requests depending on the DAP Client treatment of 0 or 1 based numbering.
     pub(crate) columns_start_at_1: bool,
     /// Flag to indicate that workarounds for VSCode-specific spec deviations etc. should be
     /// enabled.
@@ -409,17 +412,24 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 let expression = arguments.expression.clone();
 
                 // Make sure we have a valid StackFrame
-                if let Some(stack_frame) = match arguments.frame_id {
-                    Some(frame_id) => target_core
-                        .core_data
-                        .stack_frames
-                        .iter_mut()
-                        .find(|stack_frame| stack_frame.id == frame_id),
-                    None => {
-                        // Use the current frame_id
-                        target_core.core_data.stack_frames.first_mut()
+                if let Some(stack_frame) =
+                    match arguments.frame_id.map(ObjectRef::try_from).transpose() {
+                        Ok(Some(frame_id)) => target_core
+                            .core_data
+                            .stack_frames
+                            .iter_mut()
+                            .find(|stack_frame| stack_frame.id == frame_id),
+                        Ok(None) => {
+                            // Use the current frame_id
+                            target_core.core_data.stack_frames.first_mut()
+                        }
+                        Err(e) => {
+                            tracing::warn!("Invalid frame_id: {e}");
+                            // Use the current frame_id
+                            target_core.core_data.stack_frames.first_mut()
+                        }
                     }
-                } {
+                {
                     // Always search the registers first, because we don't have a VariableCache for them.
                     if let Some(register_value) = stack_frame
                         .registers
@@ -458,7 +468,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                     )?;
                                 }
 
-                                if let Ok(expression_as_key) = expression.parse::<i64>() {
+                                if let Ok(expression_as_key) = expression.parse::<ObjectRef>() {
                                     variable = search_cache.get_variable_by_key(expression_as_key);
                                 } else {
                                     variable = search_cache.get_variable_by_name(
@@ -489,7 +499,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             response_body.named_variables = Some(named_child_variables_cnt);
                             response_body.result = variable.get_value(variable_cache);
                             response_body.type_ = Some(format!("{:?}", variable.type_name));
-                            response_body.variables_reference = variables_reference;
+                            response_body.variables_reference = variables_reference.into();
                         } else {
                             // If we made it to here, no register or variable matched the expression.
                         }
@@ -533,7 +543,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // The arguments.variables_reference contains the reference of the variable container. This can be:
         // - The `StackFrame.id` for register variables - we will warn the user that updating these are not yet supported.
         // - The `Variable.parent_key` for a local or static variable - If these are base data types, we will attempt to update their value, otherwise we will warn the user that updating complex / structure variables are not yet supported.
-        let parent_key = arguments.variables_reference;
+        let parent_key: ObjectRef = arguments.variables_reference.try_into()?;
         let new_value = &arguments.value;
 
         //TODO: Check for, and prevent SVD Peripheral/Register/Field values from being updated, until such time as we can do it safely.
@@ -602,7 +612,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 named_child_variables_cnt,
                                 indexed_child_variables_cnt,
                             ) = get_variable_reference(&cache_variable, variable_cache);
-                            response_body.variables_reference = Some(variables_reference);
+                            response_body.variables_reference = Some(variables_reference.into());
                             response_body.named_variables = Some(named_child_variables_cnt);
                             response_body.indexed_variables = Some(indexed_child_variables_cnt);
                             response_body.type_ = Some(format!("{:?}", cache_variable.type_name));
@@ -1034,7 +1044,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         // We need to copy some parts of StackFrame so that we can re-use it later without references to target_core.
         struct PartialStackFrameData {
-            id: i64,
+            id: ObjectRef,
             function_name: String,
             source_location: Option<SourceLocation>,
             pc: RegisterValue,
@@ -1125,7 +1135,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
                 // TODO: Can we add more meaningful info to `module_id`, etc.
                 StackFrame {
-                    id: frame.id,
+                    id: frame.id.into(),
                     name: function_display_name,
                     source,
                     line,
@@ -1169,13 +1179,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 presentation_hint: Some("registers".to_string()),
                 named_variables: None,
                 source: None,
-                variables_reference: peripherals_root_variable.variable_key(),
+                variables_reference: peripherals_root_variable.variable_key().into(),
             });
         };
 
-        tracing::trace!("Getting scopes for frame {}", arguments.frame_id,);
+        let frame_id: ObjectRef = arguments.frame_id.try_into()?;
 
-        if let Some(stack_frame) = target_core.get_stackframe(arguments.frame_id) {
+        tracing::trace!("Getting scopes for frame {:?}", frame_id);
+
+        if let Some(stack_frame) = target_core.get_stackframe(frame_id) {
             dap_scopes.push(Scope {
                 line: None,
                 column: None,
@@ -1188,7 +1200,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 named_variables: None,
                 source: None,
                 // We use the stack_frame.id for registers, so that we don't need to cache copies of the registers.
-                variables_reference: stack_frame.id,
+                variables_reference: stack_frame.id.into(),
             });
 
             if let Some(static_root_variable) = stack_frame
@@ -1207,7 +1219,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     presentation_hint: Some("statics".to_string()),
                     named_variables: None,
                     source: None,
-                    variables_reference: static_root_variable.variable_key(),
+                    variables_reference: static_root_variable.variable_key().into(),
                 });
             };
 
@@ -1235,7 +1247,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     presentation_hint: Some("locals".to_string()),
                     named_variables: None,
                     source: None,
-                    variables_reference: locals_root_variable.variable_key(),
+                    variables_reference: locals_root_variable.variable_key().into(),
                 });
             };
         }
@@ -1330,7 +1342,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         }
     }
 
-    /// The MS DAP Specification only gives us the unique reference of the variable, and does not tell us which StackFrame it belongs to, nor does it specify if this variable is in the local, register or static scope. Unfortunately this means we have to search through all the available [`probe_rs::debug::variable_cache::VariableCache`]'s until we find it. To minimize the impact of this, we will search in the most 'likely' places first (first stack frame's locals, then statics, then registers, then move to next stack frame, and so on ...)
+    /// The MS DAP Specification only gives us the unique reference of the variable, and does not tell us which StackFrame it belongs to,
+    /// nor does it specify if this variable is in the local, register or static scope.
+    /// Unfortunately this means we have to search through all the available [`probe_rs::debug::variable_cache::VariableCache`]'s until we find it.
+    /// To minimize the impact of this, we will search in the most 'likely' places first (first stack frame's locals, then statics, then registers, then move to next stack frame, and so on ...)
     pub(crate) fn variables(
         &mut self,
         target_core: &mut CoreHandle,
@@ -1338,11 +1353,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     ) -> Result<()> {
         let arguments: VariablesArguments = get_arguments(self, request)?;
 
+        let variable_ref: ObjectRef = arguments.variables_reference.try_into()?;
+
         if let Some(core_peripherals) = &mut target_core.core_data.core_peripherals {
             // First we check the SVD VariableCache, we do this first because it is the lowest computational overhead.
             if let Some(search_variable) = core_peripherals
                 .svd_variable_cache
-                .get_variable_by_key(arguments.variables_reference)
+                .get_variable_by_key(variable_ref)
             {
                 let dap_variables: Vec<Variable> = core_peripherals
                     .svd_variable_cache
@@ -1358,18 +1375,20 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             variable,
                             &mut core_peripherals.svd_variable_cache,
                         );
-                        Variable {
-                            name: if let VariableName::Named(variable_name) = &variable.name {
-                                if let Some(last_part) = variable_name.split_terminator('.').last()
-                                {
-                                    last_part.to_string()
-                                } else {
-                                    variable_name.to_string()
-                                }
+
+                        // We use fully qualified Peripheral.Register.Field form to ensure the `evaluate` request can find the right registers and fields by name.
+                        let name = if let VariableName::Named(variable_name) = &variable.name {
+                            if let Some(last_part) = variable_name.split_terminator('.').last() {
+                                last_part.to_string()
                             } else {
-                                variable.name.to_string()
-                            },
-                            // We use fully qualified Peripheral.Register.Field form to ensure the `evaluate` request can find the right registers and fields by name.
+                                variable_name.to_string()
+                            }
+                        } else {
+                            variable.name.to_string()
+                        };
+
+                        Variable {
+                            name,
                             evaluate_name: Some(variable.name.to_string()),
                             memory_reference: variable
                                 .memory_location
@@ -1387,10 +1406,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 );
                                 variable.get_value(&core_peripherals.svd_variable_cache)
                             },
-                            variables_reference,
+                            variables_reference: variables_reference.into(),
                         }
                     })
                     .collect();
+
                 return self.send_response(
                     request,
                     Ok(Some(VariablesResponseBody {
@@ -1405,11 +1425,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             let mut variable_cache: Option<&mut probe_rs::debug::VariableCache> = None;
             let mut stack_frame_registers: Option<&DebugRegisters> = None;
             let mut frame_base: Option<u64> = None;
+
             for stack_frame in target_core.core_data.stack_frames.iter_mut() {
                 if let Some(search_cache) = &mut stack_frame.local_variables {
-                    if let Some(search_variable) =
-                        search_cache.get_variable_by_key(arguments.variables_reference)
-                    {
+                    if let Some(search_variable) = search_cache.get_variable_by_key(variable_ref) {
                         parent_variable = Some(search_variable);
                         variable_cache = Some(search_cache);
                         stack_frame_registers = Some(&stack_frame.registers);
@@ -1418,9 +1437,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     }
                 }
                 if let Some(search_cache) = &mut stack_frame.static_variables {
-                    if let Some(search_variable) =
-                        search_cache.get_variable_by_key(arguments.variables_reference)
-                    {
+                    if let Some(search_variable) = search_cache.get_variable_by_key(variable_ref) {
                         parent_variable = Some(search_variable);
                         variable_cache = Some(search_cache);
                         stack_frame_registers = Some(&stack_frame.registers);
@@ -1429,7 +1446,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     }
                 }
 
-                if stack_frame.id == arguments.variables_reference {
+                if stack_frame.id == variable_ref {
                     // This is a special case, where we just want to return the stack frame registers.
 
                     let dap_variables: Vec<Variable> = stack_frame
@@ -1479,7 +1496,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
 
                 let dap_variables: Vec<Variable> = variable_cache
-                    .get_children(arguments.variables_reference)?
+                    .get_children(variable_ref)?
                     .iter()
                     // Filter out requested children, then map them as DAP variables
                     .filter(|variable| match &arguments.filter {
@@ -1513,7 +1530,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             presentation_hint: None,
                             type_: Some(format!("{:?}", variable.type_name)),
                             value: variable.get_value(variable_cache),
-                            variables_reference,
+                            variables_reference: variables_reference.into(),
                         }
                     })
                     .collect();

@@ -280,9 +280,9 @@ impl std::fmt::Display for VariableLocation {
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Variable {
     /// Every variable must have a unique key value assigned to it. The value will be zero until it is stored in VariableCache, at which time its value will be set to the same as the VariableCache::variable_cache_key
-    pub(super) variable_key: i64,
+    pub(super) variable_key: ObjectRef,
     /// Every variable must have a unique parent assigned to it when stored in the VariableCache.
-    pub parent_key: i64,
+    pub parent_key: ObjectRef,
     /// The variable name refers to the name of any of the types of values described in the [VariableCache]
     pub name: VariableName,
     /// Use `Variable::set_value()` and `Variable::get_value()` to correctly process this `value`
@@ -329,7 +329,7 @@ impl Variable {
     }
 
     /// Get a unique key for this variable.
-    pub fn variable_key(&self) -> i64 {
+    pub fn variable_key(&self) -> ObjectRef {
         self.variable_key
     }
 

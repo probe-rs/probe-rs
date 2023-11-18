@@ -517,7 +517,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 });
             };
 
-            tracing::trace!("process_tree for parent {}", parent_variable.variable_key);
+            tracing::trace!("process_tree for parent {:?}", parent_variable.variable_key);
 
             let mut child_nodes = parent_node.children();
             while let Some(mut child_node) = child_nodes.next()? {
