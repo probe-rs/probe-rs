@@ -1004,8 +1004,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         cache,
                     )?;
                     if parent_variable.is_valid() && child_variable.is_valid() {
-                        let enumerator_values =
-                            cache.get_children(Some(child_variable.variable_key))?;
+                        let enumerator_values = cache.get_children(child_variable.variable_key)?;
 
                         if let VariableLocation::Address(address) = child_variable.memory_location {
                             // NOTE: hard-coding value of variable.byte_size to 1 ... replace with code if necessary.
@@ -1026,7 +1025,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 child_variable.type_name, enumumerator_value
                             )));
                             // We don't need to keep these children.
-                            cache.remove_cache_entry_children(child_variable.variable_key)?;
+                            cache.remove_cache_entry_children(child_variable.variable_key);
                         } else {
                             child_variable.set_value(VariableValue::Error(format!(
                                 "Unsupported variable location {:?}",
@@ -1034,7 +1033,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             )));
 
                             // We don't need to keep these children.
-                            cache.remove_cache_entry_children(child_variable.variable_key)?;
+                            cache.remove_cache_entry_children(child_variable.variable_key);
                         }
                     }
                 }
@@ -1117,7 +1116,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                 // - Delete the dummy child that was created above.
                                                 cache.remove_cache_entry_children(
                                                     child_variable.variable_key,
-                                                )?;
+                                                );
                                             } else {
                                                 // - Next, process this DW_TAG_array_type's DW_AT_type full tree.
                                                 // - We have to do this repeatedly, for every array member in the range.
@@ -1260,7 +1259,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         other.static_string()
                     )));
                     child_variable.type_name = VariableType::Other("unimplemented".to_string());
-                    cache.remove_cache_entry_children(child_variable.variable_key)?;
+                    cache.remove_cache_entry_children(child_variable.variable_key);
                 }
             }
         }

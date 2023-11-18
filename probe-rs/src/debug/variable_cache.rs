@@ -8,6 +8,8 @@ use std::collections::HashMap;
 /// VariableCache stores available `Variable`s, and provides methods to create and navigate the parent-child relationships of the Variables.
 #[derive(Debug, Clone, PartialEq)]
 pub struct VariableCache {
+    root_variable_key: i64,
+
     variable_hash_map: HashMap<i64, Variable>,
 }
 
@@ -30,40 +32,73 @@ impl Serialize for VariableCache {
             children: Vec<VariableTreeNode>,
         }
 
+        fn recurse_cache(variable_cache: &VariableCache) -> VariableTreeNode {
+            let root_node = variable_cache.root_variable();
+
+            VariableTreeNode {
+                name: root_node.name.clone(),
+                type_name: root_node.type_name.clone(),
+                value: root_node.get_value(variable_cache),
+                children: if root_node.range_upper_bound > 50 {
+                    // Empty Vec's will show as variables with no children.
+                    Vec::new()
+                } else {
+                    recurse_variables(variable_cache, root_node.variable_key)
+                },
+            }
+        }
+
         /// A helper function to recursively build the variable tree with `VariableTreeNode` entries.
         fn recurse_variables(
             variable_cache: &VariableCache,
-            parent_variable_key: Option<i64>,
+            parent_variable_key: i64,
         ) -> Vec<VariableTreeNode> {
             variable_cache
                 .get_children(parent_variable_key)
                 .unwrap()
-                .iter()
-                .map(|child_variable: &Variable| VariableTreeNode {
-                    name: child_variable.name.clone(),
-                    type_name: child_variable.type_name.clone(),
-                    value: if child_variable.range_upper_bound > 50 {
+                .into_iter()
+                .map(|child_variable: Variable| {
+                    let value = if child_variable.range_upper_bound > 50 {
                         format!("Data types with more than 50 members are excluded from this output. This variable has {} child members.", child_variable.range_upper_bound)
                     } else {
                         child_variable.get_value(variable_cache)
-                    },
-                    children: if child_variable.range_upper_bound > 50 {
-                        // Empty Vec's will show as variables with no children.
-                        Vec::new()
-                    } else {
-                        recurse_variables(variable_cache, Some(child_variable.variable_key))
-                    },
-                                    })
+                    };
+
+                    VariableTreeNode {
+                                    name: child_variable.name,
+                                    type_name: child_variable.type_name,
+                                    value ,
+                                    children: if child_variable.range_upper_bound > 50 {
+                                        // Empty Vec's will show as variables with no children.
+                                        Vec::new()
+                                    } else {
+                                        recurse_variables(variable_cache, child_variable.variable_key)
+                                    },
+                                                    }
+                })
                 .collect::<Vec<VariableTreeNode>>()
         }
 
         let mut state = serializer.serialize_struct("Variables", 1)?;
-        state.serialize_field("Child Variables", &recurse_variables(self, None))?;
+        state.serialize_field("Child Variables", &recurse_cache(self))?;
         state.end()
     }
 }
 
 impl VariableCache {
+    fn new(mut variable: Variable) -> Self {
+        let key = get_sequential_key();
+
+        variable.variable_key = key;
+
+        let cache = VariableCache {
+            root_variable_key: key,
+            variable_hash_map: HashMap::from([(key, variable)]),
+        };
+
+        cache
+    }
+
     /// Create a cache for static variables for the given unit
     pub fn new_static_cache(header_offset: UnitSectionOffset, entries_offset: UnitOffset) -> Self {
         let mut static_root_variable =
@@ -71,15 +106,7 @@ impl VariableCache {
         static_root_variable.variable_node_type = VariableNodeType::DirectLookup;
         static_root_variable.name = VariableName::StaticScopeRoot;
 
-        let key = get_sequential_key();
-
-        static_root_variable.variable_key = key;
-
-        let cache = VariableCache {
-            variable_hash_map: HashMap::from([(key, static_root_variable)]),
-        };
-
-        cache
+        VariableCache::new(static_root_variable)
     }
 
     /// Create a cache for local variables for the given DIE
@@ -89,38 +116,21 @@ impl VariableCache {
         local_root_variable.variable_node_type = VariableNodeType::DirectLookup;
         local_root_variable.name = VariableName::LocalScopeRoot;
 
-        let key = get_sequential_key();
-        local_root_variable.variable_key = key;
-
-        let cache = VariableCache {
-            variable_hash_map: HashMap::from([(key, local_root_variable)]),
-        };
-
-        cache
+        VariableCache::new(local_root_variable)
     }
 
     /// Create a new cache for SVD variables
-    pub fn new_svd_cache() -> Result<Self, crate::Error> {
+    pub fn new_svd_cache() -> Self {
         let mut device_root_variable = Variable::new(None, None);
         device_root_variable.variable_node_type = VariableNodeType::DoNotRecurse;
         device_root_variable.name = VariableName::PeripheralScopeRoot;
 
-        let key = get_sequential_key();
-        device_root_variable.variable_key = key;
-
-        let svd_cache = VariableCache {
-            variable_hash_map: HashMap::from([(key, device_root_variable)]),
-        };
-
-        Ok(svd_cache)
+        VariableCache::new(device_root_variable)
     }
 
     /// Get the root variable of the cache
-    pub fn root_variable(&self) -> Option<Variable> {
-        self.variable_hash_map
-            .values()
-            .find(|variable| variable.parent_key.is_none())
-            .cloned()
+    pub fn root_variable(&self) -> Variable {
+        self.variable_hash_map[&self.root_variable_key].clone()
     }
 
     /// Returns the number of `Variable`s in the cache.
@@ -249,14 +259,14 @@ impl VariableCache {
             .filter(|child_variable| {
                 &child_variable.name == variable_name && child_variable.parent_key == parent_key
             })
-            .cloned()
-            .collect::<Vec<Variable>>();
-        match child_variables.len() {
-            0 => None,
-            1 => child_variables.first().cloned(),
-            child_count => {
-                tracing::error!("Found {} variables with parent_key={:?} and name={}. Please report this as a bug.", child_count, parent_key, variable_name);
-                child_variables.last().cloned()
+            .collect::<Vec<&Variable>>();
+
+        match &child_variables[..] {
+            [] => None,
+            [variable] => Some((*variable).clone()),
+            [.., last] => {
+                tracing::error!("Found {} variables with parent_key={:?} and name={}. Please report this as a bug.", child_variables.len(), parent_key, variable_name);
+                Some((*last).clone())
             }
         }
     }
@@ -269,29 +279,29 @@ impl VariableCache {
             .variable_hash_map
             .values()
             .filter(|child_variable| child_variable.name.eq(variable_name))
-            .cloned()
-            .collect::<Vec<Variable>>();
-        match child_variables.len() {
-            0 => None,
-            1 => child_variables.first().cloned(),
-            child_count => {
+            .collect::<Vec<&Variable>>();
+
+        match &child_variables[..] {
+            [] => None,
+            [variable] => Some((*variable).clone()),
+            [first, ..] => {
                 tracing::warn!(
                     "Found {} variables with name={}. Please report this as a bug.",
-                    child_count,
+                    child_variables.len(),
                     variable_name
                 );
-                child_variables.first().cloned()
+                Some((*first).clone())
             }
         }
     }
 
     /// Retrieve `clone`d version of all the children of a `Variable`.
     /// If `parent_key == None`, it will return all the top level variables (no parents) in this cache.
-    pub fn get_children(&self, parent_key: Option<i64>) -> Result<Vec<Variable>, Error> {
+    pub fn get_children(&self, parent_key: i64) -> Result<Vec<Variable>, Error> {
         let mut children: Vec<Variable> = self
             .variable_hash_map
             .values()
-            .filter(|child_variable| child_variable.parent_key == parent_key)
+            .filter(|child_variable| child_variable.parent_key == Some(parent_key))
             .cloned()
             .collect::<Vec<Variable>>();
         // We have to incur the overhead of sort(), or else the variables in the UI are not in the same order as they appear in the source code.
@@ -301,7 +311,7 @@ impl VariableCache {
 
     /// Check if a `Variable` has any children. This also validates that the parent exists in the cache, before attempting to check for children.
     pub fn has_children(&self, parent_variable: &Variable) -> Result<bool, Error> {
-        self.get_children(Some(parent_variable.variable_key))
+        self.get_children(parent_variable.variable_key)
             .map(|children| !children.is_empty())
     }
 
@@ -335,23 +345,13 @@ impl VariableCache {
     }
 
     /// Removing an entry's children from the `VariableCache` will recursively remove all their children
-    pub fn remove_cache_entry_children(&mut self, parent_variable_key: i64) -> Result<(), Error> {
-        let children: Vec<Variable> = self
-            .variable_hash_map
-            .values()
-            .filter(|search_variable| search_variable.parent_key == Some(parent_variable_key))
-            .cloned()
-            .collect();
-        for child in children {
-            if self.variable_hash_map.remove(&child.variable_key).is_none() {
-                return Err(anyhow!("Failed to remove a `VariableCache` entry with key: {}. Please report this as a bug.", child.variable_key).into());
-            };
-        }
-        Ok(())
+    pub fn remove_cache_entry_children(&mut self, parent_variable_key: i64) {
+        self.variable_hash_map
+            .retain(|_k, v| v.parent_key != Some(parent_variable_key));
     }
     /// Removing an entry from the `VariableCache` will recursively remove all its children
     pub fn remove_cache_entry(&mut self, variable_key: i64) -> Result<(), Error> {
-        self.remove_cache_entry_children(variable_key)?;
+        self.remove_cache_entry_children(variable_key);
         if self.variable_hash_map.remove(&variable_key).is_none() {
             return Err(anyhow!("Failed to remove a `VariableCache` entry with key: {}. Please report this as a bug.", variable_key).into());
         };
@@ -371,7 +371,7 @@ mod test {
     fn static_cache() {
         let c = VariableCache::new_static_cache(DebugInfoOffset(0).into(), UnitOffset(0));
 
-        let cache_variable = c.root_variable().unwrap();
+        let cache_variable = c.root_variable();
 
         println!("{:#?}", cache_variable);
 

@@ -452,7 +452,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                     target_core.core_data.debug_info.cache_deferred_variables(
                                         search_cache,
                                         &mut target_core.core,
-                                        search_cache.get_children(None)?.first_mut().unwrap(),
+                                        &mut search_cache.root_variable(),
                                         &stack_frame.registers,
                                         stack_frame.frame_base,
                                     )?;
@@ -1172,7 +1172,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     presentation_hint: Some("registers".to_string()),
                     named_variables: None,
                     source: None,
-                    variables_reference: peripherals_root_variable.variable_key,
+                    variables_reference: peripherals_root_variable.variable_key(),
                 });
             }
         };
@@ -1215,7 +1215,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     presentation_hint: Some("statics".to_string()),
                     named_variables: None,
                     source: None,
-                    variables_reference: static_root_variable.variable_key,
+                    variables_reference: static_root_variable.variable_key(),
                 });
             };
 
@@ -1247,7 +1247,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     presentation_hint: Some("locals".to_string()),
                     named_variables: None,
                     source: None,
-                    variables_reference: locals_root_variable.variable_key,
+                    variables_reference: locals_root_variable.variable_key(),
                 });
             };
         }
@@ -1358,7 +1358,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             {
                 let dap_variables: Vec<Variable> = core_peripherals
                     .svd_variable_cache
-                    .get_children(Some(search_variable.variable_key))?
+                    .get_children(search_variable.variable_key())?
                     .iter_mut()
                     // Convert the `probe_rs::debug::Variable` to `probe_rs_debugger::dap_types::Variable`
                     .map(|variable| {
@@ -1491,7 +1491,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
 
                 let dap_variables: Vec<Variable> = variable_cache
-                    .get_children(Some(arguments.variables_reference))?
+                    .get_children(arguments.variables_reference)?
                     .iter()
                     // Filter out requested children, then map them as DAP variables
                     .filter(|variable| match &arguments.filter {

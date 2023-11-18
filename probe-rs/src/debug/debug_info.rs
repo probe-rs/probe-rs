@@ -1595,7 +1595,7 @@ mod test {
                 )
                 .unwrap();
             for mut child in variable_cache
-                .get_children(Some(parent_variable.variable_key))
+                .get_children(parent_variable.variable_key)
                 .unwrap()
             {
                 recurse_deferred_variables(
@@ -2143,9 +2143,7 @@ mod test {
                     frame.local_variables.as_mut().unwrap(),
                 ] {
                     // Cache the deferred top level children of the of the cache.
-                    let mut parent_variable = variable_cache
-                        .root_variable()
-                        .expect("Well, create a better interface...");
+                    let mut parent_variable = variable_cache.root_variable();
 
                     recurse_deferred_variables(
                         &debug_info,

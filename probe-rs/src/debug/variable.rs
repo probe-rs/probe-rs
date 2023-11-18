@@ -280,7 +280,7 @@ impl std::fmt::Display for VariableLocation {
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Variable {
     /// Every variable must have a unique key value assigned to it. The value will be zero until it is stored in VariableCache, at which time its value will be set to the same as the VariableCache::variable_cache_key
-    pub variable_key: i64,
+    pub(super) variable_key: i64,
     /// Every variable must have a unique parent assigned to it when stored in the VariableCache. A parent_key of None in the cache simply implies that this variable doesn't have a parent, i.e. it is the root of a tree.
     pub parent_key: Option<i64>,
     /// The variable name refers to the name of any of the types of values described in the [VariableCache]
@@ -326,6 +326,10 @@ impl Variable {
             variable_unit_offset: entries_offset,
             ..Default::default()
         }
+    }
+
+    pub fn variable_key(&self) -> i64 {
+        self.variable_key
     }
 
     /// Implementing set_value(), because the library passes errors into the value of the variable.
@@ -709,7 +713,7 @@ impl Variable {
         } else {
             // Infer a human readable value using the available children of this variable.
             let mut compound_value = String::new();
-            if let Ok(children) = variable_cache.get_children(Some(self.variable_key)) {
+            if let Ok(children) = variable_cache.get_children(self.variable_key) {
                 // Make sure we can safely unwrap() children.
                 match &self.type_name {
                     VariableType::Pointer(_) => {
@@ -973,7 +977,7 @@ impl Value for String {
         variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut str_value: String = "".to_owned();
-        if let Ok(children) = variable_cache.get_children(Some(variable.variable_key)) {
+        if let Ok(children) = variable_cache.get_children(variable.variable_key) {
             if !children.is_empty() {
                 let mut string_length = match children.iter().find(|child_variable| {
                     child_variable.name == VariableName::Named("length".to_string())
@@ -992,7 +996,7 @@ impl Value for String {
                 }) {
                     Some(location_value) => {
                         if let Ok(child_variables) =
-                            variable_cache.get_children(Some(location_value.variable_key))
+                            variable_cache.get_children(location_value.variable_key)
                         {
                             if let Some(first_child) = child_variables.first() {
                                 first_child.memory_location.memory_address()?

@@ -83,13 +83,13 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
     debug_adapter: &mut DebugAdapter<P>,
     progress_id: i64,
 ) -> Result<probe_rs::debug::VariableCache, DebuggerError> {
-    let mut svd_cache = probe_rs::debug::VariableCache::new_svd_cache()?;
-    let device_root_variable = svd_cache.root_variable().unwrap();
+    let mut svd_cache = probe_rs::debug::VariableCache::new_svd_cache();
+    let device_root_variable = svd_cache.root_variable();
 
     // Adding the Peripheral Group Name as an additional level in the structure helps to keep the 'variable tree' more compact, but more importantly, it helps to avoid having duplicate variable names that conflict with hal crates.
     let mut peripheral_group_variable = Variable::new(None, None);
     peripheral_group_variable.name = VariableName::Named(peripheral_device.name.clone());
-    let mut peripheral_parent_key = device_root_variable.variable_key;
+    let mut peripheral_parent_key = device_root_variable.variable_key();
     for peripheral in &peripheral_device.peripherals {
         if let (Some(peripheral_group_name), VariableName::Named(variable_group_name)) =
             (&peripheral.group_name, &peripheral_group_variable.name)
@@ -98,7 +98,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                 // Before we create a new group variable, check if we have one by that name already.
                 match svd_cache.get_variable_by_name_and_parent(
                     &VariableName::Named(peripheral_group_name.clone()),
-                    Some(device_root_variable.variable_key),
+                    Some(device_root_variable.variable_key()),
                 ) {
                     Some(existing_peripharal_group_variable) => {
                         peripheral_group_variable = existing_peripharal_group_variable
@@ -118,14 +118,14 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                                 .unwrap_or_else(|| peripheral.name.clone()),
                         ));
                         peripheral_group_variable = svd_cache.cache_variable(
-                            device_root_variable.variable_key,
+                            device_root_variable.variable_key(),
                             peripheral_group_variable,
                             core,
                         )?;
                     }
                 };
 
-                peripheral_parent_key = peripheral_group_variable.variable_key;
+                peripheral_parent_key = peripheral_group_variable.variable_key();
                 debug_adapter
                     .update_progress(
                         None,
@@ -186,7 +186,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                 register_has_restricted_read = true;
             }
             register_variable = svd_cache.cache_variable(
-                peripheral_variable.variable_key,
+                peripheral_variable.variable_key(),
                 register_variable,
                 core,
             )?;
@@ -231,13 +231,13 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                     ));
                     register_has_restricted_read = true;
                     register_variable = svd_cache.cache_variable(
-                        peripheral_variable.variable_key,
+                        peripheral_variable.variable_key(),
                         register_variable,
                         core,
                     )?;
                 }
                 // TODO: Extend the Variable definition, so that we can resolve the EnumeratedValues for fields.
-                svd_cache.cache_variable(register_variable.variable_key, field_variable, core)?;
+                svd_cache.cache_variable(register_variable.variable_key(), field_variable, core)?;
             }
         }
     }

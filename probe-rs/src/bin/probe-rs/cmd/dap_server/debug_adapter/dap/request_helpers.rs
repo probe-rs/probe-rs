@@ -350,7 +350,7 @@ pub(crate) fn get_variable_reference(
     }
     let mut named_child_variables_cnt = 0;
     let mut indexed_child_variables_cnt = 0;
-    if let Ok(children) = cache.get_children(Some(parent_variable.variable_key)) {
+    if let Ok(children) = cache.get_children(parent_variable.variable_key()) {
         for child_variable in children {
             if child_variable.is_indexed() {
                 indexed_child_variables_cnt += 1;
@@ -362,7 +362,7 @@ pub(crate) fn get_variable_reference(
 
     if named_child_variables_cnt > 0 || indexed_child_variables_cnt > 0 {
         (
-            parent_variable.variable_key,
+            parent_variable.variable_key(),
             named_child_variables_cnt,
             indexed_child_variables_cnt,
         )
@@ -371,7 +371,7 @@ pub(crate) fn get_variable_reference(
     {
         // We have not yet cached the children for this reference.
         // Provide DAP Client with a reference so that it will explicitly ask for children when the user expands it.
-        (parent_variable.variable_key, 0, 0)
+        (parent_variable.variable_key(), 0, 0)
     } else {
         // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
         (0, 0, 0)

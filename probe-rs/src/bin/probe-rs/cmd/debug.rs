@@ -719,7 +719,7 @@ impl DebugCli {
                                 }
                             }
                             let children =
-                                local_variable_cache.get_children(Some(locals.variable_key))?;
+                                local_variable_cache.get_children(locals.variable_key())?;
 
                             for child in children {
                                 println!(

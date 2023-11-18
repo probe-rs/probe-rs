@@ -45,7 +45,7 @@ pub(crate) fn get_local_variable(
                 };
                 let variable_list = if variable.name == VariableName::LocalScopeRoot {
                     variable_cache
-                        .get_children(Some(variable.variable_key))
+                        .get_children(variable.variable_key())
                         .map_err(|_| {
                             DebuggerError::UserMessage(format!(
                                 "No local variables available for frame : {}",
@@ -75,7 +75,7 @@ pub(crate) fn get_local_variable(
                             variable.get_value(variable_cache)
                         );
                         response_body.type_ = Some(format!("{:?}", variable.type_name));
-                        response_body.variables_reference = variable.variable_key;
+                        response_body.variables_reference = variable.variable_key();
                     } else {
                         response_body.result.push_str(&format!(
                             "\n{} [{} @ {}]: {} ",
