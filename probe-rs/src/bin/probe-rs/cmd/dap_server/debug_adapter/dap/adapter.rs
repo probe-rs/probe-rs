@@ -568,8 +568,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 let mut variable_cache: Option<&mut probe_rs::debug::VariableCache> = None;
                 for search_frame in target_core.core_data.stack_frames.iter_mut() {
                     if let Some(search_cache) = &mut search_frame.local_variables {
-                        if let Some(search_variable) = search_cache
-                            .get_variable_by_name_and_parent(&variable_name, Some(parent_key))
+                        if let Some(search_variable) =
+                            search_cache.get_variable_by_name_and_parent(&variable_name, parent_key)
                         {
                             cache_variable = Some(search_variable);
                             variable_cache = Some(search_cache);
@@ -577,8 +577,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         }
                     }
                     if let Some(search_cache) = &mut search_frame.static_variables {
-                        if let Some(search_variable) = search_cache
-                            .get_variable_by_name_and_parent(&variable_name, Some(parent_key))
+                        if let Some(search_variable) =
+                            search_cache.get_variable_by_name_and_parent(&variable_name, parent_key)
                         {
                             cache_variable = Some(search_variable);
                             variable_cache = Some(search_cache);
@@ -1157,24 +1157,20 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let mut dap_scopes: Vec<Scope> = vec![];
 
         if let Some(core_peripherals) = &mut target_core.core_data.core_peripherals {
-            if let Some(peripherals_root_variable) = core_peripherals
-                .svd_variable_cache
-                .get_variable_by_name_and_parent(&VariableName::PeripheralScopeRoot, None)
-            {
-                dap_scopes.push(Scope {
-                    line: None,
-                    column: None,
-                    end_column: None,
-                    end_line: None,
-                    expensive: true, // VSCode won't open this tree by default.
-                    indexed_variables: None,
-                    name: "Peripherals".to_string(),
-                    presentation_hint: Some("registers".to_string()),
-                    named_variables: None,
-                    source: None,
-                    variables_reference: peripherals_root_variable.variable_key(),
-                });
-            }
+            let peripherals_root_variable = core_peripherals.svd_variable_cache.root_variable();
+            dap_scopes.push(Scope {
+                line: None,
+                column: None,
+                end_column: None,
+                end_line: None,
+                expensive: true, // VSCode won't open this tree by default.
+                indexed_variables: None,
+                name: "Peripherals".to_string(),
+                presentation_hint: Some("registers".to_string()),
+                named_variables: None,
+                source: None,
+                variables_reference: peripherals_root_variable.variable_key(),
+            });
         };
 
         tracing::trace!("Getting scopes for frame {}", arguments.frame_id,);
@@ -1195,14 +1191,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 variables_reference: stack_frame.id,
             });
 
-            if let Some(static_root_variable) =
-                stack_frame
-                    .static_variables
-                    .as_ref()
-                    .and_then(|stack_frame| {
-                        stack_frame
-                            .get_variable_by_name_and_parent(&VariableName::StaticScopeRoot, None)
-                    })
+            if let Some(static_root_variable) = stack_frame
+                .static_variables
+                .as_ref()
+                .map(|stack_frame| stack_frame.root_variable())
             {
                 dap_scopes.push(Scope {
                     line: None,
@@ -1219,14 +1211,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 });
             };
 
-            if let Some(locals_root_variable) =
-                stack_frame
-                    .local_variables
-                    .as_ref()
-                    .and_then(|stack_frame| {
-                        stack_frame
-                            .get_variable_by_name_and_parent(&VariableName::LocalScopeRoot, None)
-                    })
+            if let Some(locals_root_variable) = stack_frame
+                .local_variables
+                .as_ref()
+                .map(|stack_frame| stack_frame.root_variable())
             {
                 dap_scopes.push(Scope {
                     line: stack_frame

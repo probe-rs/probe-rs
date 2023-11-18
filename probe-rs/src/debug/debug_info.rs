@@ -286,7 +286,7 @@ impl DebugInfo {
     pub(crate) fn create_static_scope_cache(
         &self,
         unit_info: &UnitInfo,
-    ) -> Result<VariableCache, DebugError> {
+    ) -> Result<VariableCache, gimli::Error> {
         // Only process statics for this unit header.
         let abbrevs = &unit_info.unit.abbreviations;
         // Navigate the current unit from the header down.
@@ -411,7 +411,7 @@ impl DebugInfo {
                         // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
                         let mut temporary_variable = parent_variable.clone();
                         temporary_variable.variable_key = 0;
-                        temporary_variable.parent_key = Some(parent_variable.variable_key);
+                        temporary_variable.parent_key = parent_variable.variable_key;
                         temporary_variable = cache.cache_variable(
                             parent_variable.variable_key,
                             temporary_variable,
@@ -451,7 +451,7 @@ impl DebugInfo {
                         // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
                         let mut temporary_variable = parent_variable.clone();
                         temporary_variable.variable_key = 0;
-                        temporary_variable.parent_key = Some(parent_variable.variable_key);
+                        temporary_variable.parent_key = parent_variable.variable_key;
                         temporary_variable = cache.cache_variable(
                             parent_variable.variable_key,
                             temporary_variable,

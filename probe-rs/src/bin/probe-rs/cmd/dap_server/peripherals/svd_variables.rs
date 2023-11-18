@@ -98,7 +98,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                 // Before we create a new group variable, check if we have one by that name already.
                 match svd_cache.get_variable_by_name_and_parent(
                     &VariableName::Named(peripheral_group_name.clone()),
-                    Some(device_root_variable.variable_key()),
+                    device_root_variable.variable_key(),
                 ) {
                     Some(existing_peripharal_group_variable) => {
                         peripheral_group_variable = existing_peripharal_group_variable

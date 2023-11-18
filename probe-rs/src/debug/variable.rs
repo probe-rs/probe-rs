@@ -281,8 +281,8 @@ impl std::fmt::Display for VariableLocation {
 pub struct Variable {
     /// Every variable must have a unique key value assigned to it. The value will be zero until it is stored in VariableCache, at which time its value will be set to the same as the VariableCache::variable_cache_key
     pub(super) variable_key: i64,
-    /// Every variable must have a unique parent assigned to it when stored in the VariableCache. A parent_key of None in the cache simply implies that this variable doesn't have a parent, i.e. it is the root of a tree.
-    pub parent_key: Option<i64>,
+    /// Every variable must have a unique parent assigned to it when stored in the VariableCache.
+    pub parent_key: i64,
     /// The variable name refers to the name of any of the types of values described in the [VariableCache]
     pub name: VariableName,
     /// Use `Variable::set_value()` and `Variable::get_value()` to correctly process this `value`
@@ -328,6 +328,7 @@ impl Variable {
         }
     }
 
+    /// Get a unique key for this variable.
     pub fn variable_key(&self) -> i64 {
         self.variable_key
     }
@@ -412,9 +413,7 @@ impl Variable {
                     let mut cache_variable = self.clone();
                     cache_variable.value = VariableValue::Valid(new_value.clone());
                     variable_cache.cache_variable(
-                        cache_variable
-                            .parent_key
-                            .expect("All variables have a parent"),
+                        cache_variable.parent_key,
                         cache_variable,
                         memory,
                     )?;

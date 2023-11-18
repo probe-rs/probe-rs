@@ -179,7 +179,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         cache: &mut VariableCache,
     ) -> Result<Variable, DebugError> {
         // Identify the parent.
-        child_variable.parent_key = Some(parent_variable.variable_key);
+        child_variable.parent_key = parent_variable.variable_key;
 
         // We need to determine if we are working with a 'abstract` location, and use that node for the attributes we need
         let attributes_entry = if let Ok(Some(abstract_origin)) =
@@ -487,13 +487,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             }
         }
         cache
-            .cache_variable(
-                child_variable
-                    .parent_key
-                    .expect("All variables have a parent"),
-                child_variable,
-                memory,
-            )
+            .cache_variable(child_variable.parent_key, child_variable, memory)
             .map_err(|error| error.into())
     }
 
@@ -767,13 +761,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             }
         }
         cache
-            .cache_variable(
-                parent_variable
-                    .parent_key
-                    .expect("All variables have a parent"),
-                parent_variable,
-                memory,
-            )
+            .cache_variable(parent_variable.parent_key, parent_variable, memory)
             .map_err(|error| error.into())
     }
 

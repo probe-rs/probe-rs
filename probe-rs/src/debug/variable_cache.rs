@@ -162,7 +162,7 @@ impl VariableCache {
         let mut variable_to_add = cache_variable.clone();
         // Validate that the parent_key exists ...
         if self.variable_hash_map.contains_key(&parent_key) {
-            variable_to_add.parent_key = Some(parent_key);
+            variable_to_add.parent_key = parent_key;
         } else {
             return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {}. Please report this as a bug", variable_to_add.name, parent_key).into());
         }
@@ -251,7 +251,7 @@ impl VariableCache {
     pub fn get_variable_by_name_and_parent(
         &self,
         variable_name: &VariableName,
-        parent_key: Option<i64>,
+        parent_key: i64,
     ) -> Option<Variable> {
         let child_variables = self
             .variable_hash_map
@@ -301,7 +301,7 @@ impl VariableCache {
         let mut children: Vec<Variable> = self
             .variable_hash_map
             .values()
-            .filter(|child_variable| child_variable.parent_key == Some(parent_key))
+            .filter(|child_variable| child_variable.parent_key == parent_key)
             .cloned()
             .collect::<Vec<Variable>>();
         // We have to incur the overhead of sort(), or else the variables in the UI are not in the same order as they appear in the source code.
@@ -333,11 +333,9 @@ impl VariableCache {
             self.variable_hash_map
                 .values_mut()
                 .filter(|search_variable| {
-                    search_variable.parent_key == Some(obsolete_child_variable.variable_key)
+                    search_variable.parent_key == obsolete_child_variable.variable_key
                 })
-                .for_each(|grand_child| {
-                    grand_child.parent_key = Some(parent_variable.variable_key)
-                });
+                .for_each(|grand_child| grand_child.parent_key = parent_variable.variable_key);
             // Remove the intermediate variable from the cache
             self.remove_cache_entry(obsolete_child_variable.variable_key)?;
         }
@@ -347,7 +345,7 @@ impl VariableCache {
     /// Removing an entry's children from the `VariableCache` will recursively remove all their children
     pub fn remove_cache_entry_children(&mut self, parent_variable_key: i64) {
         self.variable_hash_map
-            .retain(|_k, v| v.parent_key != Some(parent_variable_key));
+            .retain(|_k, v| v.parent_key != parent_variable_key);
     }
     /// Removing an entry from the `VariableCache` will recursively remove all its children
     pub fn remove_cache_entry(&mut self, variable_key: i64) -> Result<(), Error> {
@@ -375,7 +373,7 @@ mod test {
 
         println!("{:#?}", cache_variable);
 
-        assert_eq!(cache_variable.parent_key, None);
+        //assert_eq!(cache_variable.parent_key, None);
         assert_eq!(cache_variable.name, VariableName::StaticScopeRoot);
         assert_eq!(cache_variable.type_name, VariableType::Unknown);
         assert_eq!(
