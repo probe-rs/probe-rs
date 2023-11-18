@@ -253,13 +253,15 @@ impl VariableCache {
         variable_name: &VariableName,
         parent_key: i64,
     ) -> Option<Variable> {
-        let child_variables = self
+        let mut child_variables = self
             .variable_hash_map
             .values()
             .filter(|child_variable| {
                 &child_variable.name == variable_name && child_variable.parent_key == parent_key
             })
             .collect::<Vec<&Variable>>();
+
+        child_variables.sort_by_key(|v| v.variable_key);
 
         match &child_variables[..] {
             [] => None,
@@ -275,11 +277,15 @@ impl VariableCache {
     /// If there is more than one, it will be logged (tracing::warn!), and only the first will be returned.
     /// It is possible for a hierarchy of variables in a cache to have duplicate names under different parents.
     pub fn get_variable_by_name(&self, variable_name: &VariableName) -> Option<Variable> {
-        let child_variables = self
+        let mut child_variables = self
             .variable_hash_map
             .values()
             .filter(|child_variable| child_variable.name.eq(variable_name))
             .collect::<Vec<&Variable>>();
+
+        // Sort the variables by key, so that we can consistently return the first one.
+        // The hash map does not return the values in a consistent order.
+        child_variables.sort_by_key(|v| v.variable_key);
 
         match &child_variables[..] {
             [] => None,
@@ -343,13 +349,23 @@ impl VariableCache {
     }
 
     /// Removing an entry's children from the `VariableCache` will recursively remove all their children
-    pub fn remove_cache_entry_children(&mut self, parent_variable_key: i64) {
-        self.variable_hash_map
-            .retain(|_k, v| v.parent_key != parent_variable_key);
+    pub fn remove_cache_entry_children(&mut self, parent_variable_key: i64) -> Result<(), Error> {
+        let children = self
+            .variable_hash_map
+            .values()
+            .filter(|child_variable| child_variable.parent_key == parent_variable_key)
+            .cloned()
+            .collect::<Vec<Variable>>();
+
+        for child in children {
+            self.remove_cache_entry(child.variable_key)?;
+        }
+
+        Ok(())
     }
     /// Removing an entry from the `VariableCache` will recursively remove all its children
     pub fn remove_cache_entry(&mut self, variable_key: i64) -> Result<(), Error> {
-        self.remove_cache_entry_children(variable_key);
+        self.remove_cache_entry_children(variable_key)?;
         if self.variable_hash_map.remove(&variable_key).is_none() {
             return Err(anyhow!("Failed to remove a `VariableCache` entry with key: {}. Please report this as a bug.", variable_key).into());
         };
@@ -360,10 +376,39 @@ impl VariableCache {
 #[cfg(test)]
 mod test {
     use gimli::{DebugInfoOffset, UnitOffset};
+    use termtree::Tree;
 
-    use crate::debug::{
-        VariableCache, VariableLocation, VariableName, VariableNodeType, VariableType, VariantRole,
+    use crate::{
+        debug::{
+            Variable, VariableCache, VariableLocation, VariableName, VariableNodeType,
+            VariableType, VariantRole,
+        },
+        test::MockMemory,
     };
+
+    fn show_tree(cache: &VariableCache) {
+        let tree = build_tree(cache, cache.root_variable());
+
+        println!("{}", tree);
+    }
+
+    fn build_tree(cache: &VariableCache, variable: Variable) -> Tree<String> {
+        let mut entry = Tree::new(format!(
+            "{}: name={:?}, type={:?}, value={:?}",
+            variable.variable_key,
+            variable.name,
+            variable.type_name,
+            variable.get_value(cache)
+        ));
+
+        let children = cache.get_children(variable.variable_key).unwrap();
+
+        for child in children {
+            entry.push(build_tree(cache, child));
+        }
+
+        entry
+    }
 
     #[test]
     fn static_cache() {
@@ -390,5 +435,192 @@ mod test {
         assert_eq!(cache_variable.range_lower_bound, 0);
         assert_eq!(cache_variable.range_upper_bound, 0);
         assert_eq!(cache_variable.role, VariantRole::NonVariant);
+    }
+
+    #[test]
+    fn find_children() {
+        let mut memory = MockMemory::new();
+
+        let mut cache = VariableCache::new_svd_cache();
+        let root_key = cache.root_variable().variable_key;
+
+        let var_1 = Variable::new(None, None);
+        let var_1 = cache.cache_variable(root_key, var_1, &mut memory).unwrap();
+
+        let var_2 = Variable::new(None, None);
+        let var_2 = cache.cache_variable(root_key, var_2, &mut memory).unwrap();
+
+        let children = cache.get_children(root_key).unwrap();
+
+        let expected_children = vec![var_1, var_2];
+
+        assert_eq!(children, expected_children);
+    }
+
+    #[test]
+    fn find_entry() {
+        let mut memory = MockMemory::new();
+
+        let mut cache = VariableCache::new_svd_cache();
+        let root_key = cache.root_variable().variable_key;
+
+        let var_1 = Variable::new(None, None);
+        let var_1 = cache.cache_variable(root_key, var_1, &mut memory).unwrap();
+
+        let var_2 = Variable::new(None, None);
+        let _var_2 = cache.cache_variable(root_key, var_2, &mut memory).unwrap();
+
+        assert_eq!(cache.get_variable_by_key(var_1.variable_key), Some(var_1));
+    }
+
+    /// Build up a tree like this:
+    ///
+    /// [root]
+    /// |
+    /// +-- [var_1]
+    /// +-- [var_2]
+    /// |   |
+    /// |   +-- [var_3]
+    /// |   |   |
+    /// |   |   +-- [var_5]
+    /// |   |
+    /// |   +-- [var_4]
+    /// |
+    /// +-- [var_6]
+    ///     |
+    ///     +-- [var_7]
+    fn build_test_tree() -> (VariableCache, Vec<Variable>) {
+        let mut memory = MockMemory::new();
+
+        let mut cache = VariableCache::new_svd_cache();
+        let root_key = cache.root_variable().variable_key;
+
+        let var_1 = Variable::new(None, None);
+        let var_1 = cache.cache_variable(root_key, var_1, &mut memory).unwrap();
+
+        let var_2 = Variable::new(None, None);
+        let var_2 = cache.cache_variable(root_key, var_2, &mut memory).unwrap();
+
+        let var_3 = Variable::new(None, None);
+        let var_3 = cache
+            .cache_variable(var_2.variable_key, var_3, &mut memory)
+            .unwrap();
+
+        let var_4 = Variable::new(None, None);
+        let var_4 = cache
+            .cache_variable(var_2.variable_key, var_4, &mut memory)
+            .unwrap();
+
+        let var_5 = Variable::new(None, None);
+        let var_5 = cache
+            .cache_variable(var_3.variable_key, var_5, &mut memory)
+            .unwrap();
+
+        let var_6 = Variable::new(None, None);
+        let var_6 = cache.cache_variable(root_key, var_6, &mut memory).unwrap();
+
+        let var_7 = Variable::new(None, None);
+        let var_7 = cache
+            .cache_variable(var_6.variable_key, var_7, &mut memory)
+            .unwrap();
+
+        assert_eq!(cache.len(), 8);
+
+        let variables = vec![
+            cache.root_variable(),
+            var_1,
+            var_2,
+            var_3,
+            var_4,
+            var_5,
+            var_6,
+            var_7,
+        ];
+
+        (cache, variables)
+    }
+
+    #[test]
+    fn remove_entry() {
+        let (mut cache, vars) = build_test_tree();
+
+        // no children
+        cache.remove_cache_entry(vars[1].variable_key).unwrap();
+        assert!(cache.get_variable_by_key(vars[1].variable_key).is_none());
+        assert_eq!(cache.len(), 7);
+
+        // one child
+        cache.remove_cache_entry(vars[6].variable_key).unwrap();
+        assert!(cache.get_variable_by_key(vars[6].variable_key).is_none());
+        assert!(cache.get_variable_by_key(vars[7].variable_key).is_none());
+        assert_eq!(cache.len(), 5);
+
+        // multi-level children
+        cache.remove_cache_entry(vars[2].variable_key).unwrap();
+        assert!(cache.get_variable_by_key(vars[2].variable_key).is_none());
+        assert!(cache.get_variable_by_key(vars[3].variable_key).is_none());
+        assert!(cache.get_variable_by_key(vars[4].variable_key).is_none());
+        assert!(cache.get_variable_by_key(vars[5].variable_key).is_none());
+        assert_eq!(cache.len(), 1);
+    }
+
+    #[test]
+    fn find_entry_by_name() {
+        let mut memory = MockMemory::new();
+
+        let (mut cache, mut vars) = build_test_tree();
+        let non_unique_name = VariableName::Named("non_unique_name".to_string());
+        let unique_name = VariableName::Named("unique_name".to_string());
+
+        show_tree(&cache);
+
+        vars[3].name = non_unique_name.clone();
+        vars[3] = cache
+            .cache_variable(vars[3].parent_key, vars[3].clone(), &mut memory)
+            .unwrap();
+
+        show_tree(&cache);
+
+        vars[4].name = unique_name.clone();
+        vars[4] = cache
+            .cache_variable(vars[4].parent_key, vars[4].clone(), &mut memory)
+            .unwrap();
+
+        show_tree(&cache);
+
+        vars[6].name = non_unique_name.clone();
+        vars[6] = cache
+            .cache_variable(vars[6].parent_key, vars[6].clone(), &mut memory)
+            .unwrap();
+
+        show_tree(&cache);
+
+        assert!(vars[3].variable_key < vars[6].variable_key);
+
+        let var_3 = cache.get_variable_by_name(&non_unique_name).unwrap();
+        assert_eq!(&var_3, &vars[3]);
+
+        let var_4 = cache.get_variable_by_name(&unique_name).unwrap();
+        assert_eq!(&var_4, &vars[4]);
+
+        let var_6 = cache
+            .get_variable_by_name_and_parent(&non_unique_name, vars[6].parent_key)
+            .unwrap();
+        assert_eq!(&var_6, &vars[6]);
+    }
+
+    #[test]
+    fn adopt_grand_children() {
+        let (mut cache, mut vars) = build_test_tree();
+
+        cache.adopt_grand_children(&vars[2], &vars[3]).unwrap();
+
+        assert!(cache.get_variable_by_key(vars[3].variable_key).is_none());
+
+        let new_children = cache.get_children(vars[2].variable_key).unwrap();
+
+        vars[5].parent_key = vars[2].variable_key;
+
+        assert_eq!(new_children, vec![vars[4].clone(), vars[5].clone()]);
     }
 }
