@@ -244,15 +244,14 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
 
         let encoded_event = serde_json::to_vec(&new_event)?;
 
-        match self.send_data(&encoded_event) {
-            Ok(_) => {}
+        let result = match self.send_data(&encoded_event) {
+            Ok(_) => Ok(()),
             Err(error) => {
                 let message = format!("Unexpected Error while sending event: {error:?}");
                 tracing::error!("{message}");
-                self.log_to_console(&message);
-                self.show_message(MessageSeverity::Error, message);
+                Err(error)
             }
-        }
+        };
 
         if new_event.event != "output" {
             // This would result in an endless loop.
@@ -267,7 +266,7 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
             }
         }
 
-        Ok(())
+        result.map_err(|e| e.into())
     }
 
     fn show_message(&mut self, severity: MessageSeverity, message: impl Into<String>) -> bool {
@@ -348,14 +347,13 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
                 // if this error happens during the 'launch' or 'attach' request, the DAP Client
                 // will not initiate a session, and will not be listening for 'output' events.
                 self.log_to_console(&response_message);
-                self.show_message(MessageSeverity::Error, &response_message);
 
                 let error_resp = ErrorResponse {
                     command: request.command.clone(),
                     request_seq: request.seq,
                     seq: request.seq,
                     success: false,
-                    type_: "error_response".to_owned(),
+                    type_: "response".to_owned(),
                     message: Some("cancelled".to_string()), // Predefined value in the MSDAP spec.
                     body: ErrorResponseBody {
                         error: Some(Message {
@@ -553,5 +551,35 @@ mod test {
         let header = "Content: 234\r\n";
 
         assert!(get_content_len(header).is_none());
+    }
+
+    struct FailingWriter {}
+
+    impl std::io::Write for FailingWriter {
+        fn write(&mut self, _buf: &[u8]) -> io::Result<usize> {
+            Err(io::Error::new(ErrorKind::Other, "FailingWriter"))
+        }
+
+        fn flush(&mut self) -> io::Result<()> {
+            Err(io::Error::new(ErrorKind::Other, "FailingWriter"))
+        }
+    }
+
+    #[test]
+    fn event_send_error() {
+        let mut adapter = DapAdapter::new(io::empty(), FailingWriter {});
+
+        let result = adapter.send_event("probe-rs-test", Some(()));
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn message_send_error() {
+        let mut adapter = DapAdapter::new(io::empty(), FailingWriter {});
+
+        let result = adapter.show_message(MessageSeverity::Error, "probe-rs-test");
+
+        assert!(!result);
     }
 }
