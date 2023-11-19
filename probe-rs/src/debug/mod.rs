@@ -35,6 +35,7 @@ use typed_path::TypedPathBuf;
 
 use std::{
     io,
+    num::NonZeroU32,
     path::PathBuf,
     str::Utf8Error,
     sync::atomic::{AtomicU32, Ordering},
@@ -108,34 +109,46 @@ impl From<gimli::ColumnType> for ColumnType {
     }
 }
 
-/// ObjectReference as defined in the DAP standard.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-#[serde(transparent)]
-pub struct ObjectRef(u32);
+/// Object reference as defined in the DAP standard.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ObjectRef {
+    /// Valid object reference (> 0)
+    Valid(NonZeroU32),
+    /// Invalid object reference (<= 0)
+    #[default]
+    Invalid,
+}
 
-// TODO: This is not valid, the reference should not have a default value
-impl Default for ObjectRef {
-    fn default() -> Self {
-        ObjectRef(0)
+impl PartialOrd for ObjectRef {
+    fn partial_cmp(&self, other: &ObjectRef) -> Option<std::cmp::Ordering> {
+        i64::from(*self).partial_cmp(&i64::from(*other))
+    }
+}
+
+impl Ord for ObjectRef {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        i64::from(*self).cmp(&i64::from(*other))
     }
 }
 
 impl From<ObjectRef> for i64 {
     fn from(value: ObjectRef) -> Self {
-        value.0 as i64
+        match value {
+            ObjectRef::Valid(v) => v.get() as i64,
+            ObjectRef::Invalid => 0,
+        }
     }
 }
 
-impl TryFrom<i64> for ObjectRef {
-    type Error = anyhow::Error;
-
-    fn try_from(value: i64) -> Result<Self, Self::Error> {
+impl From<i64> for ObjectRef {
+    fn from(value: i64) -> Self {
         if value < 0 {
-            Err(anyhow::anyhow!(
-                "ObjectReference must be positive and in range 0..2^31"
-            ))
+            ObjectRef::Invalid
         } else {
-            Ok(ObjectRef(value as u32))
+            match NonZeroU32::try_from(value as u32) {
+                Ok(v) => ObjectRef::Valid(v),
+                Err(_) => ObjectRef::Invalid,
+            }
         }
     }
 }
@@ -144,8 +157,8 @@ impl std::str::FromStr for ObjectRef {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let value = s.parse::<u32>()?;
-        Ok(ObjectRef(value))
+        let value = s.parse::<i64>()?;
+        Ok(ObjectRef::from(value))
     }
 }
 
@@ -153,7 +166,7 @@ static CACHE_KEY: AtomicU32 = AtomicU32::new(1);
 /// Generate a unique key that can be used to assign id's to StackFrame and Variable structs.
 pub fn get_object_reference() -> ObjectRef {
     let key = CACHE_KEY.fetch_add(1, Ordering::SeqCst);
-    ObjectRef(key)
+    ObjectRef::Valid(NonZeroU32::new(key).unwrap())
 }
 
 fn serialize_typed_path<S>(path: &Option<TypedPathBuf>, serializer: S) -> Result<S::Ok, S::Error>

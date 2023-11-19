@@ -411,7 +411,7 @@ impl DebugInfo {
                         // For process_tree we need to create a temporary parent that will later be eliminated with VariableCache::adopt_grand_children
                         // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
                         let mut temporary_variable = parent_variable.clone();
-                        temporary_variable.variable_key = ObjectRef::default();
+                        temporary_variable.variable_key = ObjectRef::Invalid;
                         temporary_variable.parent_key = parent_variable.variable_key;
                         temporary_variable = cache.cache_variable(
                             parent_variable.variable_key,
@@ -451,7 +451,7 @@ impl DebugInfo {
                         // For process_tree we need to create a temporary parent that will later be eliminated with VariableCache::adopt_grand_children
                         // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
                         let mut temporary_variable = parent_variable.clone();
-                        temporary_variable.variable_key = ObjectRef::default();
+                        temporary_variable.variable_key = ObjectRef::Invalid;
                         temporary_variable.parent_key = parent_variable.variable_key;
                         temporary_variable = cache.cache_variable(
                             parent_variable.variable_key,

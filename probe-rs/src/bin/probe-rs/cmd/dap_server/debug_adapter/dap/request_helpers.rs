@@ -346,7 +346,7 @@ pub(crate) fn get_variable_reference(
     cache: &mut probe_rs::debug::VariableCache,
 ) -> (ObjectRef, i64, i64) {
     if !parent_variable.is_valid() {
-        return (ObjectRef::default(), 0, 0);
+        return (ObjectRef::Invalid, 0, 0);
     }
 
     let mut named_child_variables_cnt = 0;
@@ -375,7 +375,7 @@ pub(crate) fn get_variable_reference(
         (parent_variable.variable_key(), 0, 0)
     } else {
         // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
-        (ObjectRef::default(), 0, 0)
+        (ObjectRef::Invalid, 0, 0)
     }
 }
 

@@ -168,7 +168,7 @@ impl VariableCache {
         }
 
         // Is this an *add* or *update* operation?
-        let stored_key = if variable_to_add.variable_key == ObjectRef::default() {
+        let stored_key = if variable_to_add.variable_key == ObjectRef::Invalid {
             // The caller is telling us this is definitely a new `Variable`
             variable_to_add.variable_key = get_object_reference();
 
