@@ -869,7 +869,7 @@ impl<D: StLinkUsb> StLink<D> {
         );
 
         if address % 4 != 0 {
-            return Err(StlinkError::UnalignedAddress).map_err(DebugProbeError::from);
+            return Err(DebugProbeError::from(StlinkError::UnalignedAddress));
         }
 
         let data_length = data.len().to_le_bytes();
@@ -990,7 +990,7 @@ impl<D: StLinkUsb> StLink<D> {
         );
 
         if address % 4 != 0 {
-            return Err(StlinkError::UnalignedAddress).map_err(DebugProbeError::from);
+            return Err(DebugProbeError::from(StlinkError::UnalignedAddress));
         }
 
         let addbytes = address.to_le_bytes();
