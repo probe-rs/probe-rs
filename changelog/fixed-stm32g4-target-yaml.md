@@ -1,0 +1,1 @@
+Updated the STM32G4 target yaml to [version 1.5.0](https://www.keil.arm.com/packs/stm32g4xx_dfp-keil/versions/). This fixes the stm32g4xx_256 flash algorithm.
