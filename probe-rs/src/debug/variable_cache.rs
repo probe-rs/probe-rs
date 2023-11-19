@@ -91,12 +91,10 @@ impl VariableCache {
 
         variable.variable_key = key;
 
-        let cache = VariableCache {
+        VariableCache {
             root_variable_key: key,
             variable_hash_map: HashMap::from([(key, variable)]),
-        };
-
-        cache
+        }
     }
 
     /// Create a cache for static variables for the given unit

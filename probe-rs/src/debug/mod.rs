@@ -121,7 +121,7 @@ pub enum ObjectRef {
 
 impl PartialOrd for ObjectRef {
     fn partial_cmp(&self, other: &ObjectRef) -> Option<std::cmp::Ordering> {
-        i64::from(*self).partial_cmp(&i64::from(*other))
+        Some(self.cmp(other))
     }
 }
 
