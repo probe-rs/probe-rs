@@ -106,6 +106,9 @@ fn format_from_str<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<
 #[derive(clap::Parser, Clone, Deserialize, Debug, Default)]
 #[serde(default)]
 pub struct FormatOptions {
+    /// If a format is provided, use it.
+    /// If a target has a preferred format, we use that.
+    /// Finally, if neither of the above cases are true, we default to ELF.
     #[clap(value_enum, ignore_case = true, long)]
     #[serde(deserialize_with = "format_from_str")]
     format: Option<Format>,
@@ -126,7 +129,7 @@ pub struct FormatOptions {
 impl FormatOptions {
     /// If a format is provided, use it.
     /// If a target has a preferred format, we use that.
-    /// Finally, if neither of the above cases are true, we default for [`Format::default()`].
+    /// Finally, if neither of the above cases are true, we default to [`Format::default()`].
     pub fn into_format(self, target: &Target) -> anyhow::Result<Format> {
         let format = self.format.unwrap_or_else(|| match target.default_format {
             probe_rs_target::BinaryFormat::Idf => Format::Idf(Default::default()),
