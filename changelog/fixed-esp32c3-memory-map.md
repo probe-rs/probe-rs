@@ -1,0 +1,1 @@
+Fix the RAM address mapping for the esp32c3.

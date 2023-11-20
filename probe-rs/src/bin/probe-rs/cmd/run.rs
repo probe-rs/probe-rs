@@ -152,11 +152,22 @@ fn run_loop(
     let sig_id = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
 
     let mut stdout = std::io::stdout();
-    while !exit.load(Ordering::Relaxed) {
-        let had_rtt_data = poll_rtt(&mut rtta, core, &mut stdout)?;
-        if poll_stacktrace(core, path)? {
-            return Ok(());
+    let mut halt_reason = None;
+    while !exit.load(Ordering::Relaxed) && halt_reason.is_none() {
+        // check for halt first, poll rtt after.
+        // this is important so we do one last poll after halt, so we flush all messages
+        // the core printed before halting, such as a panic message.
+        match core.status()? {
+            probe_rs::CoreStatus::Halted(r) => halt_reason = Some(r),
+            probe_rs::CoreStatus::Running
+            | probe_rs::CoreStatus::LockedUp
+            | probe_rs::CoreStatus::Sleeping
+            | probe_rs::CoreStatus::Unknown => {
+                // Carry on
+            }
         }
+
+        let had_rtt_data = poll_rtt(&mut rtta, core, &mut stdout)?;
 
         // Poll RTT with a frequency of 10 Hz if we do not receive any new data.
         // Once we receive new data, we bump the frequency to 1kHz.
@@ -169,49 +180,34 @@ fn run_loop(
             std::thread::sleep(Duration::from_millis(100));
         }
     }
-    let manually_halted = exit.load(Ordering::Relaxed);
 
-    if manually_halted {
-        core.halt(Duration::from_secs(1))?;
-        if always_print_stacktrace {
-            poll_stacktrace(core, path)?;
+    let result = match halt_reason {
+        None => {
+            // manually halted with Control+C. Stop the core.
+            core.halt(Duration::from_secs(1))?;
+            Ok(())
         }
+        Some(reason) => match reason {
+            HaltReason::Breakpoint(BreakpointCause::Semihosting(
+                SemihostingCommand::ExitSuccess,
+            )) => Ok(()),
+            HaltReason::Breakpoint(BreakpointCause::Semihosting(
+                SemihostingCommand::ExitError { code },
+            )) => Err(anyhow!(
+                "Semihosting indicates exit with failure code: {code:#08x} ({code})"
+            )),
+            _ => Err(anyhow!("CPU halted unexpectedly.")),
+        },
+    };
+
+    if always_print_stacktrace || result.is_err() {
+        print_stacktrace(core, path)?;
     }
 
     signal_hook::low_level::unregister(sig_id);
     signal_hook::flag::register_conditional_default(signal::SIGINT, exit)?;
-    Ok(())
-}
 
-/// Try to fetch the necessary data of the core to print its stacktrace.
-///
-/// Returns `Ok(true)` if the debuger should stop polling, or `Ok(false)` if the
-/// polling should continue, or an error.
-fn poll_stacktrace(core: &mut Core<'_>, path: &Path) -> Result<bool> {
-    let status = core.status()?;
-    match status {
-        probe_rs::CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
-            SemihostingCommand::ExitSuccess,
-        ))) => Ok(true),
-        probe_rs::CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
-            SemihostingCommand::ExitError { code },
-        ))) => Err(anyhow!(
-            "Semihosting indicates exit with failure code: {code:#08x} ({code})"
-        )),
-        probe_rs::CoreStatus::Halted(_reason) => {
-            // Try and give the user some info as to why it halted.
-            print_stacktrace(core, path)?;
-            // Report this as an error
-            Err(anyhow!("CPU halted unexpectedly."))
-        }
-        probe_rs::CoreStatus::Running
-        | probe_rs::CoreStatus::LockedUp
-        | probe_rs::CoreStatus::Sleeping
-        | probe_rs::CoreStatus::Unknown => {
-            // Carry on
-            Ok(false)
-        }
-    }
+    result
 }
 
 /// Prints the stacktrace of the current execution state.

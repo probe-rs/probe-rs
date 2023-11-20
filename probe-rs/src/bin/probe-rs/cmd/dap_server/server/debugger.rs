@@ -424,14 +424,19 @@ impl Debugger {
             let err = anyhow!("{e:?}");
 
             debug_adapter.send_response::<()>(&launch_attach_request, Err(e))?;
+
             return Err(err.into());
         }
 
-        let mut session_data =
-            SessionData::new(&mut self.config, self.timestamp_offset).or_else(|error| {
-                debug_adapter.show_error_message(&error)?;
-                Err(error)
-            })?;
+        let mut session_data = match SessionData::new(&mut self.config, self.timestamp_offset) {
+            Ok(session_data) => session_data,
+            Err(error) => {
+                let err = anyhow!("{error:?}");
+                debug_adapter.send_response::<()>(&launch_attach_request, Err(error))?;
+
+                return Err(err.into());
+            }
+        };
 
         debug_adapter.halt_after_reset = self.config.flashing_config.halt_after_reset;
 
