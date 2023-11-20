@@ -11,6 +11,17 @@ pub struct ScanChainElement {
     pub ir_len: Option<u8>,
 }
 
+/// A finite list of all possible binary formats a target might support.
+#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[serde(rename_all = "lowercase")]
+pub enum BinaryFormat {
+    /// Program sections are bit-for-bit copied to flash.
+    #[default]
+    Raw,
+    /// Program sections are copied to flash, with the relevant headers and metadata for the [ESP-IDF bootloader](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/app_image_format.html#app-image-structures).
+    Idf,
+}
+
 /// A single chip variant.
 ///
 /// This describes an exact chip variant, including the cores, flash and memory size. For example,
@@ -58,6 +69,8 @@ pub struct Chip {
     /// ref: `<https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/sdf_pg.html#sdf_element_scanchain>`
     #[serde(default)]
     pub scan_chain: Option<Vec<ScanChainElement>>,
+    /// The default binary format for this chip
+    pub default_binary_format: Option<BinaryFormat>,
 }
 
 impl Chip {
@@ -77,6 +90,7 @@ impl Chip {
             flash_algorithms: vec![],
             rtt_scan_ranges: None,
             scan_chain: Some(vec![]),
+            default_binary_format: Some(BinaryFormat::Raw),
         }
     }
 }

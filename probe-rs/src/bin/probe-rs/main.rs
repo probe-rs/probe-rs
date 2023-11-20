@@ -14,6 +14,7 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use itertools::Itertools;
 use probe_rs::flashing::{BinOptions, Format, IdfOptions};
+use probe_rs::Target;
 use serde::{de::Error, Deserialize, Deserializer};
 use serde_json::Value;
 use time::{OffsetDateTime, UtcOffset};
@@ -92,22 +93,25 @@ pub(crate) struct CoreOptions {
 }
 
 /// A helper function to deserialize a default [`Format`] from a string.
-fn format_from_str<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Format, D::Error> {
+fn format_from_str<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<Format>, D::Error> {
     match Value::deserialize(deserializer)? {
         Value::String(s) => match Format::from_str(s.as_str()) {
-            Ok(format) => Ok(format),
+            Ok(format) => Ok(Some(format)),
             Err(e) => Err(D::Error::custom(e)),
         },
-        _ => Err(D::Error::custom("invalid format")),
+        _ => Ok(None),
     }
 }
 
 #[derive(clap::Parser, Clone, Deserialize, Debug, Default)]
 #[serde(default)]
 pub struct FormatOptions {
-    #[clap(value_enum, ignore_case = true, default_value = "elf", long)]
+    /// If a format is provided, use it.
+    /// If a target has a preferred format, we use that.
+    /// Finally, if neither of the above cases are true, we default to ELF.
+    #[clap(value_enum, ignore_case = true, long)]
     #[serde(deserialize_with = "format_from_str")]
-    format: Format,
+    format: Option<Format>,
     /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
     #[clap(long, value_parser = parse_u64)]
     pub base_address: Option<u64>,
@@ -123,8 +127,15 @@ pub struct FormatOptions {
 }
 
 impl FormatOptions {
-    pub fn into_format(self) -> anyhow::Result<Format> {
-        Ok(match self.format {
+    /// If a format is provided, use it.
+    /// If a target has a preferred format, we use that.
+    /// Finally, if neither of the above cases are true, we default to [`Format::default()`].
+    pub fn into_format(self, target: &Target) -> anyhow::Result<Format> {
+        let format = self.format.unwrap_or_else(|| match target.default_format {
+            probe_rs_target::BinaryFormat::Idf => Format::Idf(Default::default()),
+            probe_rs_target::BinaryFormat::Raw => Default::default(),
+        });
+        Ok(match format {
             Format::Bin(_) => Format::Bin(BinOptions {
                 base_address: self.base_address,
                 skip: self.skip,

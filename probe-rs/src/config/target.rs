@@ -24,7 +24,7 @@ use crate::architecture::riscv::sequences::{
     RiscvDebugSequence,
 };
 use crate::flashing::FlashLoader;
-use probe_rs_target::{Architecture, ChipFamily, MemoryRange};
+use probe_rs_target::{Architecture, BinaryFormat, ChipFamily, MemoryRange};
 use std::sync::Arc;
 
 /// This describes a complete target with a fixed chip model and variant.
@@ -53,6 +53,8 @@ pub struct Target {
     /// manually in the target.yaml file. It is used by some probes to determine
     /// the number devices in the scan chain and their ir lengths.
     pub scan_chain: Option<Vec<ScanChainElement>>,
+    /// The default executable format for the target.
+    pub default_format: BinaryFormat,
 }
 
 impl std::fmt::Debug for Target {
@@ -220,6 +222,7 @@ impl Target {
             debug_sequence,
             rtt_scan_regions,
             scan_chain: chip.scan_chain.clone(),
+            default_format: chip.default_binary_format.clone().unwrap_or_default(),
         })
     }
 
