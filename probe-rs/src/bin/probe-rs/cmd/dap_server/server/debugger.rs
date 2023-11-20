@@ -432,7 +432,6 @@ impl Debugger {
             Ok(session_data) => session_data,
             Err(error) => {
                 let err = anyhow!("{error:?}");
-                //debug_adapter.show_error_message(&error)?;
                 debug_adapter.send_response::<()>(&launch_attach_request, Err(error))?;
 
                 return Err(err.into());
