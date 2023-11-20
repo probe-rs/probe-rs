@@ -2097,6 +2097,36 @@ mod test {
         insta::assert_snapshot!(printed_backtrace);
     }
 
+    #[test]
+    fn test_print_stacktrace() {
+        let elf = Path::new("./tests/gpio-hal-blinky/elf");
+        let coredump = include_bytes!("../../tests/gpio-hal-blinky/coredump");
+
+        let mut adapter = CoreDump::load_raw(coredump).unwrap();
+        let debug_info = DebugInfo::from_file(elf).unwrap();
+
+        let initial_registers = adapter.debug_registers();
+        let exception_handler = exception_handler_for_core(adapter.core_type());
+        let instruction_set = adapter.instruction_set();
+
+        let stack_frames = debug_info
+            .unwind(
+                &mut adapter,
+                initial_registers,
+                exception_handler.as_ref(),
+                Some(instruction_set),
+            )
+            .unwrap();
+
+        let printed_backtrace = stack_frames
+            .into_iter()
+            .map(|f| TestFormatter(&f).to_string())
+            .collect::<Vec<String>>()
+            .join("");
+
+        insta::assert_snapshot!(printed_backtrace);
+    }
+
     // This is a temporary test, to solicit help in tracking down a bug with the CoreDump on RISC-V.
     #[test]
     fn riscv_coredump_problem() {
