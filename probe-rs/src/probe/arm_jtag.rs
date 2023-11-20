@@ -1,12 +1,14 @@
 //! Generic implementation of the SWD and JTAG protocols.
 use std::{iter, time::Duration};
 
+use bitvec::{prelude::*, view::BitView};
+
 use crate::{
     architecture::arm::{
         dp::{Abort, Ctrl, RdBuff, DPIDR},
         ArmError, DapError, DpAddress, Pins, PortType, RawDapAccess, Register,
     },
-    probe::common::{bits_to_byte, BitIter},
+    probe::common::bits_to_byte,
     probe::JTAGAccess,
     DebugProbe, DebugProbeError,
 };
@@ -1304,10 +1306,10 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
     }
 
     fn jtag_sequence(&mut self, bit_len: u8, tms: bool, bits: u64) -> Result<(), DebugProbeError> {
-        let bit_array = bits.to_le_bytes();
+        let bits = bits.view_bits::<Lsb0>();
+        let bits = &bits[..bit_len as usize];
 
-        let bit_iter = BitIter::new(&bit_array, bit_len as usize);
-        self.jtag_shift_tdi(tms, bit_iter)?;
+        self.jtag_shift_tdi(tms, bits.iter().by_vals())?;
 
         Ok(())
     }

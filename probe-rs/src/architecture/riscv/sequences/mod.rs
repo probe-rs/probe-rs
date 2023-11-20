@@ -4,6 +4,7 @@ use super::communication_interface::RiscvCommunicationInterface;
 use std::fmt::Debug;
 use std::sync::Arc;
 
+pub mod esp32c2;
 pub mod esp32c3;
 pub mod esp32c6h2;
 

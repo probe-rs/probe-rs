@@ -261,10 +261,12 @@ impl Session {
                 panic!("Mismatch between architecture and sequence type!")
             }
         };
-        probe.inner_attach()?;
+
         if let Some(scan_chain) = target.scan_chain.clone() {
             probe.set_scan_chain(scan_chain)?;
         }
+
+        probe.inner_attach()?;
 
         let interface = probe
             .try_into_riscv_interface()

@@ -1,10 +1,10 @@
 use std::{fmt::Debug, time::Duration};
 
+use bitvec::{prelude::*, slice::BitSlice, vec::BitVec};
 use rusb::{request_type, Context, Device, Direction, TransferType, UsbContext};
 
 use crate::{
-    probe::common::OwnedBitIter, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-    DebugProbeType, ProbeCreationError,
+    DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, ProbeCreationError,
 };
 
 const JTAG_PROTOCOL_CAPABILITIES_VERSION: u8 = 1;
@@ -39,7 +39,7 @@ pub(super) struct ProtocolHandler {
     // actually putting the command into the queue `n` times.
     output_buffer: Vec<Command>,
     // A store for all the read bits (from the target) such that the BitIter the methods return can borrow and iterate over it.
-    input_buffers: Vec<OwnedBitIter>,
+    response: BitVec<u8, Lsb0>,
     pending_in_bits: usize,
 
     ep_out: u8,
@@ -55,7 +55,7 @@ impl Debug for ProtocolHandler {
         f.debug_struct("ProtocolHandler")
             .field("command_queue", &self.command_queue)
             .field("output_buffer", &self.output_buffer)
-            .field("input_buffers", &self.input_buffers)
+            .field("response", &self.response)
             .field("ep_out", &self.ep_out)
             .field("ep_in", &self.ep_in)
             .field("base_speed_khz", &self.base_speed_khz)
@@ -210,7 +210,7 @@ impl ProtocolHandler {
             device_handle,
             command_queue: None,
             output_buffer: Vec::new(),
-            input_buffers: Vec::new(),
+            response: BitVec::new(),
             // The following expects are okay as we check that the values we call them on are `Some`.
             ep_out: ep_out.expect("This is a bug. Please report it."),
             ep_in: ep_in.expect("This is a bug. Please report it."),
@@ -228,7 +228,7 @@ impl ProtocolHandler {
         tms: impl IntoIterator<Item = bool>,
         tdi: impl IntoIterator<Item = bool>,
         cap: bool,
-    ) -> Result<OwnedBitIter, DebugProbeError> {
+    ) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
         self.jtag_io_async(tms, tdi, cap)?;
         self.flush()
     }
@@ -282,7 +282,7 @@ impl ProtocolHandler {
     }
 
     /// Flushes all the pending commands to the JTAG adapter.
-    pub fn flush(&mut self) -> Result<OwnedBitIter, DebugProbeError> {
+    pub fn flush(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
         if let Some((command_in_queue, repetitions)) = self.command_queue.take() {
             self.write_stream(command_in_queue, repetitions)?;
         }
@@ -303,15 +303,7 @@ impl ProtocolHandler {
             self.receive_buffer()?;
         }
 
-        let iter = self
-            .input_buffers
-            .iter()
-            .flat_map(|it| it.clone())
-            .collect();
-
-        self.input_buffers.clear();
-
-        Ok(iter)
+        Ok(std::mem::replace(&mut self.response, BitVec::new()))
     }
 
     /// Writes a command one or multiple times into the raw buffer we send to the USB EP later
@@ -467,8 +459,8 @@ impl ProtocolHandler {
         tracing::trace!("Read: {:?}, length = {}", incoming, bits_in_buffer);
         self.pending_in_bits -= bits_in_buffer;
 
-        self.input_buffers
-            .push(OwnedBitIter::new(&incoming, bits_in_buffer));
+        let bs: &BitSlice<_, Lsb0> = BitSlice::from_slice(&incoming);
+        self.response.extend_from_bitslice(&bs[..bits_in_buffer]);
 
         Ok(())
     }

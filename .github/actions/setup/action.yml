@@ -11,7 +11,7 @@ runs:
   using: "composite"
   steps:
     - name: Install toolchain
-      uses: dtolnay/rust-toolchain@1.73.0
+      uses: dtolnay/rust-toolchain@1.74.0
       with:
         targets: ${{ inputs.targets }}
         components: ${{ inputs.components }}

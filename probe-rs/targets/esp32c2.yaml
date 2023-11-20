@@ -1,0 +1,73 @@
+name: esp32c2
+manufacturer:
+  cc: 0x0C
+  id: 0x12
+variants:
+  - name: esp32c2
+    scan_chain:
+      - name: main
+        ir_len: 5
+    default_binary_format: idf
+    cores:
+      - name: main
+        type: riscv
+        core_access_options: !Riscv {}
+    memory_map:
+      - !Nvm # 16 Mb Max addressable Flash size (see Section 3.2 - Features of TRM)
+        range:
+          start: 0x0
+          end: 0x1000000
+        is_boot_memory: true
+        cores:
+          - main
+      - !Ram # Instruction bus for internal SRAM 1  (see Table 3.1 - Internal Memory Address Mapping of TRM)
+        range:
+          start: 0x40380000
+          end: 0x403c0000
+        cores:
+          - main
+      - !Ram # Data bus for internal SRAM 1  (see Table 3.1 - Internal Memory Address Mapping of TRM)
+        range:
+          start: 0x3fca0000
+          end: 0x3fce0000
+        cores:
+          - main
+      - !Nvm # External instruction bus (see Table 3.2 - External Memory Address Mapping of TRM)
+        range:
+          start: 0x42000000
+          end: 0x42400000
+        cores:
+          - main
+      - !Nvm # External Data Bus (see Table 3.2 - External Memory Address Mapping of TRM)
+        range:
+          start: 0x3c000000
+          end: 0x3c400000
+        cores:
+          - main
+    flash_algorithms:
+      - esp32c2-flashloader
+flash_algorithms:
+  - name: esp32c2-flashloader
+    description: ""
+    default: true
+    instructions: N8U4QANFhQYZwQFFgoBBEQbGgUWXQMf/54BAFpdAx//ngEASskBBARHBgoC3xThABUYjhMUGgoAxgRdDx/9nAGMPF0PH/2cA4wwTdzYAAccTBaAKgoCuhrKFNoYXQ8f/ZwDDDQFFgoAAAAAA
+    pc_init: 0x0
+    pc_uninit: 0x64
+    pc_program_page: 0x4a
+    pc_erase_sector: 0x38
+    pc_erase_all: 0x42
+    data_section_offset: 0x4038c06c
+    load_address: 0x4038C000
+    flash_properties:
+      address_range:
+        start: 0x0
+        end: 0x4000000
+      page_size: 0x800
+      erased_byte_value: 0xff
+      program_page_timeout: 1000
+      erase_sector_timeout: 2000
+      sectors:
+        - size: 0x1000
+          address: 0x0
+    cores:
+      - main

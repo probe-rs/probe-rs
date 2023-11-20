@@ -6,6 +6,10 @@ manufacturer:
 variants:
   - name: esp32c3
     part: ~
+    scan_chain:
+      - name: main
+        ir_len: 5
+    default_binary_format: idf
     cores:
       - name: main
         type: riscv
@@ -28,21 +32,21 @@ variants:
       - !Ram
         range: # 384 Kb SRAM on Data Bus
           start: 0x3fc80000
-          end: 0x3fc90000
+          end: 0x3fce0000
         is_boot_memory: false
         cores:
           - main
       - !Nvm
         range: # External Flash on Instruction Bus (Read Only)
           start: 0x42000000
-          end: 0x42800000
+          end: 0x43000000
         is_boot_memory: false
         cores:
           - main
       - !Nvm
         range: # External Flash on Data Bus (Read Only)
           start: 0x3c000000
-          end: 0x3c800000
+          end: 0x3d000000
         is_boot_memory: false
         cores:
           - main
