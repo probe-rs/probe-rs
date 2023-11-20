@@ -321,10 +321,7 @@ impl CoreDump {
         size_in_bytes: u64,
     ) -> Result<(u64, &Vec<u8>), crate::Error> {
         for (range, memory) in &self.data {
-            // The memory ranges are using "exclusive" end values,
-            // so we have to subtract 1 from the end of the range we are looking for,
-            // to ensure we can read up to the last byte.
-            if range.contains(&address) && range.contains(&(address + size_in_bytes - 1)) {
+            if range.contains(&address) && range.contains(&(address + size_in_bytes)) {
                 return Ok((range.start, memory));
             }
         }
