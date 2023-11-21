@@ -3,14 +3,13 @@ use crate::Error;
 use anyhow::anyhow;
 use gimli::{UnitOffset, UnitSectionOffset};
 use serde::{Serialize, Serializer};
-use std::collections::HashMap;
-
+use std::collections::BTreeMap;
 /// VariableCache stores available `Variable`s, and provides methods to create and navigate the parent-child relationships of the Variables.
 #[derive(Debug, Clone, PartialEq)]
 pub struct VariableCache {
     root_variable_key: ObjectRef,
 
-    variable_hash_map: HashMap<ObjectRef, Variable>,
+    variable_hash_map: BTreeMap<ObjectRef, Variable>,
 }
 
 impl Serialize for VariableCache {
@@ -93,7 +92,7 @@ impl VariableCache {
 
         VariableCache {
             root_variable_key: key,
-            variable_hash_map: HashMap::from([(key, variable)]),
+            variable_hash_map: BTreeMap::from([(key, variable)]),
         }
     }
 
@@ -259,8 +258,6 @@ impl VariableCache {
             })
             .collect::<Vec<&Variable>>();
 
-        child_variables.sort_by_key(|v| v.variable_key);
-
         match &child_variables[..] {
             [] => None,
             [variable] => Some((*variable).clone()),
@@ -280,10 +277,6 @@ impl VariableCache {
             .values()
             .filter(|child_variable| child_variable.name.eq(variable_name))
             .collect::<Vec<&Variable>>();
-
-        // Sort the variables by key, so that we can consistently return the first one.
-        // The hash map does not return the values in a consistent order.
-        child_variables.sort_by_key(|v| v.variable_key);
 
         match &child_variables[..] {
             [] => None,
@@ -308,8 +301,7 @@ impl VariableCache {
             .filter(|child_variable| child_variable.parent_key == parent_key)
             .cloned()
             .collect::<Vec<Variable>>();
-        // We have to incur the overhead of sort(), or else the variables in the UI are not in the same order as they appear in the source code.
-        children.sort_by_key(|var| var.variable_key);
+
         Ok(children)
     }
 
