@@ -250,7 +250,7 @@ impl VariableCache {
         variable_name: &VariableName,
         parent_key: ObjectRef,
     ) -> Option<Variable> {
-        let mut child_variables = self
+        let child_variables = self
             .variable_hash_map
             .values()
             .filter(|child_variable| {
@@ -272,7 +272,7 @@ impl VariableCache {
     /// If there is more than one, it will be logged (tracing::warn!), and only the first will be returned.
     /// It is possible for a hierarchy of variables in a cache to have duplicate names under different parents.
     pub fn get_variable_by_name(&self, variable_name: &VariableName) -> Option<Variable> {
-        let mut child_variables = self
+        let child_variables = self
             .variable_hash_map
             .values()
             .filter(|child_variable| child_variable.name.eq(variable_name))
@@ -295,7 +295,7 @@ impl VariableCache {
     /// Retrieve `clone`d version of all the children of a `Variable`.
     /// If `parent_key == None`, it will return all the top level variables (no parents) in this cache.
     pub fn get_children(&self, parent_key: ObjectRef) -> Result<Vec<Variable>, Error> {
-        let mut children: Vec<Variable> = self
+        let children: Vec<Variable> = self
             .variable_hash_map
             .values()
             .filter(|child_variable| child_variable.parent_key == parent_key)
