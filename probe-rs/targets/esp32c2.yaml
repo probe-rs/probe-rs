@@ -4,6 +4,10 @@ manufacturer:
   id: 0x12
 variants:
   - name: esp32c2
+    scan_chain:
+      - name: main
+        ir_len: 5
+    default_binary_format: idf
     cores:
       - name: main
         type: riscv

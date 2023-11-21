@@ -195,7 +195,7 @@ pub fn build_loader(
         Err(e) => return Err(FileDownloadError::IO(e)).context("Failed to open binary file."),
     };
 
-    let format = format_options.into_format()?;
+    let format = format_options.into_format(session.target())?;
     match format {
         Format::Bin(options) => loader.load_bin_data(&mut file, options),
         Format::Elf => loader.load_elf_data(&mut file),

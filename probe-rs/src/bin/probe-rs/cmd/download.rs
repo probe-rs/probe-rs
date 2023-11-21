@@ -40,7 +40,7 @@ impl Cmd {
 
         let mut loader = session.target().flash_loader();
 
-        let format = self.format_options.into_format()?;
+        let format = self.format_options.into_format(session.target())?;
         match format {
             Format::Bin(options) => loader.load_bin_data(&mut file, options),
             Format::Elf => loader.load_elf_data(&mut file),

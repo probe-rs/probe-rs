@@ -733,15 +733,17 @@ impl Debugger {
         });
 
         download_options.progress = flash_progress;
+        let format = self
+            .config
+            .flashing_config
+            .format_options
+            .clone()
+            .into_format(session_data.session.target())?;
 
         let flash_result = download_file_with_options(
             &mut session_data.session,
             path_to_elf,
-            self.config
-                .flashing_config
-                .format_options
-                .clone()
-                .into_format()?,
+            format,
             download_options,
         );
 
