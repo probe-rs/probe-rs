@@ -96,24 +96,24 @@ impl VariableCache {
         }
     }
 
-    /// Create a cache for static variables for the given unit
-    pub fn new_static_cache(header_offset: UnitSectionOffset, entries_offset: UnitOffset) -> Self {
+    /// Create a variable cache based on DWARF debug information
+    ///
+    /// The `header_offset` and `entries_offset` values are used to
+    /// extract the variable information from the debug information.
+    ///
+    /// The entries form a tree, only entries below the entry
+    /// at `entries_offset` are considered when filling the cache.
+    pub fn new_dwarf_cache(
+        header_offset: UnitSectionOffset,
+        entries_offset: UnitOffset,
+        name: VariableName,
+    ) -> Self {
         let mut static_root_variable =
             Variable::new(header_offset.as_debug_info_offset(), Some(entries_offset));
         static_root_variable.variable_node_type = VariableNodeType::DirectLookup;
-        static_root_variable.name = VariableName::StaticScopeRoot;
+        static_root_variable.name = name;
 
         VariableCache::new(static_root_variable)
-    }
-
-    /// Create a cache for local variables for the given DIE
-    pub fn new_local_cache(header_offset: UnitSectionOffset, entries_offset: UnitOffset) -> Self {
-        let mut local_root_variable =
-            Variable::new(header_offset.as_debug_info_offset(), Some(entries_offset));
-        local_root_variable.variable_node_type = VariableNodeType::DirectLookup;
-        local_root_variable.name = VariableName::LocalScopeRoot;
-
-        VariableCache::new(local_root_variable)
     }
 
     /// Create a new cache for SVD variables
@@ -405,7 +405,11 @@ mod test {
 
     #[test]
     fn static_cache() {
-        let c = VariableCache::new_static_cache(DebugInfoOffset(0).into(), UnitOffset(0));
+        let c = VariableCache::new_dwarf_cache(
+            DebugInfoOffset(0).into(),
+            UnitOffset(0),
+            VariableName::StaticScopeRoot,
+        );
 
         let cache_variable = c.root_variable();
 

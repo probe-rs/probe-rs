@@ -113,7 +113,7 @@ pub enum VariableNodeType {
     /// - Rule: For structured variables, we WILL NOT automatically expand their children, but we have enough information to expand it on demand. Except if they fall into one of the special cases handled by [VariableNodeType::RecurseToBaseType]
     TypeOffset(UnitOffset),
     /// Use the `header_offset` and `entries_offset` as direct references for recursing the variable children.
-    /// - Rule: All top level variables in a [StackFrame] are automatically deferred, i.e [VariableName::StaticScopeRoot], [VariableName::RegistersRoot], [VariableName::LocalScopeRoot].
+    /// - Rule: All top level variables in a [StackFrame] are automatically deferred, i.e [VariableName::LocalScopeRoot], [VariableName::RegistersRoot], [VariableName::LocalScopeRoot].
     DirectLookup,
     /// Sometimes it doesn't make sense to recurse the children of a specific node type
     /// - Rule: Pointers to `unit` datatypes WILL NOT BE resolved, because it doesn't make sense.

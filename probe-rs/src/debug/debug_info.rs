@@ -294,9 +294,10 @@ impl DebugInfo {
         let mut header_tree = unit_info.unit.header.entries_tree(abbrevs, None)?;
         let unit_node = header_tree.root()?;
 
-        Ok(VariableCache::new_static_cache(
+        Ok(VariableCache::new_dwarf_cache(
             unit_info.unit.header.offset(),
             unit_node.entry().offset(),
+            VariableName::StaticScopeRoot,
         ))
     }
 
@@ -313,9 +314,10 @@ impl DebugInfo {
             .entries_tree(abbrevs, Some(die_cursor_state.function_die.offset()))?;
         let function_node = tree.root()?;
 
-        let function_variable_cache = VariableCache::new_local_cache(
+        let function_variable_cache = VariableCache::new_dwarf_cache(
             unit_info.unit.header.offset(),
             function_node.entry().offset(),
+            VariableName::LocalScopeRoot,
         );
 
         Ok(function_variable_cache)
