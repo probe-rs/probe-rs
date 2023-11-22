@@ -2129,6 +2129,7 @@ mod test {
 
     #[test_case("RP2040"; "Armv6-m using RP2040")]
     #[test_case("nRF52833_xxAA"; "Armv7-m using nRF52833_xxAA")]
+    #[test_case("esp32c3"; "RISC-V32E using esp32c3")]
     fn probe_rs_debug_unwind_tests(chip_name: &str) {
         // TODO: Add RISC-V tests.
 
