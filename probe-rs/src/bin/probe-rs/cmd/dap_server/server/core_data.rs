@@ -17,7 +17,7 @@ use crate::cmd::dap_server::{
 use crate::util::rtt::{self, ChannelMode, DataFormat, RttActiveTarget};
 use anyhow::{anyhow, Result};
 use probe_rs::{
-    debug::{debug_info::DebugInfo, ColumnType, VerifiedBreakpoint},
+    debug::{debug_info::DebugInfo, ColumnType, ObjectRef, VerifiedBreakpoint},
     rtt::{Rtt, ScanRegion},
     Core, CoreStatus, Error, HaltReason,
 };
@@ -26,7 +26,7 @@ use typed_path::TypedPathBuf;
 
 /// [CoreData] is used to cache data needed by the debugger, on a per-core basis.
 pub struct CoreData {
-    pub(crate) core_index: usize,
+    pub core_index: usize,
     /// Track the last_known_status of the core.
     /// The debug client needs to be notified when the core changes state, and this can happen in one of two ways:
     /// 1. By polling the core status periodically (in [`crate::server::debugger::Debugger::process_next_request()`]).
@@ -35,13 +35,13 @@ pub struct CoreData {
     ///   To ensure the [`CoreHandle::poll_core()`] behaves correctly, it will set the `last_known_status` to [`CoreStatus::Running`],
     ///   and execute the request normally, with the expectation that the core will be halted, and that 1. above will detect this new status.
     ///   These 'implicit' updates of `last_known_status` will not(and should not) result in a notification to the client.
-    pub(crate) last_known_status: CoreStatus,
-    pub(crate) target_name: String,
-    pub(crate) debug_info: DebugInfo,
-    pub(crate) core_peripherals: Option<SvdCache>,
-    pub(crate) stack_frames: Vec<probe_rs::debug::stack_frame::StackFrame>,
-    pub(crate) breakpoints: Vec<session_data::ActiveBreakpoint>,
-    pub(crate) rtt_connection: Option<debug_rtt::RttConnection>,
+    pub last_known_status: CoreStatus,
+    pub target_name: String,
+    pub debug_info: DebugInfo,
+    pub core_peripherals: Option<SvdCache>,
+    pub stack_frames: Vec<probe_rs::debug::stack_frame::StackFrame>,
+    pub breakpoints: Vec<session_data::ActiveBreakpoint>,
+    pub rtt_connection: Option<debug_rtt::RttConnection>,
 }
 
 /// [CoreHandle] provides handles to various data structures required to debug a single instance of a core. The actual state is stored in [session_data::SessionData].
@@ -160,7 +160,7 @@ impl<'p> CoreHandle<'p> {
     /// Search available [`probe_rs::debug::StackFrame`]'s for the given `id`
     pub(crate) fn get_stackframe(
         &'p self,
-        id: i64,
+        id: ObjectRef,
     ) -> Option<&'p probe_rs::debug::stack_frame::StackFrame> {
         self.core_data
             .stack_frames

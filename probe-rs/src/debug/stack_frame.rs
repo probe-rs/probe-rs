@@ -6,11 +6,11 @@ use std;
 pub use test::TestFormatter;
 
 /// A full stack frame with all its information contained.
-#[derive(Default, PartialEq, Serialize)]
+#[derive(PartialEq, Serialize)]
 pub struct StackFrame {
     /// The stackframe ID.
     #[serde(skip_serializing)]
-    pub id: i64,
+    pub id: ObjectRef,
     /// The name of the function this stackframe belongs to.
     pub function_name: String,
     /// The source location the function this stackframe belongs to originates.

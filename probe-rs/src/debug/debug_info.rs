@@ -1,5 +1,6 @@
+use super::ObjectRef;
 use super::{
-    function_die::FunctionDie, get_sequential_key, unit_info::UnitInfo, unit_info::UnitIter,
+    function_die::FunctionDie, get_object_reference, unit_info::UnitInfo, unit_info::UnitIter,
     variable::*, DebugError, DebugRegisters, SourceLocation, StackFrame, VariableCache,
 };
 use crate::core::UnwindRule;
@@ -285,37 +286,27 @@ impl DebugInfo {
     /// This saves a lot of overhead when a user only wants to see the `[VariableName::LocalScope]` or `[VariableName::Registers]` while stepping through code (the most common use cases)
     pub(crate) fn create_static_scope_cache(
         &self,
-        memory: &mut dyn MemoryInterface,
         unit_info: &UnitInfo,
-    ) -> Result<VariableCache, DebugError> {
-        let mut static_variable_cache = VariableCache::new();
-
+    ) -> Result<VariableCache, gimli::Error> {
         // Only process statics for this unit header.
         let abbrevs = &unit_info.unit.abbreviations;
         // Navigate the current unit from the header down.
-        if let Ok(mut header_tree) = unit_info.unit.header.entries_tree(abbrevs, None) {
-            let unit_node = header_tree.root()?;
-            let mut static_root_variable = Variable::new(
-                unit_info.unit.header.offset().as_debug_info_offset(),
-                Some(unit_node.entry().offset()),
-            );
-            static_root_variable.variable_node_type = VariableNodeType::DirectLookup;
-            static_root_variable.name = VariableName::StaticScopeRoot;
+        let mut header_tree = unit_info.unit.header.entries_tree(abbrevs, None)?;
+        let unit_node = header_tree.root()?;
 
-            static_variable_cache.cache_variable(None, static_root_variable, memory)?;
-        }
-        Ok(static_variable_cache)
+        Ok(VariableCache::new_dwarf_cache(
+            unit_info.unit.header.offset(),
+            unit_node.entry().offset(),
+            VariableName::StaticScopeRoot,
+        ))
     }
 
     /// Creates the unpopulated cache for `function` variables
     pub(crate) fn create_function_scope_cache(
         &self,
-        memory: &mut dyn MemoryInterface,
         die_cursor_state: &FunctionDie,
         unit_info: &UnitInfo,
     ) -> Result<VariableCache, DebugError> {
-        let mut function_variable_cache = VariableCache::new();
-
         let abbrevs = &unit_info.unit.abbreviations;
         let mut tree = unit_info
             .unit
@@ -323,13 +314,12 @@ impl DebugInfo {
             .entries_tree(abbrevs, Some(die_cursor_state.function_die.offset()))?;
         let function_node = tree.root()?;
 
-        let mut function_root_variable = Variable::new(
-            unit_info.unit.header.offset().as_debug_info_offset(),
-            Some(function_node.entry().offset()),
+        let function_variable_cache = VariableCache::new_dwarf_cache(
+            unit_info.unit.header.offset(),
+            function_node.entry().offset(),
+            VariableName::LocalScopeRoot,
         );
-        function_root_variable.variable_node_type = VariableNodeType::DirectLookup;
-        function_root_variable.name = VariableName::LocalScopeRoot;
-        function_variable_cache.cache_variable(None, function_root_variable, memory)?;
+
         Ok(function_variable_cache)
     }
 
@@ -365,7 +355,7 @@ impl DebugInfo {
                             .entries_tree(&unit_info.unit.abbreviations, Some(reference_offset))?;
                         let referenced_node = type_tree.root()?;
                         let mut referenced_variable = cache.cache_variable(
-                            Some(parent_variable.variable_key),
+                            parent_variable.variable_key,
                             Variable::new(
                                 unit_info.unit.header.offset().as_debug_info_offset(),
                                 Some(referenced_node.entry().offset()),
@@ -423,10 +413,10 @@ impl DebugInfo {
                         // For process_tree we need to create a temporary parent that will later be eliminated with VariableCache::adopt_grand_children
                         // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
                         let mut temporary_variable = parent_variable.clone();
-                        temporary_variable.variable_key = 0;
-                        temporary_variable.parent_key = Some(parent_variable.variable_key);
+                        temporary_variable.variable_key = ObjectRef::Invalid;
+                        temporary_variable.parent_key = parent_variable.variable_key;
                         temporary_variable = cache.cache_variable(
-                            Some(parent_variable.variable_key),
+                            parent_variable.variable_key,
                             temporary_variable,
                             memory,
                         )?;
@@ -463,10 +453,10 @@ impl DebugInfo {
                         // For process_tree we need to create a temporary parent that will later be eliminated with VariableCache::adopt_grand_children
                         // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
                         let mut temporary_variable = parent_variable.clone();
-                        temporary_variable.variable_key = 0;
-                        temporary_variable.parent_key = Some(parent_variable.variable_key);
+                        temporary_variable.variable_key = ObjectRef::Invalid;
+                        temporary_variable.parent_key = parent_variable.variable_key;
                         temporary_variable = cache.cache_variable(
-                            Some(parent_variable.variable_key),
+                            parent_variable.variable_key,
                             temporary_variable,
                             memory,
                         )?;
@@ -555,22 +545,20 @@ impl DebugInfo {
 
                     // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
                     // Resolve the statics that belong to the compilation unit that this function is in.
-                    let static_variables = self
-                        .create_static_scope_cache(memory, &unit_info)
-                        .map_or_else(
-                            |error| {
-                                tracing::error!(
-                                    "Could not resolve static variables. {}. Continuing...",
-                                    error
-                                );
-                                None
-                            },
-                            Some,
-                        );
+                    let static_variables = self.create_static_scope_cache(&unit_info).map_or_else(
+                        |error| {
+                            tracing::error!(
+                                "Could not resolve static variables. {}. Continuing...",
+                                error
+                            );
+                            None
+                        },
+                        Some,
+                    );
 
                     // Next, resolve and cache the function variables.
                     let local_variables = self
-                        .create_function_scope_cache(memory, function_die, &unit_info)
+                        .create_function_scope_cache(function_die, &unit_info)
                         .map_or_else(
                             |error| {
                                 tracing::error!(
@@ -583,7 +571,7 @@ impl DebugInfo {
                         );
 
                     frames.push(StackFrame {
-                        id: get_sequential_key(),
+                        id: get_object_reference(),
                         function_name,
                         source_location: inlined_caller_source_location,
                         registers: unwind_registers.clone(),
@@ -614,22 +602,20 @@ impl DebugInfo {
 
             // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
             // Resolve the statics that belong to the compilation unit that this function is in.
-            let static_variables = self
-                .create_static_scope_cache(memory, &unit_info)
-                .map_or_else(
-                    |error| {
-                        tracing::error!(
-                            "Could not resolve static variables. {}. Continuing...",
-                            error
-                        );
-                        None
-                    },
-                    Some,
-                );
+            let static_variables = self.create_static_scope_cache(&unit_info).map_or_else(
+                |error| {
+                    tracing::error!(
+                        "Could not resolve static variables. {}. Continuing...",
+                        error
+                    );
+                    None
+                },
+                Some,
+            );
 
             // Next, resolve and cache the function variables.
             let local_variables = self
-                .create_function_scope_cache(memory, last_function, &unit_info)
+                .create_function_scope_cache(last_function, &unit_info)
                 .map_or_else(
                     |error| {
                         tracing::error!(
@@ -642,7 +628,7 @@ impl DebugInfo {
                 );
 
             frames.push(StackFrame {
-                id: get_sequential_key(),
+                id: get_object_reference(),
                 function_name,
                 source_location: function_location,
                 registers: unwind_registers.clone(),
@@ -777,7 +763,7 @@ impl DebugInfo {
                         let previous_regs = unwind_registers.clone();
 
                         StackFrame {
-                            id: get_sequential_key(),
+                            id: get_object_reference(),
                             function_name: exception_info.description.clone(),
                             source_location: None,
                             registers: previous_regs,
@@ -803,7 +789,7 @@ impl DebugInfo {
                         );
 
                         StackFrame {
-                            id: get_sequential_key(),
+                            id: get_object_reference(),
                             function_name: unknown_function,
                             source_location: self.get_source_location(address),
                             registers: unwind_registers.clone(),
@@ -999,7 +985,7 @@ impl DebugInfo {
                         let address = frame_pc;
 
                         let exception_frame = StackFrame {
-                            id: get_sequential_key(),
+                            id: get_object_reference(),
                             function_name: details.description.clone(),
                             source_location: None,
                             registers: unwind_registers.clone(),
@@ -1612,7 +1598,7 @@ mod test {
                 )
                 .unwrap();
             for mut child in variable_cache
-                .get_children(Some(parent_variable.variable_key))
+                .get_children(parent_variable.variable_key)
                 .unwrap()
             {
                 recurse_deferred_variables(
@@ -2160,12 +2146,8 @@ mod test {
                     frame.local_variables.as_mut().unwrap(),
                 ] {
                     // Cache the deferred top level children of the of the cache.
-                    let mut parent_variable = variable_cache
-                        .variable_hash_map
-                        .values()
-                        .find(|variable| variable.parent_key.is_none())
-                        .unwrap()
-                        .clone();
+                    let mut parent_variable = variable_cache.root_variable();
+
                     recurse_deferred_variables(
                         &debug_info,
                         variable_cache,

@@ -15,9 +15,7 @@ use probe_rs::flashing::FileDownloadError;
 use probe_rs::CoreDumpError;
 use probe_rs::DebugProbeError;
 use probe_rs::{
-    debug::{
-        debug_info::DebugInfo, registers::DebugRegisters, stack_frame::StackFrame, VariableName,
-    },
+    debug::{debug_info::DebugInfo, registers::DebugRegisters, stack_frame::StackFrame},
     Core, CoreType, InstructionSet, MemoryInterface, RegisterValue,
 };
 use rustyline::DefaultEditor;
@@ -520,8 +518,11 @@ impl DebugCli {
                                 )
                                 .unwrap();
 
-                            halted_state.frame_indices =
-                                halted_state.stack_frames.iter().map(|sf| sf.id).collect();
+                            halted_state.frame_indices = halted_state
+                                .stack_frames
+                                .iter()
+                                .map(|sf| sf.id.into())
+                                .collect();
 
                             for (i, frame) in halted_state.stack_frames.iter().enumerate() {
                                 print!("Frame {}: {} @ {}", i, frame.function_name, frame.pc);
@@ -695,42 +696,36 @@ impl DebugCli {
                             return Ok(CliState::Continue);
                         };
 
-                        if let Some(mut locals) = local_variable_cache
-                            .get_variable_by_name_and_parent(&VariableName::LocalScopeRoot, None)
+                        let mut locals = local_variable_cache.root_variable();
+                        // By default, the first level children are always are lazy loaded, so we will force a load here.
+                        if locals.variable_node_type.is_deferred()
+                            && !local_variable_cache.has_children(&locals)?
                         {
-                            // By default, the first level children are always are lazy loaded, so we will force a load here.
-                            if locals.variable_node_type.is_deferred()
-                                && !local_variable_cache.has_children(&locals)?
+                            if let Err(error) = cli_data
+                                .debug_info
+                                .as_ref()
+                                .unwrap()
+                                .cache_deferred_variables(
+                                    local_variable_cache,
+                                    &mut cli_data.core,
+                                    &mut locals,
+                                    &current_frame.registers,
+                                    current_frame.frame_base,
+                                )
                             {
-                                if let Err(error) = cli_data
-                                    .debug_info
-                                    .as_ref()
-                                    .unwrap()
-                                    .cache_deferred_variables(
-                                        local_variable_cache,
-                                        &mut cli_data.core,
-                                        &mut locals,
-                                        &current_frame.registers,
-                                        current_frame.frame_base,
-                                    )
-                                {
-                                    println!("Failed to cache local variables: {error}");
-                                    return Ok(CliState::Continue);
-                                }
+                                println!("Failed to cache local variables: {error}");
+                                return Ok(CliState::Continue);
                             }
-                            let children =
-                                local_variable_cache.get_children(Some(locals.variable_key))?;
+                        }
+                        let children = local_variable_cache.get_children(locals.variable_key())?;
 
-                            for child in children {
-                                println!(
-                                    "{}: {} = {}",
-                                    child.name,
-                                    child.type_name,
-                                    child.get_value(local_variable_cache)
-                                );
-                            }
-                        } else {
-                            println!("Local variable cache was not initialized.")
+                        for child in children {
+                            println!(
+                                "{}: {} = {}",
+                                child.name,
+                                child.type_name,
+                                child.get_value(local_variable_cache)
+                            );
                         }
                     }
                     DebugState::Running => println!("Core must be halted for this command."),
