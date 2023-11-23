@@ -1,11 +1,11 @@
-use probe_rs::Probe;
+use probe_rs::ProbeLister;
 
 #[derive(clap::Parser)]
 pub struct Cmd {}
 
 impl Cmd {
-    pub fn run(self) -> anyhow::Result<()> {
-        let probes = Probe::list_all();
+    pub fn run(self, lister: &impl ProbeLister) -> anyhow::Result<()> {
+        let probes = lister.list_all();
 
         if !probes.is_empty() {
             println!("The following debug probes were found:");

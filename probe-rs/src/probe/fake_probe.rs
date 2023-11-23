@@ -1,4 +1,4 @@
-use std::{fmt::Debug, sync::Arc};
+use std::{cell::RefCell, collections::VecDeque, fmt::Debug, sync::Arc};
 
 use probe_rs_target::ScanChainElement;
 
@@ -28,6 +28,17 @@ pub struct FakeProbe {
 
     dap_register_write_handler:
         Option<Box<dyn Fn(PortType, u8, u32) -> Result<(), ArmError> + Send>>,
+
+    operations: RefCell<VecDeque<Operation>>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Operation {
+    ReadRawApRegister {
+        ap: ApAddress,
+        address: u8,
+        result: u32,
+    },
 }
 
 impl Debug for FakeProbe {
@@ -35,7 +46,7 @@ impl Debug for FakeProbe {
         f.debug_struct("FakeProbe")
             .field("protocol", &self.protocol)
             .field("speed", &self.speed)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 
@@ -49,6 +60,8 @@ impl FakeProbe {
 
             dap_register_read_handler: None,
             dap_register_write_handler: None,
+
+            operations: RefCell::new(VecDeque::new()),
         }
     }
 
@@ -73,6 +86,37 @@ impl FakeProbe {
     /// Makes a generic probe out of the [`FakeProbe`]
     pub fn into_probe(self) -> Probe {
         Probe::from_specific_probe(Box::new(self))
+    }
+
+    fn next_operation(&self) -> Option<Operation> {
+        self.operations.borrow_mut().pop_front()
+    }
+
+    fn read_raw_ap_register(
+        &mut self,
+        expected_ap: ApAddress,
+        expected_address: u8,
+    ) -> Result<u32, ArmError> {
+        let operation = self.next_operation();
+
+        match operation {
+            Some(Operation::ReadRawApRegister {
+                ap,
+                address,
+                result,
+            }) => {
+                assert_eq!(ap, expected_ap);
+                assert_eq!(address, expected_address);
+
+                Ok(result)
+            }
+            None => panic!("No more operations expected, but got read_raw_ap_register ap={expected_ap:?}, address:{expected_address}"),
+            other => panic!("Unexpected operation: {:?}", other),
+        }
+    }
+
+    pub fn expect_operation(&self, operation: Operation) {
+        self.operations.borrow_mut().push_back(operation);
     }
 }
 
@@ -141,7 +185,7 @@ impl DebugProbe for FakeProbe {
     }
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
-        unimplemented!()
+        Ok(())
     }
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
@@ -370,7 +414,7 @@ impl DapAccess for FakeArmInterface<Initialized> {
     }
 
     fn read_raw_ap_register(&mut self, _ap: ApAddress, _address: u8) -> Result<u32, ArmError> {
-        todo!()
+        self.probe.read_raw_ap_register(_ap, _address)
     }
 
     fn read_raw_ap_register_repeated(

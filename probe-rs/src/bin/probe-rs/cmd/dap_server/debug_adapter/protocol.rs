@@ -26,15 +26,64 @@ pub trait ProtocolAdapter {
         event_body: Option<S>,
     ) -> anyhow::Result<()>;
 
-    fn show_message(&mut self, severity: MessageSeverity, message: impl Into<String>) -> bool;
-    fn log_to_console<S: Into<String>>(&mut self, message: S) -> bool;
-    fn set_console_log_level(&mut self, log_level: ConsoleLog);
-
-    fn send_response<S: Serialize>(
+    fn send_response<S: Serialize + std::fmt::Debug>(
         &mut self,
         request: &Request,
-        response: Result<Option<S>, DebuggerError>,
+        response: Result<Option<S>, &DebuggerError>,
     ) -> anyhow::Result<()>;
+
+    fn set_console_log_level(&mut self, log_level: ConsoleLog);
+}
+
+pub trait ProtocolHelper {
+    fn show_message(&mut self, severity: MessageSeverity, message: impl Into<String>) -> bool;
+
+    /// Log a message to the console. Returns false if logging the message failed.
+    fn log_to_console(&mut self, message: impl Into<String>) -> bool;
+}
+
+impl<P> ProtocolHelper for P
+where
+    P: ProtocolAdapter,
+{
+    fn show_message(&mut self, severity: MessageSeverity, message: impl Into<String>) -> bool {
+        let msg = message.into();
+
+        tracing::debug!("show_message");
+        println!("Do log message: {msg}");
+
+        let event_body = match serde_json::to_value(ShowMessageEventBody {
+            severity,
+            message: format!("{}\n", msg),
+        }) {
+            Ok(event_body) => event_body,
+            Err(_) => {
+                return false;
+            }
+        };
+        self.send_event("probe-rs-show-message", Some(event_body))
+            .is_ok()
+    }
+
+    fn log_to_console(&mut self, message: impl Into<String>) -> bool {
+        tracing::debug!("log_to_console");
+        let event_body = match serde_json::to_value(OutputEventBody {
+            output: format!("{}\n", message.into()),
+            category: Some("console".to_owned()),
+            variables_reference: None,
+            source: None,
+            line: None,
+            column: None,
+            data: None,
+            group: Some("probe-rs-debug".to_owned()),
+        }) {
+            Ok(event_body) => event_body,
+            Err(_) => {
+                return false;
+            }
+        };
+        self.send_event("output", Some(event_body)).is_ok()
+    }
 }
 
 pub struct DapAdapter<R: Read, W: Write> {
@@ -269,46 +318,10 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
         result.map_err(|e| e.into())
     }
 
-    fn show_message(&mut self, severity: MessageSeverity, message: impl Into<String>) -> bool {
-        tracing::debug!("show_message");
-
-        let event_body = match serde_json::to_value(ShowMessageEventBody {
-            severity,
-            message: format!("{}\n", message.into()),
-        }) {
-            Ok(event_body) => event_body,
-            Err(_) => {
-                return false;
-            }
-        };
-        self.send_event("probe-rs-show-message", Some(event_body))
-            .is_ok()
-    }
-
-    fn log_to_console<S: Into<String>>(&mut self, message: S) -> bool {
-        tracing::debug!("log_to_console");
-        let event_body = match serde_json::to_value(OutputEventBody {
-            output: format!("{}\n", message.into()),
-            category: Some("console".to_owned()),
-            variables_reference: None,
-            source: None,
-            line: None,
-            column: None,
-            data: None,
-            group: Some("probe-rs-debug".to_owned()),
-        }) {
-            Ok(event_body) => event_body,
-            Err(_) => {
-                return false;
-            }
-        };
-        self.send_event("output", Some(event_body)).is_ok()
-    }
-
     fn send_response<S: Serialize>(
         &mut self,
         request: &Request,
-        response: Result<Option<S>, DebuggerError>,
+        response: Result<Option<S>, &DebuggerError>,
     ) -> anyhow::Result<()> {
         // The encoded response will be constructed from dap::Response for Ok, and dap::ErrorResponse for Err, to ensure VSCode doesn't lose the details of the error.
         let encoded_resp = match response.as_ref() {

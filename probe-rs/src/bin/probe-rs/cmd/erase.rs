@@ -1,4 +1,4 @@
-use probe_rs::flashing::erase_all;
+use probe_rs::{flashing::erase_all, ProbeLister};
 
 use crate::util::common_options::ProbeOptions;
 
@@ -9,8 +9,8 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self) -> anyhow::Result<()> {
-        let (mut session, _probe_options) = self.common.simple_attach()?;
+    pub fn run(self, lister: &impl ProbeLister) -> anyhow::Result<()> {
+        let (mut session, _probe_options) = self.common.simple_attach(lister)?;
 
         erase_all(&mut session, None)?;
 

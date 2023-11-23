@@ -16,7 +16,7 @@ use crate::{
 };
 
 use self::{commands::Speed, usb_interface::WchLinkUsbDevice};
-use super::JTAGAccess;
+use super::{JTAGAccess, ProbeLister};
 
 mod commands;
 mod usb_interface;
@@ -469,7 +469,7 @@ impl JTAGAccess for WchLink {
     }
 }
 
-fn get_wlink_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
+fn get_wlink_info<L: ProbeLister>(device: &Device<rusb::Context>) -> Option<DebugProbeInfo<L>> {
     let timeout = Duration::from_millis(100);
 
     let d_desc = device.device_descriptor().ok()?;
@@ -484,21 +484,21 @@ fn get_wlink_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
         .ok();
 
     if prod_str == "WCH-Link" {
-        Some(DebugProbeInfo {
-            identifier: "WCH-Link".into(),
-            vendor_id: VENDOR_ID,
-            product_id: PRODUCT_ID,
-            serial_number: sn_str,
-            probe_type: DebugProbeType::WchLink,
-            hid_interface: None,
-        })
+        Some(DebugProbeInfo::new(
+            "WCH-Link",
+            VENDOR_ID,
+            PRODUCT_ID,
+            sn_str,
+            DebugProbeType::WchLink,
+            None,
+        ))
     } else {
         None
     }
 }
 
 #[tracing::instrument(skip_all)]
-pub fn list_wlink_devices() -> Vec<DebugProbeInfo> {
+pub fn list_wlink_devices<L: ProbeLister>() -> Vec<DebugProbeInfo<L>> {
     tracing::debug!("Searching for WCH-Link(RV) probes using libusb");
     let probes = match rusb::Context::new().and_then(|ctx| ctx.devices()) {
         Ok(devices) => devices

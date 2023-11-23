@@ -1,6 +1,8 @@
 use std::sync::Mutex;
 use std::time::Duration;
 
+use probe_rs::ProbeLister;
+
 use crate::util::common_options::ProbeOptions;
 
 #[derive(clap::Parser)]
@@ -23,8 +25,8 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self) -> anyhow::Result<()> {
-        let (mut session, _probe_options) = self.common.simple_attach()?;
+    pub fn run(self, lister: &impl ProbeLister) -> anyhow::Result<()> {
+        let (mut session, _probe_options) = self.common.simple_attach(lister)?;
 
         if self.reset_halt {
             session

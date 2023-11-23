@@ -25,6 +25,8 @@ use crate::{
     DebugProbeSelector,
 };
 
+use super::ProbeLister;
+
 const SWO_BUFFER_SIZE: u16 = 128;
 
 #[derive(Debug)]
@@ -796,7 +798,7 @@ impl SwoAccess for JLink {
 }
 
 #[tracing::instrument(skip_all)]
-pub(crate) fn list_jlink_devices() -> Vec<DebugProbeInfo> {
+pub(crate) fn list_jlink_devices<L: ProbeLister>() -> Vec<DebugProbeInfo<L>> {
     match jaylink::scan_usb() {
         Ok(devices) => devices
             .map(|device_info| {

@@ -14,7 +14,8 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use itertools::Itertools;
 use probe_rs::flashing::{BinOptions, Format, IdfOptions};
-use probe_rs::Target;
+use probe_rs::{AllProbesLister, Target};
+use serde::Serialize;
 use serde::{de::Error, Deserialize, Deserializer};
 use serde_json::Value;
 use time::{OffsetDateTime, UtcOffset};
@@ -103,7 +104,7 @@ fn format_from_str<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Option<
     }
 }
 
-#[derive(clap::Parser, Clone, Deserialize, Debug, Default)]
+#[derive(clap::Parser, Clone, Serialize, Deserialize, Debug, Default)]
 #[serde(default)]
 pub struct FormatOptions {
     /// If a format is provided, use it.
@@ -258,10 +259,13 @@ fn main() -> Result<()> {
     // Parse the commandline options.
     let matches = Cli::parse_from(args);
 
+    // Setup the probe lister, list all probes normally
+    let lister = AllProbesLister::new();
+
     // the DAP server has special logging requirements. Run it before initializing logging,
     // so it can do its own special init.
     if let Subcommand::DapServer(cmd) = matches.subcommand {
-        return cmd::dap_server::run(cmd, utc_offset);
+        return cmd::dap_server::run(cmd, &lister, utc_offset);
     }
 
     let log_path = if let Some(location) = matches.log_file {
@@ -304,22 +308,22 @@ fn main() -> Result<()> {
 
     let result = match matches.subcommand {
         Subcommand::DapServer { .. } => unreachable!(), // handled above.
-        Subcommand::List(cmd) => cmd.run(),
-        Subcommand::Info(cmd) => cmd.run(),
-        Subcommand::Gdb(cmd) => cmd.run(),
-        Subcommand::Reset(cmd) => cmd.run(),
-        Subcommand::Debug(cmd) => cmd.run(),
-        Subcommand::Download(cmd) => cmd.run(),
-        Subcommand::Run(cmd) => cmd.run(true, utc_offset),
-        Subcommand::Attach(cmd) => cmd.run(utc_offset),
-        Subcommand::Erase(cmd) => cmd.run(),
-        Subcommand::Trace(cmd) => cmd.run(),
-        Subcommand::Itm(cmd) => cmd.run(),
+        Subcommand::List(cmd) => cmd.run(&lister),
+        Subcommand::Info(cmd) => cmd.run(&lister),
+        Subcommand::Gdb(cmd) => cmd.run(&lister),
+        Subcommand::Reset(cmd) => cmd.run(&lister),
+        Subcommand::Debug(cmd) => cmd.run(&lister),
+        Subcommand::Download(cmd) => cmd.run(&lister),
+        Subcommand::Run(cmd) => cmd.run(&lister, true, utc_offset),
+        Subcommand::Attach(cmd) => cmd.run(&lister, utc_offset),
+        Subcommand::Erase(cmd) => cmd.run(&lister),
+        Subcommand::Trace(cmd) => cmd.run(&lister),
+        Subcommand::Itm(cmd) => cmd.run(&lister),
         Subcommand::Chip(cmd) => cmd.run(),
-        Subcommand::Benchmark(cmd) => cmd.run(),
-        Subcommand::Profile(cmd) => cmd.run(),
-        Subcommand::Read(cmd) => cmd.run(),
-        Subcommand::Write(cmd) => cmd.run(),
+        Subcommand::Benchmark(cmd) => cmd.run(&lister),
+        Subcommand::Profile(cmd) => cmd.run(&lister),
+        Subcommand::Read(cmd) => cmd.run(&lister),
+        Subcommand::Write(cmd) => cmd.run(&lister),
     };
 
     tracing::info!("Wrote log to {:?}", log_path);

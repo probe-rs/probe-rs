@@ -1,6 +1,7 @@
 use rusb::Device;
 use rusb::UsbContext;
 
+use crate::probe::ProbeLister;
 use crate::probe::{DebugProbeInfo, DebugProbeType};
 
 use super::usb_interface::USB_PID_EP_MAP;
@@ -19,7 +20,7 @@ pub(super) fn is_stlink_device<T: UsbContext>(device: &Device<T>) -> bool {
 }
 
 #[tracing::instrument(skip_all)]
-pub fn list_stlink_devices() -> Vec<DebugProbeInfo> {
+pub fn list_stlink_devices<L: ProbeLister>() -> Vec<DebugProbeInfo<L>> {
     rusb::Context::new()
         .and_then(|context| context.devices())
         .map_or(vec![], |devices| {

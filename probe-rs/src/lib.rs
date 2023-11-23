@@ -12,13 +12,15 @@
 //! ## Halting the attached chip
 //! ```no_run
 //! # use probe_rs::Error;
-//! use probe_rs::{Probe, Permissions};
+//! use probe_rs::{Probe, Permissions, ProbeLister, AllProbesLister};
 //!
 //! // Get a list of all available debug probes.
-//! let probes = Probe::list_all();
+//! let lister = AllProbesLister::new();
+//!
+//! let probes = lister.list_all();
 //!
 //! // Use the first probe found.
-//! let mut probe = probes[0].open()?;
+//! let mut probe = probes[0].open(&lister)?;
 //!
 //! // Attach to a chip.
 //! let mut session = probe.attach("nrf52", Permissions::default())?;
@@ -100,10 +102,10 @@ pub use crate::core::{
 pub use crate::error::Error;
 pub use crate::memory::MemoryInterface;
 pub use crate::probe::{
-    AttachMethod, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType,
-    Probe, ProbeCreationError, WireProtocol,
+    AllProbesLister, AttachMethod, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+    DebugProbeType, Probe, ProbeCreationError, ProbeLister, WireProtocol,
 };
 pub use crate::session::{Permissions, Session};
 
-// TODO: Hide behind feature
 pub use crate::probe::fake_probe::FakeProbe;
+pub use crate::probe::fake_probe::Operation as ProbeOperation;

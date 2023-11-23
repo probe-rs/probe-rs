@@ -1,17 +1,19 @@
 use anyhow::Result;
 use probe_rs::{
     architecture::arm::{sequences::DefaultArmSequence, ApAddress, DpAddress},
-    Probe,
+    AllProbesLister, Probe,
 };
 
 fn main() -> Result<()> {
     pretty_env_logger::init();
 
+    let lister = AllProbesLister::new();
+
     // Get a list of all available debug probes.
-    let probes = Probe::list_all();
+    let probes = AllProbesLister::list_all();
 
     // Use the first probe found.
-    let mut probe = probes[0].open()?;
+    let mut probe = probes[0].open(&lister)?;
 
     probe.attach_to_unspecified()?;
     let iface = probe.try_into_arm_interface().unwrap();

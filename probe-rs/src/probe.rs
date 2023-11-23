@@ -32,6 +32,7 @@ use crate::{
 };
 use jlink::list_jlink_devices;
 use probe_rs_target::ScanChainElement;
+use std::marker::PhantomData;
 use std::{convert::TryFrom, fmt};
 
 /// Used to log warnings when the measured target voltage is
@@ -194,78 +195,32 @@ pub enum ProbeCreationError {
     Other(&'static str),
 }
 
-/// The Probe struct is a generic wrapper over the different
-/// probes supported.
-///
-/// # Examples
-///
-/// ## Open the first probe found
-///
-/// The `list_all` and `from_probe_info` functions can be used
-/// to create a new `Probe`:
-///
-/// ```no_run
-/// use probe_rs::Probe;
-///
-/// let probe_list = Probe::list_all();
-/// let probe = Probe::open(&probe_list[0]);
-/// ```
-#[derive(Debug)]
-pub struct Probe {
-    inner: Box<dyn DebugProbe>,
-    attached: bool,
+pub trait ProbeLister: Sized {
+    fn open(&self, selector: impl Into<DebugProbeSelector>) -> Result<Probe, DebugProbeError>;
+
+    fn list_all(&self) -> Vec<DebugProbeInfo<Self>>;
 }
 
-impl Probe {
-    /// Create a new probe from a more specific probe driver.
-    pub fn new(probe: impl DebugProbe + 'static) -> Self {
-        Self {
-            inner: Box::new(probe),
-            attached: false,
-        }
+#[derive(Debug, PartialEq, Eq)]
+pub struct AllProbesLister;
+
+impl ProbeLister for AllProbesLister {
+    fn open(&self, selector: impl Into<DebugProbeSelector>) -> Result<Probe, DebugProbeError> {
+        Self::open(selector)
     }
 
-    pub(crate) fn from_attached_probe(probe: Box<dyn DebugProbe>) -> Self {
-        Self {
-            inner: probe,
-            attached: true,
-        }
+    fn list_all(&self) -> Vec<DebugProbeInfo<Self>> {
+        Self::list_all()
+    }
+}
+
+impl AllProbesLister {
+    pub fn new() -> Self {
+        Self
     }
 
-    /// Same as [`Probe::new`] but without automatic boxing in case you already have a box.
-    pub fn from_specific_probe(probe: Box<dyn DebugProbe>) -> Self {
-        Probe {
-            inner: probe,
-            attached: false,
-        }
-    }
-
-    /// Get a list of all debug probes found.
-    /// This can be used to select the debug probe which
-    /// should be used.
-    #[tracing::instrument]
-    pub fn list_all() -> Vec<DebugProbeInfo> {
-        let mut list = cmsisdap::tools::list_cmsisdap_devices();
-        #[cfg(feature = "ftdi")]
-        {
-            list.extend(ftdi::list_ftdi_devices());
-        }
-        list.extend(stlink::tools::list_stlink_devices());
-
-        list.extend(list_jlink_devices());
-
-        list.extend(list_espjtag_devices());
-
-        list.extend(wlink::list_wlink_devices());
-
-        list
-    }
-
-    /// Create a [`Probe`] from [`DebugProbeInfo`]. Use the
-    /// [`Probe::list_all()`] function to get the information
-    /// about all probes available.
-    #[tracing::instrument(skip_all)]
-    pub fn open(selector: impl Into<DebugProbeSelector> + Clone) -> Result<Self, DebugProbeError> {
+    pub fn open(selector: impl Into<DebugProbeSelector>) -> Result<Probe, DebugProbeError> {
+        let selector = selector.into();
         match cmsisdap::CmsisDap::new_from_selector(selector.clone()) {
             Ok(link) => return Ok(Probe::from_specific_probe(link)),
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
@@ -301,6 +256,76 @@ impl Probe {
         Err(DebugProbeError::ProbeCouldNotBeCreated(
             ProbeCreationError::NotFound,
         ))
+    }
+
+    pub fn list_all() -> Vec<DebugProbeInfo<Self>> {
+        let mut list = cmsisdap::tools::list_cmsisdap_devices();
+        #[cfg(feature = "ftdi")]
+        {
+            list.extend(ftdi::list_ftdi_devices());
+        }
+        list.extend(stlink::tools::list_stlink_devices());
+
+        list.extend(list_jlink_devices());
+
+        list.extend(list_espjtag_devices());
+
+        list.extend(wlink::list_wlink_devices());
+
+        list
+    }
+}
+
+pub fn list_all_probes() -> Vec<DebugProbeInfo<AllProbesLister>> {
+    AllProbesLister::list_all()
+}
+
+/// The Probe struct is a generic wrapper over the different
+/// probes supported.
+///
+/// # Examples
+///
+/// ## Open the first probe found
+///
+/// The `list_all` and `from_probe_info` functions can be used
+/// to create a new `Probe`:
+///
+/// ```no_run
+/// use probe_rs::{AllProbesLister, Probe, ProbeLister};
+///
+/// let lister = AllProbesLister::new();
+///
+/// let probe_list = lister.list_all();
+/// let probe = lister.open(&probe_list[0]);
+/// ```
+#[derive(Debug)]
+pub struct Probe {
+    inner: Box<dyn DebugProbe>,
+    attached: bool,
+}
+
+impl Probe {
+    /// Create a new probe from a more specific probe driver.
+    pub fn new(probe: impl DebugProbe + 'static) -> Self {
+        Self {
+            inner: Box::new(probe),
+            attached: false,
+        }
+    }
+
+    pub(crate) fn from_attached_probe(probe: Box<dyn DebugProbe>) -> Self {
+        Self {
+            inner: probe,
+            attached: true,
+        }
+    }
+
+    /// Same as [`Probe::new`] but without automatic boxing in case you already have a box.
+    pub fn from_specific_probe(probe: Box<dyn DebugProbe>) -> Self {
+        Probe {
+            inner: probe,
+            attached: false,
+        }
     }
 
     /// Get the human readable name for the probe.
@@ -673,7 +698,7 @@ pub trait DebugProbe: Send + fmt::Debug {
 }
 
 /// Denotes the type of a given [`DebugProbe`].
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub enum DebugProbeType {
     /// CMSIS-DAP
     CmsisDap,
@@ -690,8 +715,8 @@ pub enum DebugProbeType {
 }
 
 /// Gathers some information about a debug probe which was found during a scan.
-#[derive(Clone, PartialEq, Eq)]
-pub struct DebugProbeInfo {
+#[derive(PartialEq, Eq)]
+pub struct DebugProbeInfo<L: ProbeLister> {
     /// The name of the debug probe.
     pub identifier: String,
     /// The USB vendor ID of the debug probe.
@@ -706,9 +731,25 @@ pub struct DebugProbeInfo {
     /// The USB HID interface which should be used.
     /// This is necessary for composite HID devices.
     pub hid_interface: Option<u8>,
+
+    lister: PhantomData<L>,
 }
 
-impl std::fmt::Debug for DebugProbeInfo {
+impl<L: ProbeLister> Clone for DebugProbeInfo<L> {
+    fn clone(&self) -> Self {
+        Self {
+            identifier: self.identifier.clone(),
+            vendor_id: self.vendor_id.clone(),
+            product_id: self.product_id.clone(),
+            serial_number: self.serial_number.clone(),
+            probe_type: self.probe_type.clone(),
+            hid_interface: self.hid_interface.clone(),
+            lister: self.lister.clone(),
+        }
+    }
+}
+
+impl<L: ProbeLister> std::fmt::Debug for DebugProbeInfo<L> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
@@ -724,7 +765,7 @@ impl std::fmt::Debug for DebugProbeInfo {
     }
 }
 
-impl DebugProbeInfo {
+impl<L: ProbeLister> DebugProbeInfo<L> {
     /// Creates a new info struct that uniquely identifies a probe.
     pub fn new<S: Into<String>>(
         identifier: S,
@@ -741,12 +782,14 @@ impl DebugProbeInfo {
             serial_number,
             probe_type,
             hid_interface: usb_hid_interface,
+
+            lister: PhantomData,
         }
     }
 
     /// Open the probe described by this `DebugProbeInfo`.
-    pub fn open(&self) -> Result<Probe, DebugProbeError> {
-        Probe::open(self)
+    pub fn open(&self, lister: &L) -> Result<Probe, DebugProbeError> {
+        lister.open(self)
     }
 }
 
@@ -822,8 +865,8 @@ impl std::str::FromStr for DebugProbeSelector {
     }
 }
 
-impl From<DebugProbeInfo> for DebugProbeSelector {
-    fn from(selector: DebugProbeInfo) -> Self {
+impl<L: ProbeLister> From<DebugProbeInfo<L>> for DebugProbeSelector {
+    fn from(selector: DebugProbeInfo<L>) -> Self {
         DebugProbeSelector {
             vendor_id: selector.vendor_id,
             product_id: selector.product_id,
@@ -832,8 +875,8 @@ impl From<DebugProbeInfo> for DebugProbeSelector {
     }
 }
 
-impl From<&DebugProbeInfo> for DebugProbeSelector {
-    fn from(selector: &DebugProbeInfo) -> Self {
+impl<L: ProbeLister> From<&DebugProbeInfo<L>> for DebugProbeSelector {
+    fn from(selector: &DebugProbeInfo<L>) -> Self {
         DebugProbeSelector {
             vendor_id: selector.vendor_id,
             product_id: selector.product_id,

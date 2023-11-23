@@ -4,11 +4,12 @@
 mod debug_adapter;
 mod peripherals;
 mod server;
+mod test;
 
 use anyhow::{Context, Result};
 use probe_rs::{
     architecture::arm::ap::AccessPortError, flashing::FileDownloadError, CoreDumpError,
-    DebugProbeError, Error,
+    DebugProbeError, Error, ProbeLister,
 };
 use server::startup::debug;
 use std::{env::var, fs::File, io::stderr};
@@ -79,10 +80,16 @@ pub struct Cmd {
     single_session: bool,
 }
 
-pub fn run(cmd: Cmd, time_offset: UtcOffset) -> Result<()> {
+pub fn run(cmd: Cmd, lister: &impl ProbeLister, time_offset: UtcOffset) -> Result<()> {
     let log_info_message = setup_logging(time_offset)?;
 
-    debug(cmd.port, cmd.single_session, &log_info_message, time_offset)
+    debug(
+        lister,
+        cmd.port,
+        cmd.single_session,
+        &log_info_message,
+        time_offset,
+    )
 }
 
 /// Setup logging, according to the following rules.

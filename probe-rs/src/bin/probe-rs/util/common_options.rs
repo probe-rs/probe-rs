@@ -40,8 +40,8 @@ use clap;
 use probe_rs::{
     config::{RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError},
-    DebugProbeError, DebugProbeSelector, FakeProbe, Permissions, Probe, Session, Target,
-    WireProtocol,
+    DebugProbeError, DebugProbeSelector, FakeProbe, Permissions, Probe, ProbeLister, Session,
+    Target, WireProtocol,
 };
 use serde::{Deserialize, Serialize};
 
@@ -160,11 +160,14 @@ impl ProbeOptions {
 
     /// Convenience method that attaches to the specified probe, target,
     /// and target session.
-    pub fn simple_attach(self) -> Result<(Session, LoadedProbeOptions), OperationError> {
+    pub fn simple_attach(
+        self,
+        lister: &impl ProbeLister,
+    ) -> Result<(Session, LoadedProbeOptions), OperationError> {
         let common_options = self.load()?;
 
         let target = common_options.get_target_selector()?;
-        let probe = common_options.attach_probe()?;
+        let probe = common_options.attach_probe(lister)?;
         let session = common_options.attach_session(probe, target)?;
 
         Ok((session, common_options))
@@ -227,7 +230,7 @@ impl LoadedProbeOptions {
     }
 
     /// Attaches to specified probe and configures it.
-    pub fn attach_probe(&self) -> Result<Probe, OperationError> {
+    pub fn attach_probe(&self, lister: &impl ProbeLister) -> Result<Probe, OperationError> {
         let mut probe = {
             if self.0.dry_run {
                 Probe::from_specific_probe(Box::new(FakeProbe::new()));
@@ -236,19 +239,19 @@ impl LoadedProbeOptions {
             // If we got a probe selector as an argument, open the probe
             // matching the selector if possible.
             match &self.0.probe_selector {
-                Some(selector) => {
-                    Probe::open(selector.clone()).map_err(OperationError::FailedToOpenProbe)
-                }
+                Some(selector) => lister
+                    .open(selector.clone())
+                    .map_err(OperationError::FailedToOpenProbe),
                 None => {
                     // Only automatically select a probe if there is
                     // only a single probe detected.
-                    let list = Probe::list_all();
+                    let list = lister.list_all();
                     if list.len() > 1 {
                         return Err(OperationError::MultipleProbesFound { number: list.len() });
                     }
 
                     if let Some(info) = list.first() {
-                        Probe::open(info).map_err(OperationError::FailedToOpenProbe)
+                        lister.open(info).map_err(OperationError::FailedToOpenProbe)
                     } else {
                         Err(OperationError::NoProbesFound)
                     }

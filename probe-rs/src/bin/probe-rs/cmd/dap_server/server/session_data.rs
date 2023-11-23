@@ -12,7 +12,7 @@ use anyhow::{anyhow, Result};
 use probe_rs::{
     config::TargetSelector,
     debug::{debug_info::DebugInfo, SourceLocation},
-    CoreStatus, DebugProbeError, Permissions, Probe, ProbeCreationError, Session,
+    CoreStatus, DebugProbeError, Permissions, Probe, ProbeCreationError, ProbeLister, Session,
 };
 use std::env::set_current_dir;
 use time::UtcOffset;
@@ -61,12 +61,13 @@ pub(crate) struct SessionData {
 
 impl SessionData {
     pub(crate) fn new(
+        lister: &impl ProbeLister,
         config: &mut configuration::SessionConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<Self, DebuggerError> {
         // `SessionConfig` Probe/Session level configurations initialization.
         let mut target_probe = match config.probe_selector.clone() {
-            Some(selector) => Probe::open(selector.clone()).map_err(|e| match e {
+            Some(selector) => lister.open(selector.clone()).map_err(|e| match e {
                 DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound) => {
                     DebuggerError::Other(anyhow!(
                         "Could not find the probe_selector specified as {:04x}:{:04x}:{:?}",
@@ -79,7 +80,7 @@ impl SessionData {
             }),
             None => {
                 // Only automatically select a probe if there is only a single probe detected.
-                let list = Probe::list_all();
+                let list = lister.list_all();
                 if list.len() > 1 {
                     return Err(DebuggerError::Other(anyhow!(
                         "Found multiple ({}) probes",
@@ -88,7 +89,7 @@ impl SessionData {
                 }
 
                 if let Some(info) = list.first() {
-                    Probe::open(info).map_err(DebuggerError::DebugProbe)
+                    lister.open(info).map_err(DebuggerError::DebugProbe)
                 } else {
                     return Err(DebuggerError::Other(anyhow!(
                         "No probes found. Please check your USB connections."

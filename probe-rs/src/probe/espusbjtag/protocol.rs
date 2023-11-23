@@ -4,7 +4,7 @@ use bitvec::{prelude::*, slice::BitSlice, vec::BitVec};
 use rusb::{request_type, Context, Device, Direction, TransferType, UsbContext};
 
 use crate::{
-    DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, ProbeCreationError,
+    DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, ProbeCreationError, probe::ProbeLister,
 };
 
 const JTAG_PROTOCOL_CAPABILITIES_VERSION: u8 = 1;
@@ -516,7 +516,7 @@ pub(super) fn is_espjtag_device<T: UsbContext>(device: &Device<T>) -> bool {
 }
 
 #[tracing::instrument(skip_all)]
-pub fn list_espjtag_devices() -> Vec<DebugProbeInfo> {
+pub fn list_espjtag_devices<L: ProbeLister>() -> Vec<DebugProbeInfo<L>> {
     rusb::Context::new()
         .and_then(|context| context.devices())
         .map_or(vec![], |devices| {

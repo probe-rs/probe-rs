@@ -334,7 +334,7 @@ pub(crate) fn halt_core(
 ) -> Result<probe_rs::CoreInformation, DebuggerError> {
     match target_core.halt(Duration::from_millis(100)) {
         Ok(cpu_info) => Ok(cpu_info),
-        Err(error) => Err(DebuggerError::Other(anyhow!("{}", error))),
+        Err(error) => Err(DebuggerError::Other(anyhow!("{:#}", error))),
     }
 }
 

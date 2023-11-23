@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use rusb::{DeviceHandle, UsbContext};
 
-use crate::{DebugProbeError, DebugProbeSelector, ProbeCreationError};
+use crate::{probe::AllProbesLister, DebugProbeError, DebugProbeSelector, ProbeCreationError};
 
 use super::{commands::WchLinkCommand, get_wlink_info, WchLinkError};
 
@@ -38,7 +38,7 @@ impl WchLinkUsbDevice {
                     })
                     .unwrap_or(false)
             })
-            .find(|device| get_wlink_info(device).is_some())
+            .find(|device| get_wlink_info::<AllProbesLister>(device).is_some())
             .map_or(Err(ProbeCreationError::NotFound), Ok)?;
 
         let mut device_handle = device.open()?;

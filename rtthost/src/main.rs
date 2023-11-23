@@ -1,6 +1,6 @@
 use probe_rs::rtt::{Channels, Rtt, RttChannel, ScanRegion};
-use probe_rs::Permissions;
 use probe_rs::{config::TargetSelector, DebugProbeInfo, Probe};
+use probe_rs::{AllProbesLister, Permissions, ProbeLister};
 
 use clap::Parser;
 use std::io::prelude::*;
@@ -110,7 +110,9 @@ fn main() {
 fn run() -> i32 {
     let opts = Opts::parse();
 
-    let probes = Probe::list_all();
+    let lister = AllProbesLister::new();
+
+    let probes = lister.list_all();
 
     if probes.is_empty() {
         eprintln!("No debug probes available. Make sure your probe is plugged in, supported and up-to-date.");
@@ -131,7 +133,7 @@ fn run() -> i32 {
         return 1;
     }
 
-    let probe = match probes[probe_number].open() {
+    let probe = match probes[probe_number].open(&lister) {
         Ok(probe) => probe,
         Err(err) => {
             eprintln!("Error opening probe: {err}");
@@ -266,7 +268,7 @@ fn run() -> i32 {
     }
 }
 
-fn list_probes(mut stream: impl std::io::Write, probes: &[DebugProbeInfo]) {
+fn list_probes<L: ProbeLister>(mut stream: impl std::io::Write, probes: &[DebugProbeInfo<L>]) {
     writeln!(stream, "Available probes:").unwrap();
 
     for (i, probe) in probes.iter().enumerate() {
