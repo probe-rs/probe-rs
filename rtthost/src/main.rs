@@ -94,6 +94,9 @@ struct Opts {
     )]
     down: Option<usize>,
 
+    #[clap(short, long, help = "Reset the target after RTT session was opened")]
+    reset: bool,
+
     #[clap(
         long,
         default_value="",
@@ -212,6 +215,10 @@ fn main() -> Result<()> {
 
     let mut up_buf = [0u8; 1024];
     let mut down_buf = vec![];
+
+    if opts.reset {
+        core.reset()?;
+    }
 
     loop {
         if let Some(up_channel) = up_channel.as_ref() {
