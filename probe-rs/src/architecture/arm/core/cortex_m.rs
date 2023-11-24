@@ -214,9 +214,9 @@ pub(crate) fn check_for_semihosting(
             let r1: u32 = core.read_core_reg(RegisterId(1))?.try_into()?;
             tracing::info!("Semihosting found pc={pc:#x} r0={r0:#x} r1={r1:#x}");
 
-            if let Some(command) = decode_semihosting_syscall(r0, r1) {
-                reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(command));
-            }
+            reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(
+                decode_semihosting_syscall(r0, r1),
+            ));
         }
     }
     Ok(reason)

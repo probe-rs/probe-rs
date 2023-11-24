@@ -158,6 +158,12 @@ fn run_loop(
         // this is important so we do one last poll after halt, so we flush all messages
         // the core printed before halting, such as a panic message.
         match core.status()? {
+            probe_rs::CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
+                SemihostingCommand::Unknown { operation },
+            ))) => {
+                tracing::error!("Target wanted to run semihosting operation {:#x}, but probe-rs does not support this operation yet. Continuing...", operation);
+                core.run()?;
+            }
             probe_rs::CoreStatus::Halted(r) => halt_reason = Some(r),
             probe_rs::CoreStatus::Running
             | probe_rs::CoreStatus::LockedUp
