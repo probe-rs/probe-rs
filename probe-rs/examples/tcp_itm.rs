@@ -1,5 +1,5 @@
 use probe_rs::architecture::arm::{component::TraceSink, swo::SwoConfig};
-use probe_rs::{AllProbesLister, Error, Permissions, ProbeLister};
+use probe_rs::{Error, Lister, Permissions};
 
 use itm::{Decoder, DecoderOptions, TracePacket};
 
@@ -12,7 +12,7 @@ use std::{any::Any, io::prelude::*};
 fn main() -> Result<(), Error> {
     pretty_env_logger::init();
 
-    let lister = AllProbesLister::new();
+    let lister = Lister::new();
 
     // Get a list of all available debug probes.
     let probes = lister.list_all();

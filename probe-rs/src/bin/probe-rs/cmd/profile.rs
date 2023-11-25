@@ -12,7 +12,7 @@ use probe_rs::{
         DpAddress, SwoConfig,
     },
     flashing::{FileDownloadError, Format},
-    ProbeLister,
+    Lister,
 };
 use time::Instant;
 
@@ -73,7 +73,7 @@ impl core::fmt::Display for ProfileMethod {
 }
 
 impl ProfileCmd {
-    pub fn run(self, lister: &impl ProbeLister) -> anyhow::Result<()> {
+    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
         let (mut session, probe_options) = self.run.probe_options.simple_attach(lister)?;
 
         let mut file = match File::open(&self.run.path) {

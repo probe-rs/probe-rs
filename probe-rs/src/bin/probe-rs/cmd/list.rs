@@ -1,10 +1,10 @@
-use probe_rs::ProbeLister;
+use probe_rs::Lister;
 
 #[derive(clap::Parser)]
 pub struct Cmd {}
 
 impl Cmd {
-    pub fn run(self, lister: &impl ProbeLister) -> anyhow::Result<()> {
+    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
         let probes = lister.list_all();
 
         if !probes.is_empty() {

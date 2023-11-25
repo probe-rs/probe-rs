@@ -6,7 +6,7 @@
 use anyhow::{bail, ensure, Context, Result};
 use probe_rs::{
     config::{get_target_by_name, search_chips},
-    AllProbesLister, DebugProbeSelector, Probe, ProbeLister, Target,
+    DebugProbeSelector, Lister, Probe, Target,
 };
 use serde::Deserialize;
 use std::{
@@ -143,7 +143,7 @@ impl DutDefinition {
     }
 
     pub fn open_probe(&self) -> Result<Probe> {
-        let lister = AllProbesLister::new();
+        let lister = Lister::new();
 
         match &self.probe_selector {
             Some(selector) => {

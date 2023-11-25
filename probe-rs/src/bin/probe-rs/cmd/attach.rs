@@ -1,4 +1,4 @@
-use probe_rs::ProbeLister;
+use probe_rs::Lister;
 use time::UtcOffset;
 
 #[derive(clap::Parser)]
@@ -9,7 +9,7 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self, lister: &impl ProbeLister, timestamp_offset: UtcOffset) -> anyhow::Result<()> {
+    pub fn run(self, lister: &Lister, timestamp_offset: UtcOffset) -> anyhow::Result<()> {
         self.run.run(lister, false, timestamp_offset)?;
 
         Ok(())

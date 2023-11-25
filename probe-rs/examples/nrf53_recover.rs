@@ -1,13 +1,13 @@
 use anyhow::Result;
 use probe_rs::{
     architecture::arm::{ApAddress, DpAddress},
-    AllProbesLister, ProbeLister,
+    Lister,
 };
 
 fn main() -> Result<()> {
     pretty_env_logger::init();
 
-    let lister = AllProbesLister::new();
+    let lister = Lister::new();
 
     // Get a list of all available debug probes.
     let probes = lister.list_all();

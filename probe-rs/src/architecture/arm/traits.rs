@@ -51,6 +51,7 @@ pub struct ApAddress {
 }
 
 impl ApAddress {
+    /// Create a new `ApAddress` belonging to the default debug port.
     pub fn with_default_dp(ap: u8) -> Self {
         Self {
             dp: DpAddress::Default,

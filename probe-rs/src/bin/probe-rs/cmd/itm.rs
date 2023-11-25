@@ -1,7 +1,7 @@
 //! Provides ITM tracing capabilities.
 
 use probe_rs::architecture::arm::{component::TraceSink, swo::SwoConfig};
-use probe_rs::ProbeLister;
+use probe_rs::Lister;
 
 use crate::util::common_options::ProbeOptions;
 use crate::CoreOptions;
@@ -66,7 +66,7 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self, lister: &impl ProbeLister) -> anyhow::Result<()> {
+    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
         let (mut session, _probe_options) = self.common.simple_attach(lister)?;
 
         match self.source {

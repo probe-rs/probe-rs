@@ -1,6 +1,6 @@
 use probe_rs::rtt::{Channels, Rtt, RttChannel, ScanRegion};
 use probe_rs::{config::TargetSelector, DebugProbeInfo};
-use probe_rs::{AllProbesLister, Permissions, ProbeLister};
+use probe_rs::{Lister, Permissions};
 
 use anyhow::{bail, Result};
 use clap::Parser;
@@ -109,7 +109,7 @@ fn main() -> Result<()> {
     pretty_env_logger::init();
     let opts = Opts::parse();
 
-    let lister = AllProbesLister::new();
+    let lister = Lister::new();
 
     let probes = lister.list_all();
 

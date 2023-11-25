@@ -4,7 +4,7 @@ use std::{
 };
 
 use anyhow::Context;
-use probe_rs::{MemoryInterface, ProbeLister};
+use probe_rs::{Lister, MemoryInterface};
 use rand::prelude::*;
 
 use crate::util::common_options::LoadedProbeOptions;
@@ -84,7 +84,7 @@ struct TestData {
 }
 
 impl Cmd {
-    pub fn run(self, lister: &impl ProbeLister) -> anyhow::Result<()> {
+    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
         let speed = self.common.speed;
         let common_options = self.common.load()?;
         let mut max_speed = self.max_speed;
@@ -129,10 +129,7 @@ impl Cmd {
     }
 
     /// Print probe and target info
-    fn print_info(
-        common_options: &LoadedProbeOptions,
-        lister: &impl ProbeLister,
-    ) -> anyhow::Result<()> {
+    fn print_info(common_options: &LoadedProbeOptions, lister: &Lister) -> anyhow::Result<()> {
         let probe = common_options.attach_probe(lister)?;
         let protocol_name = probe
             .protocol()
@@ -153,7 +150,7 @@ impl Cmd {
     /// Run a specific benchmark
     fn benchmark(
         common_options: &LoadedProbeOptions,
-        lister: &impl ProbeLister,
+        lister: &Lister,
         speed: u32,
         size: usize,
         address: u64,

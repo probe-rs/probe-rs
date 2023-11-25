@@ -1,4 +1,4 @@
-use probe_rs::{MemoryInterface, ProbeLister};
+use probe_rs::{Lister, MemoryInterface};
 
 use crate::util::common_options::{ProbeOptions, ReadWriteBitWidth, ReadWriteOptions};
 use crate::util::parse_u64;
@@ -29,7 +29,7 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self, lister: &impl ProbeLister) -> anyhow::Result<()> {
+    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
         let (mut session, _probe_options) = self.probe_options.simple_attach(lister)?;
         let mut core = session.core(self.shared.core)?;
 

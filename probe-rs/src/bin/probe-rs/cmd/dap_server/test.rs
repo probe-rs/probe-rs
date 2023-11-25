@@ -1,4 +1,4 @@
-use std::{cell::RefCell};
+use std::cell::RefCell;
 
 use probe_rs::{
     DebugProbeError, DebugProbeInfo, DebugProbeSelector, FakeProbe, Probe, ProbeLister,

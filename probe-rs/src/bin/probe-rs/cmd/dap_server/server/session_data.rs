@@ -12,8 +12,8 @@ use anyhow::{anyhow, Result};
 use probe_rs::{
     config::TargetSelector,
     debug::{debug_info::DebugInfo, DebugRegisters, SourceLocation},
-    exception_handler_for_core, CoreStatus, DebugProbeError, Permissions, ProbeCreationError,
-    ProbeLister, Session,
+    exception_handler_for_core, CoreStatus, DebugProbeError, Lister, Permissions,
+    ProbeCreationError, Session,
 };
 use std::env::set_current_dir;
 use time::UtcOffset;
@@ -62,7 +62,7 @@ pub(crate) struct SessionData {
 
 impl SessionData {
     pub(crate) fn new(
-        lister: &impl ProbeLister,
+        lister: &Lister,
         config: &mut configuration::SessionConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<Self, DebuggerError> {
@@ -90,7 +90,7 @@ impl SessionData {
                 }
 
                 if let Some(info) = list.first() {
-                    lister.open(&info.into()).map_err(DebuggerError::DebugProbe)
+                    lister.open(info).map_err(DebuggerError::DebugProbe)
                 } else {
                     return Err(DebuggerError::Other(anyhow!(
                         "No probes found. Please check your USB connections."

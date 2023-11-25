@@ -2,7 +2,7 @@ mod diagnostics;
 
 use colored::*;
 use diagnostics::render_diagnostics;
-use probe_rs::{AllProbesLister, ProbeLister};
+use probe_rs::Lister;
 use std::ffi::OsString;
 use std::{path::PathBuf, process};
 
@@ -13,9 +13,9 @@ use clap::{CommandFactory, FromArgMatches};
 use crate::util::{build_artifact, logging};
 
 pub fn main(args: Vec<OsString>) {
-    let lister = AllProbesLister::new();
+    let lister = Lister::new();
 
-    match main_try(args, lister) {
+    match main_try(args, &lister) {
         Ok(_) => (),
         Err(e) => {
             // Ensure stderr is flushed before calling process::exit,
@@ -30,7 +30,7 @@ pub fn main(args: Vec<OsString>) {
     }
 }
 
-fn main_try(mut args: Vec<OsString>, lister: impl ProbeLister) -> Result<(), OperationError> {
+fn main_try(mut args: Vec<OsString>, lister: &Lister) -> Result<(), OperationError> {
     // When called by Cargo, the first argument after the binary name will be `flash`. If that's the
     // case, remove one argument (`Opt::from_iter` will remove the binary name by itself).
     if args.get(1).and_then(|t| t.to_str()) == Some("flash") {
@@ -95,7 +95,7 @@ fn main_try(mut args: Vec<OsString>, lister: impl ProbeLister) -> Result<(), Ope
     ));
 
     // Attach to specified probe
-    let (mut session, probe_options) = opt.probe_options.simple_attach(&lister)?;
+    let (mut session, probe_options) = opt.probe_options.simple_attach(lister)?;
 
     // Flash the binary
     let loader = flash::build_loader(&mut session, &path, opt.format_options).unwrap();

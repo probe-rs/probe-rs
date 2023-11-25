@@ -4,8 +4,7 @@ use bitvec::{prelude::*, slice::BitSlice, vec::BitVec};
 use rusb::{request_type, Context, Device, Direction, TransferType, UsbContext};
 
 use crate::{
-    probe::ProbeLister, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType,
-    ProbeCreationError,
+    DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, ProbeCreationError,
 };
 
 const JTAG_PROTOCOL_CAPABILITIES_VERSION: u8 = 1;

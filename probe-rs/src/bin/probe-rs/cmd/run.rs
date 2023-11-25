@@ -10,8 +10,8 @@ use anyhow::{anyhow, Context, Result};
 use probe_rs::debug::{DebugInfo, DebugRegisters};
 use probe_rs::flashing::{FileDownloadError, Format};
 use probe_rs::{
-    exception_handler_for_core, BreakpointCause, Core, CoreInterface, Error, HaltReason,
-    ProbeLister, SemihostingCommand, VectorCatchCondition,
+    exception_handler_for_core, BreakpointCause, Core, CoreInterface, Error, HaltReason, Lister,
+    SemihostingCommand, VectorCatchCondition,
 };
 use probe_rs_target::MemoryRegion;
 use signal_hook::consts::signal;
@@ -57,7 +57,7 @@ pub struct Cmd {
 impl Cmd {
     pub fn run(
         self,
-        lister: &impl ProbeLister,
+        lister: &Lister,
         run_download: bool,
         timestamp_offset: UtcOffset,
     ) -> Result<()> {

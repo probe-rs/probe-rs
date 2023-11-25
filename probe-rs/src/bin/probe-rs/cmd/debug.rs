@@ -14,7 +14,7 @@ use probe_rs::exception_handler_for_core;
 use probe_rs::flashing::FileDownloadError;
 use probe_rs::CoreDumpError;
 use probe_rs::DebugProbeError;
-use probe_rs::ProbeLister;
+use probe_rs::Lister;
 use probe_rs::{
     debug::{debug_info::DebugInfo, registers::DebugRegisters, stack_frame::StackFrame},
     Core, CoreType, InstructionSet, MemoryInterface, RegisterValue,
@@ -37,7 +37,7 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self, lister: &impl ProbeLister) -> anyhow::Result<()> {
+    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
         let (mut session, _probe_options) = self.common.simple_attach(lister)?;
 
         let di = self

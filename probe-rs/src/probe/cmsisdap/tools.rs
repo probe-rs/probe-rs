@@ -1,6 +1,6 @@
 use super::CmsisDapDevice;
 use crate::{
-    probe::{DebugProbeInfo, DebugProbeType, ProbeCreationError, ProbeLister},
+    probe::{DebugProbeInfo, DebugProbeType, ProbeCreationError},
     DebugProbeSelector,
 };
 use hidapi::HidApi;

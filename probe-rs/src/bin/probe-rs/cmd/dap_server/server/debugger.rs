@@ -21,7 +21,7 @@ use crate::cmd::dap_server::{
 use anyhow::{anyhow, Context};
 use probe_rs::{
     flashing::{download_file_with_options, DownloadOptions, FlashProgress},
-    Architecture, CoreStatus, ProbeLister,
+    Architecture, CoreStatus, Lister,
 };
 use std::{
     cell::RefCell,
@@ -300,7 +300,7 @@ impl Debugger {
         &mut self,
         mut debug_adapter: DebugAdapter<P>,
         log_info_message: &str,
-        lister: &impl ProbeLister,
+        lister: &Lister,
     ) -> Result<DebugSessionStatus, DebuggerError> {
         debug_adapter.log_to_console("Starting debug session...");
         debug_adapter.log_to_console(log_info_message);
@@ -382,7 +382,7 @@ impl Debugger {
         &mut self,
         launch_attach_request: &Request,
         mut debug_adapter: DebugAdapter<P>,
-        lister: &impl ProbeLister,
+        lister: &Lister,
     ) -> Result<(DebugAdapter<P>, SessionData), DebuggerError> {
         let requested_target_session_type = match launch_attach_request.command.as_str() {
             "attach" => TargetSessionType::AttachRequest,
@@ -921,14 +921,12 @@ mod test {
     use std::path::PathBuf;
 
     use probe_rs::architecture::arm::ApAddress;
-    use probe_rs::ProbeOperation;
     use probe_rs::{DebugProbeInfo, FakeProbe};
+    use probe_rs::{Lister, ProbeOperation};
     use serde_json::json;
     use time::UtcOffset;
 
-    use crate::cmd::dap_server::debug_adapter::dap::dap_types::{
-        DisconnectArguments, DisconnectRequest,
-    };
+    use crate::cmd::dap_server::debug_adapter::dap::dap_types::DisconnectArguments;
     use crate::cmd::dap_server::server::configuration::CoreConfig;
     use crate::cmd::dap_server::{
         debug_adapter::{
@@ -1136,7 +1134,7 @@ mod test {
 
         let mut debugger = Debugger::new(UtcOffset::UTC);
 
-        let lister = TestLister::new();
+        let lister = Lister::with_lister(Box::new(TestLister::new()));
 
         // TODO: Check proper return value
         debugger
@@ -1231,7 +1229,7 @@ mod test {
 
         let mut debugger = Debugger::new(UtcOffset::UTC);
 
-        let lister = TestLister::new();
+        let lister = Lister::with_lister(Box::new(TestLister::new()));
 
         let status = debugger
             .debug_session(debug_adapter, "initial info message", &lister)
@@ -1373,6 +1371,8 @@ mod test {
         });
 
         lister.probes.borrow_mut().push((probe_info, fake_probe));
+
+        let lister = Lister::with_lister(Box::new(lister));
 
         let status = debugger
             .debug_session(debug_adapter, "initial info message", &lister)

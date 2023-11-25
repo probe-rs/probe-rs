@@ -40,8 +40,8 @@ use clap;
 use probe_rs::{
     config::{RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError},
-    DebugProbeError, DebugProbeSelector, FakeProbe, Permissions, Probe, ProbeLister, Session,
-    Target, WireProtocol,
+    DebugProbeError, DebugProbeSelector, FakeProbe, Lister, Permissions, Probe, Session, Target,
+    WireProtocol,
 };
 use serde::{Deserialize, Serialize};
 
@@ -162,7 +162,7 @@ impl ProbeOptions {
     /// and target session.
     pub fn simple_attach(
         self,
-        lister: &impl ProbeLister,
+        lister: &Lister,
     ) -> Result<(Session, LoadedProbeOptions), OperationError> {
         let common_options = self.load()?;
 
@@ -230,7 +230,7 @@ impl LoadedProbeOptions {
     }
 
     /// Attaches to specified probe and configures it.
-    pub fn attach_probe(&self, lister: &impl ProbeLister) -> Result<Probe, OperationError> {
+    pub fn attach_probe(&self, lister: &Lister) -> Result<Probe, OperationError> {
         let mut probe = {
             if self.0.dry_run {
                 Probe::from_specific_probe(Box::new(FakeProbe::new()));
@@ -251,9 +251,7 @@ impl LoadedProbeOptions {
                     }
 
                     if let Some(info) = list.first() {
-                        lister
-                            .open(&info.into())
-                            .map_err(OperationError::FailedToOpenProbe)
+                        lister.open(info).map_err(OperationError::FailedToOpenProbe)
                     } else {
                         Err(OperationError::NoProbesFound)
                     }

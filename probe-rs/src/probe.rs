@@ -194,29 +194,50 @@ pub enum ProbeCreationError {
     Other(&'static str),
 }
 
-struct ProbeFactory {
+/// Struct to list all attached debug probes
+#[derive(Debug)]
+pub struct Lister {
     lister: Box<dyn ProbeLister>,
 }
 
-impl ProbeFactory {
-    fn new() -> Self {
+impl Lister {
+    /// Create a new lister with the default lister implementation.
+    pub fn new() -> Self {
         Self {
             lister: Box::new(AllProbesLister::new()),
         }
     }
 
-    fn open(&self, selector: impl Into<DebugProbeSelector>) -> Result<Probe, DebugProbeError> {
+    /// Create a new lister with a custom lister implementation.
+    pub fn with_lister(lister: Box<dyn ProbeLister>) -> Self {
+        Self { lister }
+    }
+
+    /// Try to open a probe using the given selector
+    pub fn open(&self, selector: impl Into<DebugProbeSelector>) -> Result<Probe, DebugProbeError> {
         self.lister.open(&selector.into())
     }
 
-    fn list_all(&self) -> Vec<DebugProbeInfo> {
+    /// List all available debug probes
+    pub fn list_all(&self) -> Vec<DebugProbeInfo> {
         self.lister.list_all()
     }
 }
 
-pub trait ProbeLister {
+impl Default for Lister {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Trait for a probe lister implementation.
+///
+/// This trait can be used to implement custom probe listers.
+pub trait ProbeLister: std::fmt::Debug {
+    /// Try to open a probe using the given selector
     fn open(&self, selector: &DebugProbeSelector) -> Result<Probe, DebugProbeError>;
 
+    /// List all probes found by the lister.
     fn list_all(&self) -> Vec<DebugProbeInfo>;
 }
 
@@ -244,7 +265,7 @@ impl AllProbesLister {
         Self
     }
 
-    pub fn open(selector: impl Into<DebugProbeSelector>) -> Result<Probe, DebugProbeError> {
+    fn open(selector: impl Into<DebugProbeSelector>) -> Result<Probe, DebugProbeError> {
         let selector = selector.into();
         match cmsisdap::CmsisDap::new_from_selector(selector.clone()) {
             Ok(link) => return Ok(Probe::from_specific_probe(link)),
@@ -283,7 +304,7 @@ impl AllProbesLister {
         ))
     }
 
-    pub fn list_all() -> Vec<DebugProbeInfo> {
+    fn list_all() -> Vec<DebugProbeInfo> {
         let mut list = cmsisdap::tools::list_cmsisdap_devices();
         #[cfg(feature = "ftdi")]
         {
@@ -301,10 +322,6 @@ impl AllProbesLister {
     }
 }
 
-pub fn list_all_probes() -> Vec<DebugProbeInfo> {
-    AllProbesLister::list_all()
-}
-
 /// The Probe struct is a generic wrapper over the different
 /// probes supported.
 ///
@@ -316,9 +333,9 @@ pub fn list_all_probes() -> Vec<DebugProbeInfo> {
 /// to create a new `Probe`:
 ///
 /// ```no_run
-/// use probe_rs::{AllProbesLister, Probe, ProbeLister};
+/// use probe_rs::{Lister, Probe};
 ///
-/// let lister = AllProbesLister::new();
+/// let lister = Lister::new();
 ///
 /// let probe_list = lister.list_all();
 /// let probe = probe_list[0].open(&lister);
@@ -808,8 +825,8 @@ impl DebugProbeInfo {
     }
 
     /// Open the probe described by this `DebugProbeInfo`.
-    pub fn open(&self, lister: &dyn ProbeLister) -> Result<Probe, DebugProbeError> {
-        lister.open(&self.into())
+    pub fn open(&self, lister: &Lister) -> Result<Probe, DebugProbeError> {
+        lister.open(DebugProbeSelector::from(self))
     }
 }
 

@@ -8,12 +8,12 @@ use colored::*;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::rtt::{Rtt, ScanRegion};
+use probe_rs::Lister;
 use probe_rs::{
     config::TargetSelector,
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
     DebugProbeSelector, Permissions, Session,
 };
-use probe_rs::{AllProbesLister, ProbeLister};
 use std::ffi::OsString;
 use std::{
     fs,
@@ -172,7 +172,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
         path.display()
     ));
 
-    let lister = AllProbesLister::new();
+    let lister = Lister::new();
 
     // If we got a probe selector in the config, open the probe matching the selector if possible.
     let mut probe = if let Some(ref selector) = opt.probe_selector {
@@ -186,7 +186,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
                     serial_number: config.probe.serial.clone(),
                 };
                 // if two probes with the same VID:PID pair exist we just choose one
-                lister.open(&selector)?
+                lister.open(selector)?
             }
             _ => {
                 if config.probe.usb_vid.is_some() {
@@ -214,10 +214,8 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
                 }
 
                 lister.open(
-                    &(list
-                        .first()
-                        .ok_or_else(|| anyhow!("No supported probe was found"))?
-                        .into()),
+                    list.first()
+                        .ok_or_else(|| anyhow!("No supported probe was found"))?,
                 )?
             }
         }

@@ -16,7 +16,7 @@ use crate::{
 };
 
 use self::{commands::Speed, usb_interface::WchLinkUsbDevice};
-use super::{JTAGAccess, ProbeLister};
+use super::JTAGAccess;
 
 mod commands;
 mod usb_interface;

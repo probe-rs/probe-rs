@@ -15,7 +15,7 @@ use probe_rs::{
         },
         riscv::communication_interface::RiscvCommunicationInterface,
     },
-    MemoryMappedRegister, Probe, ProbeLister, WireProtocol,
+    Lister, MemoryMappedRegister, Probe, WireProtocol,
 };
 use termtree::Tree;
 
@@ -28,7 +28,7 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self, lister: &impl ProbeLister) -> anyhow::Result<()> {
+    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
         let probe_options = self.common.load()?;
         let mut probe = probe_options.attach_probe(lister)?;
 

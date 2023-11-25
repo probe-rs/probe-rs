@@ -1,7 +1,7 @@
 use super::debugger::{DebugSessionStatus, Debugger};
 use crate::cmd::dap_server::debug_adapter::{dap::adapter::*, protocol::DapAdapter};
 use anyhow::{Context, Result};
-use probe_rs::{ProbeLister};
+use probe_rs::Lister;
 use serde::Deserialize;
 use std::{
     fs,
@@ -32,7 +32,7 @@ impl std::str::FromStr for TargetSessionType {
 }
 
 pub fn debug(
-    lister: &impl ProbeLister,
+    lister: &Lister,
     port: u16,
     single_session: bool,
     log_info_message: &str,

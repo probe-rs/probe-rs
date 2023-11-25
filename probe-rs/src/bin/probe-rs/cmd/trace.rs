@@ -3,8 +3,8 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::time::Instant;
 
+use probe_rs::Lister;
 use probe_rs::MemoryInterface;
-use probe_rs::ProbeLister;
 use scroll::{Pwrite, LE};
 
 use crate::util::{common_options::ProbeOptions, parse_u64};
@@ -24,7 +24,7 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self, lister: &impl ProbeLister) -> anyhow::Result<()> {
+    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
         let mut xs = vec![];
         let mut ys = vec![];
 

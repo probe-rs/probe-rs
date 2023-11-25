@@ -1,3 +1,4 @@
+#![allow(missing_docs)] // Don't require docs for test code
 use std::{cell::RefCell, collections::VecDeque, fmt::Debug, sync::Arc};
 
 use probe_rs_target::ScanChainElement;
@@ -33,22 +34,21 @@ pub struct FakeProbe {
 
     operations: RefCell<VecDeque<Operation>>,
 
-    memory_ap: Mockery,
+    memory_ap: MockedAp,
 }
 
-enum Mockery {
+enum MockedAp {
+    /// Mock a memory AP
     MemoryAp(MockMemoryAp),
+    /// Mock an ARM core behind a memory AP
     Core(MockCore),
 }
 
 struct MockCore {
     dhcsr: Dhcsr,
 
-    // Is the core halted?
+    /// Is the core halted?
     halted: bool,
-
-    // Is the value in the DCRDR ready?
-    reg_rdy: bool,
 }
 
 impl MockCore {
@@ -56,7 +56,6 @@ impl MockCore {
         Self {
             dhcsr: Dhcsr(0),
             halted: false,
-            reg_rdy: true,
         }
     }
 }
@@ -94,9 +93,9 @@ impl ArmProbe for &mut MockCore {
                         dhcsr |= 1 << 17;
                     }
 
-                    if self.reg_rdy {
-                        dhcsr |= 1 << 16;
-                    }
+                    // Always set S_REGRDY, and say that a register value can
+                    // be read.
+                    dhcsr |= 1 << 16;
 
                     *val = dhcsr;
                     println!("READ  DHCSR: {:#x} = {:?}", address, val);
@@ -209,7 +208,7 @@ impl FakeProbe {
 
             operations: RefCell::new(VecDeque::new()),
 
-            memory_ap: Mockery::MemoryAp(MockMemoryAp::with_pattern()),
+            memory_ap: MockedAp::MemoryAp(MockMemoryAp::with_pattern()),
         }
     }
 
@@ -225,7 +224,7 @@ impl FakeProbe {
 
             operations: RefCell::new(VecDeque::new()),
 
-            memory_ap: Mockery::Core(MockCore::new()),
+            memory_ap: MockedAp::Core(MockCore::new()),
         }
     }
 
@@ -275,7 +274,7 @@ impl FakeProbe {
                 Ok(result)
             }
             None => panic!("No more operations expected, but got read_raw_ap_register ap={expected_ap:?}, address:{expected_address}"),
-            other => panic!("Unexpected operation: {:?}", other),
+            //other => panic!("Unexpected operation: {:?}", other),
         }
     }
 
@@ -512,13 +511,13 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
         };
 
         match self.probe.memory_ap {
-            Mockery::MemoryAp(ref mut memory_ap) => {
+            MockedAp::MemoryAp(ref mut memory_ap) => {
                 let memory = ADIMemoryInterface::new(memory_ap, ap_information)
                     .map_err(|e| ArmError::from_access_port(e, access_port))?;
 
                 Ok(Box::new(memory) as _)
             }
-            Mockery::Core(ref mut core) => Ok(Box::new(core) as _),
+            MockedAp::Core(ref mut core) => Ok(Box::new(core) as _),
         }
     }
 

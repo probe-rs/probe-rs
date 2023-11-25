@@ -12,10 +12,10 @@
 //! ## Halting the attached chip
 //! ```no_run
 //! # use probe_rs::Error;
-//! use probe_rs::{Probe, Permissions, ProbeLister, AllProbesLister};
+//! use probe_rs::{Lister, Probe, Permissions};
 //!
 //! // Get a list of all available debug probes.
-//! let lister = AllProbesLister::new();
+//! let lister = Lister::new();
 //!
 //! let probes = lister.list_all();
 //!
@@ -102,10 +102,13 @@ pub use crate::core::{
 pub use crate::error::Error;
 pub use crate::memory::MemoryInterface;
 pub use crate::probe::{
-    AllProbesLister, AttachMethod, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-    DebugProbeType, Probe, ProbeCreationError, ProbeLister, WireProtocol,
+    fake_probe::FakeProbe, AttachMethod, DebugProbe, DebugProbeError, DebugProbeInfo,
+    DebugProbeSelector, DebugProbeType, Lister, Probe, ProbeCreationError, WireProtocol,
 };
 pub use crate::session::{Permissions, Session};
 
-pub use crate::probe::fake_probe::FakeProbe;
+// Exports only used in tests
+#[cfg(feature = "test")]
 pub use crate::probe::fake_probe::Operation as ProbeOperation;
+#[cfg(feature = "test")]
+pub use crate::probe::ProbeLister;

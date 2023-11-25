@@ -4,7 +4,7 @@ use std::path::Path;
 use anyhow::Context;
 use probe_rs::flashing::FileDownloadError;
 use probe_rs::flashing::Format;
-use probe_rs::ProbeLister;
+use probe_rs::Lister;
 
 use crate::util::common_options::BinaryDownloadOptions;
 use crate::util::common_options::ProbeOptions;
@@ -31,7 +31,7 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self, lister: &impl ProbeLister) -> anyhow::Result<()> {
+    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
         let (mut session, probe_options) = self.probe_options.simple_attach(lister)?;
 
         let mut file = match File::open(&self.path) {

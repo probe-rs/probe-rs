@@ -14,7 +14,7 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use itertools::Itertools;
 use probe_rs::flashing::{BinOptions, Format, IdfOptions};
-use probe_rs::{AllProbesLister, Target};
+use probe_rs::{Lister, Target};
 use serde::Serialize;
 use serde::{de::Error, Deserialize, Deserializer};
 use serde_json::Value;
@@ -260,7 +260,7 @@ fn main() -> Result<()> {
     let matches = Cli::parse_from(args);
 
     // Setup the probe lister, list all probes normally
-    let lister = AllProbesLister::new();
+    let lister = Lister::new();
 
     // the DAP server has special logging requirements. Run it before initializing logging,
     // so it can do its own special init.

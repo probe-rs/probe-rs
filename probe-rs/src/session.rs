@@ -4,8 +4,7 @@ use crate::architecture::arm::{ArmError, DpAddress};
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::config::{ChipInfo, CoreExt, RegistryError, Target, TargetSelector};
 use crate::core::{Architecture, CombinedCoreState};
-use crate::probe::fake_probe::FakeProbe;
-use crate::probe::AllProbesLister;
+use crate::probe::{fake_probe::FakeProbe, Lister};
 use crate::{
     architecture::{
         arm::{
@@ -300,9 +299,9 @@ impl Session {
         permissions: Permissions,
     ) -> Result<Session, Error> {
         // Get a list of all available debug probes.
-        let lister = AllProbesLister {};
+        let lister = Lister::new();
 
-        let probes = AllProbesLister::list_all();
+        let probes = lister.list_all();
 
         // Use the first probe found.
         let probe = probes
