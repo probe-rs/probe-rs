@@ -773,9 +773,39 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
     pub(crate) fn configuration_done(
         &mut self,
-        _core_data: &mut CoreHandle,
+        target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<()> {
+        let current_core_status = target_core.core.status()?;
+        if current_core_status.is_halted() {
+            if self.halt_after_reset
+                || matches!(
+                    current_core_status,
+                    CoreStatus::Halted(HaltReason::Breakpoint(_))
+                )
+            {
+                let program_counter = target_core
+                    .core
+                    .read_core_reg(target_core.core.program_counter())
+                    .ok();
+                let event_body = Some(StoppedEventBody {
+                    reason: current_core_status
+                        .short_long_status(program_counter)
+                        .0
+                        .to_owned(),
+                    description: Some(current_core_status.short_long_status(program_counter).1),
+                    thread_id: Some(target_core.core.id() as i64),
+                    preserve_focus_hint: None,
+                    text: None,
+                    all_threads_stopped: Some(self.all_cores_halted),
+                    hit_breakpoint_ids: None,
+                });
+                self.send_event("stopped", event_body)?;
+            } else {
+                self.r#continue(target_core, request)?;
+            }
+        }
+        self.configuration_done = true;
         self.send_response::<()>(request, Ok(None))
     }
 
@@ -936,46 +966,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     name: target_core.core_data.target_name.clone(),
                 };
                 threads.push(single_thread);
-
                 return self.send_response(request, Ok(Some(ThreadsResponseBody { threads })));
-            }
-        } else {
-            // This is the initial call to `threads` that happens after the `configuration_done` request, and requires special handling. (see [`DebugAdapter.configuration_done`])
-            self.configuration_done = true;
-            // At startup, we have to make sure the DAP Client and the DAP Server are in sync with the status of the core.
-            if current_core_status.is_halted() {
-                if self.halt_after_reset
-                    || matches!(
-                        current_core_status,
-                        CoreStatus::Halted(HaltReason::Breakpoint(_))
-                    )
-                {
-                    let program_counter = target_core
-                        .core
-                        .read_core_reg(target_core.core.program_counter())
-                        .ok();
-                    let event_body = Some(StoppedEventBody {
-                        reason: current_core_status
-                            .short_long_status(program_counter)
-                            .0
-                            .to_owned(),
-                        description: Some(current_core_status.short_long_status(program_counter).1),
-                        thread_id: Some(target_core.core.id() as i64),
-                        preserve_focus_hint: None,
-                        text: None,
-                        all_threads_stopped: Some(self.all_cores_halted),
-                        hit_breakpoint_ids: None,
-                    });
-                    return self.send_event("stopped", event_body);
-                } else {
-                    let single_thread = Thread {
-                        id: target_core.core.id() as i64,
-                        name: target_core.core_data.target_name.clone(),
-                    };
-                    threads.push(single_thread);
-                    self.send_response(request, Ok(Some(ThreadsResponseBody { threads })))?;
-                    return self.r#continue(target_core, request);
-                }
             }
         }
         self.send_response::<()>(
