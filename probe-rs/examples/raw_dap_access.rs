@@ -1,7 +1,7 @@
 use anyhow::Result;
 use probe_rs::{
     architecture::arm::{sequences::DefaultArmSequence, ApAddress, DpAddress},
-    AllProbesLister, Probe,
+    AllProbesLister,
 };
 
 fn main() -> Result<()> {

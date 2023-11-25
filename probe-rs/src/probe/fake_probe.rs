@@ -5,6 +5,7 @@ use probe_rs_target::ScanChainElement;
 use crate::{
     architecture::arm::{
         ap::{memory_ap::mock::MockMemoryAp, AccessPort, MemoryAp},
+        armv8m::Dhcsr,
         communication_interface::{
             ArmDebugState, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,
         },
@@ -14,7 +15,8 @@ use crate::{
         ApAddress, ArmError, ArmProbeInterface, DapAccess, DpAddress, MemoryApInformation,
         PortType, RawDapAccess, SwoAccess,
     },
-    DebugProbe, DebugProbeError, DebugProbeSelector, Error, Probe, WireProtocol,
+    DebugProbe, DebugProbeError, DebugProbeSelector, Error, MemoryMappedRegister, Probe,
+    WireProtocol,
 };
 
 /// This is a mock probe which can be used for mocking things in tests or for dry runs.
@@ -30,6 +32,150 @@ pub struct FakeProbe {
         Option<Box<dyn Fn(PortType, u8, u32) -> Result<(), ArmError> + Send>>,
 
     operations: RefCell<VecDeque<Operation>>,
+
+    memory_ap: Mockery,
+}
+
+enum Mockery {
+    MemoryAp(MockMemoryAp),
+    Core(MockCore),
+}
+
+struct MockCore {
+    dhcsr: Dhcsr,
+
+    // Is the core halted?
+    halted: bool,
+
+    // Is the value in the DCRDR ready?
+    reg_rdy: bool,
+}
+
+impl MockCore {
+    pub fn new() -> Self {
+        Self {
+            dhcsr: Dhcsr(0),
+            halted: false,
+            reg_rdy: true,
+        }
+    }
+}
+
+impl SwdSequence for &mut MockCore {
+    fn swj_sequence(&mut self, _bit_len: u8, _bits: u64) -> Result<(), DebugProbeError> {
+        todo!()
+    }
+
+    fn swj_pins(
+        &mut self,
+        _pin_out: u32,
+        _pin_select: u32,
+        _pin_wait: u32,
+    ) -> Result<u32, DebugProbeError> {
+        todo!()
+    }
+}
+
+impl ArmProbe for &mut MockCore {
+    fn read_8(&mut self, _address: u64, _data: &mut [u8]) -> Result<(), ArmError> {
+        todo!()
+    }
+
+    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
+        for (i, val) in data.iter_mut().enumerate() {
+            let address = address + (i as u64 * 4);
+
+            match address {
+                // DHCSR
+                Dhcsr::ADDRESS_OFFSET => {
+                    let mut dhcsr: u32 = self.dhcsr.into();
+
+                    if self.halted {
+                        dhcsr |= 1 << 17;
+                    }
+
+                    if self.reg_rdy {
+                        dhcsr |= 1 << 16;
+                    }
+
+                    *val = dhcsr;
+                    println!("READ  DHCSR: {:#x} = {:?}", address, val);
+                }
+
+                _ => {
+                    *val = 0;
+                    println!("Read {:#010x} = 0", address);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
+        todo!()
+    }
+
+    fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), ArmError> {
+        todo!()
+    }
+
+    fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
+        for (i, word) in data.iter().enumerate() {
+            let address = address + (i as u64 * 4);
+
+            match address {
+                // DHCSR
+                Dhcsr::ADDRESS_OFFSET => {
+                    let dbg_key = (*word >> 16) & 0xffff;
+
+                    if dbg_key == 0xa05f {
+                        // Mask out dbg key
+                        self.dhcsr = Dhcsr::from(*word & 0xffff);
+                        println!("Write DHCSR = {:#010x}", word);
+
+                        let new_halted_state = self.dhcsr.c_halt();
+
+                        self.halted = new_halted_state;
+                    }
+                }
+                _ => println!("Write {:#010x} = {:#010x}", address, word),
+            }
+        }
+
+        Ok(())
+    }
+
+    fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), ArmError> {
+        todo!()
+    }
+
+    fn flush(&mut self) -> Result<(), ArmError> {
+        todo!()
+    }
+
+    fn supports_native_64bit_access(&mut self) -> bool {
+        true
+    }
+
+    fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {
+        todo!()
+    }
+
+    fn ap(&mut self) -> MemoryAp {
+        todo!()
+    }
+
+    fn get_arm_communication_interface(
+        &mut self,
+    ) -> Result<
+        &mut crate::architecture::arm::ArmCommunicationInterface<Initialized>,
+        DebugProbeError,
+    > {
+        todo!()
+    }
+
+    fn update_core_status(&mut self, _state: crate::CoreStatus) {}
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -62,6 +208,24 @@ impl FakeProbe {
             dap_register_write_handler: None,
 
             operations: RefCell::new(VecDeque::new()),
+
+            memory_ap: Mockery::MemoryAp(MockMemoryAp::with_pattern()),
+        }
+    }
+
+    /// Fake probe with a mocked core
+    pub fn with_mocked_core() -> Self {
+        FakeProbe {
+            protocol: WireProtocol::Swd,
+            speed: 1000,
+            scan_chain: None,
+
+            dap_register_read_handler: None,
+            dap_register_write_handler: None,
+
+            operations: RefCell::new(VecDeque::new()),
+
+            memory_ap: Mockery::Core(MockCore::new()),
         }
     }
 
@@ -256,8 +420,6 @@ impl RawDapAccess for FakeProbe {
 struct FakeArmInterface<S: ArmDebugState> {
     probe: Box<FakeProbe>,
 
-    memory_ap: MockMemoryAp,
-
     _state: S,
 }
 
@@ -266,12 +428,10 @@ impl FakeArmInterface<Uninitialized> {
         let state = Uninitialized {
             use_overrun_detect: false,
         };
-        let memory_ap = MockMemoryAp::with_pattern();
 
         Self {
             probe,
             _state: state,
-            memory_ap,
         }
     }
 
@@ -290,11 +450,9 @@ impl FakeArmInterface<Initialized> {
         interface: FakeArmInterface<Uninitialized>,
         sequence: Arc<dyn ArmDebugSequence>,
     ) -> Self {
-        let memory_ap = MockMemoryAp::with_pattern();
         FakeArmInterface::<Initialized> {
             probe: interface.probe,
             _state: Initialized::new(sequence, false),
-            memory_ap,
         }
     }
 }
@@ -353,10 +511,15 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
             device_enabled: true,
         };
 
-        let memory = ADIMemoryInterface::new(&mut self.memory_ap, ap_information)
-            .map_err(|e| ArmError::from_access_port(e, access_port))?;
+        match self.probe.memory_ap {
+            Mockery::MemoryAp(ref mut memory_ap) => {
+                let memory = ADIMemoryInterface::new(memory_ap, ap_information)
+                    .map_err(|e| ArmError::from_access_port(e, access_port))?;
 
-        Ok(Box::new(memory) as _)
+                Ok(Box::new(memory) as _)
+            }
+            Mockery::Core(ref mut core) => Ok(Box::new(core) as _),
+        }
     }
 
     fn ap_information(

@@ -12,7 +12,7 @@ use anyhow::{anyhow, Result};
 use probe_rs::{
     config::TargetSelector,
     debug::{debug_info::DebugInfo, SourceLocation},
-    CoreStatus, DebugProbeError, Permissions, Probe, ProbeCreationError, ProbeLister, Session,
+    CoreStatus, DebugProbeError, Permissions, ProbeCreationError, ProbeLister, Session,
 };
 use std::env::set_current_dir;
 use time::UtcOffset;
@@ -67,7 +67,7 @@ impl SessionData {
     ) -> Result<Self, DebuggerError> {
         // `SessionConfig` Probe/Session level configurations initialization.
         let mut target_probe = match config.probe_selector.clone() {
-            Some(selector) => lister.open(selector.clone()).map_err(|e| match e {
+            Some(selector) => lister.open(&selector).map_err(|e| match e {
                 DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound) => {
                     DebuggerError::Other(anyhow!(
                         "Could not find the probe_selector specified as {:04x}:{:04x}:{:?}",
@@ -89,7 +89,7 @@ impl SessionData {
                 }
 
                 if let Some(info) = list.first() {
-                    lister.open(info).map_err(DebuggerError::DebugProbe)
+                    lister.open(&info.into()).map_err(DebuggerError::DebugProbe)
                 } else {
                     return Err(DebuggerError::Other(anyhow!(
                         "No probes found. Please check your USB connections."

@@ -240,7 +240,7 @@ impl LoadedProbeOptions {
             // matching the selector if possible.
             match &self.0.probe_selector {
                 Some(selector) => lister
-                    .open(selector.clone())
+                    .open(selector)
                     .map_err(OperationError::FailedToOpenProbe),
                 None => {
                     // Only automatically select a probe if there is
@@ -251,7 +251,9 @@ impl LoadedProbeOptions {
                     }
 
                     if let Some(info) = list.first() {
-                        lister.open(info).map_err(OperationError::FailedToOpenProbe)
+                        lister
+                            .open(&info.into())
+                            .map_err(OperationError::FailedToOpenProbe)
                     } else {
                         Err(OperationError::NoProbesFound)
                     }

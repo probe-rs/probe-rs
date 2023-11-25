@@ -1,5 +1,5 @@
 use probe_rs::rtt::{Channels, Rtt, RttChannel, ScanRegion};
-use probe_rs::{config::TargetSelector, DebugProbeInfo, Probe};
+use probe_rs::{config::TargetSelector, DebugProbeInfo};
 use probe_rs::{AllProbesLister, Permissions, ProbeLister};
 
 use clap::Parser;
@@ -268,7 +268,7 @@ fn run() -> i32 {
     }
 }
 
-fn list_probes<L: ProbeLister>(mut stream: impl std::io::Write, probes: &[DebugProbeInfo<L>]) {
+fn list_probes(mut stream: impl std::io::Write, probes: &[DebugProbeInfo]) {
     writeln!(stream, "Available probes:").unwrap();
 
     for (i, probe) in probes.iter().enumerate() {

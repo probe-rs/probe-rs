@@ -1,6 +1,6 @@
 use super::CmsisDapDevice;
 use crate::{
-    probe::{AllProbesLister, DebugProbeInfo, DebugProbeType, ProbeCreationError, ProbeLister},
+    probe::{DebugProbeInfo, DebugProbeType, ProbeCreationError, ProbeLister},
     DebugProbeSelector,
 };
 use hidapi::HidApi;
@@ -13,7 +13,7 @@ use std::time::Duration;
 /// to permission or driver errors, so it falls back to listing only
 /// HID devices if it does not find any suitable devices.
 #[tracing::instrument(skip_all)]
-pub fn list_cmsisdap_devices<L: ProbeLister>() -> Vec<DebugProbeInfo<L>> {
+pub fn list_cmsisdap_devices() -> Vec<DebugProbeInfo> {
     tracing::debug!("Searching for CMSIS-DAP probes using libusb");
     let mut probes = match rusb::Context::new().and_then(|ctx| ctx.devices()) {
         Ok(devices) => devices
@@ -50,7 +50,7 @@ pub fn list_cmsisdap_devices<L: ProbeLister>() -> Vec<DebugProbeInfo<L>> {
 }
 
 /// Checks if a given Device is a CMSIS-DAP probe, returning Some(DebugProbeInfo) if so.
-fn get_cmsisdap_info<L: ProbeLister>(device: &Device<rusb::Context>) -> Option<DebugProbeInfo<L>> {
+fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
     // Open device handle and read basic information
     let timeout = Duration::from_millis(100);
     let d_desc = device.device_descriptor().ok()?;
@@ -125,7 +125,7 @@ fn get_cmsisdap_info<L: ProbeLister>(device: &Device<rusb::Context>) -> Option<D
 }
 
 /// Checks if a given HID device is a CMSIS-DAP v1 probe, returning Some(DebugProbeInfo) if so.
-fn get_cmsisdap_hid_info<L: ProbeLister>(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo<L>> {
+fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> {
     let prod_str = device.product_string().unwrap_or("");
     let path = device.path().to_str().unwrap_or("");
     if is_cmsis_dap(prod_str) || is_cmsis_dap(path) {
@@ -267,7 +267,7 @@ pub fn open_device_from_selector(
     //
     // If rusb cannot be used, we will just use the first HID interface and
     // try to open that.
-    let mut hid_device_info: Option<DebugProbeInfo<AllProbesLister>> = None;
+    let mut hid_device_info = None;
 
     // Try using rusb to open a v2 device. This might fail if
     // the device does not support v2 operation or due to driver

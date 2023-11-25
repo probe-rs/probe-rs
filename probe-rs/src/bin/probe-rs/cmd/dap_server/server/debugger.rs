@@ -392,14 +392,14 @@ impl Debugger {
                     format!("Expected request 'launch' or 'attach', but received '{other}'");
 
                 debug_adapter.send_response::<()>(
-                    &launch_attach_request,
+                    launch_attach_request,
                     Err(&DebuggerError::Other(anyhow!(error_msg.clone()))),
                 )?;
                 return Err(DebuggerError::Other(anyhow!(error_msg)));
             }
         };
 
-        let arguments = get_arguments(&mut debug_adapter, &launch_attach_request)?;
+        let arguments = get_arguments(&mut debug_adapter, launch_attach_request)?;
 
         self.config = configuration::SessionConfig { ..arguments };
 
@@ -411,7 +411,7 @@ impl Debugger {
                 || self.config.flashing_config.restore_unwritten_bytes
             {
                 debug_adapter.send_response::<()>(
-                                        &launch_attach_request,
+                                        launch_attach_request,
                                         Err(&DebuggerError::Other(anyhow!(
                                             "Please do not use any of the `flashing_enabled`, `reset_after_flashing`, halt_after_reset`, `full_chip_erase`, or `restore_unwritten_bytes` options when using `attach` request type."))),
                                     )?;
@@ -425,16 +425,16 @@ impl Debugger {
             .set_console_log_level(self.config.console_log_level.unwrap_or(ConsoleLog::Console));
 
         if let Err(e) = self.config.validate_config_files() {
-            debug_adapter.send_response::<()>(&launch_attach_request, Err(&e))?;
+            debug_adapter.send_response::<()>(launch_attach_request, Err(&e))?;
 
-            return Err(e.into());
+            return Err(e);
         }
 
         let mut session_data =
             match SessionData::new(lister, &mut self.config, self.timestamp_offset) {
                 Ok(session_data) => session_data,
                 Err(error) => {
-                    debug_adapter.send_response::<()>(&launch_attach_request, Err(&error))?;
+                    debug_adapter.send_response::<()>(launch_attach_request, Err(&error))?;
 
                     return Err(error);
                 }
@@ -451,7 +451,7 @@ impl Debugger {
 
             let Some(path_to_elf) = target_core_config.program_binary.clone() else {
                 let err =  DebuggerError::Other(anyhow!("Please specify use the `program-binary` option in `launch.json` to specify an executable"));
-                debug_adapter.send_response::<()>(&launch_attach_request, Err(&err))?;
+                debug_adapter.send_response::<()>(launch_attach_request, Err(&err))?;
                 return Err(err);
             };
 
@@ -517,7 +517,7 @@ impl Debugger {
 
         drop(target_core);
 
-        debug_adapter.send_response::<()>(&launch_attach_request, Ok(None))?;
+        debug_adapter.send_response::<()>(launch_attach_request, Ok(None))?;
 
         Ok((debug_adapter, session_data))
     }
@@ -826,7 +826,6 @@ impl Debugger {
         let capabilities = Capabilities {
             supports_configuration_done_request: Some(true),
             supports_restart_request: Some(true),
-            support_terminate_debuggee: Some(true),
             support_suspend_debuggee: Some(true),
             supports_delayed_stack_trace_loading: Some(true),
             supports_read_memory_request: Some(true),
@@ -837,6 +836,7 @@ impl Debugger {
             supports_instruction_breakpoints: Some(true),
             supports_stepping_granularity: Some(true),
             supports_completions_request: Some(true),
+            // support_terminate_debuggee: Some(true),
             // supports_value_formatting_options: Some(true),
             // supports_function_breakpoints: Some(true),
             // TODO: Use DEMCR register to implement exception breakpoints
@@ -926,6 +926,9 @@ mod test {
     use serde_json::json;
     use time::UtcOffset;
 
+    use crate::cmd::dap_server::debug_adapter::dap::dap_types::{
+        DisconnectArguments, DisconnectRequest,
+    };
     use crate::cmd::dap_server::server::configuration::CoreConfig;
     use crate::cmd::dap_server::{
         debug_adapter::{
@@ -1098,7 +1101,6 @@ mod test {
         protocol_adapter.add_request(Some(request));
         protocol_adapter.expect_response(Ok(Some(Capabilities {
             support_suspend_debuggee: Some(true),
-            support_terminate_debuggee: Some(true),
             supports_clipboard_context: Some(true),
             supports_completions_request: Some(true),
             supports_configuration_done_request: Some(true),
@@ -1193,7 +1195,6 @@ mod test {
         );
         protocol_adapter.expect_response(Ok(Some(Capabilities {
             support_suspend_debuggee: Some(true),
-            support_terminate_debuggee: Some(true),
             supports_clipboard_context: Some(true),
             supports_completions_request: Some(true),
             supports_configuration_done_request: Some(true),
@@ -1240,7 +1241,7 @@ mod test {
     }
 
     #[test]
-    fn test_launch() {
+    fn test_launch_and_terminate() {
         let manifest_dir = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"));
 
         let debug_info = manifest_dir.join("tests/debug-unwind-tests/nRF52833_xxAA.elf");
@@ -1294,7 +1295,6 @@ mod test {
         );
         protocol_adapter.expect_response(Ok(Some(Capabilities {
             support_suspend_debuggee: Some(true),
-            support_terminate_debuggee: Some(true),
             supports_clipboard_context: Some(true),
             supports_completions_request: Some(true),
             supports_configuration_done_request: Some(true),
@@ -1310,9 +1310,8 @@ mod test {
             ..Default::default()
         })));
 
-        protocol_adapter.expect_response(Err::<Option<u32>, _>(DebuggerError::Other(
-            anyhow::anyhow!("No probes found. Please check your USB connections."),
-        )));
+        protocol_adapter.expect_response(Ok::<Option<u32>, _>(None));
+        protocol_adapter.expect_event("initialized", None::<u32>);
 
         let launch_args = SessionConfig {
             chip: Some("nrf52833_xxaa".to_owned()),
@@ -1334,6 +1333,20 @@ mod test {
         };
 
         protocol_adapter.add_request(Some(request));
+        protocol_adapter.add_request(Some(Request {
+            arguments: Some(
+                serde_json::to_value(DisconnectArguments {
+                    restart: Some(false),
+                    suspend_debuggee: Some(false),
+                    terminate_debuggee: Some(false),
+                })
+                .unwrap(),
+            ),
+            command: "disconnect".to_string(),
+            seq: 3,
+            type_: "request".to_string(),
+        }));
+        protocol_adapter.expect_response(Ok::<Option<u32>, _>(None));
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
 
@@ -1341,7 +1354,7 @@ mod test {
 
         let lister = TestLister::new();
 
-        let probe_info = DebugProbeInfo::<TestLister>::new(
+        let probe_info = DebugProbeInfo::new(
             "Mock probe",
             0x12,
             0x23,
@@ -1350,7 +1363,7 @@ mod test {
             None,
         );
 
-        let fake_probe = FakeProbe::new();
+        let fake_probe = FakeProbe::with_mocked_core();
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {

@@ -1,7 +1,7 @@
 use anyhow::Result;
 use probe_rs::{
     architecture::arm::{ApAddress, DpAddress},
-    AllProbesLister, Probe, ProbeLister,
+    AllProbesLister, ProbeLister,
 };
 
 fn main() -> Result<()> {

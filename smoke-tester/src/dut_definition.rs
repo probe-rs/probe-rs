@@ -148,7 +148,7 @@ impl DutDefinition {
         match &self.probe_selector {
             Some(selector) => {
                 let probe = lister
-                    .open(selector.clone())
+                    .open(selector)
                     .with_context(|| format!("Failed to open probe with selector {selector}"))?;
 
                 Ok(probe)

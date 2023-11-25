@@ -469,7 +469,7 @@ impl JTAGAccess for WchLink {
     }
 }
 
-fn get_wlink_info<L: ProbeLister>(device: &Device<rusb::Context>) -> Option<DebugProbeInfo<L>> {
+fn get_wlink_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
     let timeout = Duration::from_millis(100);
 
     let d_desc = device.device_descriptor().ok()?;
@@ -498,7 +498,7 @@ fn get_wlink_info<L: ProbeLister>(device: &Device<rusb::Context>) -> Option<Debu
 }
 
 #[tracing::instrument(skip_all)]
-pub fn list_wlink_devices<L: ProbeLister>() -> Vec<DebugProbeInfo<L>> {
+pub fn list_wlink_devices() -> Vec<DebugProbeInfo> {
     tracing::debug!("Searching for WCH-Link(RV) probes using libusb");
     let probes = match rusb::Context::new().and_then(|ctx| ctx.devices()) {
         Ok(devices) => devices
