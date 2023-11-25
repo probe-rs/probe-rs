@@ -28,7 +28,6 @@ use probe_rs::{
         ColumnType, DebugRegisters, ObjectRef, SourceLocation, SteppingMode, VariableName,
         VariableNodeType, VerifiedBreakpoint,
     },
-    exception_handler_for_core,
     Architecture::Riscv,
     CoreStatus, Error, HaltReason, MemoryInterface, RegisterValue,
 };
@@ -1017,25 +1016,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // The DAP spec says that the `startFrame` is optional and should be 0 if not specified.
         let start_frame = arguments.start_frame.unwrap_or(0);
 
-        // VSCode sends multiple StackTrace requests, which lead to out of synch frame_id numbers.
-        // If our client is VSCode, then we only refresh the stacktrace when the `startFrame` is 0
-        // and `levels` is 1.
-        if !self.vscode_quirks || (levels == 1 && start_frame == 0) {
-            tracing::debug!(
-                "Updating the stack frame data for core #{}",
-                target_core.core.id()
-            );
-
-            let initial_registers = DebugRegisters::from_core(&mut target_core.core);
-            let exception_interface = exception_handler_for_core(target_core.core.core_type());
-            let instruction_set = target_core.core.instruction_set().ok();
-            target_core.core_data.stack_frames = target_core.core_data.debug_info.unwind(
-                &mut target_core.core,
-                initial_registers,
-                exception_interface.as_ref(),
-                instruction_set,
-            )?;
-        }
         // Update the `levels` to the number of available frames if it is 0.
         if levels == 0 {
             levels = target_core.core_data.stack_frames.len() as i64;

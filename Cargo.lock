@@ -2811,6 +2811,7 @@ dependencies = [
 name = "rtthost"
 version = "0.21.1"
 dependencies = [
+ "anyhow",
  "clap",
  "pretty_env_logger",
  "probe-rs",
