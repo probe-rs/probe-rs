@@ -258,7 +258,7 @@ impl SessionData {
 
         let timestamp_offset = self.timestamp_offset;
 
-        let previous_state = debug_adapter.all_cores_halted;
+        let cores_halted_previously = debug_adapter.all_cores_halted;
 
         // Always set `all_cores_halted` to true, until one core is found to be running.
         debug_adapter.all_cores_halted = true;
