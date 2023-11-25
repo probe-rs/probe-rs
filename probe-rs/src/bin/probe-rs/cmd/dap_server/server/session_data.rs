@@ -316,7 +316,7 @@ impl SessionData {
                 debug_adapter.all_cores_halted = false;
             // If currently halted, and was previously running
             // update the stack frames
-            } else if !previous_state {
+            } else if !cores_halted_previously {
                 tracing::debug!(
                     "Updating the stack frame data for core #{}",
                     target_core.core.id()
