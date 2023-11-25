@@ -4,7 +4,7 @@ use crate::architecture::arm::{ArmError, DpAddress};
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::config::{ChipInfo, CoreExt, RegistryError, Target, TargetSelector};
 use crate::core::{Architecture, CombinedCoreState};
-use crate::probe::{fake_probe::FakeProbe, Lister};
+use crate::probe::fake_probe::FakeProbe;
 use crate::{
     architecture::{
         arm::{
@@ -15,7 +15,7 @@ use crate::{
     },
     config::DebugSequence,
 };
-use crate::{AttachMethod, Core, CoreType, Error, Probe};
+use crate::{AttachMethod, Core, CoreType, Error, Lister, Probe};
 use std::ops::DerefMut;
 use std::{fmt, sync::Arc, time::Duration};
 

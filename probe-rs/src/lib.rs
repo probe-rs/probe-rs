@@ -102,8 +102,8 @@ pub use crate::core::{
 pub use crate::error::Error;
 pub use crate::memory::MemoryInterface;
 pub use crate::probe::{
-    fake_probe::FakeProbe, AttachMethod, DebugProbe, DebugProbeError, DebugProbeInfo,
-    DebugProbeSelector, DebugProbeType, Lister, Probe, ProbeCreationError, WireProtocol,
+    fake_probe::FakeProbe, list::Lister, AttachMethod, DebugProbe, DebugProbeError, DebugProbeInfo,
+    DebugProbeSelector, DebugProbeType, Probe, ProbeCreationError, WireProtocol,
 };
 pub use crate::session::{Permissions, Session};
 
@@ -111,4 +111,4 @@ pub use crate::session::{Permissions, Session};
 #[cfg(feature = "test")]
 pub use crate::probe::fake_probe::Operation as ProbeOperation;
 #[cfg(feature = "test")]
-pub use crate::probe::ProbeLister;
+pub use crate::probe::list::ProbeLister;
