@@ -959,14 +959,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let mut threads: Vec<Thread> = vec![];
         if self.configuration_is_done() {
             // We can handle this request normally.
-            if current_core_status.is_halted() {
-                let single_thread = Thread {
-                    id: target_core.core.id() as i64,
-                    name: target_core.core_data.target_name.clone(),
-                };
-                threads.push(single_thread);
-                return self.send_response(request, Ok(Some(ThreadsResponseBody { threads })));
-            }
+            let single_thread = Thread {
+                id: target_core.core.id() as i64,
+                name: target_core.core_data.target_name.clone(),
+            };
+            threads.push(single_thread);
+            return self.send_response(request, Ok(Some(ThreadsResponseBody { threads })));
         }
         self.send_response::<()>(
             request,
