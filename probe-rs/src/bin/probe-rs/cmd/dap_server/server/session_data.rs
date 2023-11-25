@@ -11,8 +11,9 @@ use crate::cmd::dap_server::{
 use anyhow::{anyhow, Result};
 use probe_rs::{
     config::TargetSelector,
-    debug::{debug_info::DebugInfo, SourceLocation},
-    CoreStatus, DebugProbeError, Permissions, Probe, ProbeCreationError, Session,
+    debug::{debug_info::DebugInfo, DebugRegisters, SourceLocation},
+    exception_handler_for_core, CoreStatus, DebugProbeError, Permissions, Probe,
+    ProbeCreationError, Session,
 };
 use std::env::set_current_dir;
 use time::UtcOffset;
@@ -257,6 +258,8 @@ impl SessionData {
 
         let timestamp_offset = self.timestamp_offset;
 
+        let previous_state = debug_adapter.all_cores_halted;
+
         // Always set `all_cores_halted` to true, until one core is found to be running.
         debug_adapter.all_cores_halted = true;
         for core_config in session_config.core_configs.iter() {
@@ -311,6 +314,23 @@ impl SessionData {
             // By setting it here, we ensure that RTT will be checked at least once after the core has halted.
             if !current_core_status.is_halted() {
                 debug_adapter.all_cores_halted = false;
+            // If currently halted, and was previously running
+            // update the stack frames
+            } else if !previous_state {
+                tracing::debug!(
+                    "Updating the stack frame data for core #{}",
+                    target_core.core.id()
+                );
+
+                let initial_registers = DebugRegisters::from_core(&mut target_core.core);
+                let exception_interface = exception_handler_for_core(target_core.core.core_type());
+                let instruction_set = target_core.core.instruction_set().ok();
+                target_core.core_data.stack_frames = target_core.core_data.debug_info.unwind(
+                    &mut target_core.core,
+                    initial_registers,
+                    exception_interface.as_ref(),
+                    instruction_set,
+                )?;
             }
             status_of_cores.push(current_core_status);
         }
