@@ -9,6 +9,9 @@ use super::{
     stlink, wlink,
 };
 
+#[cfg(feature = "ftdi")]
+use super::ftdi;
+
 /// Struct to list all attached debug probes
 #[derive(Debug)]
 pub struct Lister {
