@@ -1,4 +1,4 @@
-use gdbstub::arch::{Arch, RegId, Registers, SingleStepGdbBehavior};
+use gdbstub::arch::{Arch, RegId, Registers};
 
 // Placeholder type for runtime architecture trait data
 pub(crate) enum RuntimeArch {}
@@ -10,10 +10,6 @@ impl Arch for RuntimeArch {
     type Registers = RuntimeRegisters;
     type BreakpointKind = usize;
     type RegId = RuntimeRegId;
-
-    fn single_step_gdb_behavior() -> SingleStepGdbBehavior {
-        SingleStepGdbBehavior::Required
-    }
 }
 
 #[derive(Clone, Default, Debug, PartialEq)]
