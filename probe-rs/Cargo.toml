@@ -69,6 +69,10 @@ cli = [
     "dep:bytesize",
     "dep:textwrap",
     "dep:addr2line",
+
+    # Temporary fix for https://github.com/rust-embedded/svd/issues/249,
+    # svd-parser does not compile with svd-rs 0.14.2 or 0.14.3.
+    "dep:svd-rs"
 ]
 
 vendored-libusb = ["rusb/vendored"]
@@ -165,7 +169,12 @@ sanitize-filename = { version = "0.5", optional = true }
 schemafy = { version = "0.6", optional = true }
 serde_json = { version = "1", optional = true }
 signal-hook = "0.3"
-svd-parser = { version = "0.14.2", features = ["expand"], optional = true }
+svd-parser = { version = "0.14.3", features = ["expand"], optional = true }
+
+# Temporary fix for https://github.com/rust-embedded/svd/issues/249,
+# svd-parser does not compile with svd-rs 0.14.2 or 0.14.3.
+svd-rs = { version = "0.14.4", optional = true }
+
 terminal_size = { version = "0.3.0", optional = true }
 termtree = { version = "0.4.1", optional = true }
 textwrap = { version = "0.16.0", optional = true }

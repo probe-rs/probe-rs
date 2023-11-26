@@ -2469,6 +2469,7 @@ dependencies = [
  "signal-hook",
  "static_assertions",
  "svd-parser",
+ "svd-rs",
  "svg",
  "terminal_size 0.3.0",
  "termtree",
@@ -3433,9 +3434,9 @@ dependencies = [
 
 [[package]]
 name = "svd-parser"
-version = "0.14.2"
+version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2081d77e28f5144c3af0774dcbfd0b170b6bce37d238b2e5d7bc3d7a7d6b775"
+checksum = "d9c0521573455cce71aa930fd500d25d8f8be4f6a857d3dafe1963d9e14fffbb"
 dependencies = [
  "anyhow",
  "roxmltree",
@@ -3445,9 +3446,9 @@ dependencies = [
 
 [[package]]
 name = "svd-rs"
-version = "0.14.2"
+version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d08273bc4ca66b632299903960efa8a306aac61dc6381bcf07450c20b1a5443c"
+checksum = "35830f227d0ee528eb674429091ba11781fbf141e72a87a9bc9c732522798b33"
 dependencies = [
  "once_cell",
  "regex",
