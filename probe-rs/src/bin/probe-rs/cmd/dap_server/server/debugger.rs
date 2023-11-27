@@ -171,11 +171,9 @@ impl Debugger {
                                     unhalt_me = true;
                                 }
                                 Err(error) => {
-                                    debug_adapter.send_response::<()>(
-                                        &request,
-                                        Err(&DebuggerError::Other(anyhow!("{}", error))),
-                                    )?;
-                                    return Err(error.into());
+                                    let err = DebuggerError::from(error);
+                                    debug_adapter.send_response::<()>(&request, Err(&err))?;
+                                    return Err(err);
                                 }
                             }
                         }
@@ -836,7 +834,7 @@ impl Debugger {
             supports_instruction_breakpoints: Some(true),
             supports_stepping_granularity: Some(true),
             supports_completions_request: Some(true),
-            // support_terminate_debuggee: Some(true),
+            support_terminate_debuggee: Some(true),
             // supports_value_formatting_options: Some(true),
             // supports_function_breakpoints: Some(true),
             // TODO: Use DEMCR register to implement exception breakpoints
@@ -940,6 +938,29 @@ mod test {
         test::TestLister,
         DebuggerError,
     };
+
+    /// Helper function to get the expected capabilites for the debugger
+    ///
+    /// `Capabilites::default()` is not const, so this can't just be a constant.
+    fn expected_capabilites() -> Capabilities {
+        Capabilities {
+            support_suspend_debuggee: Some(true),
+            supports_clipboard_context: Some(true),
+            supports_completions_request: Some(true),
+            supports_configuration_done_request: Some(true),
+            supports_delayed_stack_trace_loading: Some(true),
+            supports_disassemble_request: Some(true),
+            supports_instruction_breakpoints: Some(true),
+            supports_read_memory_request: Some(true),
+            supports_write_memory_request: Some(true),
+            supports_restart_request: Some(true),
+            supports_set_variable: Some(true),
+            supports_stepping_granularity: Some(true),
+            support_terminate_debuggee: Some(true),
+
+            ..Default::default()
+        }
+    }
 
     use super::Debugger;
 
@@ -1097,22 +1118,7 @@ mod test {
         };
 
         protocol_adapter.add_request(Some(request));
-        protocol_adapter.expect_response(Ok(Some(Capabilities {
-            support_suspend_debuggee: Some(true),
-            supports_clipboard_context: Some(true),
-            supports_completions_request: Some(true),
-            supports_configuration_done_request: Some(true),
-            supports_delayed_stack_trace_loading: Some(true),
-            supports_disassemble_request: Some(true),
-            supports_instruction_breakpoints: Some(true),
-            supports_read_memory_request: Some(true),
-            supports_write_memory_request: Some(true),
-            supports_restart_request: Some(true),
-            supports_set_variable: Some(true),
-            supports_stepping_granularity: Some(true),
-
-            ..Default::default()
-        })));
+        protocol_adapter.expect_response(Ok(Some(expected_capabilites())));
         protocol_adapter.expect_event(
             "output",
             Some(json!({
@@ -1191,22 +1197,7 @@ mod test {
                 "output": "initial info message\n"
             })),
         );
-        protocol_adapter.expect_response(Ok(Some(Capabilities {
-            support_suspend_debuggee: Some(true),
-            supports_clipboard_context: Some(true),
-            supports_completions_request: Some(true),
-            supports_configuration_done_request: Some(true),
-            supports_delayed_stack_trace_loading: Some(true),
-            supports_disassemble_request: Some(true),
-            supports_instruction_breakpoints: Some(true),
-            supports_read_memory_request: Some(true),
-            supports_write_memory_request: Some(true),
-            supports_restart_request: Some(true),
-            supports_set_variable: Some(true),
-            supports_stepping_granularity: Some(true),
-
-            ..Default::default()
-        })));
+        protocol_adapter.expect_response(Ok(Some(expected_capabilites())));
 
         protocol_adapter.expect_response(Err::<Option<u32>, _>(DebuggerError::Other(
             anyhow::anyhow!("No probes found. Please check your USB connections."),
@@ -1291,22 +1282,7 @@ mod test {
                 "output": "initial info message\n"
             })),
         );
-        protocol_adapter.expect_response(Ok(Some(Capabilities {
-            support_suspend_debuggee: Some(true),
-            supports_clipboard_context: Some(true),
-            supports_completions_request: Some(true),
-            supports_configuration_done_request: Some(true),
-            supports_delayed_stack_trace_loading: Some(true),
-            supports_disassemble_request: Some(true),
-            supports_instruction_breakpoints: Some(true),
-            supports_read_memory_request: Some(true),
-            supports_write_memory_request: Some(true),
-            supports_restart_request: Some(true),
-            supports_set_variable: Some(true),
-            supports_stepping_granularity: Some(true),
-
-            ..Default::default()
-        })));
+        protocol_adapter.expect_response(Ok(Some(expected_capabilites())));
 
         protocol_adapter.expect_response(Ok::<Option<u32>, _>(None));
         protocol_adapter.expect_event("initialized", None::<u32>);
