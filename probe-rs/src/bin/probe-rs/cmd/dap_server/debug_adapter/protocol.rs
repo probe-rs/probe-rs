@@ -1,7 +1,7 @@
 use crate::cmd::dap_server::{
     debug_adapter::dap::dap_types::{
-        ErrorResponse, ErrorResponseBody, Event, Message, MessageSeverity, OutputEventBody,
-        ProtocolMessage, Request, Response, ShowMessageEventBody,
+        ErrorResponseBody, Event, Message, MessageSeverity, OutputEventBody, ProtocolMessage,
+        Request, Response, ShowMessageEventBody,
     },
     server::configuration::ConsoleLog,
     DebuggerError,
@@ -26,13 +26,13 @@ pub trait ProtocolAdapter {
         event_body: Option<S>,
     ) -> anyhow::Result<()>;
 
-    fn send_response<S: Serialize + std::fmt::Debug>(
-        &mut self,
-        request: &Request,
-        response: Result<Option<S>, &DebuggerError>,
-    ) -> anyhow::Result<()>;
+    fn send_raw_response(&mut self, response: &Response) -> anyhow::Result<()>;
+
+    fn remove_pending_request(&mut self, request_seq: i64) -> Option<String>;
 
     fn set_console_log_level(&mut self, log_level: ConsoleLog);
+
+    fn console_log_level(&self) -> ConsoleLog;
 }
 
 pub trait ProtocolHelper {
@@ -40,6 +40,12 @@ pub trait ProtocolHelper {
 
     /// Log a message to the console. Returns false if logging the message failed.
     fn log_to_console(&mut self, message: impl Into<String>) -> bool;
+
+    fn send_response<S: Serialize + std::fmt::Debug>(
+        &mut self,
+        request: &Request,
+        response: Result<Option<S>, &DebuggerError>,
+    ) -> Result<(), anyhow::Error>;
 }
 
 impl<P> ProtocolHelper for P
@@ -83,6 +89,122 @@ where
             }
         };
         self.send_event("output", Some(event_body)).is_ok()
+    }
+
+    fn send_response<S: Serialize + std::fmt::Debug>(
+        &mut self,
+        request: &Request,
+        response: Result<Option<S>, &DebuggerError>,
+    ) -> Result<(), anyhow::Error> {
+        let response_is_ok = response.is_ok();
+
+        // The encoded response will be constructed from dap::Response for Ok, and dap::ErrorResponse for Err, to ensure VSCode doesn't lose the details of the error.
+        let encoded_resp = match response {
+            Ok(value) => {
+                let resp = Response {
+                    command: request.command.clone(),
+                    request_seq: request.seq,
+                    seq: request.seq,
+                    success: true,
+                    type_: "response".to_owned(),
+                    message: None,
+                    body: value.map(|v| serde_json::to_value(v)).transpose()?,
+                };
+                resp
+            }
+            Err(debugger_error) => {
+                let mut response_message = debugger_error.to_string();
+                let mut offset_iterations = 0;
+                let mut child_error: Option<&dyn std::error::Error> =
+                    std::error::Error::source(&debugger_error);
+                while let Some(source_error) = child_error {
+                    offset_iterations += 1;
+                    response_message = format!("{response_message}\n",);
+                    for _offset_counter in 0..offset_iterations {
+                        response_message = format!("{response_message}\t");
+                    }
+                    response_message = format!(
+                        "{}{:?}",
+                        response_message,
+                        <dyn std::error::Error>::to_string(source_error)
+                    );
+                    child_error = std::error::Error::source(source_error);
+                }
+                // We have to send log messages on error conditions to the DAP Client now, because
+                // if this error happens during the 'launch' or 'attach' request, the DAP Client
+                // will not initiate a session, and will not be listening for 'output' events.
+                self.log_to_console(&response_message);
+
+                let response_body = ErrorResponseBody {
+                    error: Some(Message {
+                        format: "{response_message}".to_string(),
+                        variables: Some(BTreeMap::from([(
+                            "response_message".to_string(),
+                            response_message,
+                        )])),
+                        // TODO: Implement unique error codes, that can index into the documentation for more information and suggested actions.
+                        id: 0,
+                        send_telemetry: Some(false),
+                        show_user: Some(true),
+                        url_label: Some("Documentation".to_string()),
+                        url: Some("https://probe.rs/docs/tools/debugger/".to_string()),
+                    }),
+                };
+
+                let error_resp = Response {
+                    command: request.command.clone(),
+                    request_seq: request.seq,
+                    seq: request.seq,
+                    success: false,
+                    type_: "response".to_owned(),
+                    message: Some("cancelled".to_string()), // Predefined value in the MSDAP spec.
+                    body: Some(serde_json::to_value(&response_body)?),
+                };
+                error_resp
+            }
+        };
+
+        tracing::debug!("send_response: {:?}", encoded_resp);
+
+        // Check if we got a request for this response
+        if let Some(request_command) = self.remove_pending_request(request.seq) {
+            assert_eq!(request_command, request.command);
+        } else {
+            tracing::error!(
+                "Trying to send a response to non-existing request! {:?} has no pending request",
+                encoded_resp
+            );
+        }
+
+        match self.send_raw_response(&encoded_resp) {
+            Ok(_) => {}
+            Err(error) => {
+                // If we can't send the response, we can't do much about it, so best to terminate the session with an error.
+                let message = format!("Unexpected Error while sending response: {error:?}");
+                tracing::error!("{message}");
+                return Err(anyhow::anyhow!(message));
+            }
+        }
+
+        if response_is_ok {
+            match self.console_log_level() {
+                ConsoleLog::Console => {}
+                ConsoleLog::Info => {
+                    self.log_to_console(format!(
+                        "   Sent DAP Response sequence #{} : {}",
+                        request.seq, request.command
+                    ));
+                }
+                ConsoleLog::Debug => {
+                    self.log_to_console(format!(
+                        "\nSent DAP Response: {:#?}",
+                        serde_json::to_value(encoded_resp)?
+                    ));
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -318,120 +440,24 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
         result.map_err(|e| e.into())
     }
 
-    fn send_response<S: Serialize>(
-        &mut self,
-        request: &Request,
-        response: Result<Option<S>, &DebuggerError>,
-    ) -> anyhow::Result<()> {
-        // The encoded response will be constructed from dap::Response for Ok, and dap::ErrorResponse for Err, to ensure VSCode doesn't lose the details of the error.
-        let encoded_resp = match response.as_ref() {
-            Ok(value) => {
-                let resp = Response {
-                    command: request.command.clone(),
-                    request_seq: request.seq,
-                    seq: request.seq,
-                    success: true,
-                    type_: "response".to_owned(),
-                    message: None,
-                    body: Some(serde_json::to_value(value)?),
-                };
-                tracing::debug!("send_response: {:?}", resp);
-                serde_json::to_vec(&resp)?
-            }
-            Err(debugger_error) => {
-                let mut response_message = debugger_error.to_string();
-                let mut offset_iterations = 0;
-                let mut child_error: Option<&dyn std::error::Error> =
-                    std::error::Error::source(&debugger_error);
-                while let Some(source_error) = child_error {
-                    offset_iterations += 1;
-                    response_message = format!("{response_message}\n",);
-                    for _offset_counter in 0..offset_iterations {
-                        response_message = format!("{response_message}\t");
-                    }
-                    response_message = format!(
-                        "{}{:?}",
-                        response_message,
-                        <dyn std::error::Error>::to_string(source_error)
-                    );
-                    child_error = std::error::Error::source(source_error);
-                }
-                // We have to send log messages on error conditions to the DAP Client now, because
-                // if this error happens during the 'launch' or 'attach' request, the DAP Client
-                // will not initiate a session, and will not be listening for 'output' events.
-                self.log_to_console(&response_message);
-
-                let error_resp = ErrorResponse {
-                    command: request.command.clone(),
-                    request_seq: request.seq,
-                    seq: request.seq,
-                    success: false,
-                    type_: "response".to_owned(),
-                    message: Some("cancelled".to_string()), // Predefined value in the MSDAP spec.
-                    body: ErrorResponseBody {
-                        error: Some(Message {
-                            format: "{response_message}".to_string(),
-                            variables: Some(BTreeMap::from([(
-                                "response_message".to_string(),
-                                response_message,
-                            )])),
-                            // TODO: Implement unique error codes, that can index into the documentation for more information and suggested actions.
-                            id: 0,
-                            send_telemetry: Some(false),
-                            show_user: Some(true),
-                            url_label: Some("Documentation".to_string()),
-                            url: Some("https://probe.rs/docs/tools/debugger/".to_string()),
-                        }),
-                    },
-                };
-                tracing::debug!("send_response: {:?}", error_resp);
-                serde_json::to_vec(&error_resp)?
-            }
-        };
-
-        // Check if we got a request for this response
-        if let Some(request_command) = self.pending_requests.remove(&request.seq) {
-            assert_eq!(request_command, request.command);
-        } else {
-            tracing::error!(
-                "Trying to send a response to non-existing request! {:?} has no pending request",
-                serde_json::to_value(&encoded_resp)?
-            );
-        }
-
-        match self.send_data(&encoded_resp) {
-            Ok(_) => {}
-            Err(error) => {
-                // If we can't send the response, we can't do much about it, so best to terminate the session with an error.
-                let message = format!("Unexpected Error while sending response: {error:?}");
-                tracing::error!("{message}");
-                return Err(anyhow::anyhow!(message));
-            }
-        }
-
-        if response.is_ok() {
-            match self.console_log_level {
-                ConsoleLog::Console => {}
-                ConsoleLog::Info => {
-                    self.log_to_console(format!(
-                        "   Sent DAP Response sequence #{} : {}",
-                        request.seq, request.command
-                    ));
-                }
-                ConsoleLog::Debug => {
-                    self.log_to_console(format!(
-                        "\nSent DAP Response: {:#?}",
-                        serde_json::to_value(encoded_resp)?
-                    ));
-                }
-            }
-        }
-
-        Ok(())
-    }
-
     fn set_console_log_level(&mut self, log_level: ConsoleLog) {
         self.console_log_level = log_level;
+    }
+
+    fn console_log_level(&self) -> ConsoleLog {
+        self.console_log_level
+    }
+
+    fn remove_pending_request(&mut self, request_seq: i64) -> Option<String> {
+        self.pending_requests.remove(&request_seq)
+    }
+
+    fn send_raw_response(&mut self, response: &Response) -> anyhow::Result<()> {
+        let encoded_response = serde_json::to_vec(&response)?;
+
+        self.send_data(&encoded_response)?;
+
+        Ok(())
     }
 }
 
