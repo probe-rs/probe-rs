@@ -3,6 +3,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::time::Instant;
 
+use probe_rs::Lister;
 use probe_rs::MemoryInterface;
 use scroll::{Pwrite, LE};
 
@@ -23,13 +24,13 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self) -> anyhow::Result<()> {
+    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
         let mut xs = vec![];
         let mut ys = vec![];
 
         let start = Instant::now();
 
-        let (mut session, _probe_options) = self.common.simple_attach()?;
+        let (mut session, _probe_options) = self.common.simple_attach(lister)?;
 
         let mut core = session.core(self.shared.core)?;
 

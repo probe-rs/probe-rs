@@ -7,14 +7,13 @@ pub(crate) mod fake_probe;
 #[cfg(feature = "ftdi")]
 pub(crate) mod ftdi;
 pub(crate) mod jlink;
+pub(crate) mod list;
 pub(crate) mod stlink;
 pub(crate) mod wlink;
 
-use self::espusbjtag::list_espjtag_devices;
 use crate::architecture::arm::ArmError;
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::error::Error;
-use crate::Session;
 use crate::{
     architecture::arm::communication_interface::UninitializedArmProbe,
     config::{RegistryError, TargetSelector},
@@ -30,7 +29,7 @@ use crate::{
     },
     Permissions,
 };
-use jlink::list_jlink_devices;
+use crate::{Lister, Session};
 use probe_rs_target::ScanChainElement;
 use std::{convert::TryFrom, fmt};
 
@@ -205,10 +204,12 @@ pub enum ProbeCreationError {
 /// to create a new `Probe`:
 ///
 /// ```no_run
-/// use probe_rs::Probe;
+/// use probe_rs::{Lister, Probe};
 ///
-/// let probe_list = Probe::list_all();
-/// let probe = Probe::open(&probe_list[0]);
+/// let lister = Lister::new();
+///
+/// let probe_list = lister.list_all();
+/// let probe = probe_list[0].open(&lister);
 /// ```
 #[derive(Debug)]
 pub struct Probe {
@@ -238,69 +239,6 @@ impl Probe {
             inner: probe,
             attached: false,
         }
-    }
-
-    /// Get a list of all debug probes found.
-    /// This can be used to select the debug probe which
-    /// should be used.
-    #[tracing::instrument]
-    pub fn list_all() -> Vec<DebugProbeInfo> {
-        let mut list = cmsisdap::tools::list_cmsisdap_devices();
-        #[cfg(feature = "ftdi")]
-        {
-            list.extend(ftdi::list_ftdi_devices());
-        }
-        list.extend(stlink::tools::list_stlink_devices());
-
-        list.extend(list_jlink_devices());
-
-        list.extend(list_espjtag_devices());
-
-        list.extend(wlink::list_wlink_devices());
-
-        list
-    }
-
-    /// Create a [`Probe`] from [`DebugProbeInfo`]. Use the
-    /// [`Probe::list_all()`] function to get the information
-    /// about all probes available.
-    #[tracing::instrument(skip_all)]
-    pub fn open(selector: impl Into<DebugProbeSelector> + Clone) -> Result<Self, DebugProbeError> {
-        match cmsisdap::CmsisDap::new_from_selector(selector.clone()) {
-            Ok(link) => return Ok(Probe::from_specific_probe(link)),
-            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
-            Err(e) => return Err(e),
-        };
-        #[cfg(feature = "ftdi")]
-        match ftdi::FtdiProbe::new_from_selector(selector.clone()) {
-            Ok(link) => return Ok(Probe::from_specific_probe(link)),
-            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
-            Err(e) => return Err(e),
-        };
-        match stlink::StLink::new_from_selector(selector.clone()) {
-            Ok(link) => return Ok(Probe::from_specific_probe(link)),
-            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
-            Err(e) => return Err(e),
-        };
-        match jlink::JLink::new_from_selector(selector.clone()) {
-            Ok(link) => return Ok(Probe::from_specific_probe(link)),
-            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
-            Err(e) => return Err(e),
-        };
-        match espusbjtag::EspUsbJtag::new_from_selector(selector.clone()) {
-            Ok(link) => return Ok(Probe::from_specific_probe(link)),
-            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
-            Err(e) => return Err(e),
-        };
-        match wlink::WchLink::new_from_selector(selector) {
-            Ok(link) => return Ok(Probe::from_specific_probe(link)),
-            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
-            Err(e) => return Err(e),
-        };
-
-        Err(DebugProbeError::ProbeCouldNotBeCreated(
-            ProbeCreationError::NotFound,
-        ))
     }
 
     /// Get the human readable name for the probe.
@@ -673,7 +611,7 @@ pub trait DebugProbe: Send + fmt::Debug {
 }
 
 /// Denotes the type of a given [`DebugProbe`].
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
 pub enum DebugProbeType {
     /// CMSIS-DAP
     CmsisDap,
@@ -745,8 +683,8 @@ impl DebugProbeInfo {
     }
 
     /// Open the probe described by this `DebugProbeInfo`.
-    pub fn open(&self) -> Result<Probe, DebugProbeError> {
-        Probe::open(self)
+    pub fn open(&self, lister: &Lister) -> Result<Probe, DebugProbeError> {
+        lister.open(DebugProbeSelector::from(self))
     }
 }
 
@@ -839,6 +777,12 @@ impl From<&DebugProbeInfo> for DebugProbeSelector {
             product_id: selector.product_id,
             serial_number: selector.serial_number.clone(),
         }
+    }
+}
+
+impl From<&DebugProbeSelector> for DebugProbeSelector {
+    fn from(selector: &DebugProbeSelector) -> Self {
+        selector.clone()
     }
 }
 

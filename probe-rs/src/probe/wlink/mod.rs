@@ -484,14 +484,14 @@ fn get_wlink_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
         .ok();
 
     if prod_str == "WCH-Link" {
-        Some(DebugProbeInfo {
-            identifier: "WCH-Link".into(),
-            vendor_id: VENDOR_ID,
-            product_id: PRODUCT_ID,
-            serial_number: sn_str,
-            probe_type: DebugProbeType::WchLink,
-            hid_interface: None,
-        })
+        Some(DebugProbeInfo::new(
+            "WCH-Link",
+            VENDOR_ID,
+            PRODUCT_ID,
+            sn_str,
+            DebugProbeType::WchLink,
+            None,
+        ))
     } else {
         None
     }

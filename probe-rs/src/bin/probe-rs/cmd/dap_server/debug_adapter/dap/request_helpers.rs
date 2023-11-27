@@ -332,10 +332,9 @@ pub(crate) fn get_dap_source(source_location: &SourceLocation) -> Option<Source>
 pub(crate) fn halt_core(
     target_core: &mut probe_rs::Core,
 ) -> Result<probe_rs::CoreInformation, DebuggerError> {
-    match target_core.halt(Duration::from_millis(100)) {
-        Ok(cpu_info) => Ok(cpu_info),
-        Err(error) => Err(DebuggerError::Other(anyhow!("{}", error))),
-    }
+    target_core
+        .halt(Duration::from_millis(100))
+        .map_err(DebuggerError::from)
 }
 
 /// The DAP protocol uses three related values to determine how to invoke the `Variables` request.

@@ -50,6 +50,16 @@ pub struct ApAddress {
     pub ap: u8,
 }
 
+impl ApAddress {
+    /// Create a new `ApAddress` belonging to the default debug port.
+    pub fn with_default_dp(ap: u8) -> Self {
+        Self {
+            dp: DpAddress::Default,
+            ap,
+        }
+    }
+}
+
 /// Low-level DAP register access.
 ///
 /// Operations on this trait closely match the transactions on the wire. Implementors

@@ -8,10 +8,11 @@ use colored::*;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::rtt::{Rtt, ScanRegion};
+use probe_rs::Lister;
 use probe_rs::{
     config::TargetSelector,
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
-    DebugProbeSelector, Permissions, Probe, Session,
+    DebugProbeSelector, Permissions, Session,
 };
 use std::ffi::OsString;
 use std::{
@@ -171,9 +172,11 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
         path.display()
     ));
 
+    let lister = Lister::new();
+
     // If we got a probe selector in the config, open the probe matching the selector if possible.
     let mut probe = if let Some(ref selector) = opt.probe_selector {
-        Probe::open(selector.clone())?
+        lister.open(selector)?
     } else {
         match (config.probe.usb_vid.as_ref(), config.probe.usb_pid.as_ref()) {
             (Some(vid), Some(pid)) => {
@@ -183,7 +186,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
                     serial_number: config.probe.serial.clone(),
                 };
                 // if two probes with the same VID:PID pair exist we just choose one
-                Probe::open(selector)?
+                lister.open(selector)?
             }
             _ => {
                 if config.probe.usb_vid.is_some() {
@@ -195,7 +198,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
 
                 // Only automatically select a probe if there is only
                 // a single probe detected.
-                let list = Probe::list_all();
+                let list = lister.list_all();
                 if list.len() > 1 {
                     use std::fmt::Write;
 
@@ -209,7 +212,8 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
                                     For usage examples see https://github.com/probe-rs/cargo-embed/blob/master/src/config/default.toml .",
                                     list.iter().enumerate().fold(String::new(), |mut s, (num, link)| { let _ = writeln!(s, "[{num}]: {link:?}"); s })));
                 }
-                Probe::open(
+
+                lister.open(
                     list.first()
                         .ok_or_else(|| anyhow!("No supported probe was found"))?,
                 )?

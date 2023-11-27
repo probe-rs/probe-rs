@@ -1,6 +1,6 @@
 use probe_rs::rtt::{Channels, Rtt, RttChannel, ScanRegion};
-use probe_rs::Permissions;
-use probe_rs::{config::TargetSelector, DebugProbeInfo, Probe};
+use probe_rs::{config::TargetSelector, DebugProbeInfo};
+use probe_rs::{Lister, Permissions};
 
 use anyhow::{bail, Result};
 use clap::Parser;
@@ -109,7 +109,9 @@ fn main() -> Result<()> {
     pretty_env_logger::init();
     let opts = Opts::parse();
 
-    let probes = Probe::list_all();
+    let lister = Lister::new();
+
+    let probes = lister.list_all();
 
     if probes.is_empty() {
         bail!("No debug probes available. Make sure your probe is plugged in, supported and up-to-date.");
@@ -128,7 +130,7 @@ fn main() -> Result<()> {
         bail!("Probe {probe_number} does not exist.");
     }
 
-    let probe = match probes[probe_number].open() {
+    let probe = match probes[probe_number].open(&lister) {
         Ok(probe) => probe,
         Err(err) => {
             bail!("Error opening probe: {err}");

@@ -2,11 +2,11 @@ use crate::util::rtt;
 use crate::{cmd::dap_server::DebuggerError, FormatOptions};
 use anyhow::{anyhow, Result};
 use probe_rs::{DebugProbeSelector, WireProtocol};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{env::current_dir, path::PathBuf};
 
 /// Shared options for all session level configuration.
-#[derive(Clone, Deserialize, Debug, Default)]
+#[derive(Clone, Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionConfig {
     /// Level of information to be logged to the debugger console (Error, Info or Debug )
@@ -149,7 +149,7 @@ fn get_absolute_path(
 }
 
 /// Configuration options to control flashing.
-#[derive(Clone, Deserialize, Debug, Default)]
+#[derive(Clone, Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct FlashingConfig {
     /// Flash the target before debugging
@@ -174,7 +174,7 @@ pub struct FlashingConfig {
 }
 
 /// Configuration options for all core level configuration.
-#[derive(Clone, Deserialize, Debug, Default)]
+#[derive(Clone, Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct CoreConfig {
     /// The MCU Core to debug. Default is 0

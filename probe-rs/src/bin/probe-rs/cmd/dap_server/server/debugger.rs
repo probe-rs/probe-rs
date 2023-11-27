@@ -21,7 +21,7 @@ use crate::cmd::dap_server::{
 use anyhow::{anyhow, Context};
 use probe_rs::{
     flashing::{download_file_with_options, DownloadOptions, FlashProgress},
-    Architecture, CoreStatus,
+    Architecture, CoreStatus, Lister,
 };
 use std::{
     cell::RefCell,
@@ -171,11 +171,9 @@ impl Debugger {
                                     unhalt_me = true;
                                 }
                                 Err(error) => {
-                                    debug_adapter.send_response::<()>(
-                                        &request,
-                                        Err(DebuggerError::Other(anyhow!("{}", error))),
-                                    )?;
-                                    return Err(error.into());
+                                    let err = DebuggerError::from(error);
+                                    debug_adapter.send_response::<()>(&request, Err(&err))?;
+                                    return Err(err);
                                 }
                             }
                         }
@@ -268,7 +266,7 @@ impl Debugger {
                         // Unimplemented command.
                         debug_adapter.send_response::<()>(
                             &request,
-                            Err(DebuggerError::Other(anyhow!("Received request '{}', which is not supported or not implemented yet", other_command))),)
+                            Err(&DebuggerError::Other(anyhow!("Received request '{}', which is not supported or not implemented yet", other_command))),)
                             .and(Ok(()))
                     }
                 };
@@ -300,6 +298,7 @@ impl Debugger {
         &mut self,
         mut debug_adapter: DebugAdapter<P>,
         log_info_message: &str,
+        lister: &Lister,
     ) -> Result<DebugSessionStatus, DebuggerError> {
         debug_adapter.log_to_console("Starting debug session...");
         debug_adapter.log_to_console(log_info_message);
@@ -315,14 +314,21 @@ impl Debugger {
             return Ok(DebugSessionStatus::Terminate);
         }
 
-        // Process either the Launch or Attach request.
-        let (mut debug_adapter, mut session_data) = match self.handle_launch_attach(debug_adapter) {
-            Ok((debug_adapter, session_data)) => (debug_adapter, session_data),
-            Err(_) => {
-                // The request handler has already reported this error to the user.
-                return Ok(DebugSessionStatus::Terminate);
+        let launch_attach_request = loop {
+            if let Some(request) = debug_adapter.listen_for_request()? {
+                break request;
             }
         };
+
+        // Process either the Launch or Attach request.
+        let (mut debug_adapter, mut session_data) =
+            match self.handle_launch_attach(&launch_attach_request, debug_adapter, lister) {
+                Ok((debug_adapter, session_data)) => (debug_adapter, session_data),
+                Err(_) => {
+                    // The request handler has already reported this error to the user.
+                    return Ok(DebugSessionStatus::Terminate);
+                }
+            };
 
         if debug_adapter
             .send_event::<Event>("initialized", None)
@@ -372,14 +378,10 @@ impl Debugger {
     /// Process launch or attach request
     fn handle_launch_attach<P: ProtocolAdapter + 'static>(
         &mut self,
+        launch_attach_request: &Request,
         mut debug_adapter: DebugAdapter<P>,
+        lister: &Lister,
     ) -> Result<(DebugAdapter<P>, SessionData), DebuggerError> {
-        let launch_attach_request = loop {
-            if let Some(request) = debug_adapter.listen_for_request()? {
-                break request;
-            }
-        };
-
         let requested_target_session_type = match launch_attach_request.command.as_str() {
             "attach" => TargetSessionType::AttachRequest,
             "launch" => TargetSessionType::LaunchRequest,
@@ -388,14 +390,14 @@ impl Debugger {
                     format!("Expected request 'launch' or 'attach', but received '{other}'");
 
                 debug_adapter.send_response::<()>(
-                    &launch_attach_request,
-                    Err(DebuggerError::Other(anyhow!(error_msg.clone()))),
+                    launch_attach_request,
+                    Err(&DebuggerError::Other(anyhow!(error_msg.clone()))),
                 )?;
                 return Err(DebuggerError::Other(anyhow!(error_msg)));
             }
         };
 
-        let arguments = get_arguments(&mut debug_adapter, &launch_attach_request)?;
+        let arguments = get_arguments(&mut debug_adapter, launch_attach_request)?;
 
         self.config = configuration::SessionConfig { ..arguments };
 
@@ -407,8 +409,8 @@ impl Debugger {
                 || self.config.flashing_config.restore_unwritten_bytes
             {
                 debug_adapter.send_response::<()>(
-                                        &launch_attach_request,
-                                        Err(DebuggerError::Other(anyhow!(
+                                        launch_attach_request,
+                                        Err(&DebuggerError::Other(anyhow!(
                                             "Please do not use any of the `flashing_enabled`, `reset_after_flashing`, halt_after_reset`, `full_chip_erase`, or `restore_unwritten_bytes` options when using `attach` request type."))),
                                     )?;
 
@@ -421,22 +423,20 @@ impl Debugger {
             .set_console_log_level(self.config.console_log_level.unwrap_or(ConsoleLog::Console));
 
         if let Err(e) = self.config.validate_config_files() {
-            let err = anyhow!("{e:?}");
+            debug_adapter.send_response::<()>(launch_attach_request, Err(&e))?;
 
-            debug_adapter.send_response::<()>(&launch_attach_request, Err(e))?;
-
-            return Err(err.into());
+            return Err(e);
         }
 
-        let mut session_data = match SessionData::new(&mut self.config, self.timestamp_offset) {
-            Ok(session_data) => session_data,
-            Err(error) => {
-                let err = anyhow!("{error:?}");
-                debug_adapter.send_response::<()>(&launch_attach_request, Err(error))?;
+        let mut session_data =
+            match SessionData::new(lister, &mut self.config, self.timestamp_offset) {
+                Ok(session_data) => session_data,
+                Err(error) => {
+                    debug_adapter.send_response::<()>(launch_attach_request, Err(&error))?;
 
-                return Err(err.into());
-            }
-        };
+                    return Err(error);
+                }
+            };
 
         debug_adapter.halt_after_reset = self.config.flashing_config.halt_after_reset;
 
@@ -446,10 +446,10 @@ impl Debugger {
                     "Cannot continue unless one target core configuration is defined."
                 ))
             })?;
+
             let Some(path_to_elf) = target_core_config.program_binary.clone() else {
                 let err =  DebuggerError::Other(anyhow!("Please specify use the `program-binary` option in `launch.json` to specify an executable"));
-
-                debug_adapter.show_error_message(&err)?;
+                debug_adapter.send_response::<()>(launch_attach_request, Err(&err))?;
                 return Err(err);
             };
 
@@ -515,7 +515,7 @@ impl Debugger {
 
         drop(target_core);
 
-        debug_adapter.send_response::<()>(&launch_attach_request, Ok(None))?;
+        debug_adapter.send_response::<()>(launch_attach_request, Ok(None))?;
 
         Ok((debug_adapter, session_data))
     }
@@ -799,7 +799,7 @@ impl Debugger {
         {
             debug_adapter.send_response::<()>(
                 &initialize_request,
-                Err(DebuggerError::Other(anyhow!(
+                Err(&DebuggerError::Other(anyhow!(
                     "Unsupported Capability: Client requested column and row numbers start at 0."
                 ))),
             )?;
@@ -824,7 +824,6 @@ impl Debugger {
         let capabilities = Capabilities {
             supports_configuration_done_request: Some(true),
             supports_restart_request: Some(true),
-            support_terminate_debuggee: Some(true),
             support_suspend_debuggee: Some(true),
             supports_delayed_stack_trace_loading: Some(true),
             supports_read_memory_request: Some(true),
@@ -835,6 +834,7 @@ impl Debugger {
             supports_instruction_breakpoints: Some(true),
             supports_stepping_granularity: Some(true),
             supports_completions_request: Some(true),
+            support_terminate_debuggee: Some(true),
             // supports_value_formatting_options: Some(true),
             // supports_function_breakpoints: Some(true),
             // TODO: Use DEMCR register to implement exception breakpoints
@@ -867,12 +867,11 @@ fn expect_request<P: ProtocolAdapter>(
     } else {
         debug_adapter.send_response::<()>(
             &next_request,
-            Err(anyhow!(
+            Err(&DebuggerError::Other(anyhow!(
                 "Initial command was '{}', expected '{}'",
                 next_request.command,
                 expected_command
-            )
-            .into()),
+            ))),
         )?;
 
         Err(DebuggerError::Other(anyhow!(
@@ -910,5 +909,451 @@ pub(crate) fn is_file_newer(
             .ok()
             .flatten();
         true
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use core::panic;
+    use std::collections::VecDeque;
+    use std::path::PathBuf;
+
+    use probe_rs::architecture::arm::ApAddress;
+    use probe_rs::{DebugProbeInfo, FakeProbe};
+    use probe_rs::{Lister, ProbeOperation};
+    use serde_json::json;
+    use time::UtcOffset;
+
+    use crate::cmd::dap_server::debug_adapter::dap::dap_types::DisconnectArguments;
+    use crate::cmd::dap_server::server::configuration::CoreConfig;
+    use crate::cmd::dap_server::{
+        debug_adapter::{
+            dap::{
+                adapter::DebugAdapter,
+                dap_types::{Capabilities, InitializeRequestArguments, Request},
+            },
+            protocol::ProtocolAdapter,
+        },
+        server::{configuration::SessionConfig, debugger::DebugSessionStatus},
+        test::TestLister,
+        DebuggerError,
+    };
+
+    /// Helper function to get the expected capabilites for the debugger
+    ///
+    /// `Capabilites::default()` is not const, so this can't just be a constant.
+    fn expected_capabilites() -> Capabilities {
+        Capabilities {
+            support_suspend_debuggee: Some(true),
+            supports_clipboard_context: Some(true),
+            supports_completions_request: Some(true),
+            supports_configuration_done_request: Some(true),
+            supports_delayed_stack_trace_loading: Some(true),
+            supports_disassemble_request: Some(true),
+            supports_instruction_breakpoints: Some(true),
+            supports_read_memory_request: Some(true),
+            supports_write_memory_request: Some(true),
+            supports_restart_request: Some(true),
+            supports_set_variable: Some(true),
+            supports_stepping_granularity: Some(true),
+            support_terminate_debuggee: Some(true),
+
+            ..Default::default()
+        }
+    }
+
+    use super::Debugger;
+
+    struct MockProtocolAdapter {
+        requests: VecDeque<Option<Request>>,
+
+        response_index: usize,
+        expected_responses:
+            Vec<Result<Option<serde_json::Value>, crate::cmd::dap_server::DebuggerError>>,
+
+        event_index: usize,
+        expected_events: Vec<(String, Option<serde_json::Value>)>,
+    }
+
+    impl MockProtocolAdapter {
+        fn new() -> Self {
+            Self {
+                requests: VecDeque::new(),
+                response_index: 0,
+                expected_responses: Vec::new(),
+                expected_events: Vec::new(),
+                event_index: 0,
+            }
+        }
+
+        fn add_request(&mut self, response: Option<Request>) {
+            self.requests.push_back(response);
+        }
+
+        fn expect_response(
+            &mut self,
+            response: Result<Option<impl serde::Serialize>, DebuggerError>,
+        ) {
+            let response = response.map(|r| r.map(|s| serde_json::to_value(s).unwrap()));
+
+            self.expected_responses.push(response);
+        }
+
+        fn expect_event(&mut self, event_type: &str, event_body: Option<impl serde::Serialize>) {
+            let event_body = event_body.map(|s| serde_json::to_value(s).unwrap());
+
+            self.expected_events
+                .push((event_type.to_owned(), event_body));
+        }
+    }
+
+    impl ProtocolAdapter for MockProtocolAdapter {
+        fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>> {
+            self.requests
+                .pop_front()
+                .ok_or_else(|| anyhow::anyhow!("No more responses to listen for."))
+        }
+
+        fn send_event<S: serde::Serialize>(
+            &mut self,
+            event_type: &str,
+            event_body: Option<S>,
+        ) -> anyhow::Result<()> {
+            let event_body = event_body.map(|s| serde_json::to_value(s).unwrap());
+
+            if self.event_index >= self.expected_events.len() {
+                panic!(
+                    "No more events expected, but got event_type={:?}, event_body={:?}",
+                    event_type, event_body
+                );
+            }
+
+            let (expected_event_type, expected_event_body) =
+                &self.expected_events[self.event_index];
+
+            pretty_assertions::assert_eq!(event_type, expected_event_type);
+            pretty_assertions::assert_eq!(&event_body, expected_event_body);
+
+            self.event_index += 1;
+
+            Ok(())
+        }
+
+        fn set_console_log_level(
+            &mut self,
+            _log_level: crate::cmd::dap_server::server::configuration::ConsoleLog,
+        ) {
+        }
+
+        fn send_response<S: serde::Serialize + std::fmt::Debug>(
+            &mut self,
+            _request: &crate::cmd::dap_server::debug_adapter::dap::dap_types::Request,
+            response: Result<Option<S>, &crate::cmd::dap_server::DebuggerError>,
+        ) -> anyhow::Result<()> {
+            if self.response_index >= self.expected_responses.len() {
+                panic!("No more responses expected, but got {response:?}");
+            }
+
+            let expected_response = &self.expected_responses[self.response_index];
+
+            let response = response.map(|r| r.map(|s| serde_json::to_value(s).unwrap()));
+
+            match (response, expected_response) {
+                (Ok(actual_response), Ok(expected_response)) => {
+                    pretty_assertions::assert_eq!(&actual_response, expected_response);
+                }
+                (Err(actual_error), Err(expected_error)) => {
+                    assert_eq!(actual_error.to_string(), expected_error.to_string());
+                }
+                (Ok(actual_response), Err(expected_error)) => {
+                    panic!(
+                        "Expected error {:?} but got response {:?}",
+                        expected_error, actual_response
+                    );
+                }
+                (Err(actual_error), Ok(expected_response)) => {
+                    panic!(
+                        "Expected response {:?} but got error {:?}",
+                        expected_response, actual_error
+                    );
+                }
+            }
+
+            self.response_index += 1;
+
+            Ok(())
+        }
+    }
+
+    #[test]
+    fn test_initalize_request() {
+        let mut protocol_adapter = MockProtocolAdapter::new();
+
+        let initialize_args = InitializeRequestArguments {
+            client_id: Some("mock_client".to_owned()),
+            client_name: Some("Mock client for testing".to_owned()),
+            adapter_id: "mock_adapter".to_owned(),
+            columns_start_at_1: None,
+            lines_start_at_1: None,
+            locale: None,
+            path_format: None,
+            supports_args_can_be_interpreted_by_shell: None,
+            supports_invalidated_event: None,
+            supports_memory_event: None,
+            supports_memory_references: None,
+            supports_progress_reporting: None,
+            supports_run_in_terminal_request: None,
+            supports_start_debugging_request: None,
+            supports_variable_paging: None,
+            supports_variable_type: None,
+        };
+
+        let args = serde_json::to_value(initialize_args).unwrap();
+
+        let request = Request {
+            arguments: Some(args),
+            command: "initialize".to_string(),
+            seq: 1,
+            type_: "request".to_string(),
+        };
+
+        protocol_adapter.add_request(Some(request));
+        protocol_adapter.expect_response(Ok(Some(expected_capabilites())));
+        protocol_adapter.expect_event(
+            "output",
+            Some(json!({
+                "category": "console",
+                "group": "probe-rs-debug",
+                "output": "Starting debug session...\n"
+            })),
+        );
+        protocol_adapter.expect_event(
+            "output",
+            Some(json!({
+                "category": "console",
+                "group": "probe-rs-debug",
+                "output": "Some message?\n"
+            })),
+        );
+
+        let debug_adapter = DebugAdapter::new(protocol_adapter);
+
+        let mut debugger = Debugger::new(UtcOffset::UTC);
+
+        let lister = Lister::with_lister(Box::new(TestLister::new()));
+
+        // TODO: Check proper return value
+        debugger
+            .debug_session(debug_adapter, "Some message?", &lister)
+            .unwrap_err();
+    }
+
+    #[test]
+    fn test_launch_no_probes() {
+        let mut protocol_adapter = MockProtocolAdapter::new();
+
+        let initialize_args = InitializeRequestArguments {
+            client_id: Some("mock_client".to_owned()),
+            client_name: Some("Mock client for testing".to_owned()),
+            adapter_id: "mock_adapter".to_owned(),
+            columns_start_at_1: None,
+            lines_start_at_1: None,
+            locale: None,
+            path_format: None,
+            supports_args_can_be_interpreted_by_shell: None,
+            supports_invalidated_event: None,
+            supports_memory_event: None,
+            supports_memory_references: None,
+            supports_progress_reporting: None,
+            supports_run_in_terminal_request: None,
+            supports_start_debugging_request: None,
+            supports_variable_paging: None,
+            supports_variable_type: None,
+        };
+
+        let args = serde_json::to_value(initialize_args).unwrap();
+
+        let request = Request {
+            arguments: Some(args),
+            command: "initialize".to_string(),
+            seq: 1,
+            type_: "request".to_string(),
+        };
+
+        protocol_adapter.add_request(Some(request));
+        protocol_adapter.expect_event(
+            "output",
+            Some(json!({
+                "category": "console",
+                "group": "probe-rs-debug",
+                "output": "Starting debug session...\n"
+            })),
+        );
+        protocol_adapter.expect_event(
+            "output",
+            Some(json!({
+                "category": "console",
+                "group": "probe-rs-debug",
+                "output": "initial info message\n"
+            })),
+        );
+        protocol_adapter.expect_response(Ok(Some(expected_capabilites())));
+
+        protocol_adapter.expect_response(Err::<Option<u32>, _>(DebuggerError::Other(
+            anyhow::anyhow!("No probes found. Please check your USB connections."),
+        )));
+
+        let launch_args = SessionConfig::default();
+
+        let args = serde_json::to_value(launch_args).unwrap();
+
+        let request = Request {
+            arguments: Some(args),
+            command: "launch".to_string(),
+            seq: 2,
+            type_: "request".to_string(),
+        };
+
+        protocol_adapter.add_request(Some(request));
+
+        let debug_adapter = DebugAdapter::new(protocol_adapter);
+
+        let mut debugger = Debugger::new(UtcOffset::UTC);
+
+        let lister = Lister::with_lister(Box::new(TestLister::new()));
+
+        let status = debugger
+            .debug_session(debug_adapter, "initial info message", &lister)
+            .unwrap();
+
+        assert_eq!(status, DebugSessionStatus::Terminate);
+    }
+
+    #[test]
+    fn test_launch_and_terminate() {
+        let manifest_dir = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"));
+
+        let debug_info = manifest_dir.join("tests/debug-unwind-tests/nRF52833_xxAA.elf");
+
+        let mut protocol_adapter = MockProtocolAdapter::new();
+
+        let initialize_args = InitializeRequestArguments {
+            client_id: Some("mock_client".to_owned()),
+            client_name: Some("Mock client for testing".to_owned()),
+            adapter_id: "mock_adapter".to_owned(),
+            columns_start_at_1: None,
+            lines_start_at_1: None,
+            locale: None,
+            path_format: None,
+            supports_args_can_be_interpreted_by_shell: None,
+            supports_invalidated_event: None,
+            supports_memory_event: None,
+            supports_memory_references: None,
+            supports_progress_reporting: None,
+            supports_run_in_terminal_request: None,
+            supports_start_debugging_request: None,
+            supports_variable_paging: None,
+            supports_variable_type: None,
+        };
+
+        let args = serde_json::to_value(initialize_args).unwrap();
+
+        let request = Request {
+            arguments: Some(args),
+            command: "initialize".to_string(),
+            seq: 1,
+            type_: "request".to_string(),
+        };
+
+        protocol_adapter.add_request(Some(request));
+        protocol_adapter.expect_event(
+            "output",
+            Some(json!({
+                "category": "console",
+                "group": "probe-rs-debug",
+                "output": "Starting debug session...\n"
+            })),
+        );
+        protocol_adapter.expect_event(
+            "output",
+            Some(json!({
+                "category": "console",
+                "group": "probe-rs-debug",
+                "output": "initial info message\n"
+            })),
+        );
+        protocol_adapter.expect_response(Ok(Some(expected_capabilites())));
+
+        protocol_adapter.expect_response(Ok::<Option<u32>, _>(None));
+        protocol_adapter.expect_event("initialized", None::<u32>);
+
+        let launch_args = SessionConfig {
+            chip: Some("nrf52833_xxaa".to_owned()),
+            core_configs: vec![CoreConfig {
+                core_index: 0,
+                program_binary: Some(debug_info),
+                ..CoreConfig::default()
+            }],
+            ..SessionConfig::default()
+        };
+
+        let args = serde_json::to_value(launch_args).unwrap();
+
+        let request = Request {
+            arguments: Some(args),
+            command: "launch".to_string(),
+            seq: 2,
+            type_: "request".to_string(),
+        };
+
+        protocol_adapter.add_request(Some(request));
+        protocol_adapter.add_request(Some(Request {
+            arguments: Some(
+                serde_json::to_value(DisconnectArguments {
+                    restart: Some(false),
+                    suspend_debuggee: Some(false),
+                    terminate_debuggee: Some(false),
+                })
+                .unwrap(),
+            ),
+            command: "disconnect".to_string(),
+            seq: 3,
+            type_: "request".to_string(),
+        }));
+        protocol_adapter.expect_response(Ok::<Option<u32>, _>(None));
+
+        let debug_adapter = DebugAdapter::new(protocol_adapter);
+
+        let mut debugger = Debugger::new(UtcOffset::UTC);
+
+        let lister = TestLister::new();
+
+        let probe_info = DebugProbeInfo::new(
+            "Mock probe",
+            0x12,
+            0x23,
+            Some("mock_serial".to_owned()),
+            probe_rs::DebugProbeType::CmsisDap,
+            None,
+        );
+
+        let fake_probe = FakeProbe::with_mocked_core();
+
+        // Indicate that the core is unlocked
+        fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
+            ap: ApAddress::with_default_dp(1),
+            address: 0xC,
+            result: 1,
+        });
+
+        lister.probes.borrow_mut().push((probe_info, fake_probe));
+
+        let lister = Lister::with_lister(Box::new(lister));
+
+        let status = debugger
+            .debug_session(debug_adapter, "initial info message", &lister)
+            .unwrap();
+
+        assert_eq!(status, DebugSessionStatus::Terminate);
     }
 }

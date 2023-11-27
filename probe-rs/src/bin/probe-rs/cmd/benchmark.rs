@@ -4,7 +4,7 @@ use std::{
 };
 
 use anyhow::Context;
-use probe_rs::MemoryInterface;
+use probe_rs::{Lister, MemoryInterface};
 use rand::prelude::*;
 
 use crate::util::common_options::LoadedProbeOptions;
@@ -84,7 +84,7 @@ struct TestData {
 }
 
 impl Cmd {
-    pub fn run(self) -> anyhow::Result<()> {
+    pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
         let speed = self.common.speed;
         let common_options = self.common.load()?;
         let mut max_speed = self.max_speed;
@@ -97,7 +97,7 @@ impl Cmd {
             speeds.extend_from_slice(&PROBE_SPEEDS);
         };
         // if we can't print basic info, we're probably not going to succeed with testing so bubble up the error
-        Cmd::print_info(&common_options)?;
+        Cmd::print_info(&common_options, lister)?;
 
         for speed in speeds
             .iter()
@@ -106,6 +106,7 @@ impl Cmd {
             for size in TEST_SIZES {
                 let res = Cmd::benchmark(
                     &common_options,
+                    lister,
                     *speed,
                     size,
                     self.address,
@@ -128,8 +129,8 @@ impl Cmd {
     }
 
     /// Print probe and target info
-    fn print_info(common_options: &LoadedProbeOptions) -> anyhow::Result<()> {
-        let probe = common_options.attach_probe()?;
+    fn print_info(common_options: &LoadedProbeOptions, lister: &Lister) -> anyhow::Result<()> {
+        let probe = common_options.attach_probe(lister)?;
         let protocol_name = probe
             .protocol()
             .map(|p| p.to_string())
@@ -149,13 +150,14 @@ impl Cmd {
     /// Run a specific benchmark
     fn benchmark(
         common_options: &LoadedProbeOptions,
+        lister: &Lister,
         speed: u32,
         size: usize,
         address: u64,
         word_size: u32,
         iterations: usize,
     ) -> Result<(), anyhow::Error> {
-        let mut probe = common_options.attach_probe()?;
+        let mut probe = common_options.attach_probe(lister)?;
         let target = common_options.get_target_selector()?;
         if probe.set_speed(speed).is_ok() {
             let mut session = common_options.attach_session(probe, target)?;

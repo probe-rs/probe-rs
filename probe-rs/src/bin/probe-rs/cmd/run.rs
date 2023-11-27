@@ -10,7 +10,7 @@ use anyhow::{anyhow, Context, Result};
 use probe_rs::debug::{DebugInfo, DebugRegisters};
 use probe_rs::flashing::{FileDownloadError, Format};
 use probe_rs::{
-    exception_handler_for_core, BreakpointCause, Core, CoreInterface, Error, HaltReason,
+    exception_handler_for_core, BreakpointCause, Core, CoreInterface, Error, HaltReason, Lister,
     SemihostingCommand, VectorCatchCondition,
 };
 use probe_rs_target::MemoryRegion;
@@ -55,8 +55,13 @@ pub struct Cmd {
 }
 
 impl Cmd {
-    pub fn run(self, run_download: bool, timestamp_offset: UtcOffset) -> Result<()> {
-        let (mut session, probe_options) = self.probe_options.simple_attach()?;
+    pub fn run(
+        self,
+        lister: &Lister,
+        run_download: bool,
+        timestamp_offset: UtcOffset,
+    ) -> Result<()> {
+        let (mut session, probe_options) = self.probe_options.simple_attach(lister)?;
         let path = Path::new(&self.path);
 
         if run_download {

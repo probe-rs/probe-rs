@@ -6,7 +6,7 @@
 use anyhow::{bail, ensure, Context, Result};
 use probe_rs::{
     config::{get_target_by_name, search_chips},
-    DebugProbeSelector, Probe, Target,
+    DebugProbeSelector, Lister, Probe, Target,
 };
 use serde::Deserialize;
 use std::{
@@ -143,15 +143,18 @@ impl DutDefinition {
     }
 
     pub fn open_probe(&self) -> Result<Probe> {
+        let lister = Lister::new();
+
         match &self.probe_selector {
             Some(selector) => {
-                let probe = Probe::open(selector.clone())
+                let probe = lister
+                    .open(selector)
                     .with_context(|| format!("Failed to open probe with selector {selector}"))?;
 
                 Ok(probe)
             }
             None => {
-                let probes = Probe::list_all();
+                let probes = lister.list_all();
 
                 ensure!(!probes.is_empty(), "No probes detected!");
 
@@ -160,7 +163,7 @@ impl DutDefinition {
             "Multiple probes detected. Specify which probe to use using the '--probe' argument."
         );
 
-                let probe = probes[0].open()?;
+                let probe = probes[0].open(&lister)?;
 
                 Ok(probe)
             }
