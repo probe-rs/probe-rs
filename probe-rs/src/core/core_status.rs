@@ -37,6 +37,11 @@ pub enum SemihostingCommand {
         /// Some architecture-specific or application specific exit code
         code: u64,
     },
+    /// The target indicated that it would like to run a semihosting operation which we don't support yet
+    Unknown {
+        /// The semihosting operation requested
+        operation: u32,
+    },
 }
 
 /// When the core halts due to a breakpoint request, some architectures will allow us to distinguish between a software and hardware breakpoint.

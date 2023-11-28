@@ -159,9 +159,11 @@ impl<'probe> Riscv32<'probe> {
                     .read_core_reg(core.registers().get_argument_register(1).unwrap().id())?
                     .try_into()?;
 
-                if let Some(command) = decode_semihosting_syscall(a0, a1) {
-                    reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(command));
-                }
+                tracing::info!("Semihosting found pc={pc:#x} a0={a0:#x} a1={a1:#x}");
+
+                reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(
+                    decode_semihosting_syscall(a0, a1),
+                ));
             }
         }
         Ok(reason)
@@ -206,6 +208,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
                 1 => {
                     let reason = HaltReason::Breakpoint(BreakpointCause::Software);
                     Riscv32::check_for_semihosting(reason, self)?
+                    // TODO: Add testcase to probe-rs-debugger-test to validate semihosting exit/abort work and unknown semihosting operations are skipped
                 }
                 // Trigger module caused halt
                 2 => HaltReason::Breakpoint(BreakpointCause::Hardware),
@@ -359,10 +362,13 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
     fn step(&mut self) -> Result<crate::core::CoreInformation, crate::Error> {
         let halt_reason = self.status()?;
+        let flashing_done = self.state.hw_breakpoints_enabled;
         if matches!(
             halt_reason,
-            CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Software))
-        ) && self.state.hw_breakpoints_enabled
+            CoreStatus::Halted(HaltReason::Breakpoint(
+                BreakpointCause::Software | BreakpointCause::Semihosting(_)
+            ))
+        ) && flashing_done
         {
             // If we are halted on a software breakpoint AND we have passed the flashing operation, we can skip the single step and manually advance the dpc.
             let mut debug_pc = self.read_core_reg(RegisterId(0x7b1))?;

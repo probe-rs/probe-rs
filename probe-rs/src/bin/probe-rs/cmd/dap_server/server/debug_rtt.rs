@@ -6,7 +6,7 @@ use crate::util::rtt;
 use probe_rs::Core;
 
 /// Manage the active RTT target for a specific SessionData, as well as provide methods to reliably move RTT from target, through the debug_adapter, to the client.
-pub(crate) struct RttConnection {
+pub struct RttConnection {
     /// The connection to RTT on the target
     pub(crate) target_rtt: rtt::RttActiveTarget,
     /// Some status fields and methods to ensure continuity in flow of data from target to debugger to client.

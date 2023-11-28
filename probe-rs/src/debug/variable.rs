@@ -113,7 +113,7 @@ pub enum VariableNodeType {
     /// - Rule: For structured variables, we WILL NOT automatically expand their children, but we have enough information to expand it on demand. Except if they fall into one of the special cases handled by [VariableNodeType::RecurseToBaseType]
     TypeOffset(UnitOffset),
     /// Use the `header_offset` and `entries_offset` as direct references for recursing the variable children.
-    /// - Rule: All top level variables in a [StackFrame] are automatically deferred, i.e [VariableName::StaticScopeRoot], [VariableName::RegistersRoot], [VariableName::LocalScopeRoot].
+    /// - Rule: All top level variables in a [StackFrame] are automatically deferred, i.e [VariableName::LocalScopeRoot], [VariableName::RegistersRoot], [VariableName::LocalScopeRoot].
     DirectLookup,
     /// Sometimes it doesn't make sense to recurse the children of a specific node type
     /// - Rule: Pointers to `unit` datatypes WILL NOT BE resolved, because it doesn't make sense.
@@ -280,9 +280,9 @@ impl std::fmt::Display for VariableLocation {
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Variable {
     /// Every variable must have a unique key value assigned to it. The value will be zero until it is stored in VariableCache, at which time its value will be set to the same as the VariableCache::variable_cache_key
-    pub variable_key: i64,
-    /// Every variable must have a unique parent assigned to it when stored in the VariableCache. A parent_key of None in the cache simply implies that this variable doesn't have a parent, i.e. it is the root of a tree.
-    pub parent_key: Option<i64>,
+    pub(super) variable_key: ObjectRef,
+    /// Every variable must have a unique parent assigned to it when stored in the VariableCache.
+    pub parent_key: ObjectRef,
     /// The variable name refers to the name of any of the types of values described in the [VariableCache]
     pub name: VariableName,
     /// Use `Variable::set_value()` and `Variable::get_value()` to correctly process this `value`
@@ -326,6 +326,11 @@ impl Variable {
             variable_unit_offset: entries_offset,
             ..Default::default()
         }
+    }
+
+    /// Get a unique key for this variable.
+    pub fn variable_key(&self) -> ObjectRef {
+        self.variable_key
     }
 
     /// Implementing set_value(), because the library passes errors into the value of the variable.
@@ -523,7 +528,9 @@ impl Variable {
         if let VariableValue::Error(_) = self.value {
             // Nothing more to do ...
             return;
-        } else if self.variable_node_type == VariableNodeType::SvdRegister
+        }
+
+        if self.variable_node_type == VariableNodeType::SvdRegister
             || self.variable_node_type == VariableNodeType::SvdField
         {
             // Special handling for SVD registers.
@@ -539,7 +546,9 @@ impl Variable {
                 }
             }
             return;
-        } else if !self.value.is_empty()
+        }
+
+        if !self.value.is_empty()
         // The value was set explicitly, so just leave it as is, or it was an error, so don't attempt anything else
         || !self.memory_location.valid()
         // This may just be that we are early on in the process of `Variable` evaluation
@@ -548,7 +557,9 @@ impl Variable {
         {
             // Quick exit if we don't really need to do much more.
             return;
-        } else if self.variable_node_type.is_deferred() {
+        }
+
+        if self.variable_node_type.is_deferred() {
             // And we have not previously assigned the value, then assign the type and address as the value
             self.value =
                 VariableValue::Valid(format!("{} @ {}", self.type_name, self.memory_location));
@@ -701,7 +712,7 @@ impl Variable {
         } else {
             // Infer a human readable value using the available children of this variable.
             let mut compound_value = String::new();
-            if let Ok(children) = variable_cache.get_children(Some(self.variable_key)) {
+            if let Ok(children) = variable_cache.get_children(self.variable_key) {
                 // Make sure we can safely unwrap() children.
                 match &self.type_name {
                     VariableType::Pointer(_) => {
@@ -965,7 +976,7 @@ impl Value for String {
         variable_cache: &variable_cache::VariableCache,
     ) -> Result<Self, DebugError> {
         let mut str_value: String = "".to_owned();
-        if let Ok(children) = variable_cache.get_children(Some(variable.variable_key)) {
+        if let Ok(children) = variable_cache.get_children(variable.variable_key) {
             if !children.is_empty() {
                 let mut string_length = match children.iter().find(|child_variable| {
                     child_variable.name == VariableName::Named("length".to_string())
@@ -984,7 +995,7 @@ impl Value for String {
                 }) {
                     Some(location_value) => {
                         if let Ok(child_variables) =
-                            variable_cache.get_children(Some(location_value.variable_key))
+                            variable_cache.get_children(location_value.variable_key)
                         {
                             if let Some(first_child) = child_variables.first() {
                                 first_child.memory_location.memory_address()?

@@ -10,7 +10,7 @@ use capstone::{
 };
 use num_traits::Zero;
 use probe_rs::{
-    debug::{ColumnType, SourceLocation},
+    debug::{ColumnType, ObjectRef, SourceLocation},
     CoreType, InstructionSet, MemoryInterface,
 };
 use std::{fmt::Write, time::Duration};
@@ -332,10 +332,9 @@ pub(crate) fn get_dap_source(source_location: &SourceLocation) -> Option<Source>
 pub(crate) fn halt_core(
     target_core: &mut probe_rs::Core,
 ) -> Result<probe_rs::CoreInformation, DebuggerError> {
-    match target_core.halt(Duration::from_millis(100)) {
-        Ok(cpu_info) => Ok(cpu_info),
-        Err(error) => Err(DebuggerError::Other(anyhow!("{}", error))),
-    }
+    target_core
+        .halt(Duration::from_millis(100))
+        .map_err(DebuggerError::from)
 }
 
 /// The DAP protocol uses three related values to determine how to invoke the `Variables` request.
@@ -344,13 +343,14 @@ pub(crate) fn halt_core(
 pub(crate) fn get_variable_reference(
     parent_variable: &probe_rs::debug::Variable,
     cache: &mut probe_rs::debug::VariableCache,
-) -> (i64, i64, i64) {
+) -> (ObjectRef, i64, i64) {
     if !parent_variable.is_valid() {
-        return (0, 0, 0);
+        return (ObjectRef::Invalid, 0, 0);
     }
+
     let mut named_child_variables_cnt = 0;
     let mut indexed_child_variables_cnt = 0;
-    if let Ok(children) = cache.get_children(Some(parent_variable.variable_key)) {
+    if let Ok(children) = cache.get_children(parent_variable.variable_key()) {
         for child_variable in children {
             if child_variable.is_indexed() {
                 indexed_child_variables_cnt += 1;
@@ -362,7 +362,7 @@ pub(crate) fn get_variable_reference(
 
     if named_child_variables_cnt > 0 || indexed_child_variables_cnt > 0 {
         (
-            parent_variable.variable_key,
+            parent_variable.variable_key(),
             named_child_variables_cnt,
             indexed_child_variables_cnt,
         )
@@ -371,10 +371,10 @@ pub(crate) fn get_variable_reference(
     {
         // We have not yet cached the children for this reference.
         // Provide DAP Client with a reference so that it will explicitly ask for children when the user expands it.
-        (parent_variable.variable_key, 0, 0)
+        (parent_variable.variable_key(), 0, 0)
     } else {
         // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
-        (0, 0, 0)
+        (ObjectRef::Invalid, 0, 0)
     }
 }
 

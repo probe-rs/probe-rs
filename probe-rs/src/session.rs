@@ -4,6 +4,7 @@ use crate::architecture::arm::{ArmError, DpAddress};
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::config::{ChipInfo, CoreExt, RegistryError, Target, TargetSelector};
 use crate::core::{Architecture, CombinedCoreState};
+use crate::probe::fake_probe::FakeProbe;
 use crate::{
     architecture::{
         arm::{
@@ -14,7 +15,7 @@ use crate::{
     },
     config::DebugSequence,
 };
-use crate::{AttachMethod, Core, CoreType, Error, FakeProbe, Probe};
+use crate::{AttachMethod, Core, CoreType, Error, Lister, Probe};
 use std::ops::DerefMut;
 use std::{fmt, sync::Arc, time::Duration};
 
@@ -298,13 +299,15 @@ impl Session {
         permissions: Permissions,
     ) -> Result<Session, Error> {
         // Get a list of all available debug probes.
-        let probes = Probe::list_all();
+        let lister = Lister::new();
+
+        let probes = lister.list_all();
 
         // Use the first probe found.
         let probe = probes
             .get(0)
             .ok_or(Error::UnableToOpenProbe("No probe was found"))?
-            .open()?;
+            .open(&lister)?;
 
         // Attach to a chip.
         probe.attach(target, permissions)

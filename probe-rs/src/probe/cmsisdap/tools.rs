@@ -111,14 +111,14 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
             tracing::trace!("No HID interface for CMSIS-DAP found.")
         }
 
-        Some(DebugProbeInfo {
-            identifier: prod_str,
-            vendor_id: d_desc.vendor_id(),
-            product_id: d_desc.product_id(),
-            serial_number: sn_str,
-            probe_type: DebugProbeType::CmsisDap,
+        Some(DebugProbeInfo::new(
+            prod_str,
+            d_desc.vendor_id(),
+            d_desc.product_id(),
+            sn_str,
+            DebugProbeType::CmsisDap,
             hid_interface,
-        })
+        ))
     } else {
         None
     }
@@ -136,14 +136,14 @@ fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> 
             device.interface_number()
         );
 
-        Some(DebugProbeInfo {
-            identifier: prod_str.to_owned(),
-            vendor_id: device.vendor_id(),
-            product_id: device.product_id(),
-            serial_number: device.serial_number().map(|s| s.to_owned()),
-            probe_type: DebugProbeType::CmsisDap,
-            hid_interface: Some(device.interface_number() as u8),
-        })
+        Some(DebugProbeInfo::new(
+            prod_str.to_owned(),
+            device.vendor_id(),
+            device.product_id(),
+            device.serial_number().map(|s| s.to_owned()),
+            DebugProbeType::CmsisDap,
+            Some(device.interface_number() as u8),
+        ))
     } else {
         None
     }
@@ -267,7 +267,7 @@ pub fn open_device_from_selector(
     //
     // If rusb cannot be used, we will just use the first HID interface and
     // try to open that.
-    let mut hid_device_info: Option<DebugProbeInfo> = None;
+    let mut hid_device_info = None;
 
     // Try using rusb to open a v2 device. This might fail if
     // the device does not support v2 operation or due to driver

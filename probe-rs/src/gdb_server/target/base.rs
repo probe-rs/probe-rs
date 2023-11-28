@@ -93,11 +93,16 @@ impl MultiThreadBase for RuntimeTarget<'_> {
         start_addr: u64,
         data: &mut [u8],
         tid: Tid,
-    ) -> gdbstub::target::TargetResult<(), Self> {
+    ) -> gdbstub::target::TargetResult<usize, Self> {
         let mut session = self.session.lock().unwrap();
         let mut core = session.core(tid.get() - 1).into_target_result()?;
 
-        core.read(start_addr, data).into_target_result_non_fatal()
+        // We currently either read the entire buffer or nothing
+        let num_read = data.len();
+
+        core.read(start_addr, data)
+            .map(|_| num_read)
+            .into_target_result_non_fatal()
     }
 
     fn write_addrs(
