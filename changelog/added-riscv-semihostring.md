@@ -1,1 +1,0 @@
-Added support for riscv semihosting SYS_EXIT syscall.
