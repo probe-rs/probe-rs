@@ -1,0 +1,1 @@
+Add `--catch-reset` & `--catch-hardfault` cli flags
