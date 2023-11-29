@@ -68,21 +68,24 @@ pub fn print_chip_info(mut output: impl std::io::Write, name: &str) -> anyhow::R
         match memory {
             probe_rs::config::MemoryRegion::Ram(region) => writeln!(
                 output,
-                "RAM: {:#010x?} ({})",
+                "RAM: {:#010x?} ({:.2})",
                 &region.range,
-                Byte::from_bytes(get_range_len(&region.range) as u128).get_appropriate_unit(true)
+                Byte::from_u64(get_range_len(&region.range))
+                    .get_appropriate_unit(byte_unit::UnitType::Binary)
             )?,
             probe_rs::config::MemoryRegion::Generic(region) => writeln!(
                 output,
-                "Generic: {:#010x?} ({})",
+                "Generic: {:#010x?} ({:.2})",
                 &region.range,
-                Byte::from_bytes(get_range_len(&region.range) as u128).get_appropriate_unit(true)
+                Byte::from_u64(get_range_len(&region.range))
+                    .get_appropriate_unit(byte_unit::UnitType::Binary)
             )?,
             probe_rs::config::MemoryRegion::Nvm(region) => writeln!(
                 output,
-                "NVM: {:#010x?} ({})",
+                "NVM: {:#010x?} ({:.2})",
                 &region.range,
-                Byte::from_bytes(get_range_len(&region.range) as u128).get_appropriate_unit(true)
+                Byte::from_u64(get_range_len(&region.range))
+                    .get_appropriate_unit(byte_unit::UnitType::Binary)
             )?,
         };
     }
