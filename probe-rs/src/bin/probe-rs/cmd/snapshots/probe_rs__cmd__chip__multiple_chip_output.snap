@@ -1,0 +1,5 @@
+---
+source: probe-rs/src/bin/probe-rs/cmd/chip.rs
+expression: error.to_string()
+---
+Found multiple chips matching 'nrf52', unable to select a single chip. (nRF52805_xxAA, nRF52810_xxAA, nRF52811_xxAA, nRF52820_xxAA, nRF52832_xxAA, nRF52832_xxAB, nRF52833_xxAA, nRF52840_xxAA)
