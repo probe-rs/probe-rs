@@ -100,18 +100,15 @@ where
 
         // The encoded response will be constructed from dap::Response for Ok, and dap::ErrorResponse for Err, to ensure VSCode doesn't lose the details of the error.
         let encoded_resp = match response {
-            Ok(value) => {
-                let resp = Response {
-                    command: request.command.clone(),
-                    request_seq: request.seq,
-                    seq: request.seq,
-                    success: true,
-                    type_: "response".to_owned(),
-                    message: None,
-                    body: value.map(|v| serde_json::to_value(v)).transpose()?,
-                };
-                resp
-            }
+            Ok(value) => Response {
+                command: request.command.clone(),
+                request_seq: request.seq,
+                seq: request.seq,
+                success: true,
+                type_: "response".to_owned(),
+                message: None,
+                body: value.map(|v| serde_json::to_value(v)).transpose()?,
+            },
             Err(debugger_error) => {
                 let mut response_message = debugger_error.to_string();
                 let mut offset_iterations = 0;
@@ -151,16 +148,15 @@ where
                     }),
                 };
 
-                let error_resp = Response {
+                Response {
                     command: request.command.clone(),
                     request_seq: request.seq,
                     seq: request.seq,
                     success: false,
                     type_: "response".to_owned(),
                     message: Some("cancelled".to_string()), // Predefined value in the MSDAP spec.
-                    body: Some(serde_json::to_value(&response_body)?),
-                };
-                error_resp
+                    body: Some(serde_json::to_value(response_body)?),
+                }
             }
         };
 

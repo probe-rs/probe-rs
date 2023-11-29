@@ -52,7 +52,7 @@ pub enum DebuggerError {
     /// A message that is intended to be displayed to the user, and does not unwind nested errors.
     /// It is intended to communicate helpful "correct and try again" information to users.
     UserMessage(String),
-    #[error("Serialiazation error")]
+    #[error("Serialization error")]
     SerdeError(#[from] serde_json::Error),
     #[error("IO error: '{original_error}'.")]
     NonBlockingReadError { original_error: std::io::Error },
