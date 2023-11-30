@@ -36,8 +36,8 @@ pub trait MemoryMappedRegister<T>: Clone + From<T> + Into<T> + Sized + std::fmt:
 /// use probe_rs::memory_mapped_bitfield_register;
 /// memory_mapped_bitfield_register! {
 ///    /// Abstract Control and Status (see section xyz of some reference manual)
-///    pub struct Abstracts(u32);
-///    0x16,"abstracts",
+///    pub struct AbstractCS(u32);
+///    0x16,"abstractcs",
 ///    impl From;
 ///    progbufsize, _: 28, 24;
 ///    busy, _: 12;

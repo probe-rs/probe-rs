@@ -724,7 +724,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         // Read the extensions from the Machine ISA regiseter.
         let isa_extensions =
             Misa::from(self.read_csr(Misa::get_mmio_address() as u16)?).extensions();
-        // Mask for the D, F and Q extension bits.
+        // Mask for the D(double float), F(single float) and Q(quad float) extension bits.
         let mask = (1 << 3) | (1 << 5) | (1 << 16);
         Ok(isa_extensions & mask != 0)
     }
