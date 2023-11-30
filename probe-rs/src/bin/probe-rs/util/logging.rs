@@ -53,7 +53,7 @@ fn colored_level(level: Level) -> ColoredString {
     }
 }
 
-/// Logger wrapper that can coexist peacefully with indicatif progressbars.
+/// Logger wrapper that can coexist peacefully with indicative progress bars.
 struct CliLogger {
     env_logger: Logger,
     output_is_terminal: bool,

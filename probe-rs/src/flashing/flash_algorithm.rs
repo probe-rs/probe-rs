@@ -160,7 +160,7 @@ impl FlashAlgorithm {
     const FLASH_ALGO_STACK_SIZE: u32 = 512;
     const FLASH_ALGO_STACK_DECREMENT: u32 = 64;
 
-    // Header for RISCV Flash Algorithms
+    // Header for RISC-V Flash Algorithms
     const RISCV_FLASH_BLOB_HEADER: [u32; 2] = [riscv::assembly::EBREAK, riscv::assembly::EBREAK];
 
     const ARM_FLASH_BLOB_HEADER: [u32; 8] = [

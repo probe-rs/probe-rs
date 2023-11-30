@@ -6,7 +6,7 @@ use crate::{
     Error, MemoryInterface,
 };
 pub(crate) mod armv6m;
-/// Where applicable, this defines shared logic for implementing exception handling accross the various ARMv6-m and ARMv7-m [`crate::CoreType`]'s.
+/// Where applicable, this defines shared logic for implementing exception handling across the various ARMv6-m and ARMv7-m [`crate::CoreType`]'s.
 pub(crate) mod armv6m_armv7m_shared;
 // NOTE: There is also a [`CoreType::Armv7em`] variant, but it is not currently used/implemented in probe-rs.
 pub(crate) mod armv7m;

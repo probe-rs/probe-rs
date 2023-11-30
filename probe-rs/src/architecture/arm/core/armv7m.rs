@@ -109,7 +109,7 @@ bitfield! {
     ///
     /// The effect of setting this bit to `1` is UNPREDICTABLE unless the DHCSR write also sets
     /// C_DEBUGEN and C_HALT to 1. This means that if the processor is not already in Debug
-    /// stateit enters Debug state when the stalled instruction completes.
+    /// state it enters Debug state when the stalled instruction completes.
     ///
     /// Writing `1` to this bit makes the state of the memory system UNPREDICTABLE. Therefore, if a
     /// debugger writes `1` to this bit it must reset the processor before leaving Debug state.

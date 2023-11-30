@@ -21,7 +21,7 @@ pub(crate) struct FunctionDie<'abbrev, 'unit, 'unit_info, 'debug_info> {
     pub(crate) abstract_die: Option<Die<'abbrev, 'unit>>,
     /// The address of the first instruction in this function.
     pub(crate) low_pc: u64,
-    /// The address of the first instruction after this funciton.
+    /// The address of the first instruction after this function.
     pub(crate) high_pc: u64,
 }
 

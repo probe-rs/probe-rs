@@ -14,8 +14,8 @@ pub enum Error {
     /// An ARM specific error occurred.
     #[error("An ARM specific error occurred.")]
     Arm(#[source] ArmError),
-    /// A RISCV specific error occurred.
-    #[error("A RISCV specific error occurred.")]
+    /// A RISC-V specific error occurred.
+    #[error("A RISC-V specific error occurred.")]
     Riscv(#[source] RiscvError),
     /// The probe could not be opened.
     #[error("Probe could not be opened: {0}")]

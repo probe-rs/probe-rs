@@ -875,14 +875,14 @@ memory_mapped_bitfield_register! {
 impl Dmcontrol {
     /// Currently selected harts
     ///
-    /// Combination of the hartselhi and hartsello registers.
+    /// Combination of the `hartselhi` and `hartsello` registers.
     fn hartsel(&self) -> u32 {
         self.hartselhi() << 10 | self.hartsello()
     }
 
     /// Set the currently selected harts
     ///
-    /// This sets the hartselhi and hartsello registers.
+    /// This sets the `hartselhi` and `hartsello` registers.
     /// This is a 20 bit register, larger values will be truncated.
     fn set_hartsel(&mut self, value: u32) {
         self.set_hartsello(value & 0x3ff);

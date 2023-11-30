@@ -128,7 +128,7 @@ pub enum FlashError {
         /// The name of the chip.
         name: String,
     },
-    /// The given flash algorithm did not have a leng multiple of 4 bytes.
+    /// The given flash algorithm did not have a length multiple of 4 bytes.
     ///
     /// This means that the flash algorithm that was loaded is broken.
     #[error("Flash algorithm {name} does not have a length that is 4 byte aligned.")]

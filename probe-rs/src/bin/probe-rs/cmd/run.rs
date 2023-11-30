@@ -147,7 +147,7 @@ impl Cmd {
     }
 }
 
-/// Print all RTT messsages and a stacktrace when the core stops due to an
+/// Print all RTT messages and a stacktrace when the core stops due to an
 /// exception or when ctrl + c is pressed.
 ///
 /// Returns `Ok(())` if the core gracefully halted, or an error.
