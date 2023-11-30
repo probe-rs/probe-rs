@@ -52,6 +52,12 @@ pub struct Cmd {
 
     #[clap(long)]
     pub(crate) log_format: Option<String>,
+    /// Enable reset vector catch if its supported on the target.
+    #[arg(long)]
+    pub catch_reset: bool,
+    /// Enable hardfault vector catch if its supported on the target.
+    #[arg(long)]
+    pub catch_hardfault: bool,
 }
 
 impl Cmd {
@@ -91,20 +97,32 @@ impl Cmd {
                 loader,
                 self.chip_erase,
             )?;
+            // reset the core to leave it in a consistent state after flashing
+            session
+                .core(0)?
+                .reset_and_halt(Duration::from_millis(100))?;
         }
 
         let memory_map = session.target().memory_map.clone();
         let rtt_scan_regions = session.target().rtt_scan_regions.clone();
         let mut core = session.core(0)?;
 
-        if run_download {
-            core.reset_and_halt(Duration::from_millis(100))?;
-            match core.enable_vector_catch(VectorCatchCondition::All) {
-                Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
-                Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+        if self.catch_hardfault || self.catch_reset {
+            core.halt(Duration::from_millis(100))?;
+            if self.catch_hardfault {
+                match core.enable_vector_catch(VectorCatchCondition::HardFault) {
+                    Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
+                    Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+                }
             }
-            core.run()?;
+            if self.catch_reset {
+                match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
+                    Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
+                    Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+                }
+            }
         }
+        core.run()?;
 
         run_loop(
             &mut core,

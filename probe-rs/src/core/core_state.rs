@@ -9,7 +9,6 @@ use crate::{
     },
     Core, CoreType, Error,
 };
-pub use probe_rs_target::{Architecture, CoreAccessOptions};
 
 use super::ResolvedCoreOptions;
 

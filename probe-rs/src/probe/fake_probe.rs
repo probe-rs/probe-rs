@@ -48,14 +48,14 @@ struct MockCore {
     dhcsr: Dhcsr,
 
     /// Is the core halted?
-    halted: bool,
+    is_halted: bool,
 }
 
 impl MockCore {
     pub fn new() -> Self {
         Self {
             dhcsr: Dhcsr(0),
-            halted: false,
+            is_halted: false,
         }
     }
 }
@@ -89,7 +89,7 @@ impl ArmProbe for &mut MockCore {
                 Dhcsr::ADDRESS_OFFSET => {
                     let mut dhcsr: u32 = self.dhcsr.into();
 
-                    if self.halted {
+                    if self.is_halted {
                         dhcsr |= 1 << 17;
                     }
 
@@ -98,7 +98,7 @@ impl ArmProbe for &mut MockCore {
                     dhcsr |= 1 << 16;
 
                     *val = dhcsr;
-                    println!("READ  DHCSR: {:#x} = {:?}", address, val);
+                    println!("Read  DHCSR: {:#x} = {:#x}", address, val);
                 }
 
                 _ => {
@@ -133,9 +133,14 @@ impl ArmProbe for &mut MockCore {
                         self.dhcsr = Dhcsr::from(*word & 0xffff);
                         println!("Write DHCSR = {:#010x}", word);
 
-                        let new_halted_state = self.dhcsr.c_halt();
+                        let request_halt = self.dhcsr.c_halt();
 
-                        self.halted = new_halted_state;
+                        self.is_halted = request_halt;
+
+                        if !self.dhcsr.c_halt() && self.dhcsr.c_debugen() && self.dhcsr.c_step() {
+                            tracing::debug!("MockCore: Single step requested, setting s_halt");
+                            self.is_halted = true;
+                        }
                     }
                 }
                 _ => println!("Write {:#010x} = {:#010x}", address, word),
@@ -150,7 +155,7 @@ impl ArmProbe for &mut MockCore {
     }
 
     fn flush(&mut self) -> Result<(), ArmError> {
-        todo!()
+        Ok(())
     }
 
     fn supports_native_64bit_access(&mut self) -> bool {
