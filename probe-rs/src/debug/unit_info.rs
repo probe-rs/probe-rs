@@ -486,7 +486,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             }
         }
         cache
-            .cache_variable(child_variable.parent_key, child_variable, memory)
+            .update_variable(child_variable.parent_key, child_variable, memory)
             .map_err(|error| error.into())
     }
 
@@ -759,7 +759,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             }
         }
         cache
-            .cache_variable(parent_variable.parent_key, parent_variable, memory)
+            .update_variable(parent_variable.parent_key, parent_variable, memory)
             .map_err(|error| error.into())
     }
 
@@ -1249,7 +1249,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             }
         }
         cache
-            .cache_variable(parent_variable.variable_key, child_variable, memory)
+            .update_variable(parent_variable.variable_key, child_variable, memory)
             .map_err(|error| error.into())
     }
 

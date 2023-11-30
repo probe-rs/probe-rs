@@ -414,11 +414,8 @@ impl DebugInfo {
                         let mut temporary_variable = parent_variable.clone();
                         temporary_variable.variable_key = ObjectRef::Invalid;
                         temporary_variable.parent_key = parent_variable.variable_key;
-                        temporary_variable = cache.cache_variable(
-                            parent_variable.variable_key,
-                            temporary_variable,
-                            memory,
-                        )?;
+                        temporary_variable =
+                            cache.add_variable(parent_variable.variable_key, temporary_variable)?;
 
                         temporary_variable = unit_info.process_tree(
                             parent_node,
@@ -454,11 +451,8 @@ impl DebugInfo {
                         let mut temporary_variable = parent_variable.clone();
                         temporary_variable.variable_key = ObjectRef::Invalid;
                         temporary_variable.parent_key = parent_variable.variable_key;
-                        temporary_variable = cache.cache_variable(
-                            parent_variable.variable_key,
-                            temporary_variable,
-                            memory,
-                        )?;
+                        temporary_variable =
+                            cache.add_variable(parent_variable.variable_key, temporary_variable)?;
 
                         let parent_node = type_tree.root()?;
 
