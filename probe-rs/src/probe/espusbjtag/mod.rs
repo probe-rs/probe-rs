@@ -59,11 +59,6 @@ impl EspUsbJtag {
     fn reset_scan(&mut self) -> Result<(Vec<u32>, Vec<usize>), super::DebugProbeError> {
         let max_chain = 8;
 
-        tracing::debug!("Resetting JTAG chain using trst");
-        // TODO this isn't actually needed, we should only do this when AttachUnderReset it supplied
-        // self.protocol.set_reset(true, true)?;
-        // self.protocol.set_reset(false, false)?;
-
         self.jtag_reset()?;
 
         let input = Vec::from_iter(iter::repeat(0xFFu8).take(4 * max_chain));
