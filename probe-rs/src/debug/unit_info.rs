@@ -390,13 +390,12 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                 .header
                                 .entries_tree(&self.unit.abbreviations, Some(unit_ref))?;
                             let mut discriminant_node = type_tree.root()?;
-                            let mut discriminant_variable = cache.cache_variable(
+                            let mut discriminant_variable = cache.add_variable(
                                 parent_variable.variable_key,
                                 Variable::new(
                                     self.unit.header.offset().as_debug_info_offset(),
                                     Some(discriminant_node.entry().offset()),
                                 ),
-                                memory,
                             )?;
                             discriminant_variable = self.process_tree_node_attributes(
                                 &mut discriminant_node,
@@ -534,16 +533,16 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         } else { VariableName::AnonymousNamespace };
                         namespace_variable.type_name = VariableType::Namespace;
                         namespace_variable.memory_location = VariableLocation::Unavailable;
-                        namespace_variable = cache.cache_variable(parent_variable.variable_key, namespace_variable, memory)?;
+                        namespace_variable = cache.add_variable(parent_variable.variable_key, namespace_variable)?;
 
                         let mut namespace_children_nodes = child_node.children();
                         while let Some(mut namespace_child_node) = namespace_children_nodes.next()? {
                             match namespace_child_node.entry().tag() {
                                 gimli::DW_TAG_variable => {
                                     // We only want the TOP level variables of the namespace (statics).
-                                    let static_child_variable = cache.cache_variable(namespace_variable.variable_key, Variable::new(
+                                    let static_child_variable = cache.add_variable(namespace_variable.variable_key, Variable::new(
                                         self.unit.header.offset().as_debug_info_offset(),
-                                        Some(namespace_child_node.entry().offset()),), memory)?;
+                                        Some(namespace_child_node.entry().offset()),))?;
                                     self.process_tree_node_attributes(&mut namespace_child_node, &mut namespace_variable, static_child_variable, memory, stack_frame_registers, frame_base, cache)?;
                                 }
                                 gimli::DW_TAG_namespace => {
@@ -563,7 +562,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                     } else { VariableName::AnonymousNamespace};
                                     namespace_child_variable.type_name = VariableType::Namespace;
                                     namespace_child_variable.memory_location = VariableLocation::Unavailable;
-                                    namespace_child_variable = cache.cache_variable(namespace_variable.variable_key, namespace_child_variable, memory)?;
+                                    namespace_child_variable = cache.add_variable(namespace_variable.variable_key, namespace_child_variable)?;
                                     namespace_child_variable = self.process_tree(namespace_child_node, namespace_child_variable, memory, stack_frame_registers, frame_base, cache, )?;
                                     if !cache.has_children(&namespace_child_variable)? {
                                         cache.remove_cache_entry(namespace_child_variable.variable_key)?;
@@ -583,10 +582,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     gimli::DW_TAG_member           | // Members of structured types.
                     gimli::DW_TAG_enumerator         // Possible values for enumerators, used by extract_type() when processing DW_TAG_enumeration_type.
                     => {
-                        let mut child_variable = cache.cache_variable(parent_variable.variable_key, Variable::new(
+                        let mut child_variable = cache.add_variable(parent_variable.variable_key, Variable::new(
                         self.unit.header.offset().as_debug_info_offset(),
                         Some(child_node.entry().offset()),
-                    ), memory)?;
+                    ))?;
                         child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, memory, stack_frame_registers, frame_base, cache,)?;
                         // Do not keep or process PhantomData nodes, or variant parts that we have already used.
                         if child_variable.type_name.is_phantom_data()
@@ -607,10 +606,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         //          Level 3: --> Some DW_TAG_variant's that have discriminant values to be matched against the discriminant 
                         //              Level 4: --> The actual variables, with matching discriminant, which will be added to `parent_variable`
                         // TODO: Handle Level 3 nodes that belong to a DW_AT_discr_list, instead of having a discreet DW_AT_discr_value 
-                        let mut child_variable = cache.cache_variable(
+                        let mut child_variable = cache.add_variable(
                             parent_variable.variable_key,
                             Variable::new(self.unit.header.offset().as_debug_info_offset(),Some(child_node.entry().offset())),
-                            memory
                         )?;
                         // To determine the discriminant, we use the following rules:
                         // - If there is no DW_AT_discr, then there will be a single DW_TAG_variant, and this will be the matching value. In the code here, we assign a default value of u64::MAX to both, so that they will be matched as belonging together (https://dwarfstd.org/ShowIssue.php?issue=180517.2)
@@ -627,10 +625,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     => {
                         // We only need to do this if we have not already found our variant,
                         if !cache.has_children(&parent_variable)? {
-                            let mut child_variable = cache.cache_variable(
+                            let mut child_variable = cache.add_variable(
                                 parent_variable.variable_key,
                                 Variable::new(self.unit.header.offset().as_debug_info_offset(), Some(child_node.entry().offset())),
-                                memory
                             )?;
                             self.extract_variant_discriminant(&child_node, &mut child_variable)?;
                             child_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, child_variable, memory, stack_frame_registers, frame_base, cache)?;
@@ -657,10 +654,11 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                     gimli::DW_TAG_subrange_type => {
                         // This tag is a child node fore parent types such as (array, vector, etc.).
                         // Recursively process each node, but pass the parent_variable so that new children are caught despite missing these tags.
-                        let mut range_variable = cache.cache_variable(parent_variable.variable_key,Variable::new(
+                        let mut range_variable = cache.add_variable(parent_variable.variable_key,Variable::new(
                         self.unit.header.offset().as_debug_info_offset(),
                         Some(child_node.entry().offset()),
-                    ), memory)?;
+                        ))?;
+
                         range_variable = self.process_tree_node_attributes(&mut child_node, &mut parent_variable, range_variable, memory, stack_frame_registers, frame_base, cache)?;
                         // Determine if we should use the results ...
                         if range_variable.is_valid() {
@@ -1051,7 +1049,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                             )?;
                                             // Now we can explode the array members.
                                             // First get the DW_TAG_subrange child of this node. It has a DW_AT_type that points to DW_TAG_base_type:__ARRAY_SIZE_TYPE__.
-                                            let mut subrange_variable = cache.cache_variable(
+                                            let mut subrange_variable = cache.add_variable(
                                                 child_variable.variable_key,
                                                 Variable::new(
                                                     self.unit
@@ -1060,7 +1058,6 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                         .as_debug_info_offset(),
                                                     Some(node.entry().offset()),
                                                 ),
-                                                memory,
                                             )?;
                                             subrange_variable = self.process_tree(
                                                 node,
@@ -1272,61 +1269,63 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             .unit
             .header
             .entries_tree(&self.unit.abbreviations, Some(unit_ref))?;
-        if let Ok(array_member_type_node) = array_member_type_tree.root() {
-            let mut array_member_variable = cache.cache_variable(
-                child_variable.variable_key,
-                Variable::new(
-                    self.unit.header.offset().as_debug_info_offset(),
-                    Some(unit_ref),
-                ),
-                memory,
-            )?;
-            array_member_variable.member_index = Some(array_member_index);
-            // Override the calculated member name with a more 'array-like' name.
-            array_member_variable.name = VariableName::Named(format!("__{array_member_index}"));
-            array_member_variable.source_location = child_variable.source_location.clone();
-            self.process_memory_location(
-                array_member_type_node.entry(),
-                child_variable,
-                &mut array_member_variable,
-                memory,
-                stack_frame_registers,
-                frame_base,
-            )?;
-            array_member_variable = self.extract_type(
-                array_member_type_node,
-                child_variable,
-                array_member_variable,
-                memory,
-                stack_frame_registers,
-                frame_base,
-                cache,
-            )?;
-            if array_member_index == child_variable.range_lower_bound {
-                // Once we know the type of the first member, we can set the array type.
-                child_variable.type_name = VariableType::Array {
-                    count: child_variable.range_upper_bound as usize,
-                    item_type_name: array_member_variable.type_name.clone().to_string(),
-                };
-                // Once we know the byte_size of the first member, we can set the array byte_size.
-                if let Some(array_member_byte_size) = array_member_variable.byte_size {
-                    child_variable.byte_size = Some(
-                        array_member_byte_size
-                            * (child_variable.range_upper_bound - child_variable.range_lower_bound)
-                                as u64,
-                    );
-                }
-                // Make sure the array variable has no value if its own.
-                child_variable.set_value(VariableValue::Empty);
+
+        let Ok(array_member_type_node) = array_member_type_tree.root() else {
+            return Ok(());
+        };
+        let mut array_member_variable = cache.add_variable(
+            child_variable.variable_key,
+            Variable::new(
+                self.unit.header.offset().as_debug_info_offset(),
+                Some(unit_ref),
+            ),
+        )?;
+        array_member_variable.member_index = Some(array_member_index);
+        // Override the calculated member name with a more 'array-like' name.
+        array_member_variable.name = VariableName::Named(format!("__{array_member_index}"));
+        array_member_variable.source_location = child_variable.source_location.clone();
+        self.process_memory_location(
+            array_member_type_node.entry(),
+            child_variable,
+            &mut array_member_variable,
+            memory,
+            stack_frame_registers,
+            frame_base,
+        )?;
+        array_member_variable = self.extract_type(
+            array_member_type_node,
+            child_variable,
+            array_member_variable,
+            memory,
+            stack_frame_registers,
+            frame_base,
+            cache,
+        )?;
+        if array_member_index == child_variable.range_lower_bound {
+            // Once we know the type of the first member, we can set the array type.
+            child_variable.type_name = VariableType::Array {
+                count: child_variable.range_upper_bound as usize,
+                item_type_name: array_member_variable.type_name.clone().to_string(),
+            };
+            // Once we know the byte_size of the first member, we can set the array byte_size.
+            if let Some(array_member_byte_size) = array_member_variable.byte_size {
+                child_variable.byte_size = Some(
+                    array_member_byte_size
+                        * (child_variable.range_upper_bound - child_variable.range_lower_bound)
+                            as u64,
+                );
             }
-            self.handle_memory_location_special_cases(
-                unit_ref,
-                &mut array_member_variable,
-                child_variable,
-                memory,
-            );
-            cache.cache_variable(child_variable.variable_key, array_member_variable, memory)?;
+            // Make sure the array variable has no value if its own.
+            child_variable.set_value(VariableValue::Empty);
         }
+        self.handle_memory_location_special_cases(
+            unit_ref,
+            &mut array_member_variable,
+            child_variable,
+            memory,
+        );
+        cache.update_variable(child_variable.variable_key, array_member_variable, memory)?;
+
         Ok(())
     }
 

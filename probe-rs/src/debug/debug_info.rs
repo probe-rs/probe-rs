@@ -354,13 +354,12 @@ impl DebugInfo {
                             .header
                             .entries_tree(&unit_info.unit.abbreviations, Some(reference_offset))?;
                         let referenced_node = type_tree.root()?;
-                        let mut referenced_variable = cache.cache_variable(
+                        let mut referenced_variable = cache.add_variable(
                             parent_variable.variable_key,
                             Variable::new(
                                 unit_info.unit.header.offset().as_debug_info_offset(),
                                 Some(referenced_node.entry().offset()),
                             ),
-                            memory,
                         )?;
 
                         match &parent_variable.name {

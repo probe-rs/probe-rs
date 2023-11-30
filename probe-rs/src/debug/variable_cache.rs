@@ -4,6 +4,7 @@ use anyhow::anyhow;
 use gimli::{UnitOffset, UnitSectionOffset};
 use serde::{Serialize, Serializer};
 use std::collections::BTreeMap;
+
 /// VariableCache stores available `Variable`s, and provides methods to create and navigate the parent-child relationships of the Variables.
 #[derive(Debug, Clone, PartialEq)]
 pub struct VariableCache {
@@ -141,20 +142,10 @@ impl VariableCache {
         self.variable_hash_map.is_empty()
     }
 
-    /// Performs an *add* or *update* of a `probe_rs::debug::Variable` to the cache, consuming the input and returning a Clone.
-    /// - *Add* operation: If the `Variable::variable_key` is 0, then assign a key and store it in the cache.
-    ///   - Return an updated Clone of the stored variable
-    /// - *Update* operation: If the `Variable::variable_key` is > 0
-    ///   - If the key value exists in the cache, update it, Return an updated Clone of the variable.
-    ///   - If the key value doesn't exist in the cache, Return an error.
-    /// - For all operations, update the `parent_key`. A value of None means there are no parents for this variable.
-    ///   - Validate that the supplied `Variable::parent_key` is a valid entry in the cache.
-    /// - If appropriate, the `Variable::value` is updated from the core memory, and can be used by the calling function.
-    pub fn cache_variable(
+    pub fn add_variable(
         &mut self,
         parent_key: ObjectRef,
         cache_variable: Variable,
-        memory: &mut dyn MemoryInterface,
     ) -> Result<Variable, Error> {
         let mut variable_to_add = cache_variable.clone();
         // Validate that the parent_key exists ...
@@ -184,6 +175,30 @@ impl VariableCache {
                 return Err(anyhow!("Attempt to insert a new `Variable`:{:?} with a duplicate cache key: {:?}. Please report this as a bug.", cache_variable.name, old_variable.variable_key).into());
             }
             new_entry_key
+        } else {
+            panic!("naughty, you should not do this")
+        };
+
+        Ok(self.variable_hash_map.get(&stored_key).cloned().unwrap())
+    }
+
+    pub fn update_variable(
+        &mut self,
+        parent_key: ObjectRef,
+        cache_variable: Variable,
+        memory: &mut dyn MemoryInterface,
+    ) -> Result<Variable, Error> {
+        let mut variable_to_add = cache_variable.clone();
+        // Validate that the parent_key exists ...
+        if self.variable_hash_map.contains_key(&parent_key) {
+            variable_to_add.parent_key = parent_key;
+        } else {
+            return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {:?}. Please report this as a bug", variable_to_add.name, parent_key).into());
+        }
+
+        // Is this an *add* or *update* operation?
+        let stored_key = if variable_to_add.variable_key == ObjectRef::Invalid {
+            panic!("naughty, you should not do this")
         } else {
             // Attempt to update an existing `Variable` in the cache
             tracing::trace!(
@@ -236,6 +251,131 @@ impl VariableCache {
             )
             .into())
         }
+    }
+
+    /// Performs an *add* or *update* of a `probe_rs::debug::Variable` to the cache, consuming the input and returning a Clone.
+    /// - *Add* operation: If the `Variable::variable_key` is 0, then assign a key and store it in the cache.
+    ///   - Return an updated Clone of the stored variable
+    /// - *Update* operation: If the `Variable::variable_key` is > 0
+    ///   - If the key value exists in the cache, update it, Return an updated Clone of the variable.
+    ///   - If the key value doesn't exist in the cache, Return an error.
+    /// - For all operations, update the `parent_key`. A value of None means there are no parents for this variable.
+    ///   - Validate that the supplied `Variable::parent_key` is a valid entry in the cache.
+    /// - If appropriate, the `Variable::value` is updated from the core memory, and can be used by the calling function.
+    pub fn cache_variable(
+        &mut self,
+        parent_key: ObjectRef,
+        cache_variable: Variable,
+        memory: &mut dyn MemoryInterface,
+    ) -> Result<Variable, Error> {
+        let mut variable_to_add = cache_variable.clone();
+        // Validate that the parent_key exists ...
+        if self.variable_hash_map.contains_key(&parent_key) {
+            variable_to_add.parent_key = parent_key;
+        } else {
+            return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {:?}. Please report this as a bug", variable_to_add.name, parent_key).into());
+        }
+
+        let mut is_an_update = false;
+
+        // Is this an *add* or *update* operation?
+        let stored_key = if variable_to_add.variable_key == ObjectRef::Invalid {
+            // The caller is telling us this is definitely a new `Variable`
+            variable_to_add.variable_key = get_object_reference();
+
+            tracing::trace!(
+                "VariableCache: Add Variable: key={:?}, parent={:?}, name={:?}",
+                variable_to_add.variable_key,
+                variable_to_add.parent_key,
+                &variable_to_add.name
+            );
+
+            let new_entry_key = variable_to_add.variable_key;
+            if let Some(old_variable) = self
+                .variable_hash_map
+                .insert(variable_to_add.variable_key, variable_to_add)
+            {
+                return Err(anyhow!("Attempt to insert a new `Variable`:{:?} with a duplicate cache key: {:?}. Please report this as a bug.", cache_variable.name, old_variable.variable_key).into());
+            }
+            new_entry_key
+        } else {
+            // Attempt to update an existing `Variable` in the cache
+            tracing::trace!(
+                "VariableCache: Update Variable, key={:?}, name={:?}",
+                variable_to_add.variable_key,
+                &variable_to_add.name
+            );
+
+            let updated_entry_key = variable_to_add.variable_key;
+            if let Some(prev_entry) = self
+                .variable_hash_map
+                .get_mut(&variable_to_add.variable_key)
+            {
+                if &variable_to_add != prev_entry {
+                    tracing::trace!("Updated:  {:?}", variable_to_add);
+                    tracing::trace!("Previous: {:?}", prev_entry);
+                }
+
+                *prev_entry = variable_to_add
+            } else {
+                return Err(anyhow!("Attempt to update and existing `Variable`:{:?} with a non-existent cache key: {:?}. Please report this as a bug.", cache_variable.name, variable_to_add.variable_key).into());
+            }
+
+            is_an_update = true;
+
+            updated_entry_key
+        };
+
+        // As the final act, we need to update the variable with an appropriate value.
+        // This requires distinct steps to ensure we don't get `borrow` conflicts on the variable cache.
+        if let Some(mut stored_variable) = self.get_variable_by_key(stored_key) {
+            if is_an_update {
+                if !(stored_variable.variable_node_type == VariableNodeType::SvdPeripheral
+                    || stored_variable.variable_node_type == VariableNodeType::SvdRegister
+                    || stored_variable.variable_node_type == VariableNodeType::SvdField)
+                {
+                    // Only do this for non-SVD variables. Those will extract their value everytime they are read from the client.
+                    stored_variable.extract_value(memory, self);
+                }
+            }
+            if self
+                .variable_hash_map
+                .insert(stored_variable.variable_key, stored_variable.clone())
+                .is_none()
+            {
+                Err(anyhow!("Failed to store variable at variable_cache_key: {:?}. Please report this as a bug.", stored_key).into())
+            } else {
+                Ok(stored_variable)
+            }
+        } else {
+            Err(anyhow!(
+                "Failed to store variable at variable_cache_key: {:?}. Please report this as a bug.",
+                stored_key
+            )
+            .into())
+        }
+    }
+
+    pub fn add_tree(&mut self, parent: ObjectRef, tree: VariableCache) -> Result<(), Error> {
+        assert!(
+            self.variable_hash_map.contains_key(&parent),
+            "Missing parent key: {:?} in cache.",
+            parent
+        );
+
+        let root_variable = tree.root_variable_key;
+
+        // Copy all values into this cache
+        self.variable_hash_map
+            .extend(tree.variable_hash_map.into_iter());
+
+        // Add parent child relationship
+        self.variable_hash_map
+            .get_mut(&root_variable)
+            .expect("Variable was inserted above")
+            .parent_key = parent;
+
+        Ok(())
     }
 
     /// Retrieve a clone of a specific `Variable`, using the `variable_key`.
