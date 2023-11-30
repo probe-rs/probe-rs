@@ -36,7 +36,7 @@ pub trait MemoryMappedRegister<T>: Clone + From<T> + Into<T> + Sized + std::fmt:
 /// use probe_rs::memory_mapped_bitfield_register;
 /// memory_mapped_bitfield_register! {
 ///    /// Abstract Control and Status (see section xyz of some reference manual)
-///    pub struct Abstractcs(u32);
+///    pub struct AbstractCS(u32);
 ///    0x16,"abstractcs",
 ///    impl From;
 ///    progbufsize, _: 28, 24;
@@ -45,7 +45,7 @@ pub trait MemoryMappedRegister<T>: Clone + From<T> + Into<T> + Sized + std::fmt:
 ///    datacount, _: 3, 0;
 /// }
 /// ```
-/// This will generate a struct with the name `Abstractcs`, which has:
+/// This will generate a struct with the name `AbstractCS`, which has:
 /// - A `pub` visibility.
 /// - A `u32` register type.
 /// - A `Debug` implementation.
