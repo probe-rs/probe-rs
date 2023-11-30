@@ -50,7 +50,7 @@ checksum = "8a30b2e23b9e17a9f90641c7ab1549cd9b44f296d3ccbf309d2863cfe398a0cb"
 dependencies = [
  "cpp_demangle",
  "fallible-iterator",
- "gimli 0.28.0",
+ "gimli 0.28.1",
  "memmap2",
  "object 0.32.1",
  "rustc-demangle",
@@ -528,9 +528,9 @@ dependencies = [
 
 [[package]]
 name = "cargo_toml"
-version = "0.17.0"
+version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ca592ad99e6a0fd4b95153406138b997cc26ccd3cd0aecdfd4fbdbf1519bd77"
+checksum = "4d1ece59890e746567b467253aea0adbe8a21784d0b025d8a306f66c391c2957"
 dependencies = [
  "serde",
  "toml 0.8.8",
@@ -854,7 +854,7 @@ dependencies = [
  "defmt-json-schema",
  "defmt-parser",
  "dissimilar",
- "gimli 0.28.0",
+ "gimli 0.28.1",
  "log",
  "nom",
  "object 0.32.1",
@@ -1009,13 +1009,13 @@ dependencies = [
 
 [[package]]
 name = "enum-primitive-derive"
-version = "0.2.2"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c375b9c5eadb68d0a6efee2999fef292f45854c3444c86f09d8ab086ba942b0e"
+checksum = "ba7795da175654fe16979af73f81f26a8ea27638d8d9823d317016888a63dc4c"
 dependencies = [
  "num-traits",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.32",
 ]
 
 [[package]]
@@ -1279,11 +1279,11 @@ dependencies = [
 
 [[package]]
 name = "gdbstub"
-version = "0.6.6"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4e02bf1b1a624d96925c608f1b268d82a76cbc587ce9e59f7c755e9ea11c75c"
+checksum = "09a8b954f9d02b74fe8e89a1c77bd9a6b8206713ebf1b272bfad9573b4a86f88"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "cfg-if",
  "log",
  "managed",
@@ -1320,9 +1320,9 @@ checksum = "b6c80984affa11d98d1b88b66ac8853f143217b399d3c74116778ff8fdb4ed2e"
 
 [[package]]
 name = "gimli"
-version = "0.28.0"
+version = "0.28.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6fb8d784f27acf97159b40fc4db5ecd8aa23b9ad5ef69cdd136d3bc80665f0c0"
+checksum = "4271d37baee1b8c7e4b708028c57d816cf9d2434acb33a549475f78c181f6253"
 dependencies = [
  "fallible-iterator",
  "stable_deref_trait",
@@ -1330,24 +1330,22 @@ dependencies = [
 
 [[package]]
 name = "git-version"
-version = "0.3.5"
+version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f6b0decc02f4636b9ccad390dcbe77b722a77efedfa393caf8379a51d5c61899"
+checksum = "13ad01ffa8221f7fe8b936d6ffb2a3e7ad428885a04fad51866a5f33eafda57c"
 dependencies = [
  "git-version-macro",
- "proc-macro-hack",
 ]
 
 [[package]]
 name = "git-version-macro"
-version = "0.3.5"
+version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fe69f1cbdb6e28af2bac214e943b99ce8a0a06b447d15d3e61161b0423139f3f"
+checksum = "84488ccbdb24ad6f56dc1863b4a8154a7856cd3c6c7610401634fab3cb588dae"
 dependencies = [
- "proc-macro-hack",
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.32",
 ]
 
 [[package]]
@@ -1782,6 +1780,15 @@ name = "itertools"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25db6b064527c5d482d0423354fcd07a89a2dfe07b67892e62411946db7f07b0"
 dependencies = [
  "either",
 ]
@@ -2430,7 +2437,7 @@ dependencies = [
  "espflash",
  "figment",
  "gdbstub",
- "gimli 0.28.0",
+ "gimli 0.28.1",
  "git-version",
  "goblin",
  "hexdump",
@@ -2439,7 +2446,7 @@ dependencies = [
  "indicatif",
  "insta",
  "is-terminal",
- "itertools 0.11.0",
+ "itertools 0.12.0",
  "itm",
  "jaylink",
  "jep106",
@@ -2453,6 +2460,7 @@ dependencies = [
  "paste",
  "pretty_assertions",
  "pretty_env_logger",
+ "probe-rs",
  "probe-rs-target",
  "rand",
  "ratatui",
@@ -2524,12 +2532,6 @@ dependencies = [
  "quote",
  "version_check",
 ]
-
-[[package]]
-name = "proc-macro-hack"
-version = "0.5.20+deprecated"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc375e1527247fe1a97d8b7156678dfe7c1af2fc075c9a4db3690ecd2a148068"
 
 [[package]]
 name = "proc-macro2"
@@ -2836,6 +2838,7 @@ dependencies = [
 name = "rtthost"
 version = "0.21.1"
 dependencies = [
+ "anyhow",
  "clap",
  "pretty_env_logger",
  "probe-rs",
@@ -3109,18 +3112,18 @@ dependencies = [
 
 [[package]]
 name = "serde"
-version = "1.0.192"
+version = "1.0.193"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bca2a08484b285dcb282d0f67b26cadc0df8b19f8c12502c13d966bf9482f001"
+checksum = "25dd9975e68d0cb5aa1120c288333fc98731bd1dd12f561e468ea4728c042b89"
 dependencies = [
  "serde_derive",
 ]
 
 [[package]]
 name = "serde_derive"
-version = "1.0.192"
+version = "1.0.193"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d6c7207fbec9faa48073f3e3074cbe553af6ea512d7c21ba46e434e70ea9fbc1"
+checksum = "43576ca501357b9b071ac53cdc7da8ef0cbd9493d8df094cd821777ea6e894d3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3457,9 +3460,9 @@ dependencies = [
 
 [[package]]
 name = "svd-parser"
-version = "0.14.2"
+version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f2081d77e28f5144c3af0774dcbfd0b170b6bce37d238b2e5d7bc3d7a7d6b775"
+checksum = "b49637951d99ea9f89b2bfb269ff0a21b8d647d01b0bb9949987b98871548fef"
 dependencies = [
  "anyhow",
  "roxmltree",
@@ -3469,9 +3472,9 @@ dependencies = [
 
 [[package]]
 name = "svd-rs"
-version = "0.14.2"
+version = "0.14.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d08273bc4ca66b632299903960efa8a306aac61dc6381bcf07450c20b1a5443c"
+checksum = "88d664449a290ecd6253d977d350cdf4026781223a72473fc55ea1e456e2b5d9"
 dependencies = [
  "once_cell",
  "regex",
@@ -3914,12 +3917,12 @@ dependencies = [
 
 [[package]]
 name = "tracing-log"
-version = "0.1.3"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78ddad33d2d10b1ed7eb9d1f518a5674713876e97e5bb9b7345a7984fbb4f922"
+checksum = "ee855f1f400bd0e5c02d150ae5de3840039a3f54b025156404e34c23c03f47c3"
 dependencies = [
- "lazy_static",
  "log",
+ "once_cell",
  "tracing-core",
 ]
 
@@ -3935,9 +3938,9 @@ dependencies = [
 
 [[package]]
 name = "tracing-subscriber"
-version = "0.3.17"
+version = "0.3.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30a651bc37f915e81f087d86e62a18eec5f79550c7faff886f7090b4ea757c77"
+checksum = "ad0f048c97dbd9faa9b7df56362b8ebcaa52adb06b498c050d2f4e32f90a7a8b"
 dependencies = [
  "matchers",
  "nu-ansi-term",

@@ -2148,12 +2148,7 @@ mod test {
                 frame.local_variables.as_mut().unwrap(),
             ] {
                 // Cache the deferred top level children of the of the cache.
-                let mut parent_variable = variable_cache
-                    .variable_hash_map
-                    .values()
-                    .find(|variable| variable.parent_key.is_none())
-                    .unwrap()
-                    .clone();
+                let mut parent_variable = variable_cache.root_variable();
                 recurse_deferred_variables(
                     &debug_info,
                     variable_cache,
