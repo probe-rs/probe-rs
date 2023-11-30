@@ -61,8 +61,8 @@ impl EspUsbJtag {
 
         tracing::debug!("Resetting JTAG chain using trst");
         // TODO this isn't actually needed, we should only do this when AttachUnderReset it supplied
-        self.protocol.set_reset(true, true)?;
-        self.protocol.set_reset(false, false)?;
+        // self.protocol.set_reset(true, true)?;
+        // self.protocol.set_reset(false, false)?;
 
         self.jtag_reset()?;
 
