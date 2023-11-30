@@ -707,6 +707,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     /// Returns the number of fpu registers defined in this register file, or `None` if there are none.
+    // TODO: Consider changing the Result to remove the Option.
     fn floating_point_register_count(&mut self) -> Result<Option<usize>, Error> {
         let fpu_register_count = self
             .registers()

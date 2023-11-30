@@ -45,7 +45,7 @@ pub trait MemoryMappedRegister<T>: Clone + From<T> + Into<T> + Sized + std::fmt:
 ///    datacount, _: 3, 0;
 /// }
 /// ```
-/// This will generate a struct with the name `Abstracts`, which has:
+/// This will generate a struct with the name `AbstractCS`, which has:
 /// - A `pub` visibility.
 /// - A `u32` register type.
 /// - A `Debug` implementation.
