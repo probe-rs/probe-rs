@@ -56,7 +56,7 @@ impl XdmStatus {
     pub fn is_ok(&self) -> Result<(), Error> {
         match self {
             XdmStatus::Ok => Ok(()),
-            other => Err(Error::XdmError(Some(*self)))
+            other => Err(Error::XdmError(Some(*self))),
         }
     }
 }
@@ -67,7 +67,7 @@ pub enum Error {
     ExecExeception,
     ExecBusy,
     ExecOverrun,
-    XdmPoweredOff
+    XdmPoweredOff,
 }
 
 impl XdmStatus {
@@ -152,7 +152,7 @@ impl Xdm {
         }
 
         let status = x.status().unwrap();
-        tracing::info!("DSR: {:?}", status);
+        tracing::info!("{:?}", status);
         status.is_ok().unwrap();
         // TODO check status and clear bits if required
 
@@ -169,7 +169,8 @@ impl Xdm {
         XdmStatus::parse(
             self.probe
                 .write_register(DEBUG_ADDR, &[regdata], XDM_ADDRESS_REGISTER_WIDTH)?[0],
-        )?.is_ok()?;
+        )?
+        .is_ok()?;
 
         let res = self.probe.read_register(DEBUG_ADDR, XDM_REGISTER_WIDTH)?;
         tracing::trace!("dbg_read response: {:?}", res);
@@ -184,7 +185,8 @@ impl Xdm {
         XdmStatus::parse(
             self.probe
                 .write_register(DEBUG_ADDR, &[regdata], XDM_ADDRESS_REGISTER_WIDTH)?[0],
-        )?.is_ok()?;
+        )?
+        .is_ok()?;
 
         let res =
             self.probe
@@ -272,10 +274,11 @@ impl DebugStatus {
             Error::ExecBusy
         } else if self.0 & Self::OCDDSR_EXECOVERRUN == 1 {
             Error::ExecOverrun
-        } else if self.0 & Self::OCDDSR_DBGMODPOWERON == 0 { // should always be set to one
+        } else if self.0 & Self::OCDDSR_DBGMODPOWERON == 0 {
+            // should always be set to one
             Error::XdmPoweredOff
         } else {
-            return Ok(())
+            return Ok(());
         })
     }
 }
