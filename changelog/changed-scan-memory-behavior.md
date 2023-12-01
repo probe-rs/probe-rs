@@ -1,0 +1,1 @@
+By default, `probe-rs run` and `probe-rs attach` will only scan the memory for the RTT control block if the `--rtt-scan-memory` flag is provided. It will still always look for a `_SEGGER_RTT` symbol in the ELF file and use that first in all circumstances.
