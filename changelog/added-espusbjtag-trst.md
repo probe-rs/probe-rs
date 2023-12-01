@@ -1,0 +1,1 @@
+Add TRST implementation for esp-usbjtag

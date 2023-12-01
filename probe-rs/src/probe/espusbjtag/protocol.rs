@@ -257,10 +257,20 @@ impl ProtocolHandler {
     }
 
     /// Sets the two different resets on the target.
-    /// NOTE: Only `srst` can be set for now. Setting `trst` is not implemented yet.
-    pub fn set_reset(&mut self, _trst: bool, srst: bool) -> Result<(), DebugProbeError> {
-        // TODO: Handle trst using setup commands. This is not necessarily required and can be left as is for the moiment..
+    pub fn set_reset(&mut self, trst: bool, srst: bool) -> Result<(), DebugProbeError> {
+        if trst {
+            // We send 5 TMS bits as TAP reset
+            for _ in 0..5 {
+                self.push_command(RepeatableCommand::Clock {
+                    cap: false,
+                    tdi: false,
+                    tms: true,
+                })?;
+            }
+        }
+
         self.add_raw_command(Command::Reset(srst))?;
+
         self.flush()?;
         Ok(())
     }
