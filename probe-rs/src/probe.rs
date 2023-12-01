@@ -598,7 +598,7 @@ pub trait DebugProbe: Send + fmt::Debug {
         false
     }
 
-    /// Get the dedicated interface to debug RISCV chips. Ensure that the
+    /// Get the dedicated interface to debug Xtensa chips. Ensure that the
     /// probe actually supports this by calling [DebugProbe::has_xtensa_interface] first.
     fn try_get_xtensa_interface(
         self: Box<Self>,
@@ -609,7 +609,7 @@ pub trait DebugProbe: Send + fmt::Debug {
         ))
     }
 
-    /// Check if the probe offers an interface to debug RISCV chips.
+    /// Check if the probe offers an interface to debug Xtensa chips.
     fn has_xtensa_interface(&self) -> bool {
         false
     }

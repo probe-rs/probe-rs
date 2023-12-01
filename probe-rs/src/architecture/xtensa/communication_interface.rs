@@ -1,8 +1,8 @@
 //! Xtensa Debug Module Communication
 
-use crate::{DebugProbeError, probe::JTAGAccess};
+use crate::{probe::JTAGAccess, DebugProbeError};
 
-use super::xdm::{Xdm, Error as XdmError};
+use super::xdm::{Error as XdmError, Xdm};
 
 /// Possible Xtensa errors
 #[derive(thiserror::Error, Debug)]
@@ -15,12 +15,12 @@ pub enum XtensaError {
     XdmError(XdmError),
 }
 
-/// A interface that implements controls for RISC-V cores.
+/// A interface that implements controls for Xtensa cores.
 #[derive(Debug)]
 pub struct XtensaCommunicationInterface {
     /// The Xtensa debug module
     xdm: Xdm,
-    // state: RiscvCommunicationInterfaceState,
+    // state: XtensaCommunicationInterfaceState,
 }
 
 impl XtensaCommunicationInterface {
@@ -28,10 +28,7 @@ impl XtensaCommunicationInterface {
     pub fn new(probe: Box<dyn JTAGAccess>) -> Result<Self, (Box<dyn JTAGAccess>, DebugProbeError)> {
         let xdm = Xdm::new(probe).map_err(|(probe, e)| match e {
             XtensaError::DebugProbe(err) => (probe, err),
-            other_error => (
-                probe,
-                DebugProbeError::Other(other_error.into()),
-            ),
+            other_error => (probe, DebugProbeError::Other(other_error.into())),
         })?;
 
         let s = Self { xdm };
