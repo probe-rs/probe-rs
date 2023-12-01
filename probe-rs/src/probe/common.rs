@@ -1,4 +1,4 @@
-//! Crate-public stuctures and utilites to be shared between probes.
+//! Crate-public structures and utilities to be shared between probes.
 
 use bitfield::bitfield;
 use bitvec::prelude::*;

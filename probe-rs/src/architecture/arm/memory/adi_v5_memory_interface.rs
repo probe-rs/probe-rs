@@ -163,7 +163,7 @@ where
     ap_information: MemoryApInformation,
     memory_ap: MemoryAp,
 
-    /// Cached value of the CSW register, to avoid unecessary writes.
+    /// Cached value of the CSW register, to avoid unnecessary writes.
     //
     /// TODO: This is the wrong location for this, it should actually be
     /// cached on a lower level, where the other Memory AP information is

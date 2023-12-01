@@ -16,9 +16,9 @@ bitfield! {
     is_exception_flag, _: 31, 24;
     /// Indicates whether to restore registers from the secure stack or the unsecure stack
     use_secure_stack, _:6;
-    /// Indicates wheteher the default stacking rules apply or the callee registers are already on the stack
+    /// Indicates whether the default stacking rules apply or the callee registers are already on the stack
     use_default_register_stacking, _:5;
-    /// Defines whether the stack frame for this exception has space allocated for FPU state information. Bit [4] is 0 if stack space is the exended frame that includes FPU registes.
+    /// Defines whether the stack frame for this exception has space allocated for FPU state information. Bit [4] is 0 if stack space is the extended frame that includes FPU registers.
     use_standard_stackframe, _: 4;
     /// Indicates whether the return mode is Handler (0) or Thread (1)
     mode, _: 3;

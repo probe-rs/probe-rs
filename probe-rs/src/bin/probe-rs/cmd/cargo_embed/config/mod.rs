@@ -170,9 +170,9 @@ impl Configs {
             .collect()
     }
 
-    /// Extract the requested config, but only if the profile has been explicity defined in the
+    /// Extract the requested config, but only if the profile has been explicitly defined in the
     /// configuration files etc. (selecting an arbitrary undefined profile with Figment will coerce
-    /// it into existance - inheriting from the default config).
+    /// it into existence - inheriting from the default config).
     pub fn select_defined(self: Configs, name: &str) -> anyhow::Result<Config> {
         let defined_profiles = self.prof_names();
         let requested_profile_defined: bool = defined_profiles

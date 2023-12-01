@@ -116,7 +116,7 @@ fn try_show_info(
             match probe.try_into_riscv_interface() {
                 Ok(mut interface) => {
                     if let Err(e) = show_riscv_info(&mut interface) {
-                        log::warn!("Error showing RISCV chip information: {}", e);
+                        log::warn!("Error showing RISC-V chip information: {}", e);
                     }
 
                     probe = interface.close();
@@ -138,7 +138,7 @@ fn try_show_info(
         );
         }
     } else {
-        tracing::info!("Debugging RISCV-Targets over SWD is not supported.");
+        tracing::info!("Debugging RISC-V-Targets over SWD is not supported.");
     }
 
     (probe, Ok(()))
@@ -375,7 +375,7 @@ fn show_riscv_info(interface: &mut RiscvCommunicationInterface) -> Result<()> {
 
     let jep_id = jep106::JEP106Code::new(jep_cc as u8, jep_id as u8);
 
-    println!("RISCV Chip:");
+    println!("RISC-V Chip:");
     println!("\tIDCODE: {idcode:010x}");
     println!("\t Version:      {version}");
     println!("\t Part:         {part_number}");

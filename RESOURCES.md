@@ -57,9 +57,9 @@ STLINKv1, v2 and v2-1. Written in C.
 ### CMSIS-DAP
 [CMSIS-DAP Spec](https://arm-software.github.io/CMSIS_5/DAP/html/index.html)
 
-## RISCV
+## RISC-V
 
-[RISCV Debug Specification](https://github.com/riscv/riscv-debug-spec/blob/release/riscv-debug-release.pdf)
+[RISC-V Debug Specification](https://github.com/riscv/riscv-debug-spec/blob/release/riscv-debug-release.pdf)
 
 
 ## ELF

@@ -74,9 +74,8 @@ impl EspUsbJtag {
         let mut idcodes = Vec::new();
 
         for idcode in response.chunks(4) {
-            if idcode.len() != 4 {
-                panic!("Bad length");
-            }
+            assert_eq!(idcode.len(), 4, "Bad length");
+
             if idcode == [0xFF, 0xFF, 0xFF, 0xFF] {
                 break;
             }
@@ -84,7 +83,7 @@ impl EspUsbJtag {
         }
 
         tracing::info!(
-            "JTAG dr scan complete, found {} TAPS. {:?}",
+            "JTAG dr scan complete, found {} TAPs. {:?}",
             idcodes.len(),
             idcodes
         );
@@ -126,9 +125,11 @@ impl EspUsbJtag {
 
         let mut response = response.split_off(tms_enter_ir_shift.len());
         if let Some(ref params) = self.chain_params {
-            response = response.split_off(params.irpre); // cut the prepended bypass commands
+            // cut the prepended bypass commands
+            response = response.split_off(params.irpre);
         }
-        response.truncate(len); // cut the post pended bypass commands
+        // cut the post pended bypass commands
+        response.truncate(len);
 
         Ok(response)
     }
@@ -486,7 +487,7 @@ impl DebugProbe for EspUsbJtag {
 
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
         // TODO:
-        // can only go lower, base speed it max of 40000khz
+        // can only go lower, base speed is max of 40000khz
 
         Ok(speed_khz)
     }
@@ -501,11 +502,11 @@ impl DebugProbe for EspUsbJtag {
         tracing::debug!("Attaching to ESP USB JTAG");
 
         let taps = self.scan()?;
-        tracing::info!("Found {} taps on reset scan", taps.len());
+        tracing::info!("Found {} TAPs on reset scan", taps.len());
 
         let selected = 0;
         if taps.len() > 1 {
-            tracing::warn!("More than on tap detected, defaulting to tap0")
+            tracing::warn!("More than one TAP detected, defaulting to tap0")
         }
 
         let mut params = ChainParams {

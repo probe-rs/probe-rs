@@ -46,7 +46,7 @@ pub struct CoreData {
 
 /// [CoreHandle] provides handles to various data structures required to debug a single instance of a core. The actual state is stored in [session_data::SessionData].
 ///
-/// Usage: To get access to this structure please use the [session_data::SessionData::attach_core] method. Please keep access/locks to this to a minumum duration.
+/// Usage: To get access to this structure please use the [session_data::SessionData::attach_core] method. Please keep access/locks to this to a minimum duration.
 pub struct CoreHandle<'p> {
     pub(crate) core: Core<'p>,
     pub(crate) core_data: &'p mut CoreData,
@@ -66,7 +66,7 @@ impl<'p> CoreHandle<'p> {
     }
 
     /// - Whenever we check the status, we compare it against `last_known_status` and send the appropriate event to the client.
-    /// - If we cannot determine the core status, then there is no sense in continuing the debug session, so please propogate the error.
+    /// - If we cannot determine the core status, then there is no sense in continuing the debug session, so please propagate the error.
     /// - If the core status has changed, then we update `last_known_status` to the new value, and return `true` as part of the Result<>.
     pub(crate) fn poll_core<P: ProtocolAdapter>(
         &mut self,

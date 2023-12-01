@@ -386,7 +386,7 @@ impl CmsisDap {
     /// According to the ARM specification, this *should* never fail.
     /// In practice, it can unfortunately happen.
     ///
-    /// To avoid an endeless recursion in this cases, this function is provided
+    /// To avoid an endless recursion in this cases, this function is provided
     /// as an alternative to [`Self::process_batch()`]. This function will return any errors,
     /// and not retry any transfers.
     fn read_ctrl_register(&mut self) -> Result<Ctrl, ArmError> {

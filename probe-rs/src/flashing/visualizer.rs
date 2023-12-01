@@ -115,7 +115,7 @@ impl<'layout> FlashVisualizer<'layout> {
     /// Generates an SVG which visualizes the given flash contents
     /// and writes the SVG into the file at the given `path`.
     ///
-    /// This is aequivalent to [FlashVisualizer::generate_svg] with the difference of operating on a file instead of a string.
+    /// This is equivalent to [FlashVisualizer::generate_svg] with the difference of operating on a file instead of a string.
     pub fn write_svg(&self, path: impl AsRef<std::path::Path>) -> std::io::Result<()> {
         use std::fs::OpenOptions;
         use std::io::Write;

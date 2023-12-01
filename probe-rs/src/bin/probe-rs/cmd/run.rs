@@ -52,12 +52,17 @@ pub struct Cmd {
 
     #[clap(long)]
     pub(crate) log_format: Option<String>,
+
     /// Enable reset vector catch if its supported on the target.
     #[arg(long)]
     pub catch_reset: bool,
     /// Enable hardfault vector catch if its supported on the target.
     #[arg(long)]
     pub catch_hardfault: bool,
+
+    /// Scan the memory to find the RTT control block
+    #[clap(long)]
+    pub(crate) rtt_scan_memory: bool,
 }
 
 impl Cmd {
@@ -104,7 +109,10 @@ impl Cmd {
         }
 
         let memory_map = session.target().memory_map.clone();
-        let rtt_scan_regions = session.target().rtt_scan_regions.clone();
+        let rtt_scan_regions = match self.rtt_scan_memory {
+            true => session.target().rtt_scan_regions.clone(),
+            false => Vec::new(),
+        };
         let mut core = session.core(0)?;
 
         if self.catch_hardfault || self.catch_reset {
@@ -139,7 +147,7 @@ impl Cmd {
     }
 }
 
-/// Print all RTT messsages and a stacktrace when the core stops due to an
+/// Print all RTT messages and a stacktrace when the core stops due to an
 /// exception or when ctrl + c is pressed.
 ///
 /// Returns `Ok(())` if the core gracefully halted, or an error.

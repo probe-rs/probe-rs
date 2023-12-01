@@ -101,7 +101,9 @@ pub fn debug(
     Ok(())
 }
 
-/// All eprintln! messages are picked up by the VSCode extension and displayed in the debug console. We send these to stderr, in addition to logging them, so that they will show up, irrespective of the RUST_LOG level filters.
+/// All eprintln! messages are picked up by the VSCode extension and displayed in the debug console.
+/// We send these to stderr, in addition to logging them, so that they will show up, irrespective of
+/// the RUST_LOG level filters.
 fn log_to_console_and_tracing(message: &str) {
     eprintln!("probe-rs-debug: {}", &message);
     tracing::info!("{}", &message);

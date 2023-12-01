@@ -321,7 +321,7 @@ impl Session {
     /// Attaches to the core with the given number.
     ///
     /// ## Usage
-    /// Everytime you want to perform an operation on the chip, you need to get the Core handle with the [Session::core()] method. This [Core] handle is merely a view into the core and provides a convenient API surface.
+    /// Every time you want to perform an operation on the chip, you need to get the Core handle with the [Session::core()] method. This [Core] handle is merely a view into the core and provides a convenient API surface.
     ///
     /// All the state is stored in the [Session] handle.
     ///
@@ -687,12 +687,12 @@ fn get_target_from_selector(
                         probe = interface.close();
                     }
                     Err((returned_probe, err)) => {
-                        tracing::debug!("Error during autodetection of RISCV chips: {}", err);
+                        tracing::debug!("Error during autodetection of RISC-V chips: {}", err);
                         probe = returned_probe;
                     }
                 }
             } else {
-                tracing::debug!("No RISCV interface was present. Skipping Riscv autodetect.");
+                tracing::debug!("No RISC-V interface was present. Skipping Riscv autodetect.");
             }
 
             // Now we can deassert reset in case we asserted it before. This is always okay.
@@ -710,7 +710,7 @@ fn get_target_from_selector(
 }
 
 /// The `Permissions` struct represents what a [Session] is allowed to do with a target.
-/// Some operations can be irreversable, so need to be explicitly allowed by the user.
+/// Some operations can be irreversible, so need to be explicitly allowed by the user.
 ///
 /// # Example
 ///

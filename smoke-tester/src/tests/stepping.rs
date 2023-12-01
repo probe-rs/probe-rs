@@ -12,7 +12,7 @@ pub fn test_stepping(core: &mut Core, memory_regions: &[MemoryRegion]) -> Result
     println!("Testing stepping...");
 
     if core.architecture() == Architecture::Riscv {
-        // Not implemented for RISCV yet
+        // Not implemented for RISC-V yet
         return Ok(());
     }
 
