@@ -1,0 +1,1 @@
+Refactor esp-usbjtag to clean it up some
