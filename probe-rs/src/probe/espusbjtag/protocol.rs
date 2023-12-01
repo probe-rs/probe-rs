@@ -9,9 +9,12 @@ use crate::{
 
 const JTAG_PROTOCOL_CAPABILITIES_VERSION: u8 = 1;
 const JTAG_PROTOCOL_CAPABILITIES_SPEED_APB_TYPE: u8 = 1;
-const MAX_COMMAND_REPETITIONS: usize = 1024;
-const OUT_BUFFER_SIZE: usize = OUT_EP_BUFFER_SIZE * 32;
-const OUT_EP_BUFFER_SIZE: usize = 128;
+// The internal repeat counter register is 10 bits. We don't count the initial execution,
+// so the maximum repeat counter value is 1023.
+const MAX_COMMAND_REPETITIONS: usize = 1023;
+// Each command is 4 bits, i.e. 2 commands per byte:
+const OUT_BUFFER_SIZE: usize = OUT_EP_BUFFER_SIZE * 2;
+const OUT_EP_BUFFER_SIZE: usize = 64;
 const IN_EP_BUFFER_SIZE: usize = 64;
 const HW_FIFO_SIZE: usize = 4;
 const USB_TIMEOUT: Duration = Duration::from_millis(5000);
@@ -31,9 +34,9 @@ pub(super) struct ProtocolHandler {
     // The USB device handle.
     device_handle: rusb::DeviceHandle<rusb::Context>,
 
-    // The command in the queue and their repetitions.
+    // The command in the queue and their additional repetitions.
     // For now we do one command at a time.
-    command_queue: Option<(Command, usize)>,
+    command_queue: Option<(RepeatableCommand, usize)>,
     // The buffer for all commands to be sent to the target. This already contains `repeated` commands which are basically
     // a mechanism to compress the datastream by adding a `Repeat` command to repeat the previous command `n` times instead of
     // actually putting the command into the queue `n` times.
@@ -196,7 +199,7 @@ impl ProtocolHandler {
                     ((((buffer[p + 3] as u16) << 8) | buffer[p + 2] as u16) as u64 * 10 / 2) as u32;
                 div_min = ((buffer[p + 5] as u16) << 8) | buffer[p + 4] as u16;
                 div_max = ((buffer[p + 7] as u16) << 8) | buffer[p + 6] as u16;
-                tracing::info!("Found ESP USB JTAG adapter, base speed is {base_speed_khz}khz. Available dividers: ({div_min}..{div_max})");
+                tracing::info!("Found ESP USB JTAG adapter, base speed is {base_speed_khz}kHz. Available dividers: ({div_min}..{div_max})");
             } else {
                 tracing::warn!("Unknown capabilities type {:01X?}", typ);
             }
@@ -209,7 +212,7 @@ impl ProtocolHandler {
         Ok(Self {
             device_handle,
             command_queue: None,
-            output_buffer: Vec::new(),
+            output_buffer: Vec::with_capacity(OUT_BUFFER_SIZE),
             response: BitVec::new(),
             // The following expects are okay as we check that the values we call them on are `Some`.
             ep_out: ep_out.expect("This is a bug. Please report it."),
@@ -245,7 +248,7 @@ impl ProtocolHandler {
     ) -> Result<(), DebugProbeError> {
         tracing::debug!("JTAG IO! {} ", cap);
         for (tms, tdi) in tms.into_iter().zip(tdi.into_iter()) {
-            self.push_command(Command::Clock { cap, tdi, tms })?;
+            self.push_command(RepeatableCommand::Clock { cap, tdi, tms })?;
             if cap {
                 self.pending_in_bits += 1;
             }
@@ -257,46 +260,42 @@ impl ProtocolHandler {
     /// NOTE: Only `srst` can be set for now. Setting `trst` is not implemented yet.
     pub fn set_reset(&mut self, _trst: bool, srst: bool) -> Result<(), DebugProbeError> {
         // TODO: Handle trst using setup commands. This is not necessarily required and can be left as is for the moiment..
-        self.push_command(Command::Reset(srst))?;
+        self.add_raw_command(Command::Reset(srst))?;
         self.flush()?;
         Ok(())
     }
 
     /// Adds a command to the command queue.
     /// This will properly add repeat commands if possible.
-    fn push_command(&mut self, command: Command) -> Result<(), DebugProbeError> {
+    fn push_command(&mut self, command: RepeatableCommand) -> Result<(), DebugProbeError> {
         if let Some((command_in_queue, repetitions)) = self.command_queue.as_mut() {
             if command == *command_in_queue && *repetitions < MAX_COMMAND_REPETITIONS {
                 *repetitions += 1;
                 return Ok(());
-            } else {
-                let command = *command_in_queue;
-                let repetitions = *repetitions;
-                self.write_stream(command, repetitions)?;
             }
         }
 
-        self.command_queue = Some((command, 1));
+        self.finalize_previous_command()?;
+        self.command_queue = Some((command, 0));
+
+        Ok(())
+    }
+
+    fn finalize_previous_command(&mut self) -> Result<(), DebugProbeError> {
+        if let Some((command_in_queue, repetitions)) = self.command_queue.take() {
+            self.write_stream(command_in_queue, repetitions)?;
+        }
 
         Ok(())
     }
 
     /// Flushes all the pending commands to the JTAG adapter.
     pub fn flush(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
-        if let Some((command_in_queue, repetitions)) = self.command_queue.take() {
-            self.write_stream(command_in_queue, repetitions)?;
-        }
+        self.finalize_previous_command()?;
 
         tracing::debug!("Flushing ...");
 
         self.add_raw_command(Command::Flush)?;
-
-        // Make sure we add an additional nibble to the command buffer if the number of nibbles is odd,
-        // as we cannot send a standalone nibble.
-        if self.output_buffer.len() % 2 == 1 {
-            self.add_raw_command(Command::Flush)?;
-        }
-
         self.send_buffer()?;
 
         while self.pending_in_bits != 0 {
@@ -310,28 +309,29 @@ impl ProtocolHandler {
     /// or if the out buffer reaches a limit of `OUT_BUFFER_SIZE`.
     fn write_stream(
         &mut self,
-        command: impl Into<Command>,
+        command: RepeatableCommand,
         repetitions: usize,
     ) -> Result<(), DebugProbeError> {
-        let command = command.into();
-        let mut repetitions = repetitions;
-        tracing::trace!("add raw cmd {:?} reps={}", command, repetitions);
-
-        // Make sure we send flush commands only once and not repeated (Could make the target unhapy).
-        if command == Command::Flush {
-            repetitions = 1;
-        }
+        tracing::trace!("add raw cmd {:?} reps={}", command, repetitions + 1);
 
         // Send the actual command.
-        self.add_raw_command(command)?;
+        self.add_raw_command(command.into())?;
+        self.add_repetitions(repetitions)?;
 
-        // We already sent the command once so we need to do one less repetition.
-        repetitions -= 1;
+        Ok(())
+    }
 
+    /// Adds the required number of repetitions to the output buffer.
+    fn add_repetitions(&mut self, mut repetitions: usize) -> Result<(), DebugProbeError> {
         // Send repetitions as many times as required.
         // We only send 2 bits with each repetition command as per the protocol.
+        //
+        // Non-repeat commands reset the `cmd_rep_count` to 0. Each subsequent repeat command
+        // increases `cmd_rep_count`. The number of repetitions for each `Command::Repeat` are
+        // calculated as `repeat_count x 4^cmd_rep_count`. This sounds complicated but essentially
+        // we just have to shift in the repetition counter 2 bits at a time.
         while repetitions > 0 {
-            self.add_raw_command(Command::Repetitions((repetitions & 3) as u8))?;
+            self.add_raw_command(Command::Repeat((repetitions & 3) as u8))?;
             repetitions >>= 2;
         }
 
@@ -339,8 +339,9 @@ impl ProtocolHandler {
     }
 
     /// Adds a single command to the output buffer and writes it to the USB EP if the buffer reaches a limit of `OUT_BUFFER_SIZE`.
-    fn add_raw_command(&mut self, command: impl Into<Command>) -> Result<(), DebugProbeError> {
-        let command = command.into();
+    fn add_raw_command(&mut self, command: Command) -> Result<(), DebugProbeError> {
+        self.finalize_previous_command()?;
+
         self.output_buffer.push(command);
 
         // If we reach a maximal size of the output buffer, we flush.
@@ -366,20 +367,23 @@ impl ProtocolHandler {
             .output_buffer
             .chunks(2)
             .map(|chunk| {
-                if chunk.len() == 2 {
-                    let unibble: u8 = chunk[0].into();
-                    let lnibble: u8 = chunk[1].into();
-                    (unibble << 4) | lnibble
+                let unibble: u8 = chunk[0].into();
+                let lnibble: u8 = if chunk.len() == 2 {
+                    chunk[1].into()
                 } else {
-                    chunk[0].into()
-                }
+                    // Make sure we add an additional nibble to the command buffer if the number of
+                    // nibbles is odd, as we cannot send a standalone nibble.
+                    Command::Flush.into()
+                };
+
+                (unibble << 4) | lnibble
             })
             .collect::<Vec<_>>();
 
         tracing::trace!(
-            "Writing {}byte ({}nibles) to usb endpoint",
+            "Writing {} bytes ({} nibbles) to usb endpoint",
             commands.len(),
-            commands.len() * 2
+            self.output_buffer.len()
         );
         let mut offset = 0;
         let mut total = 0;
@@ -400,12 +404,8 @@ impl ProtocolHandler {
         self.output_buffer.clear();
 
         // If there's more than a bufferful of data queing up in the jtag adapters IN endpoint, empty all but one buffer.
-        loop {
-            if self.pending_in_bits > (IN_EP_BUFFER_SIZE + HW_FIFO_SIZE) * 8 {
-                self.receive_buffer()?;
-            } else {
-                break;
-            }
+        while self.pending_in_bits > (IN_EP_BUFFER_SIZE + HW_FIFO_SIZE) * 8 {
+            self.receive_buffer()?;
         }
 
         Ok(())
@@ -467,13 +467,24 @@ impl ProtocolHandler {
 }
 
 #[derive(PartialEq, Debug, Clone, Copy)]
-pub(super) enum Command {
+enum RepeatableCommand {
+    Clock { cap: bool, tdi: bool, tms: bool },
+}
+
+impl From<RepeatableCommand> for Command {
+    fn from(command: RepeatableCommand) -> Self {
+        match command {
+            RepeatableCommand::Clock { cap, tdi, tms } => Command::Clock { cap, tdi, tms },
+        }
+    }
+}
+
+#[derive(PartialEq, Debug, Clone, Copy)]
+enum Command {
     Clock { cap: bool, tdi: bool, tms: bool },
     Reset(bool),
     Flush,
-    // TODO: What is this?
-    _Rsvd,
-    Repetitions(u8),
+    Repeat(u8),
 }
 
 impl From<Command> for u8 {
@@ -484,8 +495,7 @@ impl From<Command> for u8 {
             }
             Command::Reset(srst) => 8 | u8::from(srst),
             Command::Flush => 0xA,
-            Command::_Rsvd => 0xB,
-            Command::Repetitions(repetitions) => 0xC + repetitions,
+            Command::Repeat(repetitions) => 0xC + repetitions,
         }
     }
 }
