@@ -1,6 +1,6 @@
 #![allow(clippy::unusual_byte_groupings)]
 
-/// RISCV breakpoint instruction
+/// RISC-V breakpoint instruction
 pub const EBREAK: u32 = 0b000000000001_00000_000_00000_1110011;
 
 /// Assemble a `lw` instruction.
@@ -58,7 +58,7 @@ pub fn csrrw(rd: u8, rs1: u8, csr: u16) -> u32 {
     i_type_instruction(opcode, rs1, funct3, rd, csr)
 }
 
-/// Assemble an I-type instruction, as specified in the RISCV ISA
+/// Assemble an I-type instruction, as specified in the RISC-V ISA
 ///
 /// This function panics if any of the values would have to be truncated.
 fn i_type_instruction(opcode: u8, rs1: u8, funct3: u8, rd: u8, imm: u16) -> u32 {

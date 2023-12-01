@@ -16,7 +16,7 @@ use crate::{
 };
 
 /// Access to the Debug Transport Module (DTM),
-/// which is used to communicate with the RISCV debug module.
+/// which is used to communicate with the RISC-V debug module.
 #[derive(Debug)]
 pub struct Dtm {
     pub probe: Box<dyn JTAGAccess>,
@@ -201,8 +201,8 @@ impl Dtm {
         Ok(Ok(value))
     }
 
-    /// Read or write the `dmi` register. If a busy value is rerurned, the access is
-    /// retried until the transfer either succeeds, or the tiemout expires.
+    /// Read or write the `dmi` register. If a busy value is returned, the access is
+    /// retried until the transfer either succeeds, or the timeout expires.
     pub fn dmi_register_access_with_timeout(
         &mut self,
         address: u64,

@@ -36,7 +36,7 @@ pub struct SwdSettings {
     ///
     /// When performing a write operation, the write can
     /// be buffered, meaning that completing the transfer
-    /// does not mean that the write was performed succesfully.
+    /// does not mean that the write was performed successfully.
     ///
     /// To check that all writes have been executed, the
     /// `RDBUFF` register can be read from the DP.
@@ -70,7 +70,7 @@ pub struct ProbeStatistics {
     /// Number of protocol transfers performed.
     ///
     /// This includes repeated transfers, and transfers
-    /// which are automatically added to fullfill
+    /// which are automatically added to fulfill
     /// protocol requirements, e.g. a read from a
     /// DP register will result in two transfers,
     /// because the read value is returned in the
@@ -173,7 +173,7 @@ fn parse_jtag_response(data: &[u8]) -> u64 {
     received
 }
 
-/// Perform a single JTAG tranfer and parse the results
+/// Perform a single JTAG transfer and parse the results
 ///
 /// Return is (value, status)
 fn perform_jtag_transfer<P: JTAGAccess + RawProtocolIo>(
@@ -305,7 +305,7 @@ fn perform_jtag_transfers<P: JTAGAccess + RawProtocolIo>(
 /// Perform a batch of SWD transfers.
 ///
 /// For each transfer, the corresponding bit sequence is
-/// created and the resulting sequences are concatened
+/// created and the resulting sequences are concatenated
 /// to a single sequence, so that it can be sent to
 /// to the probe.
 fn perform_swd_transfers<P: RawProtocolIo>(

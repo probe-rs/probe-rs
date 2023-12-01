@@ -226,7 +226,7 @@ impl AtSAM {
     ///
     /// # Errors
     /// This operation can fail due to insufficient permissions, or if Chip-Erase Lock is
-    /// enabled (this lock can only be released from within the device firmare).
+    /// enabled (this lock can only be released from within the device firmware).
     /// After a successful Chip-Erase a `DebugProbeError::ReAttachRequired` is returned
     /// to signal that a re-connect is needed for the DSU to start operating in unlocked mode.
     pub fn erase_all(

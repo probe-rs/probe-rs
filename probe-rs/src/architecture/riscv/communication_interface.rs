@@ -1,7 +1,7 @@
 //! Debug Module Communication
 //!
 //! This module implements communication with a
-//! Debug Module, as described in the RISCV debug
+//! Debug Module, as described in the RISC-V debug
 //! specification v0.13.2 .
 
 use super::{
@@ -21,7 +21,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-/// Some error occurered when working with the RISC-V core.
+/// Some error occurred when working with the RISC-V core.
 #[derive(thiserror::Error, Debug)]
 pub enum RiscvError {
     /// An error during read/write of the DMI register happened.
@@ -63,8 +63,8 @@ pub enum RiscvError {
     /// The given trigger type is not available for the address breakpoint.
     #[error("Unexpected trigger type {0} for address breakpoint.")]
     UnexpectedTriggerType(u32),
-    /// The connected target is not a RISCV device.
-    #[error("Connected target is not a RISCV device.")]
+    /// The connected target is not a RISC-V device.
+    #[error("Connected target is not a RISC-V device.")]
     NoRiscvTarget,
     /// The target does not support halt after reset.
     #[error("The target does not support halt after reset.")]
@@ -87,10 +87,10 @@ pub enum AbstractCommandErrorKind {
     /// No error happened.
     None = 0,
     /// An abstract command was executing
-    /// while command, abstractcs, or abstractauto
-    /// was written, or when one of the data or progbuf
+    /// while command, `abstractcs`, or `abstractauto`
+    /// was written, or when one of the `data` or `progbuf`
     /// registers was read or written. This status is only
-    /// written if cmderr contains 0.
+    /// written if `cmderr` contains 0.
     Busy = 1,
     /// The requested command is not supported, reg
     NotSupported = 2,
@@ -135,11 +135,11 @@ impl AbstractCommandErrorKind {
 pub enum DebugModuleVersion {
     /// There is no debug module present.
     NoModule,
-    /// The debug module conforms to the version 0.11 of the RISCV Debug Specification.
+    /// The debug module conforms to the version 0.11 of the RISC-V Debug Specification.
     Version0_11,
-    /// The debug module conforms to the version 0.13 of the RISCV Debug Specification.
+    /// The debug module conforms to the version 0.13 of the RISC-V Debug Specification.
     Version0_13,
-    /// The debug module is present, but does not conform to any available version of the RISCV Debug Specification.
+    /// The debug module is present, but does not conform to any available version of the RISC-V Debug Specification.
     NonConforming,
     /// Unknown debug module version.
     Unknown(u8),
@@ -213,7 +213,7 @@ pub struct RiscvCommunicationInterfaceState {
     abstract_cmd_register_info: HashMap<RegisterId, CoreRegisterAbstractCmdSupport>,
 }
 
-/// Timeout for RISCV operations.
+/// Timeout for RISC-V operations.
 const RISCV_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// RiscV only supports 12bit CSRs. See
@@ -307,7 +307,7 @@ impl RiscvCommunicationInterface {
     fn enter_debug_mode(&mut self) -> Result<(), RiscvError> {
         // We need a jtag interface
 
-        tracing::debug!("Building RISCV interface");
+        tracing::debug!("Building RISC-V interface");
 
         // Reset error bits from previous connections
         self.dtm.reset()?;
@@ -1158,7 +1158,7 @@ impl RiscvCommunicationInterface {
         }
     }
 
-    /// Read the CSR progbuf register.
+    /// Read the CSR `progbuf` register.
     pub fn read_csr_progbuf(&mut self, address: u16) -> Result<u32, RiscvError> {
         tracing::debug!("Reading CSR {:#04x}", address);
 
@@ -1189,7 +1189,7 @@ impl RiscvCommunicationInterface {
         Ok(reg_value)
     }
 
-    /// Write the CSR progbuf register.
+    /// Write the CSR `progbuf` register.
     pub fn write_csr_progbuf(&mut self, address: u16, value: u32) -> Result<(), RiscvError> {
         tracing::debug!("Writing CSR {:#04x}={}", address, value);
 
@@ -1907,25 +1907,25 @@ memory_mapped_bitfield_register! {
     /// 3: Access the lowest 64 bits of the register.\
     /// 4: Access the lowest 128 bits of the register.
     ///
-    /// If aarsize specifies a size larger than the register’s
-    /// actual size, then the access must fail. If a register is accessible, then reads of aarsize less than
+    /// If `aarsize` specifies a size larger than the register’s
+    /// actual size, then the access must fail. If a register is accessible, then reads of `aarsize` less than
     /// or equal to the register’s actual size must be supported.
     ///
     /// This field controls the Argument Width as referenced in Table 3.1.
     pub u8, from into RiscvBusAccess, _, set_aarsize: 22, 20;
     /// 0: No effect. This variant must be supported.\
-    /// 1: After a successful register access, regno is incremented (wrapping around to 0). Supporting
+    /// 1: After a successful register access, `regno` is incremented (wrapping around to 0). Supporting
     /// this variant is optional.
     pub _, set_aarpostincrement: 19;
     /// 0: No effect. This variant must be supported, and
-    /// is the only supported one if progbufsize is 0.\
+    /// is the only supported one if `progbufsize` is 0.\
     /// 1: Execute the program in the Program Buffer
     /// exactly once after performing the transfer, if any.
     /// Supporting this variant is optional.
     pub _, set_postexec: 18;
     /// 0: Don’t do the operation specified by write.\
     /// 1: Do the operation specified by write.
-    /// This bit can be used to just execute the Program Buffer without having to worry about placing valid values into aarsize or regno
+    /// This bit can be used to just execute the Program Buffer without having to worry about placing valid values into `aarsize` or `regno`
     pub _, set_transfer: 17;
     /// When transfer is set: 0: Copy data from the specified register into arg0 portion of data.
     /// 1: Copy data from arg0 portion of data into the
@@ -1950,7 +1950,7 @@ memory_mapped_bitfield_register! {
     sbversion, _: 31, 29;
     /// Set when the debugger attempts to read data
     /// while a read is in progress, or when the debugger initiates a new access while one is already in
-    /// progress (while sbbusy is set). It remains set until
+    /// progress (while `sbbusy` is set). It remains set until
     /// it’s explicitly cleared by the debugger.
     /// While this field is set, no more system bus accesses
     /// can be initiated by the Debug Module.
@@ -1961,10 +1961,10 @@ memory_mapped_bitfield_register! {
     /// any reason, and does not go low until the access
     /// is fully completed.
     ///
-    /// Writes to sbcs while sbbusy is high result in undefined behavior. A debugger must not write to
-    /// sbcs until it reads sbbusy as 0.
+    /// Writes to `sbcs` while `sbbusy` is high result in undefined behavior. A debugger must not write to
+    /// sbcs until it reads `sbbusy` as 0.
     sbbusy, _: 21;
-    /// When 1, every write to sbaddress0 automatically
+    /// When 1, every write to `sbaddress0` automatically
     /// triggers a system bus read at the new address.
     sbreadonaddr, set_sbreadonaddr: 20;
     /// Select the access size to use for system bus accesses.
@@ -1975,13 +1975,13 @@ memory_mapped_bitfield_register! {
     /// 3: 64-bit\
     /// 4: 128-bit
     ///
-    /// If sbaccess has an unsupported value when the
-    /// DM starts a bus access, the access is not performed and sberror is set to 4.
+    /// If `sbaccess` has an unsupported value when the
+    /// DM starts a bus access, the access is not performed and `sberror` is set to 4.
     sbaccess, set_sbaccess: 19, 17;
-    /// When 1, sbaddress is incremented by the access
-    /// size (in bytes) selected in sbaccess after every system bus access.
+    /// When 1, `sbaddress` is incremented by the access
+    /// size (in bytes) selected in `sbaccess` after every system bus access.
     sbautoincrement, set_sbautoincrement: 16;
-    /// When 1, every read from sbdata0 automatically
+    /// When 1, every read from `sbdata0` automatically
     /// triggers a system bus read at the (possibly autoincremented) address.
     sbreadondata, set_sbreadondata: 15;
     /// When the Debug Module’s system bus master encounters an error, this field gets set. The bits in
@@ -2017,7 +2017,7 @@ memory_mapped_bitfield_register! {
     pub struct Abstractauto(u32);
     0x18, "abstractauto",
     impl From;
-    /// When a bit in this field is 1, read or write accesses to the corresponding progbuf word cause
+    /// When a bit in this field is 1, read or write accesses to the corresponding `progbuf` word cause
     /// the command in command to be executed again.
     autoexecprogbuf, set_autoexecprogbuf: 31, 16;
     /// When a bit in this field is 1, read or write accesses to the corresponding data word cause the
@@ -2040,7 +2040,7 @@ memory_mapped_bitfield_register! {
     /// 0: Addresses are physical (to the hart they are
     /// performed on).\
     /// 1: Addresses are virtual, and translated the way
-    /// they would be from M-mode, with MPRV set.
+    /// they would be from M-mode, with `MPRV` set.
     pub _, set_aamvirtual: 23;
     /// 0: Access the lowest 8 bits of the memory location.\
     /// 1: Access the lowest 16 bits of the memory location.\
@@ -2050,7 +2050,7 @@ memory_mapped_bitfield_register! {
     pub _, set_aamsize: 22,20;
     /// After a memory access has completed, if this bit
     /// is 1, increment arg1 (which contains the address
-    /// used) by the number of bytes encoded in aamsize.
+    /// used) by the number of bytes encoded in `aamsize`.
     pub _, set_aampostincrement: 19;
     /// 0: Copy data from the memory location specified
     /// in arg1 into arg0 portion of data.\

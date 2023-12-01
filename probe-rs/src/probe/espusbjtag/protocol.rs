@@ -234,7 +234,7 @@ impl ProtocolHandler {
     }
 
     /// Put a bit on TDI and possibly read one from TDO.
-    /// to recieve the bytes from this operations call [`ProtocolHandler::flush`]
+    /// to receive the bytes from this operations call [`ProtocolHandler::flush`]
     ///
     /// Note that if the internal buffer is exceeded bytes will be automatically flushed to usb device
     pub fn jtag_io_async(
@@ -254,7 +254,7 @@ impl ProtocolHandler {
     }
 
     /// Sets the two different resets on the target.
-    /// NOTE: Only srst can be set for now. Setting trst is not implemented yet.
+    /// NOTE: Only `srst` can be set for now. Setting `trst` is not implemented yet.
     pub fn set_reset(&mut self, _trst: bool, srst: bool) -> Result<(), DebugProbeError> {
         // TODO: Handle trst using setup commands. This is not necessarily required and can be left as is for the moiment..
         self.push_command(Command::Reset(srst))?;

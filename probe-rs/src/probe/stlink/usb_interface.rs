@@ -35,7 +35,7 @@ pub static USB_PID_EP_MAP: Lazy<HashMap<u16, StLinkInfo>> = Lazy::new(|| {
     m
 });
 
-/// A helper struct to match STLink deviceinfo.
+/// A helper struct to match STLink device info.
 #[derive(Clone, Debug, Default)]
 pub struct StLinkInfo {
     pub version_name: &'static str,

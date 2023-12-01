@@ -130,7 +130,7 @@ pub trait CoreInterface: MemoryInterface {
     /// Returns the return address register, a.k.a. link register.
     fn return_address(&self) -> &'static CoreRegister;
 
-    /// Returns `true` if hwardware breakpoints are enabled, `false` otherwise.
+    /// Returns `true` if hardware breakpoints are enabled, `false` otherwise.
     fn hw_breakpoints_enabled(&self) -> bool;
 
     /// Configure the target to ensure software breakpoints will enter Debug Mode.
@@ -733,7 +733,7 @@ impl<'probe> Core<'probe> {
     ///
     /// # Remarks
     ///
-    /// `T` can be an unsigned interger type, such as [u32] or [u64], or
+    /// `T` can be an unsigned integer type, such as [u32] or [u64], or
     /// it can be [RegisterValue] to allow the caller to support arbitrary
     /// length registers.
     ///

@@ -34,7 +34,9 @@ impl SteppingMode {
     /// - If no hardware breakpoints are available, we will do repeated instruction steps until we reach the desired location.
     ///
     /// Usage Note:
-    /// - Currently, no special provision is made for the effect of interrupts that get triggered during stepping. The user must ensure that interrupts are disabled during stepping, or accept that stepping may be diverted by the interrupt processing on the core.
+    /// - Currently, no special provision is made for the effect of interrupts that get triggered
+    ///   during stepping. The user must ensure that interrupts are disabled during stepping, or
+    ///   accept that stepping may be diverted by the interrupt processing on the core.
     pub fn step(
         &self,
         core: &mut impl CoreInterface,
@@ -153,7 +155,7 @@ impl SteppingMode {
     /// - Everything is calculated from a given machine instruction address, usually the current program counter.
     /// - To calculate where the user might step to (step-over, step-into, step-out), we start from the given instruction address/program counter, and work our way through all the rows in the sequence of instructions it is part of.
     ///   - A sequence of instructions represents a series of contiguous target machine instructions, and does not necessarily represent the whole of a function.
-    ///   - Similarly, the instructions belonging to a source statement are not necessarily contiquous inside the sequence of instructions (e.g. conditional branching inside the sequence).
+    ///   - Similarly, the instructions belonging to a source statement are not necessarily contiguous inside the sequence of instructions (e.g. conditional branching inside the sequence).
     ///
     ///
     /// - The next row address in the target processor's instruction sequence may qualify as (one, or more) of the following:
@@ -168,7 +170,9 @@ impl SteppingMode {
     ///   - The beginning of a statement that is neither inside the prologue, nor inside the epilogue.
     /// - Based on this, we will attempt to return the "most appropriate" address for the [`SteppingMode`], given the available information in the instruction sequence.
     /// All data is calculated using the [`gimli::read::CompleteLineProgram`] as well as, function call data from the debug info frame section.
-    /// NOTE about errors returned: Sometimes the target program_counter is at a location where the debug_info program row data does not contain valid statements for halt points, and we will return a DebugError::NoValidHaltLocation . In this case, we recommend the consumer of this API step the core to the next instruction and try again, with a resasonable retry limit. All other error kinds are should be treated as non recoverable errors.
+    /// NOTE about errors returned: Sometimes the target program_counter is at a location where the debug_info program row data does not contain valid statements
+    /// for halt points, and we will return a `DebugError::NoValidHaltLocation`. In this case, we recommend the consumer of this API step the core to the next instruction
+    /// and try again, with a reasonable retry limit. All other error kinds are should be treated as non recoverable errors.
     pub(crate) fn get_halt_location(
         &self,
         core: &mut impl CoreInterface,

@@ -2,7 +2,7 @@
 //!
 //! This modules provides a means to do flash unlocking, erasing and programming.
 //!
-//! It provides a convenient highlevel interface that can flash an ELF, IHEX or BIN file
+//! It provides a convenient high level interface that can flash an ELF, IHEX or BIN file
 //! as well as a lower level block based interface.
 //!
 //!

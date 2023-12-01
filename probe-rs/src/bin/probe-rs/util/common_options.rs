@@ -189,7 +189,7 @@ impl LoadedProbeOptions {
     }
 
     /// Add targets contained in file given by --chip-description-path
-    /// to probe-rs registery.
+    /// to probe-rs registry.
     ///
     /// Note: should be called before [FlashOptions::early_exit] and any other functions in [ProbeOptions].
     fn maybe_load_chip_desc(&self) -> Result<(), OperationError> {

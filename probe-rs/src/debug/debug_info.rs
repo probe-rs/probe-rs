@@ -96,7 +96,7 @@ impl DebugInfo {
 
     /// Get the name of the function at the given address.
     ///
-    /// If no function is found, `None` will be returend.
+    /// If no function is found, `None` will be returned.
     ///
     /// ## Inlined functions
     /// Multiple nested inline functions could exist at the given address.
@@ -946,7 +946,7 @@ impl DebugInfo {
             };
 
             // PART 2-c: Unwind registers for the "previous/calling" frame.
-            // We sometimes need to keep a copy of the LR value to calculate the PC. For both ARM, and RISCV, The LR will be unwound before the PC, so we can reference it safely.
+            // We sometimes need to keep a copy of the LR value to calculate the PC. For both ARM, and RISC-V, The LR will be unwound before the PC, so we can reference it safely.
             let mut unwound_return_address: Option<RegisterValue> = None;
             for debug_register in unwind_registers.0.iter_mut() {
                 if unwind_register(
@@ -1337,7 +1337,7 @@ fn unwind_register(
                     .register_has_role(RegisterRole::StackPointer) =>
                 {
                     // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section B.1.4.1: Treat bits [1:0] as `Should be Zero or Preserved`
-                    // - Applying this logic to RISCV has no adverse effects, since all incoming addresses are already 32-bit aligned.
+                    // - Applying this logic to RISC-V has no adverse effects, since all incoming addresses are already 32-bit aligned.
                     register_rule_string = "SP=CFA (dwarf Undefined)".to_string();
                     unwind_cfa.map(|unwind_cfa| {
                         if sp.is_u32() {
