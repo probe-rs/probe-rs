@@ -117,9 +117,9 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                                 .clone()
                                 .unwrap_or_else(|| peripheral.name.clone()),
                         ));
-                        peripheral_group_variable = svd_cache.add_variable(
+                        svd_cache.add_variable(
                             device_root_variable.variable_key(),
-                            peripheral_group_variable,
+                            &mut peripheral_group_variable,
                         )?;
                     }
                 };
@@ -153,7 +153,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                 .clone()
                 .unwrap_or_else(|| format!("{}", peripheral_variable.name)),
         ));
-        peripheral_variable = svd_cache.add_variable(peripheral_parent_key, peripheral_variable)?;
+        svd_cache.add_variable(peripheral_parent_key, &mut peripheral_variable)?;
 
         for register in peripheral.all_registers() {
             let mut register_variable = Variable::new(None, None);
@@ -184,8 +184,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                 ));
                 register_has_restricted_read = true;
             }
-            register_variable =
-                svd_cache.add_variable(peripheral_variable.variable_key(), register_variable)?;
+            svd_cache.add_variable(peripheral_variable.variable_key(), &mut register_variable)?;
 
             for field in register.fields() {
                 let mut field_variable = Variable::new(None, None);
@@ -227,14 +226,10 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                             .to_string(),
                     ));
                     register_has_restricted_read = true;
-                    register_variable = svd_cache.update_variable(
-                        peripheral_variable.variable_key(),
-                        register_variable,
-                        core,
-                    )?;
+                    register_variable = svd_cache.update_variable(register_variable, core)?;
                 }
                 // TODO: Extend the Variable definition, so that we can resolve the EnumeratedValues for fields.
-                svd_cache.add_variable(register_variable.variable_key(), field_variable)?;
+                svd_cache.add_variable(register_variable.variable_key(), &mut field_variable)?;
             }
         }
     }

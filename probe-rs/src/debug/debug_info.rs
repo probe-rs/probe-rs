@@ -354,12 +354,10 @@ impl DebugInfo {
                             .header
                             .entries_tree(&unit_info.unit.abbreviations, Some(reference_offset))?;
                         let referenced_node = type_tree.root()?;
-                        let mut referenced_variable = cache.add_variable(
+                        let mut referenced_variable = cache.create_variable(
                             parent_variable.variable_key,
-                            Variable::new(
-                                unit_info.unit.header.offset().as_debug_info_offset(),
-                                Some(referenced_node.entry().offset()),
-                            ),
+                            unit_info.unit.header.offset().as_debug_info_offset(),
+                            Some(referenced_node.entry().offset()),
                         )?;
 
                         match &parent_variable.name {
@@ -414,8 +412,8 @@ impl DebugInfo {
                         let mut temporary_variable = parent_variable.clone();
                         temporary_variable.variable_key = ObjectRef::Invalid;
                         temporary_variable.parent_key = parent_variable.variable_key;
-                        temporary_variable =
-                            cache.add_variable(parent_variable.variable_key, temporary_variable)?;
+                        cache
+                            .add_variable(parent_variable.variable_key, &mut temporary_variable)?;
 
                         temporary_variable = unit_info.process_tree(
                             parent_node,
@@ -451,8 +449,8 @@ impl DebugInfo {
                         let mut temporary_variable = parent_variable.clone();
                         temporary_variable.variable_key = ObjectRef::Invalid;
                         temporary_variable.parent_key = parent_variable.variable_key;
-                        temporary_variable =
-                            cache.add_variable(parent_variable.variable_key, temporary_variable)?;
+                        cache
+                            .add_variable(parent_variable.variable_key, &mut temporary_variable)?;
 
                         let parent_node = type_tree.root()?;
 

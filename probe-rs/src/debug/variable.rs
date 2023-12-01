@@ -412,11 +412,7 @@ impl Variable {
                     // Now update the cache with the new value for this variable.
                     let mut cache_variable = self.clone();
                     cache_variable.value = VariableValue::Valid(new_value.clone());
-                    variable_cache.update_variable(
-                        cache_variable.parent_key,
-                        cache_variable,
-                        memory,
-                    )?;
+                    variable_cache.update_variable(cache_variable, memory)?;
                     new_value
                 }
                 Err(error) => {

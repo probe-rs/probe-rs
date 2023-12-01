@@ -1,9 +1,9 @@
 use super::*;
 use crate::Error;
 use anyhow::anyhow;
-use gimli::{UnitOffset, UnitSectionOffset};
+use gimli::{DebugInfoOffset, UnitOffset, UnitSectionOffset};
 use serde::{Serialize, Serializer};
-use std::collections::BTreeMap;
+use std::collections::{btree_map::Entry, BTreeMap};
 
 /// VariableCache stores available `Variable`s, and provides methods to create and navigate the parent-child relationships of the Variables.
 #[derive(Debug, Clone, PartialEq)]
@@ -142,12 +142,13 @@ impl VariableCache {
         self.variable_hash_map.is_empty()
     }
 
-    pub fn add_variable(
+    pub fn create_variable(
         &mut self,
         parent_key: ObjectRef,
-        cache_variable: Variable,
+        header_offset: Option<DebugInfoOffset>,
+        entries_offset: Option<UnitOffset>,
     ) -> Result<Variable, Error> {
-        let mut variable_to_add = cache_variable.clone();
+        let mut variable_to_add = Variable::new(header_offset, entries_offset);
         // Validate that the parent_key exists ...
         if self.variable_hash_map.contains_key(&parent_key) {
             variable_to_add.parent_key = parent_key;
@@ -155,22 +156,56 @@ impl VariableCache {
             return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {:?}. Please report this as a bug", variable_to_add.name, parent_key).into());
         }
 
+        // The caller is telling us this is definitely a new `Variable`
+        variable_to_add.variable_key = get_object_reference();
+
+        tracing::trace!(
+            "VariableCache: Add Variable: key={:?}, parent={:?}, name={:?}",
+            variable_to_add.variable_key,
+            variable_to_add.parent_key,
+            &variable_to_add.name
+        );
+
+        match self.variable_hash_map.entry(variable_to_add.variable_key) {
+            Entry::Occupied(_) => {
+                return Err(anyhow!("Attempt to insert a new `Variable`:{:?} with a duplicate cache key: {:?}. Please report this as a bug.", variable_to_add.name, variable_to_add.variable_key).into());
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(variable_to_add.clone());
+            }
+        }
+
+        Ok(variable_to_add)
+    }
+
+    pub fn add_variable(
+        &mut self,
+        parent_key: ObjectRef,
+        cache_variable: &mut Variable,
+    ) -> Result<(), Error> {
+        // Validate that the parent_key exists ...
+        if self.variable_hash_map.contains_key(&parent_key) {
+            cache_variable.parent_key = parent_key;
+        } else {
+            return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {:?}. Please report this as a bug", cache_variable.name, parent_key).into());
+        }
+
         // Is this an *add* or *update* operation?
-        let stored_key = if variable_to_add.variable_key == ObjectRef::Invalid {
+        if cache_variable.variable_key == ObjectRef::Invalid {
             // The caller is telling us this is definitely a new `Variable`
-            variable_to_add.variable_key = get_object_reference();
+            cache_variable.variable_key = get_object_reference();
 
             tracing::trace!(
                 "VariableCache: Add Variable: key={:?}, parent={:?}, name={:?}",
-                variable_to_add.variable_key,
-                variable_to_add.parent_key,
-                &variable_to_add.name
+                cache_variable.variable_key,
+                cache_variable.parent_key,
+                &cache_variable.name
             );
 
-            let new_entry_key = variable_to_add.variable_key;
+            let new_entry_key = cache_variable.variable_key;
             if let Some(old_variable) = self
                 .variable_hash_map
-                .insert(variable_to_add.variable_key, variable_to_add)
+                .insert(cache_variable.variable_key, cache_variable.clone())
             {
                 return Err(anyhow!("Attempt to insert a new `Variable`:{:?} with a duplicate cache key: {:?}. Please report this as a bug.", cache_variable.name, old_variable.variable_key).into());
             }
@@ -179,7 +214,7 @@ impl VariableCache {
             panic!("naughty, you should not do this")
         };
 
-        Ok(self.variable_hash_map.get(&stored_key).cloned().unwrap())
+        Ok(())
     }
 
     /// Performs an *add* or *update* of a `probe_rs::debug::Variable` to the cache, consuming the input and returning a Clone.
@@ -193,17 +228,16 @@ impl VariableCache {
     /// - If appropriate, the `Variable::value` is updated from the core memory, and can be used by the calling function.
     pub fn update_variable(
         &mut self,
-        parent_key: ObjectRef,
         cache_variable: Variable,
         memory: &mut dyn MemoryInterface,
     ) -> Result<Variable, Error> {
-        let mut variable_to_add = cache_variable.clone();
+        let variable_to_add = cache_variable.clone();
         // Validate that the parent_key exists ...
-        if self.variable_hash_map.contains_key(&parent_key) {
-            assert_eq!(variable_to_add.parent_key, parent_key);
-            variable_to_add.parent_key = parent_key;
-        } else {
-            return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {:?}. Please report this as a bug", variable_to_add.name, parent_key).into());
+        if !self
+            .variable_hash_map
+            .contains_key(&cache_variable.parent_key)
+        {
+            return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {:?}. Please report this as a bug", variable_to_add.name, variable_to_add.parent_key).into());
         }
 
         // Is this an *add* or *update* operation?
@@ -486,11 +520,9 @@ mod test {
         let mut cache = VariableCache::new_svd_cache();
         let root_key = cache.root_variable().variable_key;
 
-        let var_1 = Variable::new(None, None);
-        let var_1 = cache.add_variable(root_key, var_1).unwrap();
+        let var_1 = cache.create_variable(root_key, None, None).unwrap();
 
-        let var_2 = Variable::new(None, None);
-        let var_2 = cache.add_variable(root_key, var_2).unwrap();
+        let var_2 = cache.create_variable(root_key, None, None).unwrap();
 
         let children = cache.get_children(root_key).unwrap();
 
@@ -504,11 +536,9 @@ mod test {
         let mut cache = VariableCache::new_svd_cache();
         let root_key = cache.root_variable().variable_key;
 
-        let var_1 = Variable::new(None, None);
-        let var_1 = cache.add_variable(root_key, var_1).unwrap();
+        let var_1 = cache.create_variable(root_key, None, None).unwrap();
 
-        let var_2 = Variable::new(None, None);
-        let _var_2 = cache.add_variable(root_key, var_2).unwrap();
+        let _var_2 = cache.create_variable(root_key, None, None).unwrap();
 
         assert_eq!(cache.get_variable_by_key(var_1.variable_key), Some(var_1));
     }
@@ -533,26 +563,27 @@ mod test {
         let mut cache = VariableCache::new_svd_cache();
         let root_key = cache.root_variable().variable_key;
 
-        let var_1 = Variable::new(None, None);
-        let var_1 = cache.add_variable(root_key, var_1).unwrap();
+        let var_1 = cache.create_variable(root_key, None, None).unwrap();
 
-        let var_2 = Variable::new(None, None);
-        let var_2 = cache.add_variable(root_key, var_2).unwrap();
+        let var_2 = cache.create_variable(root_key, None, None).unwrap();
 
-        let var_3 = Variable::new(None, None);
-        let var_3 = cache.add_variable(var_2.variable_key, var_3).unwrap();
+        let var_3 = cache
+            .create_variable(var_2.variable_key, None, None)
+            .unwrap();
 
-        let var_4 = Variable::new(None, None);
-        let var_4 = cache.add_variable(var_2.variable_key, var_4).unwrap();
+        let var_4 = cache
+            .create_variable(var_2.variable_key, None, None)
+            .unwrap();
 
-        let var_5 = Variable::new(None, None);
-        let var_5 = cache.add_variable(var_3.variable_key, var_5).unwrap();
+        let var_5 = cache
+            .create_variable(var_3.variable_key, None, None)
+            .unwrap();
 
-        let var_6 = Variable::new(None, None);
-        let var_6 = cache.add_variable(root_key, var_6).unwrap();
+        let var_6 = cache.create_variable(root_key, None, None).unwrap();
 
-        let var_7 = Variable::new(None, None);
-        let var_7 = cache.add_variable(var_6.variable_key, var_7).unwrap();
+        let var_7 = cache
+            .create_variable(var_6.variable_key, None, None)
+            .unwrap();
 
         assert_eq!(cache.len(), 8);
 
@@ -605,23 +636,17 @@ mod test {
         show_tree(&cache);
 
         vars[3].name = non_unique_name.clone();
-        vars[3] = cache
-            .update_variable(vars[3].parent_key, vars[3].clone(), &mut memory)
-            .unwrap();
+        vars[3] = cache.update_variable(vars[3].clone(), &mut memory).unwrap();
 
         show_tree(&cache);
 
         vars[4].name = unique_name.clone();
-        vars[4] = cache
-            .update_variable(vars[4].parent_key, vars[4].clone(), &mut memory)
-            .unwrap();
+        vars[4] = cache.update_variable(vars[4].clone(), &mut memory).unwrap();
 
         show_tree(&cache);
 
         vars[6].name = non_unique_name.clone();
-        vars[6] = cache
-            .update_variable(vars[6].parent_key, vars[6].clone(), &mut memory)
-            .unwrap();
+        vars[6] = cache.update_variable(vars[6].clone(), &mut memory).unwrap();
 
         show_tree(&cache);
 
