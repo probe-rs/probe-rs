@@ -18,8 +18,8 @@ pub enum Error {
     /// A RISC-V specific error occurred.
     #[error("A RISC-V specific error occurred.")]
     Riscv(#[source] RiscvError),
-    /// A Xtensa specific error occurred.
-    #[error("A RISCV specific error occurred.")]
+    /// An Xtensa specific error occurred.
+    #[error("An Xtensa specific error occurred.")]
     Xtensa(#[source] XtensaError),
     /// The probe could not be opened.
     #[error("Probe could not be opened: {0}")]
