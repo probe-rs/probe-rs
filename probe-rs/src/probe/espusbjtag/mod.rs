@@ -133,14 +133,14 @@ impl EspUsbJtag {
             return Err(DebugProbeError::Other(anyhow!("Invalid data length")));
         }
 
-        let tms_enter_ir_shift = bitarr![1, 1, 0, 0];
+        let tms_enter_ir_shift = [true, true, false, false];
 
         // The last bit will be transmitted when exiting the shift state,
         // so we need to stay in the shift state for one period less than
         // we have bits to transmit.
         let tms_data = iter::repeat(false).take(len - 1);
 
-        let tms_enter_idle = bitarr![1, 1, 0];
+        let tms_enter_idle = [true, true, false];
 
         // BYPASS commands before and after shifting out data where required
         let pre_bits = self.chain_params.map(|params| params.irpre).unwrap_or(0);
@@ -150,28 +150,28 @@ impl EspUsbJtag {
             tms_enter_ir_shift.len() + pre_bits + len + post_bits + tms_enter_idle.len(),
         );
 
-        tms.extend_from_bitslice(&tms_enter_ir_shift);
+        tms.extend(tms_enter_ir_shift);
         tms.extend(iter::repeat(false).take(pre_bits));
         tms.extend(tms_data);
         tms.extend(iter::repeat(false).take(post_bits));
-        tms.extend_from_bitslice(&tms_enter_idle);
+        tms.extend(tms_enter_idle);
 
-        let tdi_enter_ir_shift = bitarr![0, 0, 0, 0];
+        let tdi_enter_ir_shift = [false, false, false, false];
 
         // This is one less than the enter idle for tms, because
         // the last bit is transmitted when exiting the IR shift state
-        let tdi_enter_idle = bitarr![0, 0];
+        let tdi_enter_idle = [false, false];
 
         let mut tdi: BitVec<u8, Lsb0> = BitVec::with_capacity(
             tdi_enter_ir_shift.len() + pre_bits + len + post_bits + tdi_enter_idle.len(),
         );
 
-        tdi.extend_from_bitslice(&tdi_enter_ir_shift);
+        tdi.extend(tdi_enter_ir_shift);
         tdi.extend(iter::repeat(true).take(pre_bits));
         let bs = &data.as_bits::<Lsb0>()[..len];
         tdi.extend_from_bitslice(bs);
         tdi.extend(iter::repeat(true).take(post_bits));
-        tdi.extend_from_bitslice(&tdi_enter_idle);
+        tdi.extend(tdi_enter_idle);
 
         tracing::trace!("tms: {:?}", tms);
         tracing::trace!("tdi: {:?}", tdi);
@@ -220,12 +220,12 @@ impl EspUsbJtag {
             return Err(DebugProbeError::Other(anyhow!("Invalid data length")));
         }
 
-        let tms_enter_shift = bitarr![1, 0, 0];
+        let tms_enter_shift = [true, false, false];
 
         // Last bit of data is shifted out when we exit the SHIFT-DR State
         let tms_shift_out_value = iter::repeat(false).take(register_bits - 1);
 
-        let tms_enter_idle = bitarr![1, 1, 0];
+        let tms_enter_idle = [true, true, false];
 
         // dummy bits to account for bypasses
         let pre_bits = self.chain_params.map(|params| params.drpre).unwrap_or(0);
@@ -240,14 +240,14 @@ impl EspUsbJtag {
                 + self.idle_cycles() as usize,
         );
 
-        tms.extend_from_bitslice(&tms_enter_shift);
+        tms.extend(tms_enter_shift);
         tms.extend(iter::repeat(false).take(pre_bits));
         tms.extend(tms_shift_out_value);
         tms.extend(iter::repeat(false).take(post_bits));
-        tms.extend_from_bitslice(&tms_enter_idle);
+        tms.extend(tms_enter_idle);
 
-        let tdi_enter_shift = bitarr![0, 0, 0];
-        let tdi_enter_idle = bitarr![0, 0];
+        let tdi_enter_shift = [false, false, false];
+        let tdi_enter_idle = [false, false];
 
         let mut tdi: BitVec<u8, Lsb0> = BitVec::with_capacity(
             tdi_enter_shift.len()
@@ -258,12 +258,12 @@ impl EspUsbJtag {
                 + self.idle_cycles() as usize,
         );
 
-        tdi.extend_from_bitslice(&tdi_enter_shift);
+        tdi.extend(tdi_enter_shift);
         tdi.extend(iter::repeat(true).take(pre_bits));
         let bs = &data.as_bits::<Lsb0>()[..register_bits];
         tdi.extend_from_bitslice(bs);
         tdi.extend(iter::repeat(true).take(post_bits));
-        tdi.extend_from_bitslice(&tdi_enter_idle);
+        tdi.extend(tdi_enter_idle);
 
         // We need to stay in the idle cycle a bit
         tms.extend(iter::repeat(false).take(self.idle_cycles() as usize));
