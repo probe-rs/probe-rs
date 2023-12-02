@@ -226,44 +226,40 @@ impl VariableCache {
     /// - For all operations, update the `parent_key`. A value of None means there are no parents for this variable.
     ///   - Validate that the supplied `Variable::parent_key` is a valid entry in the cache.
     /// - If appropriate, the `Variable::value` is updated from the core memory, and can be used by the calling function.
-    pub fn update_variable(
+    pub fn update_variable_with_memory(
         &mut self,
-        cache_variable: Variable,
+        cache_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
-    ) -> Result<Variable, Error> {
-        let variable_to_add = cache_variable.clone();
+    ) -> Result<(), Error> {
         // Validate that the parent_key exists ...
         if !self
             .variable_hash_map
             .contains_key(&cache_variable.parent_key)
         {
-            return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {:?}. Please report this as a bug", variable_to_add.name, variable_to_add.parent_key).into());
+            return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {:?}. Please report this as a bug", cache_variable.name, cache_variable.parent_key).into());
         }
 
         // Is this an *add* or *update* operation?
-        let stored_key = if variable_to_add.variable_key == ObjectRef::Invalid {
+        let stored_key = if cache_variable.variable_key == ObjectRef::Invalid {
             panic!("naughty, you should not do this")
         } else {
             // Attempt to update an existing `Variable` in the cache
             tracing::trace!(
                 "VariableCache: Update Variable, key={:?}, name={:?}",
-                variable_to_add.variable_key,
-                &variable_to_add.name
+                cache_variable.variable_key,
+                &cache_variable.name
             );
 
-            let updated_entry_key = variable_to_add.variable_key;
-            if let Some(prev_entry) = self
-                .variable_hash_map
-                .get_mut(&variable_to_add.variable_key)
-            {
-                if &variable_to_add != prev_entry {
-                    tracing::trace!("Updated:  {:?}", variable_to_add);
+            let updated_entry_key = cache_variable.variable_key;
+            if let Some(prev_entry) = self.variable_hash_map.get_mut(&cache_variable.variable_key) {
+                if cache_variable != prev_entry {
+                    tracing::trace!("Updated:  {:?}", cache_variable);
                     tracing::trace!("Previous: {:?}", prev_entry);
                 }
 
-                *prev_entry = variable_to_add
+                *prev_entry = cache_variable.clone();
             } else {
-                return Err(anyhow!("Attempt to update and existing `Variable`:{:?} with a non-existent cache key: {:?}. Please report this as a bug.", cache_variable.name, variable_to_add.variable_key).into());
+                return Err(anyhow!("Attempt to update and existing `Variable`:{:?} with a non-existent cache key: {:?}. Please report this as a bug.", cache_variable.name, cache_variable.variable_key).into());
             }
 
             updated_entry_key
@@ -286,7 +282,8 @@ impl VariableCache {
             {
                 Err(anyhow!("Failed to store variable at variable_cache_key: {:?}. Please report this as a bug.", stored_key).into())
             } else {
-                Ok(stored_variable)
+                *cache_variable = stored_variable;
+                Ok(())
             }
         } else {
             Err(anyhow!(
@@ -295,6 +292,47 @@ impl VariableCache {
             )
             .into())
         }
+    }
+
+    pub fn update_variable_without_memory(
+        &mut self,
+        cache_variable: &Variable,
+    ) -> Result<(), Error> {
+        // Validate that the parent_key exists ...
+        if !self
+            .variable_hash_map
+            .contains_key(&cache_variable.parent_key)
+        {
+            return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {:?}. Please report this as a bug", cache_variable.name, cache_variable.parent_key).into());
+        }
+
+        // Is this an *add* or *update* operation?
+        let stored_key = if cache_variable.variable_key == ObjectRef::Invalid {
+            panic!("naughty, you should not do this")
+        } else {
+            // Attempt to update an existing `Variable` in the cache
+            tracing::trace!(
+                "VariableCache: Update Variable, key={:?}, name={:?}",
+                cache_variable.variable_key,
+                &cache_variable.name
+            );
+
+            let updated_entry_key = cache_variable.variable_key;
+            if let Some(prev_entry) = self.variable_hash_map.get_mut(&cache_variable.variable_key) {
+                if cache_variable != prev_entry {
+                    tracing::trace!("Updated:  {:?}", cache_variable);
+                    tracing::trace!("Previous: {:?}", prev_entry);
+                }
+
+                *prev_entry = cache_variable.clone();
+            } else {
+                return Err(anyhow!("Attempt to update and existing `Variable`:{:?} with a non-existent cache key: {:?}. Please report this as a bug.", cache_variable.name, cache_variable.variable_key).into());
+            }
+
+            updated_entry_key
+        };
+
+        Ok(())
     }
 
     pub fn add_tree(&mut self, parent: ObjectRef, tree: VariableCache) -> Result<(), Error> {
@@ -627,8 +665,6 @@ mod test {
 
     #[test]
     fn find_entry_by_name() {
-        let mut memory = MockMemory::new();
-
         let (mut cache, mut vars) = build_test_tree();
         let non_unique_name = VariableName::Named("non_unique_name".to_string());
         let unique_name = VariableName::Named("unique_name".to_string());
@@ -636,17 +672,17 @@ mod test {
         show_tree(&cache);
 
         vars[3].name = non_unique_name.clone();
-        vars[3] = cache.update_variable(vars[3].clone(), &mut memory).unwrap();
+        cache.update_variable_without_memory(&mut vars[3]).unwrap();
 
         show_tree(&cache);
 
         vars[4].name = unique_name.clone();
-        vars[4] = cache.update_variable(vars[4].clone(), &mut memory).unwrap();
+        cache.update_variable_without_memory(&mut vars[4]).unwrap();
 
         show_tree(&cache);
 
         vars[6].name = non_unique_name.clone();
-        vars[6] = cache.update_variable(vars[6].clone(), &mut memory).unwrap();
+        cache.update_variable_without_memory(&mut vars[6]).unwrap();
 
         show_tree(&cache);
 

@@ -2,11 +2,8 @@ use crate::cmd::dap_server::{
     debug_adapter::{dap::adapter::DebugAdapter, protocol::ProtocolAdapter},
     DebuggerError,
 };
-use probe_rs::{
-    debug::{
-        Variable, VariableCache, VariableLocation, VariableName, VariableNodeType, VariableType,
-    },
-    Core,
+use probe_rs::debug::{
+    Variable, VariableCache, VariableLocation, VariableName, VariableNodeType, VariableType,
 };
 use std::{fmt::Debug, fs::File, io::Read, path::Path};
 use svd_parser::{
@@ -28,7 +25,6 @@ impl SvdCache {
     /// Create the SVD cache for a specific core. This function loads the file, parses it, and then builds the VariableCache.
     pub(crate) fn new<P: ProtocolAdapter>(
         svd_file: &Path,
-        core: &mut Core,
         debug_adapter: &mut DebugAdapter<P>,
         dap_request_id: i64,
     ) -> Result<Self, DebuggerError> {
@@ -56,7 +52,6 @@ impl SvdCache {
                         Ok(SvdCache {
                             svd_variable_cache: variable_cache_from_svd(
                                 peripheral_device,
-                                core,
                                 debug_adapter,
                                 progress_id,
                             )?,
@@ -79,7 +74,6 @@ impl SvdCache {
 /// Create a [`probe_rs::debug::VariableCache`] from a Device that was parsed from a CMSIS-SVD file.
 pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
     peripheral_device: Device,
-    core: &mut Core,
     debug_adapter: &mut DebugAdapter<P>,
     progress_id: i64,
 ) -> Result<probe_rs::debug::VariableCache, DebuggerError> {
@@ -141,8 +135,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
         let mut peripheral_variable = Variable::new(None, None);
         peripheral_variable.name = VariableName::Named(format!(
             "{}.{}",
-            peripheral_group_variable.name.clone(),
-            peripheral.name.clone()
+            peripheral_group_variable.name, peripheral.name
         ));
         peripheral_variable.type_name = VariableType::Other("Peripheral".to_string());
         peripheral_variable.variable_node_type = VariableNodeType::SvdPeripheral;
@@ -226,7 +219,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                             .to_string(),
                     ));
                     register_has_restricted_read = true;
-                    register_variable = svd_cache.update_variable(register_variable, core)?;
+                    svd_cache.update_variable_without_memory(&mut register_variable)?;
                 }
                 // TODO: Extend the Variable definition, so that we can resolve the EnumeratedValues for fields.
                 svd_cache.add_variable(register_variable.variable_key(), &mut field_variable)?;
