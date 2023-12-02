@@ -1,0 +1,1 @@
+Renamed `JTAGAccess::get_idle_cycles` to `idle_cycles` and removed redundant inherent fns
