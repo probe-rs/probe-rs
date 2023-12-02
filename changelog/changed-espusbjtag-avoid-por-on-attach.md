@@ -1,0 +1,1 @@
+espusbjtag: don't reset the chip on attach
