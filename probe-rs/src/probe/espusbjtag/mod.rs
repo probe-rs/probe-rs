@@ -39,10 +39,6 @@ pub(crate) struct EspUsbJtag {
 }
 
 impl EspUsbJtag {
-    fn idle_cycles(&self) -> u8 {
-        self.jtag_idle_cycles
-    }
-
     fn scan(&mut self) -> Result<Vec<super::JtagChainItem>, DebugProbeError> {
         let chain = self.reset_scan()?;
         Ok(chain
@@ -391,7 +387,7 @@ impl JTAGAccess for EspUsbJtag {
         self.jtag_idle_cycles = idle_cycles;
     }
 
-    fn get_idle_cycles(&self) -> u8 {
+    fn idle_cycles(&self) -> u8 {
         self.jtag_idle_cycles
     }
 

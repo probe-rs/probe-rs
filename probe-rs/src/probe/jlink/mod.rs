@@ -56,10 +56,6 @@ pub(crate) struct JLink {
 }
 
 impl JLink {
-    fn idle_cycles(&self) -> u8 {
-        self.jtag_idle_cycles
-    }
-
     fn select_interface(
         &mut self,
         protocol: Option<WireProtocol>,
@@ -681,7 +677,7 @@ impl JTAGAccess for JLink {
         self.jtag_idle_cycles = idle_cycles;
     }
 
-    fn get_idle_cycles(&self) -> u8 {
+    fn idle_cycles(&self) -> u8 {
         self.jtag_idle_cycles
     }
 }
