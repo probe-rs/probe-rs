@@ -17,9 +17,6 @@ const NARADR_DDR: u8 = 0x45;
 const NARADR_DDREXEC: u8 = 0x46;
 const NARADR_DIR0EXEC: u8 = 0x47;
 
-const XDM_REGISTER_WIDTH: u32 = 32;
-const XDM_ADDRESS_REGISTER_WIDTH: u32 = 8;
-
 const PWRCTL_JTAGDEBUGUSE: u8 = 1 << 7;
 const PWRCTL_DEBUGRESET: u8 = 1 << 6;
 const PWRCTL_CORERESET: u8 = 1 << 4;
@@ -34,15 +31,56 @@ const PWRSTAT_DEBUGDOMAINON: u8 = 1 << 2;
 const PWRSTAT_MEMDOMAINON: u8 = 1 << 1;
 const PWRSTAT_COREDOMAINON: u8 = 1 << 0;
 
-// The debug module is accesible through NARSEL JTAG register (NAR for IR, NDR for DR)
-const DEBUG_ADDR: u32 = 0x1C;
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum TapInstruction {
+    NAR,
+    NDR,
+    PowerControl,
+    PowerStatus,
+}
 
-#[repr(u32)]
+impl TapInstruction {
+    fn code(self) -> u32 {
+        match self {
+            TapInstruction::NAR => 0x1C,
+            TapInstruction::NDR => 0x1C,
+            TapInstruction::PowerControl => 0x08,
+            TapInstruction::PowerStatus => 0x09,
+        }
+    }
+
+    fn bits(self) -> u32 {
+        match self {
+            TapInstruction::NAR => 8,
+            TapInstruction::NDR => 32,
+            TapInstruction::PowerControl => 8,
+            TapInstruction::PowerStatus => 8,
+        }
+    }
+
+    fn capture_to_u32(self, capture: &[u8]) -> u32 {
+        match self {
+            TapInstruction::NDR => u32::from_le_bytes(capture.try_into().unwrap()),
+            _ => capture[0] as u32,
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
 enum PowerDevice {
     /// Power Control
-    PowerControl = 0x08,
+    PowerControl,
     /// Power status
-    PowerStat = 0x09,
+    PowerStat,
+}
+
+impl From<PowerDevice> for TapInstruction {
+    fn from(dev: PowerDevice) -> Self {
+        match dev {
+            PowerDevice::PowerControl => TapInstruction::PowerControl,
+            PowerDevice::PowerStat => TapInstruction::PowerStatus,
+        }
+    }
 }
 
 #[derive(thiserror::Error, Debug, Copy, Clone)]
@@ -53,7 +91,7 @@ pub enum XdmStatus {
 }
 
 impl XdmStatus {
-    pub fn is_ok(&self) -> Result<(), Error> {
+    pub fn expect_ok(&self) -> Result<(), Error> {
         match self {
             XdmStatus::Ok => Ok(()),
             other => Err(Error::XdmError(Some(*self))),
@@ -162,56 +200,57 @@ impl Xdm {
         Ok(x)
     }
 
+    fn tap_write(&mut self, instr: TapInstruction, data: u32) -> Result<u32, DebugProbeError> {
+        let capture = self
+            .probe
+            .write_register(instr.code(), &data.to_le_bytes(), instr.bits())?;
+
+        Ok(instr.capture_to_u32(&capture))
+    }
+
+    fn tap_read(&mut self, instr: TapInstruction) -> Result<u32, DebugProbeError> {
+        let capture = self.probe.read_register(instr.code(), instr.bits())?;
+
+        Ok(instr.capture_to_u32(&capture))
+    }
+
     /// Perform an access to a register
     fn dbg_read(&mut self, address: u8) -> Result<u32, XtensaError> {
         let regdata = (address << 1) | 0;
 
-        XdmStatus::parse(
-            self.probe
-                .write_register(DEBUG_ADDR, &[regdata], XDM_ADDRESS_REGISTER_WIDTH)?[0],
-        )?
-        .is_ok()?;
+        let status = self.tap_write(TapInstruction::NAR, regdata as u32);
+        let res = self.tap_read(TapInstruction::NDR);
 
-        let res = self.probe.read_register(DEBUG_ADDR, XDM_REGISTER_WIDTH)?;
+        // Check status after writing NDR to avoid ending up in an incorrect state on error.
+        XdmStatus::parse(status? as u8)?.expect_ok()?;
         tracing::trace!("dbg_read response: {:?}", res);
 
-        Ok(u32::from_le_bytes((&res[..]).try_into().unwrap()))
+        Ok(res?)
     }
 
     /// Perform an access to a register
     fn dbg_write(&mut self, address: u8, value: u32) -> Result<u32, XtensaError> {
         let regdata = (address << 1) | 1;
 
-        XdmStatus::parse(
-            self.probe
-                .write_register(DEBUG_ADDR, &[regdata], XDM_ADDRESS_REGISTER_WIDTH)?[0],
-        )?
-        .is_ok()?;
+        let status = self.tap_write(TapInstruction::NAR, regdata as u32);
+        let res = self.tap_write(TapInstruction::NDR, value);
 
-        let res =
-            self.probe
-                .write_register(DEBUG_ADDR, &value.to_le_bytes()[..], XDM_REGISTER_WIDTH)?;
-
+        // Check status after writing NDR to avoid ending up in an incorrect state on error.
+        XdmStatus::parse(status? as u8)?.expect_ok();
         tracing::trace!("dbg_write response: {:?}", res);
 
-        Ok(u32::from_le_bytes((&res[..]).try_into().unwrap()))
+        Ok(res?)
     }
 
-    fn pwr_write(&mut self, dev: PowerDevice, value: u8) -> Result<XdmStatus, XtensaError> {
-        let res = XdmStatus::parse(
-            self.probe
-                .write_register(dev as u32, &[value], XDM_ADDRESS_REGISTER_WIDTH)?[0],
-        )?;
+    fn pwr_write(&mut self, dev: PowerDevice, value: u8) -> Result<u32, XtensaError> {
+        let res = self.tap_write(dev.into(), value as u32)?;
         tracing::trace!("pwr_write response: {:?}", res);
 
         Ok(res)
     }
 
-    fn pwr_read(&mut self, dev: PowerDevice) -> Result<XdmStatus, XtensaError> {
-        let res = XdmStatus::parse(
-            self.probe
-                .read_register(dev as u32, XDM_ADDRESS_REGISTER_WIDTH)?[0],
-        )?;
+    fn pwr_read(&mut self, dev: PowerDevice) -> Result<u32, XtensaError> {
+        let res = self.tap_read(dev.into())?;
         tracing::trace!("pwr_read response: {:?}", res);
 
         Ok(res)
