@@ -140,8 +140,16 @@ impl Xdm {
             idle_cycles,
         };
 
+        if let Err(e) = x.init() {
+            return Err((x.free(), e.into()));
+        }
+
+        Ok(x)
+    }
+
+    fn init(&mut self) -> Result<(), XtensaError> {
         // Wakeup and enable the JTAG
-        if let Err(e) = x.pwr_write(PowerDevice::PowerControl, {
+        self.pwr_write(PowerDevice::PowerControl, {
             let mut control = PowerControl(0);
 
             control.set_debug_wakeup(true);
@@ -149,10 +157,9 @@ impl Xdm {
             control.set_core_wakeup(true);
 
             control.0
-        }) {
-            return Err((x.free(), e.into()));
-        }
-        if let Err(e) = x.pwr_write(PowerDevice::PowerControl, {
+        })?;
+
+        self.pwr_write(PowerDevice::PowerControl, {
             let mut control = PowerControl(0);
 
             control.set_debug_wakeup(true);
@@ -161,34 +168,28 @@ impl Xdm {
             control.set_jtag_debug_use(true);
 
             control.0
-        }) {
-            return Err((x.free(), e.into()));
-        }
+        })?;
 
         // enable the debug module
-        if let Err(e) = x.dbg_write(NARADR_DCRSET, 1) {
-            return Err((x.free(), e.into()));
-        }
+        self.dbg_write(NARADR_DCRSET, 1)?;
 
         // read the device_id
-        let device_id = match x.dbg_read(NARADR_OCDID) {
-            Ok(value) => value,
-            Err(e) => return Err((x.free(), e.into())),
-        };
+        let device_id = self.dbg_read(NARADR_OCDID)?;
 
         if device_id == 0 || device_id == !0 {
-            return Err((x.free(), DebugProbeError::TargetNotFound.into()));
+            return Err(DebugProbeError::TargetNotFound.into());
         }
 
-        let status = x.status().unwrap();
+        let status = self.status()?;
         tracing::info!("{:?}", status);
-        status.is_ok().unwrap();
+        status.is_ok()?;
+
         // TODO check status and clear bits if required
 
         tracing::info!("Found Xtensa device with OCDID: 0x{:08X}", device_id);
-        x.device_id = device_id;
+        self.device_id = device_id;
 
-        Ok(x)
+        Ok(())
     }
 
     fn tap_write(&mut self, instr: TapInstruction, data: u32) -> Result<u32, DebugProbeError> {
