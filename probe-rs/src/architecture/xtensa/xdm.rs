@@ -15,7 +15,10 @@ const NARADR_DCRCLR: u8 = 0x42;
 const NARADR_DSR: u8 = 0x44;
 const NARADR_DDR: u8 = 0x45;
 const NARADR_DDREXEC: u8 = 0x46;
+// DIR0 that also executes when written
 const NARADR_DIR0EXEC: u8 = 0x47;
+// Assume we only support 16-24b instructions for now
+const NARADR_DIR0: u8 = 0x48;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum TapInstruction {
@@ -464,5 +467,79 @@ impl NexusRegister for DebugControlClear {
 impl WritableNexusRegister for DebugControlClear {
     fn bits(&self) -> u32 {
         self.0 .0
+    }
+}
+
+/// Writes DDR.
+#[derive(Copy, Clone)]
+struct DebugDataRegister(u32);
+
+impl NexusRegister for DebugDataRegister {
+    const ADDRESS: u8 = NARADR_DDR;
+
+    fn from_bits(bits: u32) -> Result<Self, XtensaError> {
+        Ok(Self(bits))
+    }
+}
+
+impl WritableNexusRegister for DebugDataRegister {
+    fn bits(&self) -> u32 {
+        self.0
+    }
+}
+
+/// Writes DDR and executes DIR on write AND READ.
+#[derive(Copy, Clone)]
+struct DebugDataAndExecRegister(u32);
+
+impl NexusRegister for DebugDataAndExecRegister {
+    const ADDRESS: u8 = NARADR_DDREXEC;
+
+    fn from_bits(bits: u32) -> Result<Self, XtensaError> {
+        Ok(Self(bits))
+    }
+}
+
+impl WritableNexusRegister for DebugDataAndExecRegister {
+    fn bits(&self) -> u32 {
+        self.0
+    }
+}
+
+/// Writes DIR.
+// TODO: type for instructions?
+#[derive(Copy, Clone)]
+struct DebugInstructionRegister(u32);
+
+impl NexusRegister for DebugInstructionRegister {
+    const ADDRESS: u8 = NARADR_DIR0;
+
+    fn from_bits(bits: u32) -> Result<Self, XtensaError> {
+        Ok(Self(bits))
+    }
+}
+
+impl WritableNexusRegister for DebugInstructionRegister {
+    fn bits(&self) -> u32 {
+        self.0
+    }
+}
+
+/// Writes and executes DIR.
+// TODO: type for instructions?
+#[derive(Copy, Clone)]
+struct DebugInstructionAndExecRegister(u32);
+
+impl NexusRegister for DebugInstructionAndExecRegister {
+    const ADDRESS: u8 = NARADR_DIR0EXEC;
+
+    fn from_bits(bits: u32) -> Result<Self, XtensaError> {
+        Ok(Self(bits))
+    }
+}
+
+impl WritableNexusRegister for DebugInstructionAndExecRegister {
+    fn bits(&self) -> u32 {
+        self.0
     }
 }
