@@ -17,20 +17,6 @@ const NARADR_DDR: u8 = 0x45;
 const NARADR_DDREXEC: u8 = 0x46;
 const NARADR_DIR0EXEC: u8 = 0x47;
 
-const PWRCTL_JTAGDEBUGUSE: u8 = 1 << 7;
-const PWRCTL_DEBUGRESET: u8 = 1 << 6;
-const PWRCTL_CORERESET: u8 = 1 << 4;
-const PWRCTL_DEBUGWAKEUP: u8 = 1 << 2;
-const PWRCTL_MEMWAKEUP: u8 = 1 << 1;
-const PWRCTL_COREWAKEUP: u8 = 1 << 0;
-
-const PWRSTAT_DEBUGWASRESET: u8 = 1 << 6;
-const PWRSTAT_COREWASRESET: u8 = 1 << 4;
-const PWRSTAT_CORESTILLNEEDED: u8 = 1 << 3;
-const PWRSTAT_DEBUGDOMAINON: u8 = 1 << 2;
-const PWRSTAT_MEMDOMAINON: u8 = 1 << 1;
-const PWRSTAT_COREDOMAINON: u8 = 1 << 0;
-
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum TapInstruction {
     NAR,
@@ -154,16 +140,27 @@ impl Xdm {
         };
 
         // Wakeup and enable the JTAG
-        if let Err(e) = x.pwr_write(
-            PowerDevice::PowerControl,
-            PWRCTL_DEBUGWAKEUP | PWRCTL_MEMWAKEUP | PWRCTL_COREWAKEUP,
-        ) {
+        if let Err(e) = x.pwr_write(PowerDevice::PowerControl, {
+            let mut control = PowerControl(0);
+
+            control.set_debug_wakeup(true);
+            control.set_mem_wakeup(true);
+            control.set_core_wakeup(true);
+
+            control.0
+        }) {
             return Err((x.free(), e.into()));
         }
-        if let Err(e) = x.pwr_write(
-            PowerDevice::PowerControl,
-            PWRCTL_DEBUGWAKEUP | PWRCTL_MEMWAKEUP | PWRCTL_COREWAKEUP | PWRCTL_JTAGDEBUGUSE,
-        ) {
+        if let Err(e) = x.pwr_write(PowerDevice::PowerControl, {
+            let mut control = PowerControl(0);
+
+            control.set_debug_wakeup(true);
+            control.set_mem_wakeup(true);
+            control.set_core_wakeup(true);
+            control.set_jtag_debug_use(true);
+
+            control.0
+        }) {
             return Err((x.free(), e.into()));
         }
 
@@ -235,18 +232,18 @@ impl Xdm {
         Ok(res?)
     }
 
-    fn pwr_write(&mut self, dev: PowerDevice, value: u8) -> Result<u32, XtensaError> {
+    fn pwr_write(&mut self, dev: PowerDevice, value: u8) -> Result<u8, XtensaError> {
         let res = self.tap_write(dev.into(), value as u32)?;
         tracing::trace!("pwr_write response: {:?}", res);
 
-        Ok(res)
+        Ok(res as u8)
     }
 
-    fn pwr_read(&mut self, dev: PowerDevice) -> Result<u32, XtensaError> {
+    fn pwr_read(&mut self, dev: PowerDevice) -> Result<u8, XtensaError> {
         let res = self.tap_read(dev.into())?;
         tracing::trace!("pwr_read response: {:?}", res);
 
-        Ok(res)
+        Ok(res as u8)
     }
 
     fn status(&mut self) -> Result<DebugStatus, XtensaError> {
@@ -284,48 +281,76 @@ impl From<DebugRegisterError> for XtensaError {
     }
 }
 
-#[derive(Copy, Clone)]
-pub struct DebugStatus(u32);
+bitfield::bitfield! {
+    #[derive(Copy, Clone)]
+    pub struct PowerControl(u8);
+
+    pub core_wakeup,    set_core_wakeup:    0;
+    pub mem_wakeup,     set_mem_wakeup:     1;
+    pub debug_wakeup,   set_debug_wakeup:   2;
+    pub core_reset,     set_core_reset:     4;
+    pub debug_reset,    set_debug_reset:    6;
+    pub jtag_debug_use, set_jtag_debug_use: 7;
+}
+
+bitfield::bitfield! {
+    #[derive(Copy, Clone)]
+    pub struct PowerStatus(u8);
+
+    pub core_domain_on,    _: 0;
+    pub mem_domain_on,     _: 1;
+    pub debug_domain_on,   _: 2;
+    pub core_still_needed, _: 3;
+    /// Clears bit when written as 1
+    pub core_was_reset,    set_core_was_reset: 4;
+    /// Clears bit when written as 1
+    pub debug_was_reset,   set_debug_was_reset: 6;
+}
+
+bitfield::bitfield! {
+    #[derive(Copy, Clone)]
+    pub struct DebugStatus(u32);
+
+    pub exec_done,         _: 0;
+    pub exec_exception,    _: 1;
+    pub exec_busy,         _: 2;
+    pub exec_overrun,      _: 3;
+    pub stopped,           _: 4;
+    pub core_wrote_ddr,    _: 10;
+    pub core_read_ddr,     _: 11;
+    pub host_wrote_ddr,    _: 14;
+    pub host_read_ddr,     _: 15;
+    pub debug_pend_break,  _: 16;
+    pub debug_pend_host,   _: 17;
+    pub debug_pend_trax,   _: 18;
+    pub debug_int_break,   _: 20;
+    pub debug_int_host,    _: 21;
+    pub debug_int_trax,    _: 22;
+    pub run_stall_toggle,  _: 23;
+    pub run_stall_sample,  _: 24;
+    pub break_out_ack_iti, _: 25;
+    pub break_in_iti,      _: 26;
+    pub dbgmod_power_on,   _: 31;
+}
 
 impl DebugStatus {
-    pub const OCDDSR_EXECDONE: u32 = (1 << 0);
-    pub const OCDDSR_EXECEXCEPTION: u32 = (1 << 1);
-    pub const OCDDSR_EXECBUSY: u32 = (1 << 2);
-    pub const OCDDSR_EXECOVERRUN: u32 = (1 << 3);
-    pub const OCDDSR_STOPPED: u32 = (1 << 4);
-    pub const OCDDSR_COREWROTEDDR: u32 = (1 << 10);
-    pub const OCDDSR_COREREADDDR: u32 = (1 << 11);
-    pub const OCDDSR_HOSTWROTEDDR: u32 = (1 << 14);
-    pub const OCDDSR_HOSTREADDDR: u32 = (1 << 15);
-    pub const OCDDSR_DEBUGPENDBREAK: u32 = (1 << 16);
-    pub const OCDDSR_DEBUGPENDHOST: u32 = (1 << 17);
-    pub const OCDDSR_DEBUGPENDTRAX: u32 = (1 << 18);
-    pub const OCDDSR_DEBUGINTBREAK: u32 = (1 << 20);
-    pub const OCDDSR_DEBUGINTHOST: u32 = (1 << 21);
-    pub const OCDDSR_DEBUGINTTRAX: u32 = (1 << 22);
-    pub const OCDDSR_RUNSTALLTOGGLE: u32 = (1 << 23);
-    pub const OCDDSR_RUNSTALLSAMPLE: u32 = (1 << 24);
-    pub const OCDDSR_BREACKOUTACKITI: u32 = (1 << 25);
-    pub const OCDDSR_BREAKINITI: u32 = (1 << 26);
-    pub const OCDDSR_DBGMODPOWERON: u32 = (1 << 31);
-
     pub fn new(status: u32) -> Self {
         Self(status)
     }
 
     pub fn is_ok(&self) -> Result<(), Error> {
-        Err(if self.0 & Self::OCDDSR_EXECEXCEPTION != 0 {
-            Error::ExecExeception
-        } else if self.0 & Self::OCDDSR_EXECBUSY != 0 {
-            Error::ExecBusy
-        } else if self.0 & Self::OCDDSR_EXECOVERRUN != 0 {
-            Error::ExecOverrun
-        } else if self.0 & Self::OCDDSR_DBGMODPOWERON == 0 {
+        if self.exec_exception() {
+            Err(Error::ExecExeception)
+        } else if self.exec_busy() {
+            Err(Error::ExecBusy)
+        } else if self.exec_overrun() {
+            Err(Error::ExecOverrun)
+        } else if !self.dbgmod_power_on() {
             // should always be set to one
-            Error::XdmPoweredOff
+            Err(Error::XdmPoweredOff)
         } else {
-            return Ok(());
-        })
+            Ok(())
+        }
     }
 }
 
