@@ -188,10 +188,22 @@ impl Xdm {
             return Err(DebugProbeError::TargetNotFound.into());
         }
 
-        // TODO: we might find that an old instruction execution left the core with an exception
         let status = self.status()?;
         tracing::info!("{:?}", status);
-        status.is_ok()?;
+
+        // we might find that an old instruction execution left the core with an exception
+        // try to clear problematic bits
+        self.write_nexus_register({
+            let mut status = DebugStatus(0);
+
+            status.set_exec_exception(true);
+            status.set_exec_done(true);
+            status.set_exec_overrun(true);
+            status.set_debug_pend_break(true);
+            status.set_debug_pend_host(true);
+
+            status
+        })?;
 
         // TODO check status and clear bits if required
 
