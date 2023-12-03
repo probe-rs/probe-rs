@@ -314,11 +314,11 @@ impl DebugStatus {
     }
 
     pub fn is_ok(&self) -> Result<(), Error> {
-        Err(if self.0 & Self::OCDDSR_EXECEXCEPTION == 1 {
+        Err(if self.0 & Self::OCDDSR_EXECEXCEPTION != 0 {
             Error::ExecExeception
-        } else if self.0 & Self::OCDDSR_EXECBUSY == 1 {
+        } else if self.0 & Self::OCDDSR_EXECBUSY != 0 {
             Error::ExecBusy
-        } else if self.0 & Self::OCDDSR_EXECOVERRUN == 1 {
+        } else if self.0 & Self::OCDDSR_EXECOVERRUN != 0 {
             Error::ExecOverrun
         } else if self.0 & Self::OCDDSR_DBGMODPOWERON == 0 {
             // should always be set to one
