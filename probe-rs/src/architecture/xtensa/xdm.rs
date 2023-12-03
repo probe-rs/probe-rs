@@ -326,22 +326,36 @@ bitfield::bitfield! {
     #[derive(Copy, Clone)]
     pub struct DebugStatus(u32);
 
-    pub exec_done,         _: 0;
-    pub exec_exception,    _: 1;
+    // Cleared by writing 1
+    pub exec_done,         set_exec_done: 0;
+    // Cleared by writing 1
+    pub exec_exception,    set_exec_exception: 1;
     pub exec_busy,         _: 2;
-    pub exec_overrun,      _: 3;
+    // Cleared by writing 1
+    pub exec_overrun,      set_exec_overrun: 3;
     pub stopped,           _: 4;
-    pub core_wrote_ddr,    _: 10;
-    pub core_read_ddr,     _: 11;
-    pub host_wrote_ddr,    _: 14;
-    pub host_read_ddr,     _: 15;
-    pub debug_pend_break,  _: 16;
-    pub debug_pend_host,   _: 17;
-    pub debug_pend_trax,   _: 18;
-    pub debug_int_break,   _: 20;
-    pub debug_int_host,    _: 21;
-    pub debug_int_trax,    _: 22;
-    pub run_stall_toggle,  _: 23;
+    // Cleared by writing 1
+    pub core_wrote_ddr,    set_core_wrote_ddr: 10;
+    // Cleared by writing 1
+    pub core_read_ddr,     set_core_read_ddr: 11;
+    // Cleared by writing 1
+    pub host_wrote_ddr,    set_host_wrote_ddr: 14;
+    // Cleared by writing 1
+    pub host_read_ddr,     set_host_read_ddr: 15;
+    // Cleared by writing 1
+    pub debug_pend_break,  set_debug_pend_break: 16;
+    // Cleared by writing 1
+    pub debug_pend_host,   set_debug_pend_host: 17;
+    // Cleared by writing 1
+    pub debug_pend_trax,   set_debug_pend_trax: 18;
+    // Cleared by writing 1
+    pub debug_int_break,   set_debug_int_break: 20;
+    // Cleared by writing 1
+    pub debug_int_host,    set_debug_int_host: 21;
+    // Cleared by writing 1
+    pub debug_int_trax,    set_debug_int_trax: 22;
+    // Cleared by writing 1
+    pub run_stall_toggle,  set_run_stall_toggle: 23;
     pub run_stall_sample,  _: 24;
     pub break_out_ack_iti, _: 25;
     pub break_in_iti,      _: 26;
@@ -388,5 +402,11 @@ impl NexusRegister for DebugStatus {
 
     fn from_bits(bits: u32) -> Result<Self, XtensaError> {
         Ok(Self(bits))
+    }
+}
+
+impl WritableNexusRegister for DebugStatus {
+    fn bits(&self) -> u32 {
+        self.0
     }
 }
