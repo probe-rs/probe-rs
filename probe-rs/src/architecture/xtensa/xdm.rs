@@ -52,6 +52,7 @@ impl TapInstruction {
     }
 }
 
+/// Power registers are separate from the other registers. They are part of the Access Port.
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum PowerDevice {
     /// Power Control
@@ -246,8 +247,21 @@ impl Xdm {
         Ok(res as u8)
     }
 
+    fn read_nexus_register<R: NexusRegister>(&mut self) -> Result<R, XtensaError> {
+        let bits = self.dbg_read(R::ADDRESS)?;
+        R::from_bits(bits)
+    }
+
+    fn write_nexus_register<R: WritableNexusRegister>(
+        &mut self,
+        register: R,
+    ) -> Result<(), XtensaError> {
+        self.dbg_write(R::ADDRESS, register.bits())?;
+        Ok(())
+    }
+
     fn status(&mut self) -> Result<DebugStatus, XtensaError> {
-        Ok(DebugStatus::new(self.dbg_read(NARADR_DSR)?))
+        self.read_nexus_register::<DebugStatus>()
     }
 
     fn free(self) -> Box<dyn JTAGAccess> {
@@ -334,10 +348,6 @@ bitfield::bitfield! {
 }
 
 impl DebugStatus {
-    pub fn new(status: u32) -> Self {
-        Self(status)
-    }
-
     pub fn is_ok(&self) -> Result<(), Error> {
         if self.exec_exception() {
             Err(Error::ExecExeception)
@@ -357,5 +367,25 @@ impl DebugStatus {
 impl Debug for DebugStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "DSR: {:032b}", self.0)
+    }
+}
+
+/// An abstraction over all registers that can be accessed via the NAR/NDR instruction pair.
+trait NexusRegister: Sized + Copy {
+    /// NAR register address
+    const ADDRESS: u8;
+
+    fn from_bits(bits: u32) -> Result<Self, XtensaError>;
+}
+
+trait WritableNexusRegister: NexusRegister {
+    fn bits(&self) -> u32;
+}
+
+impl NexusRegister for DebugStatus {
+    const ADDRESS: u8 = NARADR_DSR;
+
+    fn from_bits(bits: u32) -> Result<Self, XtensaError> {
+        Ok(Self(bits))
     }
 }
