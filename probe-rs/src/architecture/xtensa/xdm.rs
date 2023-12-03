@@ -84,52 +84,45 @@ impl From<PowerDevice> for TapInstruction {
 }
 
 #[derive(thiserror::Error, Debug, Copy, Clone)]
-pub enum XdmStatus {
-    Ok,
+pub enum DebugRegisterError {
+    #[error("Busy")]
     Busy,
+
+    #[error("Register-specific error")]
     Error,
+
+    #[error("Unexpected value")]
+    Unexpected,
 }
 
-impl XdmStatus {
-    pub fn expect_ok(&self) -> Result<(), Error> {
-        match self {
-            XdmStatus::Ok => Ok(()),
-            other => Err(Error::XdmError(Some(*self))),
+fn parse_register_status(byte: u8) -> Result<(), DebugRegisterError> {
+    match byte & 0b00000011 {
+        0 => Ok(()),
+        1 => Err(DebugRegisterError::Error),
+        2 => Err(DebugRegisterError::Busy),
+        _ => {
+            // It is not specified if both bits can be 1 at the same time.
+            Err(DebugRegisterError::Unexpected)
         }
     }
 }
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    XdmError(Option<XdmStatus>),
+    #[error("Error while accessing register: {0}")]
+    XdmError(DebugRegisterError),
+
+    #[error("ExecExeception")]
     ExecExeception,
+
+    #[error("ExecBusy")]
     ExecBusy,
+
+    #[error("ExecOverrun")]
     ExecOverrun,
+
+    #[error("XdmPoweredOff")]
     XdmPoweredOff,
-}
-
-impl XdmStatus {
-    fn parse(byte: u8) -> Result<XdmStatus, XtensaError> {
-        let byte = byte & 0b00000011;
-        Ok(match byte {
-            0 => XdmStatus::Ok,
-            1 => XdmStatus::Error,
-            2 => XdmStatus::Busy,
-            _ => return Err(XtensaError::XdmError(Error::XdmError(None))),
-        })
-    }
-}
-
-impl core::fmt::Display for XdmStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{:?}", self)
-    }
-}
-
-impl core::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{:?}", self)
-    }
 }
 
 #[derive(Debug)]
@@ -221,8 +214,8 @@ impl Xdm {
         let status = self.tap_write(TapInstruction::NAR, regdata as u32);
         let res = self.tap_read(TapInstruction::NDR);
 
-        // Check status after writing NDR to avoid ending up in an incorrect state on error.
-        XdmStatus::parse(status? as u8)?.expect_ok()?;
+        // Check status AFTER writing NDR to avoid ending up in an incorrect state on error.
+        parse_register_status(status? as u8)?;
         tracing::trace!("dbg_read response: {:?}", res);
 
         Ok(res?)
@@ -235,8 +228,8 @@ impl Xdm {
         let status = self.tap_write(TapInstruction::NAR, regdata as u32);
         let res = self.tap_write(TapInstruction::NDR, value);
 
-        // Check status after writing NDR to avoid ending up in an incorrect state on error.
-        XdmStatus::parse(status? as u8)?.expect_ok();
+        // Check status AFTER writing NDR to avoid ending up in an incorrect state on error.
+        parse_register_status(status? as u8)?;
         tracing::trace!("dbg_write response: {:?}", res);
 
         Ok(res?)
@@ -274,6 +267,20 @@ impl From<XtensaError> for crate::Error {
 impl From<Error> for XtensaError {
     fn from(e: Error) -> Self {
         XtensaError::XdmError(e)
+    }
+}
+
+impl From<DebugRegisterError> for Error {
+    fn from(e: DebugRegisterError) -> Self {
+        Error::XdmError(e)
+    }
+}
+
+// TODO: I don't think these should be transformed into XtensaError directly. We might want to
+// attach register-specific messages via an in-between type.
+impl From<DebugRegisterError> for XtensaError {
+    fn from(e: DebugRegisterError) -> Self {
+        XtensaError::XdmError(e.into())
     }
 }
 
