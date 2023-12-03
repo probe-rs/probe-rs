@@ -2,10 +2,10 @@
 
 use self::communication_interface::XtensaCommunicationInterface;
 
+mod arch;
 mod xdm;
 
 pub mod communication_interface;
-
 
 /// A interface to operate Xtensa cores.
 pub struct Xtensa<'probe> {

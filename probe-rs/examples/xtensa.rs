@@ -1,6 +1,6 @@
 use anyhow::Result;
 use probe_rs::config::ScanChainElement;
-use probe_rs::Probe;
+use probe_rs::{MemoryInterface, Probe};
 
 fn main() -> Result<()> {
     pretty_env_logger::init();
@@ -25,9 +25,21 @@ fn main() -> Result<()> {
         },
     ])?;
     probe.attach_to_unspecified()?;
-    let _iface = probe
-        .try_into_xtensa_interface()
-        .unwrap();
+    let mut iface = probe.try_into_xtensa_interface().unwrap();
+
+    iface.enter_ocd_mode()?;
+
+    assert!(iface.is_in_ocd_mode()?);
+
+    iface.halt()?;
+
+    const SYSTEM_BASE_REGISTER: u32 = 0x600C_0000;
+    const SYSTEM_DATE_REGISTER: u32 = SYSTEM_BASE_REGISTER | 0x0FFC;
+    let date = iface.read_word_32(SYSTEM_DATE_REGISTER as u64)?;
+
+    iface.leave_ocd_mode()?;
+
+    println!("SYSTEM peripheral date: {:08x}", date);
 
     Ok(())
 }
