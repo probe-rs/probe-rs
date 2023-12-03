@@ -156,27 +156,19 @@ impl Xdm {
     }
 
     fn init(&mut self) -> Result<(), XtensaError> {
+        let mut pwr_control = PowerControl(0);
+
+        pwr_control.set_debug_wakeup(true);
+        pwr_control.set_mem_wakeup(true);
+        pwr_control.set_core_wakeup(true);
+
         // Wakeup and enable the JTAG
-        self.pwr_write(PowerDevice::PowerControl, {
-            let mut control = PowerControl(0);
+        self.pwr_write(PowerDevice::PowerControl, pwr_control.0)?;
 
-            control.set_debug_wakeup(true);
-            control.set_mem_wakeup(true);
-            control.set_core_wakeup(true);
-
-            control.0
-        })?;
-
-        self.pwr_write(PowerDevice::PowerControl, {
-            let mut control = PowerControl(0);
-
-            control.set_debug_wakeup(true);
-            control.set_mem_wakeup(true);
-            control.set_core_wakeup(true);
-            control.set_jtag_debug_use(true);
-
-            control.0
-        })?;
+        // Set JTAG_DEBUG_USE separately to ensure it doesn't get reset by a previous write.
+        // We don't reset anything but this is a good practice to avoid sneaky issues.
+        pwr_control.set_jtag_debug_use(true);
+        self.pwr_write(PowerDevice::PowerControl, pwr_control.0)?;
 
         // enable the debug module
         self.dbg_write(NARADR_DCRSET, 1)?;
