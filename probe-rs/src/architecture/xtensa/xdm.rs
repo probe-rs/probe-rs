@@ -165,6 +165,14 @@ impl Xdm {
         // Wakeup and enable the JTAG
         self.pwr_write(PowerDevice::PowerControl, pwr_control.0)?;
 
+        tracing::trace!("Waiting for power domain to turn on");
+        loop {
+            let bits = self.pwr_read(PowerDevice::PowerStat)?;
+            if PowerStatus(bits).debug_domain_on() {
+                break;
+            }
+        }
+
         // Set JTAG_DEBUG_USE separately to ensure it doesn't get reset by a previous write.
         // We don't reset anything but this is a good practice to avoid sneaky issues.
         pwr_control.set_jtag_debug_use(true);
