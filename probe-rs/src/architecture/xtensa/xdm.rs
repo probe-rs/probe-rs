@@ -410,3 +410,59 @@ impl WritableNexusRegister for DebugStatus {
         self.0
     }
 }
+
+bitfield::bitfield! {
+    #[derive(Copy, Clone)]
+    pub struct DebugControlBits(u32);
+
+    pub enable_ocd,          set_enable_ocd         : 0;
+    // R/set
+    pub debug_interrupt,     set_debug_interrupt    : 1;
+    pub interrupt_all_conds, set_interrupt_all_conds: 2;
+
+    pub break_in_en,         set_break_in_en        : 16;
+    pub break_out_en,        set_break_out_en       : 17;
+
+    pub debug_sw_active,     set_debug_sw_active    : 20;
+    pub run_stall_in_en,     set_run_stall_in_en    : 21;
+    pub debug_mode_out_en,   set_debug_mode_out_en  : 22;
+
+    pub break_out_ito,       set_break_out_ito      : 24;
+    pub break_in_ack_ito,    set_break_in_ack_ito   : 25;
+}
+
+#[derive(Copy, Clone)]
+/// Bits written as 1 are set to 1 in hardware.
+struct DebugControlSet(DebugControlBits);
+
+impl NexusRegister for DebugControlSet {
+    const ADDRESS: u8 = NARADR_DCRSET;
+
+    fn from_bits(bits: u32) -> Result<Self, XtensaError> {
+        Ok(Self(DebugControlBits(bits)))
+    }
+}
+
+impl WritableNexusRegister for DebugControlSet {
+    fn bits(&self) -> u32 {
+        self.0 .0
+    }
+}
+
+#[derive(Copy, Clone)]
+/// Bits written as 1 are set to 0 in hardware.
+struct DebugControlClear(DebugControlBits);
+
+impl NexusRegister for DebugControlClear {
+    const ADDRESS: u8 = NARADR_DCRCLR;
+
+    fn from_bits(bits: u32) -> Result<Self, XtensaError> {
+        Ok(Self(DebugControlBits(bits)))
+    }
+}
+
+impl WritableNexusRegister for DebugControlClear {
+    fn bits(&self) -> u32 {
+        self.0 .0
+    }
+}
