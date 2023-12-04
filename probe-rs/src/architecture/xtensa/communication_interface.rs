@@ -4,7 +4,9 @@
 #![allow(missing_docs)]
 
 use crate::{
-    architecture::xtensa::arch::instruction, probe::JTAGAccess, DebugProbeError, MemoryInterface,
+    architecture::xtensa::arch::{self, instruction},
+    probe::JTAGAccess,
+    DebugProbeError, MemoryInterface,
 };
 
 use super::xdm::{Error as XdmError, Xdm};
@@ -66,6 +68,69 @@ impl XtensaCommunicationInterface {
         self.xdm.resume()?;
         Ok(())
     }
+
+    // TODO make sure only A* registers are used as `register
+    fn read_register(&mut self, register: u8) -> Result<u32, XtensaError> {
+        let move_to_ddr = instruction::rsr(arch::SR_DDR, register);
+        self.xdm.execute_instruction(move_to_ddr)?;
+        let register = self.xdm.read_ddr()?;
+
+        Ok(register)
+    }
+
+    // TODO make sure only A* registers are used as `register`
+    fn write_register(&mut self, register: u8, value: u32) -> Result<(), XtensaError> {
+        self.xdm.write_ddr(value)?;
+        self.xdm
+            .execute_instruction(instruction::rsr(arch::SR_DDR, register))?;
+
+        Ok(())
+    }
+
+    fn debug_execution_error(&mut self, status: XdmError) -> Result<(), XtensaError> {
+        if let XdmError::ExecExeception = status {
+            tracing::warn!("Failed to execute instruction, attempting to read debug info");
+
+            // clear ExecException to allow new instructions to run
+            self.xdm.clear_exec_exception()?;
+
+            // dump EXCCAUSE, EXCVADDR and DEBUGCAUSE
+            // we must not use `self.read_register` and `self.write_register` here
+            // TODO we need to make sure our scratch register (A3) is saved properly
+
+            for (name, reg) in [
+                ("EXCCAUSE", arch::SR_EXCCAUSE),
+                ("EXCVADDR", arch::SR_EXCVADDR),
+                ("DEBUGCAUSE", arch::SR_DEBUGCAUSE),
+            ] {
+                self.xdm
+                    .execute_instruction(instruction::rsr(reg, arch::A3))?;
+                self.xdm
+                    .execute_instruction(instruction::wsr(arch::A3, arch::SR_DDR))?;
+                let register = self.xdm.read_ddr()?;
+
+                tracing::info!("{}: {:08x}", name, register);
+            }
+        }
+
+        Ok(())
+    }
+
+    fn execute_instruction(&mut self, inst: u32) -> Result<(), XtensaError> {
+        let status = self.xdm.execute_instruction(inst);
+        if let Err(XtensaError::XdmError(err)) = status {
+            self.debug_execution_error(err)?
+        }
+        status
+    }
+
+    fn read_ddr_and_execute(&mut self) -> Result<u32, XtensaError> {
+        let status = self.xdm.read_ddr_and_execute();
+        if let Err(XtensaError::XdmError(err)) = status {
+            self.debug_execution_error(err)?
+        }
+        status
+    }
 }
 
 impl MemoryInterface for XtensaCommunicationInterface {
@@ -80,27 +145,16 @@ impl MemoryInterface for XtensaCommunicationInterface {
             dst.len() / 4 + 1
         };
 
-        const SR_DDR: u8 = 104;
-        const A3: u8 = 3;
-
-        const MOVE_A3_TO_DDR: u32 = instruction::rsr(SR_DDR, A3);
-        const MOVE_DDR_TO_A3: u32 = instruction::wsr(A3, SR_DDR);
-        const READ_DATA_FROM: u32 = instruction::lddr32_p(A3);
-
-        // Save A3
+        // Save A3 and write address to it
         // TODO: mark in restore context
-        self.xdm.execute_instruction(MOVE_A3_TO_DDR)?;
-        let old_a3 = self.xdm.read_ddr()?;
-
-        // Write address to A3
-        self.xdm.write_ddr(address as u32)?;
-        self.xdm.execute_instruction(MOVE_DDR_TO_A3)?;
+        let old_a3 = self.read_register(arch::A3)?;
+        self.write_register(arch::A3, address as u32)?;
 
         // Read from address in A3
-        self.xdm.execute_instruction(READ_DATA_FROM)?;
+        self.execute_instruction(instruction::lddr32_p(arch::A3))?;
 
         for i in 0..read_words - 1 {
-            let word = self.xdm.read_ddr_and_execute()?.to_le_bytes();
+            let word = self.read_ddr_and_execute()?.to_le_bytes();
             dst[4 * i..][..4].copy_from_slice(&word);
         }
 
@@ -112,8 +166,7 @@ impl MemoryInterface for XtensaCommunicationInterface {
 
         // Restore A3
         // TODO: only do this when restoring program context
-        self.xdm.write_ddr(old_a3)?;
-        self.xdm.execute_instruction(MOVE_DDR_TO_A3)?;
+        self.write_register(arch::A3, old_a3)?;
 
         Ok(())
     }

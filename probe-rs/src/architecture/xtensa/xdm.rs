@@ -102,7 +102,7 @@ fn parse_register_status(byte: u8) -> Result<DebugRegisterStatus, DebugRegisterE
     }
 }
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, Clone, Copy)]
 pub enum Error {
     #[error("Error while accessing register: {0}")]
     XdmError(DebugRegisterError),
@@ -205,6 +205,18 @@ impl Xdm {
 
         tracing::info!("Found Xtensa device with OCDID: 0x{:08X}", device_id);
         self.device_id = device_id;
+
+        Ok(())
+    }
+
+    pub fn clear_exec_exception(&mut self) -> Result<(), XtensaError> {
+        self.write_nexus_register({
+            let mut status = DebugStatus(0);
+
+            status.set_exec_exception(true);
+
+            status
+        })?;
 
         Ok(())
     }
