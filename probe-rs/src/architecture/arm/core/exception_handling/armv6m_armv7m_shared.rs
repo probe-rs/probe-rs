@@ -26,7 +26,7 @@ bitfield! {
     pub struct ExcReturn(u32);
     /// If the value is 0xF, then this is a valid EXC_RETURN value.
     pub is_exception_flag, _: 31, 28;
-    /// Defines whether the stack frame for this exception has space allocated for FPU state information. Bit [4] is 0 if stack space is the exended frame that includes FPU registes.
+    /// Defines whether the stack frame for this exception has space allocated for FPU state information. Bit [4] is 0 if stack space is the extended frame that includes FPU registers.
     pub use_standard_stackframe, _: 4;
     /// Identifies one of the following 3 behaviours.
     /// - 0x1: Return to Handler mode(always uses the Main SP).

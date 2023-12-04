@@ -149,7 +149,7 @@ impl DownloadOptions {
 
 /// Downloads a file of given `format` at `path` to the flash of the target given in `session`.
 ///
-/// This will ensure that memory bounderies are honored and does unlocking, erasing and programming of the flash for you.
+/// This will ensure that memory boundaries are honored and does unlocking, erasing and programming of the flash for you.
 ///
 /// If you are looking for more options, have a look at [download_file_with_options].
 pub fn download_file<P: AsRef<Path>>(
@@ -162,7 +162,7 @@ pub fn download_file<P: AsRef<Path>>(
 
 /// Downloads a file of given `format` at `path` to the flash of the target given in `session`.
 ///
-/// This will ensure that memory bounderies are honored and does unlocking, erasing and programming of the flash for you.
+/// This will ensure that memory boundaries are honored and does unlocking, erasing and programming of the flash for you.
 ///
 /// If you are looking for a simple version without many options, have a look at [download_file].
 pub fn download_file_with_options<P: AsRef<Path>>(
@@ -191,7 +191,7 @@ pub fn download_file_with_options<P: AsRef<Path>>(
         .map_err(FileDownloadError::Flash)
 }
 
-/// Flash data which was extraced from an ELF file.
+/// Flash data which was extracted from an ELF file.
 pub(super) struct ExtractedFlashData<'data> {
     pub(super) section_names: Vec<String>,
     pub(super) address: u32,

@@ -12,7 +12,7 @@ define_ap!(
     /// Memory AP
     ///
     /// The memory AP can be used to access a memory-mapped
-    /// set of debug resouces of the attached system.
+    /// set of debug resources of the attached system.
     MemoryAp
 );
 
@@ -337,7 +337,7 @@ impl CSW {
     /// Creates a new CSW content with default values and a configurable [`DataSize`].
     /// See in code documentation for more info.
     ///
-    /// The CSW Register is set for an AMBA AHB Acccess, according to
+    /// The CSW Register is set for an AMBA AHB Access, according to
     /// the ARM Debug Interface Architecture Specification.
     ///
     /// The PROT bits are set as follows:
@@ -441,7 +441,7 @@ define_ap_register!(
     name: TAR2,
     address: 0x08,
     fields: [
-        /// The uppper 32-bits of the register address to be used for the next access to DRW.
+        /// The upper 32-bits of the register address to be used for the next access to DRW.
         address: u32,
     ],
     from: value => Ok(TAR2 { address: value }),

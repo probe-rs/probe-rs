@@ -101,7 +101,9 @@ pub struct RttConfig {
     pub channels: Vec<RttChannelConfig>,
 }
 
-/// The User specified configuration for each active RTT Channel. The configuration is passed via a DAP Client configuration (`launch.json`). If no configuration is specified, the defaults will be `Dataformat::String` and `show_timestamps=false`.
+/// The User specified configuration for each active RTT Channel. The configuration is passed via a
+/// DAP Client configuration (`launch.json`). If no configuration is specified, the defaults will be
+/// `Dataformat::String` and `show_timestamps=false`.
 #[derive(clap::Parser, Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct RttChannelConfig {
@@ -119,7 +121,8 @@ pub struct RttChannelConfig {
     pub show_location: bool,
 }
 
-/// This is the primary interface through which RTT channel data is read and written. Every actual RTT channel has a configuration and buffer that is used for this purpose.
+/// This is the primary interface through which RTT channel data is read and written. Every actual
+/// RTT channel has a configuration and buffer that is used for this purpose.
 #[derive(Debug)]
 pub struct RttActiveChannel {
     pub up_channel: Option<UpChannel>,
@@ -139,7 +142,10 @@ pub struct RttActiveChannel {
     timestamp_offset: UtcOffset,
 }
 
-/// A fully configured RttActiveChannel. The configuration will always try to 'default' based on information read from the RTT control block in the binary. Where insufficient information is available, it will use the supplied configuration, with final hardcoded defaults where no other information was available.
+/// A fully configured RttActiveChannel. The configuration will always try to 'default' based on
+/// information read from the RTT control block in the binary. Where insufficient information is
+/// available, it will use the supplied configuration, with final hardcoded defaults where no other
+/// information was available.
 impl RttActiveChannel {
     pub fn new(
         up_channel: Option<UpChannel>,
@@ -368,7 +374,8 @@ impl RttActiveChannel {
     }
 }
 
-/// Once an active connection with the Target RTT control block has been established, we configure each of the active channels, and hold essential state information for successfull communication.
+/// Once an active connection with the Target RTT control block has been established, we configure
+/// each of the active channels, and hold essential state information for successful communication.
 #[derive(Debug)]
 pub struct RttActiveTarget {
     pub active_channels: Vec<RttActiveChannel>,

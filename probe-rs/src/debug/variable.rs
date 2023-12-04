@@ -17,7 +17,7 @@ pub enum VariantRole {
 
 /// A [Variable] will have either a valid value, or some reason why a value could not be constructed.
 /// - If we encounter expected errors, they will be displayed to the user as defined below.
-/// - If we encounter unexpected errors, they will be treated as proper errors and will propogated to the calling process as an `Err()`
+/// - If we encounter unexpected errors, they will be treated as proper errors and will propagated to the calling process as an `Err()`
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub enum VariableValue {
     /// A valid value of this variable
@@ -158,7 +158,7 @@ pub enum VariableType {
     Struct(String),
     /// A Rust enum.
     Enum(String),
-    /// Namespace refers to the path that qualifies a variable. e.g. "std::string" is the namespace for the strucct "String"
+    /// Namespace refers to the path that qualifies a variable. e.g. "std::string" is the namespace for the struct "String"
     Namespace,
     /// A Pointer is a variable that contains a reference to another variable, and the type of the referenced variable may not be known until the reference has been resolved.
     Pointer(Option<String>),
@@ -172,7 +172,7 @@ pub enum VariableType {
     /// When we are unable to determine the name of a variable.
     #[default]
     Unknown,
-    /// For infrequently used categories of variables that does not fall into any of the other VriableType variants.
+    /// For infrequently used categories of variables that does not fall into any of the other `VariableType` variants.
     Other(String),
 }
 
@@ -355,7 +355,8 @@ impl Variable {
     }
 
     /// Convert the [String] value into the appropriate memory format and update the target memory with the new value.
-    /// Currently this only works for base data types. There is no provision in the MS DAP API to catch this client side, so we can only respond with a 'gentle' error message if the user attemtps unsupported data types.
+    /// Currently this only works for base data types. There is no provision in the MS DAP API to catch
+    /// this client side, so we can only respond with a 'gentle' error message if the user attempts unsupported data types.
     pub fn update_value(
         &self,
         memory: &mut impl MemoryInterface,

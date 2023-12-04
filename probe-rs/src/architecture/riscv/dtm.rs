@@ -16,7 +16,7 @@ use crate::{
 };
 
 /// Access to the Debug Transport Module (DTM),
-/// which is used to communicate with the RISCV debug module.
+/// which is used to communicate with the RISC-V debug module.
 #[derive(Debug)]
 pub struct Dtm {
     pub probe: Box<dyn JTAGAccess>,
@@ -109,7 +109,7 @@ impl Dtm {
                             self.queued_commands
                                 .extend_from_slice(&cmds[e.results.len()..]);
 
-                            self.probe.set_idle_cycles(self.probe.get_idle_cycles() + 1);
+                            self.probe.set_idle_cycles(self.probe.idle_cycles() + 1);
 
                             self.execute()
                         }
@@ -201,8 +201,8 @@ impl Dtm {
         Ok(Ok(value))
     }
 
-    /// Read or write the `dmi` register. If a busy value is rerurned, the access is
-    /// retried until the transfer either succeeds, or the tiemout expires.
+    /// Read or write the `dmi` register. If a busy value is returned, the access is
+    /// retried until the transfer either succeeds, or the timeout expires.
     pub fn dmi_register_access_with_timeout(
         &mut self,
         address: u64,
@@ -219,7 +219,7 @@ impl Dtm {
                     // Operation still in progress, reset dmi status and try again.
                     self.reset()?;
                     self.probe
-                        .set_idle_cycles(self.probe.get_idle_cycles().saturating_add(1));
+                        .set_idle_cycles(self.probe.idle_cycles().saturating_add(1));
                 }
                 Err(e) => return Err(RiscvError::DmiTransfer(e)),
             }

@@ -444,8 +444,8 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         Ok(self.state.fp_present)
     }
 
-    fn floating_point_register_count(&mut self) -> Result<Option<usize>, crate::error::Error> {
-        Ok(Some(32))
+    fn floating_point_register_count(&mut self) -> Result<usize, crate::error::Error> {
+        Ok(32)
     }
 
     fn id(&self) -> usize {
@@ -1012,7 +1012,7 @@ bitfield! {
     /// Global enable for DWT, PMU and ITM features
     pub trcena, set_trcena: 24;
     /// Monitor pending request key. Writes to the mon_pend and mon_en fields
-    /// request are ignorend unless monprkey is set to zero concurrently.
+    /// request are ignored unless `monprkey` is set to zero concurrently.
     pub monprkey, set_monprkey: 23;
     /// Unprivileged monitor enable.
     pub umon_en, set_umon_en: 21;

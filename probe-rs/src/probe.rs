@@ -34,7 +34,7 @@ use probe_rs_target::ScanChainElement;
 use std::{convert::TryFrom, fmt};
 
 /// Used to log warnings when the measured target voltage is
-/// lower than 1.4V, if at all measureable.
+/// lower than 1.4V, if at all measurable.
 const LOW_TARGET_VOLTAGE_WARNING_THRESHOLD: f32 = 1.4;
 
 /// The protocol that is to be used by the probe when communicating with the target.
@@ -133,7 +133,7 @@ pub enum DebugProbeError {
     #[error("You need to be attached to the target to perform this action")]
     NotAttached,
     /// The debug probe already performed the init sequence.
-    /// Try runnoing the failing command before [`DebugProbe::attach`].
+    /// Try running the failing command before [`DebugProbe::attach`].
     #[error("You need to be detached from the target to perform this action")]
     Attached,
     /// Performing the init sequence on the target failed.
@@ -165,7 +165,7 @@ pub enum DebugProbeError {
     Timeout,
 }
 
-/// An error during probe creation accured.
+/// An error during probe creation occurred.
 /// This is almost always a sign of a bad USB setup.
 /// Check UDEV rules if you are on Linux and try installing Zadig
 /// (This will disable vendor specific drivers for your probe!) if you are on Windows.
@@ -413,13 +413,13 @@ impl Probe {
     }
 
     /// Check if the probe has an interface to
-    /// debug RISCV chips.
+    /// debug RISC-V chips.
     pub fn has_riscv_interface(&self) -> bool {
         self.inner.has_riscv_interface()
     }
 
     /// Try to get a [`RiscvCommunicationInterface`], which can
-    /// can be used to communicate with chips using the RISCV
+    /// can be used to communicate with chips using the RISC-V
     /// architecture.
     ///
     /// If an error occurs while trying to connect, the probe is returned.
@@ -456,7 +456,7 @@ impl Probe {
         self.inner.try_as_dap_probe()
     }
 
-    /// Try reading the target voltage of via the connected volgate pin.
+    /// Try reading the target voltage of via the connected voltage pin.
     ///
     /// This does not work on all probes.
     pub fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
@@ -470,7 +470,7 @@ impl Probe {
 pub trait DebugProbe: Send + fmt::Debug {
     /// Creates a new boxed [`DebugProbe`] from a given [`DebugProbeSelector`].
     /// This will be called for all available debug drivers when discovering probes.
-    /// When opening, it will open the first probe which succeds during this call.
+    /// When opening, it will open the first probe which succeeds during this call.
     fn new_from_selector(
         selector: impl Into<DebugProbeSelector>,
     ) -> Result<Box<Self>, DebugProbeError>
@@ -507,13 +507,13 @@ pub trait DebugProbe: Send + fmt::Debug {
     ///
     /// If the scan chain is provided, and the selected protocol is JTAG, the
     /// probe will automatically configure the JTAG interface to match the
-    /// scan chain configuration without trying to deteremine the chain at
+    /// scan chain configuration without trying to determine the chain at
     /// runtime.
     ///
     /// This is called by the `Session` when attaching to a target.
     /// So this does not need to be called manually, unless you want to
     /// modify the scan chain. You must be attached to a target to set the
-    /// scan_chain since the scan chain only applys to the attached target.
+    /// scan_chain since the scan chain only applies to the attached target.
     ///
     fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError>;
 
@@ -546,7 +546,7 @@ pub trait DebugProbe: Send + fmt::Debug {
     /// Get the transport protocol currently in active use by the debug probe.
     fn active_protocol(&self) -> Option<WireProtocol>;
 
-    /// Check if the proble offers an interface to debug ARM chips.
+    /// Check if the probe offers an interface to debug ARM chips.
     fn has_arm_interface(&self) -> bool {
         false
     }
@@ -563,18 +563,18 @@ pub trait DebugProbe: Send + fmt::Debug {
         ))
     }
 
-    /// Get the dedicated interface to debug RISCV chips. Ensure that the
+    /// Get the dedicated interface to debug RISC-V chips. Ensure that the
     /// probe actually supports this by calling [DebugProbe::has_riscv_interface] first.
     fn try_get_riscv_interface(
         self: Box<Self>,
     ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
         Err((
             self.into_probe(),
-            DebugProbeError::InterfaceNotAvailable("RISCV").into(),
+            DebugProbeError::InterfaceNotAvailable("RISC-V").into(),
         ))
     }
 
-    /// Check if the probe offers an interface to debug RISCV chips.
+    /// Check if the probe offers an interface to debug RISC-V chips.
     fn has_riscv_interface(&self) -> bool {
         false
     }
@@ -700,7 +700,7 @@ pub enum DebugProbeSelectorParseError {
 ///
 /// Construct this from a set of info or from a string. The
 /// string has to be in the format "VID:PID:SERIALNUMBER",
-/// where the serialnumber is optional, and VID and PID are
+/// where the serial number is optional, and VID and PID are
 /// parsed as hexadecimal numbers.
 ///
 /// ## Example:
@@ -799,18 +799,18 @@ impl fmt::Display for DebugProbeSelector {
 /// Low-Level Access to the JTAG protocol
 ///
 /// This trait should be implemented by all probes which offer low-level access to
-/// the JTAG protocol, i.e. directo control over the bytes sent and received.
+/// the JTAG protocol, i.e. direction control over the bytes sent and received.
 pub trait JTAGAccess: DebugProbe {
     fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError>;
 
-    /// For Riscv, and possibly other interfaces, the JTAG interface has to remain in
+    /// For RISC-V, and possibly other interfaces, the JTAG interface has to remain in
     /// the idle state for several cycles between consecutive accesses to the DR register.
     ///
     /// This function configures the number of idle cycles which are inserted after each access.
     fn set_idle_cycles(&mut self, idle_cycles: u8);
 
     /// Return the currently configured idle cycles.
-    fn get_idle_cycles(&self) -> u8;
+    fn idle_cycles(&self) -> u8;
 
     /// Set the IR register length
     fn set_ir_len(&mut self, len: u32);

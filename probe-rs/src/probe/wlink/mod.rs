@@ -103,7 +103,7 @@ pub enum RiscvChip {
     CH59X = 0x0B, // 11
     /// CH643 Qingke-V4C series, RGB Display Driver MCU
     CH643 = 0x0C, // 12
-    /// CH32X035 Qingke-V4C USB-PD series, fallbak as CH643
+    /// CH32X035 Qingke-V4C USB-PD series, fallback as CH643
     CH32X035 = 0x0D, // 13
     /// CH32L103 Qingke-V4C low power series, USB-PD
     CH32L103 = 0x0E, // 14
@@ -378,7 +378,7 @@ impl JTAGAccess for WchLink {
         self.idle_cycles = idle_cycles;
     }
 
-    fn get_idle_cycles(&self) -> u8 {
+    fn idle_cycles(&self) -> u8 {
         self.idle_cycles
     }
 

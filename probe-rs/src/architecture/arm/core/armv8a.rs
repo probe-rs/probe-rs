@@ -94,7 +94,7 @@ impl<'probe> Armv8a<'probe> {
             state.current_state = core_state;
             state.is_64_bit = edscr.currently_64_bit();
             // Always 32 FP regs for v8-a
-            state.fp_reg_count = Some(32);
+            state.fp_reg_count = 32;
         }
 
         let mut core = Self {
@@ -1125,7 +1125,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         Ok(true)
     }
 
-    fn floating_point_register_count(&mut self) -> Result<Option<usize>, crate::error::Error> {
+    fn floating_point_register_count(&mut self) -> Result<usize, crate::error::Error> {
         // Always available for v8-a
         Ok(self.state.fp_reg_count)
     }

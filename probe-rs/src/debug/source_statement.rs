@@ -156,7 +156,7 @@ impl SourceStatements {
 /// - The [`gimli::LineRow`] entries for a source statement does not have to be contiguous where they appear in a [`gimli::LineSequence`]
 /// - A `sequence`( [`gimli::LineSequence`] ) is a series of contiguous `rows`/`instructions`(may contain multiple `source_statement`'s).
 pub(crate) struct SourceStatement {
-    /// The first addresss of the statement where row.is_stmt() is true.
+    /// The first address of the statement where row.is_stmt() is true.
     pub(crate) is_stmt: bool,
     pub(crate) file_index: u64,
     pub(crate) line: Option<NonZeroU64>,

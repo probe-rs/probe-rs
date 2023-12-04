@@ -36,7 +36,7 @@ use time::UtcOffset;
 
 #[derive(Clone, Debug, PartialEq)]
 /// The `DebuggerStatus` is used to control how the Debugger::debug_session() decides if it should respond to
-/// DAP Client requests such as `Terminate`, `Disconnect`, and `Reset`, as well as how to repond to unrecoverable errors
+/// DAP Client requests such as `Terminate`, `Disconnect`, and `Reset`, as well as how to respond to unrecoverable errors
 /// during a debug session interacting with a target session.
 pub(crate) enum DebugSessionStatus {
     Continue,
@@ -77,7 +77,7 @@ impl Debugger {
 
     /// The logic of this function is as follows:
     /// - While we are waiting for DAP-Client, we have to continuously check in on the status of the probe.
-    /// - Initally, while [`DebugAdapter::configuration_done`] = `false`, we do nothing.
+    /// - Initially, while [`DebugAdapter::configuration_done`] = `false`, we do nothing.
     /// - Once [`DebugAdapter::configuration_done`] = `true`, we can start polling the probe for status, as follows:
     ///   - If the [`super::core_data::CoreData::last_known_status`] is `Halted(_)`, then we stop polling the Probe until the next DAP-Client request attempts an action
     ///   - If the `new_status` is an Err, then the probe is no longer available, and we  end the debugging session
@@ -844,7 +844,7 @@ impl Debugger {
 
 /// Wait for the next request with the given command.
 ///
-/// If the next request doesn *not* have the given command,
+/// If the next request does *not* have the given command,
 /// the function returns an error.
 fn expect_request<P: ProtocolAdapter>(
     debug_adapter: &mut DebugAdapter<P>,
@@ -934,9 +934,9 @@ mod test {
         test::TestLister,
     };
 
-    /// Helper function to get the expected capabilites for the debugger
+    /// Helper function to get the expected capabilities for the debugger
     ///
-    /// `Capabilites::default()` is not const, so this can't just be a constant.
+    /// `Capabilities::default()` is not const, so this can't just be a constant.
     fn expected_capabilites() -> Capabilities {
         Capabilities {
             support_suspend_debuggee: Some(true),

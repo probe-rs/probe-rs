@@ -741,7 +741,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
 pub struct ArmChipInfo {
     /// The JEP106 code of the manufacturer of this chip target.
     pub manufacturer: JEP106Code,
-    /// The unique part numer of the chip target. Unfortunately this only unique in the spec.
+    /// The unique part number of the chip target. Unfortunately this only unique in the spec.
     /// In practice some manufacturers violate the spec and assign a part number to an entire family.
     ///
     /// Consider this not unique when working with targets!

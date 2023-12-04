@@ -96,7 +96,7 @@ impl DebugInfo {
 
     /// Get the name of the function at the given address.
     ///
-    /// If no function is found, `None` will be returend.
+    /// If no function is found, `None` will be returned.
     ///
     /// ## Inlined functions
     /// Multiple nested inline functions could exist at the given address.
@@ -937,7 +937,7 @@ impl DebugInfo {
             };
 
             // PART 2-c: Unwind registers for the "previous/calling" frame.
-            // We sometimes need to keep a copy of the LR value to calculate the PC. For both ARM, and RISCV, The LR will be unwound before the PC, so we can reference it safely.
+            // We sometimes need to keep a copy of the LR value to calculate the PC. For both ARM, and RISC-V, The LR will be unwound before the PC, so we can reference it safely.
             let mut unwound_return_address: Option<RegisterValue> = None;
             for debug_register in unwind_registers.0.iter_mut() {
                 if unwind_register(
@@ -1328,7 +1328,7 @@ fn unwind_register(
                     .register_has_role(RegisterRole::StackPointer) =>
                 {
                     // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section B.1.4.1: Treat bits [1:0] as `Should be Zero or Preserved`
-                    // - Applying this logic to RISCV has no adverse effects, since all incoming addresses are already 32-bit aligned.
+                    // - Applying this logic to RISC-V has no adverse effects, since all incoming addresses are already 32-bit aligned.
                     register_rule_string = "SP=CFA (dwarf Undefined)".to_string();
                     unwind_cfa.map(|unwind_cfa| {
                         if sp.is_u32() {
@@ -1535,8 +1535,6 @@ fn add_to_address(address: u64, offset: i64, address_size_in_bytes: usize) -> u6
 
 #[cfg(test)]
 mod test {
-    use std::path::{Path, PathBuf};
-
     use crate::{
         architecture::arm::core::{
             exception_handling::{ArmV6MExceptionHandler, ArmV7MExceptionHandler},
@@ -1550,6 +1548,8 @@ mod test {
         test::MockMemory,
         CoreDump, RegisterValue,
     };
+    use std::path::{Path, PathBuf};
+    use test_case::test_case;
 
     /// Get the full path to a file in the `tests` directory.
     fn get_path_for_test_files(relative_file: &str) -> PathBuf {
@@ -2104,56 +2104,55 @@ mod test {
         insta::assert_snapshot!(printed_backtrace);
     }
 
-    #[test]
-    fn probe_rs_debug_unwind_tests() {
+    #[test_case("RP2040"; "Armv6-m using RP2040")]
+    #[test_case("nRF52833_xxAA"; "Armv7-m using nRF52833_xxAA")]
+    //TODO:  #[test_case("esp32c3"; "RISC-V32E using esp32c3")]
+    fn debug_unwind_tests(chip_name: &str) {
         // TODO: Add RISC-V tests.
-        for chip_name in ["nRF52833_xxAA", "RP2040"] {
-            let debug_info =
-                load_test_elf_as_debug_info(format!("debug-unwind-tests/{chip_name}.elf").as_str());
-            let mut adapter = CoreDump::load(&get_path_for_test_files(
-                format!("debug-unwind-tests/{chip_name}.coredump").as_str(),
-            ))
+
+        let debug_info =
+            load_test_elf_as_debug_info(format!("debug-unwind-tests/{chip_name}.elf").as_str());
+        let mut adapter = CoreDump::load(&get_path_for_test_files(
+            format!("debug-unwind-tests/{chip_name}.coredump").as_str(),
+        ))
+        .unwrap();
+
+        let initial_registers = adapter.debug_registers();
+        let exception_handler = exception_handler_for_core(adapter.core_type());
+        let instruction_set = adapter.instruction_set();
+
+        let mut stack_frames = debug_info
+            .unwind(
+                &mut adapter,
+                initial_registers,
+                exception_handler.as_ref(),
+                Some(instruction_set),
+            )
             .unwrap();
 
-            let initial_registers = adapter.debug_registers();
-            let exception_handler = exception_handler_for_core(adapter.core_type());
-            let instruction_set = adapter.instruction_set();
+        let snapshot_name = format!("{chip_name}__full_unwind");
 
-            let mut stack_frames = debug_info
-                .unwind(
+        // Expand and validate the static and local variables for each stack frame.
+        for frame in stack_frames.iter_mut() {
+            for variable_cache in [
+                frame.static_variables.as_mut().unwrap(),
+                frame.local_variables.as_mut().unwrap(),
+            ] {
+                // Cache the deferred top level children of the of the cache.
+                let mut parent_variable = variable_cache.root_variable();
+                recurse_deferred_variables(
+                    &debug_info,
+                    variable_cache,
                     &mut adapter,
-                    initial_registers,
-                    exception_handler.as_ref(),
-                    Some(instruction_set),
-                )
-                .unwrap();
-
-            let snapshot_name = format!("{chip_name}__full_unwind");
-
-            // Expand and validate the static and local variables for each stack frame.
-            for frame in stack_frames.iter_mut() {
-                for variable_cache in [
-                    frame.static_variables.as_mut().unwrap(),
-                    frame.local_variables.as_mut().unwrap(),
-                ] {
-                    // Cache the deferred top level children of the of the cache.
-                    let mut parent_variable = variable_cache.root_variable();
-
-                    recurse_deferred_variables(
-                        &debug_info,
-                        variable_cache,
-                        &mut adapter,
-                        &mut parent_variable,
-                        &frame.registers,
-                        frame.frame_base,
-                        0,
-                    );
-                }
+                    &mut parent_variable,
+                    &frame.registers,
+                    frame.frame_base,
+                    0,
+                );
             }
-
-            // Using YAML output because it is easier to read than the default snapshot output,
-            // and also because they provide better diffs.
-            insta::assert_yaml_snapshot!(snapshot_name, stack_frames);
         }
+        // Using YAML output because it is easier to read than the default snapshot output,
+        // and also because they provide better diffs.
+        insta::assert_yaml_snapshot!(snapshot_name, stack_frames);
     }
 }

@@ -17,7 +17,8 @@ use svd_parser::{
 pub struct SvdCache {
     /// The SVD contents and structure will be stored as variables, down to the Field level.
     /// Unlike other VariableCache instances, it will only be built once per DebugSession.
-    /// After that, only the SVD fields values change values, and the data for these will be re-read everytime they are queried by the debugger.
+    /// After that, only the SVD fields values change values, and the data for these will be re-read
+    /// every time they are queried by the debugger.
     pub(crate) svd_variable_cache: VariableCache,
 }
 

@@ -9,7 +9,7 @@ use crate::{
     },
     memory::valid_32bit_address,
     memory_mapped_bitfield_register, CoreInterface, CoreRegister, CoreStatus, CoreType, Error,
-    HaltReason, InstructionSet, MemoryInterface,
+    HaltReason, InstructionSet, MemoryInterface, MemoryMappedRegister,
 };
 use anyhow::{anyhow, Result};
 use bitfield::bitfield;
@@ -706,16 +706,22 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         }
     }
 
-    fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
-        Err(crate::error::Error::Other(anyhow::anyhow!(
-            "Fpu detection not yet implemented"
-        )))
+    /// Returns the number of fpu registers defined in this register file, or `None` if there are none.
+    fn floating_point_register_count(&mut self) -> Result<usize, Error> {
+        Ok(self
+            .registers()
+            .all_registers()
+            .filter(|r| r.register_has_role(crate::RegisterRole::FloatingPoint))
+            .count())
     }
 
-    fn floating_point_register_count(&mut self) -> Result<Option<usize>, crate::error::Error> {
-        Err(crate::error::Error::Other(anyhow::anyhow!(
-            "Fpu detection not yet implemented"
-        )))
+    fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
+        // Read the extensions from the Machine ISA regiseter.
+        let isa_extensions =
+            Misa::from(self.read_csr(Misa::get_mmio_address() as u16)?).extensions();
+        // Mask for the D(double float), F(single float) and Q(quad float) extension bits.
+        let mask = (1 << 3) | (1 << 5) | (1 << 16);
+        Ok(isa_extensions & mask != 0)
     }
 
     fn id(&self) -> usize {
@@ -863,14 +869,14 @@ memory_mapped_bitfield_register! {
 impl Dmcontrol {
     /// Currently selected harts
     ///
-    /// Combination of the hartselhi and hartsello registers.
+    /// Combination of the `hartselhi` and `hartsello` registers.
     fn hartsel(&self) -> u32 {
         self.hartselhi() << 10 | self.hartsello()
     }
 
     /// Set the currently selected harts
     ///
-    /// This sets the hartselhi and hartsello registers.
+    /// This sets the `hartselhi` and `hartsello` registers.
     /// This is a 20 bit register, larger values will be truncated.
     fn set_hartsel(&mut self, value: u32) {
         self.set_hartsello(value & 0x3ff);
@@ -1001,10 +1007,11 @@ bitfield! {
     load, set_load: 0;
 }
 
-bitfield! {
+memory_mapped_bitfield_register! {
     /// Isa and Extensions (see RISC-V Privileged Spec, 3.1.1)
     pub struct Misa(u32);
-    impl Debug;
+    0x301, "misa",
+    impl From;
 
     /// Machine XLEN
     mxl, _: 31, 30;

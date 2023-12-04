@@ -70,7 +70,7 @@ impl Display for RegisterRole {
     }
 }
 
-/// The rule used to preserve the value of a register between function calls duing unwinding,
+/// The rule used to preserve the value of a register between function calls during unwinding,
 /// when DWARF unwind information is not available.
 ///
 /// The rules for these are based on the 'Procedure Calling Standard' for each of the supported architectures:

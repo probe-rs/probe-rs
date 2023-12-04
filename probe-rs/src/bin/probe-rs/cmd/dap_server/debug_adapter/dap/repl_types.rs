@@ -141,7 +141,7 @@ impl GdbNuf {
     }
 }
 
-/// TODO: gdb changes the default `format_specifier` everytime x or p is used. For now we will use a static default of `x`.
+/// TODO: gdb changes the default `format_specifier` every time x or p is used. For now we will use a static default of `x`.
 impl Default for GdbNuf {
     fn default() -> Self {
         Self {

@@ -5,7 +5,7 @@ pub enum CoreStatus {
     Running,
     /// The core is currently halted. This also specifies the reason as a payload.
     Halted(HaltReason),
-    /// This is a Cortex-M specific status, and will not be set or handled by RISCV code.
+    /// This is a Cortex-M specific status, and will not be set or handled by RISC-V code.
     LockedUp,
     /// The core is currently sleeping.
     Sleeping,

@@ -130,7 +130,7 @@ pub trait CoreInterface: MemoryInterface {
     /// Returns the return address register, a.k.a. link register.
     fn return_address(&self) -> &'static CoreRegister;
 
-    /// Returns `true` if hwardware breakpoints are enabled, `false` otherwise.
+    /// Returns `true` if hardware breakpoints are enabled, `false` otherwise.
     fn hw_breakpoints_enabled(&self) -> bool;
 
     /// Configure the target to ensure software breakpoints will enter Debug Mode.
@@ -158,7 +158,7 @@ pub trait CoreInterface: MemoryInterface {
     /// Determine the number of floating point registers.
     /// This must be queried while halted as this is a runtime
     /// decision for some core types.
-    fn floating_point_register_count(&mut self) -> Result<Option<usize>, crate::error::Error>;
+    fn floating_point_register_count(&mut self) -> Result<usize, crate::error::Error>;
 
     /// Set the reset catch setting.
     ///
@@ -346,7 +346,7 @@ impl CoreDump {
             self.get_memory_from_coredump(address, (size_of_val(data)) as u64)?;
         for (n, data) in data.iter_mut().enumerate() {
             *data = memory
-                .pread_with((address - memory_offset) as usize + n * 4, scroll::LE)
+                .pread_with::<T>((address - memory_offset) as usize + n * 4, scroll::LE)
                 .map_err(|e| anyhow!("{e}"))?;
         }
         Ok(())
@@ -733,7 +733,7 @@ impl<'probe> Core<'probe> {
     ///
     /// # Remarks
     ///
-    /// `T` can be an unsigned interger type, such as [u32] or [u64], or
+    /// `T` can be an unsigned integer type, such as [u32] or [u64], or
     /// it can be [RegisterValue] to allow the caller to support arbitrary
     /// length registers.
     ///
@@ -939,7 +939,7 @@ impl<'probe> Core<'probe> {
 
     /// Determine the number of floating point registers.
     /// This must be queried while halted as this is a runtime decision for some core types.
-    pub fn floating_point_register_count(&mut self) -> Result<Option<usize>, error::Error> {
+    pub fn floating_point_register_count(&mut self) -> Result<usize, error::Error> {
         self.inner.floating_point_register_count()
     }
 
@@ -993,7 +993,7 @@ impl<'probe> Core<'probe> {
             supports_native_64bit_access,
             core_type,
             fpu_support,
-            floating_point_register_count,
+            floating_point_register_count: Some(floating_point_register_count),
         })
     }
 }
@@ -1110,7 +1110,7 @@ impl<'probe> CoreInterface for Core<'probe> {
         self.fpu_support()
     }
 
-    fn floating_point_register_count(&mut self) -> Result<Option<usize>, crate::error::Error> {
+    fn floating_point_register_count(&mut self) -> Result<usize, crate::error::Error> {
         self.floating_point_register_count()
     }
 
