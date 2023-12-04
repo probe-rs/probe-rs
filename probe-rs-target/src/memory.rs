@@ -106,6 +106,10 @@ pub trait MemoryRange {
 
     /// Returns true if `self` intersects `range` partially.
     fn intersects_range(&self, range: &Range<u64>) -> bool;
+
+    /// Ensure memory reads using this memory range, will be aligned to 32 bits.
+    /// This may result in slightly more memory being read than requested.
+    fn align_to_32_bits(&mut self);
 }
 
 impl MemoryRange for Range<u64> {
@@ -125,6 +129,15 @@ impl MemoryRange for Range<u64> {
                 || !self.contains(&range.start) && self.contains(&(range.end - 1))
                 || self.contains_range(range)
                 || range.contains_range(self)
+        }
+    }
+
+    fn align_to_32_bits(&mut self) {
+        if self.start % 4 != 0 {
+            self.start -= self.start % 4;
+        }
+        if self.end % 4 != 0 {
+            self.end += 4 - self.end % 4;
         }
     }
 }
@@ -260,5 +273,41 @@ mod test {
         let range1 = 2..4;
         let range2 = 6..8;
         assert!(!range1.intersects_range(&range2));
+    }
+
+    #[test]
+    fn test_align_to_32_bits_case1() {
+        // Test case 1: start and end are already aligned
+        let mut range = Range { start: 0, end: 8 };
+        range.align_to_32_bits();
+        assert_eq!(range.start, 0);
+        assert_eq!(range.end, 8);
+    }
+
+    #[test]
+    fn test_align_to_32_bits_case2() {
+        // Test case 2: start is not aligned, end is aligned
+        let mut range = Range { start: 3, end: 12 };
+        range.align_to_32_bits();
+        assert_eq!(range.start, 0);
+        assert_eq!(range.end, 12);
+    }
+
+    #[test]
+    fn test_align_to_32_bits_case3() {
+        // Test case 3: start is aligned, end is not aligned
+        let mut range = Range { start: 16, end: 23 };
+        range.align_to_32_bits();
+        assert_eq!(range.start, 16);
+        assert_eq!(range.end, 24);
+    }
+
+    #[test]
+    fn test_align_to_32_bits_case4() {
+        // Test case 4: start and end are not aligned
+        let mut range = Range { start: 5, end: 13 };
+        range.align_to_32_bits();
+        assert_eq!(range.start, 4);
+        assert_eq!(range.end, 16);
     }
 }

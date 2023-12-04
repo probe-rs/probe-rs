@@ -327,7 +327,7 @@ impl DebugInfo {
     pub fn cache_deferred_variables(
         &self,
         cache: &mut VariableCache,
-        memory: &mut impl MemoryInterface,
+        memory: &mut dyn MemoryInterface,
         parent_variable: &mut Variable,
         stack_frame_registers: &DebugRegisters,
         frame_base: Option<u64>,
@@ -1541,10 +1541,7 @@ mod test {
             registers::cortex_m::CORTEX_M_CORE_REGISTERS,
         },
         core::exception_handler_for_core,
-        debug::{
-            stack_frame::TestFormatter, DebugInfo, DebugRegister, DebugRegisters, Variable,
-            VariableCache,
-        },
+        debug::{stack_frame::TestFormatter, DebugInfo, DebugRegister, DebugRegisters},
         test::MockMemory,
         CoreDump, RegisterValue,
     };
@@ -1563,46 +1560,6 @@ mod test {
     /// `elf_file` should be the name of a file(or relative path) in the `tests` directory.
     fn load_test_elf_as_debug_info(elf_file: &str) -> DebugInfo {
         DebugInfo::from_file(get_path_for_test_files(elf_file)).unwrap()
-    }
-
-    /// Recursively process the deferred variables in the variable cache,
-    /// and add their children to the cache.
-    /// We max out at 10 levels, to ensure we don't recurse infinitely on circular references.
-    fn recurse_deferred_variables(
-        debug_info: &DebugInfo,
-        variable_cache: &mut VariableCache,
-        adapter: &mut CoreDump,
-        parent_variable: &mut Variable,
-        registers: &DebugRegisters,
-        frame_base: Option<u64>,
-        recursion_depth: usize,
-    ) {
-        if recursion_depth < 10 {
-            let children_depth = recursion_depth + 1;
-            debug_info
-                .cache_deferred_variables(
-                    variable_cache,
-                    adapter,
-                    parent_variable,
-                    registers,
-                    frame_base,
-                )
-                .unwrap();
-            for mut child in variable_cache
-                .get_children(parent_variable.variable_key)
-                .unwrap()
-            {
-                recurse_deferred_variables(
-                    debug_info,
-                    variable_cache,
-                    adapter,
-                    &mut child,
-                    registers,
-                    frame_base,
-                    children_depth,
-                );
-            }
-        }
     }
 
     #[test]
@@ -2134,23 +2091,27 @@ mod test {
 
         // Expand and validate the static and local variables for each stack frame.
         for frame in stack_frames.iter_mut() {
-            for variable_cache in [
-                frame.static_variables.as_mut().unwrap(),
-                frame.local_variables.as_mut().unwrap(),
-            ] {
+            let mut variable_caches = Vec::new();
+            if let Some(static_variables) = &mut frame.static_variables {
+                variable_caches.push(static_variables);
+            }
+            if let Some(local_variables) = &mut frame.local_variables {
+                variable_caches.push(local_variables);
+            }
+            for variable_cache in variable_caches {
                 // Cache the deferred top level children of the of the cache.
-                let mut parent_variable = variable_cache.root_variable();
-                recurse_deferred_variables(
+                variable_cache.recurse_deferred_variables(
                     &debug_info,
-                    variable_cache,
                     &mut adapter,
-                    &mut parent_variable,
+                    None,
                     &frame.registers,
                     frame.frame_base,
+                    10,
                     0,
                 );
             }
         }
+
         // Using YAML output because it is easier to read than the default snapshot output,
         // and also because they provide better diffs.
         insta::assert_yaml_snapshot!(snapshot_name, stack_frames);

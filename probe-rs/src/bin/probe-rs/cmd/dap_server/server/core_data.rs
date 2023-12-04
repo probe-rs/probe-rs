@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::{fs::File, ops::Range};
 
 use super::session_data::{self, ActiveBreakpoint, BreakpointType, SourceLocationScope};
 use crate::cmd::dap_server::{
@@ -383,4 +383,69 @@ impl<'p> CoreHandle<'p> {
         }
         Ok(())
     }
+
+    /// Traverse all the variables in the available stack frames, and return the memory ranges
+    /// required to resolve the values of these variables. This is used to provide the minimal
+    /// memory ranges required to create a [`CoreDump`] for the current scope.
+    pub(crate) fn get_memory_ranges(&mut self) -> Vec<Range<u64>> {
+        let mut all_discrete_memory_ranges = Vec::new();
+        // Expand and validate the static and local variables for each stack frame.
+        for frame in self.core_data.stack_frames.iter_mut() {
+            let mut variable_caches = Vec::new();
+            if let Some(static_variables) = &mut frame.static_variables {
+                variable_caches.push(static_variables);
+            }
+            if let Some(local_variables) = &mut frame.local_variables {
+                variable_caches.push(local_variables);
+            }
+            for variable_cache in variable_caches {
+                // Cache the deferred top level children of the of the cache.
+                variable_cache.recurse_deferred_variables(
+                    &self.core_data.debug_info,
+                    &mut self.core,
+                    None,
+                    &frame.registers,
+                    frame.frame_base,
+                    10,
+                    0,
+                );
+                all_discrete_memory_ranges.append(&mut variable_cache.get_discrete_memory_ranges());
+            }
+        }
+        consolidate_memory_ranges(&mut all_discrete_memory_ranges)
+    }
+}
+
+/// Return a Vec of memory ranges that consolidate the adjacent memory ranges of the input ranges.
+/// Note: The concept of "adjacent" is calculated to include a gap of up to 0x400 bytes(1Kb) between ranges.
+pub(crate) fn consolidate_memory_ranges(
+    discrete_memory_ranges: &mut Vec<Range<u64>>,
+) -> Vec<Range<u64>> {
+    discrete_memory_ranges.sort_by_cached_key(|range| (range.start, range.end));
+    discrete_memory_ranges.dedup();
+    let mut consolidated_memory_ranges: Vec<Range<u64>> = Vec::new();
+    let mut condensed_range: Option<Range<u64>> = None;
+    for memory_range in discrete_memory_ranges {
+        if let Some(range_comparitor) = &mut condensed_range {
+            if memory_range.start <= range_comparitor.end + 0x400 {
+                // The ranges are adjacent, or within 4 bytes,
+                // so we will extend the range_comparitor to include the discrete memory_range.
+                range_comparitor.end = memory_range.end;
+            } else {
+                // The ranges are not adjacent,
+                // so we will add the range_comparitor to the consolidated_memory_ranges,
+                // and start a new range_comparitor with the discrete memory_range.
+                consolidated_memory_ranges.push(range_comparitor.clone());
+                condensed_range = Some(memory_range.clone());
+            }
+        } else {
+            condensed_range = Some(memory_range.clone());
+        }
+    }
+    // After the loop, we need to add the last range_comparitor to the consolidated_memory_ranges.
+    if let Some(range_comparitor) = condensed_range {
+        consolidated_memory_ranges.push(range_comparitor);
+    }
+
+    consolidated_memory_ranges
 }
