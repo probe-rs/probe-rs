@@ -253,33 +253,48 @@ impl XtensaCommunicationInterface {
 }
 
 impl MemoryInterface for XtensaCommunicationInterface {
-    fn read(&mut self, address: u64, dst: &mut [u8]) -> Result<(), crate::Error> {
+    fn read(&mut self, address: u64, mut dst: &mut [u8]) -> Result<(), crate::Error> {
         if dst.is_empty() {
             return Ok(());
         }
 
-        let read_words = if dst.len() % 4 == 0 {
-            dst.len() / 4
-        } else {
-            dst.len() / 4 + 1
-        };
-
-        // Write address to the scratch register
-        self.write_cpu_register(CpuRegister::scratch(), address as u32)?;
+        // Write aligned address to the scratch register
+        self.write_cpu_register(CpuRegister::scratch(), address as u32 & !0x3)?;
 
         // Read from address in the scratch register
         self.execute_instruction(instruction::lddr32_p(CpuRegister::scratch()))?;
 
-        for i in 0..read_words - 1 {
-            let word = self.read_ddr_and_execute()?.to_le_bytes();
-            dst[4 * i..][..4].copy_from_slice(&word);
+        // Let's assume we can just do 32b reads, so let's do some pre-massaging on unaligned reads
+        if address % 4 != 0 {
+            let word = if dst.len() <= 4 {
+                self.xdm.read_ddr()?
+            } else {
+                self.read_ddr_and_execute()?
+            };
+
+            let word = word.to_le_bytes();
+
+            let offset = address as usize % 4;
+            let bytes_to_copy = (4 - offset).min(dst.len());
+
+            dst[..bytes_to_copy].copy_from_slice(&word[offset..][..bytes_to_copy]);
+            dst = &mut dst[bytes_to_copy..];
+
+            if dst.is_empty() {
+                return Ok(());
+            }
         }
 
-        let remaining_bytes = if dst.len() % 4 == 0 { 4 } else { dst.len() % 4 };
+        while dst.len() > 4 {
+            let word = self.read_ddr_and_execute()?.to_le_bytes();
+            dst[..4].copy_from_slice(&word);
+            dst = &mut dst[4..];
+        }
+
+        let remaining_bytes = dst.len();
 
         let word = self.xdm.read_ddr()?;
-        dst[4 * (read_words - 1)..][..remaining_bytes]
-            .copy_from_slice(&word.to_le_bytes()[..remaining_bytes]);
+        dst.copy_from_slice(&word.to_le_bytes()[..remaining_bytes]);
 
         Ok(())
     }
