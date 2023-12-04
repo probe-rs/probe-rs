@@ -22,12 +22,19 @@ pub enum XtensaError {
     XdmError(XdmError),
 }
 
+#[derive(Debug)]
+struct XtensaCommunicationInterfaceState {
+    /// Pairs of (register, value). TODO: can/should we handle special registers?
+    saved_registers: Vec<(u8, u32)>,
+}
+
 /// A interface that implements controls for Xtensa cores.
 #[derive(Debug)]
 pub struct XtensaCommunicationInterface {
     /// The Xtensa debug module
     xdm: Xdm,
-    // state: XtensaCommunicationInterfaceState,
+
+    state: XtensaCommunicationInterfaceState,
 }
 
 impl XtensaCommunicationInterface {
@@ -38,7 +45,12 @@ impl XtensaCommunicationInterface {
             other_error => (probe, DebugProbeError::Other(other_error.into())),
         })?;
 
-        let s = Self { xdm };
+        let s = Self {
+            xdm,
+            state: XtensaCommunicationInterfaceState {
+                saved_registers: vec![],
+            },
+        };
 
         Ok(s)
     }
@@ -54,6 +66,7 @@ impl XtensaCommunicationInterface {
     }
 
     pub fn leave_ocd_mode(&mut self) -> Result<(), XtensaError> {
+        self.resume()?;
         self.xdm.leave_ocd_mode()?;
         tracing::info!("Left OCD mode");
         Ok(())
@@ -65,7 +78,9 @@ impl XtensaCommunicationInterface {
     }
 
     pub fn resume(&mut self) -> Result<(), XtensaError> {
+        self.restore_registers()?;
         self.xdm.resume()?;
+
         Ok(())
     }
 
@@ -78,13 +93,21 @@ impl XtensaCommunicationInterface {
         Ok(register)
     }
 
-    // TODO make sure only A* registers are used as `register`
-    fn write_register(&mut self, register: u8, value: u32) -> Result<(), XtensaError> {
+    fn write_register_impl(&mut self, register: u8, value: u32) -> Result<(), XtensaError> {
         self.xdm.write_ddr(value)?;
         self.xdm
             .execute_instruction(instruction::rsr(arch::SR_DDR, register))?;
 
         Ok(())
+    }
+
+    // TODO make sure only A* registers are used as `register`
+    fn write_register(&mut self, register: u8, value: u32) -> Result<(), XtensaError> {
+        if !self.is_register_saved(register) {
+            self.save_register(register)?;
+        }
+
+        self.write_register_impl(register, value)
     }
 
     fn debug_execution_error(&mut self, status: XdmError) -> Result<(), XtensaError> {
@@ -131,6 +154,28 @@ impl XtensaCommunicationInterface {
         }
         status
     }
+
+    fn is_register_saved(&mut self, register: u8) -> bool {
+        self.state
+            .saved_registers
+            .iter()
+            .any(|(reg, _)| *reg == register)
+    }
+
+    fn save_register(&mut self, register: u8) -> Result<(), XtensaError> {
+        let value = self.read_register(register)?;
+        self.state.saved_registers.push((register, value));
+
+        Ok(())
+    }
+
+    fn restore_registers(&mut self) -> Result<(), XtensaError> {
+        for (register, value) in std::mem::take(&mut self.state.saved_registers) {
+            self.write_register_impl(register, value)?;
+        }
+
+        Ok(())
+    }
 }
 
 impl MemoryInterface for XtensaCommunicationInterface {
@@ -145,9 +190,7 @@ impl MemoryInterface for XtensaCommunicationInterface {
             dst.len() / 4 + 1
         };
 
-        // Save A3 and write address to it
-        // TODO: mark in restore context
-        let old_a3 = self.read_register(arch::A3)?;
+        // Write address to A3
         self.write_register(arch::A3, address as u32)?;
 
         // Read from address in A3
@@ -163,10 +206,6 @@ impl MemoryInterface for XtensaCommunicationInterface {
         let word = self.xdm.read_ddr()?;
         dst[4 * (read_words - 1)..][..remaining_bytes]
             .copy_from_slice(&word.to_le_bytes()[..remaining_bytes]);
-
-        // Restore A3
-        // TODO: only do this when restoring program context
-        self.write_register(arch::A3, old_a3)?;
 
         Ok(())
     }

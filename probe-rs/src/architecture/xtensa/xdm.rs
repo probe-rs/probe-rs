@@ -381,8 +381,6 @@ impl Xdm {
     }
 
     pub(super) fn leave_ocd_mode(&mut self) -> Result<(), XtensaError> {
-        self.resume()?;
-
         self.write_nexus_register(DebugControlClear({
             let mut control = DebugControlBits(0);
 
