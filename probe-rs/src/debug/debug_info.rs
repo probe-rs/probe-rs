@@ -141,138 +141,105 @@ impl DebugInfo {
 
     /// Try get the [`SourceLocation`] for a given address.
     pub fn get_source_location(&self, address: u64) -> Option<SourceLocation> {
-        let mut units = self.dwarf.units();
+        for unit_info in &self.unit_infos {
+            let unit = &unit_info.unit;
 
-        while let Ok(Some(header)) = units.next() {
-            let unit = match self.dwarf.unit(header) {
-                Ok(unit) => unit,
-                Err(_) => continue,
-            };
-
-            match self.dwarf.unit_ranges(&unit) {
-                Ok(mut ranges) => {
-                    while let Ok(Some(range)) = ranges.next() {
-                        if range.begin <= address && address < range.end {
-                            // Get the function name.
-
-                            let ilnp = match unit.line_program.as_ref() {
-                                Some(ilnp) => ilnp,
-                                None => return None,
-                            };
-
-                            match ilnp.clone().sequences() {
-                                Ok((program, sequences)) => {
-                                    // Normalize the address.
-                                    let mut target_seq = None;
-
-                                    for seq in sequences {
-                                        if seq.start <= address && address < seq.end {
-                                            target_seq = Some(seq);
-                                            break;
-                                        }
-                                    }
-
-                                    if let Some(target_seq) = target_seq.as_ref() {
-                                        let mut previous_row: Option<gimli::LineRow> = None;
-
-                                        let mut rows = program.resume_from(target_seq);
-
-                                        while let Ok(Some((header, row))) = rows.next_row() {
-                                            match row.address().cmp(&address) {
-                                                Ordering::Greater => {
-                                                    // The address is after the current row, so we use the previous row data.
-                                                    //
-                                                    // (If we don't do this, you get the artificial effect where the debugger
-                                                    // steps to the top of the file when it is steppping out of a function.)
-                                                    if let Some(previous_row) = previous_row {
-                                                        if let Some(file_entry) =
-                                                            previous_row.file(header)
-                                                        {
-                                                            if let Some((file, directory)) = self
-                                                                .find_file_and_directory(
-                                                                    &unit, header, file_entry,
-                                                                )
-                                                            {
-                                                                tracing::debug!(
-                                                                    "{} - {:?}",
-                                                                    address,
-                                                                    previous_row.isa()
-                                                                );
-                                                                return Some(SourceLocation {
-                                                                    line: previous_row
-                                                                        .line()
-                                                                        .map(NonZeroU64::get),
-                                                                    column: Some(
-                                                                        previous_row
-                                                                            .column()
-                                                                            .into(),
-                                                                    ),
-                                                                    file,
-                                                                    directory,
-                                                                    low_pc: Some(
-                                                                        target_seq.start as u32,
-                                                                    ),
-                                                                    high_pc: Some(
-                                                                        target_seq.end as u32,
-                                                                    ),
-                                                                });
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                                Ordering::Less => {}
-                                                Ordering::Equal => {
-                                                    if let Some(file_entry) = row.file(header) {
-                                                        if let Some((file, directory)) = self
-                                                            .find_file_and_directory(
-                                                                &unit, header, file_entry,
-                                                            )
-                                                        {
-                                                            tracing::debug!(
-                                                                "{} - {:?}",
-                                                                address,
-                                                                row.isa()
-                                                            );
-
-                                                            return Some(SourceLocation {
-                                                                line: row
-                                                                    .line()
-                                                                    .map(NonZeroU64::get),
-                                                                column: Some(row.column().into()),
-                                                                file,
-                                                                directory,
-                                                                low_pc: Some(
-                                                                    target_seq.start as u32,
-                                                                ),
-                                                                high_pc: Some(
-                                                                    target_seq.end as u32,
-                                                                ),
-                                                            });
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            previous_row = Some(*row);
-                                        }
-                                    }
-                                }
-                                Err(error) => {
-                                    tracing::warn!(
-                                        "No valid source code ranges found for address {}: {:?}",
-                                        address,
-                                        error
-                                    );
-                                }
-                            }
-                        }
-                    }
-                }
+            let mut ranges = match self.dwarf.unit_ranges(&unit) {
+                Ok(ranges) => ranges,
                 Err(error) => {
                     tracing::warn!(
                         "No valid source code ranges found for address {}: {:?}",
                         address,
                         error
                     );
+                    continue;
+                }
+            };
+
+            while let Ok(Some(range)) = ranges.next() {
+                if !(range.begin <= address && address < range.end) {
+                    continue;
+                }
+                // Get the function name.
+
+                let ilnp = unit.line_program.as_ref()?.clone();
+
+                let (program, sequences) = match ilnp.sequences() {
+                    Ok(value) => value,
+                    Err(error) => {
+                        tracing::warn!(
+                            "No valid source code ranges found for address {}: {:?}",
+                            address,
+                            error
+                        );
+                        continue;
+                    }
+                };
+
+                // Normalize the address.
+                let mut target_seq = None;
+
+                for seq in sequences {
+                    if seq.start <= address && address < seq.end {
+                        target_seq = Some(seq);
+                        break;
+                    }
+                }
+
+                let Some(target_seq) = target_seq.as_ref() else {
+                    continue;
+                };
+
+                let mut previous_row: Option<gimli::LineRow> = None;
+
+                let mut rows = program.resume_from(target_seq);
+
+                while let Ok(Some((header, row))) = rows.next_row() {
+                    match row.address().cmp(&address) {
+                        Ordering::Greater => {
+                            // The address is after the current row, so we use the previous row data.
+                            //
+                            // (If we don't do this, you get the artificial effect where the debugger
+                            // steps to the top of the file when it is steppping out of a function.)
+                            if let Some(previous_row) = previous_row {
+                                if let Some(file_entry) = previous_row.file(header) {
+                                    if let Some((file, directory)) =
+                                        self.find_file_and_directory(&unit, header, file_entry)
+                                    {
+                                        tracing::debug!("{} - {:?}", address, previous_row.isa());
+                                        return Some(SourceLocation {
+                                            line: previous_row.line().map(NonZeroU64::get),
+                                            column: Some(previous_row.column().into()),
+                                            file,
+                                            directory,
+                                            low_pc: Some(target_seq.start as u32),
+                                            high_pc: Some(target_seq.end as u32),
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                        Ordering::Less => {}
+                        Ordering::Equal => {
+                            if let Some(file_entry) = row.file(header) {
+                                if let Some((file, directory)) =
+                                    self.find_file_and_directory(&unit, header, file_entry)
+                                {
+                                    tracing::debug!("{} - {:?}", address, row.isa());
+
+                                    return Some(SourceLocation {
+                                        line: row.line().map(NonZeroU64::get),
+                                        column: Some(row.column().into()),
+                                        file,
+                                        directory,
+                                        low_pc: Some(target_seq.start as u32),
+                                        high_pc: Some(target_seq.end as u32),
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    previous_row = Some(*row);
                 }
             }
         }
