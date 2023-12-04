@@ -306,6 +306,28 @@ impl VariableCache {
         Ok(())
     }
 
+    pub fn add_tree(&mut self, parent: ObjectRef, tree: VariableCache) -> Result<(), Error> {
+        assert!(
+            self.variable_hash_map.contains_key(&parent),
+            "Missing parent key: {:?} in cache.",
+            parent
+        );
+
+        let root_variable = tree.root_variable_key;
+
+        // Copy all values into this cache
+        self.variable_hash_map
+            .extend(tree.variable_hash_map.into_iter());
+
+        // Add parent child relationship
+        self.variable_hash_map
+            .get_mut(&root_variable)
+            .expect("Variable was inserted above")
+            .parent_key = parent;
+
+        Ok(())
+    }
+
     /// Retrieve a clone of a specific `Variable`, using the `variable_key`.
     pub fn get_variable_by_key(&self, variable_key: ObjectRef) -> Option<Variable> {
         self.variable_hash_map.get(&variable_key).cloned()
