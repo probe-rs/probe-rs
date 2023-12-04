@@ -105,6 +105,8 @@ impl XtensaCommunicationInterface {
         self.save_register(Register::Cpu(CpuRegister::scratch()))?;
         self.save_register(Register::Special(register))?;
 
+        tracing::debug!("Writing special register: {:?}", register);
+
         self.xdm.write_ddr(value)?;
 
         // DDR -> scratch
@@ -122,6 +124,8 @@ impl XtensaCommunicationInterface {
 
     fn write_cpu_register(&mut self, register: CpuRegister, value: u32) -> Result<(), XtensaError> {
         self.save_register(Register::Cpu(register))?;
+
+        tracing::debug!("Writing register: {:?}", register);
 
         self.xdm.write_ddr(value)?;
         self.xdm
@@ -200,6 +204,7 @@ impl XtensaCommunicationInterface {
 
     fn save_register(&mut self, register: Register) -> Result<(), XtensaError> {
         if !self.is_register_saved(register) {
+            tracing::debug!("Saving register: {:?}", register);
             let value = self.read_register(register)?;
             self.state.saved_registers.push((register, value));
         }
@@ -208,6 +213,8 @@ impl XtensaCommunicationInterface {
     }
 
     fn restore_registers(&mut self) -> Result<(), XtensaError> {
+        tracing::debug!("Restoring registers");
+
         // Clone the list of saved registers so we can iterate over it, but code may still save
         // new registers. We can't take it otherwise the restore loop would unnecessarily save
         // registers.
