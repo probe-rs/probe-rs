@@ -132,11 +132,7 @@ pub struct Xdm {
 
 impl Xdm {
     pub fn new(mut probe: Box<dyn JTAGAccess>) -> Result<Self, (Box<dyn JTAGAccess>, XtensaError)> {
-        // TODO calculate idle cycles? see esp32_queue_tdi_idle() in openocd
-        let idle_cycles = 100;
-
-        // Setup the number of idle cycles between JTAG accesses
-        probe.set_idle_cycles(idle_cycles);
+        // TODO implement openocd's esp32_queue_tdi_idle() to prevent potentially damaging flash ICs
 
         // fixed to 5 bits for now
         probe.set_ir_len(5);
@@ -145,7 +141,7 @@ impl Xdm {
             probe,
             queued_commands: Vec::new(),
             device_id: 0,
-            idle_cycles,
+            idle_cycles: 0,
         };
 
         if let Err(e) = x.init() {
