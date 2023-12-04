@@ -4,7 +4,7 @@
 #![allow(missing_docs)]
 
 use crate::{
-    architecture::xtensa::arch::{self, instruction, CpuRegister, Register, SpecialRegister},
+    architecture::xtensa::arch::{instruction, CpuRegister, Register, SpecialRegister},
     probe::JTAGAccess,
     DebugProbeError, MemoryInterface,
 };
@@ -90,23 +90,47 @@ impl XtensaCommunicationInterface {
         Ok(register)
     }
 
-    fn write_register_impl(
+    fn read_special_register(&mut self, register: SpecialRegister) -> Result<u32, XtensaError> {
+        self.save_register(Register::Cpu(CpuRegister::scratch()))?;
+
+        self.xdm
+            .execute_instruction(instruction::rsr(register, CpuRegister::scratch()))?;
+        let register = self.xdm.read_ddr()?;
+
+        Ok(register)
+    }
+
+    fn write_special_register(
         &mut self,
-        register: CpuRegister,
+        register: SpecialRegister,
         value: u32,
     ) -> Result<(), XtensaError> {
+        self.save_register(Register::Cpu(CpuRegister::scratch()))?;
+        self.save_register(Register::Special(register))?;
+
+        self.xdm.write_ddr(value)?;
+
+        // DDR -> scratch
+        self.xdm.execute_instruction(instruction::rsr(
+            SpecialRegister::Ddr,
+            CpuRegister::scratch(),
+        ))?;
+
+        // scratch -> target register
+        self.xdm
+            .execute_instruction(instruction::wsr(register, CpuRegister::scratch()))?;
+
+        Ok(())
+    }
+
+    fn write_cpu_register(&mut self, register: CpuRegister, value: u32) -> Result<(), XtensaError> {
+        self.save_register(Register::Cpu(register))?;
+
         self.xdm.write_ddr(value)?;
         self.xdm
             .execute_instruction(instruction::rsr(SpecialRegister::Ddr, register))?;
 
         Ok(())
-    }
-
-    // TODO make sure only A* registers are used as `register`
-    fn write_cpu_register(&mut self, register: CpuRegister, value: u32) -> Result<(), XtensaError> {
-        self.save_register(Register::Cpu(register))?;
-
-        self.write_register_impl(register, value)
     }
 
     fn debug_execution_error(&mut self, status: XdmError) -> Result<(), XtensaError> {
@@ -118,18 +142,13 @@ impl XtensaCommunicationInterface {
 
             // dump EXCCAUSE, EXCVADDR and DEBUGCAUSE
             // we must not use `self.read_register` and `self.write_register` here
-            // TODO we need to make sure our scratch register (A3) is saved properly
 
             for (name, reg) in [
                 ("EXCCAUSE", SpecialRegister::ExcCause),
                 ("EXCVADDR", SpecialRegister::ExcVaddr),
                 ("DEBUGCAUSE", SpecialRegister::DebugCause),
             ] {
-                self.xdm
-                    .execute_instruction(instruction::rsr(reg, CpuRegister::A3))?;
-                self.xdm
-                    .execute_instruction(instruction::wsr(SpecialRegister::Ddr, CpuRegister::A3))?;
-                let register = self.xdm.read_ddr()?;
+                let register = self.read_register(Register::Special(reg))?;
 
                 tracing::info!("{}: {:08x}", name, register);
             }
@@ -155,6 +174,10 @@ impl XtensaCommunicationInterface {
     }
 
     fn is_register_saved(&mut self, register: Register) -> bool {
+        if register == Register::Special(SpecialRegister::Ddr) {
+            // Avoid saving DDR
+            return true;
+        }
         self.state
             .saved_registers
             .iter()
@@ -164,7 +187,7 @@ impl XtensaCommunicationInterface {
     fn read_register(&mut self, register: Register) -> Result<u32, XtensaError> {
         match register {
             Register::Cpu(register) => self.read_cpu_register(register),
-            Register::Special(register) => todo!(),
+            Register::Special(register) => self.read_special_register(register),
         }
     }
 
@@ -178,12 +201,45 @@ impl XtensaCommunicationInterface {
     }
 
     fn restore_registers(&mut self) -> Result<(), XtensaError> {
-        for (register, value) in std::mem::take(&mut self.state.saved_registers) {
+        // Clone the list of saved registers so we can iterate over it, but code may still save
+        // new registers. We can't take it otherwise the restore loop would unnecessarily save
+        // registers.
+        // Currently, restoring registers may only use the scratch register which is already saved
+        // if we access special registers. This means the register list won't actually change in the
+        // next loop.
+        let dirty_regs = self.state.saved_registers.clone();
+        let mut restore_scratch = None;
+
+        for (register, value) in dirty_regs.iter().copied() {
             match register {
-                Register::Cpu(register) => self.write_register_impl(register, value)?,
-                Register::Special(register) => todo!(),
+                Register::Cpu(register) if register == CpuRegister::scratch() => {
+                    // We need to handle the scratch register (A3) separately as restoring a special
+                    // register will overwrite it.
+                    restore_scratch = Some(value);
+                }
+                Register::Cpu(register) => self.write_cpu_register(register, value)?,
+                Register::Special(register) => self.write_special_register(register, value)?,
             }
         }
+
+        if self.state.saved_registers.len() != dirty_regs.len() {
+            // The scratch register wasn't saved before, but has to be saved now. This case should
+            // not currently be reachable.
+            restore_scratch =
+                self.state
+                    .saved_registers
+                    .iter()
+                    .copied()
+                    .find_map(|(reg, value)| {
+                        (reg == Register::Cpu(CpuRegister::scratch())).then_some(value)
+                    });
+        }
+
+        if let Some(value) = restore_scratch {
+            self.write_cpu_register(CpuRegister::scratch(), value)?;
+        }
+
+        self.state.saved_registers.clear();
 
         Ok(())
     }
@@ -201,11 +257,11 @@ impl MemoryInterface for XtensaCommunicationInterface {
             dst.len() / 4 + 1
         };
 
-        // Write address to A3
-        self.write_cpu_register(CpuRegister::A3, address as u32)?;
+        // Write address to the scratch register
+        self.write_cpu_register(CpuRegister::scratch(), address as u32)?;
 
-        // Read from address in A3
-        self.execute_instruction(instruction::lddr32_p(CpuRegister::A3))?;
+        // Read from address in the scratch register
+        self.execute_instruction(instruction::lddr32_p(CpuRegister::scratch()))?;
 
         for i in 0..read_words - 1 {
             let word = self.read_ddr_and_execute()?.to_le_bytes();

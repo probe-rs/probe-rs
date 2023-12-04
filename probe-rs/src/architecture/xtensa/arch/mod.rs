@@ -12,6 +12,10 @@ pub enum CpuRegister {
 }
 
 impl CpuRegister {
+    pub const fn scratch() -> Self {
+        Self::A3
+    }
+
     pub const fn address(self) -> u8 {
         self as u8
     }
