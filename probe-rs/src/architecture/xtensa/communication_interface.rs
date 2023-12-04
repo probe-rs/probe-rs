@@ -222,23 +222,40 @@ impl MemoryInterface for XtensaCommunicationInterface {
     }
 
     fn read_word_64(&mut self, address: u64) -> anyhow::Result<u64, crate::Error> {
-        todo!()
+        let mut out = [0; 8];
+        self.read(address, &mut out)?;
+
+        Ok(u64::from_le_bytes(out))
     }
 
     fn read_word_8(&mut self, address: u64) -> anyhow::Result<u8, crate::Error> {
-        todo!()
+        let mut out = 0;
+        self.read(address, std::slice::from_mut(&mut out))?;
+        Ok(out)
     }
 
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> anyhow::Result<(), crate::Error> {
-        todo!()
+        let data_8 = unsafe {
+            std::slice::from_raw_parts_mut(
+                data.as_mut_ptr() as *mut u8,
+                data.len() * std::mem::size_of::<u64>(),
+            )
+        };
+        self.read_8(address, data_8)
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> anyhow::Result<(), crate::Error> {
-        todo!()
+        let data_8 = unsafe {
+            std::slice::from_raw_parts_mut(
+                data.as_mut_ptr() as *mut u8,
+                data.len() * std::mem::size_of::<u32>(),
+            )
+        };
+        self.read_8(address, data_8)
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> anyhow::Result<(), crate::Error> {
-        todo!()
+        self.read(address, data)
     }
 
     fn write_word_64(&mut self, address: u64, data: u64) -> anyhow::Result<(), crate::Error> {
