@@ -220,7 +220,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                             .to_string(),
                     ));
                     register_has_restricted_read = true;
-                    svd_cache.update_variable(&mut register_variable)?;
+                    svd_cache.update_variable(&register_variable)?;
                 }
                 // TODO: Extend the Variable definition, so that we can resolve the EnumeratedValues for fields.
                 svd_cache.add_variable(register_variable.variable_key(), &mut field_variable)?;

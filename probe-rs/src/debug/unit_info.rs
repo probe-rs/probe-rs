@@ -483,7 +483,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 }
             }
         }
-        cache.update_variable_and_value( &mut child_variable, memory)?;
+        cache.update_variable_and_value(&mut child_variable, memory)?;
 
         Ok(child_variable)
     }
@@ -542,7 +542,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                         match namespace_child_node.entry().tag() {
                             gimli::DW_TAG_variable => {
                                 // We only want the TOP level variables of the namespace (statics).
-                                let static_child_variable = cache.create_variable(namespace_variable.variable_key, 
+                                let static_child_variable = cache.create_variable(namespace_variable.variable_key,
                                     self.unit.header.offset().as_debug_info_offset(),
                                     Some(namespace_child_node.entry().offset()))?;
                                 self.process_tree_node_attributes(&mut namespace_child_node, &mut namespace_variable, static_child_variable, memory, stack_frame_registers, frame_base, cache)?;
@@ -584,7 +584,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 gimli::DW_TAG_member           | // Members of structured types.
                 gimli::DW_TAG_enumerator         // Possible values for enumerators, used by extract_type() when processing DW_TAG_enumeration_type.
                 => {
-                    let mut child_variable = cache.create_variable(parent_variable.variable_key, 
+                    let mut child_variable = cache.create_variable(parent_variable.variable_key,
                     self.unit.header.offset().as_debug_info_offset(),
                     Some(child_node.entry().offset()),
                     )?;
@@ -831,11 +831,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         };
 
         if !child_variable.is_valid() {
-            cache
-                .update_variable_and_value( &mut child_variable, memory)?;
+            cache.update_variable_and_value(&mut child_variable, memory)?;
 
             return Ok(child_variable);
-
         }
 
         match node.entry().tag() {
@@ -909,20 +907,18 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         }
                                     }
                                     other_attribute_value => {
-                                        child_variable.set_value(VariableValue::Error(
-                                            format!(
-                                        "Unimplemented: Attribute Value for DW_AT_type {:.100}",
-                                        format!("{other_attribute_value:?}")
-                                    ),
-                                        ));
+                                        child_variable.set_value(VariableValue::Error(format!(
+                                            "Unimplemented: Attribute Value for DW_AT_type {:.100}",
+                                            format!("{other_attribute_value:?}")
+                                        )));
                                     }
                                 }
                             }
                             None => {
                                 child_variable.set_value(VariableValue::Error(format!(
-                                "Error: No Attribute Value for DW_AT_type for variable {:?}",
-                                child_variable.name
-                            )));
+                                    "Error: No Attribute Value for DW_AT_type for variable {:?}",
+                                    child_variable.name
+                                )));
                             }
                         }
                     }
@@ -959,8 +955,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             || name.starts_with("Err")
                         {
                             let temp_node_type = child_variable.variable_node_type;
-                            child_variable.variable_node_type =
-                                VariableNodeType::RecurseToBaseType;
+                            child_variable.variable_node_type = VariableNodeType::RecurseToBaseType;
                             child_variable = self.process_tree(
                                 node,
                                 child_variable,
@@ -1060,11 +1055,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         // First get the DW_TAG_subrange child of this node. It has a DW_AT_type that points to DW_TAG_base_type:__ARRAY_SIZE_TYPE__.
                                         let mut subrange_variable = cache.create_variable(
                                             child_variable.variable_key,
-                                                self.unit
-                                                    .header
-                                                    .offset()
-                                                    .as_debug_info_offset(),
-                                                Some(node.entry().offset()),
+                                            self.unit.header.offset().as_debug_info_offset(),
+                                            Some(node.entry().offset()),
                                         )?;
                                         subrange_variable = self.process_tree(
                                             node,
@@ -1086,9 +1078,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                                 child_variable.range_lower_bound, child_variable.range_upper_bound)
                                             ));
                                         }
-                                        cache.remove_cache_entry(
-                                            subrange_variable.variable_key,
-                                        )?;
+                                        cache.remove_cache_entry(subrange_variable.variable_key)?;
 
                                         if child_variable.range_upper_bound
                                             - child_variable.range_lower_bound
@@ -1139,9 +1129,9 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                             }
                             None => {
                                 child_variable.set_value(VariableValue::Error(format!(
-                                "Error: No Attribute Value for DW_AT_type for variable {:?}",
-                                child_variable.name
-                            )));
+                                    "Error: No Attribute Value for DW_AT_type for variable {:?}",
+                                    child_variable.name
+                                )));
                             }
                         }
                     }
@@ -1197,12 +1187,10 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                                         .attr(gimli::DW_AT_name)
                                     {
                                         Ok(optional_name_attr) => match optional_name_attr {
-                                            Some(name_attr) => {
-                                                VariableType::Other(extract_name(
-                                                    self.debug_info,
-                                                    name_attr.value(),
-                                                ))
-                                            }
+                                            Some(name_attr) => VariableType::Other(extract_name(
+                                                self.debug_info,
+                                                name_attr.value(),
+                                            )),
                                             None => VariableType::Unknown,
                                         },
                                         Err(error) => VariableType::Other(format!(
@@ -1282,8 +1270,8 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         };
         let mut array_member_variable = cache.create_variable(
             child_variable.variable_key,
-                self.unit.header.offset().as_debug_info_offset(),
-                Some(unit_ref),
+            self.unit.header.offset().as_debug_info_offset(),
+            Some(unit_ref),
         )?;
         array_member_variable.member_index = Some(array_member_index);
         // Override the calculated member name with a more 'array-like' name.
