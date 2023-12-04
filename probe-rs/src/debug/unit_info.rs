@@ -7,9 +7,6 @@ use crate::{core::RegisterValue, Error, MemoryInterface};
 use gimli::{AttributeValue::Language, EvaluationResult, Location, UnitOffset};
 use num_traits::Zero;
 
-pub(crate) type UnitIter =
-    gimli::DebugInfoUnitHeadersIter<gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>>;
-
 /// The result of `UnitInfo::evaluate_expression()` can be the value of a variable, or a memory location.
 pub(crate) enum ExpressionResult {
     Value(VariableValue),
@@ -22,6 +19,10 @@ pub(crate) struct UnitInfo {
 }
 
 impl UnitInfo {
+    pub fn new(unit: gimli::Unit<GimliReader, usize>) -> Self {
+        Self { unit }
+    }
+
     /// Retrieve the value of the `DW_AT_language` attribute of the compilation unit.
     ///
     /// In the unlikely event that we are unable to retrieve the language, we assume Rust.

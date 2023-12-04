@@ -1,7 +1,7 @@
 use super::ObjectRef;
 use super::{
-    function_die::FunctionDie, get_object_reference, unit_info::UnitInfo, unit_info::UnitIter,
-    variable::*, DebugError, DebugRegisters, SourceLocation, StackFrame, VariableCache,
+    function_die::FunctionDie, get_object_reference, unit_info::UnitInfo, variable::*, DebugError,
+    DebugRegisters, SourceLocation, StackFrame, VariableCache,
 };
 use crate::core::UnwindRule;
 use crate::{
@@ -47,6 +47,8 @@ pub struct DebugInfo {
     pub(crate) locations_section: gimli::LocationLists<DwarfReader>,
     pub(crate) address_section: gimli::DebugAddr<DwarfReader>,
     pub(crate) debug_line_section: gimli::DebugLine<DwarfReader>,
+
+    pub(crate) unit_infos: Vec<UnitInfo>,
 }
 
 impl DebugInfo {
@@ -85,12 +87,23 @@ impl DebugInfo {
         let locations_section = gimli::LocationLists::new(debug_loc, debug_loc_lists);
         let debug_line_section = gimli::DebugLine::load(load_section)?;
 
+        let mut unit_infos = Vec::new();
+
+        let mut iter = dwarf_cow.units();
+
+        while let Ok(Some(header)) = iter.next() {
+            if let Ok(unit) = dwarf_cow.unit(header) {
+                unit_infos.push(UnitInfo::new(unit));
+            };
+        }
+
         Ok(DebugInfo {
             dwarf: dwarf_cow,
             frame_section,
             locations_section,
             address_section,
             debug_line_section,
+            unit_infos,
         })
     }
 
@@ -109,9 +122,7 @@ impl DebugInfo {
         address: u64,
         find_inlined: bool,
     ) -> Result<Option<String>, DebugError> {
-        let mut units = self.dwarf.units();
-
-        while let Some(unit_info) = self.get_next_unit_info(&mut units) {
+        for unit_info in &self.unit_infos {
             let mut functions = unit_info.get_function_dies(self, address, find_inlined)?;
 
             // Use the last functions from the list, this is the function which most closely
@@ -264,19 +275,6 @@ impl DebugInfo {
                     );
                 }
             }
-        }
-        None
-    }
-
-    pub(crate) fn get_units(&self) -> UnitIter {
-        self.dwarf.units()
-    }
-
-    pub(crate) fn get_next_unit_info(&self, units: &mut UnitIter) -> Option<UnitInfo> {
-        while let Ok(Some(header)) = units.next() {
-            if let Ok(unit) = self.dwarf.unit(header) {
-                return Some(UnitInfo { unit });
-            };
         }
         None
     }
@@ -457,8 +455,6 @@ impl DebugInfo {
         address: u64,
         unwind_registers: &registers::DebugRegisters,
     ) -> Result<Vec<StackFrame>, DebugError> {
-        let mut units = self.get_units();
-
         // When reporting the address, we format it as a hex string, with the width matching
         // the configured size of the datatype used in the `RegisterValue` address.
         let unknown_function = format!(
@@ -469,7 +465,7 @@ impl DebugInfo {
 
         let mut frames = Vec::new();
 
-        while let Some(unit_info) = self.get_next_unit_info(&mut units) {
+        for unit_info in &self.unit_infos {
             let functions = unit_info.get_function_dies(self, address, true)?;
 
             if functions.is_empty() {
@@ -992,9 +988,7 @@ impl DebugInfo {
                 .unwrap_or_else(|| "-".to_owned())
         );
 
-        let mut unit_iter = self.dwarf.units();
-
-        while let Some(unit_header) = self.get_next_unit_info(&mut unit_iter) {
+        for unit_header in &self.unit_infos {
             let unit = &unit_header.unit;
 
             if let Some(ref line_program) = unit.line_program {

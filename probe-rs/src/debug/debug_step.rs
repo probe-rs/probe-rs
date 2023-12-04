@@ -483,9 +483,8 @@ fn step_to_address(
 fn get_compile_unit_info(
     debug_info: &DebugInfo,
     program_counter: u64,
-) -> Result<super::unit_info::UnitInfo, DebugError> {
-    let mut units = debug_info.get_units();
-    while let Some(header) = debug_info.get_next_unit_info(&mut units) {
+) -> Result<&super::unit_info::UnitInfo, DebugError> {
+    for header in &debug_info.unit_infos {
         match debug_info.dwarf.unit_ranges(&header.unit) {
             Ok(mut ranges) => {
                 while let Ok(Some(range)) = ranges.next() {
