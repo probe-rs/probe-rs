@@ -169,7 +169,10 @@ impl DebugInfo {
                                         while let Ok(Some((header, row))) = rows.next_row() {
                                             match row.address().cmp(&address) {
                                                 Ordering::Greater => {
-                                                    // The address is after the current row, so we use the previous row data. (If we don't do this, you get the artificial effect where the debugger steps to the top of the file when it is steppping out of a function.)
+                                                    // The address is after the current row, so we use the previous row data.
+                                                    //
+                                                    // (If we don't do this, you get the artificial effect where the debugger
+                                                    // steps to the top of the file when it is steppping out of a function.)
                                                     if let Some(previous_row) = previous_row {
                                                         if let Some(file_entry) =
                                                             previous_row.file(header)
@@ -337,135 +340,108 @@ impl DebugInfo {
             return Ok(());
         }
 
+        // Only attempt this part if we have not yet resolved the referenced children.
+        if cache.has_children(parent_variable)? {
+            return Ok(());
+        }
+
+        let Some(header_offset) = parent_variable.unit_header_offset else {
+            return Ok(());
+        };
+
+        let unit_header = self.dwarf.debug_info.header_from_offset(header_offset)?;
+        let unit_info = UnitInfo {
+            debug_info: self,
+            unit: gimli::Unit::new(&self.dwarf, unit_header)?,
+        };
+
         match parent_variable.variable_node_type {
             VariableNodeType::ReferenceOffset(reference_offset) => {
-                // Only attempt this part if we have not yet resolved the referenced children.
-                if !cache.has_children(parent_variable)? {
-                    if let Some(header_offset) = parent_variable.unit_header_offset {
-                        let unit_header =
-                            self.dwarf.debug_info.header_from_offset(header_offset)?;
-                        let unit_info = UnitInfo {
-                            debug_info: self,
-                            unit: gimli::Unit::new(&self.dwarf, unit_header)?,
-                        };
-                        // Reference to a type, or an node.entry() to another type or a type modifier which will point to another type.
-                        let mut type_tree = unit_info
-                            .unit
-                            .header
-                            .entries_tree(&unit_info.unit.abbreviations, Some(reference_offset))?;
-                        let referenced_node = type_tree.root()?;
-                        let mut referenced_variable = cache.create_variable(
-                            parent_variable.variable_key,
-                            unit_info.unit.header.offset().as_debug_info_offset(),
-                            Some(referenced_node.entry().offset()),
-                        )?;
+                // Reference to a type, or an node.entry() to another type or a type modifier which will point to another type.
+                let mut type_tree = unit_info
+                    .unit
+                    .header
+                    .entries_tree(&unit_info.unit.abbreviations, Some(reference_offset))?;
+                let referenced_node = type_tree.root()?;
+                let mut referenced_variable = cache.create_variable(
+                    parent_variable.variable_key,
+                    unit_info.unit.header.offset().as_debug_info_offset(),
+                    Some(referenced_node.entry().offset()),
+                )?;
 
-                        match &parent_variable.name {
-                                VariableName::Named(name) => {
-                                    if name.starts_with("Some") {
-                                        referenced_variable.name =
-                                            VariableName::Named(name.replacen('&', "*", 1));
-                                    } else {
-                                        referenced_variable.name =
-                                            VariableName::Named(format!("*{name}"));
-                                    }
-                                }
-                                other => referenced_variable.name = VariableName::Named(format!("Error: Unable to generate name, parent variable does not have a name but is special variable {other:?}")),
-                            }
+                referenced_variable.name = match &parent_variable.name {
+                    VariableName::Named(name) if name.starts_with("Some ") => VariableName::Named(name.replacen('&', "*", 1)) ,
+                    VariableName::Named(name) => VariableName::Named(format!("*{name}")),
+                    other => VariableName::Named(format!("Error: Unable to generate name, parent variable does not have a name but is special variable {other:?}")),
+                };
 
-                        referenced_variable = unit_info.extract_type(
-                            referenced_node,
-                            parent_variable,
-                            referenced_variable,
-                            memory,
-                            stack_frame_registers,
-                            frame_base,
-                            cache,
-                        )?;
+                referenced_variable = unit_info.extract_type(
+                    referenced_node,
+                    parent_variable,
+                    referenced_variable,
+                    memory,
+                    stack_frame_registers,
+                    frame_base,
+                    cache,
+                )?;
 
-                        if referenced_variable.type_name == VariableType::Base("()".to_owned()) {
-                            // Only use this, if it is NOT a unit datatype.
-                            cache.remove_cache_entry(referenced_variable.variable_key)?;
-                        }
-                    }
+                if referenced_variable.type_name == VariableType::Base("()".to_owned()) {
+                    // Only use this, if it is NOT a unit datatype.
+                    cache.remove_cache_entry(referenced_variable.variable_key)?;
                 }
             }
             VariableNodeType::TypeOffset(type_offset) => {
-                // Only attempt this if the children are not already resolved.
-                if !cache.has_children(parent_variable)? {
-                    if let Some(header_offset) = parent_variable.unit_header_offset {
-                        let unit_header =
-                            self.dwarf.debug_info.header_from_offset(header_offset)?;
-                        let unit_info = UnitInfo {
-                            debug_info: self,
-                            unit: gimli::Unit::new(&self.dwarf, unit_header)?,
-                        };
-                        // Find the parent node
-                        let mut type_tree = unit_info
-                            .unit
-                            .header
-                            .entries_tree(&unit_info.unit.abbreviations, Some(type_offset))?;
-                        let parent_node = type_tree.root()?;
+                // Find the parent node
+                let mut type_tree = unit_info
+                    .unit
+                    .header
+                    .entries_tree(&unit_info.unit.abbreviations, Some(type_offset))?;
+                let parent_node = type_tree.root()?;
 
-                        // For process_tree we need to create a temporary parent that will later be eliminated with VariableCache::adopt_grand_children
-                        // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
-                        let mut temporary_variable = parent_variable.clone();
-                        temporary_variable.variable_key = ObjectRef::Invalid;
-                        temporary_variable.parent_key = parent_variable.variable_key;
-                        cache
-                            .add_variable(parent_variable.variable_key, &mut temporary_variable)?;
+                // For process_tree we need to create a temporary parent that will later be eliminated with VariableCache::adopt_grand_children
+                // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
+                let mut temporary_variable = parent_variable.clone();
+                temporary_variable.variable_key = ObjectRef::Invalid;
+                temporary_variable.parent_key = parent_variable.variable_key;
+                cache.add_variable(parent_variable.variable_key, &mut temporary_variable)?;
 
-                        temporary_variable = unit_info.process_tree(
-                            parent_node,
-                            temporary_variable,
-                            memory,
-                            stack_frame_registers,
-                            frame_base,
-                            cache,
-                        )?;
+                temporary_variable = unit_info.process_tree(
+                    parent_node,
+                    temporary_variable,
+                    memory,
+                    stack_frame_registers,
+                    frame_base,
+                    cache,
+                )?;
 
-                        cache.adopt_grand_children(parent_variable, &temporary_variable)?;
-                    }
-                }
+                cache.adopt_grand_children(parent_variable, &temporary_variable)?;
             }
             VariableNodeType::DirectLookup => {
-                // Only attempt this if the children are not already resolved.
-                if !cache.has_children(parent_variable)? {
-                    if let Some(header_offset) = parent_variable.unit_header_offset {
-                        let unit_header =
-                            self.dwarf.debug_info.header_from_offset(header_offset)?;
-                        let unit_info = UnitInfo {
-                            debug_info: self,
-                            unit: gimli::Unit::new(&self.dwarf, unit_header)?,
-                        };
-                        // Find the parent node
-                        let mut type_tree = unit_info.unit.header.entries_tree(
-                            &unit_info.unit.abbreviations,
-                            parent_variable.variable_unit_offset,
-                        )?;
+                // Find the parent node
+                let mut type_tree = unit_info.unit.header.entries_tree(
+                    &unit_info.unit.abbreviations,
+                    parent_variable.variable_unit_offset,
+                )?;
 
-                        // For process_tree we need to create a temporary parent that will later be eliminated with VariableCache::adopt_grand_children
-                        // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
-                        let mut temporary_variable = parent_variable.clone();
-                        temporary_variable.variable_key = ObjectRef::Invalid;
-                        temporary_variable.parent_key = parent_variable.variable_key;
-                        cache
-                            .add_variable(parent_variable.variable_key, &mut temporary_variable)?;
+                // For process_tree we need to create a temporary parent that will later be eliminated with VariableCache::adopt_grand_children
+                // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
+                let mut temporary_variable = parent_variable.clone();
+                temporary_variable.variable_key = ObjectRef::Invalid;
+                temporary_variable.parent_key = parent_variable.variable_key;
+                cache.add_variable(parent_variable.variable_key, &mut temporary_variable)?;
 
-                        let parent_node = type_tree.root()?;
+                let parent_node = type_tree.root()?;
 
-                        temporary_variable = unit_info.process_tree(
-                            parent_node,
-                            temporary_variable,
-                            memory,
-                            stack_frame_registers,
-                            frame_base,
-                            cache,
-                        )?;
+                temporary_variable = unit_info.process_tree(
+                    parent_node,
+                    temporary_variable,
+                    memory,
+                    stack_frame_registers,
+                    frame_base,
+                    cache,
+                )?;
 
-                        cache.adopt_grand_children(parent_variable, &temporary_variable)?;
-                    }
-                }
+                cache.adopt_grand_children(parent_variable, &temporary_variable)?;
             }
             _ => {
                 // Do nothing. These have already been recursed to their maximum.
@@ -1577,31 +1553,34 @@ mod test {
         frame_base: Option<u64>,
         recursion_depth: usize,
     ) {
-        if recursion_depth < 10 {
-            let children_depth = recursion_depth + 1;
-            debug_info
-                .cache_deferred_variables(
-                    variable_cache,
-                    adapter,
-                    parent_variable,
-                    registers,
-                    frame_base,
-                )
-                .unwrap();
-            for mut child in variable_cache
-                .get_children(parent_variable.variable_key)
-                .unwrap()
-            {
-                recurse_deferred_variables(
-                    debug_info,
-                    variable_cache,
-                    adapter,
-                    &mut child,
-                    registers,
-                    frame_base,
-                    children_depth,
-                );
-            }
+        if recursion_depth >= 10 {
+            return;
+        }
+
+        let children_depth = recursion_depth + 1;
+        debug_info
+            .cache_deferred_variables(
+                variable_cache,
+                adapter,
+                parent_variable,
+                registers,
+                frame_base,
+            )
+            .unwrap();
+
+        for mut child in variable_cache
+            .get_children(parent_variable.variable_key)
+            .unwrap()
+        {
+            recurse_deferred_variables(
+                debug_info,
+                variable_cache,
+                adapter,
+                &mut child,
+                registers,
+                frame_base,
+                children_depth,
+            );
         }
     }
 
