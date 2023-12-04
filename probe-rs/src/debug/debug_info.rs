@@ -4,6 +4,7 @@ use super::{
     DebugRegisters, SourceLocation, StackFrame, VariableCache,
 };
 use crate::core::UnwindRule;
+use crate::debug::source_statement::SourceStatement;
 use crate::{
     core::{ExceptionInterface, RegisterRole, RegisterValue},
     debug::{registers, source_statement::SourceStatements},
@@ -956,154 +957,15 @@ impl DebugInfo {
         );
 
         for unit_header in &self.unit_infos {
-            let unit = &unit_header.unit;
+            let Some(ref line_program) = &unit_header.unit.line_program else {
+                continue;
+            };
 
-            if let Some(ref line_program) = unit.line_program {
-                let header = line_program.header();
-
-                for file_name in header.file_names() {
-                    let combined_path = self.get_path(unit, header, file_name);
-                    if combined_path
-                        .map(|p| canonical_path_eq(path, &p))
-                        .unwrap_or(false)
-                    {
-                        let mut rows = line_program.clone().rows();
-
-                        while let Some((header, row)) = rows.next_row()? {
-                            let row_path = row
-                                .file(header)
-                                .and_then(|file_entry| self.get_path(unit, header, file_entry));
-
-                            if row_path
-                                .map(|p| !canonical_path_eq(path, &p))
-                                .unwrap_or(true)
-                            {
-                                continue;
-                            }
-
-                            if let Some(cur_line) = row.line() {
-                                if cur_line.get() == line {
-                                    // The first match of the file and row will be used to build the SourceStatements, and then:
-                                    // 1. If there is an exact column match, we will use the low_pc of the statement at that column and line.
-                                    // 2. If there is no exact column match, we use the first available statement in the line.
-                                    let source_statements =
-                                        SourceStatements::new(self, &unit_header, row.address())?
-                                            .statements;
-                                    if let Some((halt_address, Some(halt_location))) =
-                                        source_statements
-                                            .iter()
-                                            .find(|statement| {
-                                                statement.line == Some(cur_line)
-                                                    && column
-                                                        .and_then(NonZeroU64::new)
-                                                        .map(ColumnType::Column)
-                                                        .map_or(false, |col| {
-                                                            col == statement.column
-                                                        })
-                                            })
-                                            .map(|source_statement| {
-                                                (
-                                                    source_statement.low_pc(),
-                                                    line_program
-                                                        .header()
-                                                        .file(source_statement.file_index)
-                                                        .and_then(|file_entry| {
-                                                            self.find_file_and_directory(
-                                                                &unit_header.unit,
-                                                                line_program.header(),
-                                                                file_entry,
-                                                            )
-                                                            .map(|(file, directory)| {
-                                                                SourceLocation {
-                                                                    line: source_statement
-                                                                        .line
-                                                                        .map(
-                                                                        std::num::NonZeroU64::get,
-                                                                    ),
-                                                                    column: Some(
-                                                                        source_statement
-                                                                            .column
-                                                                            .into(),
-                                                                    ),
-                                                                    file,
-                                                                    directory,
-                                                                    low_pc: Some(
-                                                                        source_statement.low_pc()
-                                                                            as u32,
-                                                                    ),
-                                                                    high_pc: Some(
-                                                                        source_statement
-                                                                            .instruction_range
-                                                                            .end
-                                                                            as u32,
-                                                                    ),
-                                                                }
-                                                            })
-                                                        }),
-                                                )
-                                            })
-                                    {
-                                        return Ok(VerifiedBreakpoint {
-                                            address: halt_address,
-                                            source_location: halt_location,
-                                        });
-                                    } else if let Some((halt_address, Some(halt_location))) =
-                                        source_statements
-                                            .iter()
-                                            .find(|statement| statement.line == Some(cur_line))
-                                            .map(|source_statement| {
-                                                (
-                                                    source_statement.low_pc(),
-                                                    line_program
-                                                        .header()
-                                                        .file(source_statement.file_index)
-                                                        .and_then(|file_entry| {
-                                                            self.find_file_and_directory(
-                                                                &unit_header.unit,
-                                                                line_program.header(),
-                                                                file_entry,
-                                                            )
-                                                            .map(|(file, directory)| {
-                                                                SourceLocation {
-                                                                    line: source_statement
-                                                                        .line
-                                                                        .map(
-                                                                        std::num::NonZeroU64::get,
-                                                                    ),
-                                                                    column: Some(
-                                                                        source_statement
-                                                                            .column
-                                                                            .into(),
-                                                                    ),
-                                                                    file,
-                                                                    directory,
-                                                                    low_pc: Some(
-                                                                        source_statement.low_pc()
-                                                                            as u32,
-                                                                    ),
-                                                                    high_pc: Some(
-                                                                        source_statement
-                                                                            .instruction_range
-                                                                            .end
-                                                                            as u32,
-                                                                    ),
-                                                                }
-                                                            })
-                                                        }),
-                                                )
-                                            })
-                                    {
-                                        return Ok(VerifiedBreakpoint {
-                                            address: halt_address,
-                                            source_location: halt_location,
-                                        });
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            if let Some(location) =
+                self.get_breakpoint_location_in_unit(unit_header, line_program, path, line, column)?
+            {
+                return Ok(location);
+            };
         }
 
         let p = path.to_path();
@@ -1114,6 +976,113 @@ impl DebugInfo {
             line,
             column
         )))
+    }
+
+    fn get_breakpoint_location_in_unit(
+        &self,
+        unit_header: &UnitInfo,
+        line_program: &gimli::IncompleteLineProgram<GimliReader, usize>,
+        path: &TypedPathBuf,
+        line: u64,
+        column: Option<u64>,
+    ) -> Result<Option<VerifiedBreakpoint>, DebugError> {
+        let unit = &unit_header.unit;
+        let header: &LineProgramHeader<GimliReader, usize> = line_program.header();
+
+        // Check if any of the file names in the header match the path we are looking for.
+        if !header.file_names().iter().any(|file_name| {
+            let combined_path = self.get_path(unit, header, file_name);
+
+            combined_path
+                .map(|p| canonical_path_eq(path, &p))
+                .unwrap_or(false)
+        }) {
+            return Ok(None);
+        }
+
+        let mut rows = line_program.clone().rows();
+
+        while let Some((header, row)) = rows.next_row()? {
+            let row_path = row
+                .file(header)
+                .and_then(|file_entry| self.get_path(unit, header, file_entry));
+
+            if row_path
+                .map(|p| !canonical_path_eq(path, &p))
+                .unwrap_or(true)
+            {
+                continue;
+            }
+
+            let Some(cur_line) = row.line() else {
+                continue;
+            };
+
+            if cur_line.get() != line {
+                continue;
+            }
+
+            // The first match of the file and row will be used to build the SourceStatements, and then:
+            // 1. If there is an exact column match, we will use the low_pc of the statement at that column and line.
+            // 2. If there is no exact column match, we use the first available statement in the line.
+            let source_statements =
+                SourceStatements::new(self, &unit_header, row.address())?.statements;
+
+            let halt_address_and_location = |source_statement: &SourceStatement| {
+                (
+                    source_statement.low_pc(),
+                    line_program
+                        .header()
+                        .file(source_statement.file_index)
+                        .and_then(|file_entry| {
+                            self.find_file_and_directory(
+                                &unit_header.unit,
+                                line_program.header(),
+                                file_entry,
+                            )
+                            .map(|(file, directory)| SourceLocation {
+                                line: source_statement.line.map(std::num::NonZeroU64::get),
+                                column: Some(source_statement.column.into()),
+                                file,
+                                directory,
+                                low_pc: Some(source_statement.low_pc() as u32),
+                                high_pc: Some(source_statement.instruction_range.end as u32),
+                            })
+                        }),
+                )
+            };
+
+            let first_find = source_statements.iter().find(|statement| {
+                column
+                    .and_then(NonZeroU64::new)
+                    .map(ColumnType::Column)
+                    .map_or(false, |col| col == statement.column)
+                    && statement.line == Some(cur_line)
+            });
+
+            if let Some((halt_address, Some(halt_location))) =
+                first_find.map(halt_address_and_location)
+            {
+                return Ok(Some(VerifiedBreakpoint {
+                    address: halt_address,
+                    source_location: halt_location,
+                }));
+            }
+            let second_find = source_statements
+                .iter()
+                .find(|statement| statement.line == Some(cur_line));
+
+            if let Some((halt_address, Some(halt_location))) =
+                second_find.map(halt_address_and_location)
+            {
+                return Ok(Some(VerifiedBreakpoint {
+                    address: halt_address,
+                    source_location: halt_location,
+                }));
+            }
+        }
+
+        Ok(None)
     }
 
     /// Get the path for an entry in a line program header, using the compilation unit's directory and file entries.
@@ -1195,6 +1164,7 @@ fn get_unwind_info<'a>(
     frame_program_counter: u64,
 ) -> Result<&'a gimli::UnwindTableRow<DwarfReader, gimli::StoreOnHeap>, DebugError> {
     let unwind_bases = BaseAddresses::default();
+
     let frame_descriptor_entry = match frame_section.fde_for_address(
         &unwind_bases,
         frame_program_counter,
@@ -1245,7 +1215,9 @@ fn unwind_register(
             unwind_info.map(|unwind_info| unwind_info.register(gimli::Register(register_position)))
         })
         .unwrap_or(gimli::RegisterRule::Undefined);
+
     let mut register_rule_string = format!("{register_rule:?}");
+
     let new_value = match register_rule {
         Undefined => {
             // In many cases, the DWARF has `Undefined` rules for variables like frame pointer, program counter, etc., so we hard-code some rules here to make sure unwinding can continue. If there is a valid rule, it will bypass these hardcoded ones.
@@ -1327,64 +1299,63 @@ fn unwind_register(
             .and_then(|reg| reg.value),
         Offset(address_offset) => {
             // "The previous value of this register is saved at the address CFA+N where CFA is the current CFA value and N is a signed offset"
-            if let Some(unwind_cfa) = unwind_cfa {
-                let address_size = callee_frame_registers.get_address_size_bytes();
-                let previous_frame_register_address =
-                    add_to_address(unwind_cfa, address_offset, address_size);
+            let Some(unwind_cfa) = unwind_cfa else {
+                tracing::error!("UNWIND: Tried to unwind `RegisterRule` at CFA = None. Please report this as a bug.");
+                return ControlFlow::Break(());
+            };
+            let address_size = callee_frame_registers.get_address_size_bytes();
+            let previous_frame_register_address =
+                add_to_address(unwind_cfa, address_offset, address_size);
 
-                register_rule_string = format!("CFA {register_rule:?}");
-                let result = match address_size {
-                    4 => {
-                        let mut buff = [0u8; 4];
-                        memory
-                            .read(previous_frame_register_address, &mut buff)
-                            .map(|_| RegisterValue::U32(u32::from_le_bytes(buff)))
-                    }
-                    8 => {
-                        let mut buff = [0u8; 8];
-                        memory
-                            .read(previous_frame_register_address, &mut buff)
-                            .map(|_| RegisterValue::U64(u64::from_le_bytes(buff)))
-                    }
-                    _ => {
-                        tracing::error!(
-                            "UNWIND: Address size {} not supported.  Please report this as a bug.",
-                            address_size
-                        );
-                        return ControlFlow::Break(());
-                    }
-                };
+            register_rule_string = format!("CFA {register_rule:?}");
+            let result = match address_size {
+                4 => {
+                    let mut buff = [0u8; 4];
+                    memory
+                        .read(previous_frame_register_address, &mut buff)
+                        .map(|_| RegisterValue::U32(u32::from_le_bytes(buff)))
+                }
+                8 => {
+                    let mut buff = [0u8; 8];
+                    memory
+                        .read(previous_frame_register_address, &mut buff)
+                        .map(|_| RegisterValue::U64(u64::from_le_bytes(buff)))
+                }
+                _ => {
+                    tracing::error!(
+                        "UNWIND: Address size {} not supported.  Please report this as a bug.",
+                        address_size
+                    );
+                    return ControlFlow::Break(());
+                }
+            };
 
-                match result {
-                    Ok(register_value) => {
-                        if debug_register
-                            .core_register
-                            .register_has_role(RegisterRole::ReturnAddress)
-                        {
-                            // We need to store this value to be used by the calculation of the PC.
-                            *unwound_return_address = Some(register_value);
-                        }
-                        Some(register_value)
+            match result {
+                Ok(register_value) => {
+                    if debug_register
+                        .core_register
+                        .register_has_role(RegisterRole::ReturnAddress)
+                    {
+                        // We need to store this value to be used by the calculation of the PC.
+                        *unwound_return_address = Some(register_value);
                     }
-                    Err(error) => {
-                        tracing::error!(
+                    Some(register_value)
+                }
+                Err(error) => {
+                    tracing::error!(
                             "UNWIND: Failed to read value for register {} from address {} ({} bytes): {}",
                             debug_register.get_register_name(),
                             RegisterValue::from(previous_frame_register_address),
                             4,
                             error
                         );
-                        tracing::error!(
-                            "UNWIND: Rule: Offset {} from address {:#010x}",
-                            address_offset,
-                            unwind_cfa
-                        );
-                        return ControlFlow::Break(());
-                    }
+                    tracing::error!(
+                        "UNWIND: Rule: Offset {} from address {:#010x}",
+                        address_offset,
+                        unwind_cfa
+                    );
+                    return ControlFlow::Break(());
                 }
-            } else {
-                tracing::error!("UNWIND: Tried to unwind `RegisterRule` at CFA = None. Please report this as a bug.");
-                return ControlFlow::Break(());
             }
         }
         //TODO: Implement the remainder of these `RegisterRule`s
@@ -1413,23 +1384,26 @@ fn unwind_program_counter_register(
 ) -> Option<RegisterValue> {
     if return_address.is_max_value() || return_address.is_zero() {
         tracing::warn!("No reliable return address is available, so we cannot determine the program counter to unwind the previous frame.");
-        None
-    } else {
-        match return_address {
-            RegisterValue::U32(return_address) => {
-                if instruction_set == Some(InstructionSet::Thumb2) {
-                    // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section A5.1.2: We have to clear the last bit to ensure the PC is half-word aligned. (on ARM architecture, when in Thumb state for certain instruction types will set the LSB to 1)
-                    *register_rule_string = "PC=(unwound LR & !0b1) (dwarf Undefined)".to_string();
-                    Some(RegisterValue::U32(return_address & !0b1))
-                } else {
-                    Some(RegisterValue::U32(return_address))
-                }
+        return None;
+    }
+
+    match return_address {
+        RegisterValue::U32(return_address) => {
+            if instruction_set == Some(InstructionSet::Thumb2) {
+                // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section A5.1.2:
+                //
+                // We have to clear the last bit to ensure the PC is half-word aligned. (on ARM architecture,
+                // when in Thumb state for certain instruction types will set the LSB to 1)
+                *register_rule_string = "PC=(unwound LR & !0b1) (dwarf Undefined)".to_string();
+                Some(RegisterValue::U32(return_address & !0b1))
+            } else {
+                Some(RegisterValue::U32(return_address))
             }
-            RegisterValue::U64(return_address) => Some(RegisterValue::U64(return_address)),
-            RegisterValue::U128(_) => {
-                tracing::warn!("128 bit address space not supported");
-                None
-            }
+        }
+        RegisterValue::U64(return_address) => Some(RegisterValue::U64(return_address)),
+        RegisterValue::U128(_) => {
+            tracing::warn!("128 bit address space not supported");
+            None
         }
     }
 }
