@@ -290,8 +290,9 @@ impl Xdm {
         // TODO: this is inefficient - we should queue up the reads and then read them all at once
         self.dbg_status()?;
 
-        tracing::debug!("Read from {}: {:08x}", R::NAME, bits);
-        R::from_bits(bits)
+        let reg = R::from_bits(bits)?;
+        tracing::debug!("Read: {:?}", reg);
+        Ok(reg)
     }
 
     fn write_nexus_register<R: NexusRegister>(&mut self, register: R) -> Result<(), XtensaError> {
@@ -309,9 +310,7 @@ impl Xdm {
     }
 
     fn status(&mut self) -> Result<DebugStatus, XtensaError> {
-        let status = self.read_nexus_register::<DebugStatus>()?;
-        tracing::debug!("Status: {:?}", status);
-        Ok(status)
+        self.read_nexus_register::<DebugStatus>()
     }
 
     fn wait_for_exec_done(&mut self) -> Result<(), XtensaError> {
@@ -375,12 +374,32 @@ impl Xdm {
 
     pub(super) fn is_in_ocd_mode(&mut self) -> Result<bool, XtensaError> {
         let reg = self.read_nexus_register::<DebugControlSet>()?;
-        tracing::debug!("DebugControl: {:?}", reg.0);
-
         Ok(reg.0.enable_ocd())
     }
 
     pub(super) fn leave_ocd_mode(&mut self) -> Result<(), XtensaError> {
+        // clear all clearable status bits
+        self.write_nexus_register({
+            let mut clear_status = DebugStatus(0);
+
+            clear_status.set_exec_done(true);
+            clear_status.set_exec_exception(true);
+            clear_status.set_exec_overrun(true);
+            clear_status.set_core_wrote_ddr(true);
+            clear_status.set_core_read_ddr(true);
+            clear_status.set_host_wrote_ddr(true);
+            clear_status.set_host_read_ddr(true);
+            clear_status.set_debug_pend_break(true);
+            clear_status.set_debug_pend_host(true);
+            clear_status.set_debug_pend_trax(true);
+            clear_status.set_debug_int_break(true);
+            clear_status.set_debug_int_host(true);
+            clear_status.set_debug_int_trax(true);
+            clear_status.set_run_stall_toggle(true);
+
+            clear_status
+        })?;
+
         self.write_nexus_register(DebugControlClear({
             let mut control = DebugControlBits(0);
 
@@ -580,7 +599,7 @@ impl DebugStatus {
 }
 
 /// An abstraction over all registers that can be accessed via the NAR/NDR instruction pair.
-trait NexusRegister: Sized + Copy {
+trait NexusRegister: Sized + Copy + Debug {
     /// NAR register address
     const ADDRESS: u8;
     const NAME: &'static str;
@@ -623,7 +642,7 @@ bitfield::bitfield! {
     pub break_in_ack_ito,    set_break_in_ack_ito   : 25;
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 /// Bits written as 1 are set to 1 in hardware.
 struct DebugControlSet(DebugControlBits);
 
@@ -640,7 +659,7 @@ impl NexusRegister for DebugControlSet {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 /// Bits written as 1 are set to 0 in hardware.
 struct DebugControlClear(DebugControlBits);
 
@@ -658,7 +677,7 @@ impl NexusRegister for DebugControlClear {
 }
 
 /// Writes DDR.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 struct DebugDataRegister(u32);
 
 impl NexusRegister for DebugDataRegister {
@@ -675,7 +694,7 @@ impl NexusRegister for DebugDataRegister {
 }
 
 /// Writes DDR and executes DIR on write AND READ.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 struct DebugDataAndExecRegister(u32);
 
 impl NexusRegister for DebugDataAndExecRegister {
@@ -692,8 +711,7 @@ impl NexusRegister for DebugDataAndExecRegister {
 }
 
 /// Writes DIR.
-// TODO: type for instructions?
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 struct DebugInstructionRegister(u32);
 
 impl NexusRegister for DebugInstructionRegister {
@@ -710,8 +728,7 @@ impl NexusRegister for DebugInstructionRegister {
 }
 
 /// Writes and executes DIR.
-// TODO: type for instructions?
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 struct DebugInstructionAndExecRegister(u32);
 
 impl NexusRegister for DebugInstructionAndExecRegister {
