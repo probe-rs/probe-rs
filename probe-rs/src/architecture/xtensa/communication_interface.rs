@@ -25,6 +25,8 @@ pub enum XtensaError {
 struct XtensaCommunicationInterfaceState {
     /// Pairs of (register, value). TODO: can/should we handle special registers?
     saved_registers: Vec<(Register, u32)>,
+
+    print_exception_cause: bool,
 }
 
 /// A interface that implements controls for Xtensa cores.
@@ -47,6 +49,7 @@ impl XtensaCommunicationInterface {
             xdm,
             state: XtensaCommunicationInterfaceState {
                 saved_registers: vec![],
+                print_exception_cause: true,
             },
         };
 
@@ -83,21 +86,15 @@ impl XtensaCommunicationInterface {
     }
 
     fn read_cpu_register(&mut self, register: CpuRegister) -> Result<u32, XtensaError> {
-        self.xdm
-            .execute_instruction(instruction::rsr(SpecialRegister::Ddr, register))?;
-        let register = self.xdm.read_ddr()?;
-
-        Ok(register)
+        self.execute_instruction(instruction::rsr(SpecialRegister::Ddr, register))?;
+        self.xdm.read_ddr()
     }
 
     fn read_special_register(&mut self, register: SpecialRegister) -> Result<u32, XtensaError> {
         self.save_register(Register::Cpu(CpuRegister::scratch()))?;
 
-        self.xdm
-            .execute_instruction(instruction::rsr(register, CpuRegister::scratch()))?;
-        let register = self.xdm.read_ddr()?;
-
-        Ok(register)
+        self.execute_instruction(instruction::rsr(register, CpuRegister::scratch()))?;
+        self.xdm.read_ddr()
     }
 
     fn write_special_register(
@@ -133,15 +130,17 @@ impl XtensaCommunicationInterface {
         Ok(())
     }
 
-    fn debug_execution_error(&mut self, status: XdmError) -> Result<(), XtensaError> {
+    fn debug_execution_error_impl(&mut self, status: XdmError) -> Result<(), XtensaError> {
         if let XdmError::ExecExeception = status {
+            if !self.state.print_exception_cause {
+                tracing::warn!("Instruction exception while reading previous exception");
+                return Ok(());
+            }
+
             tracing::warn!("Failed to execute instruction, attempting to read debug info");
 
             // clear ExecException to allow new instructions to run
             self.xdm.clear_exec_exception()?;
-
-            // dump EXCCAUSE, EXCVADDR and DEBUGCAUSE
-            // we must not use `self.read_register` and `self.write_register` here
 
             for (name, reg) in [
                 ("EXCCAUSE", SpecialRegister::ExcCause),
@@ -155,6 +154,14 @@ impl XtensaCommunicationInterface {
         }
 
         Ok(())
+    }
+
+    fn debug_execution_error(&mut self, status: XdmError) -> Result<(), XtensaError> {
+        self.state.print_exception_cause = false;
+        let result = self.debug_execution_error_impl(status);
+        self.state.print_exception_cause = true;
+
+        result
     }
 
     fn execute_instruction(&mut self, inst: u32) -> Result<(), XtensaError> {
