@@ -112,12 +112,12 @@ impl DebugInfo {
         let mut units = self.dwarf.units();
 
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
-            let mut functions = unit_info.get_function_dies(address, find_inlined)?;
+            let mut functions = unit_info.get_function_dies(self, address, find_inlined)?;
 
             // Use the last functions from the list, this is the function which most closely
             // corresponds to the PC in case of multiple inlined functions.
             if let Some(die_cursor_state) = functions.pop() {
-                let function_name = die_cursor_state.function_name();
+                let function_name = die_cursor_state.function_name(self);
 
                 if function_name.is_some() {
                     return Ok(function_name);
@@ -275,10 +275,7 @@ impl DebugInfo {
     pub(crate) fn get_next_unit_info(&self, units: &mut UnitIter) -> Option<UnitInfo> {
         while let Ok(Some(header)) = units.next() {
             if let Ok(unit) = self.dwarf.unit(header) {
-                return Some(UnitInfo {
-                    debug_info: self,
-                    unit,
-                });
+                return Some(UnitInfo { unit });
             };
         }
         None
@@ -351,7 +348,6 @@ impl DebugInfo {
 
         let unit_header = self.dwarf.debug_info.header_from_offset(header_offset)?;
         let unit_info = UnitInfo {
-            debug_info: self,
             unit: gimli::Unit::new(&self.dwarf, unit_header)?,
         };
 
@@ -376,6 +372,7 @@ impl DebugInfo {
                 };
 
                 referenced_variable = unit_info.extract_type(
+                    self,
                     referenced_node,
                     parent_variable,
                     referenced_variable,
@@ -406,6 +403,7 @@ impl DebugInfo {
                 cache.add_variable(parent_variable.variable_key, &mut temporary_variable)?;
 
                 temporary_variable = unit_info.process_tree(
+                    self,
                     parent_node,
                     temporary_variable,
                     memory,
@@ -433,6 +431,7 @@ impl DebugInfo {
                 let parent_node = type_tree.root()?;
 
                 temporary_variable = unit_info.process_tree(
+                    self,
                     parent_node,
                     temporary_variable,
                     memory,
@@ -471,7 +470,7 @@ impl DebugInfo {
         let mut frames = Vec::new();
 
         while let Some(unit_info) = self.get_next_unit_info(&mut units) {
-            let functions = unit_info.get_function_dies(address, true)?;
+            let functions = unit_info.get_function_dies(self, address, true)?;
 
             if functions.is_empty() {
                 continue;
@@ -479,13 +478,13 @@ impl DebugInfo {
 
             // The first function is the non-inlined function, and the rest are inlined functions.
             // The frame base only exists for the non-inlined function, so we can reuse it for all the inlined functions.
-            let frame_base = functions[0].frame_base(memory, unwind_registers)?;
+            let frame_base = functions[0].frame_base(self, memory, unwind_registers)?;
 
             // Handle all functions which contain further inlined functions. For
             // these functions, the location is the call site of the inlined function.
             for (index, function_die) in functions[0..functions.len() - 1].iter().enumerate() {
                 let function_name = function_die
-                    .function_name()
+                    .function_name(self)
                     .unwrap_or_else(|| unknown_function.clone());
 
                 tracing::debug!("UNWIND: Function name: {}", function_name);
@@ -503,10 +502,10 @@ impl DebugInfo {
 
                     tracing::debug!(
                         "UNWIND: Callsite for inlined function {:?}",
-                        next_function.function_name()
+                        next_function.function_name(self)
                     );
 
-                    let inlined_caller_source_location = next_function.inline_call_location();
+                    let inlined_caller_source_location = next_function.inline_call_location(self);
 
                     tracing::debug!("UNWIND: Call site: {:?}", inlined_caller_source_location);
 
@@ -562,7 +561,7 @@ impl DebugInfo {
             let last_function = functions.last().unwrap();
 
             let function_name = last_function
-                .function_name()
+                .function_name(self)
                 .unwrap_or_else(|| unknown_function.clone());
 
             let function_location = self.get_source_location(address);

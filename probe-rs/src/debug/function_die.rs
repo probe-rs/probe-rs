@@ -11,8 +11,8 @@ pub(crate) type Die<'abbrev, 'unit> =
 
 /// Reference to a DIE for a function
 #[derive(Clone)]
-pub(crate) struct FunctionDie<'abbrev, 'unit, 'unit_info, 'debug_info> {
-    pub(crate) unit_info: &'unit_info UnitInfo<'debug_info>,
+pub(crate) struct FunctionDie<'abbrev, 'unit, 'unit_info> {
+    pub(crate) unit_info: &'unit_info UnitInfo,
 
     pub(crate) function_die: Die<'abbrev, 'unit>,
 
@@ -25,14 +25,9 @@ pub(crate) struct FunctionDie<'abbrev, 'unit, 'unit_info, 'debug_info> {
     pub(crate) high_pc: u64,
 }
 
-impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
-    FunctionDie<'abbrev, 'unit, 'unit_info, 'debug_info>
-{
+impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info> FunctionDie<'abbrev, 'unit, 'unit_info> {
     /// Create a new function DIE reference.
-    pub(crate) fn new(
-        die: Die<'abbrev, 'unit>,
-        unit_info: &'unit_info UnitInfo<'debug_info>,
-    ) -> Option<Self> {
+    pub(crate) fn new(die: Die<'abbrev, 'unit>, unit_info: &'unit_info UnitInfo) -> Option<Self> {
         let tag = die.tag();
 
         let gimli::DW_TAG_subprogram = tag else {
@@ -52,7 +47,7 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
     pub(crate) fn new_inlined(
         concrete_die: Die<'abbrev, 'unit>,
         abstract_die: Die<'abbrev, 'unit>,
-        unit_info: &'unit_info UnitInfo<'debug_info>,
+        unit_info: &'unit_info UnitInfo,
     ) -> Option<Self> {
         let tag = concrete_die.tag();
 
@@ -75,7 +70,7 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
     }
 
     /// Returns the function name described by the die.
-    pub(crate) fn function_name(&self) -> Option<String> {
+    pub(crate) fn function_name(&self, debug_info: &super::DebugInfo) -> Option<String> {
         let Some(fn_name_attr) = self.attribute(gimli::DW_AT_name) else {
             tracing::debug!("DW_AT_name attribute not found, unable to retrieve function name");
             return None;
@@ -85,7 +80,7 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
             tracing::debug!("Unexpected attribute value for DW_AT_name: {:?}", value);
             return None;
         };
-        match self.unit_info.debug_info.dwarf.string(fn_name_ref) {
+        match debug_info.dwarf.string(fn_name_ref) {
             Ok(fn_name_raw) => Some(String::from_utf8_lossy(&fn_name_raw).to_string()),
             Err(error) => {
                 tracing::debug!("No value for DW_AT_name: {:?}: error", error);
@@ -99,18 +94,18 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
     ///
     /// If this function is not inlined (`is_inline()` returns false),
     /// this function returns `None`.
-    pub(crate) fn inline_call_location(&self) -> Option<SourceLocation> {
+    pub(crate) fn inline_call_location(
+        &self,
+        debug_info: &super::DebugInfo,
+    ) -> Option<SourceLocation> {
         if !self.is_inline() {
             return None;
         }
 
         let file_name_attr = self.attribute(gimli::DW_AT_call_file)?;
 
-        let (directory, file) = extract_file(
-            self.unit_info.debug_info,
-            &self.unit_info.unit,
-            file_name_attr.value(),
-        )?;
+        let (directory, file) =
+            extract_file(debug_info, &self.unit_info.unit, file_name_attr.value())?;
         let line = self
             .attribute(gimli::DW_AT_call_line)
             .and_then(|line| line.udata_value());
@@ -183,10 +178,12 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info, 'debug_info>
     /// Try to retrieve the frame base for this function
     pub fn frame_base(
         &self,
+        debug_info: &super::DebugInfo,
         memory: &mut impl MemoryInterface,
         stackframe_registers: &DebugRegisters,
     ) -> Result<Option<u64>, DebugError> {
         match self.unit_info.extract_location(
+            debug_info,
             &self.function_die,
             &VariableLocation::Unknown,
             memory,
