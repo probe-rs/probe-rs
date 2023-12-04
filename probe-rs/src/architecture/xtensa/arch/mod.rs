@@ -1,12 +1,32 @@
 pub mod instruction;
 
-// Register addresses
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum Register {
+    Cpu(CpuRegister),
+    Special(SpecialRegister),
+}
 
-// Processor registers
-pub const A3: u8 = 3;
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum CpuRegister {
+    A3 = 3,
+}
 
-// Special registers
-pub const SR_DDR: u8 = 104;
-pub const SR_EXCCAUSE: u8 = 232;
-pub const SR_DEBUGCAUSE: u8 = 233;
-pub const SR_EXCVADDR: u8 = 238;
+impl CpuRegister {
+    pub const fn address(self) -> u8 {
+        self as u8
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum SpecialRegister {
+    Ddr = 104,
+    ExcCause = 232,
+    DebugCause = 233,
+    ExcVaddr = 238,
+}
+
+impl SpecialRegister {
+    pub const fn address(self) -> u8 {
+        self as u8
+    }
+}

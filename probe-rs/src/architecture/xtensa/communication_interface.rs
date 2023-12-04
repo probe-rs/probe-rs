@@ -4,7 +4,7 @@
 #![allow(missing_docs)]
 
 use crate::{
-    architecture::xtensa::arch::{self, instruction},
+    architecture::xtensa::arch::{self, instruction, CpuRegister, Register, SpecialRegister},
     probe::JTAGAccess,
     DebugProbeError, MemoryInterface,
 };
@@ -22,14 +22,12 @@ pub enum XtensaError {
     XdmError(XdmError),
 }
 
-#[derive(Debug)]
 struct XtensaCommunicationInterfaceState {
     /// Pairs of (register, value). TODO: can/should we handle special registers?
-    saved_registers: Vec<(u8, u32)>,
+    saved_registers: Vec<(Register, u32)>,
 }
 
 /// A interface that implements controls for Xtensa cores.
-#[derive(Debug)]
 pub struct XtensaCommunicationInterface {
     /// The Xtensa debug module
     xdm: Xdm,
@@ -84,28 +82,29 @@ impl XtensaCommunicationInterface {
         Ok(())
     }
 
-    // TODO make sure only A* registers are used as `register
-    fn read_register(&mut self, register: u8) -> Result<u32, XtensaError> {
-        let move_to_ddr = instruction::rsr(arch::SR_DDR, register);
-        self.xdm.execute_instruction(move_to_ddr)?;
+    fn read_cpu_register(&mut self, register: CpuRegister) -> Result<u32, XtensaError> {
+        self.xdm
+            .execute_instruction(instruction::rsr(SpecialRegister::Ddr, register))?;
         let register = self.xdm.read_ddr()?;
 
         Ok(register)
     }
 
-    fn write_register_impl(&mut self, register: u8, value: u32) -> Result<(), XtensaError> {
+    fn write_register_impl(
+        &mut self,
+        register: CpuRegister,
+        value: u32,
+    ) -> Result<(), XtensaError> {
         self.xdm.write_ddr(value)?;
         self.xdm
-            .execute_instruction(instruction::rsr(arch::SR_DDR, register))?;
+            .execute_instruction(instruction::rsr(SpecialRegister::Ddr, register))?;
 
         Ok(())
     }
 
     // TODO make sure only A* registers are used as `register`
-    fn write_register(&mut self, register: u8, value: u32) -> Result<(), XtensaError> {
-        if !self.is_register_saved(register) {
-            self.save_register(register)?;
-        }
+    fn write_cpu_register(&mut self, register: CpuRegister, value: u32) -> Result<(), XtensaError> {
+        self.save_register(Register::Cpu(register))?;
 
         self.write_register_impl(register, value)
     }
@@ -122,14 +121,14 @@ impl XtensaCommunicationInterface {
             // TODO we need to make sure our scratch register (A3) is saved properly
 
             for (name, reg) in [
-                ("EXCCAUSE", arch::SR_EXCCAUSE),
-                ("EXCVADDR", arch::SR_EXCVADDR),
-                ("DEBUGCAUSE", arch::SR_DEBUGCAUSE),
+                ("EXCCAUSE", SpecialRegister::ExcCause),
+                ("EXCVADDR", SpecialRegister::ExcVaddr),
+                ("DEBUGCAUSE", SpecialRegister::DebugCause),
             ] {
                 self.xdm
-                    .execute_instruction(instruction::rsr(reg, arch::A3))?;
+                    .execute_instruction(instruction::rsr(reg, CpuRegister::A3))?;
                 self.xdm
-                    .execute_instruction(instruction::wsr(arch::A3, arch::SR_DDR))?;
+                    .execute_instruction(instruction::wsr(SpecialRegister::Ddr, CpuRegister::A3))?;
                 let register = self.xdm.read_ddr()?;
 
                 tracing::info!("{}: {:08x}", name, register);
@@ -155,23 +154,35 @@ impl XtensaCommunicationInterface {
         status
     }
 
-    fn is_register_saved(&mut self, register: u8) -> bool {
+    fn is_register_saved(&mut self, register: Register) -> bool {
         self.state
             .saved_registers
             .iter()
             .any(|(reg, _)| *reg == register)
     }
 
-    fn save_register(&mut self, register: u8) -> Result<(), XtensaError> {
-        let value = self.read_register(register)?;
-        self.state.saved_registers.push((register, value));
+    fn read_register(&mut self, register: Register) -> Result<u32, XtensaError> {
+        match register {
+            Register::Cpu(register) => self.read_cpu_register(register),
+            Register::Special(register) => todo!(),
+        }
+    }
+
+    fn save_register(&mut self, register: Register) -> Result<(), XtensaError> {
+        if !self.is_register_saved(register) {
+            let value = self.read_register(register)?;
+            self.state.saved_registers.push((register, value));
+        }
 
         Ok(())
     }
 
     fn restore_registers(&mut self) -> Result<(), XtensaError> {
         for (register, value) in std::mem::take(&mut self.state.saved_registers) {
-            self.write_register_impl(register, value)?;
+            match register {
+                Register::Cpu(register) => self.write_register_impl(register, value)?,
+                Register::Special(register) => todo!(),
+            }
         }
 
         Ok(())
@@ -191,10 +202,10 @@ impl MemoryInterface for XtensaCommunicationInterface {
         };
 
         // Write address to A3
-        self.write_register(arch::A3, address as u32)?;
+        self.write_cpu_register(CpuRegister::A3, address as u32)?;
 
         // Read from address in A3
-        self.execute_instruction(instruction::lddr32_p(arch::A3))?;
+        self.execute_instruction(instruction::lddr32_p(CpuRegister::A3))?;
 
         for i in 0..read_words - 1 {
             let word = self.read_ddr_and_execute()?.to_le_bytes();
