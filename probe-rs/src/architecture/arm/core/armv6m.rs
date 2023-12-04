@@ -825,8 +825,8 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
         Ok(false)
     }
 
-    fn floating_point_register_count(&mut self) -> Result<Option<usize>, crate::error::Error> {
-        Ok(None)
+    fn floating_point_register_count(&mut self) -> Result<usize, crate::error::Error> {
+        Ok(0)
     }
 
     fn id(&self) -> usize {

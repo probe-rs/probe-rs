@@ -158,7 +158,7 @@ pub trait CoreInterface: MemoryInterface {
     /// Determine the number of floating point registers.
     /// This must be queried while halted as this is a runtime
     /// decision for some core types.
-    fn floating_point_register_count(&mut self) -> Result<Option<usize>, crate::error::Error>;
+    fn floating_point_register_count(&mut self) -> Result<usize, crate::error::Error>;
 
     /// Set the reset catch setting.
     ///
@@ -939,7 +939,7 @@ impl<'probe> Core<'probe> {
 
     /// Determine the number of floating point registers.
     /// This must be queried while halted as this is a runtime decision for some core types.
-    pub fn floating_point_register_count(&mut self) -> Result<Option<usize>, error::Error> {
+    pub fn floating_point_register_count(&mut self) -> Result<usize, error::Error> {
         self.inner.floating_point_register_count()
     }
 
@@ -993,7 +993,7 @@ impl<'probe> Core<'probe> {
             supports_native_64bit_access,
             core_type,
             fpu_support,
-            floating_point_register_count,
+            floating_point_register_count: Some(floating_point_register_count),
         })
     }
 }
@@ -1110,7 +1110,7 @@ impl<'probe> CoreInterface for Core<'probe> {
         self.fpu_support()
     }
 
-    fn floating_point_register_count(&mut self) -> Result<Option<usize>, crate::error::Error> {
+    fn floating_point_register_count(&mut self) -> Result<usize, crate::error::Error> {
         self.floating_point_register_count()
     }
 

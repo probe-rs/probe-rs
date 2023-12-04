@@ -707,18 +707,12 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     /// Returns the number of fpu registers defined in this register file, or `None` if there are none.
-    // TODO: Consider changing the Result to remove the Option.
-    fn floating_point_register_count(&mut self) -> Result<Option<usize>, Error> {
-        let fpu_register_count = self
+    fn floating_point_register_count(&mut self) -> Result<usize, Error> {
+        Ok(self
             .registers()
             .all_registers()
             .filter(|r| r.register_has_role(crate::RegisterRole::FloatingPoint))
-            .count();
-        Ok(if fpu_register_count > 0 {
-            Some(fpu_register_count)
-        } else {
-            None
-        })
+            .count())
     }
 
     fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {

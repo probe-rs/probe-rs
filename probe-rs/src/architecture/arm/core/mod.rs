@@ -171,7 +171,7 @@ pub struct CortexAState {
     register_cache: Vec<Option<(RegisterValue, bool)>>,
 
     // Number of floating point registers
-    fp_reg_count: Option<usize>,
+    fp_reg_count: usize,
 }
 
 impl CortexAState {
@@ -181,7 +181,7 @@ impl CortexAState {
             current_state: CoreStatus::Unknown,
             is_64_bit: false,
             register_cache: vec![],
-            fp_reg_count: None,
+            fp_reg_count: 0,
         }
     }
 

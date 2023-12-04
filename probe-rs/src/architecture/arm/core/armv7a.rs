@@ -26,6 +26,7 @@ use crate::{
     InstructionSet, MemoryInterface,
 };
 use anyhow::Result;
+use num_traits::Zero;
 use std::{
     mem::size_of,
     sync::Arc,
@@ -113,7 +114,7 @@ impl<'probe> Armv7a<'probe> {
     }
 
     fn read_fp_reg_count(&mut self) -> Result<(), Error> {
-        if self.state.fp_reg_count.is_none()
+        if self.state.fp_reg_count.is_zero()
             && matches!(self.state.current_state, CoreStatus::Halted(_))
         {
             self.prepare_r0_for_clobber()?;
@@ -126,11 +127,11 @@ impl<'probe> Armv7a<'probe> {
             let instruction = build_mcr(14, 0, 0, 0, 5, 0);
             let vmrs = self.execute_instruction_with_result(instruction)?;
 
-            self.state.fp_reg_count = Some(match vmrs & 0b111 {
+            self.state.fp_reg_count = match vmrs & 0b111 {
                 0b001 => 16,
                 0b010 => 32,
                 _ => 0,
-            });
+            };
         }
 
         Ok(())
@@ -730,8 +731,8 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
 
     fn registers(&self) -> &'static CoreRegisters {
         match self.state.fp_reg_count {
-            Some(16) => &AARCH32_WITH_FP_16_CORE_REGSISTERS,
-            Some(32) => &AARCH32_WITH_FP_32_CORE_REGSISTERS,
+            16 => &AARCH32_WITH_FP_16_CORE_REGSISTERS,
+            32 => &AARCH32_WITH_FP_32_CORE_REGSISTERS,
             _ => &AARCH32_CORE_REGSISTERS,
         }
     }
@@ -775,14 +776,10 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
     }
 
     fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
-        if let Some(count) = self.state.fp_reg_count {
-            Ok(count > 0)
-        } else {
-            Ok(false)
-        }
+        Ok(!self.state.fp_reg_count.is_zero())
     }
 
-    fn floating_point_register_count(&mut self) -> Result<Option<usize>, crate::error::Error> {
+    fn floating_point_register_count(&mut self) -> Result<usize, crate::error::Error> {
         Ok(self.state.fp_reg_count)
     }
 
