@@ -171,7 +171,6 @@ impl XtensaCommunicationInterface {
     }
 
     fn execute_instruction(&mut self, inst: Instruction) -> Result<(), XtensaError> {
-        tracing::debug!("Executing instruction: {:?}", inst);
         let status = self.xdm.execute_instruction(inst);
         if let Err(XtensaError::XdmError(err)) = status {
             self.debug_execution_error(err)?

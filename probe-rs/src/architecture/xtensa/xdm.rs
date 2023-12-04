@@ -131,6 +131,8 @@ pub struct Xdm {
 
     device_id: u32,
     idle_cycles: u8,
+
+    last_instruction: Option<Instruction>,
 }
 
 impl Xdm {
@@ -145,6 +147,7 @@ impl Xdm {
             queued_commands: Vec::new(),
             device_id: 0,
             idle_cycles: 0,
+            last_instruction: None,
         };
 
         if let Err(e) = x.init() {
@@ -333,7 +336,7 @@ impl Xdm {
                     return Ok(());
                 }
 
-                tracing::warn!("Instruction ignored");
+                tracing::warn!("Instruction ignored: {:?}", self.last_instruction.unwrap());
                 return Ok(());
             }
         }
@@ -440,6 +443,9 @@ impl Xdm {
     }
 
     pub fn write_instruction(&mut self, instruction: Instruction) -> Result<(), XtensaError> {
+        tracing::debug!("Preparing instruction: {:?}", instruction);
+        self.last_instruction = Some(instruction);
+
         match instruction.encode() {
             InstructionEncoding::Narrow(inst) => {
                 self.write_nexus_register(DebugInstructionRegister(inst))
@@ -448,6 +454,9 @@ impl Xdm {
     }
 
     pub fn execute_instruction(&mut self, instruction: Instruction) -> Result<(), XtensaError> {
+        tracing::debug!("Executing instruction: {:?}", instruction);
+        self.last_instruction = Some(instruction);
+
         match instruction.encode() {
             InstructionEncoding::Narrow(inst) => {
                 self.write_nexus_register(DebugInstructionAndExecRegister(inst))?;
@@ -468,6 +477,11 @@ impl Xdm {
     }
 
     pub fn read_ddr_and_execute(&mut self) -> Result<u32, XtensaError> {
+        if let Some(instruction) = self.last_instruction {
+            tracing::debug!("Executing instruction via DDREXEC read: {:?}", instruction);
+        } else {
+            tracing::warn!("Reading DDREXEC without instruction");
+        }
         let reg = self.read_nexus_register::<DebugDataAndExecRegister>()?;
 
         self.wait_for_exec_done()?;
@@ -476,6 +490,11 @@ impl Xdm {
     }
 
     pub fn write_ddr_and_execute(&mut self, ddr: u32) -> Result<(), XtensaError> {
+        if let Some(instruction) = self.last_instruction {
+            tracing::debug!("Executing instruction via DDREXEC write: {:?}", instruction);
+        } else {
+            tracing::warn!("Writing DDREXEC without instruction");
+        }
         self.write_nexus_register(DebugDataAndExecRegister(ddr))?;
 
         self.wait_for_exec_done()?;
