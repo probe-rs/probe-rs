@@ -195,29 +195,26 @@ impl VariableCache {
             return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {:?}. Please report this as a bug", cache_variable.name, parent_key).into());
         }
 
-        // Is this an *add* or *update* operation?
-        if cache_variable.variable_key == ObjectRef::Invalid {
-            // The caller is telling us this is definitely a new `Variable`
-            cache_variable.variable_key = get_object_reference();
+        if cache_variable.variable_key != ObjectRef::Invalid {
+            return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with already set key: {:?}. Please report this as a bug", cache_variable.name, cache_variable.variable_key).into());
+        }
 
-            tracing::trace!(
-                "VariableCache: Add Variable: key={:?}, parent={:?}, name={:?}",
-                cache_variable.variable_key,
-                cache_variable.parent_key,
-                &cache_variable.name
-            );
+        // The caller is telling us this is definitely a new `Variable`
+        cache_variable.variable_key = get_object_reference();
 
-            let new_entry_key = cache_variable.variable_key;
-            if let Some(old_variable) = self
-                .variable_hash_map
-                .insert(cache_variable.variable_key, cache_variable.clone())
-            {
-                return Err(anyhow!("Attempt to insert a new `Variable`:{:?} with a duplicate cache key: {:?}. Please report this as a bug.", cache_variable.name, old_variable.variable_key).into());
-            }
-            new_entry_key
-        } else {
-            panic!("naughty, you should not do this")
-        };
+        tracing::trace!(
+            "VariableCache: Add Variable: key={:?}, parent={:?}, name={:?}",
+            cache_variable.variable_key,
+            cache_variable.parent_key,
+            &cache_variable.name
+        );
+
+        if let Some(old_variable) = self
+            .variable_hash_map
+            .insert(cache_variable.variable_key, cache_variable.clone())
+        {
+            return Err(anyhow!("Attempt to insert a new `Variable`:{:?} with a duplicate cache key: {:?}. Please report this as a bug.", cache_variable.name, old_variable.variable_key).into());
+        }
 
         Ok(())
     }
@@ -231,7 +228,7 @@ impl VariableCache {
     ) -> Result<(), Error> {
         // Is this an *add* or *update* operation?
         if cache_variable.variable_key == ObjectRef::Invalid {
-            panic!("naughty, you should not do this")
+            return Err(anyhow!("Attempt to update an existing `Variable`:{:?} with an invalid cache key: {:?}. Please report this as a bug.", cache_variable.name, cache_variable.variable_key).into());
         }
 
         // Attempt to update an existing `Variable` in the cache
@@ -241,7 +238,6 @@ impl VariableCache {
             &cache_variable.name
         );
 
-        let updated_entry_key = cache_variable.variable_key;
         if let Some(prev_entry) = self.variable_hash_map.get_mut(&cache_variable.variable_key) {
             if cache_variable != prev_entry {
                 tracing::trace!("Updated:  {:?}", cache_variable);
@@ -250,31 +246,32 @@ impl VariableCache {
 
             *prev_entry = cache_variable.clone();
         } else {
-            return Err(anyhow!("Attempt to update and existing `Variable`:{:?} with a non-existent cache key: {:?}. Please report this as a bug.", cache_variable.name, cache_variable.variable_key).into());
+            return Err(anyhow!("Attempt to update an existing `Variable`:{:?} with a non-existent cache key: {:?}. Please report this as a bug.", cache_variable.name, cache_variable.variable_key).into());
         }
 
         // As the final act, we need to update the variable with an appropriate value.
         // This requires distinct steps to ensure we don't get `borrow` conflicts on the variable cache.
-        if let Some(mut stored_variable) = self.get_variable_by_key(stored_key) {
-            // Only do this for non-SVD variables. Those will extract their value everytime they are read from the client.
-            stored_variable.extract_value(memory, self);
-
-            if self
-                .variable_hash_map
-                .insert(stored_variable.variable_key, stored_variable.clone())
-                .is_none()
-            {
-                Err(anyhow!("Failed to store variable at variable_cache_key: {:?}. Please report this as a bug.", stored_key).into())
-            } else {
-                *cache_variable = stored_variable;
-                Ok(())
-            }
-        } else {
-            Err(anyhow!(
+        let Some(mut stored_variable) = self.get_variable_by_key(cache_variable.variable_key)
+        else {
+            return Err(anyhow!(
                 "Failed to store variable at variable_cache_key: {:?}. Please report this as a bug.",
-                stored_key
+                cache_variable.variable_key
             )
-            .into())
+            .into());
+        };
+
+        // Only do this for non-SVD variables. Those will extract their value everytime they are read from the client.
+        stored_variable.extract_value(memory, self);
+
+        if self
+            .variable_hash_map
+            .insert(stored_variable.variable_key, stored_variable.clone())
+            .is_none()
+        {
+            Err(anyhow!("Failed to store variable at variable_cache_key: {:?}. Please report this as a bug.", cache_variable.variable_key).into())
+        } else {
+            *cache_variable = stored_variable;
+            Ok(())
         }
     }
 
@@ -283,7 +280,7 @@ impl VariableCache {
     /// This function does not update the value of the variable.
     pub fn update_variable(&mut self, cache_variable: &Variable) -> Result<(), Error> {
         if cache_variable.variable_key == ObjectRef::Invalid {
-            panic!("naughty, you should not do this")
+            return Err(anyhow!("Attempt to update an existing `Variable`:{:?} with a non-existent cache key: {:?}. Please report this as a bug.", cache_variable.name, cache_variable.variable_key).into());
         }
 
         // Attempt to update an existing `Variable` in the cache
@@ -300,7 +297,7 @@ impl VariableCache {
                 *prev_entry = cache_variable.clone();
             }
         } else {
-            return Err(anyhow!("Attempt to update and existing `Variable`:{:?} with a non-existent cache key: {:?}. Please report this as a bug.", cache_variable.name, cache_variable.variable_key).into());
+            return Err(anyhow!("Attempt to update an existing `Variable`:{:?} with a non-existent cache key: {:?}. Please report this as a bug.", cache_variable.name, cache_variable.variable_key).into());
         }
 
         Ok(())
