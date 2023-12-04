@@ -4,7 +4,9 @@
 #![allow(missing_docs)]
 
 use crate::{
-    architecture::xtensa::arch::{instruction, CpuRegister, Register, SpecialRegister},
+    architecture::xtensa::arch::{
+        instruction::Instruction, CpuRegister, Register, SpecialRegister,
+    },
     probe::JTAGAccess,
     DebugProbeError, MemoryInterface,
 };
@@ -86,14 +88,14 @@ impl XtensaCommunicationInterface {
     }
 
     fn read_cpu_register(&mut self, register: CpuRegister) -> Result<u32, XtensaError> {
-        self.execute_instruction(instruction::rsr(SpecialRegister::Ddr, register))?;
+        self.execute_instruction(Instruction::Rsr(SpecialRegister::Ddr, register))?;
         self.xdm.read_ddr()
     }
 
     fn read_special_register(&mut self, register: SpecialRegister) -> Result<u32, XtensaError> {
         self.save_register(Register::Cpu(CpuRegister::scratch()))?;
 
-        self.execute_instruction(instruction::rsr(register, CpuRegister::scratch()))?;
+        self.execute_instruction(Instruction::Rsr(register, CpuRegister::scratch()))?;
         self.xdm.read_ddr()
     }
 
@@ -110,14 +112,14 @@ impl XtensaCommunicationInterface {
         self.xdm.write_ddr(value)?;
 
         // DDR -> scratch
-        self.xdm.execute_instruction(instruction::rsr(
+        self.xdm.execute_instruction(Instruction::Rsr(
             SpecialRegister::Ddr,
             CpuRegister::scratch(),
         ))?;
 
         // scratch -> target register
         self.xdm
-            .execute_instruction(instruction::wsr(register, CpuRegister::scratch()))?;
+            .execute_instruction(Instruction::Wsr(register, CpuRegister::scratch()))?;
 
         Ok(())
     }
@@ -129,7 +131,7 @@ impl XtensaCommunicationInterface {
 
         self.xdm.write_ddr(value)?;
         self.xdm
-            .execute_instruction(instruction::rsr(SpecialRegister::Ddr, register))?;
+            .execute_instruction(Instruction::Rsr(SpecialRegister::Ddr, register))?;
 
         Ok(())
     }
@@ -168,7 +170,8 @@ impl XtensaCommunicationInterface {
         result
     }
 
-    fn execute_instruction(&mut self, inst: u32) -> Result<(), XtensaError> {
+    fn execute_instruction(&mut self, inst: Instruction) -> Result<(), XtensaError> {
+        tracing::debug!("Executing instruction: {:?}", inst);
         let status = self.xdm.execute_instruction(inst);
         if let Err(XtensaError::XdmError(err)) = status {
             self.debug_execution_error(err)?
@@ -269,7 +272,7 @@ impl MemoryInterface for XtensaCommunicationInterface {
         self.write_cpu_register(CpuRegister::scratch(), address as u32 & !0x3)?;
 
         // Read from address in the scratch register
-        self.execute_instruction(instruction::lddr32_p(CpuRegister::scratch()))?;
+        self.execute_instruction(Instruction::Lddr32P(CpuRegister::scratch()))?;
 
         // Let's assume we can just do 32b reads, so let's do some pre-massaging on unaligned reads
         if address % 4 != 0 {

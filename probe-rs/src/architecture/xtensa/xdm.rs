@@ -3,7 +3,10 @@
 use std::fmt::Debug;
 
 use crate::{
-    architecture::{arm::ap::DRW, xtensa::arch::instruction},
+    architecture::{
+        arm::ap::DRW,
+        xtensa::arch::instruction::{self, Instruction, InstructionEncoding},
+    },
     probe::{JTAGAccess, JtagWriteCommand},
     DebugProbeError,
 };
@@ -415,17 +418,25 @@ impl Xdm {
             clear_status
         })?;
 
-        self.execute_instruction(instruction::rfdo(0))?;
+        self.execute_instruction(Instruction::Rfdo(0))?;
 
         Ok(())
     }
 
-    pub fn write_instruction(&mut self, instruction: u32) -> Result<(), XtensaError> {
-        self.write_nexus_register(DebugInstructionRegister(instruction))
+    pub fn write_instruction(&mut self, instruction: Instruction) -> Result<(), XtensaError> {
+        match instruction.encode() {
+            InstructionEncoding::Narrow(inst) => {
+                self.write_nexus_register(DebugInstructionRegister(inst))
+            }
+        }
     }
 
-    pub fn execute_instruction(&mut self, instruction: u32) -> Result<(), XtensaError> {
-        self.write_nexus_register(DebugInstructionAndExecRegister(instruction))?;
+    pub fn execute_instruction(&mut self, instruction: Instruction) -> Result<(), XtensaError> {
+        match instruction.encode() {
+            InstructionEncoding::Narrow(inst) => {
+                self.write_nexus_register(DebugInstructionAndExecRegister(inst))?;
+            }
+        }
 
         self.wait_for_exec_done()
     }
