@@ -284,21 +284,18 @@ impl Xdm {
     }
 
     fn read_nexus_register<R: NexusRegister>(&mut self) -> Result<R, XtensaError> {
-        tracing::debug!("Reading {:02x}", R::ADDRESS);
+        tracing::debug!("Reading from {}", R::NAME);
         let bits = self.dbg_read(R::ADDRESS)?;
 
         // TODO: this is inefficient - we should queue up the reads and then read them all at once
         self.dbg_status()?;
 
-        tracing::debug!("Read from {:02x}: {:08x}", R::ADDRESS, bits);
+        tracing::debug!("Read from {}: {:08x}", R::NAME, bits);
         R::from_bits(bits)
     }
 
-    fn write_nexus_register<R: WritableNexusRegister>(
-        &mut self,
-        register: R,
-    ) -> Result<(), XtensaError> {
-        tracing::debug!("Writing {:02x}", R::ADDRESS);
+    fn write_nexus_register<R: NexusRegister>(&mut self, register: R) -> Result<(), XtensaError> {
+        tracing::debug!("Writing {}: {:08x}", R::NAME, register.bits());
         self.dbg_write(R::ADDRESS, register.bits())?;
 
         // TODO: we should queue the first status read
@@ -586,23 +583,20 @@ impl DebugStatus {
 trait NexusRegister: Sized + Copy {
     /// NAR register address
     const ADDRESS: u8;
+    const NAME: &'static str;
 
     fn from_bits(bits: u32) -> Result<Self, XtensaError>;
-}
-
-trait WritableNexusRegister: NexusRegister {
     fn bits(&self) -> u32;
 }
 
 impl NexusRegister for DebugStatus {
     const ADDRESS: u8 = NARADR_DSR;
+    const NAME: &'static str = "DebugStatus";
 
     fn from_bits(bits: u32) -> Result<Self, XtensaError> {
         Ok(Self(bits))
     }
-}
 
-impl WritableNexusRegister for DebugStatus {
     fn bits(&self) -> u32 {
         self.0
     }
@@ -635,13 +629,12 @@ struct DebugControlSet(DebugControlBits);
 
 impl NexusRegister for DebugControlSet {
     const ADDRESS: u8 = NARADR_DCRSET;
+    const NAME: &'static str = "DebugControlSet";
 
     fn from_bits(bits: u32) -> Result<Self, XtensaError> {
         Ok(Self(DebugControlBits(bits)))
     }
-}
 
-impl WritableNexusRegister for DebugControlSet {
     fn bits(&self) -> u32 {
         self.0 .0
     }
@@ -653,13 +646,12 @@ struct DebugControlClear(DebugControlBits);
 
 impl NexusRegister for DebugControlClear {
     const ADDRESS: u8 = NARADR_DCRCLR;
+    const NAME: &'static str = "DebugControlClear";
 
     fn from_bits(bits: u32) -> Result<Self, XtensaError> {
         Ok(Self(DebugControlBits(bits)))
     }
-}
 
-impl WritableNexusRegister for DebugControlClear {
     fn bits(&self) -> u32 {
         self.0 .0
     }
@@ -671,13 +663,12 @@ struct DebugDataRegister(u32);
 
 impl NexusRegister for DebugDataRegister {
     const ADDRESS: u8 = NARADR_DDR;
+    const NAME: &'static str = "DDR";
 
     fn from_bits(bits: u32) -> Result<Self, XtensaError> {
         Ok(Self(bits))
     }
-}
 
-impl WritableNexusRegister for DebugDataRegister {
     fn bits(&self) -> u32 {
         self.0
     }
@@ -689,13 +680,12 @@ struct DebugDataAndExecRegister(u32);
 
 impl NexusRegister for DebugDataAndExecRegister {
     const ADDRESS: u8 = NARADR_DDREXEC;
+    const NAME: &'static str = "DDREXEC";
 
     fn from_bits(bits: u32) -> Result<Self, XtensaError> {
         Ok(Self(bits))
     }
-}
 
-impl WritableNexusRegister for DebugDataAndExecRegister {
     fn bits(&self) -> u32 {
         self.0
     }
@@ -708,13 +698,12 @@ struct DebugInstructionRegister(u32);
 
 impl NexusRegister for DebugInstructionRegister {
     const ADDRESS: u8 = NARADR_DIR0;
+    const NAME: &'static str = "DIR0";
 
     fn from_bits(bits: u32) -> Result<Self, XtensaError> {
         Ok(Self(bits))
     }
-}
 
-impl WritableNexusRegister for DebugInstructionRegister {
     fn bits(&self) -> u32 {
         self.0
     }
@@ -727,13 +716,12 @@ struct DebugInstructionAndExecRegister(u32);
 
 impl NexusRegister for DebugInstructionAndExecRegister {
     const ADDRESS: u8 = NARADR_DIR0EXEC;
+    const NAME: &'static str = "DIR0EXEC";
 
     fn from_bits(bits: u32) -> Result<Self, XtensaError> {
         Ok(Self(bits))
     }
-}
 
-impl WritableNexusRegister for DebugInstructionAndExecRegister {
     fn bits(&self) -> u32 {
         self.0
     }
