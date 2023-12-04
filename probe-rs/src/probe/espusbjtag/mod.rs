@@ -39,10 +39,6 @@ pub(crate) struct EspUsbJtag {
 }
 
 impl EspUsbJtag {
-    fn idle_cycles(&self) -> u8 {
-        self.jtag_idle_cycles
-    }
-
     fn scan(&mut self) -> Result<Vec<super::JtagChainItem>, DebugProbeError> {
         let chain = self.reset_scan()?;
         Ok(chain
@@ -58,11 +54,6 @@ impl EspUsbJtag {
 
     fn reset_scan(&mut self) -> Result<(Vec<u32>, Vec<usize>), super::DebugProbeError> {
         let max_chain = 8;
-
-        tracing::debug!("Resetting JTAG chain using trst");
-        // TODO this isn't actually needed, we should only do this when AttachUnderReset it supplied
-        self.protocol.set_reset(true, true)?;
-        self.protocol.set_reset(false, false)?;
 
         self.jtag_reset()?;
 
@@ -142,53 +133,45 @@ impl EspUsbJtag {
             return Err(DebugProbeError::Other(anyhow!("Invalid data length")));
         }
 
-        let tms_enter_ir_shift = bitvec![1, 1, 0, 0];
+        let tms_enter_ir_shift = [true, true, false, false];
 
         // The last bit will be transmitted when exiting the shift state,
         // so we need to stay in the shift state for one period less than
         // we have bits to transmit.
         let tms_data = iter::repeat(false).take(len - 1);
 
-        let tms_enter_idle = bitvec![1, 1, 0];
+        let tms_enter_idle = [true, true, false];
 
-        let mut tms: BitVec<u8, Lsb0> =
-            BitVec::with_capacity(tms_enter_ir_shift.len() + len + tms_enter_idle.len());
+        // BYPASS commands before and after shifting out data where required
+        let pre_bits = self.chain_params.map(|params| params.irpre).unwrap_or(0);
+        let post_bits = self.chain_params.map(|params| params.irpost).unwrap_or(0);
 
-        tms.extend_from_bitslice(&tms_enter_ir_shift);
-        if let Some(ref params) = self.chain_params {
-            tms.extend(iter::repeat(false).take(params.irpre))
-        }
+        let mut tms: BitVec<u8, Lsb0> = BitVec::with_capacity(
+            tms_enter_ir_shift.len() + pre_bits + len + post_bits + tms_enter_idle.len(),
+        );
+
+        tms.extend(tms_enter_ir_shift);
+        tms.extend(iter::repeat(false).take(pre_bits));
         tms.extend(tms_data);
-        if let Some(ref params) = self.chain_params {
-            tms.extend(iter::repeat(false).take(params.irpost))
-        }
-        tms.extend_from_bitslice(&tms_enter_idle);
+        tms.extend(iter::repeat(false).take(post_bits));
+        tms.extend(tms_enter_idle);
 
-        let tdi_enter_ir_shift = bitvec![0, 0, 0, 0];
+        let tdi_enter_ir_shift = [false, false, false, false];
 
         // This is one less than the enter idle for tms, because
         // the last bit is transmitted when exiting the IR shift state
-        let tdi_enter_idle = bitvec![0, 0];
+        let tdi_enter_idle = [false, false];
 
-        let mut tdi: BitVec<u8, Lsb0> =
-            BitVec::with_capacity(tdi_enter_ir_shift.len() + len + tdi_enter_idle.len());
+        let mut tdi: BitVec<u8, Lsb0> = BitVec::with_capacity(
+            tdi_enter_ir_shift.len() + pre_bits + len + post_bits + tdi_enter_idle.len(),
+        );
 
-        tdi.extend_from_bitslice(&tdi_enter_ir_shift);
-
-        // Add BYPASS commands before shifting out data where required
-        if let Some(ref params) = self.chain_params {
-            tdi.extend(iter::repeat(true).take(params.irpre))
-        }
-
+        tdi.extend(tdi_enter_ir_shift);
+        tdi.extend(iter::repeat(true).take(pre_bits));
         let bs = &data.as_bits::<Lsb0>()[..len];
         tdi.extend_from_bitslice(bs);
-
-        // Add BYPASS commands after shifting out data
-        if let Some(ref params) = self.chain_params {
-            tdi.extend(iter::repeat(true).take(params.irpost))
-        }
-
-        tdi.extend_from_bitslice(&tdi_enter_idle);
+        tdi.extend(iter::repeat(true).take(post_bits));
+        tdi.extend(tdi_enter_idle);
 
         tracing::trace!("tms: {:?}", tms);
         tracing::trace!("tdi: {:?}", tdi);
@@ -210,10 +193,12 @@ impl EspUsbJtag {
         mut response: BitVec<u8, Lsb0>,
         register_bits: usize,
     ) -> Result<Vec<u8>, DebugProbeError> {
-        let mut response = response.split_off(3); // split off tms_enter_shift from the response
+        // split off tms_enter_shift from the response
+        let mut response = response.split_off(3);
 
         if let Some(ref params) = self.chain_params {
-            response = response.split_off(params.drpre); // cut the prepended bypass command dummy bits
+            // cut the prepended bypass command dummy bits
+            response = response.split_off(params.drpre);
         }
 
         response.truncate(register_bits);
@@ -235,48 +220,50 @@ impl EspUsbJtag {
             return Err(DebugProbeError::Other(anyhow!("Invalid data length")));
         }
 
-        let tms_enter_shift = bitvec![1, 0, 0];
+        let tms_enter_shift = [true, false, false];
 
-        // Last bit of data is shifted out when we exi the SHIFT-DR State
+        // Last bit of data is shifted out when we exit the SHIFT-DR State
         let tms_shift_out_value = iter::repeat(false).take(register_bits - 1);
 
-        let tms_enter_idle = bitvec![1, 1, 0];
-
-        let mut tms: BitVec<u8, Lsb0> = BitVec::with_capacity(register_bits + 7);
-
-        tms.extend_from_bitslice(&tms_enter_shift);
-        if let Some(ref params) = self.chain_params {
-            tms.extend(iter::repeat(false).take(params.drpre))
-        }
-        tms.extend(tms_shift_out_value);
-        if let Some(ref params) = self.chain_params {
-            tms.extend(iter::repeat(false).take(params.drpost))
-        }
-        tms.extend_from_bitslice(&tms_enter_idle);
-
-        let tdi_enter_shift = bitvec![0, 0, 0];
-
-        let tdi_enter_idle = bitvec![0, 0];
-
-        let mut tdi: BitVec<u8, Lsb0> =
-            BitVec::with_capacity(tdi_enter_shift.len() + tdi_enter_idle.len() + register_bits);
-
-        tdi.extend_from_bitslice(&tdi_enter_shift);
+        let tms_enter_idle = [true, true, false];
 
         // dummy bits to account for bypasses
-        if let Some(ref params) = self.chain_params {
-            tdi.extend(iter::repeat(true).take(params.drpre))
-        }
+        let pre_bits = self.chain_params.map(|params| params.drpre).unwrap_or(0);
+        let post_bits = self.chain_params.map(|params| params.drpost).unwrap_or(0);
 
+        let mut tms: BitVec<u8, Lsb0> = BitVec::with_capacity(
+            tms_enter_shift.len()
+                + pre_bits
+                + register_bits
+                + post_bits
+                + tms_enter_idle.len()
+                + self.idle_cycles() as usize,
+        );
+
+        tms.extend(tms_enter_shift);
+        tms.extend(iter::repeat(false).take(pre_bits));
+        tms.extend(tms_shift_out_value);
+        tms.extend(iter::repeat(false).take(post_bits));
+        tms.extend(tms_enter_idle);
+
+        let tdi_enter_shift = [false, false, false];
+        let tdi_enter_idle = [false, false];
+
+        let mut tdi: BitVec<u8, Lsb0> = BitVec::with_capacity(
+            tdi_enter_shift.len()
+                + pre_bits
+                + register_bits
+                + post_bits
+                + tdi_enter_idle.len()
+                + self.idle_cycles() as usize,
+        );
+
+        tdi.extend(tdi_enter_shift);
+        tdi.extend(iter::repeat(true).take(pre_bits));
         let bs = &data.as_bits::<Lsb0>()[..register_bits];
         tdi.extend_from_bitslice(bs);
-
-        // dummy bits to account for bypasses
-        if let Some(ref params) = self.chain_params {
-            tdi.extend(iter::repeat(true).take(params.drpost))
-        }
-
-        tdi.extend_from_bitslice(&tdi_enter_idle);
+        tdi.extend(iter::repeat(true).take(post_bits));
+        tdi.extend(tdi_enter_idle);
 
         // We need to stay in the idle cycle a bit
         tms.extend(iter::repeat(false).take(self.idle_cycles() as usize));
@@ -326,7 +313,7 @@ impl EspUsbJtag {
         tracing::debug!("Resetting JTAG chain by setting tms high for 5 bits");
 
         // Reset JTAG chain (5 times TMS high), and enter idle state afterwards
-        let tms = vec![true, true, true, true, true, false];
+        let tms = [true, true, true, true, true, false];
         let tdi = iter::repeat(true).take(6);
 
         let response = self.protocol.jtag_io(tms, tdi, true)?;
@@ -400,7 +387,7 @@ impl JTAGAccess for EspUsbJtag {
         self.jtag_idle_cycles = idle_cycles;
     }
 
-    fn get_idle_cycles(&self) -> u8 {
+    fn idle_cycles(&self) -> u8 {
         self.jtag_idle_cycles
     }
 
@@ -552,13 +539,13 @@ impl DebugProbe for EspUsbJtag {
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
         tracing::info!("reset_assert!");
-        self.protocol.set_reset(false, false)?;
+        self.protocol.set_reset(true, true)?;
         Ok(())
     }
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         tracing::info!("reset_deassert!");
-        self.protocol.set_reset(true, true)?;
+        self.protocol.set_reset(false, false)?;
         Ok(())
     }
 

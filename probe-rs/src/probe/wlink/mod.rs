@@ -378,7 +378,7 @@ impl JTAGAccess for WchLink {
         self.idle_cycles = idle_cycles;
     }
 
-    fn get_idle_cycles(&self) -> u8 {
+    fn idle_cycles(&self) -> u8 {
         self.idle_cycles
     }
 

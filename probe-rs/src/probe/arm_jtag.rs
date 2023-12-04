@@ -1574,7 +1574,7 @@ mod test {
             todo!()
         }
 
-        fn get_idle_cycles(&self) -> u8 {
+        fn idle_cycles(&self) -> u8 {
             todo!()
         }
 
