@@ -483,7 +483,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
                 }
             }
         }
-        cache.update_variable_with_memory( &mut child_variable, memory)?;
+        cache.update_variable_and_value( &mut child_variable, memory)?;
 
         Ok(child_variable)
     }
@@ -502,7 +502,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
         cache: &mut VariableCache,
     ) -> Result<Variable, DebugError> {
         if !parent_variable.is_valid() {
-            cache.update_variable_with_memory(&mut parent_variable, memory)?;
+            cache.update_variable_and_value(&mut parent_variable, memory)?;
             return Ok(parent_variable);
         }
 
@@ -760,7 +760,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             }
         }
 
-        cache.update_variable_with_memory(&mut parent_variable, memory)?;
+        cache.update_variable_and_value(&mut parent_variable, memory)?;
 
         Ok(parent_variable)
     }
@@ -832,7 +832,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
 
         if !child_variable.is_valid() {
             cache
-                .update_variable_with_memory( &mut child_variable, memory)?;
+                .update_variable_and_value( &mut child_variable, memory)?;
 
             return Ok(child_variable);
 
@@ -1255,7 +1255,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             }
         }
 
-        cache.update_variable_with_memory(&mut child_variable, memory)?;
+        cache.update_variable_and_value(&mut child_variable, memory)?;
 
         Ok(child_variable)
     }
@@ -1329,7 +1329,7 @@ impl<'debuginfo> UnitInfo<'debuginfo> {
             child_variable,
             memory,
         );
-        cache.update_variable_with_memory(&mut array_member_variable, memory)?;
+        cache.update_variable_and_value(&mut array_member_variable, memory)?;
 
         Ok(())
     }
