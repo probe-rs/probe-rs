@@ -491,7 +491,7 @@ impl VariableCache {
     }
 
     /// Traverse the `VariableCache` and return a Vec of all the memory ranges that are referenced by the variables.
-    /// This is used to determine which memory ranges to read from the target when creating a 'default' [`core::CoreDump`].
+    /// This is used to determine which memory ranges to read from the target when creating a 'default' [`crate::core::CoreDump`].
     pub fn get_discrete_memory_ranges(&self) -> Vec<Range<u64>> {
         let mut memory_ranges: Vec<Range<u64>> = Vec::new();
         for variable in self.variable_hash_map.values() {
