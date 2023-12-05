@@ -13,7 +13,10 @@ pub fn decode_semihosting_syscall(operation: u32, parameter: u32) -> Semihosting
             tracing::warn!(
                 "Unknown semihosting operation={operation:04x} parameter={parameter:04x}"
             );
-            SemihostingCommand::Unknown { operation }
+            SemihostingCommand::Unknown {
+                operation,
+                parameter,
+            }
         }
     }
 }

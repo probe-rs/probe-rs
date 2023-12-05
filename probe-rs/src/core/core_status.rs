@@ -41,6 +41,9 @@ pub enum SemihostingCommand {
     Unknown {
         /// The semihosting operation requested
         operation: u32,
+
+        /// The parameter to the semihosting operation
+        parameter: u32,
     },
 }
 
