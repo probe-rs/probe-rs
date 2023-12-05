@@ -44,14 +44,20 @@ fn main() -> Result<()> {
     // Zero the memory
     iface.write(TEST_MEMORY_REGION_START, &[0; TEST_MEMORY_LEN])?;
 
+    // Write a test word into memory, unaligned
     iface.write_word_32(TEST_MEMORY_REGION_START + 1, 0xDECAFBAD)?;
     let coffee_opinion = iface.read_word_32(TEST_MEMORY_REGION_START + 1)?;
 
-    let mut readback = [0; 8];
+    // Write a test word into memory, aligned
+    iface.write_word_32(TEST_MEMORY_REGION_START + 8, 0xFEEDC0DE)?;
+    let aligned_word = iface.read_word_32(TEST_MEMORY_REGION_START + 8)?;
+
+    let mut readback = [0; 12];
     iface.read(TEST_MEMORY_REGION_START, &mut readback[..])?;
 
     tracing::info!("coffee_opinion: {:08X}", coffee_opinion);
-    tracing::info!("readback: {:#X?}", readback);
+    tracing::info!("aligned_word: {:08X}", aligned_word);
+    tracing::info!("readback: {:X?}", readback);
 
     // Restore memory we just overwrote
     iface.write(TEST_MEMORY_REGION_START, &saved_memory[..])?;

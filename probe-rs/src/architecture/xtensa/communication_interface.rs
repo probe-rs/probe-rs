@@ -2,7 +2,6 @@
 
 // TODO: remove
 #![allow(missing_docs)]
-#![allow(unused_variables)]
 
 use std::collections::HashMap;
 
@@ -198,6 +197,14 @@ impl XtensaCommunicationInterface {
         status
     }
 
+    fn write_ddr_and_execute(&mut self, value: u32) -> Result<(), XtensaError> {
+        let status = self.xdm.write_ddr_and_execute(value);
+        if let Err(XtensaError::XdmError(err)) = status {
+            self.debug_execution_error(err)?
+        }
+        status
+    }
+
     fn is_register_saved(&mut self, register: Register) -> bool {
         if register == Register::Special(SpecialRegister::Ddr) {
             // Avoid saving DDR
@@ -264,6 +271,44 @@ impl XtensaCommunicationInterface {
         self.state.saved_registers.clear();
 
         Ok(())
+    }
+
+    fn write_memory_unaligned8(&mut self, address: u32, data: &[u8]) -> Result<(), crate::Error> {
+        if data.is_empty() {
+            return Ok(());
+        }
+
+        let offset = address as usize % 4;
+        let aligned_address = address & !0x3;
+
+        // Read the aligned word
+        let mut word = [0; 4];
+        self.read(aligned_address as u64, &mut word)?;
+
+        // Replace the written bytes. This will also panic if the input is crossing a word boundary
+        word[offset..][..data.len()].copy_from_slice(data);
+
+        // Write the word back
+        self.write_cpu_register(CpuRegister::A3, aligned_address)?;
+        self.xdm.write_ddr(u32::from_le_bytes(word))?;
+        self.execute_instruction(Instruction::Sddr32P(CpuRegister::A3))?;
+
+        Ok(())
+    }
+}
+
+unsafe trait DataType: Sized {}
+unsafe impl DataType for u8 {}
+unsafe impl DataType for u32 {}
+unsafe impl DataType for u64 {}
+
+fn as_bytes<T: DataType>(data: &[T]) -> &[u8] {
+    unsafe { std::slice::from_raw_parts(data.as_ptr() as *mut u8, std::mem::size_of_val(data)) }
+}
+
+fn as_bytes_mut<T: DataType>(data: &mut [T]) -> &mut [u8] {
+    unsafe {
+        std::slice::from_raw_parts_mut(data.as_mut_ptr() as *mut u8, std::mem::size_of_val(data))
     }
 }
 
@@ -341,58 +386,95 @@ impl MemoryInterface for XtensaCommunicationInterface {
     }
 
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> anyhow::Result<(), crate::Error> {
-        let data_8 = unsafe {
-            std::slice::from_raw_parts_mut(
-                data.as_mut_ptr() as *mut u8,
-                std::mem::size_of_val(data),
-            )
-        };
-        self.read_8(address, data_8)
+        self.read_8(address, as_bytes_mut(data))
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> anyhow::Result<(), crate::Error> {
-        let data_8 = unsafe {
-            std::slice::from_raw_parts_mut(
-                data.as_mut_ptr() as *mut u8,
-                std::mem::size_of_val(data),
-            )
-        };
-        self.read_8(address, data_8)
+        self.read_8(address, as_bytes_mut(data))
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> anyhow::Result<(), crate::Error> {
         self.read(address, data)
     }
 
+    fn write(&mut self, address: u64, data: &[u8]) -> Result<(), crate::Error> {
+        if data.is_empty() {
+            return Ok(());
+        }
+
+        let address = address as u32;
+
+        let mut addr = address;
+        let mut buffer = data;
+
+        // We store the unaligned head of the data separately
+        if addr % 4 != 0 {
+            let unaligned_bytes = (4 - (addr % 4) as usize).min(buffer.len());
+
+            self.write_memory_unaligned8(addr, &buffer[..unaligned_bytes])?;
+
+            buffer = &buffer[unaligned_bytes..];
+            addr += unaligned_bytes as u32;
+        }
+
+        if buffer.len() > 4 {
+            // Prepare store instruction
+            self.write_cpu_register(CpuRegister::A3, addr as u32)?;
+            self.xdm
+                .write_instruction(Instruction::Sddr32P(CpuRegister::A3))?;
+
+            while buffer.len() > 4 {
+                let mut word = [0; 4];
+                word[..].copy_from_slice(&buffer[..4]);
+                let word = u32::from_le_bytes(word);
+
+                // Write data to DDR and store
+                self.write_ddr_and_execute(word)?;
+
+                buffer = &buffer[4..];
+                addr += 4;
+            }
+        }
+
+        // We store the narrow tail of the data separately
+        if !buffer.is_empty() {
+            self.write_memory_unaligned8(addr, buffer)?;
+        }
+
+        // TODO: implement cache flushing on CPUs that need it.
+
+        Ok(())
+    }
+
     fn write_word_64(&mut self, address: u64, data: u64) -> anyhow::Result<(), crate::Error> {
-        todo!()
+        self.write(address, &data.to_le_bytes())
     }
 
     fn write_word_32(&mut self, address: u64, data: u32) -> anyhow::Result<(), crate::Error> {
-        todo!()
+        self.write(address, &data.to_le_bytes())
     }
 
     fn write_word_8(&mut self, address: u64, data: u8) -> anyhow::Result<(), crate::Error> {
-        todo!()
+        self.write(address, &[data])
     }
 
     fn write_64(&mut self, address: u64, data: &[u64]) -> anyhow::Result<(), crate::Error> {
-        todo!()
+        self.write_8(address, as_bytes(data))
     }
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> anyhow::Result<(), crate::Error> {
-        todo!()
+        self.write_8(address, as_bytes(data))
     }
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> anyhow::Result<(), crate::Error> {
-        todo!()
+        self.write(address, data)
     }
 
     fn supports_8bit_transfers(&self) -> anyhow::Result<bool, crate::Error> {
-        todo!()
+        Ok(true)
     }
 
     fn flush(&mut self) -> anyhow::Result<(), crate::Error> {
-        todo!()
+        Ok(())
     }
 }

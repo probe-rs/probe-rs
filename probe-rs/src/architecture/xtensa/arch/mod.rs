@@ -1,5 +1,7 @@
 #![allow(unused)] // TODO remove
 
+use std::ops::Range;
+
 pub mod instruction;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
