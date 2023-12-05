@@ -9,8 +9,8 @@ use std::time::{Duration, Instant};
 
 use crate::architecture::arm::{ArmError, RawDapAccess};
 use crate::architecture::riscv::communication_interface::RiscvError;
-use crate::probe::common::bits_to_byte;
 use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
+use crate::probe::common::bits_to_byte;
 use crate::{
     architecture::{
         arm::{

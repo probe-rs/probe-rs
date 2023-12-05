@@ -90,14 +90,23 @@ impl XtensaCommunicationInterface {
     }
 
     fn read_cpu_register(&mut self, register: CpuRegister) -> Result<u32, XtensaError> {
-        self.execute_instruction(Instruction::Rsr(SpecialRegister::Ddr, register))?;
+        self.execute_instruction(Instruction::Wsr(SpecialRegister::Ddr, register))?;
         self.xdm.read_ddr()
     }
 
     fn read_special_register(&mut self, register: SpecialRegister) -> Result<u32, XtensaError> {
         self.save_register(Register::Cpu(CpuRegister::scratch()))?;
 
+        // Read special register into the scratch register
         self.execute_instruction(Instruction::Rsr(register, CpuRegister::scratch()))?;
+
+        // Write the scratch register into DDR
+        self.execute_instruction(Instruction::Wsr(
+            SpecialRegister::Ddr,
+            CpuRegister::scratch(),
+        ))?;
+
+        // Read DDR
         self.xdm.read_ddr()
     }
 
@@ -119,7 +128,7 @@ impl XtensaCommunicationInterface {
             CpuRegister::scratch(),
         ))?;
 
-        // scratch -> target register
+        // scratch -> target special register
         self.xdm
             .execute_instruction(Instruction::Wsr(register, CpuRegister::scratch()))?;
 

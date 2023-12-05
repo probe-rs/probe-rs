@@ -8,10 +8,10 @@ pub enum Instruction {
     /// Note: this is an illegal instruction when the processor is not in On-Chip Debug Mode
     Lddr32P(CpuRegister),
 
-    /// Reads special register `sr` into `t`
+    /// Reads `SpecialRegister` into `CpuRegister`
     Rsr(SpecialRegister, CpuRegister),
 
-    /// Writes `t` into special register `sr`
+    /// Writes `CpuRegister` into `SpecialRegister`
     Wsr(SpecialRegister, CpuRegister),
 
     /// Returns the Core to the Running state
