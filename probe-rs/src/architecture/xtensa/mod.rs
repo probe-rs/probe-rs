@@ -9,7 +9,7 @@ mod xdm;
 
 pub mod communication_interface;
 
-/// A interface to operate Xtensa cores.
+/// An interface to operate Xtensa cores.
 pub struct Xtensa<'probe> {
     interface: &'probe mut XtensaCommunicationInterface,
 }

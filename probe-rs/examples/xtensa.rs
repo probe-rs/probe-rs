@@ -1,3 +1,5 @@
+//! This example demonstrates how to use the implemented parts of the Xtensa interface.
+
 use anyhow::Result;
 use probe_rs::config::ScanChainElement;
 use probe_rs::{Lister, MemoryInterface, Probe};
@@ -15,7 +17,8 @@ fn main() -> Result<()> {
 
     probe.set_speed(100)?;
     probe.select_protocol(probe_rs::WireProtocol::Jtag)?;
-    // scan chain for an esp32s3
+
+    // Scan the chain for an esp32s3.
     probe.set_scan_chain(vec![
         ScanChainElement {
             ir_len: Some(5),
