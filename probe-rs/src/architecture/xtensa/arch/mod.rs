@@ -2,13 +2,13 @@
 
 pub mod instruction;
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum Register {
     Cpu(CpuRegister),
     Special(SpecialRegister),
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum CpuRegister {
     A0 = 0,
     A1 = 1,
@@ -38,7 +38,7 @@ impl CpuRegister {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum SpecialRegister {
     Lbeg = 0,
     Lend = 1,

@@ -3,6 +3,8 @@
 // TODO: remove
 #![allow(missing_docs)]
 
+use std::collections::HashMap;
+
 use crate::{
     architecture::xtensa::arch::{
         instruction::Instruction, CpuRegister, Register, SpecialRegister,
@@ -25,8 +27,8 @@ pub enum XtensaError {
 }
 
 struct XtensaCommunicationInterfaceState {
-    /// Pairs of (register, value). TODO: can/should we handle special registers?
-    saved_registers: Vec<(Register, u32)>,
+    /// Pairs of (register, value).
+    saved_registers: HashMap<Register, u32>,
 
     print_exception_cause: bool,
 }
@@ -50,7 +52,7 @@ impl XtensaCommunicationInterface {
         let s = Self {
             xdm,
             state: XtensaCommunicationInterfaceState {
-                saved_registers: vec![],
+                saved_registers: HashMap::new(),
                 print_exception_cause: true,
             },
         };
@@ -191,10 +193,7 @@ impl XtensaCommunicationInterface {
             // Avoid saving DDR
             return true;
         }
-        self.state
-            .saved_registers
-            .iter()
-            .any(|(reg, _)| *reg == register)
+        self.state.saved_registers.contains_key(&register)
     }
 
     fn read_register(&mut self, register: Register) -> Result<u32, XtensaError> {
@@ -208,7 +207,7 @@ impl XtensaCommunicationInterface {
         if !self.is_register_saved(register) {
             tracing::debug!("Saving register: {:?}", register);
             let value = self.read_register(register)?;
-            self.state.saved_registers.push((register, value));
+            self.state.saved_registers.insert(register, value);
         }
 
         Ok(())
@@ -226,7 +225,7 @@ impl XtensaCommunicationInterface {
         let dirty_regs = self.state.saved_registers.clone();
         let mut restore_scratch = None;
 
-        for (register, value) in dirty_regs.iter().copied() {
+        for (register, value) in dirty_regs.iter().map(|(k, v)| (*k, *v)) {
             match register {
                 Register::Cpu(register) if register == CpuRegister::scratch() => {
                     // We need to handle the scratch register (A3) separately as restoring a special
@@ -241,14 +240,11 @@ impl XtensaCommunicationInterface {
         if self.state.saved_registers.len() != dirty_regs.len() {
             // The scratch register wasn't saved before, but has to be saved now. This case should
             // not currently be reachable.
-            restore_scratch =
-                self.state
-                    .saved_registers
-                    .iter()
-                    .copied()
-                    .find_map(|(reg, value)| {
-                        (reg == Register::Cpu(CpuRegister::scratch())).then_some(value)
-                    });
+            restore_scratch = self
+                .state
+                .saved_registers
+                .get(&Register::Cpu(CpuRegister::scratch()))
+                .copied();
         }
 
         if let Some(value) = restore_scratch {
