@@ -412,40 +412,124 @@ impl<'p> CoreHandle<'p> {
                 all_discrete_memory_ranges.append(&mut variable_cache.get_discrete_memory_ranges());
             }
         }
-        consolidate_memory_ranges(&mut all_discrete_memory_ranges)
+        // Consolidating all memory ranges that are withing 0x400 bytes of each other.
+        consolidate_memory_ranges(&mut all_discrete_memory_ranges, 0x400)
     }
 }
 
 /// Return a Vec of memory ranges that consolidate the adjacent memory ranges of the input ranges.
-/// Note: The concept of "adjacent" is calculated to include a gap of up to 0x400 bytes(1Kb) between ranges.
+/// Note: The concept of "adjacent" is calculated to include a gap of up to specicied number of bytes between ranges.
+/// This serves to consolidate memory ranges that are separated by a small gap, but are still close enough for the purpose of the caller.
 pub(crate) fn consolidate_memory_ranges(
     discrete_memory_ranges: &mut Vec<Range<u64>>,
+    include_bytes_between_ranges: u64,
 ) -> Vec<Range<u64>> {
     discrete_memory_ranges.sort_by_cached_key(|range| (range.start, range.end));
     discrete_memory_ranges.dedup();
     let mut consolidated_memory_ranges: Vec<Range<u64>> = Vec::new();
     let mut condensed_range: Option<Range<u64>> = None;
-    for memory_range in discrete_memory_ranges {
-        if let Some(range_comparitor) = &mut condensed_range {
-            if memory_range.start <= range_comparitor.end + 0x400 {
-                // The ranges are adjacent, or within 4 bytes,
-                // so we will extend the range_comparitor to include the discrete memory_range.
-                range_comparitor.end = memory_range.end;
+
+    for memory_range in discrete_memory_ranges.iter() {
+        if let Some(range_comparitor) = condensed_range {
+            if memory_range.start <= range_comparitor.end + include_bytes_between_ranges + 1 {
+                let new_end = std::cmp::max(range_comparitor.end, memory_range.end);
+                condensed_range = Some(Range {
+                    start: range_comparitor.start,
+                    end: new_end,
+                });
             } else {
-                // The ranges are not adjacent,
-                // so we will add the range_comparitor to the consolidated_memory_ranges,
-                // and start a new range_comparitor with the discrete memory_range.
-                consolidated_memory_ranges.push(range_comparitor.clone());
+                consolidated_memory_ranges.push(range_comparitor);
                 condensed_range = Some(memory_range.clone());
             }
         } else {
             condensed_range = Some(memory_range.clone());
         }
     }
-    // After the loop, we need to add the last range_comparitor to the consolidated_memory_ranges.
+
     if let Some(range_comparitor) = condensed_range {
         consolidated_memory_ranges.push(range_comparitor);
     }
 
     consolidated_memory_ranges
+}
+#[cfg(test)]
+
+/// A single range should remain the same after consolidation.
+#[test]
+fn test_single_range() {
+    let mut input = vec![Range { start: 0, end: 5 }];
+    let expected = vec![Range { start: 0, end: 5 }];
+    let result = consolidate_memory_ranges(&mut input, 0);
+    assert_eq!(result, expected);
+}
+
+/// Three ranges that are adjacent should be consolidated into one.
+#[test]
+fn test_three_adjacent_ranges() {
+    let mut input = vec![
+        Range { start: 0, end: 5 },
+        Range { start: 6, end: 10 },
+        Range { start: 11, end: 15 },
+    ];
+    let expected = vec![Range { start: 0, end: 15 }];
+    let result = consolidate_memory_ranges(&mut input, 0);
+    assert_eq!(result, expected);
+}
+
+/// Two ranges that are distinct should remain distinct after consolidation.
+#[test]
+fn test_distinct_ranges() {
+    let mut input = vec![Range { start: 0, end: 5 }, Range { start: 7, end: 10 }];
+    let expected = vec![Range { start: 0, end: 5 }, Range { start: 7, end: 10 }];
+    let result = consolidate_memory_ranges(&mut input, 0);
+    assert_eq!(result, expected);
+}
+
+/// Two ranges that are contiguous should be consolidated into one.
+#[test]
+fn test_contiguous_ranges() {
+    let mut input = vec![Range { start: 0, end: 5 }, Range { start: 5, end: 10 }];
+    let expected = vec![Range { start: 0, end: 10 }];
+    let result = consolidate_memory_ranges(&mut input, 0);
+    assert_eq!(result, expected);
+}
+
+/// Three ranges where the first two are adjacent and the third is distinct should be consolidated into two.
+#[test]
+fn test_adjacent_and_distinct_ranges() {
+    let mut input = vec![
+        Range { start: 0, end: 5 },
+        Range { start: 6, end: 10 },
+        Range { start: 12, end: 15 },
+    ];
+    let expected = vec![Range { start: 0, end: 10 }, Range { start: 12, end: 15 }];
+    let result = consolidate_memory_ranges(&mut input, 0);
+    assert_eq!(result, expected);
+}
+
+/// Two ranges where the second starts and ends before the first should remain distinct after consolidation.
+#[test]
+fn test_non_overlapping_ranges() {
+    let mut input = vec![Range { start: 10, end: 20 }, Range { start: 0, end: 5 }];
+    let expected = vec![Range { start: 0, end: 5 }, Range { start: 10, end: 20 }];
+    let result = consolidate_memory_ranges(&mut input, 0);
+    assert_eq!(result, expected);
+}
+
+/// Two ranges where the second starts and ends before the first but are consolidated because they are within 5 bytes of each other.
+#[test]
+fn test_non_overlapping_ranges_with_extra_bytes() {
+    let mut input = vec![Range { start: 10, end: 20 }, Range { start: 0, end: 5 }];
+    let expected = vec![Range { start: 0, end: 20 }];
+    let result = consolidate_memory_ranges(&mut input, 5);
+    assert_eq!(result, expected);
+}
+
+/// Two ranges where the second starts before, but intersects with the first, should be consolidated.
+#[test]
+fn test_reversed_intersecting_ranges() {
+    let mut input = vec![Range { start: 10, end: 20 }, Range { start: 5, end: 15 }];
+    let expected = vec![Range { start: 5, end: 20 }];
+    let result = consolidate_memory_ranges(&mut input, 0);
+    assert_eq!(result, expected);
 }

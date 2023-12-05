@@ -490,7 +490,7 @@ impl VariableCache {
         let mut memory_ranges: Vec<Range<u64>> = Vec::new();
         for variable in self.variable_hash_map.values() {
             if let Some(mut memory_range) = variable.memory_range() {
-                // This memory might need to be read by 32-bit aligned words, so make sure
+                // This memory may need to be read by 32-bit aligned words, so make sure
                 // the range is aligned to 32 bits.
                 memory_range.align_to_32_bits();
                 if !memory_ranges.contains(&memory_range) {
