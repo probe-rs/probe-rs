@@ -744,7 +744,7 @@ impl DebugInfo {
 
             let mut only_exception = false;
 
-            let return_frame = match cached_stack_frames.pop() {
+            let mut return_frame = match cached_stack_frames.pop() {
                 Some(frame) => frame,
                 None => {
                     if let Some(exception_info) = &exception_info {
@@ -866,7 +866,7 @@ impl DebugInfo {
                                 .and_then(|lr| lr.value);
 
                         if let Some(calling_pc) = unwind_registers.get_program_counter_mut() {
-                            if unwind_register(
+                            if let ControlFlow::Break(error) = unwind_register(
                                 calling_pc,
                                 &callee_frame_registers,
                                 None,
@@ -874,10 +874,11 @@ impl DebugInfo {
                                 &mut unwound_return_address,
                                 memory,
                                 instruction_set,
-                            )
-                            .is_break()
-                            {
-                                // We were not able to get a PC for the calling frame, so we cannot continue unwinding.
+                            ) {
+                                // This is not fatal, but we cannot continue unwinding beyond the current frame.
+                                tracing::error!("{:?}", &error);
+                                return_frame.function_name =
+                                    format!("{} : ERROR : {error}", &return_frame.function_name);
                                 stack_frames.push(return_frame);
                                 break 'unwind;
                             } else {
@@ -940,7 +941,7 @@ impl DebugInfo {
             // We sometimes need to keep a copy of the LR value to calculate the PC. For both ARM, and RISC-V, The LR will be unwound before the PC, so we can reference it safely.
             let mut unwound_return_address: Option<RegisterValue> = None;
             for debug_register in unwind_registers.0.iter_mut() {
-                if unwind_register(
+                if let ControlFlow::Break(error) = unwind_register(
                     debug_register,
                     &callee_frame_registers,
                     Some(unwind_info),
@@ -948,9 +949,10 @@ impl DebugInfo {
                     &mut unwound_return_address,
                     memory,
                     instruction_set,
-                )
-                .is_break()
-                {
+                ) {
+                    tracing::error!("{:?}", &error);
+                    return_frame.function_name =
+                        format!("{} : ERROR: {error}", &return_frame.function_name);
                     stack_frames.push(return_frame);
                     break 'unwind;
                 };
@@ -1300,7 +1302,7 @@ fn unwind_register(
     unwound_return_address: &mut Option<RegisterValue>,
     memory: &mut dyn MemoryInterface,
     instruction_set: Option<InstructionSet>,
-) -> ControlFlow<(), ()> {
+) -> ControlFlow<crate::Error, ()> {
     use gimli::read::RegisterRule::*;
     // If we do not have unwind info, or there is no register rule, then use UnwindRule::Undefined.
     let register_rule = debug_register
@@ -1411,11 +1413,10 @@ fn unwind_register(
                             .map(|_| RegisterValue::U64(u64::from_le_bytes(buff)))
                     }
                     _ => {
-                        tracing::error!(
-                            "UNWIND: Address size {} not supported.  Please report this as a bug.",
-                            address_size
+                        return ControlFlow::Break(
+                            anyhow::anyhow!("UNWIND: Address size {} not supported.", address_size)
+                                .into(),
                         );
-                        return ControlFlow::Break(());
                     }
                 };
 
@@ -1432,23 +1433,23 @@ fn unwind_register(
                     }
                     Err(error) => {
                         tracing::error!(
+                            "UNWIND: Rule: Offset {} from address {:#010x}",
+                            address_offset,
+                            unwind_cfa
+                        );
+                        return ControlFlow::Break(anyhow::anyhow!(
                             "UNWIND: Failed to read value for register {} from address {} ({} bytes): {}",
                             debug_register.get_register_name(),
                             RegisterValue::from(previous_frame_register_address),
                             4,
                             error
-                        );
-                        tracing::error!(
-                            "UNWIND: Rule: Offset {} from address {:#010x}",
-                            address_offset,
-                            unwind_cfa
-                        );
-                        return ControlFlow::Break(());
+                        ).into());
                     }
                 }
             } else {
-                tracing::error!("UNWIND: Tried to unwind `RegisterRule` at CFA = None. Please report this as a bug.");
-                return ControlFlow::Break(());
+                return ControlFlow::Break(
+                    anyhow::anyhow!("UNWIND: Tried to unwind `RegisterRule` at CFA = None.").into(),
+                );
             }
         }
         //TODO: Implement the remainder of these `RegisterRule`s
@@ -2064,7 +2065,7 @@ mod test {
     #[test_case("RP2040"; "Armv6-m using RP2040")]
     #[test_case("nRF52833_xxAA"; "Armv7-m using nRF52833_xxAA")]
     //TODO:  #[test_case("esp32c3"; "RISC-V32E using esp32c3")]
-    fn debug_unwind_tests(chip_name: &str) {
+    fn full_unwind(chip_name: &str) {
         // TODO: Add RISC-V tests.
 
         let debug_info =

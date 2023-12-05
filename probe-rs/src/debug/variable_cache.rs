@@ -461,7 +461,7 @@ impl VariableCache {
                 return;
             }
             .clone();
-            debug_info
+            if debug_info
                 .cache_deferred_variables(
                     self,
                     memory,
@@ -469,7 +469,10 @@ impl VariableCache {
                     registers,
                     frame_base,
                 )
-                .unwrap();
+                .is_err()
+            {
+                return;
+            };
             for mut child in self.get_children(variable_to_recurse.variable_key).unwrap() {
                 self.recurse_deferred_variables(
                     debug_info,
