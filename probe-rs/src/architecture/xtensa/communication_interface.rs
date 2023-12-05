@@ -297,6 +297,10 @@ impl XtensaCommunicationInterface {
     }
 }
 
+/// DataType
+///
+/// # Safety
+/// Don't implement this trait
 unsafe trait DataType: Sized {}
 unsafe impl DataType for u8 {}
 unsafe impl DataType for u32 {}
@@ -419,7 +423,7 @@ impl MemoryInterface for XtensaCommunicationInterface {
 
         if buffer.len() > 4 {
             // Prepare store instruction
-            self.write_cpu_register(CpuRegister::A3, addr as u32)?;
+            self.write_cpu_register(CpuRegister::A3, addr)?;
             self.xdm
                 .write_instruction(Instruction::Sddr32P(CpuRegister::A3))?;
 
