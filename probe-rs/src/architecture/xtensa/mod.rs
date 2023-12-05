@@ -1,5 +1,7 @@
 //! All the interface bits for Xtensa.
 
+#![allow(unused)] // FIXME remove after testing
+
 use self::communication_interface::XtensaCommunicationInterface;
 
 mod arch;

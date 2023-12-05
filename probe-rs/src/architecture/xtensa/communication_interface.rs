@@ -2,6 +2,7 @@
 
 // TODO: remove
 #![allow(missing_docs)]
+#![allow(unused_variables)]
 
 use std::collections::HashMap;
 
@@ -341,7 +342,7 @@ impl MemoryInterface for XtensaCommunicationInterface {
         let data_8 = unsafe {
             std::slice::from_raw_parts_mut(
                 data.as_mut_ptr() as *mut u8,
-                data.len() * std::mem::size_of::<u64>(),
+                std::mem::size_of_val(data),
             )
         };
         self.read_8(address, data_8)
@@ -351,7 +352,7 @@ impl MemoryInterface for XtensaCommunicationInterface {
         let data_8 = unsafe {
             std::slice::from_raw_parts_mut(
                 data.as_mut_ptr() as *mut u8,
-                data.len() * std::mem::size_of::<u32>(),
+                std::mem::size_of_val(data),
             )
         };
         self.read_8(address, data_8)

@@ -26,8 +26,8 @@ const NARADR_DIR0: u8 = 0x48;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum TapInstruction {
-    NAR,
-    NDR,
+    Nar,
+    Ndr,
     PowerControl,
     PowerStatus,
 }
@@ -35,8 +35,8 @@ enum TapInstruction {
 impl TapInstruction {
     fn code(self) -> u32 {
         match self {
-            TapInstruction::NAR => 0x1C,
-            TapInstruction::NDR => 0x1C,
+            TapInstruction::Nar => 0x1C,
+            TapInstruction::Ndr => 0x1C,
             TapInstruction::PowerControl => 0x08,
             TapInstruction::PowerStatus => 0x09,
         }
@@ -44,8 +44,8 @@ impl TapInstruction {
 
     fn bits(self) -> u32 {
         match self {
-            TapInstruction::NAR => 8,
-            TapInstruction::NDR => 32,
+            TapInstruction::Nar => 8,
+            TapInstruction::Ndr => 32,
             TapInstruction::PowerControl => 8,
             TapInstruction::PowerStatus => 8,
         }
@@ -53,7 +53,7 @@ impl TapInstruction {
 
     fn capture_to_u32(self, capture: &[u8]) -> u32 {
         match self {
-            TapInstruction::NDR => u32::from_le_bytes(capture.try_into().unwrap()),
+            TapInstruction::Ndr => u32::from_le_bytes(capture.try_into().unwrap()),
             _ => capture[0] as u32,
         }
     }
@@ -108,7 +108,7 @@ fn parse_register_status(byte: u8) -> Result<DebugRegisterStatus, DebugRegisterE
 #[derive(thiserror::Error, Debug, Clone, Copy)]
 pub enum Error {
     #[error("Error while accessing register: {0}")]
-    XdmError(DebugRegisterError),
+    Xdm(DebugRegisterError),
 
     #[error("ExecExeception")]
     ExecExeception,
@@ -151,7 +151,7 @@ impl Xdm {
         };
 
         if let Err(e) = x.init() {
-            return Err((x.free(), e.into()));
+            return Err((x.free(), e));
         }
 
         Ok(x)
@@ -243,10 +243,10 @@ impl Xdm {
 
     /// Perform an access to a register
     fn dbg_read(&mut self, address: u8) -> Result<u32, XtensaError> {
-        let regdata = (address << 1) | 0;
+        let regdata = address << 1;
 
-        self.tap_write(TapInstruction::NAR, regdata as u32);
-        let res = self.tap_read(TapInstruction::NDR);
+        self.tap_write(TapInstruction::Nar, regdata as u32);
+        let res = self.tap_read(TapInstruction::Ndr);
 
         tracing::trace!("dbg_read response: {:?}", res);
 
@@ -257,8 +257,8 @@ impl Xdm {
     fn dbg_write(&mut self, address: u8, value: u32) -> Result<u32, XtensaError> {
         let regdata = (address << 1) | 1;
 
-        self.tap_write(TapInstruction::NAR, regdata as u32);
-        let res = self.tap_write(TapInstruction::NDR, value);
+        self.tap_write(TapInstruction::Nar, regdata as u32);
+        let res = self.tap_write(TapInstruction::Ndr, value);
 
         tracing::trace!("dbg_write response: {:?}", res);
 
@@ -266,8 +266,8 @@ impl Xdm {
     }
 
     fn dbg_status(&mut self) -> Result<DebugRegisterStatus, XtensaError> {
-        let status = self.tap_read(TapInstruction::NAR);
-        self.tap_read(TapInstruction::NDR)?;
+        let status = self.tap_read(TapInstruction::Nar);
+        self.tap_read(TapInstruction::Ndr)?;
 
         Ok(parse_register_status(status? as u8)?)
     }
@@ -521,7 +521,7 @@ impl From<Error> for XtensaError {
 
 impl From<DebugRegisterError> for Error {
     fn from(e: DebugRegisterError) -> Self {
-        Error::XdmError(e)
+        Error::Xdm(e)
     }
 }
 
