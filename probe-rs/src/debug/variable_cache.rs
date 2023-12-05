@@ -5,7 +5,10 @@ use gimli::{DebugInfoOffset, UnitOffset, UnitSectionOffset};
 use num_traits::Zero;
 use probe_rs_target::MemoryRange;
 use serde::{Serialize, Serializer};
-use std::{collections::BTreeMap, ops::Range};
+use std::{
+    collections::{btree_map::Entry, BTreeMap},
+    ops::Range,
+};
 /// VariableCache stores available `Variable`s, and provides methods to create and navigate the parent-child relationships of the Variables.
 #[derive(Debug, Clone, PartialEq)]
 pub struct VariableCache {
