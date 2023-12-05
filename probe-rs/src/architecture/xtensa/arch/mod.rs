@@ -139,3 +139,36 @@ impl SpecialRegister {
         self as u8
     }
 }
+
+pub struct CacheConfig {
+    pub line_size: u32,
+    pub size: u32,
+    pub way_count: u8,
+    pub regions: Vec<Range<u32>>,
+}
+
+impl CacheConfig {
+    /// Returns if the given address is covered by the cache.
+    pub fn contains(&self, address: u32) -> bool {
+        self.regions.iter().any(|r| r.contains(&address))
+    }
+}
+
+pub struct ChipConfig {
+    /// IRAM, IROM, SRAM, SROM
+    pub icache: CacheConfig,
+
+    /// DRAM, DROM, SRAM, SROM
+    pub dcache: CacheConfig,
+}
+
+impl CacheConfig {
+    pub const fn not_present() -> Self {
+        Self {
+            line_size: 0,
+            size: 0,
+            way_count: 1,
+            regions: vec![],
+        }
+    }
+}
