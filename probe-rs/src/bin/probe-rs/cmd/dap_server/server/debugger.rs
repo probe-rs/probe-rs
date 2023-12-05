@@ -486,18 +486,14 @@ impl Debugger {
         // Before we complete, load the (optional) CMSIS-SVD file and its variable cache.
         // Configure the [CorePeripherals].
         if let Some(svd_file) = &target_core_config.svd_file {
-            target_core.core_data.core_peripherals = match SvdCache::new(
-                svd_file,
-                &mut target_core.core,
-                &mut debug_adapter,
-                launch_attach_request.seq,
-            ) {
-                Ok(core_peripherals) => Some(core_peripherals),
-                Err(error) => {
-                    tracing::error!("{:?}", error);
-                    None
-                }
-            };
+            target_core.core_data.core_peripherals =
+                match SvdCache::new(svd_file, &mut debug_adapter, launch_attach_request.seq) {
+                    Ok(core_peripherals) => Some(core_peripherals),
+                    Err(error) => {
+                        tracing::error!("{:?}", error);
+                        None
+                    }
+                };
         }
 
         if requested_target_session_type == TargetSessionType::LaunchRequest {
