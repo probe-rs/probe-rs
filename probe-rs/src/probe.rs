@@ -252,13 +252,12 @@ impl Probe {
     ///
     /// If this doesn't work, you might want to try [`Probe::attach_under_reset`]
     pub fn attach(
-        mut self,
+        self,
         target: impl Into<TargetSelector>,
         permissions: Permissions,
     ) -> Result<Session, Error> {
-        self.attached = true;
-
-        Session::new(self, target.into(), AttachMethod::Normal, permissions)
+        let session = Session::new(self, target.into(), AttachMethod::Normal, permissions)?;
+        Ok(session)
     }
 
     /// Attach to a target without knowing what target you have at hand.
@@ -281,8 +280,7 @@ impl Probe {
             tracing::info!("Falling back to standard probe reset.");
             self.target_reset_assert()?;
         }
-
-        self.inner_attach()?;
+        self.attach_to_unspecified()?;
         Ok(())
     }
 
@@ -292,11 +290,10 @@ impl Probe {
     /// This is necessary if the chip is not responding to the SWD reset sequence.
     /// For example this can happen if the chip has the SWDIO pin remapped.
     pub fn attach_under_reset(
-        mut self,
+        self,
         target: impl Into<TargetSelector>,
         permissions: Permissions,
     ) -> Result<Session, Error> {
-        self.attached = true;
         // The session will de-assert reset after connecting to the debug interface.
         Session::new(self, target.into(), AttachMethod::UnderReset, permissions).map_err(|e| {
             if matches!(e, Error::Arm(ArmError::Timeout) | Error::Riscv(RiscvError::Timeout)) {
@@ -306,10 +303,6 @@ impl Probe {
                 e
             }
         })
-    }
-
-    pub(crate) fn inner_attach(&mut self) -> Result<(), DebugProbeError> {
-        self.inner.attach()
     }
 
     /// Selects the transport protocol to be used by the debug probe.
