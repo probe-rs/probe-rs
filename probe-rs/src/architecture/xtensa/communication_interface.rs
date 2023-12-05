@@ -281,7 +281,10 @@ impl MemoryInterface for XtensaCommunicationInterface {
 
         // Let's assume we can just do 32b reads, so let's do some pre-massaging on unaligned reads
         if address % 4 != 0 {
-            let word = if dst.len() <= 4 {
+            let offset = address as usize % 4;
+
+            // Avoid executing another read if we only have to read a single word
+            let word = if offset + dst.len() <= 4 {
                 self.xdm.read_ddr()?
             } else {
                 self.read_ddr_and_execute()?
@@ -289,7 +292,6 @@ impl MemoryInterface for XtensaCommunicationInterface {
 
             let word = word.to_le_bytes();
 
-            let offset = address as usize % 4;
             let bytes_to_copy = (4 - offset).min(dst.len());
 
             dst[..bytes_to_copy].copy_from_slice(&word[offset..][..bytes_to_copy]);

@@ -35,13 +35,28 @@ fn main() -> Result<()> {
 
     iface.halt()?;
 
-    const SYSTEM_BASE_REGISTER: u32 = 0x600C_0000;
-    const SYSTEM_DATE_REGISTER: u32 = SYSTEM_BASE_REGISTER | 0x0FFC;
-    let date = iface.read_word_32(SYSTEM_DATE_REGISTER as u64)?;
+    const TEST_MEMORY_REGION_START: u64 = 0x600F_E000;
+    const TEST_MEMORY_LEN: usize = 100;
+
+    let mut saved_memory = vec![0; TEST_MEMORY_LEN];
+    iface.read(TEST_MEMORY_REGION_START, &mut saved_memory[..])?;
+
+    // Zero the memory
+    iface.write(TEST_MEMORY_REGION_START, &[0; TEST_MEMORY_LEN])?;
+
+    iface.write_word_32(TEST_MEMORY_REGION_START + 1, 0xDECAFBAD)?;
+    let coffee_opinion = iface.read_word_32(TEST_MEMORY_REGION_START + 1)?;
+
+    let mut readback = [0; 8];
+    iface.read(TEST_MEMORY_REGION_START, &mut readback[..])?;
+
+    tracing::info!("coffee_opinion: {:08X}", coffee_opinion);
+    tracing::info!("readback: {:#X?}", readback);
+
+    // Restore memory we just overwrote
+    iface.write(TEST_MEMORY_REGION_START, &saved_memory[..])?;
 
     iface.leave_ocd_mode()?;
-
-    println!("SYSTEM peripheral date: {:08x}", date);
 
     Ok(())
 }
