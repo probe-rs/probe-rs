@@ -411,6 +411,12 @@ impl<'p> CoreHandle<'p> {
                 );
                 all_discrete_memory_ranges.append(&mut variable_cache.get_discrete_memory_ranges());
             }
+            // Also capture memory addresses for essential registers.
+            for register in frame.registers.0.iter() {
+                if let Ok(Some(memory_range)) = register.memory_range() {
+                    all_discrete_memory_ranges.push(memory_range);
+                }
+            }
         }
         // Consolidating all memory ranges that are withing 0x400 bytes of each other.
         consolidate_memory_ranges(&mut all_discrete_memory_ranges, 0x400)
