@@ -1,0 +1,1 @@
+espusbjtag: Fixed a potential edge case that could lock up the interface.

@@ -246,8 +246,23 @@ impl ProtocolHandler {
         tdi: impl IntoIterator<Item = bool>,
         cap: bool,
     ) -> Result<(), DebugProbeError> {
-        tracing::debug!("JTAG IO! {} ", cap);
+        tracing::debug!("JTAG IO! {}", cap);
         for (tms, tdi) in tms.into_iter().zip(tdi.into_iter()) {
+            if cap && self.pending_in_bits == 128 * 8 {
+                // From the ESP32-S3 TRM:
+                // [A] command stream can cause at most 128 bytes of capture data to be
+                // generated [...] without the host acting to receive the generated data. If
+                // more data is generated anyway, the command stream is paused and the device
+                // will not accept more commands before the generated capture data is read out.
+
+                // Let's break the command stream here and flush the data.
+                // We do this before we would capture the 1025th bit, so we don't do an
+                // extra flush if we only ever want to capture 1024 bits.
+                self.finalize_previous_command()?;
+                self.send_buffer()?;
+                self.receive_buffer()?;
+            }
+
             self.push_command(RepeatableCommand::Clock { cap, tdi, tms })?;
             if cap {
                 self.pending_in_bits += 1;
