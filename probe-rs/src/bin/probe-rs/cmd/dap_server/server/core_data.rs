@@ -426,7 +426,7 @@ impl<'p> CoreHandle<'p> {
 /// Return a Vec of memory ranges that consolidate the adjacent memory ranges of the input ranges.
 /// Note: The concept of "adjacent" is calculated to include a gap of up to specicied number of bytes between ranges.
 /// This serves to consolidate memory ranges that are separated by a small gap, but are still close enough for the purpose of the caller.
-pub(crate) fn consolidate_memory_ranges(
+fn consolidate_memory_ranges(
     discrete_memory_ranges: &mut Vec<Range<u64>>,
     include_bytes_between_ranges: u64,
 ) -> Vec<Range<u64>> {
