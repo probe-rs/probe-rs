@@ -419,7 +419,7 @@ impl<'p> CoreHandle<'p> {
             }
         }
         // Consolidating all memory ranges that are withing 0x400 bytes of each other.
-        consolidate_memory_ranges(&mut all_discrete_memory_ranges, 0x400)
+        consolidate_memory_ranges(all_discrete_memory_ranges, 0x400)
     }
 }
 
@@ -427,7 +427,7 @@ impl<'p> CoreHandle<'p> {
 /// Note: The concept of "adjacent" is calculated to include a gap of up to specicied number of bytes between ranges.
 /// This serves to consolidate memory ranges that are separated by a small gap, but are still close enough for the purpose of the caller.
 fn consolidate_memory_ranges(
-    discrete_memory_ranges: &mut Vec<Range<u64>>,
+    mut discrete_memory_ranges: Vec<Range<u64>>,
     include_bytes_between_ranges: u64,
 ) -> Vec<Range<u64>> {
     discrete_memory_ranges.sort_by_cached_key(|range| (range.start, range.end));
@@ -464,7 +464,7 @@ fn consolidate_memory_ranges(
 fn test_single_range() {
     let mut input = vec![Range { start: 0, end: 5 }];
     let expected = vec![Range { start: 0, end: 5 }];
-    let result = consolidate_memory_ranges(&mut input, 0);
+    let result = consolidate_memory_ranges(input, 0);
     assert_eq!(result, expected);
 }
 
@@ -477,7 +477,7 @@ fn test_three_adjacent_ranges() {
         Range { start: 11, end: 15 },
     ];
     let expected = vec![Range { start: 0, end: 15 }];
-    let result = consolidate_memory_ranges(&mut input, 0);
+    let result = consolidate_memory_ranges(input, 0);
     assert_eq!(result, expected);
 }
 
@@ -486,7 +486,7 @@ fn test_three_adjacent_ranges() {
 fn test_distinct_ranges() {
     let mut input = vec![Range { start: 0, end: 5 }, Range { start: 7, end: 10 }];
     let expected = vec![Range { start: 0, end: 5 }, Range { start: 7, end: 10 }];
-    let result = consolidate_memory_ranges(&mut input, 0);
+    let result = consolidate_memory_ranges(input, 0);
     assert_eq!(result, expected);
 }
 
@@ -495,7 +495,7 @@ fn test_distinct_ranges() {
 fn test_contiguous_ranges() {
     let mut input = vec![Range { start: 0, end: 5 }, Range { start: 5, end: 10 }];
     let expected = vec![Range { start: 0, end: 10 }];
-    let result = consolidate_memory_ranges(&mut input, 0);
+    let result = consolidate_memory_ranges(input, 0);
     assert_eq!(result, expected);
 }
 
@@ -508,7 +508,7 @@ fn test_adjacent_and_distinct_ranges() {
         Range { start: 12, end: 15 },
     ];
     let expected = vec![Range { start: 0, end: 10 }, Range { start: 12, end: 15 }];
-    let result = consolidate_memory_ranges(&mut input, 0);
+    let result = consolidate_memory_ranges(input, 0);
     assert_eq!(result, expected);
 }
 
@@ -517,7 +517,7 @@ fn test_adjacent_and_distinct_ranges() {
 fn test_non_overlapping_ranges() {
     let mut input = vec![Range { start: 10, end: 20 }, Range { start: 0, end: 5 }];
     let expected = vec![Range { start: 0, end: 5 }, Range { start: 10, end: 20 }];
-    let result = consolidate_memory_ranges(&mut input, 0);
+    let result = consolidate_memory_ranges(input, 0);
     assert_eq!(result, expected);
 }
 
@@ -526,7 +526,7 @@ fn test_non_overlapping_ranges() {
 fn test_non_overlapping_ranges_with_extra_bytes() {
     let mut input = vec![Range { start: 10, end: 20 }, Range { start: 0, end: 5 }];
     let expected = vec![Range { start: 0, end: 20 }];
-    let result = consolidate_memory_ranges(&mut input, 5);
+    let result = consolidate_memory_ranges(input, 5);
     assert_eq!(result, expected);
 }
 
@@ -535,6 +535,6 @@ fn test_non_overlapping_ranges_with_extra_bytes() {
 fn test_reversed_intersecting_ranges() {
     let mut input = vec![Range { start: 10, end: 20 }, Range { start: 5, end: 15 }];
     let expected = vec![Range { start: 5, end: 20 }];
-    let result = consolidate_memory_ranges(&mut input, 0);
+    let result = consolidate_memory_ranges(input, 0);
     assert_eq!(result, expected);
 }
