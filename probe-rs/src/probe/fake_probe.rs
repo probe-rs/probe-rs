@@ -10,6 +10,7 @@ use crate::{
         communication_interface::{
             ArmDebugState, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,
         },
+        core::Dfsr,
         dp::DebugPortError,
         memory::adi_v5_memory_interface::{ADIMemoryInterface, ArmProbe},
         sequences::ArmDebugSequence,
@@ -46,17 +47,32 @@ enum MockedAp {
 
 struct MockCore {
     dhcsr: Dhcsr,
+    dfsr: Dfsr,
 
     /// Is the core halted?
     is_halted: bool,
 }
 
 impl MockCore {
-    pub fn new() -> Self {
-        Self {
-            dhcsr: Dhcsr(0),
-            is_halted: false,
+    pub fn new(initial_state: MockCoreState) -> Self {
+        let mut dhcsr = Dhcsr::from(0);
+        let mut is_halted = false;
+
+        if initial_state == MockCoreState::Halted {
+            // Set the halt flag, as well as the debug enable flag.
+            dhcsr.set_c_halt(true);
+            dhcsr.set_c_debugen(true);
+
+            is_halted = true;
         }
+
+        let core = Self {
+            dhcsr,
+            is_halted,
+            dfsr: Dfsr::from(0),
+        };
+
+        core
     }
 }
 
@@ -98,7 +114,15 @@ impl ArmProbe for &mut MockCore {
                     dhcsr |= 1 << 16;
 
                     *val = dhcsr;
-                    println!("Read  DHCSR: {:#x} = {:#x}", address, val);
+                    println!(
+                        "Read  DHCSR: {:#x} = {:#x}  (is_halted: {})",
+                        address, val, self.is_halted
+                    );
+                }
+
+                Dfsr::ADDRESS_OFFSET => {
+                    *val = self.dfsr.into();
+                    println!("Read  DFSR: {:#x} = {:#x}", address, val);
                 }
 
                 _ => {
@@ -135,13 +159,28 @@ impl ArmProbe for &mut MockCore {
 
                         let request_halt = self.dhcsr.c_halt();
 
+                        if request_halt && !self.is_halted {
+                            println!("MockCore: Halt requested, halting core");
+                            self.dfsr.set_halted(true);
+                        } else if !request_halt && self.is_halted {
+                            println!("MockCore: Resume requested, resuming core");
+                        }
+
                         self.is_halted = request_halt;
 
                         if !self.dhcsr.c_halt() && self.dhcsr.c_debugen() && self.dhcsr.c_step() {
                             tracing::debug!("MockCore: Single step requested, setting s_halt");
                             self.is_halted = true;
+
+                            self.dfsr.set_halted(true);
                         }
                     }
+                }
+                Dfsr::ADDRESS_OFFSET => {
+                    // DFSR is write-one-to-clear
+                    let mask = !word;
+
+                    self.dfsr.0 &= mask;
                 }
                 _ => println!("Write {:#010x} = {:#010x}", address, word),
             }
@@ -191,6 +230,12 @@ pub enum Operation {
     },
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum MockCoreState {
+    Running,
+    Halted,
+}
+
 impl Debug for FakeProbe {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("FakeProbe")
@@ -218,7 +263,7 @@ impl FakeProbe {
     }
 
     /// Fake probe with a mocked core
-    pub fn with_mocked_core() -> Self {
+    pub fn with_mocked_core(initial_state: MockCoreState) -> Self {
         FakeProbe {
             protocol: WireProtocol::Swd,
             speed: 1000,
@@ -229,7 +274,7 @@ impl FakeProbe {
 
             operations: RefCell::new(VecDeque::new()),
 
-            memory_ap: MockedAp::Core(MockCore::new()),
+            memory_ap: MockedAp::Core(MockCore::new(initial_state)),
         }
     }
 

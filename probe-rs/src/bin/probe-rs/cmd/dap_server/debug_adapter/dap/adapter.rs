@@ -94,6 +94,19 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     }
 
     pub(crate) fn pause(&mut self, target_core: &mut CoreHandle, request: &Request) -> Result<()> {
+        let arguments: PauseArguments = get_arguments(self, request)?;
+
+        if arguments.thread_id != target_core.core.id() as i64 {
+            return self.send_response::<()>(
+                request,
+                Err(&DebuggerError::Other(anyhow!(
+                    "Pause request received for core with ID {}, but the ID of the currrent core is {}",
+                    arguments.thread_id,
+                    target_core.core.id()
+                ))),
+            );
+        }
+
         match target_core.core.halt(Duration::from_millis(500)) {
             Ok(cpu_info) => {
                 let new_status = match target_core.core.status() {
@@ -103,13 +116,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         return Err(anyhow!("Failed to retrieve core status"));
                     }
                 };
-                self.send_response(
-                    request,
-                    Ok(Some(format!(
-                        "Core stopped at address {:#010x}",
-                        cpu_info.pc
-                    ))),
-                )?;
+
+                // We know that all cores are halted, because we only support a single core for now
+                self.all_cores_halted = true;
+
+                self.send_response(request, Ok(None::<u32>))?;
+
                 let event_body = Some(StoppedEventBody {
                     reason: "pause".to_owned(),
                     description: Some(new_status.short_long_status(Some(cpu_info.pc)).1),

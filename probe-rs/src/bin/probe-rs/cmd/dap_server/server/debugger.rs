@@ -913,13 +913,14 @@ mod test {
     use std::path::PathBuf;
 
     use probe_rs::architecture::arm::ApAddress;
-    use probe_rs::{DebugProbeInfo, FakeProbe};
+    use probe_rs::{DebugProbeInfo, FakeProbe, MockCoreState};
     use probe_rs::{Lister, ProbeOperation};
     use serde_json::json;
     use time::UtcOffset;
 
     use crate::cmd::dap_server::debug_adapter::dap::dap_types::{
-        DisconnectArguments, ErrorResponseBody, Message, Response, Thread, ThreadsResponseBody,
+        DisconnectArguments, ErrorResponseBody, Message, Response, StoppedEvent, StoppedEventBody,
+        Thread, ThreadsResponseBody,
     };
     use crate::cmd::dap_server::server::configuration::{ConsoleLog, CoreConfig, FlashingConfig};
     use crate::cmd::dap_server::{
@@ -1342,7 +1343,7 @@ mod test {
             None,
         );
 
-        let fake_probe = FakeProbe::with_mocked_core();
+        let fake_probe = FakeProbe::with_mocked_core(MockCoreState::Running);
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
@@ -1420,7 +1421,7 @@ mod test {
             None,
         );
 
-        let fake_probe = FakeProbe::with_mocked_core();
+        let fake_probe = FakeProbe::with_mocked_core(MockCoreState::Running);
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
@@ -1476,7 +1477,7 @@ mod test {
             None,
         );
 
-        let fake_probe = FakeProbe::with_mocked_core();
+        let fake_probe = FakeProbe::with_mocked_core(MockCoreState::Running);
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
@@ -1550,7 +1551,7 @@ mod test {
             None,
         );
 
-        let fake_probe = FakeProbe::with_mocked_core();
+        let fake_probe = FakeProbe::with_mocked_core(MockCoreState::Running);
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
@@ -1624,7 +1625,7 @@ mod test {
             None,
         );
 
-        let fake_probe = FakeProbe::with_mocked_core();
+        let fake_probe = FakeProbe::with_mocked_core(MockCoreState::Running);
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
@@ -1716,7 +1717,119 @@ mod test {
             None,
         );
 
-        let fake_probe = FakeProbe::with_mocked_core();
+        let fake_probe = FakeProbe::with_mocked_core(MockCoreState::Running);
+
+        // Indicate that the core is unlocked
+        fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
+            ap: ApAddress::with_default_dp(1),
+            address: 0xC,
+            result: 1,
+        });
+
+        lister.probes.borrow_mut().push((probe_info, fake_probe));
+
+        let lister = Lister::with_lister(Box::new(lister));
+
+        let status = debugger
+            .debug_session(debug_adapter, "initial info message", &lister)
+            .unwrap();
+
+        assert_eq!(status, DebugSessionStatus::Terminate);
+    }
+
+    #[test]
+    fn attach_and_threads_and_stacktraces() {
+        let manifest_dir = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"));
+        let debug_info = manifest_dir.join("tests/debug-unwind-tests/nRF52833_xxAA.elf");
+        let chip_name = "nRF52833_xxAA";
+
+        let mut protocol_adapter = MockProtocolAdapter::new();
+
+        protocol_adapter
+            .add_request("initialize")
+            .with_arguments(default_initialize_args())
+            .and_succesful_response()
+            .with_body(expected_capabilites());
+
+        protocol_adapter.expect_output_event("Starting debug session...\n");
+        protocol_adapter.expect_output_event("initial info message\n");
+
+        let launch_args = SessionConfig {
+            chip: Some(chip_name.to_owned()),
+            core_configs: vec![CoreConfig {
+                core_index: 0,
+                program_binary: Some(debug_info),
+                ..CoreConfig::default()
+            }],
+            ..SessionConfig::default()
+        };
+
+        protocol_adapter
+            .add_request("attach")
+            .with_arguments(launch_args)
+            .and_succesful_response();
+
+        protocol_adapter.expect_event("initialized", None::<u32>);
+
+        protocol_adapter
+            .add_request("configurationDone")
+            .and_succesful_response();
+
+        protocol_adapter
+            .add_request("threads")
+            .and_succesful_response()
+            .with_body(ThreadsResponseBody {
+                threads: vec![Thread {
+                    id: 0,
+                    name: format!("0-{chip_name}"),
+                }],
+            });
+
+        protocol_adapter
+            .add_request("pause")
+            .with_arguments(json!({ "threadId": 0 }))
+            .and_succesful_response();
+
+        protocol_adapter.expect_event(
+            "stopped",
+            Some(StoppedEventBody {
+                all_threads_stopped: Some(true), // Only single fixed thread supported right now
+                description: Some(
+                    "Core halted due to a user (debugger client) request".to_string(),
+                ),
+                hit_breakpoint_ids: None,
+                preserve_focus_hint: Some(false),
+                reason: "pause".to_string(),
+                text: None,
+                thread_id: Some(0),
+            }),
+        );
+
+        protocol_adapter
+            .add_request("disconnect")
+            .with_arguments(DisconnectArguments {
+                restart: Some(false),
+                suspend_debuggee: Some(false),
+                terminate_debuggee: Some(false),
+            })
+            .and_succesful_response();
+
+        let debug_adapter = DebugAdapter::new(protocol_adapter);
+
+        let mut debugger = Debugger::new(UtcOffset::UTC);
+
+        let lister = TestLister::new();
+
+        let probe_info = DebugProbeInfo::new(
+            "Mock probe",
+            0x12,
+            0x23,
+            Some("mock_serial".to_owned()),
+            probe_rs::DebugProbeType::CmsisDap,
+            None,
+        );
+
+        let fake_probe = FakeProbe::with_mocked_core(MockCoreState::Running);
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {

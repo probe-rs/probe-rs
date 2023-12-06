@@ -109,6 +109,8 @@ pub use crate::session::{Permissions, Session};
 
 // Exports only used in tests
 #[cfg(feature = "test")]
+pub use crate::probe::fake_probe::MockCoreState;
+#[cfg(feature = "test")]
 pub use crate::probe::fake_probe::Operation as ProbeOperation;
 #[cfg(feature = "test")]
 pub use crate::probe::list::ProbeLister;
