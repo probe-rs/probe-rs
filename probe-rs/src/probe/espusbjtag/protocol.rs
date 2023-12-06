@@ -246,8 +246,20 @@ impl ProtocolHandler {
         tdi: impl IntoIterator<Item = bool>,
         cap: bool,
     ) -> Result<(), DebugProbeError> {
-        tracing::debug!("JTAG IO! {}", cap);
-        for (tms, tdi) in tms.into_iter().zip(tdi.into_iter()) {
+        self.jtag_io_async2(tms, tdi, std::iter::repeat(cap))
+    }
+
+    /// Put a bit on TDI and possibly read one from TDO.
+    /// to receive the bytes from this operations call [`ProtocolHandler::flush`]
+    ///
+    /// Note that if the internal buffer is exceeded bytes will be automatically flushed to usb device
+    pub fn jtag_io_async2(
+        &mut self,
+        tms: impl IntoIterator<Item = bool>,
+        tdi: impl IntoIterator<Item = bool>,
+        cap: impl IntoIterator<Item = bool>,
+    ) -> Result<(), DebugProbeError> {
+        for ((tms, tdi), cap) in tms.into_iter().zip(tdi.into_iter()).zip(cap.into_iter()) {
             if cap && self.pending_in_bits == 128 * 8 {
                 // From the ESP32-S3 TRM:
                 // [A] command stream can cause at most 128 bytes of capture data to be
@@ -422,7 +434,7 @@ impl ProtocolHandler {
 
         tracing::trace!("Receiving buffer, pending bits: {}", self.pending_in_bits);
 
-        if count == 0 {
+        if self.pending_in_bits == 0 {
             return Ok(());
         }
 
