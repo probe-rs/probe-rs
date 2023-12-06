@@ -2,9 +2,13 @@ use super::*;
 use crate::Error;
 use anyhow::anyhow;
 use gimli::{DebugInfoOffset, UnitOffset, UnitSectionOffset};
+use num_traits::Zero;
+use probe_rs_target::MemoryRange;
 use serde::{Serialize, Serializer};
-use std::collections::{btree_map::Entry, BTreeMap};
-
+use std::{
+    collections::{btree_map::Entry, BTreeMap},
+    ops::Range,
+};
 /// VariableCache stores available `Variable`s, and provides methods to create and navigate the parent-child relationships of the Variables.
 #[derive(Debug, Clone, PartialEq)]
 pub struct VariableCache {
@@ -129,6 +133,11 @@ impl VariableCache {
     /// Get the root variable of the cache
     pub fn root_variable(&self) -> Variable {
         self.variable_hash_map[&self.root_variable_key].clone()
+    }
+
+    /// Get a mutable reference to the root variable of the cache
+    pub fn root_variable_mut(&mut self) -> Option<&mut Variable> {
+        self.variable_hash_map.get_mut(&self.root_variable_key)
     }
 
     /// Returns the number of `Variable`s in the cache.
@@ -428,6 +437,132 @@ impl VariableCache {
             return Err(anyhow!("Failed to remove a `VariableCache` entry with key: {:?}. Please report this as a bug.", variable_key).into());
         };
         Ok(())
+    }
+    /// Recursively process the deferred variables in the variable cache,
+    /// and add their children to the cache.
+    /// Enforce a max level, so that we don't recurse infinitely on circular references.
+    #[allow(clippy::too_many_arguments)]
+    pub fn recurse_deferred_variables(
+        &mut self,
+        debug_info: &DebugInfo,
+        memory: &mut dyn MemoryInterface,
+        parent_variable: Option<&mut Variable>,
+        registers: &DebugRegisters,
+        frame_base: Option<u64>,
+        max_recursion_depth: usize,
+        current_recursion_depth: usize,
+    ) {
+        if current_recursion_depth >= max_recursion_depth {
+            return;
+        }
+        let mut variable_to_recurse = if let Some(parent_variable) = parent_variable {
+            parent_variable
+        } else if let Some(parent_variable) = self.root_variable_mut() {
+            // This is the top-level variable, which has no parent.
+            parent_variable
+        } else {
+            // If the variable cache is empty, we have nothing to do.
+            return;
+        }
+        .clone();
+        if debug_info
+            .cache_deferred_variables(
+                self,
+                memory,
+                &mut variable_to_recurse,
+                registers,
+                frame_base,
+            )
+            .is_err()
+        {
+            return;
+        };
+        for mut child in self.get_children(variable_to_recurse.variable_key).unwrap() {
+            self.recurse_deferred_variables(
+                debug_info,
+                memory,
+                Some(&mut child),
+                registers,
+                frame_base,
+                max_recursion_depth,
+                current_recursion_depth + 1,
+            );
+        }
+    }
+
+    /// Traverse the `VariableCache` and return a Vec of all the memory ranges that are referenced by the variables.
+    /// This is used to determine which memory ranges to read from the target when creating a 'default' [`crate::core::CoreDump`].
+    pub fn get_discrete_memory_ranges(&self) -> Vec<Range<u64>> {
+        let mut memory_ranges: Vec<Range<u64>> = Vec::new();
+        for variable in self.variable_hash_map.values() {
+            if let Some(mut memory_range) = variable.memory_range() {
+                // This memory may need to be read by 32-bit aligned words, so make sure
+                // the range is aligned to 32 bits.
+                memory_range.align_to_32_bits();
+                if !memory_ranges.contains(&memory_range) {
+                    memory_ranges.push(memory_range);
+                }
+            }
+            // The datatype &str is a special case, because it is stores a pointer to the string data,
+            // and the length of the string.
+            if variable.type_name == VariableType::Struct("&str".to_string()) {
+                if let Ok(children) = self.get_children(variable.variable_key) {
+                    if !children.is_empty() {
+                        let string_length = match children.iter().find(|child_variable| {
+                            child_variable.name == VariableName::Named("length".to_string())
+                        }) {
+                            Some(string_length) => {
+                                if string_length.is_valid() {
+                                    string_length.get_value(self).parse().unwrap_or(0_usize)
+                                } else {
+                                    0_usize
+                                }
+                            }
+                            None => 0_usize,
+                        };
+                        let string_location = match children.iter().find(|child_variable| {
+                            child_variable.name == VariableName::Named("data_ptr".to_string())
+                        }) {
+                            Some(location_value) => {
+                                if let Ok(child_variables) =
+                                    self.get_children(location_value.variable_key)
+                                {
+                                    if let Some(first_child) = child_variables.first() {
+                                        first_child
+                                            .memory_location
+                                            .memory_address()
+                                            .unwrap_or(0_u64)
+                                    } else {
+                                        0_u64
+                                    }
+                                } else {
+                                    0_u64
+                                }
+                            }
+                            None => 0_u64,
+                        };
+                        if string_location.is_zero() || string_length.is_zero() {
+                            // We don't have enough information to read the string from memory.
+                            // I've never seen an instance of this, but it is theoretically possible.
+                            tracing::warn!(
+                                "Failed to find string location or length for variable: {:?}",
+                                variable
+                            );
+                        } else {
+                            let mut memory_range =
+                                string_location..(string_location + string_length as u64);
+                            // This memory might need to be read by 32-bit aligned words, so make sure
+                            // the range is aligned to 32 bits.
+                            memory_range.align_to_32_bits();
+                            if !memory_ranges.contains(&memory_range) {
+                                memory_ranges.push(memory_range);
+                            }
+                        }
+                    }
+                };
+            }
+        }
+        memory_ranges
     }
 }
 
