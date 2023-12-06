@@ -458,7 +458,6 @@ fn consolidate_memory_ranges(
 
     consolidated_memory_ranges
 }
-#[cfg(test)]
 
 /// A single range should remain the same after consolidation.
 #[test]

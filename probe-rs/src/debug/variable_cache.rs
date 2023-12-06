@@ -449,44 +449,44 @@ impl VariableCache {
         parent_variable: Option<&mut Variable>,
         registers: &DebugRegisters,
         frame_base: Option<u64>,
-        _max_recursion_depth: usize,
+        max_recursion_depth: usize,
         current_recursion_depth: usize,
     ) {
-        if current_recursion_depth < 10 {
-            let children_depth = current_recursion_depth + 1;
-            let mut variable_to_recurse = if let Some(parent_variable) = parent_variable {
-                parent_variable
-            } else if let Some(parent_variable) = self.root_variable_mut() {
-                // This is the top-level variable, which has no parent.
-                parent_variable
-            } else {
-                // If the variable cache is empty, we have nothing to do.
-                return;
-            }
-            .clone();
-            if debug_info
-                .cache_deferred_variables(
-                    self,
-                    memory,
-                    &mut variable_to_recurse,
-                    registers,
-                    frame_base,
-                )
-                .is_err()
-            {
-                return;
-            };
-            for mut child in self.get_children(variable_to_recurse.variable_key).unwrap() {
-                self.recurse_deferred_variables(
-                    debug_info,
-                    memory,
-                    Some(&mut child),
-                    registers,
-                    frame_base,
-                    _max_recursion_depth,
-                    children_depth,
-                );
-            }
+        if current_recursion_depth >= max_recursion_depth {
+            return;
+        }
+        let mut variable_to_recurse = if let Some(parent_variable) = parent_variable {
+            parent_variable
+        } else if let Some(parent_variable) = self.root_variable_mut() {
+            // This is the top-level variable, which has no parent.
+            parent_variable
+        } else {
+            // If the variable cache is empty, we have nothing to do.
+            return;
+        }
+        .clone();
+        if debug_info
+            .cache_deferred_variables(
+                self,
+                memory,
+                &mut variable_to_recurse,
+                registers,
+                frame_base,
+            )
+            .is_err()
+        {
+            return;
+        };
+        for mut child in self.get_children(variable_to_recurse.variable_key).unwrap() {
+            self.recurse_deferred_variables(
+                debug_info,
+                memory,
+                Some(&mut child),
+                registers,
+                frame_base,
+                max_recursion_depth,
+                current_recursion_depth + 1,
+            );
         }
     }
 

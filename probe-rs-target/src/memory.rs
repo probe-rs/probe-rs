@@ -137,7 +137,10 @@ impl MemoryRange for Range<u64> {
             self.start -= self.start % 4;
         }
         if self.end % 4 != 0 {
-            self.end += 4 - self.end % 4;
+            // Try to align the end to 32 bits, but don't overflow.
+            if let Some(new_end) = self.end.checked_add(4 - self.end % 4) {
+                self.end = new_end;
+            }
         }
     }
 }
