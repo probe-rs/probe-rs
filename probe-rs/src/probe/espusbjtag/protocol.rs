@@ -273,6 +273,7 @@ impl ProtocolHandler {
 
     /// Sets the system reset signal on the target.
     pub fn set_reset(&mut self, srst: bool) -> Result<(), DebugProbeError> {
+        self.finalize_previous_command()?;
         self.add_raw_command(Command::Reset(srst))?;
         self.flush()?;
         Ok(())
@@ -281,14 +282,16 @@ impl ProtocolHandler {
     /// Adds a command to the command queue.
     /// This will properly add repeat commands if possible.
     fn push_command(&mut self, command: RepeatableCommand) -> Result<(), DebugProbeError> {
-        if let Some((command_in_queue, repetitions)) = self.command_queue.as_mut() {
-            if command == *command_in_queue && *repetitions < MAX_COMMAND_REPETITIONS {
+        if let Some((command_in_queue, ref mut repetitions)) = self.command_queue {
+            if command == command_in_queue && *repetitions < MAX_COMMAND_REPETITIONS {
                 *repetitions += 1;
                 return Ok(());
             }
+
+            let repetitions = *repetitions;
+            self.write_stream(command_in_queue, repetitions)?;
         }
 
-        self.finalize_previous_command()?;
         self.command_queue = Some((command, 0));
 
         Ok(())
@@ -356,8 +359,6 @@ impl ProtocolHandler {
 
     /// Adds a single command to the output buffer and writes it to the USB EP if the buffer reaches a limit of `OUT_BUFFER_SIZE`.
     fn add_raw_command(&mut self, command: Command) -> Result<(), DebugProbeError> {
-        self.finalize_previous_command()?;
-
         self.output_buffer.push(command);
 
         // If we reach a maximal size of the output buffer, we flush.
