@@ -750,17 +750,17 @@ mod test {
         show_tree(&cache);
 
         vars[3].name = non_unique_name.clone();
-        cache.update_variable(&mut vars[3]).unwrap();
+        cache.update_variable(&vars[3]).unwrap();
 
         show_tree(&cache);
 
         vars[4].name = unique_name.clone();
-        cache.update_variable(&mut vars[4]).unwrap();
+        cache.update_variable(&vars[4]).unwrap();
 
         show_tree(&cache);
 
         vars[6].name = non_unique_name.clone();
-        cache.update_variable(&mut vars[6]).unwrap();
+        cache.update_variable(&vars[6]).unwrap();
 
         show_tree(&cache);
 
