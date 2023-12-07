@@ -2,13 +2,13 @@ use super::*;
 use crate::Error;
 use anyhow::anyhow;
 use gimli::{DebugInfoOffset, UnitOffset, UnitSectionOffset};
-use num_traits::Zero;
 use probe_rs_target::MemoryRange;
 use serde::{Serialize, Serializer};
 use std::{
     collections::{btree_map::Entry, BTreeMap},
     ops::Range,
 };
+
 /// VariableCache stores available `Variable`s, and provides methods to create and navigate the parent-child relationships of the Variables.
 #[derive(Debug, Clone, PartialEq)]
 pub struct VariableCache {
@@ -541,7 +541,7 @@ impl VariableCache {
                             }
                             None => 0_u64,
                         };
-                        if string_location.is_zero() || string_length.is_zero() {
+                        if string_location == 0 || string_length == 0 {
                             // We don't have enough information to read the string from memory.
                             // I've never seen an instance of this, but it is theoretically possible.
                             tracing::warn!(

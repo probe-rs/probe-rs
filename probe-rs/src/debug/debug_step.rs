@@ -185,7 +185,7 @@ impl SteppingMode {
             SteppingMode::BreakPoint => {
                 // Find the first_breakpoint_address
                 for source_statement in
-                    SourceStatements::new(debug_info, &program_unit, program_counter)?.statements
+                    SourceStatements::new(debug_info, program_unit, program_counter)?.statements
                 {
                     if let Some(halt_address) =
                         source_statement.get_first_halt_address(program_counter)
@@ -238,7 +238,7 @@ impl SteppingMode {
                 //    -- If there is one, it means the step over target is in the current sequence, so we get the get_first_halt_address() for this next statement.
                 //    -- Otherwise the step over target is the same as the step out target.
                 let source_statements =
-                    SourceStatements::new(debug_info, &program_unit, program_counter)?.statements;
+                    SourceStatements::new(debug_info, program_unit, program_counter)?.statements;
                 let mut source_statements_iter = source_statements.iter();
                 if let Some((target_address, target_location)) = source_statements_iter
                     .find(|source_statement| {
@@ -279,7 +279,7 @@ impl SteppingMode {
                 // TODO: In theory, we could disassemble the instructions in this statement's address range, and find branching instructions, then we would not need to single step the core past the original haltpoint.
 
                 let source_statements =
-                    SourceStatements::new(debug_info, &program_unit, program_counter)?.statements;
+                    SourceStatements::new(debug_info, program_unit, program_counter)?.statements;
                 let mut source_statements_iter = source_statements.iter();
                 if let Some(current_source_statement) =
                     source_statements_iter.find(|source_statement| {
@@ -314,20 +314,23 @@ impl SteppingMode {
                 }
             }
             SteppingMode::OutOfStatement => {
-                if let Ok(function_dies) = program_unit.get_function_dies(program_counter, true) {
+                if let Ok(function_dies) =
+                    program_unit.get_function_dies(debug_info, program_counter, true)
+                {
                     // We want the first qualifying (PC is in range) function from the back of this list, to access the 'innermost' functions first.
                     if let Some(function) = function_dies.iter().next_back() {
                         tracing::trace!(
                             "Step Out target: Evaluating function {:?}, low_pc={:?}, high_pc={:?}",
-                            function.function_name(),
+                            function.function_name(debug_info),
                             function.low_pc,
                             function.high_pc
                         );
+
                         if function.attribute(gimli::DW_AT_noreturn).is_some() {
                             return Err(DebugError::Other(anyhow::anyhow!(
-                        "Function {:?} is marked as `noreturn`. Cannot step out of this function.",
-                        function.function_name()
-                    )));
+                                "Function {:?} is marked as `noreturn`. Cannot step out of this function.",
+                                function.function_name(debug_info)
+                            )));
                         } else if function.low_pc <= program_counter
                             && function.high_pc > program_counter
                         {
@@ -480,9 +483,8 @@ fn step_to_address(
 fn get_compile_unit_info(
     debug_info: &DebugInfo,
     program_counter: u64,
-) -> Result<super::unit_info::UnitInfo, DebugError> {
-    let mut units = debug_info.get_units();
-    while let Some(header) = debug_info.get_next_unit_info(&mut units) {
+) -> Result<&super::unit_info::UnitInfo, DebugError> {
+    for header in &debug_info.unit_infos {
         match debug_info.dwarf.unit_ranges(&header.unit) {
             Ok(mut ranges) => {
                 while let Ok(Some(range)) = ranges.next() {
