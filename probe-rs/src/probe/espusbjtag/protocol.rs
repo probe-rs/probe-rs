@@ -31,17 +31,17 @@ const USB_PID: u16 = 0x1001;
 const VENDOR_DESCRIPTOR_JTAG_CAPABILITIES: u16 = 0x2000;
 
 pub(super) struct ProtocolHandler {
-    // The USB device handle.
+    /// The USB device handle.
     device_handle: rusb::DeviceHandle<rusb::Context>,
 
-    // The command in the queue and their additional repetitions.
-    // For now we do one command at a time.
+    /// The command in the queue and their additional repetitions.
+    /// For now we do one command at a time.
     command_queue: Option<(RepeatableCommand, usize)>,
-    // The buffer for all commands to be sent to the target. This already contains `repeated` commands which are basically
-    // a mechanism to compress the datastream by adding a `Repeat` command to repeat the previous command `n` times instead of
-    // actually putting the command into the queue `n` times.
+    /// The buffer for all commands to be sent to the target. This already contains `repeated`
+    /// commands which is the interface's RLE mechanism to reduce the amount of data sent.
     output_buffer: Vec<Command>,
-    // A store for all the read bits (from the target) such that the BitIter the methods return can borrow and iterate over it.
+    /// A store for all the read bits (from the target) such that the BitIter the methods return
+    /// can borrow and iterate over it.
     response: BitVec<u8, Lsb0>,
     pending_in_bits: usize,
 
