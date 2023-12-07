@@ -151,15 +151,12 @@ impl EspUsbJtag {
         let pre_bits = self.chain_params.irpre;
         let post_bits = self.chain_params.irpost;
 
-        let mut tms: BitVec<u8, Lsb0> = BitVec::with_capacity(
-            tms_enter_ir_shift.len() + pre_bits + len + post_bits + tms_enter_idle.len(),
-        );
-
-        tms.extend(tms_enter_ir_shift);
-        tms.extend(iter::repeat(false).take(pre_bits));
-        tms.extend(tms_data);
-        tms.extend(iter::repeat(false).take(post_bits));
-        tms.extend(tms_enter_idle);
+        let tms = tms_enter_ir_shift
+            .into_iter()
+            .chain(iter::repeat(false).take(pre_bits))
+            .chain(tms_data)
+            .chain(iter::repeat(false).take(post_bits))
+            .chain(tms_enter_idle);
 
         let tdi_enter_ir_shift = [false, false, false, false];
 
@@ -167,21 +164,17 @@ impl EspUsbJtag {
         // the last bit is transmitted when exiting the IR shift state
         let tdi_enter_idle = [false, false];
 
-        let mut tdi: BitVec<u8, Lsb0> = BitVec::with_capacity(
-            tdi_enter_ir_shift.len() + pre_bits + len + post_bits + tdi_enter_idle.len(),
-        );
+        let tdi = tdi_enter_ir_shift
+            .into_iter()
+            .chain(iter::repeat(false).take(pre_bits))
+            .chain(data.as_bits::<Lsb0>()[..len].iter().map(|b| *b))
+            .chain(iter::repeat(false).take(post_bits))
+            .chain(tdi_enter_idle);
 
-        tdi.extend(tdi_enter_ir_shift);
-        tdi.extend(iter::repeat(true).take(pre_bits));
-        let bs = &data.as_bits::<Lsb0>()[..len];
-        tdi.extend_from_bitslice(bs);
-        tdi.extend(iter::repeat(true).take(post_bits));
-        tdi.extend(tdi_enter_idle);
+        tracing::trace!("tms: {:?}", tms.clone());
+        tracing::trace!("tdi: {:?}", tdi.clone());
 
-        tracing::trace!("tms: {:?}", tms);
-        tracing::trace!("tdi: {:?}", tdi);
-
-        let len = tms.len();
+        let len = tdi_enter_ir_shift.len() + pre_bits + len + post_bits + tdi_enter_idle.len();
         self.protocol.jtag_io_async(tms, tdi, true)?;
 
         Ok(len)
@@ -231,45 +224,34 @@ impl EspUsbJtag {
         let pre_bits = self.chain_params.drpre;
         let post_bits = self.chain_params.drpost;
 
-        let mut tms: BitVec<u8, Lsb0> = BitVec::with_capacity(
-            tms_enter_shift.len()
-                + pre_bits
-                + register_bits
-                + post_bits
-                + tms_enter_idle.len()
-                + self.idle_cycles() as usize,
-        );
-
-        tms.extend(tms_enter_shift);
-        tms.extend(iter::repeat(false).take(pre_bits));
-        tms.extend(tms_shift_out_value);
-        tms.extend(iter::repeat(false).take(post_bits));
-        tms.extend(tms_enter_idle);
+        let tms = tms_enter_shift
+            .into_iter()
+            .chain(iter::repeat(false).take(pre_bits))
+            .chain(tms_shift_out_value)
+            .chain(iter::repeat(false).take(post_bits))
+            .chain(tms_enter_idle);
 
         let tdi_enter_shift = [false, false, false];
         let tdi_enter_idle = [false, false];
 
-        let mut tdi: BitVec<u8, Lsb0> = BitVec::with_capacity(
-            tdi_enter_shift.len()
-                + pre_bits
-                + register_bits
-                + post_bits
-                + tdi_enter_idle.len()
-                + self.idle_cycles() as usize,
-        );
-
-        tdi.extend(tdi_enter_shift);
-        tdi.extend(iter::repeat(true).take(pre_bits));
-        let bs = &data.as_bits::<Lsb0>()[..register_bits];
-        tdi.extend_from_bitslice(bs);
-        tdi.extend(iter::repeat(true).take(post_bits));
-        tdi.extend(tdi_enter_idle);
+        let tdi = tdi_enter_shift
+            .into_iter()
+            .chain(iter::repeat(false).take(pre_bits))
+            .chain(data.as_bits::<Lsb0>()[..register_bits].iter().map(|b| *b))
+            .chain(iter::repeat(false).take(post_bits))
+            .chain(tdi_enter_idle);
 
         // We need to stay in the idle cycle a bit
-        tms.extend(iter::repeat(false).take(self.idle_cycles() as usize));
-        tdi.extend(iter::repeat(false).take(self.idle_cycles() as usize));
+        let tms = tms.chain(iter::repeat(false).take(self.idle_cycles() as usize));
+        let tdi = tdi.chain(iter::repeat(false).take(self.idle_cycles() as usize));
 
-        let len = tms.len();
+        let len = tdi_enter_shift.len()
+            + pre_bits
+            + register_bits
+            + post_bits
+            + tdi_enter_idle.len()
+            + self.idle_cycles() as usize;
+
         self.protocol.jtag_io_async(tms, tdi, true)?;
 
         Ok(len)
