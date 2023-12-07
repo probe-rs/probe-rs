@@ -371,26 +371,30 @@ impl ProtocolHandler {
 
     /// Sends the commands stored in the output buffer to the USB EP.
     fn send_buffer(&mut self) -> Result<(), DebugProbeError> {
-        let commands = self
-            .output_buffer
-            .chunks(2)
-            .map(|chunk| {
+        let mut commands = [0; OUT_EP_BUFFER_SIZE];
+        for (out, byte) in commands
+            .iter_mut()
+            .zip(self.output_buffer.chunks(2).map(|chunk| {
                 let unibble: u8 = chunk[0].into();
                 // Make sure we add an additional nibble to the command buffer if the number of
                 // nibbles is odd, as we cannot send a standalone nibble.
                 let lnibble: u8 = chunk.get(1).copied().unwrap_or(Command::Flush).into();
 
                 (unibble << 4) | lnibble
-            })
-            .collect::<Vec<_>>();
+            }))
+        {
+            *out = byte;
+        }
+
+        let len = (self.output_buffer.len() + 1) / 2;
 
         tracing::trace!(
             "Writing {} bytes ({} nibbles) to usb endpoint",
-            commands.len(),
+            len,
             self.output_buffer.len()
         );
 
-        let mut commands = &commands[..];
+        let mut commands = &commands[..len];
         while !commands.is_empty() {
             let bytes = self
                 .device_handle
