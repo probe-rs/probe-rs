@@ -308,16 +308,19 @@ impl ProtocolHandler {
     pub fn flush(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
         self.finalize_previous_command()?;
 
-        tracing::debug!("Flushing ...");
+        // Only flush if we have anything to do.
+        if !self.output_buffer.is_empty() || self.pending_in_bits != 0 {
+            tracing::debug!("Flushing ...");
 
-        self.add_raw_command(Command::Flush)?;
-        self.send_buffer()?;
+            self.add_raw_command(Command::Flush)?;
+            self.send_buffer()?;
 
-        while self.pending_in_bits != 0 {
-            self.receive_buffer()?;
+            while self.pending_in_bits != 0 {
+                self.receive_buffer()?;
+            }
         }
 
-        Ok(std::mem::replace(&mut self.response, BitVec::new()))
+        Ok(std::mem::take(&mut self.response))
     }
 
     /// Writes a command one or multiple times into the raw buffer we send to the USB EP later
@@ -364,15 +367,6 @@ impl ProtocolHandler {
             self.send_buffer()?;
         }
 
-        // Undocumented condition to flush buffer.
-        // First check, whether the output buffer is suitable for flushing? it should be modulo of the EP buffer size
-        if self.output_buffer.len() % OUT_EP_BUFFER_SIZE == 0 {
-            // Second check, if it is suitable, is there enough to flush
-            if self.pending_in_bits > (IN_EP_BUFFER_SIZE + HW_FIFO_SIZE) * 8 {
-                self.send_buffer()?;
-            }
-        }
-
         Ok(())
     }
 
@@ -383,13 +377,9 @@ impl ProtocolHandler {
             .chunks(2)
             .map(|chunk| {
                 let unibble: u8 = chunk[0].into();
-                let lnibble: u8 = if chunk.len() == 2 {
-                    chunk[1].into()
-                } else {
-                    // Make sure we add an additional nibble to the command buffer if the number of
-                    // nibbles is odd, as we cannot send a standalone nibble.
-                    Command::Flush.into()
-                };
+                // Make sure we add an additional nibble to the command buffer if the number of
+                // nibbles is odd, as we cannot send a standalone nibble.
+                let lnibble: u8 = chunk.get(1).copied().unwrap_or(Command::Flush).into();
 
                 (unibble << 4) | lnibble
             })
@@ -400,19 +390,15 @@ impl ProtocolHandler {
             commands.len(),
             self.output_buffer.len()
         );
-        let mut offset = 0;
-        let mut total = 0;
-        loop {
+
+        let mut commands = &commands[..];
+        while !commands.is_empty() {
             let bytes = self
                 .device_handle
-                .write_bulk(self.ep_out, &commands[offset..], USB_TIMEOUT)
+                .write_bulk(self.ep_out, commands, USB_TIMEOUT)
                 .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))?;
-            total += bytes;
-            offset += bytes;
 
-            if total == commands.len() {
-                break;
-            }
+            commands = &commands[bytes..];
         }
 
         // We only clear the output buffer on a successful transmission of all bytes.
@@ -437,39 +423,22 @@ impl ProtocolHandler {
             return Ok(());
         }
 
-        let mut offset = 0;
-        let mut total = 0;
-        loop {
-            let read_bytes = self
-                .device_handle
-                .read_bulk(self.ep_in, &mut incoming[offset..], USB_TIMEOUT)
-                .map_err(|e| {
-                    tracing::warn!(
-                        "Something went wrong in read_bulk {:?} when trying to read {}bytes - pending_in_bits: {}",
-                        e,
-                        count,
-                        self.pending_in_bits,
-                    );
-                    DebugProbeError::Usb(Some(Box::new(e)))
-                })?;
-            total += read_bytes;
-            offset += read_bytes;
+        let read_bytes = self
+            .device_handle
+            .read_bulk(self.ep_in, &mut incoming, USB_TIMEOUT)
+            .map_err(|e| {
+                tracing::warn!(
+                    "Something went wrong in read_bulk {:?} when trying to read {}bytes - pending_in_bits: {}",
+                    e,
+                    count,
+                    self.pending_in_bits,
+                );
+                DebugProbeError::Usb(Some(Box::new(e)))
+            })?;
 
-            if read_bytes == 0 {
-                tracing::debug!("Read 0 bytes from USB");
-                return Ok(());
-            }
+        tracing::debug!("Read {} bytes from USB", read_bytes);
 
-            if total == count {
-                break;
-            } else {
-                tracing::warn!("USB only recieved {} out of {} bytes", read_bytes, count);
-            }
-
-            tracing::trace!("Received {} bytes.", read_bytes);
-        }
-
-        let bits_in_buffer = self.pending_in_bits.min(total * 8);
+        let bits_in_buffer = self.pending_in_bits.min(read_bytes * 8);
 
         tracing::trace!("Read: {:?}, length = {}", incoming, bits_in_buffer);
         self.pending_in_bits -= bits_in_buffer;
