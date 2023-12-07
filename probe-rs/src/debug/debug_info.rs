@@ -146,7 +146,7 @@ impl DebugInfo {
         for unit_info in &self.unit_infos {
             let unit = &unit_info.unit;
 
-            let mut ranges = match self.dwarf.unit_ranges(&unit) {
+            let mut ranges = match self.dwarf.unit_ranges(unit) {
                 Ok(ranges) => ranges,
                 Err(error) => {
                     tracing::warn!(
@@ -206,7 +206,7 @@ impl DebugInfo {
                             if let Some(previous_row) = previous_row {
                                 if let Some(file_entry) = previous_row.file(header) {
                                     if let Some((file, directory)) =
-                                        self.find_file_and_directory(&unit, header, file_entry)
+                                        self.find_file_and_directory(unit, header, file_entry)
                                     {
                                         tracing::debug!("{} - {:?}", address, previous_row.isa());
                                         return Some(SourceLocation {
@@ -225,7 +225,7 @@ impl DebugInfo {
                         Ordering::Equal => {
                             if let Some(file_entry) = row.file(header) {
                                 if let Some((file, directory)) =
-                                    self.find_file_and_directory(&unit, header, file_entry)
+                                    self.find_file_and_directory(unit, header, file_entry)
                                 {
                                     tracing::debug!("{} - {:?}", address, row.isa());
 
@@ -476,7 +476,7 @@ impl DebugInfo {
 
                     // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
                     // Resolve the statics that belong to the compilation unit that this function is in.
-                    let static_variables = self.create_static_scope_cache(&unit_info).map_or_else(
+                    let static_variables = self.create_static_scope_cache(unit_info).map_or_else(
                         |error| {
                             tracing::error!(
                                 "Could not resolve static variables. {}. Continuing...",
@@ -489,7 +489,7 @@ impl DebugInfo {
 
                     // Next, resolve and cache the function variables.
                     let local_variables = self
-                        .create_function_scope_cache(function_die, &unit_info)
+                        .create_function_scope_cache(function_die, unit_info)
                         .map_or_else(
                             |error| {
                                 tracing::error!(
@@ -533,7 +533,7 @@ impl DebugInfo {
 
             // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
             // Resolve the statics that belong to the compilation unit that this function is in.
-            let static_variables = self.create_static_scope_cache(&unit_info).map_or_else(
+            let static_variables = self.create_static_scope_cache(unit_info).map_or_else(
                 |error| {
                     tracing::error!(
                         "Could not resolve static variables. {}. Continuing...",
@@ -546,7 +546,7 @@ impl DebugInfo {
 
             // Next, resolve and cache the function variables.
             let local_variables = self
-                .create_function_scope_cache(last_function, &unit_info)
+                .create_function_scope_cache(last_function, unit_info)
                 .map_or_else(
                     |error| {
                         tracing::error!(
@@ -1029,7 +1029,7 @@ impl DebugInfo {
             // 1. If there is an exact column match, we will use the low_pc of the statement at that column and line.
             // 2. If there is no exact column match, we use the first available statement in the line.
             let source_statements =
-                SourceStatements::new(self, &unit_header, row.address())?.statements;
+                SourceStatements::new(self, unit_header, row.address())?.statements;
 
             let halt_address_and_location = |source_statement: &SourceStatement| {
                 (

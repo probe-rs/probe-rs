@@ -502,6 +502,7 @@ impl UnitInfo {
     /// - Consumes the `parent_variable`.
     /// - Updates the `DebugInfo::VariableCache` with all descendant `Variable`s.
     /// - Returns a clone of the most up-to-date `parent_variable` in the cache.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn process_tree(
         &self,
         debug_info: &DebugInfo,
@@ -1348,6 +1349,7 @@ impl UnitInfo {
     }
 
     /// Process a memory location for a variable, by first evaluating the `byte_size`, and then calling the `self.extract_location`.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn process_memory_location(
         &self,
         debug_info: &DebugInfo,
