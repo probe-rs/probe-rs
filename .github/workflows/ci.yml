@@ -120,7 +120,7 @@ jobs:
         uses: Swatinem/rust-cache@v2.7.1
 
       - name: Run cargo clippy
-        run: cargo clippy --all-features --locked -- -D warnings
+        run: cargo clippy --all-features --all-targets --locked -- -D warnings
 
   cargo-deny:
     runs-on: ubuntu-latest

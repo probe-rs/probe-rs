@@ -908,6 +908,8 @@ pub(crate) fn is_file_newer(
 
 #[cfg(test)]
 mod test {
+    #![allow(clippy::unwrap_used, clippy::panic)]
+
     use core::panic;
     use std::collections::{BTreeMap, HashMap, VecDeque};
     use std::path::PathBuf;
@@ -1097,7 +1099,7 @@ mod test {
             RequestBuilder { adapter: self }
         }
 
-        fn expect_response<'m>(&'m mut self, response: Response) -> ResponseBuilder<'m> {
+        fn expect_response(&mut self, response: Response) -> ResponseBuilder {
             assert!(
                 response.success,
                 "success field must be true for succesful response"
@@ -1106,7 +1108,7 @@ mod test {
             ResponseBuilder { adapter: self }
         }
 
-        fn expect_error_response<'m>(&'m mut self, response: Response) -> ResponseBuilder<'m> {
+        fn expect_error_response(&mut self, response: Response) -> ResponseBuilder {
             assert!(
                 !response.success,
                 "success field must be false for error response"

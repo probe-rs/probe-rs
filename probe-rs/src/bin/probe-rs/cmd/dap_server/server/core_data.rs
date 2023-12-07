@@ -462,7 +462,7 @@ fn consolidate_memory_ranges(
 /// A single range should remain the same after consolidation.
 #[test]
 fn test_single_range() {
-    let mut input = vec![Range { start: 0, end: 5 }];
+    let input = vec![Range { start: 0, end: 5 }];
     let expected = vec![Range { start: 0, end: 5 }];
     let result = consolidate_memory_ranges(input, 0);
     assert_eq!(result, expected);
@@ -471,7 +471,7 @@ fn test_single_range() {
 /// Three ranges that are adjacent should be consolidated into one.
 #[test]
 fn test_three_adjacent_ranges() {
-    let mut input = vec![
+    let input = vec![
         Range { start: 0, end: 5 },
         Range { start: 6, end: 10 },
         Range { start: 11, end: 15 },
@@ -484,7 +484,7 @@ fn test_three_adjacent_ranges() {
 /// Two ranges that are distinct should remain distinct after consolidation.
 #[test]
 fn test_distinct_ranges() {
-    let mut input = vec![Range { start: 0, end: 5 }, Range { start: 7, end: 10 }];
+    let input = vec![Range { start: 0, end: 5 }, Range { start: 7, end: 10 }];
     let expected = vec![Range { start: 0, end: 5 }, Range { start: 7, end: 10 }];
     let result = consolidate_memory_ranges(input, 0);
     assert_eq!(result, expected);
@@ -493,7 +493,7 @@ fn test_distinct_ranges() {
 /// Two ranges that are contiguous should be consolidated into one.
 #[test]
 fn test_contiguous_ranges() {
-    let mut input = vec![Range { start: 0, end: 5 }, Range { start: 5, end: 10 }];
+    let input = vec![Range { start: 0, end: 5 }, Range { start: 5, end: 10 }];
     let expected = vec![Range { start: 0, end: 10 }];
     let result = consolidate_memory_ranges(input, 0);
     assert_eq!(result, expected);
@@ -502,7 +502,7 @@ fn test_contiguous_ranges() {
 /// Three ranges where the first two are adjacent and the third is distinct should be consolidated into two.
 #[test]
 fn test_adjacent_and_distinct_ranges() {
-    let mut input = vec![
+    let input = vec![
         Range { start: 0, end: 5 },
         Range { start: 6, end: 10 },
         Range { start: 12, end: 15 },
@@ -515,7 +515,7 @@ fn test_adjacent_and_distinct_ranges() {
 /// Two ranges where the second starts and ends before the first should remain distinct after consolidation.
 #[test]
 fn test_non_overlapping_ranges() {
-    let mut input = vec![Range { start: 10, end: 20 }, Range { start: 0, end: 5 }];
+    let input = vec![Range { start: 10, end: 20 }, Range { start: 0, end: 5 }];
     let expected = vec![Range { start: 0, end: 5 }, Range { start: 10, end: 20 }];
     let result = consolidate_memory_ranges(input, 0);
     assert_eq!(result, expected);
@@ -524,7 +524,7 @@ fn test_non_overlapping_ranges() {
 /// Two ranges where the second starts and ends before the first but are consolidated because they are within 5 bytes of each other.
 #[test]
 fn test_non_overlapping_ranges_with_extra_bytes() {
-    let mut input = vec![Range { start: 10, end: 20 }, Range { start: 0, end: 5 }];
+    let input = vec![Range { start: 10, end: 20 }, Range { start: 0, end: 5 }];
     let expected = vec![Range { start: 0, end: 20 }];
     let result = consolidate_memory_ranges(input, 5);
     assert_eq!(result, expected);
@@ -533,7 +533,7 @@ fn test_non_overlapping_ranges_with_extra_bytes() {
 /// Two ranges where the second starts before, but intersects with the first, should be consolidated.
 #[test]
 fn test_reversed_intersecting_ranges() {
-    let mut input = vec![Range { start: 10, end: 20 }, Range { start: 5, end: 15 }];
+    let input = vec![Range { start: 10, end: 20 }, Range { start: 5, end: 15 }];
     let expected = vec![Range { start: 5, end: 20 }];
     let result = consolidate_memory_ranges(input, 0);
     assert_eq!(result, expected);
