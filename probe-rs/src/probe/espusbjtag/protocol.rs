@@ -413,7 +413,7 @@ impl ProtocolHandler {
     /// Tries to receive pending in bits from the USB EP.
     fn receive_buffer(&mut self) -> Result<(), DebugProbeError> {
         let count = ((self.pending_in_bits + 7) / 8).min(IN_EP_BUFFER_SIZE);
-        let mut incoming = vec![0; count];
+        let mut incoming = [0; IN_EP_BUFFER_SIZE];
 
         tracing::trace!("Receiving buffer, pending bits: {}", self.pending_in_bits);
 
@@ -437,11 +437,12 @@ impl ProtocolHandler {
         tracing::debug!("Read {} bytes from USB", read_bytes);
 
         let bits_in_buffer = self.pending_in_bits.min(read_bytes * 8);
+        let incoming = &incoming[..count];
 
         tracing::trace!("Read: {:?}, length = {}", incoming, bits_in_buffer);
         self.pending_in_bits -= bits_in_buffer;
 
-        let bs: &BitSlice<_, Lsb0> = BitSlice::from_slice(&incoming);
+        let bs: &BitSlice<_, Lsb0> = BitSlice::from_slice(incoming);
         self.response.extend_from_bitslice(&bs[..bits_in_buffer]);
 
         Ok(())
