@@ -1452,7 +1452,7 @@ fn add_to_address(address: u64, offset: i64, address_size_in_bytes: usize) -> u6
 mod test {
     use crate::{
         architecture::arm::core::{
-            exception_handling::{ArmV6MExceptionHandler, ArmV7MExceptionHandler},
+            exception_handling::{armv6m::ArmV6MExceptionHandler, armv7m::ArmV7MExceptionHandler},
             registers::cortex_m::CORTEX_M_CORE_REGISTERS,
         },
         core::exception_handler_for_core,
