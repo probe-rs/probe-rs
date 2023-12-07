@@ -302,61 +302,21 @@ impl ExceptionInterface for ArmV7MExceptionHandler {
         armv6m_armv7m_shared::calling_frame_registers(memory_interface, stackframe_registers)
     }
 
-    fn exception_description(
+    fn raw_exception(
         &self,
-        memory_interface: &mut dyn MemoryInterface,
         stackframe_registers: &crate::debug::DebugRegisters,
-    ) -> Result<String, crate::Error> {
-        // Load the provided xPSR register as a bitfield.
-        let exception_number = armv6m_armv7m_shared::Xpsr(
-            stackframe_registers
-                .get_register_value_by_role(&crate::core::RegisterRole::ProcessorStatus)?
-                as u32,
-        )
-        .exception_number();
-
-        Ok(format!(
-            "{:?}",
-            ExceptionReason::from(exception_number).expanded_description(memory_interface)?
-        ))
-    }
-}
-
-/*
-impl<'probe> ExceptionInterface for crate::architecture::arm::core::armv7m::Armv7m<'probe> {
-    fn calling_frame_registers(
-        &self,
-        memory_interface: &mut dyn MemoryInterface,
-        stackframe_registers: &crate::debug::DebugRegisters,
-    ) -> Result<crate::debug::DebugRegisters, crate::Error> {
-        calling_frame_registers(memory_interface, stackframe_registers)
+    ) -> Result<u32, Error> {
+        armv6m_armv7m_shared::raw_exception(stackframe_registers)
     }
 
     fn exception_description(
         &self,
+        raw_exception: u32,
         memory_interface: &mut dyn MemoryInterface,
-        stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<String, crate::Error> {
-        // Load the provided xPSR register as a bitfield.
-        let exception_number = Xpsr(
-            stackframe_registers
-                .get_register_value_by_role(&crate::core::RegisterRole::ProcessorStatus)?
-                as u32,
-        )
-        .exception_number();
-
         Ok(format!(
             "{:?}",
-            ExceptionReason::from(exception_number).expanded_description(memory_interface)?
+            ExceptionReason::from(raw_exception).expanded_description(memory_interface)?
         ))
     }
-
-    fn exception_details(
-        &self,
-        memory_interface: &mut dyn MemoryInterface,
-        stackframe_registers: &DebugRegisters,
-    ) -> Result<Option<ExceptionInfo>, Error> {
-        exception_details(self, memory_interface, stackframe_registers)
-    }
 }
-*/

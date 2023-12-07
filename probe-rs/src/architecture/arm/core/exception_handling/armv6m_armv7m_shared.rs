@@ -70,9 +70,12 @@ pub(crate) fn exception_details(
     if ExcReturn(frame_return_address).is_exception_flag() == 0xF {
         // This is an exception frame.
 
+        let raw_exception = exception_interface.raw_exception(stackframe_registers)?;
+
         Ok(Some(ExceptionInfo {
+            raw_exception,
             description: exception_interface
-                .exception_description(memory_interface, stackframe_registers)?,
+                .exception_description(raw_exception, memory_interface)?,
             calling_frame_registers: exception_interface
                 .calling_frame_registers(memory_interface, stackframe_registers)?,
         }))
@@ -80,6 +83,19 @@ pub(crate) fn exception_details(
         // This is a normal function return.
         Ok(None)
     }
+}
+
+pub(crate) fn raw_exception(
+    stackframe_registers: &crate::debug::DebugRegisters,
+) -> Result<u32, Error> {
+    // Load the provided xPSR register as a bitfield.
+    let exception_number = Xpsr(
+        stackframe_registers
+            .get_register_value_by_role(&crate::core::RegisterRole::ProcessorStatus)?
+            as u32,
+    )
+    .exception_number();
+    Ok(exception_number)
 }
 
 /// The calling frame registers are a predefined set of registers that are stored on the stack when an exception occurs.

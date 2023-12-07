@@ -516,9 +516,13 @@ impl<'probe> MemoryInterface for Core<'probe> {
 /// architecture specific implementations of [`crate::core::ExceptionInterface`].
 #[derive(Debug, PartialEq)]
 pub struct ExceptionInfo {
+    /// The exception number.
+    /// This is architecture specific and can be used to decode the architecture specific exception reason.
+    pub raw_exception: u32,
     /// A human readable explanation for the exception.
     pub description: String,
     /// The stackframe registers, and their values, for the frame that triggered the exception.
+    /// Note: In cases such as reset handlers, the calling frame information may be unavailable.
     pub calling_frame_registers: DebugRegisters,
 }
 
@@ -543,12 +547,18 @@ pub trait ExceptionInterface {
         stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<crate::debug::DebugRegisters, crate::Error>;
 
+    /// Retrieve the architecture specific exception number.
+    fn raw_exception(
+        &self,
+        stackframe_registers: &crate::debug::DebugRegisters,
+    ) -> Result<u32, crate::Error>;
+
     /// Convert the architecture specific exception number into a human readable description.
     /// Where possible, the implementation may read additional registers from the core, to provide additional context.
     fn exception_description(
         &self,
+        raw_exception: u32,
         memory: &mut dyn MemoryInterface,
-        stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<String, crate::Error>;
 }
 
@@ -579,10 +589,19 @@ impl ExceptionInterface for UnimplementedExceptionHandler {
         ))
     }
 
+    fn raw_exception(
+        &self,
+        _stackframe_registers: &crate::debug::DebugRegisters,
+    ) -> Result<u32, crate::Error> {
+        Err(Error::NotImplemented(
+            "Not implemented for this architecture.",
+        ))
+    }
+
     fn exception_description(
         &self,
+        _raw_exception: u32,
         _memory: &mut dyn MemoryInterface,
-        _stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<String, crate::Error> {
         Err(Error::NotImplemented(
             "Not implemented for this architecture.",
