@@ -902,6 +902,15 @@ pub enum CommandResult {
     VecU8(Vec<u8>),
 }
 
+impl CommandResult {
+    pub fn as_u32(&self) -> u32 {
+        match self {
+            CommandResult::U32(val) => *val,
+            _ => panic!("CommandResult is not a u32"),
+        }
+    }
+}
+
 /// The method that should be used for attaching.
 #[derive(PartialEq, Eq, Debug, Copy, Clone)]
 pub enum AttachMethod {

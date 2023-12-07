@@ -558,29 +558,29 @@ impl RiscvCommunicationInterface {
         Ok(())
     }
 
-    fn write_progbuf(&mut self, index: usize, value: u32) -> Result<(), RiscvError> {
+    fn schedule_write_progbuf(&mut self, index: usize, value: u32) -> Result<(), RiscvError> {
         match index {
-            0 => self.write_dm_register(Progbuf0(value)),
-            1 => self.write_dm_register(Progbuf1(value)),
-            2 => self.write_dm_register(Progbuf2(value)),
-            3 => self.write_dm_register(Progbuf3(value)),
-            4 => self.write_dm_register(Progbuf4(value)),
-            5 => self.write_dm_register(Progbuf5(value)),
-            6 => self.write_dm_register(Progbuf6(value)),
-            7 => self.write_dm_register(Progbuf7(value)),
-            8 => self.write_dm_register(Progbuf8(value)),
-            9 => self.write_dm_register(Progbuf9(value)),
-            10 => self.write_dm_register(Progbuf10(value)),
-            11 => self.write_dm_register(Progbuf11(value)),
-            12 => self.write_dm_register(Progbuf12(value)),
-            13 => self.write_dm_register(Progbuf13(value)),
-            14 => self.write_dm_register(Progbuf14(value)),
-            15 => self.write_dm_register(Progbuf15(value)),
+            0 => self.schedule_write_dm_register(Progbuf0(value)),
+            1 => self.schedule_write_dm_register(Progbuf1(value)),
+            2 => self.schedule_write_dm_register(Progbuf2(value)),
+            3 => self.schedule_write_dm_register(Progbuf3(value)),
+            4 => self.schedule_write_dm_register(Progbuf4(value)),
+            5 => self.schedule_write_dm_register(Progbuf5(value)),
+            6 => self.schedule_write_dm_register(Progbuf6(value)),
+            7 => self.schedule_write_dm_register(Progbuf7(value)),
+            8 => self.schedule_write_dm_register(Progbuf8(value)),
+            9 => self.schedule_write_dm_register(Progbuf9(value)),
+            10 => self.schedule_write_dm_register(Progbuf10(value)),
+            11 => self.schedule_write_dm_register(Progbuf11(value)),
+            12 => self.schedule_write_dm_register(Progbuf12(value)),
+            13 => self.schedule_write_dm_register(Progbuf13(value)),
+            14 => self.schedule_write_dm_register(Progbuf14(value)),
+            15 => self.schedule_write_dm_register(Progbuf15(value)),
             e => Err(RiscvError::UnsupportedProgramBufferRegister(e)),
         }
     }
 
-    pub(crate) fn setup_program_buffer(&mut self, data: &[u32]) -> Result<(), RiscvError> {
+    pub(crate) fn schedule_setup_program_buffer(&mut self, data: &[u32]) -> Result<(), RiscvError> {
         let required_len = if self.state.implicit_ebreak {
             data.len()
         } else {
@@ -598,7 +598,7 @@ impl RiscvCommunicationInterface {
         }
 
         for (index, word) in data.iter().enumerate() {
-            self.write_progbuf(index, *word)?;
+            self.schedule_write_progbuf(index, *word)?;
         }
 
         // Add manual ebreak if necessary.
@@ -606,7 +606,7 @@ impl RiscvCommunicationInterface {
         // This is necessary when we either don't need the full program buffer,
         // or if there is no implict ebreak after the last program buffer word.
         if !self.state.implicit_ebreak || data.len() < self.state.progbuf_size as usize {
-            self.write_progbuf(data.len(), assembly::EBREAK)?;
+            self.schedule_write_progbuf(data.len(), assembly::EBREAK)?;
         }
 
         // Update the cache
@@ -616,23 +616,33 @@ impl RiscvCommunicationInterface {
     }
 
     /// Perform a single read from a memory location, using system bus access.
-    fn perform_memory_read_sysbus<V: RiscvValue>(&mut self, address: u32) -> Result<V, RiscvError> {
+    fn perform_memory_read_sysbus<V: RiscvValue32>(
+        &mut self,
+        address: u32,
+    ) -> Result<V, RiscvError> {
         let mut sbcs = Sbcs(0);
 
         sbcs.set_sbaccess(V::WIDTH as u32);
         sbcs.set_sbreadonaddr(true);
 
-        self.write_dm_register(sbcs)?;
+        self.schedule_write_dm_register(sbcs)?;
+        self.schedule_write_dm_register(Sbaddress0(address))?;
 
-        self.write_dm_register(Sbaddress0(address))?;
-        let data = self.read_large_dtm_register::<V, Sbdata>()?;
+        let data_idx = self.schedule_read_large_dtm_register::<V, Sbdata>()?;
+
+        let sbcs_idx = self.schedule_read_dm_register::<Sbcs>()?;
+
+        let result = self.execute()?;
 
         // Check that the read was succesful
-        let sbcs = self.read_dm_register::<Sbcs>()?;
+        let sbcs = result[sbcs_idx].as_u32();
+        let sbcs = Sbcs(sbcs);
 
         if sbcs.sberror() != 0 {
             Err(RiscvError::SystemBusAccess)
         } else {
+            let data = V::from_register_value(result[data_idx].as_u32());
+
             Ok(data)
         }
     }
@@ -674,21 +684,14 @@ impl RiscvCommunicationInterface {
 
         let sbcs_result = self.schedule_read_dm_register::<Sbcs>()?;
 
-        let result = self.execute();
+        let result = self.execute()?;
 
-        let result = result?;
         for (out_index, &idx) in read_results.iter().enumerate() {
-            data[out_index] = match result[idx] {
-                CommandResult::U32(data) => V::from_register_value(data),
-                _ => panic!("Internal error occurred."),
-            };
+            data[out_index] = V::from_register_value(result[idx].as_u32());
         }
 
         // Check that the read was succesful
-        let sbcs = match result[sbcs_result] {
-            CommandResult::U32(res) => res,
-            _ => panic!("Internal error occurred."),
-        };
+        let sbcs = result[sbcs_result].as_u32();
 
         let sbcs = Sbcs(sbcs);
 
@@ -712,9 +715,9 @@ impl RiscvCommunicationInterface {
 
         let lw_command: u32 = assembly::lw(0, 8, V::WIDTH as u8, 8);
 
-        self.setup_program_buffer(&[lw_command])?;
+        self.schedule_setup_program_buffer(&[lw_command])?;
 
-        self.write_dm_register(Data0(address))?;
+        self.schedule_write_dm_register(Data0(address))?;
 
         // Write s0, then execute program buffer
         let mut command = AccessRegisterCommand(0);
@@ -729,13 +732,18 @@ impl RiscvCommunicationInterface {
         // register s0, ie. 0x1008
         command.set_regno((registers::S0).id.0 as u32);
 
-        self.write_dm_register(command)?;
+        self.schedule_write_dm_register(command)?;
 
-        let status: Abstractcs = self.read_dm_register()?;
+        let abstractcs_idx = self.schedule_read_dm_register::<Abstractcs>()?;
 
-        if status.cmderr() != 0 {
+        let results = self.execute()?;
+
+        let abstractcs = results[abstractcs_idx].as_u32();
+        let abstractcs = Abstractcs::from(abstractcs);
+
+        if abstractcs.cmderr() != 0 {
             return Err(RiscvError::AbstractCommand(
-                AbstractCommandErrorKind::parse(status.cmderr() as u8),
+                AbstractCommandErrorKind::parse(abstractcs.cmderr() as u8),
             ));
         }
 
@@ -760,12 +768,12 @@ impl RiscvCommunicationInterface {
         // Load a word from address in register 8 (S0), with offset 0, into register 9 (S9)
         let lw_command: u32 = assembly::lw(0, 8, V::WIDTH as u8, 9);
 
-        self.setup_program_buffer(&[
+        self.schedule_setup_program_buffer(&[
             lw_command,
             assembly::addi(8, 8, V::WIDTH.byte_width() as u16),
         ])?;
 
-        self.write_dm_register(Data0(address))?;
+        self.schedule_write_dm_register(Data0(address))?;
 
         // Write s0, then execute program buffer
         let mut command = AccessRegisterCommand(0);
@@ -780,11 +788,12 @@ impl RiscvCommunicationInterface {
         // register s0, ie. 0x1008
         command.set_regno((registers::S0).id.0 as u32);
 
-        self.write_dm_register(command)?;
+        self.schedule_write_dm_register(command)?;
 
         let data_len = data.len();
 
-        for word in &mut data[..data_len - 1] {
+        let mut result_idxs = Vec::with_capacity(data_len - 1);
+        for out_idx in 0..data_len - 1 {
             let mut command = AccessRegisterCommand(0);
             command.set_cmd_type(0);
             command.set_transfer(true);
@@ -796,12 +805,20 @@ impl RiscvCommunicationInterface {
 
             command.set_regno((registers::S1).id.0 as u32);
 
-            self.write_dm_register(command)?;
+            self.schedule_write_dm_register(command)?;
 
             // Read back s1
-            let value: Data0 = self.read_dm_register()?;
+            let value_idx = self.schedule_read_dm_register::<Data0>()?;
 
-            *word = V::from_register_value(value.0);
+            result_idxs.push((out_idx, value_idx));
+        }
+
+        let results = self.execute()?;
+
+        for (out_idx, value_idx) in result_idxs {
+            let value = Data0::from(results[value_idx].as_u32());
+
+            data[out_idx] = V::from_register_value(value.0);
         }
 
         let last_value = self.abstract_cmd_register_read(&registers::S1)?;
@@ -848,10 +865,7 @@ impl RiscvCommunicationInterface {
         let result = self.execute()?;
 
         // Check that the write was succesful
-        let sbcs = match result[ok_index] {
-            CommandResult::U32(res) => res,
-            _ => panic!("Internal error occurred."),
-        };
+        let sbcs = result[ok_index].as_u32();
 
         let sbcs = Sbcs(sbcs);
 
@@ -881,13 +895,13 @@ impl RiscvCommunicationInterface {
 
         let sw_command = assembly::sw(0, 8, V::WIDTH as u32, 9);
 
-        self.setup_program_buffer(&[sw_command])?;
+        self.schedule_setup_program_buffer(&[sw_command])?;
 
         // write address into s0
         self.abstract_cmd_register_write(&registers::S0, address)?;
 
         // write data into data 0
-        self.write_dm_register(Data0(data.into()))?;
+        self.schedule_write_dm_register(Data0(data.into()))?;
 
         // Write s1, then execute program buffer
         let mut command = AccessRegisterCommand(0);
@@ -902,9 +916,11 @@ impl RiscvCommunicationInterface {
         // register s1, ie. 0x1009
         command.set_regno((registers::S1).id.0 as u32);
 
-        self.write_dm_register(command)?;
+        self.schedule_write_dm_register(command)?;
 
-        let status: Abstractcs = self.read_dm_register()?;
+        let status_idx = self.schedule_read_dm_register::<Abstractcs>()?;
+        let result = self.execute()?;
+        let status = Abstractcs::from(result[status_idx].as_u32());
 
         if status.cmderr() != 0 {
             let error = AbstractCommandErrorKind::parse(status.cmderr() as u8);
@@ -939,10 +955,8 @@ impl RiscvCommunicationInterface {
         // Setup program buffer for multiple writes
         // Store value from register s9 into memory,
         // then increase the address for next write.
-        let sw_command = assembly::sw(0, 8, V::WIDTH as u32, 9);
-
-        self.setup_program_buffer(&[
-            sw_command,
+        self.schedule_setup_program_buffer(&[
+            assembly::sw(0, 8, V::WIDTH as u32, 9),
             assembly::addi(8, 8, V::WIDTH.byte_width() as u16),
         ])?;
 
@@ -951,7 +965,7 @@ impl RiscvCommunicationInterface {
 
         for value in data {
             // write address into data 0
-            self.write_dm_register(Data0((*value).into()))?;
+            self.schedule_write_dm_register(Data0((*value).into()))?;
 
             // Write s0, then execute program buffer
             let mut command = AccessRegisterCommand(0);
@@ -966,11 +980,13 @@ impl RiscvCommunicationInterface {
             // register s1
             command.set_regno((registers::S1).id.0 as u32);
 
-            self.write_dm_register(command)?;
+            self.schedule_write_dm_register(command)?;
         }
 
         // Errors are sticky, so we can just check at the end if everything worked.
-        let status: Abstractcs = self.read_dm_register()?;
+        let status_idx = self.schedule_read_dm_register::<Abstractcs>()?;
+        let result = self.execute()?;
+        let status = Abstractcs::from(result[status_idx].as_u32());
 
         if status.cmderr() != 0 {
             let error = AbstractCommandErrorKind::parse(status.cmderr() as u8);
@@ -1003,35 +1019,28 @@ impl RiscvCommunicationInterface {
         dmcontrol.set_resumereq(false);
         dmcontrol.set_ackhavereset(false);
         dmcontrol.set_dmactive(true);
-        self.write_dm_register(dmcontrol)?;
+        self.schedule_write_dm_register(dmcontrol)?;
 
-        // read abstractcs to see its state
-        let abstractcs_prev: Abstractcs = self.read_dm_register()?;
+        // Clear any previous command errors.
+        let mut abstractcs_clear = Abstractcs(0);
+        abstractcs_clear.set_cmderr(0x7);
 
-        tracing::debug!("abstractcs: {:?}", abstractcs_prev);
+        self.schedule_write_dm_register(abstractcs_clear)?;
+        self.schedule_write_dm_register(Command(command))?;
 
-        if abstractcs_prev.cmderr() != 0 {
-            // Clear previous command error.
-            let mut abstractcs_clear = Abstractcs(0);
-            abstractcs_clear.set_cmderr(0x7);
+        // Poll busy flag in abstractcs.
+        let abstractcs_idx = self.schedule_read_dm_register::<Abstractcs>()?;
 
-            self.write_dm_register(abstractcs_clear)?;
-        }
+        // Execute batched up commands. This includes the first poll of the busy flag.
+        let results = self.execute()?;
 
-        self.write_dm_register(Command(command))?;
-
-        // poll busy flag in abstractcs
+        let abstractcs = results[abstractcs_idx].as_u32();
+        let mut abstractcs = Abstractcs::from(abstractcs);
 
         let start_time = Instant::now();
 
-        let mut abstractcs: Abstractcs;
-
-        loop {
+        while abstractcs.busy() {
             abstractcs = self.read_dm_register()?;
-
-            if !abstractcs.busy() {
-                break;
-            }
 
             if start_time.elapsed() > RISCV_TIMEOUT {
                 return Err(RiscvError::Timeout);
@@ -1040,7 +1049,7 @@ impl RiscvCommunicationInterface {
 
         tracing::debug!("abstracts: {:?}", abstractcs);
 
-        // check cmderr
+        // Check command result for error.
         if abstractcs.cmderr() != 0 {
             return Err(RiscvError::AbstractCommand(
                 AbstractCommandErrorKind::parse(abstractcs.cmderr() as u8),
@@ -1142,7 +1151,7 @@ impl RiscvCommunicationInterface {
 
         command.set_regno(regno.0 as u32);
 
-        self.write_large_dtm_register::<V, Arg0>(value)?;
+        self.schedule_write_large_dtm_register::<V, Arg0>(value)?;
 
         match self.execute_abstract_command(command.0) {
             Ok(_) => Ok(()),
@@ -1172,7 +1181,7 @@ impl RiscvCommunicationInterface {
         // Read csr value into register 8 (s0)
         let csrr_cmd = assembly::csrr(8, address);
 
-        self.setup_program_buffer(&[csrr_cmd])?;
+        self.schedule_setup_program_buffer(&[csrr_cmd])?;
 
         // command: postexec
         let mut postexec_cmd = AccessRegisterCommand(0);
@@ -1206,7 +1215,7 @@ impl RiscvCommunicationInterface {
 
         // Built the CSRW command to write into the program buffer
         let csrw_cmd = assembly::csrw(address, 8);
-        self.setup_program_buffer(&[csrw_cmd])?;
+        self.schedule_setup_program_buffer(&[csrw_cmd])?;
 
         // command: postexec
         let mut postexec_cmd = AccessRegisterCommand(0);
@@ -1219,22 +1228,6 @@ impl RiscvCommunicationInterface {
         self.abstract_cmd_register_write(&registers::S0, s0)?;
 
         Ok(())
-    }
-
-    fn read_large_dtm_register<V, R>(&mut self) -> Result<V, RiscvError>
-    where
-        V: RiscvValue,
-        R: LargeRegister,
-    {
-        V::read_from_register::<R>(self)
-    }
-
-    fn write_large_dtm_register<V, R>(&mut self, value: V) -> Result<(), RiscvError>
-    where
-        V: RiscvValue,
-        R: LargeRegister,
-    {
-        V::write_to_register::<R>(self, value)
     }
 
     fn read_word<V: RiscvValue32>(&mut self, address: u32) -> Result<V, crate::Error> {
@@ -1388,6 +1381,7 @@ impl RiscvCommunicationInterface {
         V::schedule_write_to_register::<R>(self, value)
     }
 }
+
 pub(crate) trait LargeRegister {
     const R0_ADDRESS: u8;
     const R1_ADDRESS: u8;
