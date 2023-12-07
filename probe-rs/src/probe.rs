@@ -851,6 +851,12 @@ pub struct JtagWriteCommand {
     pub transform: fn(Vec<u8>) -> Result<CommandResult, crate::Error>,
 }
 
+impl JtagWriteCommand {
+    pub fn transform(&self, response: Vec<u8>) -> Result<CommandResult, crate::Error> {
+        (self.transform)(response)
+    }
+}
+
 /// Represents a Jtag Tap within the chain.
 #[derive(Debug)]
 pub struct JtagChainItem {

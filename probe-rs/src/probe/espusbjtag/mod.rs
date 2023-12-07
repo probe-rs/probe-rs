@@ -19,7 +19,7 @@ use num_traits::WrappingSub;
 
 use self::protocol::ProtocolHandler;
 
-use super::{ChainParams, JTAGAccess, JtagChainItem};
+use super::{BatchExecutionError, ChainParams, JTAGAccess, JtagChainItem};
 
 use probe_rs_target::ScanChainElement;
 pub use protocol::list_espjtag_devices;
@@ -35,7 +35,7 @@ pub(crate) struct EspUsbJtag {
     current_ir_reg: u8,
     max_ir_address: u8,
     scan_chain: Option<Vec<ScanChainElement>>,
-    chain_params: Option<ChainParams>,
+    chain_params: ChainParams,
 }
 
 impl EspUsbJtag {
@@ -57,6 +57,14 @@ impl EspUsbJtag {
 
         self.jtag_reset()?;
 
+        self.chain_params = ChainParams {
+            irpre: 0,
+            irpost: 0,
+            drpre: 0,
+            drpost: 0,
+            irlen: 0,
+        };
+
         let input = Vec::from_iter(iter::repeat(0xFFu8).take(4 * max_chain));
         let response = self.write_dr(&input, 4 * max_chain * 8).unwrap();
 
@@ -74,7 +82,7 @@ impl EspUsbJtag {
         }
 
         tracing::info!(
-            "JTAG dr scan complete, found {} TAPs. {:?}",
+            "JTAG DR scan complete, found {} TAPs. {:?}",
             idcodes.len(),
             idcodes
         );
@@ -94,7 +102,7 @@ impl EspUsbJtag {
             None
         };
 
-        tracing::trace!("ir scan: {}", response.as_bitslice());
+        tracing::trace!("IR scan: {}", response.as_bitslice());
 
         let ir_lens =
             extract_ir_lengths(response.as_bitslice(), idcodes.len(), expected.as_deref()).unwrap();
@@ -115,10 +123,10 @@ impl EspUsbJtag {
         tracing::trace!("Response: {:?}", response);
 
         let mut response = response.split_off(tms_enter_ir_shift.len());
-        if let Some(ref params) = self.chain_params {
-            // cut the prepended bypass commands
-            response = response.split_off(params.irpre);
-        }
+
+        // cut the prepended bypass command dummy bits
+        response = response.split_off(self.chain_params.irpre);
+
         // cut the post pended bypass commands
         response.truncate(len);
 
@@ -143,8 +151,8 @@ impl EspUsbJtag {
         let tms_enter_idle = [true, true, false];
 
         // BYPASS commands before and after shifting out data where required
-        let pre_bits = self.chain_params.map(|params| params.irpre).unwrap_or(0);
-        let post_bits = self.chain_params.map(|params| params.irpost).unwrap_or(0);
+        let pre_bits = self.chain_params.irpre;
+        let post_bits = self.chain_params.irpost;
 
         let mut tms: BitVec<u8, Lsb0> = BitVec::with_capacity(
             tms_enter_ir_shift.len() + pre_bits + len + post_bits + tms_enter_idle.len(),
@@ -196,10 +204,8 @@ impl EspUsbJtag {
         // split off tms_enter_shift from the response
         let mut response = response.split_off(3);
 
-        if let Some(ref params) = self.chain_params {
-            // cut the prepended bypass command dummy bits
-            response = response.split_off(params.drpre);
-        }
+        // cut the prepended bypass command dummy bits
+        response = response.split_off(self.chain_params.drpre);
 
         response.truncate(register_bits);
         response.force_align();
@@ -228,8 +234,8 @@ impl EspUsbJtag {
         let tms_enter_idle = [true, true, false];
 
         // dummy bits to account for bypasses
-        let pre_bits = self.chain_params.map(|params| params.drpre).unwrap_or(0);
-        let post_bits = self.chain_params.map(|params| params.drpost).unwrap_or(0);
+        let pre_bits = self.chain_params.drpre;
+        let post_bits = self.chain_params.drpost;
 
         let mut tms: BitVec<u8, Lsb0> = BitVec::with_capacity(
             tms_enter_shift.len()
@@ -294,9 +300,9 @@ impl EspUsbJtag {
             // Write IR register
             let def = self.prepare_write_ir(&[address], 5)?;
             self.current_ir_reg = address;
-            Some(def)
+            def
         } else {
-            None
+            0
         };
 
         // write DR register
@@ -325,7 +331,7 @@ impl EspUsbJtag {
 }
 
 pub struct DeferredRegisterWrite {
-    write_ir_bits: Option<usize>,
+    write_ir_bits: usize,
     write_dr_bits_total: usize,
     write_dr_bits: usize,
 }
@@ -394,7 +400,7 @@ impl JTAGAccess for EspUsbJtag {
     fn write_register_batch(
         &mut self,
         writes: &[super::JtagWriteCommand],
-    ) -> Result<Vec<super::CommandResult>, super::BatchExecutionError> {
+    ) -> Result<Vec<super::CommandResult>, BatchExecutionError> {
         let mut bits = Vec::with_capacity(writes.len());
         let t1 = std::time::Instant::now();
         tracing::debug!("Preparing {} writes...", writes.len());
@@ -402,7 +408,7 @@ impl JTAGAccess for EspUsbJtag {
             bits.push(
                 // If an error happens during prep, return no results as chip will be in an inconsistent state
                 self.prepare_write_register(write.address, &write.data, write.len)
-                    .map_err(|e| super::BatchExecutionError::new(e.into(), Vec::new()))?,
+                    .map_err(|e| BatchExecutionError::new(e.into(), Vec::new()))?,
             );
         }
 
@@ -411,24 +417,25 @@ impl JTAGAccess for EspUsbJtag {
         let mut response = self
             .protocol
             .flush()
-            .map_err(|e| super::BatchExecutionError::new(e.into(), Vec::new()))?;
+            .map_err(|e| BatchExecutionError::new(e.into(), Vec::new()))?;
         tracing::debug!("Got responses! Took {:?}! Processing...", t1.elapsed());
         let mut responses = Vec::with_capacity(bits.len());
 
         for (index, bit) in bits.into_iter().enumerate() {
-            if let Some(ir_bits) = bit.write_ir_bits {
-                response = response.split_off(ir_bits);
-            }
-            let split = response.split_off(bit.write_dr_bits_total);
-            let v = self
-                .recieve_write_dr(response, bit.write_dr_bits)
-                .map_err(|e| super::BatchExecutionError::new(e.into(), responses.clone()))?;
-            response = split;
+            response = response.split_off(bit.write_ir_bits);
+            let rest = response.split_off(bit.write_dr_bits_total);
 
-            let transform = writes[index].transform;
-            let t =
-                transform(v).map_err(|e| super::BatchExecutionError::new(e, responses.clone()))?;
-            responses.push(t);
+            let write_response = match self.recieve_write_dr(response, bit.write_dr_bits) {
+                Ok(response_bits) => writes[index].transform(response_bits),
+                Err(e) => Err(e.into()),
+            };
+
+            match write_response {
+                Ok(response) => responses.push(response),
+                Err(e) => return Err(BatchExecutionError::new(e, responses)),
+            }
+
+            response = rest;
         }
 
         Ok(responses)
@@ -448,7 +455,13 @@ impl DebugProbe for EspUsbJtag {
             // default to 5, as most Espressif chips have an irlen of 5
             max_ir_address: 5,
             scan_chain: None,
-            chain_params: None,
+            chain_params: ChainParams {
+                irpre: 0,
+                irpost: 0,
+                drpre: 0,
+                drpost: 0,
+                irlen: 0,
+            },
         }))
     }
 
@@ -524,7 +537,7 @@ impl DebugProbe for EspUsbJtag {
         // set the max address to the max number of bits irlen can represent
         self.max_ir_address = ((1 << params.irlen).wrapping_sub(&1)) as u8;
         tracing::debug!("Setting max_ir_address to {}", self.max_ir_address);
-        self.chain_params = Some(params);
+        self.chain_params = params;
 
         Ok(())
     }
