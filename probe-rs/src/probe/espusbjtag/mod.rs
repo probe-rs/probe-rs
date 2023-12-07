@@ -119,16 +119,13 @@ impl EspUsbJtag {
         let tms_enter_ir_shift = [true, true, false, false];
 
         self.prepare_write_ir(data, len)?;
-        let mut response = self.protocol.flush()?;
+        let response = self.protocol.flush()?;
         tracing::trace!("Response: {:?}", response);
 
-        let mut response = response.split_off(tms_enter_ir_shift.len());
-
-        // cut the prepended bypass command dummy bits
-        response = response.split_off(self.chain_params.irpre);
-
-        // cut the post pended bypass commands
-        response.truncate(len);
+        // Cut out the interesting bits.
+        let response = response.as_bitslice()[tms_enter_ir_shift.len() + self.chain_params.irpre..]
+            [..len]
+            .to_bitvec();
 
         Ok(response)
     }
@@ -193,23 +190,20 @@ impl EspUsbJtag {
     fn write_dr(&mut self, data: &[u8], register_bits: usize) -> Result<Vec<u8>, DebugProbeError> {
         self.prepare_write_dr(data, register_bits)?;
         let response = self.protocol.flush()?;
-        self.recieve_write_dr(response, register_bits)
+        self.recieve_write_dr(response.as_bitslice(), register_bits)
     }
 
     fn recieve_write_dr(
         &mut self,
-        mut response: BitVec<u8, Lsb0>,
+        response: &BitSlice<u8, Lsb0>,
         register_bits: usize,
     ) -> Result<Vec<u8>, DebugProbeError> {
-        // split off tms_enter_shift from the response
-        let mut response = response.split_off(3);
+        // Cut out the interesting bits
+        let mut result = response[3 + self.chain_params.drpre..][..register_bits].to_bitvec();
 
-        // cut the prepended bypass command dummy bits
-        response = response.split_off(self.chain_params.drpre);
+        result.force_align();
+        let result = result.into_vec();
 
-        response.truncate(register_bits);
-        response.force_align();
-        let result = response.into_vec();
         tracing::trace!("recieve_write_dr result: {:?}", result);
         Ok(result)
     }
@@ -414,18 +408,17 @@ impl JTAGAccess for EspUsbJtag {
 
         tracing::debug!("Sending to chip...");
         // If an error happens during the final flush, also retry whole operation
-        let mut response = self
+        let bitstream = self
             .protocol
             .flush()
             .map_err(|e| BatchExecutionError::new(e.into(), Vec::new()))?;
         tracing::debug!("Got responses! Took {:?}! Processing...", t1.elapsed());
         let mut responses = Vec::with_capacity(bits.len());
 
+        let mut bitstream = bitstream.as_bitslice();
         for (index, bit) in bits.into_iter().enumerate() {
-            response = response.split_off(bit.write_ir_bits);
-            let rest = response.split_off(bit.write_dr_bits_total);
-
-            let write_response = match self.recieve_write_dr(response, bit.write_dr_bits) {
+            bitstream = &bitstream[bit.write_ir_bits..];
+            let write_response = match self.recieve_write_dr(bitstream, bit.write_dr_bits) {
                 Ok(response_bits) => writes[index].transform(response_bits),
                 Err(e) => Err(e.into()),
             };
@@ -435,7 +428,7 @@ impl JTAGAccess for EspUsbJtag {
                 Err(e) => return Err(BatchExecutionError::new(e, responses)),
             }
 
-            response = rest;
+            bitstream = &bitstream[bit.write_dr_bits_total..];
         }
 
         Ok(responses)
