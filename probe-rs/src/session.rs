@@ -161,10 +161,10 @@ impl Session {
             }
         }
 
-        probe.inner_attach()?;
         if let Some(scan_chain) = target.scan_chain.clone() {
             probe.set_scan_chain(scan_chain)?;
         }
+        probe.attach_to_unspecified()?;
 
         let interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
 
@@ -267,7 +267,7 @@ impl Session {
             probe.set_scan_chain(scan_chain)?;
         }
 
-        probe.inner_attach()?;
+        probe.attach_to_unspecified()?;
 
         let interface = probe
             .try_into_riscv_interface()
@@ -645,7 +645,7 @@ fn get_target_from_selector(
             if AttachMethod::UnderReset == attach_method {
                 probe.target_reset_assert()?;
             }
-            probe.inner_attach()?;
+            probe.attach_to_unspecified()?;
 
             if probe.has_arm_interface() {
                 match probe.try_into_arm_interface() {

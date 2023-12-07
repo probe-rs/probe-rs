@@ -10,6 +10,7 @@ use crate::{
     debug::{registers, source_statement::SourceStatements},
     MemoryInterface,
 };
+use anyhow::anyhow;
 use gimli::{
     BaseAddresses, ColumnType, DebugFrame, FileEntry, LineProgramHeader, UnwindContext,
     UnwindSection,
@@ -293,7 +294,7 @@ impl DebugInfo {
     pub fn cache_deferred_variables(
         &self,
         cache: &mut VariableCache,
-        memory: &mut impl MemoryInterface,
+        memory: &mut dyn MemoryInterface,
         parent_variable: &mut Variable,
         stack_frame_registers: &DebugRegisters,
         frame_base: Option<u64>,
@@ -683,7 +684,7 @@ impl DebugInfo {
 
             let mut only_exception = false;
 
-            let return_frame = match cached_stack_frames.pop() {
+            let mut return_frame = match cached_stack_frames.pop() {
                 Some(frame) => frame,
                 None => {
                     if let Some(exception_info) = &exception_info {
@@ -805,7 +806,7 @@ impl DebugInfo {
                                 .and_then(|lr| lr.value);
 
                         if let Some(calling_pc) = unwind_registers.get_program_counter_mut() {
-                            if unwind_register(
+                            if let ControlFlow::Break(error) = unwind_register(
                                 calling_pc,
                                 &callee_frame_registers,
                                 None,
@@ -813,10 +814,11 @@ impl DebugInfo {
                                 &mut unwound_return_address,
                                 memory,
                                 instruction_set,
-                            )
-                            .is_break()
-                            {
-                                // We were not able to get a PC for the calling frame, so we cannot continue unwinding.
+                            ) {
+                                // This is not fatal, but we cannot continue unwinding beyond the current frame.
+                                tracing::error!("{:?}", &error);
+                                return_frame.function_name =
+                                    format!("{} : ERROR : {error}", &return_frame.function_name);
                                 stack_frames.push(return_frame);
                                 break 'unwind;
                             } else {
@@ -879,7 +881,7 @@ impl DebugInfo {
             // We sometimes need to keep a copy of the LR value to calculate the PC. For both ARM, and RISC-V, The LR will be unwound before the PC, so we can reference it safely.
             let mut unwound_return_address: Option<RegisterValue> = None;
             for debug_register in unwind_registers.0.iter_mut() {
-                if unwind_register(
+                if let ControlFlow::Break(error) = unwind_register(
                     debug_register,
                     &callee_frame_registers,
                     Some(unwind_info),
@@ -887,9 +889,10 @@ impl DebugInfo {
                     &mut unwound_return_address,
                     memory,
                     instruction_set,
-                )
-                .is_break()
-                {
+                ) {
+                    tracing::error!("{:?}", &error);
+                    return_frame.function_name =
+                        format!("{} : ERROR: {error}", &return_frame.function_name);
                     stack_frames.push(return_frame);
                     break 'unwind;
                 };
@@ -1206,7 +1209,7 @@ fn unwind_register(
     unwound_return_address: &mut Option<RegisterValue>,
     memory: &mut dyn MemoryInterface,
     instruction_set: Option<InstructionSet>,
-) -> ControlFlow<(), ()> {
+) -> ControlFlow<crate::Error, ()> {
     use gimli::read::RegisterRule::*;
     // If we do not have unwind info, or there is no register rule, then use UnwindRule::Undefined.
     let register_rule = debug_register
@@ -1300,8 +1303,9 @@ fn unwind_register(
         Offset(address_offset) => {
             // "The previous value of this register is saved at the address CFA+N where CFA is the current CFA value and N is a signed offset"
             let Some(unwind_cfa) = unwind_cfa else {
-                tracing::error!("UNWIND: Tried to unwind `RegisterRule` at CFA = None. Please report this as a bug.");
-                return ControlFlow::Break(());
+                return ControlFlow::Break(
+                    anyhow!("UNWIND: Tried to unwind `RegisterRule` at CFA = None.").into(),
+                );
             };
             let address_size = callee_frame_registers.get_address_size_bytes();
             let previous_frame_register_address =
@@ -1322,11 +1326,9 @@ fn unwind_register(
                         .map(|_| RegisterValue::U64(u64::from_le_bytes(buff)))
                 }
                 _ => {
-                    tracing::error!(
-                        "UNWIND: Address size {} not supported.  Please report this as a bug.",
-                        address_size
+                    return ControlFlow::Break(
+                        anyhow!("UNWIND: Address size {} not supported.", address_size).into(),
                     );
-                    return ControlFlow::Break(());
                 }
             };
 
@@ -1343,18 +1345,21 @@ fn unwind_register(
                 }
                 Err(error) => {
                     tracing::error!(
+                        "UNWIND: Rule: Offset {} from address {:#010x}",
+                        address_offset,
+                        unwind_cfa
+                    );
+
+                    return ControlFlow::Break(
+                        anyhow!(
                             "UNWIND: Failed to read value for register {} from address {} ({} bytes): {}",
                             debug_register.get_register_name(),
                             RegisterValue::from(previous_frame_register_address),
                             4,
                             error
-                        );
-                    tracing::error!(
-                        "UNWIND: Rule: Offset {} from address {:#010x}",
-                        address_offset,
-                        unwind_cfa
+                        )
+                        .into(),
                     );
-                    return ControlFlow::Break(());
                 }
             }
         }
@@ -1451,10 +1456,7 @@ mod test {
             registers::cortex_m::CORTEX_M_CORE_REGISTERS,
         },
         core::exception_handler_for_core,
-        debug::{
-            stack_frame::TestFormatter, DebugInfo, DebugRegister, DebugRegisters, Variable,
-            VariableCache,
-        },
+        debug::{stack_frame::TestFormatter, DebugInfo, DebugRegister, DebugRegisters},
         test::MockMemory,
         CoreDump, RegisterValue,
     };
@@ -1473,49 +1475,6 @@ mod test {
     /// `elf_file` should be the name of a file(or relative path) in the `tests` directory.
     fn load_test_elf_as_debug_info(elf_file: &str) -> DebugInfo {
         DebugInfo::from_file(get_path_for_test_files(elf_file)).unwrap()
-    }
-
-    /// Recursively process the deferred variables in the variable cache,
-    /// and add their children to the cache.
-    /// We max out at 10 levels, to ensure we don't recurse infinitely on circular references.
-    fn recurse_deferred_variables(
-        debug_info: &DebugInfo,
-        variable_cache: &mut VariableCache,
-        adapter: &mut CoreDump,
-        parent_variable: &mut Variable,
-        registers: &DebugRegisters,
-        frame_base: Option<u64>,
-        recursion_depth: usize,
-    ) {
-        if recursion_depth >= 10 {
-            return;
-        }
-
-        let children_depth = recursion_depth + 1;
-        debug_info
-            .cache_deferred_variables(
-                variable_cache,
-                adapter,
-                parent_variable,
-                registers,
-                frame_base,
-            )
-            .unwrap();
-
-        for mut child in variable_cache
-            .get_children(parent_variable.variable_key)
-            .unwrap()
-        {
-            recurse_deferred_variables(
-                debug_info,
-                variable_cache,
-                adapter,
-                &mut child,
-                registers,
-                frame_base,
-                children_depth,
-            );
-        }
     }
 
     #[test]
@@ -2020,7 +1979,7 @@ mod test {
     #[test_case("RP2040"; "Armv6-m using RP2040")]
     #[test_case("nRF52833_xxAA"; "Armv7-m using nRF52833_xxAA")]
     //TODO:  #[test_case("esp32c3"; "RISC-V32E using esp32c3")]
-    fn debug_unwind_tests(chip_name: &str) {
+    fn full_unwind(chip_name: &str) {
         // TODO: Add RISC-V tests.
 
         let debug_info =
@@ -2047,23 +2006,27 @@ mod test {
 
         // Expand and validate the static and local variables for each stack frame.
         for frame in stack_frames.iter_mut() {
-            for variable_cache in [
-                frame.static_variables.as_mut().unwrap(),
-                frame.local_variables.as_mut().unwrap(),
-            ] {
+            let mut variable_caches = Vec::new();
+            if let Some(static_variables) = &mut frame.static_variables {
+                variable_caches.push(static_variables);
+            }
+            if let Some(local_variables) = &mut frame.local_variables {
+                variable_caches.push(local_variables);
+            }
+            for variable_cache in variable_caches {
                 // Cache the deferred top level children of the of the cache.
-                let mut parent_variable = variable_cache.root_variable();
-                recurse_deferred_variables(
+                variable_cache.recurse_deferred_variables(
                     &debug_info,
-                    variable_cache,
                     &mut adapter,
-                    &mut parent_variable,
+                    None,
                     &frame.registers,
                     frame.frame_base,
+                    10,
                     0,
                 );
             }
         }
+
         // Using YAML output because it is easier to read than the default snapshot output,
         // and also because they provide better diffs.
         insta::assert_yaml_snapshot!(snapshot_name, stack_frames);

@@ -18,7 +18,7 @@ use crate::{
 };
 use anyhow::anyhow;
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
-use probe_rs_target::{ArmCoreAccessOptions, RiscvCoreAccessOptions};
+use probe_rs_target::{ArmCoreAccessOptions, MemoryRange, RiscvCoreAccessOptions};
 use scroll::Pread;
 use std::{
     collections::HashMap,
@@ -321,7 +321,7 @@ impl CoreDump {
         size_in_bytes: u64,
     ) -> Result<(u64, &Vec<u8>), crate::Error> {
         for (range, memory) in &self.data {
-            if range.contains(&address) && range.contains(&(address + size_in_bytes)) {
+            if range.contains_range(&(address..(address + size_in_bytes))) {
                 return Ok((range.start, memory));
             }
         }
