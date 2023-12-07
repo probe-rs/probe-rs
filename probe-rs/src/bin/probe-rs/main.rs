@@ -87,6 +87,9 @@ enum Subcommand {
     Profile(cmd::profile::ProfileCmd),
     Read(cmd::read::Cmd),
     Write(cmd::write::Cmd),
+    /// Executes a test binary that uses embedded-test
+    #[clap(name = "test")]
+    Test(cmd::test::Cmd),
 }
 
 /// Shared options for core selection, shared between commands
@@ -288,6 +291,7 @@ fn main() -> Result<()> {
 
     let stdout_subscriber = tracing_subscriber::fmt::layer()
         .compact()
+        .with_writer(std::io::stderr)
         .without_time()
         .with_filter(
             EnvFilter::builder()
@@ -346,6 +350,7 @@ fn main() -> Result<()> {
         Subcommand::Profile(cmd) => cmd.run(&lister),
         Subcommand::Read(cmd) => cmd.run(&lister),
         Subcommand::Write(cmd) => cmd.run(&lister),
+        Subcommand::Test(cmd) => cmd.run(&lister, true, utc_offset),
     };
 
     if let Some(ref log_path) = log_path {

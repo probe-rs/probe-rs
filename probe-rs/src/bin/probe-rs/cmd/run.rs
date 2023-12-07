@@ -171,10 +171,7 @@ fn run_loop(
         // the core printed before halting, such as a panic message.
         match core.status()? {
             probe_rs::CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
-                SemihostingCommand::Unknown {
-                    operation,
-                    ..,
-                },
+                SemihostingCommand::Unknown { operation, .. },
             ))) => {
                 tracing::error!("Target wanted to run semihosting operation {:#x}, but probe-rs does not support this operation yet. Continuing...", operation);
                 core.run()?;
