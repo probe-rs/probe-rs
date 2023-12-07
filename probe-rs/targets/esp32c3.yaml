@@ -1,4 +1,3 @@
----
 name: esp32c3
 manufacturer:
   cc: 0x0C
@@ -56,24 +55,24 @@ flash_algorithms:
   - name: esp32c3-flashloader
     description: A flash loader for the esp32c3.
     default: true
-    instructions: QREGxjcFOUADRQUHGcEBRS2glwDH/+eAoHCBRZcAx//ngIAUlwDH/+eAwBEZ5QFFtwU5QAVGI4jFBrJAQQGCgDGBFwPH/2cAYw4XA8f/ZwBjDRN3NgABxxMFoAqCgK6GsoU2hhcDx/9nAIMMAUWCgAAAAAA=
-    load_address: 0x40390000 # See discussion at https://github.com/probe-rs/probe-rs/pull/1209/#issuecomment-1218430338
-    pc_init: 0
-    pc_uninit: 108
-    pc_program_page: 82
-    pc_erase_sector: 64
-    pc_erase_all: 74
-    data_section_offset: 116
+    instructions: QREGxiLENwQ5QANFJAgJ7ZcAx//ngMBwgUWXAMf/54CgFAVFIwGkCAFFskAiREEBgoBBgRcDx/9nAAMPFwPH/2cAQw4TdzYAAccTBaAKgoCuhrKFNoYXA8f/ZwBjDUERBsYFRSrEA0WBAAWJAckoAJVFlwDH/+eAYAx11bJAQQGCgAAA
+    pc_init: 0x0
+    pc_uninit: 0x5e
+    pc_program_page: 0x44
+    pc_erase_sector: 0x32
+    pc_erase_all: 0x3c
+    data_section_offset: 0x40390084
+    load_address: 0x40390000
     flash_properties:
-      address_range: #16 Mb Max addressable Flash size
+      address_range:
         start: 0x0
         end: 0x1000000
-      page_size: 2048
-      erased_byte_value: 255
+      page_size: 0x4000
+      erased_byte_value: 0xff
       program_page_timeout: 1000
       erase_sector_timeout: 2000
       sectors:
-        - size: 4096
-          address: 0
+        - size: 0x10000
+          address: 0x0
     cores:
       - main

@@ -38,26 +38,26 @@ variants:
       - esp32h2-flashloader
 flash_algorithms:
   - name: esp32h2-flashloader
-    description: "A flasher loader for the esp32h2."
+    description: A flasher loader for the esp32h2.
     default: true
-    instructions: QREGxjcFgUADRWUGGcEBRQWggUWXAH//54AAHJcAf//ngAATEeW3BYFABUYjg8UGskBBAYKAMYEXA3//ZwBDEBcDf/9nAMMNE3c2AAHHEwWgCoKAroayhTaGFwN//2cAow4BRYKAAAA=
+    instructions: QREGxiLENwSBQANFpAcJ6YFFlwB//+eAIBwFRSMNpAYBRbJAIkRBAYKAQYEXA3//ZwBDERcDf/9nAIMOE3c2AAHHEwWgCoKAroayhTaGFwN//2cAYw9BEQbGBUUqxANFgQAFiQHJKACVRZcAf//ngCAPddWyQEEBgoAAAA==
     pc_init: 0x0
-    pc_uninit: 0x62
-    pc_program_page: 0x48
-    pc_erase_sector: 0x36
-    pc_erase_all: 0x40
-    data_section_offset: 0x40810068
+    pc_uninit: 0x56
+    pc_program_page: 0x3c
+    pc_erase_sector: 0x2a
+    pc_erase_all: 0x34
+    data_section_offset: 0x4081007C
     load_address: 0x40810000
     flash_properties:
       address_range:
         start: 0x0
-        end: 0x4000000
-      page_size: 0x800
+        end: 0x1000000
+      page_size: 0x4000
       erased_byte_value: 0xff
       program_page_timeout: 1000
       erase_sector_timeout: 2000
       sectors:
-        - size: 0x1000
+        - size: 0x10000
           address: 0x0
     cores:
       - main

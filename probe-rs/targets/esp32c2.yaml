@@ -50,24 +50,24 @@ flash_algorithms:
   - name: esp32c2-flashloader
     description: ""
     default: true
-    instructions: N8U4QANFhQYZwQFFgoBBEQbGgUWXQMf/54BAFpdAx//ngEASskBBARHBgoC3xThABUYjhMUGgoAxgRdDx/9nAGMPF0PH/2cA4wwTdzYAAccTBaAKgoCuhrKFNoYXQ8f/ZwDDDQFFgoAAAAAA
+    instructions: QREGxiLEN8Q4QANFpAcJ6YFFl0DH/+eAYBYFRSMNpAYBRbJAIkRBAYKAQYEXQ8f/ZwCDEBdDx/9nAMMNE3c2AAHHEwWgCoKAroayhTaGF0PH/2cAow5BEQbGBUUqxANFgQAFiQHJKACVRZdAx//ngGAOddWyQEEBgoAAAA==
     pc_init: 0x0
-    pc_uninit: 0x64
-    pc_program_page: 0x4a
-    pc_erase_sector: 0x38
-    pc_erase_all: 0x42
-    data_section_offset: 0x4038c06c
+    pc_uninit: 0x56
+    pc_program_page: 0x3c
+    pc_erase_sector: 0x2a
+    pc_erase_all: 0x34
+    data_section_offset: 0x4038C07C
     load_address: 0x4038C000
     flash_properties:
       address_range:
         start: 0x0
-        end: 0x4000000
-      page_size: 0x800
+        end: 0x1000000
+      page_size: 0x4000
       erased_byte_value: 0xff
       program_page_timeout: 1000
       erase_sector_timeout: 2000
       sectors:
-        - size: 0x1000
+        - size: 0x10000
           address: 0x0
     cores:
       - main

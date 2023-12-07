@@ -1,4 +1,3 @@
----
 name: esp32c6
 manufacturer:
   cc: 0x0C
@@ -44,22 +43,22 @@ flash_algorithms:
     default: true
     cores:
       - main
-    instructions: QREGxjcFgUCDRUUGAUWF4QFFlwB//+eAoByXAH//54CgExHltwWBQAVGI4LFBrJAQQGCgDGBFwN//2cA4xAXA3//ZwBjDhN3NgABxxMFoAqCgK6GsoU2hhcDf/9nAEMPAUWCgAAAAAA=
-    load_address: 0x40810000
+    instructions: QREGxiLENwSBQANFpAcJ6YFFlwB//+eAoBwFRSMNpAYBRbJAIkRBAYKAQYEXA3//ZwDDERcDf/9nAAMPE3c2AAHHEwWgCoKAroayhTaGFwN//2cA4w9BEQbGBUUqxANFgQAFiQHJKACVRZcAf//ngKAPddWyQEEBgoAAAA==
     pc_init: 0x0
-    pc_uninit: 0x60
-    pc_program_page: 0x46
-    pc_erase_sector: 0x34
-    pc_erase_all: 0x3e
-    data_section_offset: 0x40810068
+    pc_uninit: 0x56
+    pc_program_page: 0x3c
+    pc_erase_sector: 0x2a
+    pc_erase_all: 0x34
+    data_section_offset: 0x4081007C
+    load_address: 0x40810000
     flash_properties:
       address_range:
         start: 0x0
-        end: 0x4000000
-      page_size: 0x800
+        end: 0x1000000
+      page_size: 0x4000
       erased_byte_value: 0xff
       program_page_timeout: 1000
       erase_sector_timeout: 2000
       sectors:
-        - size: 0x1000
+        - size: 0x10000
           address: 0x0
