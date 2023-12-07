@@ -552,13 +552,13 @@ impl DebugProbe for EspUsbJtag {
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
         tracing::info!("reset_assert!");
-        self.protocol.set_reset(true, true)?;
+        self.protocol.set_reset(true)?;
         Ok(())
     }
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
         tracing::info!("reset_deassert!");
-        self.protocol.set_reset(false, false)?;
+        self.protocol.set_reset(false)?;
         Ok(())
     }
 

@@ -271,10 +271,8 @@ impl ProtocolHandler {
         Ok(())
     }
 
-    /// Sets the two different resets on the target.
-    /// NOTE: Only `srst` can be set for now. Setting `trst` is not implemented yet.
-    pub fn set_reset(&mut self, _trst: bool, srst: bool) -> Result<(), DebugProbeError> {
-        // TODO: Handle trst using setup commands. This is not necessarily required and can be left as is for the moiment..
+    /// Sets the system reset signal on the target.
+    pub fn set_reset(&mut self, srst: bool) -> Result<(), DebugProbeError> {
         self.add_raw_command(Command::Reset(srst))?;
         self.flush()?;
         Ok(())
