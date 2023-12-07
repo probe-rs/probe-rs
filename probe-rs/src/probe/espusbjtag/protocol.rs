@@ -439,8 +439,6 @@ impl ProtocolHandler {
                 DebugProbeError::Usb(Some(Box::new(e)))
             })?;
 
-        tracing::debug!("Read {} bytes from USB", read_bytes);
-
         let bits_in_buffer = self.pending_in_bits.min(read_bytes * 8);
         let incoming = &incoming[..count];
 
