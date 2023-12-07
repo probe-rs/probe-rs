@@ -7,8 +7,10 @@ use super::{
 use crate::config::NvmRegion;
 use crate::memory::MemoryInterface;
 use crate::{core::CoreRegisters, session::Session, Core, InstructionSet};
-use std::time::Instant;
-use std::{fmt::Debug, time::Duration};
+use std::{
+    fmt::Debug,
+    time::{Duration, Instant},
+};
 
 pub(super) trait Operation {
     fn operation() -> u32;
@@ -306,7 +308,7 @@ impl<'session> Flasher<'session> {
         if restore_unwritten_bytes {
             let fills = flash_layout.fills().to_vec();
             for fill in fills {
-                let t = std::time::Instant::now();
+                let t = Instant::now();
                 let page = &mut flash_layout.pages_mut()[fill.page_index()];
                 let result = self.fill_page(page, &fill);
 
@@ -363,7 +365,7 @@ impl<'session> Flasher<'session> {
     fn program_simple(&mut self, flash_layout: &FlashLayout) -> Result<(), FlashError> {
         self.progress.started_programming();
 
-        let mut t = std::time::Instant::now();
+        let mut t = Instant::now();
         let result = self.run_program(|active| {
             for page in flash_layout.pages() {
                 active
@@ -374,7 +376,7 @@ impl<'session> Flasher<'session> {
                     })?;
                 active.progress.page_programmed(page.size(), t.elapsed());
 
-                t = std::time::Instant::now();
+                t = Instant::now();
             }
             Ok(())
         });
@@ -392,7 +394,7 @@ impl<'session> Flasher<'session> {
     fn sector_erase(&mut self, flash_layout: &FlashLayout) -> Result<(), FlashError> {
         self.progress.started_erasing();
 
-        let mut t = std::time::Instant::now();
+        let mut t = Instant::now();
         let result = self.run_erase(|active| {
             for sector in flash_layout.sectors() {
                 active
@@ -403,7 +405,7 @@ impl<'session> Flasher<'session> {
                     })?;
                 active.progress.sector_erased(sector.size(), t.elapsed());
 
-                t = std::time::Instant::now();
+                t = Instant::now();
             }
             Ok(())
         });
@@ -430,7 +432,7 @@ impl<'session> Flasher<'session> {
         let mut current_buf = 0;
         self.progress.started_programming();
 
-        let mut t = std::time::Instant::now();
+        let mut t = Instant::now();
         let result = self.run_program(|active| {
             let mut last_page_address = 0;
             for page in flash_layout.pages() {
@@ -450,7 +452,7 @@ impl<'session> Flasher<'session> {
                 last_page_address = page.address();
                 active.progress.page_programmed(page.size(), t.elapsed());
 
-                t = std::time::Instant::now();
+                t = Instant::now();
                 if result != 0 {
                     return Err(FlashError::RoutineCallFailed {
                         name: "program_page",
@@ -678,7 +680,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
 
         #[cfg(feature = "rtt")]
         if let Some(rtt_address) = self.flash_algorithm.rtt_control_block {
-            let now = std::time::Instant::now();
+            let now = Instant::now();
             while self.rtt.is_none() {
                 std::thread::sleep(Duration::from_millis(1));
                 let rtt = match crate::rtt::Rtt::attach_region(
@@ -694,7 +696,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                 };
                 self.rtt = rtt;
 
-                if self.rtt.is_some() || now.elapsed() > std::time::Duration::from_secs(1) {
+                if now.elapsed() > Duration::from_secs(1) {
                     break;
                 }
             }
@@ -808,7 +810,7 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
 
     pub(super) fn erase_sector(&mut self, address: u64) -> Result<(), FlashError> {
         tracing::info!("Erasing sector at address 0x{:08x}", address);
-        let t1 = std::time::Instant::now();
+        let t1 = Instant::now();
 
         let result = self
             .call_function_and_wait(
@@ -847,7 +849,7 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
 
 impl<'p> ActiveFlasher<'p, Program> {
     pub(super) fn program_page(&mut self, address: u64, bytes: &[u8]) -> Result<(), FlashError> {
-        let t1 = std::time::Instant::now();
+        let t1 = Instant::now();
 
         tracing::info!(
             "Flashing page at address {:#08x} with size: {}",
@@ -947,7 +949,7 @@ impl<'p> ActiveFlasher<'p, Program> {
             .map(|a| u32::from_le_bytes([a[0], a[1], a[2], a[3]]))
             .collect();
 
-        let t1 = std::time::Instant::now();
+        let t1 = Instant::now();
         self.core
             .write_32(algo.page_buffers[buffer_number], &words)
             .map_err(FlashError::Core)?;
