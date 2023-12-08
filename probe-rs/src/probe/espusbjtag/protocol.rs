@@ -439,6 +439,9 @@ impl ProtocolHandler {
     pub fn flush(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
         self.finalize_previous_command()?;
 
+        // Leave the state machine in the Idle state.
+        self.jtag_move_to_state(JtagState::Idle)?;
+
         // Only flush if we have anything to do.
         if !self.output_buffer.is_empty() || self.pending_in_bits != 0 {
             tracing::debug!("Flushing ...");
