@@ -26,10 +26,9 @@
         }
       },
       "args": ["dap-server", "--port", "50001"],
-      // "env": {
-      //     "RUST_LOG": "error",
-      //     "DEFMT_LOG": "info"
-      // },
+      "env": {
+          "RUST_LOG": "warn",
+        },
       "cwd": "${workspaceFolder}/probe-rs/src/bin/probe-rs/cmd/dap_server"
     },
     {
