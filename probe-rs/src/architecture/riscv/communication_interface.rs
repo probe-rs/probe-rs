@@ -13,7 +13,7 @@ use crate::{
     core::RegisterId,
     memory::valid_32bit_address,
     memory_mapped_bitfield_register,
-    probe::{CommandResult, DeferredResultIndex, JTAGAccess},
+    probe::{DeferredResultIndex, DeferredResultSet, JTAGAccess},
     DebugProbeError, Error as ProbeRsError, MemoryInterface, MemoryMappedRegister, Probe,
 };
 use std::{
@@ -670,7 +670,7 @@ impl RiscvCommunicationInterface {
 
         let data_len = data.len();
 
-        let mut read_results: Vec<usize> = vec![];
+        let mut read_results: Vec<DeferredResultIndex> = vec![];
         for _ in data[..data_len - 1].iter() {
             let idx = self.schedule_read_large_dtm_register::<V, Sbdata>()?;
             read_results.push(idx);
@@ -686,7 +686,7 @@ impl RiscvCommunicationInterface {
 
         let result = self.execute()?;
 
-        for (out_index, &idx) in read_results.iter().enumerate() {
+        for (out_index, idx) in read_results.into_iter().enumerate() {
             data[out_index] = V::from_register_value(result[idx].as_u32());
         }
 
@@ -1301,7 +1301,7 @@ impl RiscvCommunicationInterface {
         Probe::from_attached_probe(self.dtm.probe.into_probe())
     }
 
-    pub(super) fn execute(&mut self) -> Result<Vec<CommandResult>, RiscvError> {
+    pub(super) fn execute(&mut self) -> Result<DeferredResultSet, RiscvError> {
         self.dtm.execute()
     }
 
