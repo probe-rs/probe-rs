@@ -952,12 +952,12 @@ impl CommandResult {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct DeferredResultSet(HashMap<usize, CommandResult>);
 
 impl DeferredResultSet {
     pub fn new() -> Self {
-        Self(HashMap::new())
+        Self::default()
     }
 
     pub fn with_capacity(capacity: usize) -> Self {
