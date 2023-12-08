@@ -99,6 +99,33 @@ mod test {
     };
 
     #[test]
+    fn exception_handler_reset_exception() {
+        let handler = ArmV6MExceptionHandler {};
+
+        let mut memory = MockMemory::new();
+        let mut registers = DebugRegisters(vec![]);
+
+        registers.0.push(DebugRegister {
+            dwarf_id: None,
+            core_register: &XPSR,
+            value: Some(RegisterValue::U32(0)),
+        });
+        registers.0.push(DebugRegister {
+            dwarf_id: None,
+            core_register: &RA,
+            value: Some(RegisterValue::U32(0xFFFF_FFFF)),
+        });
+
+        let raw_exception = handler.raw_exception(&registers).unwrap();
+
+        let description = handler
+            .exception_description(raw_exception, &mut memory)
+            .unwrap();
+
+        assert_eq!(description, "Reset")
+    }
+
+    #[test]
     fn exception_handler_no_exception_description() {
         let handler = ArmV6MExceptionHandler {};
 
@@ -108,6 +135,11 @@ mod test {
         registers.0.push(DebugRegister {
             dwarf_id: None,
             core_register: &XPSR,
+            value: Some(RegisterValue::U32(0)),
+        });
+        registers.0.push(DebugRegister {
+            dwarf_id: None,
+            core_register: &RA,
             value: Some(RegisterValue::U32(0)),
         });
 
