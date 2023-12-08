@@ -13,6 +13,7 @@ use crate::{
     probe::{
         common::extract_ir_lengths,
         espusbjtag::protocol::{JtagState, RegisterState},
+        BatchedJtagCommands, DeferredResultSet,
     },
     DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
 };
@@ -367,17 +368,19 @@ impl JTAGAccess for EspUsbJtag {
 
     fn write_register_batch(
         &mut self,
-        writes: &[super::JtagWriteCommand],
-    ) -> Result<Vec<super::CommandResult>, BatchExecutionError> {
+        writes: &BatchedJtagCommands,
+    ) -> Result<DeferredResultSet, BatchExecutionError> {
         let mut bits = Vec::with_capacity(writes.len());
         let t1 = std::time::Instant::now();
         tracing::debug!("Preparing {} writes...", writes.len());
-        for write in writes {
-            bits.push(
+        for (idx, write) in writes.iter() {
+            bits.push((
+                idx,
+                write.transform,
                 // If an error happens during prep, return no results as chip will be in an inconsistent state
                 self.prepare_write_register(write.address, &write.data, write.len)
-                    .map_err(|e| BatchExecutionError::new(e.into(), Vec::new()))?,
-            );
+                    .map_err(|e| BatchExecutionError::new(e.into(), DeferredResultSet::new()))?,
+            ));
         }
 
         tracing::debug!("Sending to chip...");
@@ -385,20 +388,20 @@ impl JTAGAccess for EspUsbJtag {
         let bitstream = self
             .protocol
             .flush()
-            .map_err(|e| BatchExecutionError::new(e.into(), Vec::new()))?;
+            .map_err(|e| BatchExecutionError::new(e.into(), DeferredResultSet::new()))?;
 
         tracing::debug!("Got responses! Took {:?}! Processing...", t1.elapsed());
-        let mut responses = Vec::with_capacity(bits.len());
+        let mut responses = DeferredResultSet::with_capacity(bits.len());
 
         let mut bitstream = bitstream.as_bitslice();
-        for (index, bit) in bits.into_iter().enumerate() {
+        for (idx, transform, bit) in bits.into_iter() {
             let write_response = match self.recieve_write_dr(bitstream[..bit.len].to_bitvec()) {
-                Ok(response_bits) => writes[index].transform(response_bits),
+                Ok(response_bits) => transform(response_bits),
                 Err(e) => Err(e.into()),
             };
 
             match write_response {
-                Ok(response) => responses.push(response),
+                Ok(response) => responses.push(idx, response),
                 Err(e) => return Err(BatchExecutionError::new(e, responses)),
             }
 

@@ -31,6 +31,8 @@ use crate::{
 };
 use crate::{Lister, Session};
 use probe_rs_target::ScanChainElement;
+use std::collections::HashMap;
+use std::ops::Index;
 use std::{convert::TryFrom, fmt};
 
 /// Used to log warnings when the measured target voltage is
@@ -821,27 +823,25 @@ pub trait JTAGAccess: DebugProbe {
 
     fn write_register_batch(
         &mut self,
-        writes: &[JtagWriteCommand],
-    ) -> Result<Vec<CommandResult>, BatchExecutionError> {
+        writes: &BatchedJtagCommands,
+    ) -> Result<DeferredResultSet, BatchExecutionError> {
         tracing::debug!("Using default `JTAGAccess::write_register_batch` this will hurt performance. Please implement proper batching for this probe.");
-        let mut results = Vec::new();
+        let mut results = DeferredResultSet::new();
 
-        for write in writes {
+        for (idx, write) in writes.iter() {
             match self
                 .write_register(write.address, &write.data, write.len)
                 .map_err(crate::Error::Probe)
                 .and_then(|response| (write.transform)(response))
             {
-                Ok(res) => results.push(res),
-                Err(e) => return Err(BatchExecutionError::new(e, results.clone())),
+                Ok(res) => results.push(idx, res),
+                Err(e) => return Err(BatchExecutionError::new(e, results)),
             }
         }
 
         Ok(results)
     }
 }
-
-pub type DeferredResultIndex = usize;
 
 #[derive(Debug, Clone)]
 pub struct JtagWriteCommand {
@@ -851,9 +851,43 @@ pub struct JtagWriteCommand {
     pub transform: fn(Vec<u8>) -> Result<CommandResult, crate::Error>,
 }
 
-impl JtagWriteCommand {
-    pub fn transform(&self, response: Vec<u8>) -> Result<CommandResult, crate::Error> {
-        (self.transform)(response)
+#[derive(Default, Debug)]
+pub struct BatchedJtagCommands {
+    pub(crate) commands: Vec<(DeferredResultIndex, JtagWriteCommand)>,
+}
+
+impl BatchedJtagCommands {
+    pub fn new() -> Self {
+        Self {
+            commands: Vec::new(),
+        }
+    }
+
+    pub fn push(&mut self, command: JtagWriteCommand) -> DeferredResultIndex {
+        let len = self.commands.len();
+        let index = DeferredResultIndex(len);
+        self.commands.push((index, command));
+        DeferredResultIndex(len)
+    }
+
+    pub fn len(&self) -> usize {
+        self.commands.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.commands.is_empty()
+    }
+
+    pub fn clear(&mut self) {
+        self.commands.clear();
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&DeferredResultIndex, &JtagWriteCommand)> {
+        self.commands.iter().map(|(idx, cmd)| (idx, cmd))
+    }
+
+    pub fn consume(&mut self, len: usize) {
+        self.commands.drain(..len);
     }
 }
 
@@ -878,11 +912,11 @@ pub struct ChainParams {
 pub struct BatchExecutionError {
     #[source]
     pub error: crate::Error,
-    pub results: Vec<CommandResult>,
+    pub results: DeferredResultSet,
 }
 
 impl BatchExecutionError {
-    pub fn new(error: crate::Error, results: Vec<CommandResult>) -> BatchExecutionError {
+    pub fn new(error: crate::Error, results: DeferredResultSet) -> BatchExecutionError {
         BatchExecutionError { error, results }
     }
 }
@@ -914,6 +948,48 @@ impl CommandResult {
             CommandResult::U32(val) => *val,
             _ => panic!("CommandResult is not a u32"),
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct DeferredResultSet(HashMap<DeferredResultIndex, CommandResult>);
+
+impl DeferredResultSet {
+    pub fn new() -> Self {
+        Self(HashMap::new())
+    }
+
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self(HashMap::with_capacity(capacity))
+    }
+
+    pub fn push(&mut self, idx: &DeferredResultIndex, result: CommandResult) {
+        self.0.insert(DeferredResultIndex(idx.0), result);
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn merge_from(&mut self, other: DeferredResultSet) {
+        self.0.extend(other.0);
+    }
+}
+
+impl Index<DeferredResultIndex> for DeferredResultSet {
+    type Output = CommandResult;
+
+    fn index(&self, index: DeferredResultIndex) -> &Self::Output {
+        &self.0[&index]
+    }
+}
+
+#[derive(Hash, PartialEq, Eq, Debug)]
+pub struct DeferredResultIndex(usize);
+
+impl DeferredResultIndex {
+    pub fn should_capture(&self) -> bool {
+        true
     }
 }
 

@@ -11,7 +11,10 @@ use bitfield::bitfield;
 
 use super::communication_interface::RiscvError;
 use crate::{
-    probe::{CommandResult, DeferredResultIndex, JTAGAccess, JtagWriteCommand},
+    probe::{
+        BatchedJtagCommands, CommandResult, DeferredResultIndex, DeferredResultSet, JTAGAccess,
+        JtagWriteCommand,
+    },
     DebugProbeError,
 };
 
@@ -21,7 +24,7 @@ use crate::{
 pub struct Dtm {
     pub probe: Box<dyn JTAGAccess>,
 
-    queued_commands: Vec<JtagWriteCommand>,
+    queued_commands: BatchedJtagCommands,
 
     /// Number of address bits in the DMI register
     abits: u32,
@@ -63,7 +66,7 @@ impl Dtm {
         Ok(Self {
             probe,
             abits,
-            queued_commands: Vec::new(),
+            queued_commands: BatchedJtagCommands::new(),
         })
     }
 
@@ -93,14 +96,14 @@ impl Dtm {
         Ok(())
     }
 
-    pub fn execute(&mut self) -> Result<Vec<CommandResult>, RiscvError> {
-        let mut results = vec![];
+    pub fn execute(&mut self) -> Result<DeferredResultSet, RiscvError> {
+        let mut results = DeferredResultSet::with_capacity(self.queued_commands.len());
         let mut cmds = std::mem::take(&mut self.queued_commands);
 
         loop {
             match self.probe.write_register_batch(&cmds) {
                 Ok(r) => {
-                    results.extend_from_slice(&r);
+                    results.merge_from(r);
                     return Ok(results);
                 }
                 Err(e) => match e.error {
@@ -110,8 +113,8 @@ impl Dtm {
                                 self.reset()?;
 
                                 // queue up the remaining commands when we retry
-                                cmds.drain(..e.results.len());
-                                results.extend_from_slice(&e.results);
+                                cmds.consume(e.results.len());
+                                results.merge_from(e.results);
 
                                 self.probe.set_idle_cycles(self.probe.idle_cycles() + 1);
                             }
@@ -159,7 +162,7 @@ impl Dtm {
 
         let bit_size = self.abits + DMI_ADDRESS_BIT_OFFSET;
 
-        self.queued_commands.push(JtagWriteCommand {
+        Ok(self.queued_commands.push(JtagWriteCommand {
             address: DMI_ADDRESS,
             data: bytes.to_vec(),
             transform: |result| {
@@ -168,9 +171,7 @@ impl Dtm {
                     .map_err(|status| crate::Error::Riscv(RiscvError::DmiTransfer(status)))
             },
             len: bit_size,
-        });
-
-        Ok(self.queued_commands.len() - 1)
+        }))
     }
 
     /// Perform an access to the dmi register of the JTAG Transport module.
