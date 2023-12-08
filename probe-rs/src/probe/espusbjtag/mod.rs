@@ -13,7 +13,7 @@ use crate::{
     probe::{
         common::extract_ir_lengths,
         espusbjtag::protocol::{JtagState, RegisterState},
-        BatchedJtagCommands, DeferredResultSet,
+        DeferredResultSet, JtagCommandQueue,
     },
     DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
 };
@@ -373,7 +373,7 @@ impl JTAGAccess for EspUsbJtag {
 
     fn write_register_batch(
         &mut self,
-        writes: &BatchedJtagCommands,
+        writes: &JtagCommandQueue,
     ) -> Result<DeferredResultSet, BatchExecutionError> {
         let mut bits = Vec::with_capacity(writes.len());
         let t1 = std::time::Instant::now();

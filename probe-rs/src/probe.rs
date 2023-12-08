@@ -822,9 +822,10 @@ pub trait JTAGAccess: DebugProbe {
         len: u32,
     ) -> Result<Vec<u8>, DebugProbeError>;
 
+    /// Executes a sequence of JTAG commands.
     fn write_register_batch(
         &mut self,
-        writes: &BatchedJtagCommands,
+        writes: &JtagCommandQueue,
     ) -> Result<DeferredResultSet, BatchExecutionError> {
         tracing::debug!("Using default `JTAGAccess::write_register_batch` this will hurt performance. Please implement proper batching for this probe.");
         let mut results = DeferredResultSet::new();
@@ -850,46 +851,6 @@ pub struct JtagWriteCommand {
     pub data: Vec<u8>,
     pub len: u32,
     pub transform: fn(Vec<u8>) -> Result<CommandResult, crate::Error>,
-}
-
-#[derive(Default, Debug)]
-pub struct BatchedJtagCommands {
-    pub(crate) commands: Vec<(DeferredResultIndex, JtagWriteCommand)>,
-}
-
-impl BatchedJtagCommands {
-    pub fn new() -> Self {
-        Self {
-            commands: Vec::new(),
-        }
-    }
-
-    pub fn push(&mut self, command: JtagWriteCommand) -> DeferredResultIndex {
-        let idx = Arc::new(());
-        let index = DeferredResultIndex(idx.clone());
-        self.commands.push((index, command));
-        DeferredResultIndex(idx)
-    }
-
-    pub fn len(&self) -> usize {
-        self.commands.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.commands.is_empty()
-    }
-
-    pub fn clear(&mut self) {
-        self.commands.clear();
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = (&DeferredResultIndex, &JtagWriteCommand)> {
-        self.commands.iter().map(|(idx, cmd)| (idx, cmd))
-    }
-
-    pub fn consume(&mut self, len: usize) {
-        self.commands.drain(..len);
-    }
 }
 
 /// Represents a Jtag Tap within the chain.
@@ -952,6 +913,49 @@ impl CommandResult {
     }
 }
 
+/// A set of batched commands that will be executed all at once.
+///
+/// This list maintains which commands' results can be read by the issuing code, which then
+/// can be used to skip capturing or processing certain parts of the response.
+#[derive(Default, Debug)]
+pub struct JtagCommandQueue {
+    commands: Vec<(DeferredResultIndex, JtagWriteCommand)>,
+}
+
+impl JtagCommandQueue {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Schedules a command for later execution.
+    ///
+    /// Returns a token value that can be used to retrieve the result of the command.
+    pub fn schedule(&mut self, command: JtagWriteCommand) -> DeferredResultIndex {
+        let idx = Arc::new(());
+        let index = DeferredResultIndex(idx.clone());
+        self.commands.push((index, command));
+        DeferredResultIndex(idx)
+    }
+
+    pub fn len(&self) -> usize {
+        self.commands.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.commands.is_empty()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &(DeferredResultIndex, JtagWriteCommand)> {
+        self.commands.iter()
+    }
+
+    /// Removes the first `len` number of commands from the batch.
+    pub fn consume(&mut self, len: usize) {
+        self.commands.drain(..len);
+    }
+}
+
+/// The set of results returned by executing a batched command.
 #[derive(Debug, Default)]
 pub struct DeferredResultSet(HashMap<usize, CommandResult>);
 
@@ -965,7 +969,10 @@ impl DeferredResultSet {
     }
 
     pub fn push(&mut self, idx: &DeferredResultIndex, result: CommandResult) {
-        self.0.insert(idx.id(), result);
+        // Only store results if reading is possible.
+        if idx.should_capture() {
+            self.0.insert(idx.id(), result);
+        }
     }
 
     pub fn len(&self) -> usize {
@@ -985,22 +992,17 @@ impl Index<DeferredResultIndex> for DeferredResultSet {
     }
 }
 
+/// An index type used to retrieve the result of a deferred command.
+///
+/// This type can detect if the result of a command is not used.
 #[derive(PartialEq, Eq, Debug)]
 pub struct DeferredResultIndex(Arc<()>);
 
 impl DeferredResultIndex {
-    pub fn id(&self) -> usize {
+    fn id(&self) -> usize {
         Arc::as_ptr(&self.0) as usize
     }
-}
 
-impl std::hash::Hash for DeferredResultIndex {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.id().hash(state);
-    }
-}
-
-impl DeferredResultIndex {
     pub fn should_capture(&self) -> bool {
         // Both the queue and the user code may hold on to at most one of the references. The queue
         // execution will be able to detect if the user dropped their read reference, meaning

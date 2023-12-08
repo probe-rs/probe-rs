@@ -4,7 +4,7 @@ use crate::architecture::{
     riscv::communication_interface::RiscvCommunicationInterface,
 };
 use crate::probe::{
-    BatchedJtagCommands, DeferredResultSet, JTAGAccess, ProbeCreationError, ScanChainElement,
+    DeferredResultSet, JTAGAccess, JtagCommandQueue, ProbeCreationError, ScanChainElement,
 };
 use crate::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, WireProtocol,
@@ -607,7 +607,7 @@ impl JTAGAccess for FtdiProbe {
 
     fn write_register_batch(
         &mut self,
-        writes: &BatchedJtagCommands,
+        writes: &JtagCommandQueue,
     ) -> Result<DeferredResultSet, BatchExecutionError> {
         // this value was determined by experimenting and doesn't match e.g
         // the libftdi read/write chunk size - it is hopefully useful for every setup

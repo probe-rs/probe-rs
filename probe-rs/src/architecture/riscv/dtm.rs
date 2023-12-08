@@ -12,7 +12,7 @@ use bitfield::bitfield;
 use super::communication_interface::RiscvError;
 use crate::{
     probe::{
-        BatchedJtagCommands, CommandResult, DeferredResultIndex, DeferredResultSet, JTAGAccess,
+        CommandResult, DeferredResultIndex, DeferredResultSet, JTAGAccess, JtagCommandQueue,
         JtagWriteCommand,
     },
     DebugProbeError,
@@ -24,7 +24,7 @@ use crate::{
 pub struct Dtm {
     pub probe: Box<dyn JTAGAccess>,
 
-    queued_commands: BatchedJtagCommands,
+    queued_commands: JtagCommandQueue,
 
     /// Number of address bits in the DMI register
     abits: u32,
@@ -66,7 +66,7 @@ impl Dtm {
         Ok(Self {
             probe,
             abits,
-            queued_commands: BatchedJtagCommands::new(),
+            queued_commands: JtagCommandQueue::new(),
         })
     }
 
@@ -162,7 +162,7 @@ impl Dtm {
 
         let bit_size = self.abits + DMI_ADDRESS_BIT_OFFSET;
 
-        Ok(self.queued_commands.push(JtagWriteCommand {
+        Ok(self.queued_commands.schedule(JtagWriteCommand {
             address: DMI_ADDRESS,
             data: bytes.to_vec(),
             transform: |result| {
