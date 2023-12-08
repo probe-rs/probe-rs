@@ -1,6 +1,8 @@
 use crate::flash_device::FlashDevice;
 use anyhow::{anyhow, Context, Result};
-use probe_rs::config::{FlashProperties, RawFlashAlgorithm, SectorDescription};
+use probe_rs::config::{
+    default_chip_erase_timeout, FlashProperties, RawFlashAlgorithm, SectorDescription,
+};
 
 /// Extract a chunk of data from an ELF binary.
 ///
@@ -144,6 +146,7 @@ pub fn extract_flash_algo(
 
         program_page_timeout: flash_device.program_page_timeout,
         erase_sector_timeout: flash_device.erase_sector_timeout,
+        erase_chip_timeout: default_chip_erase_timeout(),
 
         sectors,
     };

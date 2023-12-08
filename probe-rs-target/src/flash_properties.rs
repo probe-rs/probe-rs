@@ -3,6 +3,11 @@ use crate::serialize::{hex_range, hex_u_int};
 use serde::{Deserialize, Serialize};
 use std::ops::Range;
 
+/// The default chip erase timeout in milliseconds.
+pub const fn default_chip_erase_timeout() -> u32 {
+    30000
+}
+
 /// Properties of flash memory, which
 /// are used when programming Flash memory.
 ///
@@ -19,10 +24,13 @@ pub struct FlashProperties {
     /// The value of a byte in flash that was just erased.
     #[serde(serialize_with = "hex_u_int")]
     pub erased_byte_value: u8,
-    /// The approximative time it takes to program a page.
+    /// The approximate time it takes to program a page.
     pub program_page_timeout: u32,
-    /// The approximative time it takes to erase a sector.
+    /// The approximate time it takes to erase a sector.
     pub erase_sector_timeout: u32,
+    /// The approximate time it takes to erase a sector.
+    #[serde(default = "default_chip_erase_timeout")]
+    pub erase_chip_timeout: u32,
     /// The available sectors of the device flash.
     #[serde(default)]
     pub sectors: Vec<SectorDescription>,
@@ -37,6 +45,7 @@ impl Default for FlashProperties {
             erased_byte_value: 0,
             program_page_timeout: 0,
             erase_sector_timeout: 0,
+            erase_chip_timeout: 0,
             sectors: vec![],
         }
     }

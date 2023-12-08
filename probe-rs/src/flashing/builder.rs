@@ -389,6 +389,7 @@ mod tests {
                 erased_byte_value: 255,
                 program_page_timeout: 200,
                 erase_sector_timeout: 200,
+                erase_chip_timeout: 2000,
                 sectors: vec![sd],
             },
             ..Default::default()
@@ -417,6 +418,7 @@ mod tests {
                 erased_byte_value: 255,
                 program_page_timeout: 200,
                 erase_sector_timeout: 200,
+                erase_chip_timeout: 2000,
                 sectors: vec![sd],
             },
             ..Default::default()

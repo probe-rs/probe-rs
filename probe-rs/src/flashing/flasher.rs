@@ -432,6 +432,10 @@ impl<'session> Flasher<'session> {
         let mut current_buf = 0;
         self.progress.started_programming();
 
+        let page_write_timeout = Duration::from_millis(
+            self.flash_algorithm.flash_properties.program_page_timeout as u64,
+        );
+
         let mut t = Instant::now();
         let result = self.run_program(|active| {
             let mut last_page_address = 0;
@@ -441,13 +445,12 @@ impl<'session> Flasher<'session> {
 
                 // Then wait for the active RAM -> Flash copy process to finish.
                 // Also check if it finished properly. If it didn't, return an error.
-                let result =
-                    active
-                        .wait_for_completion(Duration::from_secs(2))
-                        .map_err(|error| FlashError::PageWrite {
-                            page_address: last_page_address,
-                            source: Box::new(error),
-                        })?;
+                let result = active
+                    .wait_for_completion(page_write_timeout)
+                    .map_err(|error| FlashError::PageWrite {
+                        page_address: last_page_address,
+                        source: Box::new(error),
+                    })?;
 
                 last_page_address = page.address();
                 active.progress.page_programmed(page.size(), t.elapsed());
@@ -472,7 +475,7 @@ impl<'session> Flasher<'session> {
             }
 
             let result = active
-                .wait_for_completion(Duration::from_secs(2))
+                .wait_for_completion(page_write_timeout)
                 .map_err(|error| FlashError::PageWrite {
                     page_address: last_page_address,
                     source: Box::new(error),
@@ -772,6 +775,9 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
 
 impl<'probe> ActiveFlasher<'probe, Erase> {
     pub(super) fn erase_all(&mut self) -> Result<(), FlashError> {
+        let erase_chip_timeout =
+            Duration::from_millis(self.flash_algorithm.flash_properties.erase_chip_timeout as u64);
+
         tracing::debug!("Erasing entire chip.");
         let flasher = self;
         let algo = &flasher.flash_algorithm;
@@ -787,7 +793,7 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
                         r3: None,
                     },
                     false,
-                    Duration::from_secs(30),
+                    erase_chip_timeout,
                 )
                 .map_err(|error| FlashError::ChipEraseFailed {
                     source: Box::new(error),

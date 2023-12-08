@@ -26,7 +26,7 @@ pub use chip_family::{
     Architecture, ChipFamily, CoreType, InstructionSet, TargetDescriptionSource,
 };
 pub use flash_algorithm::RawFlashAlgorithm;
-pub use flash_properties::FlashProperties;
+pub use flash_properties::{default_chip_erase_timeout, FlashProperties};
 pub use memory::{
     GenericRegion, MemoryRange, MemoryRegion, NvmRegion, PageInfo, RamRegion, SectorDescription,
     SectorInfo,

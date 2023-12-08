@@ -1,0 +1,1 @@
+New target configuration: flasher.erase_chip_timeout
