@@ -186,7 +186,7 @@ impl EspUsbJtag {
     }
 
     fn write_dr(&mut self, data: &[u8], register_bits: usize) -> Result<Vec<u8>, DebugProbeError> {
-        self.prepare_write_dr(data, register_bits)?;
+        self.prepare_write_dr(data, register_bits, true)?;
         let response = self.protocol.flush()?;
         self.recieve_write_dr(response)
     }
@@ -205,7 +205,8 @@ impl EspUsbJtag {
         &mut self,
         data: &[u8],
         register_bits: usize,
-    ) -> Result<(), DebugProbeError> {
+        capture_data: bool,
+    ) -> Result<usize, DebugProbeError> {
         tracing::debug!("Write DR: {:?}, len={}", data, register_bits);
 
         // Check the bit length, enough data has to be available
@@ -237,7 +238,7 @@ impl EspUsbJtag {
 
         let capture = iter::repeat(false)
             .take(pre_bits)
-            .chain(iter::repeat(true).take(register_bits))
+            .chain(iter::repeat(capture_data).take(register_bits))
             .chain(iter::repeat(false));
 
         self.protocol.jtag_io_async2(tms, tdi, capture)?;
@@ -255,7 +256,11 @@ impl EspUsbJtag {
             self.protocol.jtag_io_async(tms, tdi, false)?;
         }
 
-        Ok(())
+        if capture_data {
+            Ok(register_bits)
+        } else {
+            Ok(0)
+        }
     }
 
     /// Write the data register
@@ -264,6 +269,7 @@ impl EspUsbJtag {
         address: u32,
         data: &[u8],
         len: u32,
+        capture_data: bool,
     ) -> Result<DeferredRegisterWrite, DebugProbeError> {
         if address > self.max_ir_address.into() {
             return Err(DebugProbeError::Other(anyhow!(
@@ -280,8 +286,7 @@ impl EspUsbJtag {
         }
 
         // write DR register
-        let len = len as usize;
-        self.prepare_write_dr(data, len)?;
+        let len = self.prepare_write_dr(data, len as usize, capture_data)?;
 
         Ok(DeferredRegisterWrite { len })
     }
@@ -374,13 +379,12 @@ impl JTAGAccess for EspUsbJtag {
         let t1 = std::time::Instant::now();
         tracing::debug!("Preparing {} writes...", writes.len());
         for (idx, write) in writes.iter() {
-            bits.push((
-                idx,
-                write.transform,
-                // If an error happens during prep, return no results as chip will be in an inconsistent state
-                self.prepare_write_register(write.address, &write.data, write.len)
-                    .map_err(|e| BatchExecutionError::new(e.into(), DeferredResultSet::new()))?,
-            ));
+            // If an error happens during prep, return no results as chip will be in an inconsistent state
+            let op = self
+                .prepare_write_register(write.address, &write.data, write.len, idx.should_capture())
+                .map_err(|e| BatchExecutionError::new(e.into(), DeferredResultSet::new()))?;
+
+            bits.push((idx, write.transform, op));
         }
 
         tracing::debug!("Sending to chip...");
@@ -395,14 +399,16 @@ impl JTAGAccess for EspUsbJtag {
 
         let mut bitstream = bitstream.as_bitslice();
         for (idx, transform, bit) in bits.into_iter() {
-            let write_response = match self.recieve_write_dr(bitstream[..bit.len].to_bitvec()) {
-                Ok(response_bits) => transform(response_bits),
-                Err(e) => Err(e.into()),
-            };
+            if idx.should_capture() {
+                let write_response = match self.recieve_write_dr(bitstream[..bit.len].to_bitvec()) {
+                    Ok(response_bits) => transform(response_bits),
+                    Err(e) => Err(e.into()),
+                };
 
-            match write_response {
-                Ok(response) => responses.push(idx, response),
-                Err(e) => return Err(BatchExecutionError::new(e, responses)),
+                match write_response {
+                    Ok(response) => responses.push(idx, response),
+                    Err(e) => return Err(BatchExecutionError::new(e, responses)),
+                }
             }
 
             bitstream = &bitstream[bit.len..];

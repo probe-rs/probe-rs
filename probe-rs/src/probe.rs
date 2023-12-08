@@ -33,6 +33,7 @@ use crate::{Lister, Session};
 use probe_rs_target::ScanChainElement;
 use std::collections::HashMap;
 use std::ops::Index;
+use std::sync::Arc;
 use std::{convert::TryFrom, fmt};
 
 /// Used to log warnings when the measured target voltage is
@@ -864,10 +865,10 @@ impl BatchedJtagCommands {
     }
 
     pub fn push(&mut self, command: JtagWriteCommand) -> DeferredResultIndex {
-        let len = self.commands.len();
-        let index = DeferredResultIndex(len);
+        let idx = Arc::new(());
+        let index = DeferredResultIndex(idx.clone());
         self.commands.push((index, command));
-        DeferredResultIndex(len)
+        DeferredResultIndex(idx)
     }
 
     pub fn len(&self) -> usize {
@@ -952,7 +953,7 @@ impl CommandResult {
 }
 
 #[derive(Debug)]
-pub struct DeferredResultSet(HashMap<DeferredResultIndex, CommandResult>);
+pub struct DeferredResultSet(HashMap<usize, CommandResult>);
 
 impl DeferredResultSet {
     pub fn new() -> Self {
@@ -964,7 +965,7 @@ impl DeferredResultSet {
     }
 
     pub fn push(&mut self, idx: &DeferredResultIndex, result: CommandResult) {
-        self.0.insert(DeferredResultIndex(idx.0), result);
+        self.0.insert(idx.id(), result);
     }
 
     pub fn len(&self) -> usize {
@@ -980,16 +981,31 @@ impl Index<DeferredResultIndex> for DeferredResultSet {
     type Output = CommandResult;
 
     fn index(&self, index: DeferredResultIndex) -> &Self::Output {
-        &self.0[&index]
+        &self.0[&index.id()]
     }
 }
 
-#[derive(Hash, PartialEq, Eq, Debug)]
-pub struct DeferredResultIndex(usize);
+#[derive(PartialEq, Eq, Debug)]
+pub struct DeferredResultIndex(Arc<()>);
+
+impl DeferredResultIndex {
+    pub fn id(&self) -> usize {
+        Arc::as_ptr(&self.0) as usize
+    }
+}
+
+impl std::hash::Hash for DeferredResultIndex {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.id().hash(state);
+    }
+}
 
 impl DeferredResultIndex {
     pub fn should_capture(&self) -> bool {
-        true
+        // Both the queue and the user code may hold on to at most one of the references. The queue
+        // execution will be able to detect if the user dropped their read reference, meaning
+        // the read data would be inaccessible.
+        Arc::strong_count(&self.0) > 1
     }
 }
 
