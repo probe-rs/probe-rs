@@ -41,7 +41,7 @@ fn main() -> Result<()> {
     const TEST_MEMORY_REGION_START: u64 = 0x600F_E000;
     const TEST_MEMORY_LEN: usize = 100;
 
-    let mut saved_memory = vec![0; TEST_MEMORY_LEN];
+    let mut saved_memory = [0; TEST_MEMORY_LEN];
     iface.read(TEST_MEMORY_REGION_START, &mut saved_memory[..])?;
 
     // Zero the memory
