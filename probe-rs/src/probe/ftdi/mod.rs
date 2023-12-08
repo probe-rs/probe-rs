@@ -3,7 +3,9 @@ use crate::architecture::{
     arm::communication_interface::UninitializedArmProbe,
     riscv::communication_interface::RiscvCommunicationInterface,
 };
-use crate::probe::{JTAGAccess, ProbeCreationError, ScanChainElement};
+use crate::probe::{
+    BatchedJtagCommands, DeferredResultSet, JTAGAccess, ProbeCreationError, ScanChainElement,
+};
 use crate::{
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, WireProtocol,
 };
@@ -605,27 +607,29 @@ impl JTAGAccess for FtdiProbe {
 
     fn write_register_batch(
         &mut self,
-        writes: &[super::JtagWriteCommand],
-    ) -> Result<Vec<CommandResult>, BatchExecutionError> {
+        writes: &BatchedJtagCommands,
+    ) -> Result<DeferredResultSet, BatchExecutionError> {
         // this value was determined by experimenting and doesn't match e.g
         // the libftdi read/write chunk size - it is hopefully useful for every setup
         // max value seems to be different for different adapters, e.g. for the Sipeed JTAG adapter
         // 40 works but for the Pine64 adapter it doesn't
         const CHUNK_SIZE: usize = 30;
 
-        let mut index_offset = 0;
-        let mut results = Vec::<CommandResult>::new();
+        let mut results = DeferredResultSet::new();
 
-        let chain_params = self.adapter.get_chain_params().map_err(|e| {
-            BatchExecutionError::new(
-                crate::Error::Probe(DebugProbeError::ProbeSpecific(Box::new(e))),
-                results.clone(),
-            )
-        })?;
+        let chain_params = match self.adapter.get_chain_params() {
+            Ok(params) => params,
+            Err(e) => {
+                return Err(BatchExecutionError::new(
+                    crate::Error::Probe(DebugProbeError::ProbeSpecific(Box::new(e))),
+                    results,
+                ));
+            }
+        };
 
-        let commands: Result<Vec<WriteRegisterCommand>, _> = writes
+        let commands: Result<Vec<_>, _> = writes
             .iter()
-            .map(|w| {
+            .map(|(idx, w)| {
                 WriteRegisterCommand::new(
                     w.address,
                     w.data.clone(),
@@ -633,20 +637,24 @@ impl JTAGAccess for FtdiProbe {
                     self.idle_cycles as usize,
                     chain_params,
                 )
+                .map(|c| (c, idx, w.transform))
             })
             .collect();
 
-        let mut commands = commands.map_err(|e| {
-            BatchExecutionError::new(
-                crate::Error::Probe(DebugProbeError::ProbeSpecific(Box::new(e))),
-                results.clone(),
-            )
-        })?;
+        let mut commands = match commands {
+            Ok(cmds) => cmds,
+            Err(e) => {
+                return Err(BatchExecutionError::new(
+                    crate::Error::Probe(DebugProbeError::ProbeSpecific(Box::new(e))),
+                    results,
+                ))
+            }
+        };
 
         for cmd_chunk in commands.chunks_mut(CHUNK_SIZE) {
             let mut out_buffer = Vec::<u8>::new();
             let mut size = 0;
-            for cmd in cmd_chunk.iter_mut() {
+            for (cmd, _, _) in cmd_chunk.iter_mut() {
                 cmd.add_bytes(&mut out_buffer);
                 size += cmd.bytes_to_read();
             }
@@ -657,14 +665,11 @@ impl JTAGAccess for FtdiProbe {
             out_buffer.push(0x87);
 
             let write_res = self.adapter.device.write_all(&out_buffer);
-            match write_res {
-                Ok(_) => (),
-                Err(e) => {
-                    return Err(BatchExecutionError::new(
-                        crate::Error::Probe(DebugProbeError::ProbeSpecific(Box::new(e))),
-                        results.clone(),
-                    ));
-                }
+            if let Err(e) = write_res {
+                return Err(BatchExecutionError::new(
+                    crate::Error::Probe(DebugProbeError::ProbeSpecific(Box::new(e))),
+                    results,
+                ));
             }
 
             let timeout = Duration::from_millis(10);
@@ -675,7 +680,7 @@ impl JTAGAccess for FtdiProbe {
                 if t0.elapsed() > timeout {
                     return Err(BatchExecutionError::new(
                         crate::Error::Probe(DebugProbeError::Timeout),
-                        results.clone(),
+                        results,
                     ));
                 }
 
@@ -685,7 +690,7 @@ impl JTAGAccess for FtdiProbe {
                     Err(e) => {
                         return Err(BatchExecutionError::new(
                             crate::Error::Probe(DebugProbeError::ProbeSpecific(Box::new(e))),
-                            results.clone(),
+                            results,
                         ));
                     }
                 }
@@ -697,51 +702,44 @@ impl JTAGAccess for FtdiProbe {
                         io::ErrorKind::InvalidData,
                         "Read more data than expected",
                     )))),
-                    results.clone(),
+                    results,
                 ));
             }
 
             let mut pos = 0;
-            for (index, cmd) in cmd_chunk.iter().enumerate() {
-                let index = index + index_offset;
+            for (cmd, idx, transformer) in cmd_chunk.iter() {
                 let len = cmd.bytes_to_read();
                 let mut data = Vec::<u8>::new();
-                data.extend_from_slice(&result[pos..(pos + len)]);
+                data.extend_from_slice(&result[pos..][..len]);
 
                 let result = cmd.process_output(&data);
 
                 match result {
                     Ok(data) => {
-                        let transformer = writes[index].transform;
-
                         let data = match data {
                             CommandResult::VecU8(data) => data,
                             _ => panic!("Internal error occurred. Cannot have a transformer function for outputs other than Vec<u8>"),
                         };
-                        results.push(
-                            transformer(data)
-                                .map_err(|e| BatchExecutionError::new(e, results.clone()))?,
-                        );
+
+                        match transformer(data) {
+                            Ok(data) => results.push(idx, data),
+                            Err(e) => return Err(BatchExecutionError::new(e, results)),
+                        }
                     }
                     Err(e) => {
-                        return Err(BatchExecutionError::new(
-                            crate::Error::Probe(e),
-                            results.clone(),
-                        ))
+                        return Err(BatchExecutionError::new(crate::Error::Probe(e), results))
                     }
                 }
 
                 pos += len;
             }
-
-            index_offset += cmd_chunk.len();
         }
 
         Ok(results)
     }
 
     fn set_ir_len(&mut self, _len: u32) {
-        // The FTDI implementation automatically sets this, so need need to act on this data
+        // The FTDI implementation automatically sets this, so no need to act on this data
     }
 }
 
