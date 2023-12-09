@@ -174,6 +174,36 @@ impl CoreRegisterAbstractCmdSupport {
     }
 }
 
+#[derive(Debug)]
+struct ScratchState {
+    stack: Vec<(bool, u32)>,
+    should_save: bool,
+}
+
+impl Default for ScratchState {
+    fn default() -> Self {
+        Self {
+            stack: vec![],
+            should_save: true,
+        }
+    }
+}
+
+impl ScratchState {
+    fn push(&mut self, value: u32) {
+        self.stack.push((self.should_save, value));
+        self.should_save = false;
+    }
+
+    fn pop(&mut self) -> Option<u32> {
+        let (should_save, value) = self.stack.pop()?;
+
+        self.should_save = should_save;
+
+        Some(value)
+    }
+}
+
 /// A state to carry all the state data across multiple core switches in a session.
 #[derive(Debug)]
 pub struct RiscvCommunicationInterfaceState {
@@ -211,6 +241,9 @@ pub struct RiscvCommunicationInterfaceState {
     /// describes, if the given register can be read / written with an
     /// abstract command
     abstract_cmd_register_info: HashMap<RegisterId, CoreRegisterAbstractCmdSupport>,
+
+    s0: ScratchState,
+    s1: ScratchState,
 }
 
 /// Timeout for RISC-V operations.
@@ -251,6 +284,9 @@ impl RiscvCommunicationInterfaceState {
             memory_access_info: HashMap::new(),
 
             abstract_cmd_register_info: HashMap::new(),
+
+            s0: ScratchState::default(),
+            s1: ScratchState::default(),
         }
     }
 
@@ -302,6 +338,54 @@ impl RiscvCommunicationInterface {
     /// Read the targets IDCODE.
     pub fn read_idcode(&mut self) -> Result<u32, DebugProbeError> {
         self.dtm.read_idcode()
+    }
+
+    /// Mark S0 to be saved on the next `save_s0` call.
+    #[allow(unused)]
+    fn should_save_s0(&mut self, should_save: bool) {
+        self.state.s0.should_save = should_save;
+    }
+
+    fn save_s0(&mut self) -> Result<bool, RiscvError> {
+        let s0 = self.abstract_cmd_register_read(&registers::S0)?;
+
+        self.state.s0.push(s0);
+
+        Ok(true)
+    }
+
+    fn restore_s0(&mut self, saved: bool) -> Result<(), RiscvError> {
+        if saved {
+            let s0 = self.state.s0.pop().unwrap();
+
+            self.abstract_cmd_register_write(&registers::S0, s0)?;
+        }
+
+        Ok(())
+    }
+
+    /// Mark S0 to be saved on the next `save_s0` call.
+    #[allow(unused)]
+    fn should_save_s1(&mut self, should_save: bool) {
+        self.state.s1.should_save = should_save;
+    }
+
+    fn save_s1(&mut self) -> Result<bool, RiscvError> {
+        let s1 = self.abstract_cmd_register_read(&registers::S1)?;
+
+        self.state.s1.push(s1);
+
+        Ok(true)
+    }
+
+    fn restore_s1(&mut self, saved: bool) -> Result<(), RiscvError> {
+        if saved {
+            let s1 = self.state.s1.pop().unwrap();
+
+            self.abstract_cmd_register_write(&registers::S1, s1)?;
+        }
+
+        Ok(())
     }
 
     fn enter_debug_mode(&mut self) -> Result<(), RiscvError> {
@@ -711,7 +795,7 @@ impl RiscvCommunicationInterface {
         // assemble
         //  lb s1, 0(s0)
 
-        let s0 = self.abstract_cmd_register_read(&registers::S0)?;
+        let s0 = self.save_s0()?;
 
         let lw_command: u32 = assembly::lw(0, 8, V::WIDTH as u8, 8);
 
@@ -751,7 +835,7 @@ impl RiscvCommunicationInterface {
         let value = self.abstract_cmd_register_read(&registers::S0)?;
 
         // Restore s0 register
-        self.abstract_cmd_register_write(&registers::S0, s0)?;
+        self.restore_s0(s0)?;
 
         Ok(V::from_register_value(value))
     }
@@ -762,8 +846,8 @@ impl RiscvCommunicationInterface {
         data: &mut [V],
     ) -> Result<(), RiscvError> {
         // Backup registers s0 and s1
-        let s0 = self.abstract_cmd_register_read(&registers::S0)?;
-        let s1 = self.abstract_cmd_register_read(&registers::S1)?;
+        let s0 = self.save_s0()?;
+        let s1 = self.save_s1()?;
 
         // Load a word from address in register 8 (S0), with offset 0, into register 9 (S9)
         let lw_command: u32 = assembly::lw(0, 8, V::WIDTH as u8, 9);
@@ -833,8 +917,8 @@ impl RiscvCommunicationInterface {
             ));
         }
 
-        self.abstract_cmd_register_write(&registers::S0, s0)?;
-        self.abstract_cmd_register_write(&registers::S1, s1)?;
+        self.restore_s0(s0)?;
+        self.restore_s1(s1)?;
 
         Ok(())
     }
@@ -890,8 +974,8 @@ impl RiscvCommunicationInterface {
         );
 
         // Backup registers s0 and s1
-        let s0 = self.abstract_cmd_register_read(&registers::S0)?;
-        let s1 = self.abstract_cmd_register_read(&registers::S1)?;
+        let s0 = self.save_s0()?;
+        let s1 = self.save_s1()?;
 
         let sw_command = assembly::sw(0, 8, V::WIDTH as u32, 9);
 
@@ -934,10 +1018,8 @@ impl RiscvCommunicationInterface {
             return Err(RiscvError::AbstractCommand(error));
         }
 
-        // Restore register s0 and s1
-
-        self.abstract_cmd_register_write(&registers::S0, s0)?;
-        self.abstract_cmd_register_write(&registers::S1, s1)?;
+        self.restore_s0(s0)?;
+        self.restore_s1(s1)?;
 
         Ok(())
     }
@@ -949,8 +1031,8 @@ impl RiscvCommunicationInterface {
         address: u32,
         data: &[V],
     ) -> Result<(), RiscvError> {
-        let s0 = self.abstract_cmd_register_read(&registers::S0)?;
-        let s1 = self.abstract_cmd_register_read(&registers::S1)?;
+        let s0 = self.save_s0()?;
+        let s1 = self.save_s1()?;
 
         // Setup program buffer for multiple writes
         // Store value from register s9 into memory,
@@ -1002,8 +1084,8 @@ impl RiscvCommunicationInterface {
 
         // Restore register s0 and s1
 
-        self.abstract_cmd_register_write(&registers::S0, s0)?;
-        self.abstract_cmd_register_write(&registers::S1, s1)?;
+        self.restore_s0(s0)?;
+        self.restore_s1(s1)?;
 
         Ok(())
     }
@@ -1176,7 +1258,7 @@ impl RiscvCommunicationInterface {
             return Err(RiscvError::UnsupportedCsrAddress(address));
         }
 
-        let s0 = self.abstract_cmd_register_read(&registers::S0)?;
+        let s0 = self.save_s0()?;
 
         // Read csr value into register 8 (s0)
         let csrr_cmd = assembly::csrr(8, address);
@@ -1193,7 +1275,7 @@ impl RiscvCommunicationInterface {
         let reg_value = self.abstract_cmd_register_read(&registers::S0)?;
 
         // restore original value in s0
-        self.abstract_cmd_register_write(&registers::S0, s0)?;
+        self.restore_s0(s0)?;
 
         Ok(reg_value)
     }
@@ -1208,7 +1290,7 @@ impl RiscvCommunicationInterface {
         }
 
         // Backup register s0
-        let s0 = self.abstract_cmd_register_read(&registers::S0)?;
+        let s0 = self.save_s0()?;
 
         // Write value into s0
         self.abstract_cmd_register_write(&registers::S0, value)?;
@@ -1225,7 +1307,7 @@ impl RiscvCommunicationInterface {
 
         // command: transfer, regno = 0x1008
         // restore original value in s0
-        self.abstract_cmd_register_write(&registers::S0, s0)?;
+        self.restore_s0(s0)?;
 
         Ok(())
     }
