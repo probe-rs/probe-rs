@@ -33,7 +33,6 @@ use crate::{
 use crate::{Lister, Session};
 use probe_rs_target::ScanChainElement;
 use std::collections::HashMap;
-use std::ops::Index;
 use std::sync::Arc;
 use std::{convert::TryFrom, fmt};
 
@@ -971,10 +970,9 @@ impl JtagCommandQueue {
     ///
     /// Returns a token value that can be used to retrieve the result of the command.
     pub fn schedule(&mut self, command: JtagWriteCommand) -> DeferredResultIndex {
-        let idx = Arc::new(());
-        let index = DeferredResultIndex(idx.clone());
-        self.commands.push((index, command));
-        DeferredResultIndex(idx)
+        let index = DeferredResultIndex::new();
+        self.commands.push((index.clone(), command));
+        index
     }
 
     pub fn len(&self) -> usize {
@@ -997,7 +995,7 @@ impl JtagCommandQueue {
 
 /// The set of results returned by executing a batched command.
 #[derive(Debug, Default)]
-pub struct DeferredResultSet(HashMap<usize, CommandResult>);
+pub struct DeferredResultSet(HashMap<DeferredResultIndex, CommandResult>);
 
 impl DeferredResultSet {
     pub fn new() -> Self {
@@ -1009,10 +1007,7 @@ impl DeferredResultSet {
     }
 
     pub fn push(&mut self, idx: &DeferredResultIndex, result: CommandResult) {
-        // Only store results if reading is possible.
-        if idx.should_capture() {
-            self.0.insert(idx.id(), result);
-        }
+        self.0.insert(idx.clone(), result);
     }
 
     pub fn len(&self) -> usize {
@@ -1021,24 +1016,43 @@ impl DeferredResultSet {
 
     pub fn merge_from(&mut self, other: DeferredResultSet) {
         self.0.extend(other.0);
+        self.0.retain(|k, _| k.should_capture());
     }
-}
 
-impl Index<DeferredResultIndex> for DeferredResultSet {
-    type Output = CommandResult;
-
-    fn index(&self, index: DeferredResultIndex) -> &Self::Output {
-        &self.0[&index.id()]
+    pub fn take(
+        &mut self,
+        index: DeferredResultIndex,
+    ) -> Result<CommandResult, DeferredResultIndex> {
+        self.0.remove(&index).ok_or(index)
     }
 }
 
 /// An index type used to retrieve the result of a deferred command.
 ///
 /// This type can detect if the result of a command is not used.
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Eq)]
 pub struct DeferredResultIndex(Arc<()>);
 
+impl PartialEq for DeferredResultIndex {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+impl fmt::Debug for DeferredResultIndex {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("DeferredResultIndex")
+            .field(&self.id())
+            .finish()
+    }
+}
+
 impl DeferredResultIndex {
+    // Intentionally private. User code must not be able to create these.
+    fn new() -> Self {
+        Self(Arc::new(()))
+    }
+
     fn id(&self) -> usize {
         Arc::as_ptr(&self.0) as usize
     }
@@ -1048,6 +1062,17 @@ impl DeferredResultIndex {
         // execution will be able to detect if the user dropped their read reference, meaning
         // the read data would be inaccessible.
         Arc::strong_count(&self.0) > 1
+    }
+
+    // Intentionally private. User code must not be able to clone these.
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+impl std::hash::Hash for DeferredResultIndex {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.id().hash(state)
     }
 }
 
