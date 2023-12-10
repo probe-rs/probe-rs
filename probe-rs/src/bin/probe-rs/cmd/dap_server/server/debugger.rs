@@ -82,214 +82,227 @@ impl Debugger {
     ///   - If the [`super::core_data::CoreData::last_known_status`] is `Halted(_)`, then we stop polling the Probe until the next DAP-Client request attempts an action
     ///   - If the `new_status` is an Err, then the probe is no longer available, and we  end the debugging session
     ///   - If the `new_status` is `Running`, then we have to poll on a regular basis, until the Probe stops for good reasons like breakpoints, or bad reasons like panics.
-    pub(crate) fn process_next_request<P: ProtocolAdapter>(
+    fn process_next_request<P: ProtocolAdapter>(
         &mut self,
         session_data: &mut SessionData,
         debug_adapter: &mut DebugAdapter<P>,
     ) -> Result<DebugSessionStatus, DebuggerError> {
-        match debug_adapter.listen_for_request()? {
-            None => {
-                if debug_adapter.all_cores_halted {
-                    // Once all cores are halted, then we can skip polling the core for status, and just wait for the next DAP Client request.
-                    tracing::trace!(
-                        "Sleeping (all cores are halted) for 100ms to reduce polling overheaads."
-                    );
-                    thread::sleep(Duration::from_millis(100)); // Medium delay to reduce fast looping costs.
-                } else {
-                    // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
-                    let (_, suggest_delay_required) =
-                        session_data.poll_cores(&self.config, debug_adapter)?;
-                    // If there are no requests from the DAP Client, and there was no RTT data in the last poll, then we can sleep for a short period of time to reduce CPU usage.
-                    if debug_adapter.configuration_is_done() && suggest_delay_required {
-                        tracing::trace!(
-                            "Sleeping (core is running) for 50ms to reduce polling overheads."
-                        );
-                        thread::sleep(Duration::from_millis(50)); // Small delay to reduce fast looping costs.
-                    } else {
-                        tracing::trace!("Retrieving data from the core, no delay required between iterations of polling the core.");
-                    };
-                }
+        let listen_for_request = debug_adapter.listen_for_request()?;
 
-                Ok(DebugSessionStatus::Continue)
-            }
-            Some(request) => {
-                // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
-                let (core_statuses, _) = session_data.poll_cores(&self.config, debug_adapter)?;
+        match listen_for_request {
+            None => self.handle_listen_timeout(debug_adapter, session_data),
+            Some(request) => self.handle_request(session_data, debug_adapter, request),
+        }
+    }
 
-                // Check if we have configured cores
-                if core_statuses.is_empty() {
-                    if debug_adapter.configuration_is_done() {
-                        // We've passed `configuration_done` and still do not have at least one core configured.
-                        return Err(DebuggerError::Other(anyhow!(
-                            "Cannot continue unless one target core configuration is defined."
-                        )));
-                    } else {
-                        // Keep processing "configuration" requests until we've passed `configuration_done` and have a valid `target_core`.
-                        return Ok(DebugSessionStatus::Continue);
-                    }
-                }
+    fn handle_request<P: ProtocolAdapter>(
+        &mut self,
+        session_data: &mut SessionData,
+        debug_adapter: &mut DebugAdapter<P>,
+        request: Request,
+    ) -> Result<DebugSessionStatus, DebuggerError> {
+        // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
+        let (core_statuses, _) = session_data.poll_cores(&self.config, debug_adapter)?;
 
-                // TODO: Currently, we only use `poll_cores()` results from the first core and need to expand to a multi-core implementation that understands which MS DAP requests are core specific.
-                let core_id = 0;
-                let new_status = &core_statuses[0]; // Checked above
-
-                // Attach to the core. so that we have the handle available for processing the request.
-
-                let Some(target_core_config) = self.config.core_configs.get_mut(core_id) else {
-                    return Err(DebuggerError::Other(anyhow!(
-                        "No core configuration found for core id {}",
-                        core_id
-                    )));
-                };
-
-                let Ok(mut target_core) = session_data.attach_core(target_core_config.core_index)
-                else {
-                    return Err(DebuggerError::Other(anyhow!(
-                        "Unable to connect to target core"
-                    )));
-                };
-
-                // For some operations, we need to make sure the core isn't sleeping, by calling `Core::halt()`.
-                // When we do this, we need to flag it (`unhalt_me = true`), and later call `Core::run()` again.
-                // NOTE: The target will exit sleep mode as a result of this command.
-                let mut unhalt_me = false;
-
-                match request.command.as_ref() {
-                    "configurationDone"
-                    | "setBreakpoint"
-                    | "setBreakpoints"
-                    | "setInstructionBreakpoints"
-                    | "clearBreakpoint"
-                    | "stackTrace"
-                    | "threads"
-                    | "scopes"
-                    | "variables"
-                    | "readMemory"
-                    | "writeMemory"
-                    | "disassemble" => {
-                        if new_status == &CoreStatus::Sleeping {
-                            match target_core.core.halt(Duration::from_millis(100)) {
-                                Ok(_) => {
-                                    unhalt_me = true;
-                                }
-                                Err(error) => {
-                                    let err = DebuggerError::from(error);
-                                    debug_adapter.send_response::<()>(&request, Err(&err))?;
-                                    return Err(err);
-                                }
-                            }
-                        }
-                    }
-                    _ => {}
-                }
-
-                let mut debug_session = DebugSessionStatus::Continue;
-
-                // Now we are ready to execute supported commands, or return an error if it isn't supported.
-                let result = match request.command.clone().as_ref() {
-                    "rttWindowOpened" => {
-                        if let Some(debugger_rtt_target) =
-                            target_core.core_data.rtt_connection.as_mut()
-                        {
-                            let arguments: RttWindowOpenedArguments =
-                                get_arguments(debug_adapter, &request)?;
-
-                            if let Some(rtt_channel) = debugger_rtt_target
-                                .debugger_rtt_channels
-                                .iter_mut()
-                                .find(|debugger_rtt_channel| {
-                                    debugger_rtt_channel.channel_number == arguments.channel_number
-                                })
-                            {
-                                rtt_channel.has_client_window = arguments.window_is_open;
-                            }
-
-                            debug_adapter
-                                .send_response::<()>(&request, Ok(None))
-                                .map_err(|error| {
-                                    DebuggerError::Other(anyhow!(
-                                        "Could not deserialize arguments for RttWindowOpened : {:?}.",
-                                        error
-                                    ))
-                                })?;
-                        }
-                        Ok(())
-                    }
-                    "disconnect" => {
-                        let result = debug_adapter.disconnect(&mut target_core, &request);
-                        debug_session = DebugSessionStatus::Terminate;
-                        result
-                    }
-                    "next" => debug_adapter.next(&mut target_core, &request),
-                    "stepIn" => debug_adapter.step_in(&mut target_core, &request),
-                    "stepOut" => debug_adapter.step_out(&mut target_core, &request),
-                    "pause" => debug_adapter.pause(&mut target_core, &request),
-                    "readMemory" => debug_adapter.read_memory(&mut target_core, &request),
-                    "writeMemory" => debug_adapter.write_memory(&mut target_core, &request),
-                    "setVariable" => debug_adapter.set_variable(&mut target_core, &request),
-                    "configurationDone" => {
-                        debug_adapter.configuration_done(&mut target_core, &request)
-                    }
-                    "threads" => debug_adapter.threads(&mut target_core, &request),
-                    "restart" => {
-                        if target_core.core.architecture() == Architecture::Riscv
-                            && self.config.flashing_config.flashing_enabled
-                        {
-                            debug_adapter.show_message(
-                                MessageSeverity::Information,
-                                "Re-flashing the target during on-session `restart` is not currently supported for RISC-V. Flashing will be disabled for the remainder of this session.",
-                            );
-                            self.config.flashing_config.flashing_enabled = false;
-                        }
-
-                        // Reset RTT so that the link can be re-established
-                        target_core.core_data.rtt_connection = None;
-                        let result = target_core
-                            .core
-                            .halt(Duration::from_millis(500))
-                            .map_err(|error| anyhow!("Failed to halt core: {}", error))
-                            .and(Ok(()));
-
-                        debug_session = DebugSessionStatus::Restart(request);
-                        result
-                    }
-                    "setBreakpoints" => debug_adapter.set_breakpoints(&mut target_core, &request),
-                    "setInstructionBreakpoints" => {
-                        debug_adapter.set_instruction_breakpoints(&mut target_core, &request)
-                    }
-                    "stackTrace" => debug_adapter.stack_trace(&mut target_core, &request),
-                    "scopes" => debug_adapter.scopes(&mut target_core, &request),
-                    "disassemble" => debug_adapter.disassemble(&mut target_core, &request),
-                    "variables" => debug_adapter.variables(&mut target_core, &request),
-                    "continue" => debug_adapter.r#continue(&mut target_core, &request),
-                    "evaluate" => debug_adapter.evaluate(&mut target_core, &request),
-                    "completions" => debug_adapter.completions(&mut target_core, &request),
-                    other_command => {
-                        // Unimplemented command.
-                        debug_adapter.send_response::<()>(
-                            &request,
-                            Err(&DebuggerError::Other(anyhow!("Received request '{}', which is not supported or not implemented yet", other_command))),)
-                            .and(Ok(()))
-                    }
-                };
-
-                match result {
-                    Ok(()) => {
-                        if unhalt_me {
-                            if let Err(error) = target_core.core.run() {
-                                debug_adapter.show_error_message(&DebuggerError::Other(
-                                    anyhow!("{}", error),
-                                ))?;
-                                return Err(error.into());
-                            }
-                        }
-
-                        Ok(debug_session)
-                    }
-                    Err(e) => Err(DebuggerError::Other(e.context("Error executing request."))),
-                }
+        // Check if we have configured cores
+        if core_statuses.is_empty() {
+            if debug_adapter.configuration_is_done() {
+                // We've passed `configuration_done` and still do not have at least one core configured.
+                return Err(DebuggerError::Other(anyhow!(
+                    "Cannot continue unless one target core configuration is defined."
+                )));
+            } else {
+                // Keep processing "configuration" requests until we've passed `configuration_done` and have a valid `target_core`.
+                return Ok(DebugSessionStatus::Continue);
             }
         }
+
+        // TODO: Currently, we only use `poll_cores()` results from the first core and need to expand to a multi-core implementation that understands which MS DAP requests are core specific.
+        let core_id = 0;
+        let new_status = &core_statuses[0];
+        // Checked above
+
+        // Attach to the core. so that we have the handle available for processing the request.
+
+        let Some(target_core_config) = self.config.core_configs.get_mut(core_id) else {
+            return Err(DebuggerError::Other(anyhow!(
+                "No core configuration found for core id {}",
+                core_id
+            )));
+        };
+
+        let Ok(mut target_core) = session_data.attach_core(target_core_config.core_index) else {
+            return Err(DebuggerError::Other(anyhow!(
+                "Unable to connect to target core"
+            )));
+        };
+
+        // For some operations, we need to make sure the core isn't sleeping, by calling `Core::halt()`.
+        // When we do this, we need to flag it (`unhalt_me = true`), and later call `Core::run()` again.
+        // NOTE: The target will exit sleep mode as a result of this command.
+        let mut unhalt_me = false;
+
+        match request.command.as_ref() {
+            "configurationDone"
+            | "setBreakpoint"
+            | "setBreakpoints"
+            | "setInstructionBreakpoints"
+            | "clearBreakpoint"
+            | "stackTrace"
+            | "threads"
+            | "scopes"
+            | "variables"
+            | "readMemory"
+            | "writeMemory"
+            | "disassemble" => {
+                if new_status == &CoreStatus::Sleeping {
+                    match target_core.core.halt(Duration::from_millis(100)) {
+                        Ok(_) => {
+                            unhalt_me = true;
+                        }
+                        Err(error) => {
+                            let err = DebuggerError::from(error);
+                            debug_adapter.send_response::<()>(&request, Err(&err))?;
+                            return Err(err);
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        let mut debug_session = DebugSessionStatus::Continue;
+
+        // Now we are ready to execute supported commands, or return an error if it isn't supported.
+        let result = match request.command.clone().as_ref() {
+            "rttWindowOpened" => {
+                if let Some(debugger_rtt_target) = target_core.core_data.rtt_connection.as_mut() {
+                    let arguments: RttWindowOpenedArguments =
+                        get_arguments(debug_adapter, &request)?;
+
+                    if let Some(rtt_channel) = debugger_rtt_target
+                        .debugger_rtt_channels
+                        .iter_mut()
+                        .find(|debugger_rtt_channel| {
+                            debugger_rtt_channel.channel_number == arguments.channel_number
+                        })
+                    {
+                        rtt_channel.has_client_window = arguments.window_is_open;
+                    }
+
+                    debug_adapter
+                        .send_response::<()>(&request, Ok(None))
+                        .map_err(|error| {
+                            DebuggerError::Other(anyhow!(
+                                "Could not deserialize arguments for RttWindowOpened : {:?}.",
+                                error
+                            ))
+                        })?;
+                }
+                Ok(())
+            }
+            "disconnect" => {
+                let result = debug_adapter.disconnect(&mut target_core, &request);
+                debug_session = DebugSessionStatus::Terminate;
+                result
+            }
+            "next" => debug_adapter.next(&mut target_core, &request),
+            "stepIn" => debug_adapter.step_in(&mut target_core, &request),
+            "stepOut" => debug_adapter.step_out(&mut target_core, &request),
+            "pause" => debug_adapter.pause(&mut target_core, &request),
+            "readMemory" => debug_adapter.read_memory(&mut target_core, &request),
+            "writeMemory" => debug_adapter.write_memory(&mut target_core, &request),
+            "setVariable" => debug_adapter.set_variable(&mut target_core, &request),
+            "configurationDone" => debug_adapter.configuration_done(&mut target_core, &request),
+            "threads" => debug_adapter.threads(&mut target_core, &request),
+            "restart" => {
+                if target_core.core.architecture() == Architecture::Riscv
+                    && self.config.flashing_config.flashing_enabled
+                {
+                    debug_adapter.show_message(
+                        MessageSeverity::Information,
+                        "Re-flashing the target during on-session `restart` is not currently supported for RISC-V. Flashing will be disabled for the remainder of this session.",
+                    );
+                    self.config.flashing_config.flashing_enabled = false;
+                }
+
+                // Reset RTT so that the link can be re-established
+                target_core.core_data.rtt_connection = None;
+                let result = target_core
+                    .core
+                    .halt(Duration::from_millis(500))
+                    .map_err(|error| anyhow!("Failed to halt core: {}", error))
+                    .and(Ok(()));
+
+                debug_session = DebugSessionStatus::Restart(request);
+                result
+            }
+            "setBreakpoints" => debug_adapter.set_breakpoints(&mut target_core, &request),
+            "setInstructionBreakpoints" => {
+                debug_adapter.set_instruction_breakpoints(&mut target_core, &request)
+            }
+            "stackTrace" => debug_adapter.stack_trace(&mut target_core, &request),
+            "scopes" => debug_adapter.scopes(&mut target_core, &request),
+            "disassemble" => debug_adapter.disassemble(&mut target_core, &request),
+            "variables" => debug_adapter.variables(&mut target_core, &request),
+            "continue" => debug_adapter.r#continue(&mut target_core, &request),
+            "evaluate" => debug_adapter.evaluate(&mut target_core, &request),
+            "completions" => debug_adapter.completions(&mut target_core, &request),
+            other_command => {
+                // Unimplemented command.
+                debug_adapter
+                    .send_response::<()>(
+                        &request,
+                        Err(&DebuggerError::Other(anyhow!(
+                            "Received request '{}', which is not supported or not implemented yet",
+                            other_command
+                        ))),
+                    )
+                    .and(Ok(()))
+            }
+        };
+
+        match result {
+            Ok(()) => {
+                if unhalt_me {
+                    if let Err(error) = target_core.core.run() {
+                        debug_adapter
+                            .show_error_message(&DebuggerError::Other(anyhow!("{}", error)))?;
+                        return Err(error.into());
+                    }
+                }
+
+                Ok(debug_session)
+            }
+            Err(e) => Err(DebuggerError::Other(e.context("Error executing request."))),
+        }
+    }
+
+    fn handle_listen_timeout<P: ProtocolAdapter>(
+        &mut self,
+        debug_adapter: &mut DebugAdapter<P>,
+        session_data: &mut SessionData,
+    ) -> Result<DebugSessionStatus, DebuggerError> {
+        if debug_adapter.all_cores_halted {
+            // Once all cores are halted, then we can skip polling the core for status, and just wait for the next DAP Client request.
+            tracing::trace!(
+                "Sleeping (all cores are halted) for 100ms to reduce polling overheaads."
+            );
+            thread::sleep(Duration::from_millis(100)); // Medium delay to reduce fast looping costs.
+        } else {
+            // Poll ALL target cores for status, which includes synching status with the DAP client, and handling RTT data.
+            let (_, suggest_delay_required) =
+                session_data.poll_cores(&self.config, debug_adapter)?;
+            // If there are no requests from the DAP Client, and there was no RTT data in the last poll, then we can sleep for a short period of time to reduce CPU usage.
+            if debug_adapter.configuration_is_done() && suggest_delay_required {
+                tracing::trace!("Sleeping (core is running) for 50ms to reduce polling overheads.");
+                thread::sleep(Duration::from_millis(50)); // Small delay to reduce fast looping costs.
+            } else {
+                tracing::trace!("Retrieving data from the core, no delay required between iterations of polling the core.");
+            };
+        }
+
+        Ok(DebugSessionStatus::Continue)
     }
 
     /// `debug_session` is where the primary _debug processing_ for the DAP (Debug Adapter Protocol) adapter happens.
@@ -928,7 +941,7 @@ mod test {
         debug_adapter::{
             dap::{
                 adapter::DebugAdapter,
-                dap_types::{Capabilities, InitializeRequestArguments, Request},
+                dap_types::{Capabilities, Event, InitializeRequestArguments, Request},
             },
             protocol::ProtocolAdapter,
         },
@@ -1064,7 +1077,7 @@ mod test {
         expected_responses: Vec<Response>,
 
         event_index: usize,
-        expected_events: Vec<(String, Option<serde_json::Value>)>,
+        expected_events: Vec<Event>,
     }
 
     impl MockProtocolAdapter {
@@ -1085,14 +1098,12 @@ mod test {
             let request = Request {
                 arguments: None,
                 command: command.to_string(),
-                seq: self.sequence_number,
+                seq: self.next_seq(),
                 type_: "request".to_string(),
             };
 
             self.pending_requests
-                .insert(self.sequence_number, command.to_string());
-
-            self.sequence_number += 1;
+                .insert(request.seq, command.to_string());
 
             self.requests.push_back(request);
 
@@ -1120,8 +1131,14 @@ mod test {
         fn expect_event(&mut self, event_type: &str, event_body: Option<impl serde::Serialize>) {
             let event_body = event_body.map(|s| serde_json::to_value(s).unwrap());
 
-            self.expected_events
-                .push((event_type.to_owned(), event_body));
+            let event = Event {
+                seq: self.next_seq(),
+                event: event_type.to_string(),
+                body: event_body,
+                type_: "event".to_string(),
+            };
+
+            self.expected_events.push(event);
         }
 
         fn expect_output_event(&mut self, msg: &str) {
@@ -1144,33 +1161,6 @@ mod test {
                 .ok_or_else(|| anyhow::anyhow!("No more responses to listen for."))?;
 
             Ok(Some(next_request))
-        }
-
-        fn send_event<S: serde::Serialize>(
-            &mut self,
-            event_type: &str,
-            event_body: Option<S>,
-        ) -> anyhow::Result<()> {
-            let event_body = event_body.map(|s| serde_json::to_value(s).unwrap());
-
-            if self.event_index >= self.expected_events.len() {
-                panic!(
-                    "No more events expected, but got event_type={:?}, event_body={:?}",
-                    event_type, event_body
-                );
-            }
-
-            let (expected_event_type, expected_event_body) =
-                &self.expected_events[self.event_index];
-
-            pretty_assertions::assert_eq!(
-                (event_type, &event_body),
-                (expected_event_type.as_str(), expected_event_body)
-            );
-
-            self.event_index += 1;
-
-            Ok(())
         }
 
         fn set_console_log_level(
@@ -1206,6 +1196,32 @@ mod test {
 
         fn remove_pending_request(&mut self, request_seq: i64) -> Option<String> {
             self.pending_requests.remove(&request_seq)
+        }
+
+        fn send_raw_event(
+            &mut self,
+            event: &crate::cmd::dap_server::debug_adapter::dap::dap_types::Event,
+        ) -> anyhow::Result<()> {
+            if self.event_index >= self.expected_events.len() {
+                panic!("No more events expected, but got event{:?}", event);
+            }
+
+            let mut expected_event = self.expected_events[self.event_index].clone();
+
+            // We don't check the sequence number of the event
+            expected_event.seq = event.seq;
+
+            pretty_assertions::assert_eq!(event, &expected_event);
+
+            self.event_index += 1;
+
+            Ok(())
+        }
+
+        fn next_seq(&mut self) -> i64 {
+            let seq = self.sequence_number;
+            self.sequence_number += 1;
+            seq
         }
     }
 

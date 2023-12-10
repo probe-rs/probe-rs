@@ -20,11 +20,7 @@ pub trait ProtocolAdapter {
     /// return None.
     fn listen_for_request(&mut self) -> anyhow::Result<Option<Request>>;
 
-    fn send_event<S: Serialize>(
-        &mut self,
-        event_type: &str,
-        event_body: Option<S>,
-    ) -> anyhow::Result<()>;
+    fn send_raw_event(&mut self, event: &Event) -> anyhow::Result<()>;
 
     fn send_raw_response(&mut self, response: &Response) -> anyhow::Result<()>;
 
@@ -33,6 +29,8 @@ pub trait ProtocolAdapter {
     fn set_console_log_level(&mut self, log_level: ConsoleLog);
 
     fn console_log_level(&self) -> ConsoleLog;
+
+    fn next_seq(&mut self) -> i64;
 }
 
 pub trait ProtocolHelper {
@@ -46,6 +44,12 @@ pub trait ProtocolHelper {
         request: &Request,
         response: Result<Option<S>, &DebuggerError>,
     ) -> Result<(), anyhow::Error>;
+
+    fn send_event<S: Serialize>(
+        &mut self,
+        event_type: &str,
+        event_body: Option<S>,
+    ) -> anyhow::Result<()>;
 }
 
 impl<P> ProtocolHelper for P
@@ -103,7 +107,7 @@ where
             Ok(value) => Response {
                 command: request.command.clone(),
                 request_seq: request.seq,
-                seq: request.seq,
+                seq: self.next_seq(),
                 success: true,
                 type_: "response".to_owned(),
                 message: None,
@@ -151,7 +155,7 @@ where
                 Response {
                     command: request.command.clone(),
                     request_seq: request.seq,
-                    seq: request.seq,
+                    seq: self.next_seq(),
                     success: false,
                     type_: "response".to_owned(),
                     message: Some("cancelled".to_string()), // Predefined value in the MSDAP spec.
@@ -202,6 +206,43 @@ where
 
         Ok(())
     }
+
+    fn send_event<S: Serialize>(
+        &mut self,
+        event_type: &str,
+        event_body: Option<S>,
+    ) -> anyhow::Result<()> {
+        let new_event = Event {
+            seq: self.next_seq(),
+            type_: "event".to_string(),
+            event: event_type.to_string(),
+            body: event_body.map(|event_body| serde_json::to_value(event_body).unwrap_or_default()),
+        };
+
+        let result = match self.send_raw_event(&new_event) {
+            Ok(_) => Ok(()),
+            Err(error) => {
+                let message = format!("Unexpected Error while sending event: {error:?}");
+                tracing::error!("{message}");
+                Err(error)
+            }
+        };
+
+        if new_event.event != "output" {
+            // This would result in an endless loop.
+            match self.console_log_level() {
+                ConsoleLog::Console => {}
+                ConsoleLog::Info => {
+                    self.log_to_console(format!("\nTriggered DAP Event: {}", new_event.event));
+                }
+                ConsoleLog::Debug => {
+                    self.log_to_console(format!("INFO: Triggered DAP Event: {new_event:#?}"));
+                }
+            }
+        }
+
+        result.map_err(|e| e.into())
+    }
 }
 
 pub struct DapAdapter<R: Read, W: Write> {
@@ -222,6 +263,13 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
             console_log_level: ConsoleLog::Console,
             pending_requests: HashMap::new(),
         }
+    }
+
+    pub fn next_seq(&mut self) -> i64 {
+        let seq = self.seq;
+        self.seq += 1;
+
+        seq
     }
 
     fn send_data(&mut self, raw_data: &[u8]) -> Result<(), std::io::Error> {
@@ -252,8 +300,6 @@ impl<R: Read, W: Write> DapAdapter<R, W> {
             }
         }
         self.output.flush()?;
-
-        self.seq += 1;
 
         Ok(())
     }
@@ -397,45 +443,6 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
         self.listen_for_request_and_respond()
     }
 
-    fn send_event<S: Serialize>(
-        &mut self,
-        event_type: &str,
-        event_body: Option<S>,
-    ) -> anyhow::Result<()> {
-        let new_event = Event {
-            seq: self.seq,
-            type_: "event".to_string(),
-            event: event_type.to_string(),
-            body: event_body.map(|event_body| serde_json::to_value(event_body).unwrap_or_default()),
-        };
-
-        let encoded_event = serde_json::to_vec(&new_event)?;
-
-        let result = match self.send_data(&encoded_event) {
-            Ok(_) => Ok(()),
-            Err(error) => {
-                let message = format!("Unexpected Error while sending event: {error:?}");
-                tracing::error!("{message}");
-                Err(error)
-            }
-        };
-
-        if new_event.event != "output" {
-            // This would result in an endless loop.
-            match self.console_log_level {
-                ConsoleLog::Console => {}
-                ConsoleLog::Info => {
-                    self.log_to_console(format!("\nTriggered DAP Event: {}", new_event.event));
-                }
-                ConsoleLog::Debug => {
-                    self.log_to_console(format!("INFO: Triggered DAP Event: {new_event:#?}"));
-                }
-            }
-        }
-
-        result.map_err(|e| e.into())
-    }
-
     fn set_console_log_level(&mut self, log_level: ConsoleLog) {
         self.console_log_level = log_level;
     }
@@ -454,6 +461,17 @@ impl<R: Read, W: Write> ProtocolAdapter for DapAdapter<R, W> {
         self.send_data(&encoded_response)?;
 
         Ok(())
+    }
+
+    fn send_raw_event(&mut self, event: &Event) -> anyhow::Result<()> {
+        let encoded_event = serde_json::to_vec(event)?;
+        self.send_data(&encoded_event)?;
+
+        Ok(())
+    }
+
+    fn next_seq(&mut self) -> i64 {
+        self.next_seq()
     }
 }
 
