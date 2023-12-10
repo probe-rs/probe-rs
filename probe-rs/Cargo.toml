@@ -58,6 +58,7 @@ cli = [
     "dep:terminal_size",
     "dep:termtree",
     "dep:time",
+    "dep:tracing-appender",
     "dep:tracing-subscriber",
     "dep:git-version",
     "dep:serde_json",
@@ -184,6 +185,7 @@ tracing-subscriber = { version = "0.3.18", features = [
     "env-filter",
     "json",
 ], optional = true }
+tracing-appender = { version = "0.2.3", optional = true }
 ratatui = { version = "0.24.0", default-features = false, features = [
     "crossterm",
 ], optional = true }

@@ -40,9 +40,12 @@ const MAX_LOG_FILES: usize = 20;
 struct Cli {
     /// Location for log file
     ///
-    /// If no location is specified, the log file will be stored in a default directory.
+    /// If no location is specified, the behaviour depends on `--log-to-folder`.
     #[clap(long, global = true)]
     log_file: Option<PathBuf>,
+    /// Enable logging to the default folder. This option is ignored if `--log-file` is specified.
+    #[clap(long, global = true)]
+    log_to_folder: bool,
     #[clap(subcommand)]
     subcommand: Subcommand,
 }
@@ -269,8 +272,8 @@ fn main() -> Result<()> {
     }
 
     let log_path = if let Some(location) = matches.log_file {
-        location
-    } else {
+        Some(location)
+    } else if matches.log_to_folder {
         let location =
             default_logfile_location().context("Unable to determine default log file location.")?;
         prune_logs(
@@ -278,17 +281,10 @@ fn main() -> Result<()> {
                 .parent()
                 .expect("A file parent directory. Please report this as a bug."),
         )?;
-        location
+        Some(location)
+    } else {
+        None
     };
-
-    let log_file = File::create(&log_path)?;
-
-    let file_subscriber = tracing_subscriber::fmt::layer()
-        .json()
-        .with_file(true)
-        .with_line_number(true)
-        .with_span_events(FmtSpan::FULL)
-        .with_writer(log_file);
 
     let stdout_subscriber = tracing_subscriber::fmt::layer()
         .compact()
@@ -299,12 +295,38 @@ fn main() -> Result<()> {
                 .from_env_lossy(),
         );
 
-    tracing_subscriber::registry()
-        .with(stdout_subscriber)
-        .with(file_subscriber)
-        .init();
+    let _append_guard = if let Some(ref log_path) = log_path {
+        let log_file = File::create(log_path)?;
 
-    tracing::info!("Writing log to {:?}", log_path);
+        let (file_appender, guard) = tracing_appender::non_blocking::NonBlockingBuilder::default()
+            .lossy(false)
+            .buffered_lines_limit(128 * 1024)
+            .finish(log_file);
+
+        let file_subscriber = tracing_subscriber::fmt::layer()
+            .json()
+            .with_file(true)
+            .with_line_number(true)
+            .with_span_events(FmtSpan::FULL)
+            .with_writer(file_appender);
+
+        tracing_subscriber::registry()
+            .with(stdout_subscriber)
+            .with(file_subscriber)
+            .init();
+
+        Some(guard)
+    } else {
+        tracing_subscriber::registry()
+            .with(stdout_subscriber)
+            .init();
+
+        None
+    };
+
+    if let Some(ref log_path) = log_path {
+        tracing::info!("Writing log to {:?}", log_path);
+    }
 
     let result = match matches.subcommand {
         Subcommand::DapServer { .. } => unreachable!(), // handled above.
@@ -326,7 +348,9 @@ fn main() -> Result<()> {
         Subcommand::Write(cmd) => cmd.run(&lister),
     };
 
-    tracing::info!("Wrote log to {:?}", log_path);
+    if let Some(ref log_path) = log_path {
+        tracing::info!("Wrote log to {:?}", log_path);
+    }
 
     result
 }
