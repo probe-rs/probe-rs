@@ -848,6 +848,30 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
 }
 
 impl<'p> ActiveFlasher<'p, Program> {
+    /// Transfers the buffer bytes to RAM.
+    fn load_data(&mut self, address: u64, bytes: &[u8]) -> Result<(), FlashError> {
+        // TODO: Prevent security settings from locking the device.
+
+        let words: Vec<u32> = bytes
+            .chunks_exact(core::mem::size_of::<u32>())
+            .map(|a| u32::from_le_bytes([a[0], a[1], a[2], a[3]]))
+            .collect();
+
+        let t1 = Instant::now();
+
+        self.core
+            .write_32(address, &words)
+            .map_err(FlashError::Core)?;
+
+        tracing::info!(
+            "Took {:?} to download {} byte page into ram",
+            t1.elapsed(),
+            bytes.len()
+        );
+
+        Ok(())
+    }
+
     pub(super) fn program_page(&mut self, address: u64, bytes: &[u8]) -> Result<(), FlashError> {
         let t1 = Instant::now();
 
@@ -858,9 +882,7 @@ impl<'p> ActiveFlasher<'p, Program> {
         );
 
         // Transfer the bytes to RAM.
-        self.core
-            .write_8(self.flash_algorithm.begin_data, bytes)
-            .map_err(FlashError::Core)?;
+        self.load_data(self.flash_algorithm.begin_data, bytes)?;
 
         let result = self
             .call_function_and_wait(
@@ -942,23 +964,7 @@ impl<'p> ActiveFlasher<'p, Program> {
             buffer_number, algo.page_buffers.len()
         );
 
-        // TODO: Prevent security settings from locking the device.
-        // Transfer the buffer bytes to RAM.
-        let words: Vec<u32> = bytes
-            .chunks_exact(core::mem::size_of::<u32>())
-            .map(|a| u32::from_le_bytes([a[0], a[1], a[2], a[3]]))
-            .collect();
-
-        let t1 = Instant::now();
-        self.core
-            .write_32(algo.page_buffers[buffer_number], &words)
-            .map_err(FlashError::Core)?;
-
-        tracing::info!(
-            "Took {:?} to download {} byte page into ram",
-            t1.elapsed(),
-            bytes.len()
-        );
+        self.load_data(algo.page_buffers[buffer_number], bytes)?;
 
         Ok(())
     }

@@ -1,0 +1,1 @@
+Flasher: single buffer transfers are now done with u32 writes
