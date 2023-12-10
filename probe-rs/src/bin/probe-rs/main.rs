@@ -282,13 +282,17 @@ fn main() -> Result<()> {
     };
 
     let log_file = File::create(&log_path)?;
+    let (file_appender, _guard) = tracing_appender::non_blocking::NonBlockingBuilder::default()
+        .lossy(false)
+        .buffered_lines_limit(128 * 1024)
+        .finish(log_file);
 
     let file_subscriber = tracing_subscriber::fmt::layer()
         .json()
         .with_file(true)
         .with_line_number(true)
         .with_span_events(FmtSpan::FULL)
-        .with_writer(log_file);
+        .with_writer(file_appender);
 
     let stdout_subscriber = tracing_subscriber::fmt::layer()
         .compact()
