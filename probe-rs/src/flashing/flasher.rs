@@ -364,7 +364,13 @@ impl<'session> Flasher<'session> {
 
     /// Programs the pages given in `flash_layout` into the flash.
     fn program_simple(&mut self, flash_encoder: &FlashEncoder) -> Result<(), FlashError> {
-        self.progress.started_programming();
+        self.progress.started_programming(
+            flash_encoder
+                .pages()
+                .iter()
+                .map(|p| p.data().len() as u64)
+                .sum(),
+        );
 
         let mut t = Instant::now();
         let result = self.run_program(|active| {
@@ -431,7 +437,13 @@ impl<'session> Flasher<'session> {
     /// fit at least two page buffers. See [Flasher::double_buffering_supported].
     fn program_double_buffer(&mut self, flash_encoder: &FlashEncoder) -> Result<(), FlashError> {
         let mut current_buf = 0;
-        self.progress.started_programming();
+        self.progress.started_programming(
+            flash_encoder
+                .pages()
+                .iter()
+                .map(|p| p.data().len() as u64)
+                .sum(),
+        );
 
         let mut t = Instant::now();
         let result = self.run_program(|active| {

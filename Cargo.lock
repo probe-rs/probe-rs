@@ -2474,6 +2474,7 @@ dependencies = [
  "kmp",
  "libftdi1-sys",
  "log",
+ "miniz_oxide",
  "num-traits",
  "object 0.32.1",
  "once_cell",

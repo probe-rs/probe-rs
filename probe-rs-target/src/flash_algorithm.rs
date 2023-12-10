@@ -9,6 +9,9 @@ pub enum TransferEncoding {
     /// Raw binary encoding. Probe-rs will not apply any transformation to the flash data.
     #[default]
     Raw,
+
+    /// Flash data is compressed using the miniz_oxide.
+    Miniz,
 }
 
 /// The raw flash algorithm is the description of a flash algorithm,

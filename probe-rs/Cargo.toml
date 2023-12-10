@@ -103,6 +103,7 @@ jaylink = "0.3.0"
 jep106 = "0.2.8"
 kmp = { version = "0.1", optional = true }
 once_cell = "1.19.0"
+miniz_oxide = "0.7.1"
 num-traits = "0.2.17"
 object = { version = "0.32.1", default-features = false, features = [
     "elf",

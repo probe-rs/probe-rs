@@ -65,29 +65,29 @@ pub fn cmd_test(
     // Register callback to update the progress.
     let t = Rc::new(RefCell::new(Instant::now()));
     let progress = FlashProgress::new(move |event| {
-        use probe_rs::flashing::ProgressEvent::*;
+        use probe_rs::flashing::ProgressEvent;
         match event {
-            StartedProgramming => {
+            ProgressEvent::StartedProgramming { .. } => {
                 let mut t = t.borrow_mut();
                 *t = Instant::now();
             }
-            StartedErasing => {
+            ProgressEvent::StartedErasing => {
                 let mut t = t.borrow_mut();
                 *t = Instant::now();
             }
-            FailedErasing => {
+            ProgressEvent::FailedErasing => {
                 println!("Failed erasing in {:?}", t.borrow().elapsed());
             }
-            FinishedErasing => {
+            ProgressEvent::FinishedErasing => {
                 println!("Finished erasing in {:?}", t.borrow().elapsed());
             }
-            FailedProgramming => {
+            ProgressEvent::FailedProgramming => {
                 println!("Failed programming in {:?}", t.borrow().elapsed());
             }
-            FinishedProgramming => {
+            ProgressEvent::FinishedProgramming => {
                 println!("Finished programming in {:?}", t.borrow().elapsed());
             }
-            DiagnosticMessage { message } => {
+            ProgressEvent::DiagnosticMessage { message } => {
                 let prefix = "Message".yellow();
                 if message.ends_with('\n') {
                     print!("{prefix}: {message}");
