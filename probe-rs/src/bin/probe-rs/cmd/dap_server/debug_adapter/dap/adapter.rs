@@ -118,7 +118,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 };
 
                 // We know that all cores are halted, because we only support a single core for now
-                self.all_cores_halted = true;
+                //self.all_cores_halted = true;
 
                 self.send_response(request, Ok(None::<u32>))?;
 

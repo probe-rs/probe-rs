@@ -913,14 +913,15 @@ mod test {
     use std::path::PathBuf;
 
     use probe_rs::architecture::arm::ApAddress;
-    use probe_rs::{DebugProbeInfo, FakeProbe, MockCoreState};
+    use probe_rs::{CoreDump, DebugProbeInfo, FakeProbe, MockCore, MockCoreState};
     use probe_rs::{Lister, ProbeOperation};
     use serde_json::json;
     use time::UtcOffset;
 
     use crate::cmd::dap_server::debug_adapter::dap::dap_types::{
-        DisconnectArguments, ErrorResponseBody, Message, Response, StoppedEvent, StoppedEventBody,
-        Thread, ThreadsResponseBody,
+        DisconnectArguments, ErrorResponseBody, Message, Response, Scope, ScopesArguments,
+        ScopesResponseBody, Source, StackFrame, StackTraceArguments, StackTraceResponseBody,
+        StoppedEventBody, Thread, ThreadsResponseBody,
     };
     use crate::cmd::dap_server::server::configuration::{ConsoleLog, CoreConfig, FlashingConfig};
     use crate::cmd::dap_server::{
@@ -1343,7 +1344,7 @@ mod test {
             None,
         );
 
-        let fake_probe = FakeProbe::with_mocked_core(MockCoreState::Running);
+        let fake_probe = FakeProbe::with_mocked_core(MockCore::new(MockCoreState::Running));
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
@@ -1421,7 +1422,7 @@ mod test {
             None,
         );
 
-        let fake_probe = FakeProbe::with_mocked_core(MockCoreState::Running);
+        let fake_probe = FakeProbe::with_mocked_core(MockCore::new(MockCoreState::Running));
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
@@ -1477,7 +1478,7 @@ mod test {
             None,
         );
 
-        let fake_probe = FakeProbe::with_mocked_core(MockCoreState::Running);
+        let fake_probe = FakeProbe::with_mocked_core(MockCore::new(MockCoreState::Running));
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
@@ -1551,7 +1552,7 @@ mod test {
             None,
         );
 
-        let fake_probe = FakeProbe::with_mocked_core(MockCoreState::Running);
+        let fake_probe = FakeProbe::with_mocked_core(MockCore::new(MockCoreState::Running));
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
@@ -1625,7 +1626,7 @@ mod test {
             None,
         );
 
-        let fake_probe = FakeProbe::with_mocked_core(MockCoreState::Running);
+        let fake_probe = FakeProbe::with_mocked_core(MockCore::new(MockCoreState::Running));
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
@@ -1717,7 +1718,7 @@ mod test {
             None,
         );
 
-        let fake_probe = FakeProbe::with_mocked_core(MockCoreState::Running);
+        let fake_probe = FakeProbe::with_mocked_core(MockCore::new(MockCoreState::Running));
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
@@ -1742,6 +1743,10 @@ mod test {
         let manifest_dir = PathBuf::from(std::env!("CARGO_MANIFEST_DIR"));
         let debug_info = manifest_dir.join("tests/debug-unwind-tests/nRF52833_xxAA.elf");
         let chip_name = "nRF52833_xxAA";
+        let dump = CoreDump::load_raw(include_bytes!(
+            "../../../../../../tests/debug-unwind-tests/nRF52833_xxAA.coredump"
+        ))
+        .unwrap();
 
         let mut protocol_adapter = MockProtocolAdapter::new();
 
@@ -1790,10 +1795,274 @@ mod test {
             .with_arguments(json!({ "threadId": 0 }))
             .and_succesful_response();
 
+        protocol_adapter
+            .add_request("threads")
+            .and_succesful_response()
+            .with_body(ThreadsResponseBody {
+                threads: vec![Thread {
+                    id: 0,
+                    name: format!("0-{chip_name}"),
+                }],
+            });
+
+        let all_frames = [
+                StackFrame {
+                    can_restart: Some(false),
+                    column: 13,
+                    id: 3,
+                    instruction_pointer_reference: Some("0x00001cea".to_string()),
+                    line: 343,
+                    name:"test_deep_stack".to_string(),
+                    presentation_hint: Some("normal".to_string()),
+                    source: Some(Source {
+                        name: Some("<unavailable>: common_testing_code.rs".to_string()),
+                        path: Some("/Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/common_testing_code.rs".to_string()),
+                        presentation_hint: Some("deemphasize".to_string()),
+                        ..Default::default()
+                    }),
+                    end_column: None,
+                    module_id: None,
+                    end_line: None,
+                },
+                StackFrame {
+                    can_restart: Some(false),
+                    column: 9,
+                    id: 6,
+                    instruction_pointer_reference: Some("0x00001d04".to_string()),
+                    line: 337,
+                    name: "test_deep_stack".to_string(),
+                    presentation_hint: Some("normal".to_string()),
+                    source: Some(Source {
+                        name: Some("<unavailable>: common_testing_code.rs".to_string()),
+                        path: Some("/Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/common_testing_code.rs".to_string()),
+                        presentation_hint: Some("deemphasize".to_string()),
+                        ..Default::default()
+                    }),
+                    end_column: None,
+                    module_id: None,
+                    end_line: None,
+                },
+                StackFrame {
+                    can_restart: Some(false),
+                    column: 9,
+                    id: 9,
+                    instruction_pointer_reference: Some("0x00001d04".to_string()),
+                    line: 337,
+                    name: "test_deep_stack".to_string(),
+                    presentation_hint: Some("normal".to_string()),
+                    source: Some(Source {
+                        name: Some("<unavailable>: common_testing_code.rs".to_string()),
+                        path: Some("/Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/common_testing_code.rs".to_string()),
+                        presentation_hint: Some("deemphasize".to_string()),
+                        ..Default::default()
+                    }),
+                    end_column: None,
+                    module_id: None,
+                    end_line: None,
+                },
+                StackFrame {
+                    can_restart: Some(false),
+                    column: 9,
+                    id: 12,
+                    instruction_pointer_reference: Some("0x00001d04".to_string()),
+                    line: 337,
+                    name: "test_deep_stack".to_string(),
+                    presentation_hint: Some("normal".to_string()),
+                    source: Some(Source {
+                        name: Some("<unavailable>: common_testing_code.rs".to_string()),
+                        path: Some("/Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/common_testing_code.rs".to_string()),
+                        presentation_hint: Some("deemphasize".to_string()),
+                        ..Default::default()
+                    }),
+                    end_column: None,
+                    module_id: None,
+                    end_line: None,
+                },
+                StackFrame {
+                    can_restart: Some(false),
+                    column: 9,
+                    id: 15,
+                    instruction_pointer_reference: Some("0x00001d04".to_string()),
+                    line: 337,
+                    name: ("test_deep_stack".to_string()),
+                    presentation_hint: Some("normal".to_string()),
+                    source: Some(Source {
+                        name: Some("<unavailable>: common_testing_code.rs".to_string()),
+                        path: Some("/Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/common_testing_code.rs".to_string()),
+                        presentation_hint: Some("deemphasize".to_string()),
+                        ..Default::default()
+                    }),
+                    end_column: None,
+                    module_id: None,
+                    end_line: None,
+                },
+                StackFrame {
+                    can_restart: Some(false),
+                    column: 9,
+                    id: 18,
+                    instruction_pointer_reference: Some("0x00001d04".to_string()),
+                    line: 337,
+                    name: ("test_deep_stack".to_string()),
+                    presentation_hint: Some("normal".to_string()),
+                    source: Some(Source {
+                        name: Some("<unavailable>: common_testing_code.rs".to_string()),
+                        path: Some("/Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/common_testing_code.rs".to_string()),
+                        presentation_hint: Some("deemphasize".to_string()),
+                        ..Default::default()
+                    }),
+                    end_column: None,
+                    module_id: None,
+                    end_line: None,
+                },
+                StackFrame {
+                    can_restart: Some(false),
+                    column: 5,
+                    id: 21,
+                    instruction_pointer_reference: Some("0x00001c50".to_string()),
+                    line: 324,
+                    name: ("setup_data_types".to_string()),
+                    presentation_hint: Some("normal".to_string()),
+                    source: Some(Source {
+                        name: Some("<unavailable>: common_testing_code.rs".to_string()),
+                        path: Some("/Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/common_testing_code.rs".to_string()),
+                        presentation_hint: Some("deemphasize".to_string()),
+                        ..Default::default()
+                    }),
+                    end_column: None,
+                    module_id: None,
+                    end_line: None,
+                },
+                StackFrame {
+                    can_restart: Some(false),
+                    column: 10,
+                    id: 24,
+                    instruction_pointer_reference: Some("0x0000054a".to_string()),
+                    line: 51,
+                    name: ("__cortex_m_rt_main".to_string()),
+                    presentation_hint: Some("normal".to_string()),
+                    source: Some(Source {
+                        name: Some("<unavailable>: nRF52833_xxAA.rs".to_string()),
+                        path: Some("/Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/thumbv7em-none-eabihf/nRF52833_xxAA.rs".to_string()),
+                        presentation_hint: Some("deemphasize".to_string()),
+                        ..Default::default()
+                    }),
+                    end_column: None,
+                    module_id: None,
+                    end_line: None,
+                },
+                StackFrame {
+                    can_restart: Some(false),
+                    column: 1,
+                    id: 27,
+                    instruction_pointer_reference: Some("0x0000053e".to_string()),
+                    line: 48,
+                    name: "__cortex_m_rt_main_trampoline".to_string(),
+                    presentation_hint: Some("normal".to_string()),
+                    source: Some(Source {
+                        name: Some("<unavailable>: nRF52833_xxAA.rs".to_string()),
+                        path: Some("/Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/thumbv7em-none-eabihf/nRF52833_xxAA.rs".to_string()),
+                        presentation_hint: Some("deemphasize".to_string()),
+                        ..Default::default()
+                    }),
+                    end_column: None,
+                    module_id: None,
+                    end_line: None,
+                },];
+
+        protocol_adapter
+            .add_request("stackTrace")
+            .with_arguments(StackTraceArguments {
+                thread_id: 0,
+                format: None,
+                levels: None,
+                start_frame: None,
+            })
+            .and_succesful_response()
+            .with_body(StackTraceResponseBody {
+                stack_frames: all_frames.to_vec(),
+                total_frames: Some(9),
+            });
+
+        protocol_adapter
+            .add_request("stackTrace")
+            .with_arguments(StackTraceArguments {
+                thread_id: 0,
+                format: None,
+                levels: None,
+                start_frame: Some(1),
+            })
+            .and_succesful_response()
+            .with_body(StackTraceResponseBody {
+                stack_frames: all_frames[1..].to_vec(),
+                total_frames: Some(9),
+            });
+
+        protocol_adapter
+            .add_request("stackTrace")
+            .with_arguments(StackTraceArguments {
+                thread_id: 0,
+                format: None,
+                levels: Some(30),
+                start_frame: Some(3),
+            })
+            .and_succesful_response()
+            .with_body(StackTraceResponseBody {
+                stack_frames: all_frames[3..].to_vec(),
+                total_frames: Some(9),
+            });
+
+        protocol_adapter
+            .add_request("scopes")
+            .with_arguments(ScopesArguments { frame_id: 3 })
+            .and_succesful_response()
+            .with_body(ScopesResponseBody {
+                scopes: vec![
+                    Scope {
+                        column: None,
+                        end_line: None,
+                        expensive: true,
+                        indexed_variables: None,
+                        line: None,
+                        name: "Registers".to_string(),
+                        named_variables: None,
+                        presentation_hint: Some("registers".to_string()),
+                        source: None,
+                        variables_reference: 3,
+                        end_column: None,
+                    },
+                    Scope {
+                        column: None,
+                        end_line: None,
+                        expensive: true,
+                        indexed_variables: None,
+                        line: None,
+                        name: "Static".to_string(),
+                        named_variables: None,
+                        presentation_hint: Some("statics".to_string()),
+                        source: None,
+                        variables_reference: 1,
+                        end_column: None,
+                    },
+                    Scope {
+                        column: Some(13),
+                        end_line: None,
+                        expensive: false,
+                        indexed_variables: None,
+                        line: Some(343),
+                        name: "Variables".to_string(),
+                        named_variables: None,
+                        presentation_hint: Some("locals".to_string()),
+                        source: None,
+                        variables_reference: 2,
+                        end_column: None,
+                    },
+                ],
+            });
+
         protocol_adapter.expect_event(
             "stopped",
             Some(StoppedEventBody {
-                all_threads_stopped: Some(true), // Only single fixed thread supported right now
+                all_threads_stopped: Some(false), // Should be true
                 description: Some(
                     "Core halted due to a user (debugger client) request".to_string(),
                 ),
@@ -1829,7 +2098,11 @@ mod test {
             None,
         );
 
-        let fake_probe = FakeProbe::with_mocked_core(MockCoreState::Running);
+        let mut core = MockCore::new(MockCoreState::Running);
+
+        core.add_core_dump(dump);
+
+        let fake_probe = FakeProbe::with_mocked_core(core);
 
         // Indicate that the core is unlocked
         fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {

@@ -6,19 +6,20 @@ use probe_rs_target::ScanChainElement;
 use crate::{
     architecture::arm::{
         ap::{memory_ap::mock::MockMemoryAp, AccessPort, MemoryAp},
+        armv6m::Dcrdr,
         armv8m::Dhcsr,
         communication_interface::{
             ArmDebugState, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,
         },
-        core::Dfsr,
+        core::{cortex_m::Dcrsr, Dfsr},
         dp::DebugPortError,
         memory::adi_v5_memory_interface::{ADIMemoryInterface, ArmProbe},
         sequences::ArmDebugSequence,
         ApAddress, ArmError, ArmProbeInterface, DapAccess, DpAddress, MemoryApInformation,
         PortType, RawDapAccess, SwoAccess,
     },
-    DebugProbe, DebugProbeError, DebugProbeSelector, Error, MemoryMappedRegister, Probe,
-    WireProtocol,
+    CoreDump, DebugProbe, DebugProbeError, DebugProbeSelector, Error, MemoryInterface,
+    MemoryMappedRegister, Probe, WireProtocol,
 };
 
 /// This is a mock probe which can be used for mocking things in tests or for dry runs.
@@ -45,12 +46,15 @@ enum MockedAp {
     Core(MockCore),
 }
 
-struct MockCore {
+pub struct MockCore {
     dhcsr: Dhcsr,
     dfsr: Dfsr,
+    dcsr: Dcrsr,
 
     /// Is the core halted?
     is_halted: bool,
+
+    memory: Option<CoreDump>,
 }
 
 impl MockCore {
@@ -70,9 +74,15 @@ impl MockCore {
             dhcsr,
             is_halted,
             dfsr: Dfsr::from(0),
+            dcsr: Dcrsr::from(0),
+            memory: None,
         };
 
         core
+    }
+
+    pub fn add_core_dump(&mut self, dump: CoreDump) {
+        self.memory = Some(dump);
     }
 }
 
@@ -125,9 +135,38 @@ impl ArmProbe for &mut MockCore {
                     println!("Read  DFSR: {:#x} = {:#x}", address, val);
                 }
 
+                Dcrsr::ADDRESS_OFFSET => {
+                    *val = self.dcsr.into();
+                    println!("Read  DCRSR: {:#x} = {:#x}", address, val);
+                }
+
+                Dcrdr::ADDRESS_OFFSET => {
+                    if let Some(core_dump) = &self.memory {
+                        let id = self.dcsr.regsel();
+
+                        let registers = core_dump.debug_registers();
+
+                        *val = registers
+                            .get_register(crate::RegisterId(id as u16))
+                            .and_then(|reg| reg.value)
+                            .and_then(|val| val.try_into().ok())
+                            .unwrap_or_default();
+                    } else {
+                        *val = 0;
+                    }
+
+                    println!("Read  DCRDR: {:#x} = {:#x}", address, val);
+                }
+
                 _ => {
-                    *val = 0;
-                    println!("Read {:#010x} = 0", address);
+                    if let Some(core_dump) = &mut self.memory {
+                        let value = core_dump.read_word_32(address as u64).unwrap_or_default();
+                        *val = value;
+                        println!("Read  {:#010x} = {:#010x}", address, val);
+                    } else {
+                        *val = 0;
+                        println!("Read  {:#010x} = {:#010x}", address, val);
+                    }
                 }
             }
         }
@@ -181,6 +220,10 @@ impl ArmProbe for &mut MockCore {
                     let mask = !word;
 
                     self.dfsr.0 &= mask;
+                }
+                Dcrsr::ADDRESS_OFFSET => {
+                    self.dcsr = Dcrsr::from(*word);
+                    println!("Write  DCRSR: {:#x} = {:#x}", address, word);
                 }
                 _ => println!("Write {:#010x} = {:#010x}", address, word),
             }
@@ -263,7 +306,7 @@ impl FakeProbe {
     }
 
     /// Fake probe with a mocked core
-    pub fn with_mocked_core(initial_state: MockCoreState) -> Self {
+    pub fn with_mocked_core(core: MockCore) -> Self {
         FakeProbe {
             protocol: WireProtocol::Swd,
             speed: 1000,
@@ -274,7 +317,7 @@ impl FakeProbe {
 
             operations: RefCell::new(VecDeque::new()),
 
-            memory_ap: MockedAp::Core(MockCore::new(initial_state)),
+            memory_ap: MockedAp::Core(core),
         }
     }
 
