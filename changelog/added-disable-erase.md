@@ -1,0 +1,1 @@
+Added option to skip erasing flash before flashing

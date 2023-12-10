@@ -34,9 +34,10 @@ pub fn run_flash_download(
     let mut options = DownloadOptions::default();
     options.keep_unwritten_bytes = download_options.restore_unwritten;
     options.dry_run = probe_options.dry_run();
-    options.do_chip_erase = do_chip_erase;
+    options.do_chip_erase = do_chip_erase && !download_options.disable_erase;
     options.disable_double_buffering = download_options.disable_double_buffering;
     options.verify = download_options.verify;
+    options.skip_erase = download_options.disable_erase;
 
     if !download_options.disable_progressbars {
         // Create progress bars.
@@ -51,23 +52,26 @@ pub fn run_flash_download(
             let fill_progress = multi_progress.add(ProgressBar::new(0));
             fill_progress.set_style(style.clone());
             fill_progress.set_message("     Reading flash  ");
-            Some(fill_progress)
+            Some(Arc::new(fill_progress))
         } else {
             None
         };
 
         // Create a new progress bar for the erase progress.
-        let erase_progress = Arc::new(multi_progress.add(ProgressBar::new(0)));
-        {
-            logging::set_progress_bar(erase_progress.clone());
-        }
-        erase_progress.set_style(style.clone());
-        erase_progress.set_message("     Erasing sectors");
+        let erase_progress = if !download_options.disable_erase {
+            let erase_progress = multi_progress.add(ProgressBar::new(0));
+            erase_progress.set_style(style.clone());
+            erase_progress.set_message("     Erasing sectors");
+            Some(Arc::new(erase_progress))
+        } else {
+            None
+        };
 
         // Create a new progress bar for the program progress.
         let program_progress = multi_progress.add(ProgressBar::new(0));
         program_progress.set_style(style);
         program_progress.set_message(" Programming pages  ");
+        let program_progress = Arc::new(program_progress);
 
         // Register callback to update the progress.
         let flash_layout_output_path = download_options.flash_layout_output_path.clone();
@@ -75,97 +79,105 @@ pub fn run_flash_download(
             use ProgressEvent::*;
             match event {
                 Initialized { flash_layout } => {
-                    let total_page_size: u32 = flash_layout.pages().iter().map(|s| s.size()).sum();
-
-                    let total_sector_size: u64 =
-                        flash_layout.sectors().iter().map(|s| s.size()).sum();
-
-                    let total_fill_size: u64 = flash_layout.fills().iter().map(|s| s.size()).sum();
-
                     if let Some(fp) = fill_progress.as_ref() {
+                        let total_fill_size: u64 =
+                            flash_layout.fills().iter().map(|s| s.size()).sum();
                         fp.set_length(total_fill_size)
                     }
-                    erase_progress.set_length(total_sector_size);
+                    if let Some(erase_progress) = erase_progress.as_ref() {
+                        let total_sector_size: u64 =
+                            flash_layout.sectors().iter().map(|s| s.size()).sum();
+                        erase_progress.set_length(total_sector_size);
+                    }
+
+                    let total_page_size: u32 = flash_layout.pages().iter().map(|s| s.size()).sum();
                     program_progress.set_length(total_page_size as u64);
+
                     let visualizer = flash_layout.visualize();
                     flash_layout_output_path
                         .as_ref()
                         .map(|path| visualizer.write_svg(path));
                 }
                 StartedProgramming => {
+                    logging::set_progress_bar(program_progress.clone());
                     program_progress.enable_steady_tick(Duration::from_millis(100));
                     program_progress.reset_elapsed();
                 }
                 StartedErasing => {
-                    erase_progress.enable_steady_tick(Duration::from_millis(100));
-                    erase_progress.reset_elapsed();
+                    if let Some(erase_progress) = erase_progress.as_ref() {
+                        logging::set_progress_bar(erase_progress.clone());
+                        erase_progress.enable_steady_tick(Duration::from_millis(100));
+                        erase_progress.reset_elapsed();
+                    }
                 }
                 StartedFilling => {
                     if let Some(fp) = fill_progress.as_ref() {
-                        fp.enable_steady_tick(Duration::from_millis(100))
-                    };
-                    if let Some(fp) = fill_progress.as_ref() {
-                        fp.reset_elapsed()
-                    };
+                        logging::set_progress_bar(fp.clone());
+                        fp.enable_steady_tick(Duration::from_millis(100));
+                        fp.reset_elapsed();
+                    }
                 }
                 PageProgrammed { size, .. } => {
                     program_progress.inc(size as u64);
                 }
                 SectorErased { size, .. } => {
-                    erase_progress.inc(size);
+                    if let Some(erase_progress) = erase_progress.as_ref() {
+                        erase_progress.inc(size);
+                    }
                 }
                 PageFilled { size, .. } => {
                     if let Some(fp) = fill_progress.as_ref() {
-                        fp.inc(size)
-                    };
+                        fp.inc(size);
+                    }
                 }
                 FailedErasing => {
-                    erase_progress.abandon();
+                    if let Some(erase_progress) = erase_progress.as_ref() {
+                        erase_progress.abandon();
+                    }
                     program_progress.abandon();
+                    logging::clear_progress_bar();
                 }
                 FinishedErasing => {
-                    erase_progress.finish();
+                    if let Some(erase_progress) = erase_progress.as_ref() {
+                        erase_progress.finish();
+                    }
+                    logging::clear_progress_bar();
                 }
                 FailedProgramming => {
                     program_progress.abandon();
+                    logging::clear_progress_bar();
                 }
                 FinishedProgramming => {
                     program_progress.finish();
+                    logging::clear_progress_bar();
                 }
                 FailedFilling => {
                     if let Some(fp) = fill_progress.as_ref() {
-                        fp.abandon()
-                    };
+                        fp.abandon();
+                    }
+                    logging::clear_progress_bar();
                 }
                 FinishedFilling => {
                     if let Some(fp) = fill_progress.as_ref() {
-                        fp.finish()
-                    };
+                        fp.finish();
+                    }
+                    logging::clear_progress_bar();
                 }
                 DiagnosticMessage { .. } => (),
             }
         });
 
         options.progress = Some(progress);
-
-        loader
-            .commit(session, options)
-            .map_err(|error| OperationError::FlashingFailed {
-                source: error,
-                target: Box::new(session.target().clone()),
-                target_spec: probe_options.chip(),
-                path: path.to_path_buf(),
-            })?;
-    } else {
-        loader
-            .commit(session, options)
-            .map_err(|error| OperationError::FlashingFailed {
-                source: error,
-                target: Box::new(session.target().clone()),
-                target_spec: probe_options.chip(),
-                path: path.to_path_buf(),
-            })?;
     }
+
+    loader
+        .commit(session, options)
+        .map_err(|error| OperationError::FlashingFailed {
+            source: error,
+            target: Box::new(session.target().clone()),
+            target_spec: probe_options.chip(),
+            path: path.to_path_buf(),
+        })?;
 
     // Stop timer.
     let elapsed = instant.elapsed();

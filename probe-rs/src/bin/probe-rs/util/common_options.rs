@@ -86,6 +86,10 @@ pub struct BinaryDownloadOptions {
     /// download fails during programming with timeout errors, try this option.
     #[arg(long)]
     pub disable_double_buffering: bool,
+    /// Use this flag to disable erasing before flashing. Only use this option if you know
+    /// that the target memory is already erased.
+    #[arg(long)]
+    pub disable_erase: bool,
     /// Enable this flag to restore all bytes erased in the sector erase but not overwritten by any page.
     #[arg(long)]
     pub restore_unwritten: bool,
