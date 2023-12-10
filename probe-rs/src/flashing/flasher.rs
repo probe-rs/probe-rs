@@ -1,10 +1,9 @@
 use probe_rs_target::{MemoryRegion, RawFlashAlgorithm};
 use tracing::Level;
 
-use super::{
-    FlashAlgorithm, FlashBuilder, FlashError, FlashFill, FlashLayout, FlashPage, FlashProgress,
-};
+use super::{FlashAlgorithm, FlashBuilder, FlashError, FlashFill, FlashPage, FlashProgress};
 use crate::config::NvmRegion;
+use crate::flashing::encoder::FlashEncoder;
 use crate::memory::MemoryInterface;
 use crate::{core::CoreRegisters, session::Session, Core, InstructionSet};
 use std::{
@@ -325,17 +324,19 @@ impl<'session> Flasher<'session> {
         // We successfully finished filling.
         self.progress.finished_filling();
 
+        let flash_encoder = FlashEncoder::new(self.flash_algorithm.transfer_encoding, flash_layout);
+
         // Skip erase if necessary
         if !skip_erasing {
             // Erase all necessary sectors
-            self.sector_erase(&flash_layout)?;
+            self.sector_erase(&flash_encoder)?;
         }
 
         // Flash all necessary pages.
         if self.double_buffering_supported() && enable_double_buffering {
-            self.program_double_buffer(&flash_layout)?;
+            self.program_double_buffer(&flash_encoder)?;
         } else {
-            self.program_simple(&flash_layout)?;
+            self.program_simple(&flash_encoder)?;
         };
 
         Ok(())
@@ -362,12 +363,12 @@ impl<'session> Flasher<'session> {
     }
 
     /// Programs the pages given in `flash_layout` into the flash.
-    fn program_simple(&mut self, flash_layout: &FlashLayout) -> Result<(), FlashError> {
+    fn program_simple(&mut self, flash_encoder: &FlashEncoder) -> Result<(), FlashError> {
         self.progress.started_programming();
 
         let mut t = Instant::now();
         let result = self.run_program(|active| {
-            for page in flash_layout.pages() {
+            for page in flash_encoder.pages() {
                 active
                     .program_page(page.address(), page.data())
                     .map_err(|error| FlashError::PageWrite {
@@ -391,12 +392,12 @@ impl<'session> Flasher<'session> {
     }
 
     /// Perform an erase of all sectors given in `flash_layout`.
-    fn sector_erase(&mut self, flash_layout: &FlashLayout) -> Result<(), FlashError> {
+    fn sector_erase(&mut self, flash_encoder: &FlashEncoder) -> Result<(), FlashError> {
         self.progress.started_erasing();
 
         let mut t = Instant::now();
         let result = self.run_erase(|active| {
-            for sector in flash_layout.sectors() {
+            for sector in flash_encoder.sectors() {
                 active
                     .erase_sector(sector.address())
                     .map_err(|e| FlashError::EraseFailed {
@@ -428,14 +429,14 @@ impl<'session> Flasher<'session> {
     ///
     /// This is only possible if the RAM is large enough to
     /// fit at least two page buffers. See [Flasher::double_buffering_supported].
-    fn program_double_buffer(&mut self, flash_layout: &FlashLayout) -> Result<(), FlashError> {
+    fn program_double_buffer(&mut self, flash_encoder: &FlashEncoder) -> Result<(), FlashError> {
         let mut current_buf = 0;
         self.progress.started_programming();
 
         let mut t = Instant::now();
         let result = self.run_program(|active| {
             let mut last_page_address = 0;
-            for page in flash_layout.pages() {
+            for page in flash_encoder.pages() {
                 // At the start of each loop cycle load the next page buffer into RAM.
                 active.load_page_buffer(page.address(), page.data(), current_buf)?;
 

@@ -1,0 +1,1 @@
+Added the concept of transfer encoding that is applied during firmware download.

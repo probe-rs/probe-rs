@@ -45,6 +45,7 @@
 
 mod builder;
 mod download;
+mod encoder;
 mod erase;
 mod error;
 mod flash_algorithm;

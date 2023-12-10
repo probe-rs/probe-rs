@@ -1,6 +1,8 @@
 use super::FlashError;
 use crate::{architecture::riscv, core::Architecture, Target};
-use probe_rs_target::{FlashProperties, PageInfo, RamRegion, RawFlashAlgorithm, SectorInfo};
+use probe_rs_target::{
+    FlashProperties, PageInfo, RamRegion, RawFlashAlgorithm, SectorInfo, TransferEncoding,
+};
 use std::{cmp::max, convert::TryInto, mem::size_of_val};
 
 /// A flash algorithm, which has been assembled for a specific
@@ -48,6 +50,9 @@ pub struct FlashAlgorithm {
 
     /// The properties of the flash on the device.
     pub flash_properties: FlashProperties,
+
+    /// The encoding format accepted by the flash algorithm.
+    pub transfer_encoding: TransferEncoding,
 }
 
 impl FlashAlgorithm {
@@ -312,6 +317,7 @@ impl FlashAlgorithm {
             page_buffers: page_buffers.clone(),
             rtt_control_block: raw.rtt_location,
             flash_properties: raw.flash_properties.clone(),
+            transfer_encoding: raw.transfer_encoding,
         })
     }
 }
