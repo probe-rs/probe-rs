@@ -5,7 +5,7 @@ use std::ops::Range;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, bail, Context, Result};
 use libtest_mimic::{Failed, Trial};
@@ -169,10 +169,9 @@ impl Cmd {
     }
 }
 
-fn run_until_semihosting(core: &mut Core) -> Result<SemihostingCommand> {
-    const SYS_EXIT_EXTENDED: u32 = 0x20;
+const SYS_EXIT_EXTENDED: u32 = 0x20;
 
-    //TODO: Print rtt messages
+fn run_until_semihosting(core: &mut Core) -> Result<SemihostingCommand> {
     core.run()?;
 
     loop {
@@ -253,12 +252,12 @@ impl Buffer {
     }
 }
 
-//TODO: Dedup this struct
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct Test {
     pub name: String,
-    pub should_error: bool,
+    pub should_panic: bool,
     pub ignored: bool,
+    pub timeout: Option<u32>,
 }
 
 /// Asks the target for the tests, and create closures to run the tests later
@@ -303,7 +302,7 @@ fn create_tests(runner_ref: &'static RefCell<Runner>) -> Result<Vec<Trial>> {
 // Run a single test on the target
 fn run_test(test: Test, runner: &mut Runner) -> std::result::Result<(), Failed> {
     let core = &mut runner.core;
-    tracing::error!("Running test {}", test.name);
+    tracing::info!("Running test {}", test.name);
     core.reset_and_halt(Duration::from_millis(100))?;
 
     // Run target with arg "run <testname>"
@@ -317,6 +316,9 @@ fn run_test(test: Test, runner: &mut Runner) -> std::result::Result<(), Failed> 
         core.write_core_reg(reg, 0u32)?; // write status = success
     }
 
+    let timeout = test.timeout.map(|t| Duration::from_secs(t as u64));
+    let timeout = timeout.unwrap_or(Duration::from_secs(60)); // TODO: make global timeout configurable
+
     // Wait on semihosting abort/exit
     match run_loop(
         core,
@@ -327,14 +329,16 @@ fn run_test(test: Test, runner: &mut Runner) -> std::result::Result<(), Failed> 
         runner.always_print_stacktrace,
         runner.no_location,
         runner.log_format.as_deref(),
+        test.should_panic,
+        timeout,
     ) {
         Ok(o) => match o {
             Ok(_) => {
-                tracing::error!("Test {} passed", test.name);
+                tracing::info!("Test {} passed", test.name);
                 Ok(())
             }
             Err(e) => {
-                tracing::error!("Test {} failed: {:?}", test.name, e);
+                tracing::info!("Test {} failed: {:?}", test.name, e);
                 Err(e)
             }
         },
@@ -355,6 +359,8 @@ fn run_loop(
     always_print_stacktrace: bool,
     no_location: bool,
     log_format: Option<&str>,
+    should_panic: bool,
+    timeout: Duration,
 ) -> Result<std::result::Result<(), Failed>, anyhow::Error> {
     let mut rtt_config = rtt::RttConfig::default();
     rtt_config.channels.push(rtt::RttChannelConfig {
@@ -376,14 +382,24 @@ fn run_loop(
 
     let exit = Arc::new(AtomicBool::new(false));
     let sig_id = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
+    let start = Instant::now();
+
+    core.run()?;
 
     let mut stderr = std::io::stderr();
     let mut halt_reason = None;
+    let mut timeouted = false;
     while !exit.load(Ordering::Relaxed) && halt_reason.is_none() {
         // check for halt first, poll rtt after.
         // this is important so we do one last poll after halt, so we flush all messages
         // the core printed before halting, such as a panic message.
         match core.status()? {
+            probe_rs::CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
+                SemihostingCommand::Unknown { operation, .. },
+            ))) if operation == SYS_EXIT_EXTENDED => {
+                tracing::info!("Target wanted to run semihosting SYS_EXIT_EXTENDED (0x20), but probe-rs does not support this operation yet. Continuing...");
+                core.run()?;
+            }
             probe_rs::CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
                 SemihostingCommand::Unknown { operation, .. },
             ))) if operation != SEMIHOSTING_USER_LIST => {
@@ -401,6 +417,11 @@ fn run_loop(
 
         let had_rtt_data = poll_rtt(&mut rtta, core, &mut stderr)?;
 
+        if start.elapsed() >= timeout {
+            timeouted = true;
+            break;
+        }
+
         // Poll RTT with a frequency of 10 Hz if we do not receive any new data.
         // Once we receive new data, we bump the frequency to 1kHz.
         //
@@ -415,25 +436,57 @@ fn run_loop(
 
     let result = match halt_reason {
         None => {
-            // manually halted with Control+C. Stop the core.
             core.halt(Duration::from_secs(1))?;
-            Err(anyhow!("CPU halted by user."))
+
+            if always_print_stacktrace {
+                print_stacktrace(core, path)?;
+            }
+
+            if timeouted {
+                Ok(Err(Failed::from(format!(
+                    "Test timed out after {:?}",
+                    timeout
+                ))))
+            } else {
+                // manually halted with Control+C. Stop the core.
+                Err(anyhow!("CPU halted by user."))
+            }
         }
-        Some(reason) => match reason {
-            HaltReason::Breakpoint(BreakpointCause::Semihosting(s)) => {
-                match s
-                {
-                    SemihostingCommand::ExitSuccess => {
+        Some(reason) => {
+            let exit_status =
+                match reason {
+                    HaltReason::Breakpoint(BreakpointCause::Semihosting(s)) => {
+                        match s
+                        {
+                            SemihostingCommand::ExitSuccess => Ok(true),
+                            SemihostingCommand::ExitError { .. } => Ok(false),
+                            SemihostingCommand::Unknown { operation, parameter } => Err(Failed::from(format!("Expected the target to run the test and exit/error with semihosting. Instead it requested semihosting operation: {} {:x}", operation, parameter)))
+                        }
+                    },
+                    _ => Err(Failed::from("CPU halted unexpectedly.")),
+                };
+
+            match exit_status {
+                Err(e) => Ok(Err(e)),
+                Ok(exit_status) => {
+                    if exit_status == !should_panic {
+                        if always_print_stacktrace && !exit_status {
+                            print_stacktrace(core, path)?;
+                        }
                         Ok(Ok(()))
+                    } else {
+                        if !exit_status {
+                            print_stacktrace(core, path)?;
+                        }
+                        Ok(Err(Failed::from(format!(
+                            "Test should have {} but it {}",
+                            if should_panic { "panicked" } else { "passed" },
+                            if exit_status { "passed" } else { "panicked" }
+                        ))))
                     }
-                    SemihostingCommand::ExitError { .. } => {
-                        Ok(Err(Failed::without_message()))
-                    }
-                    SemihostingCommand::Unknown { operation, parameter } => Ok(Err(Failed::from(format!("Expected the target to run the test and exit/error with semihosting. Instead it requested semihosting operation: {} {:x}", operation, parameter))))
                 }
-            },
-            _ => Ok(Err(Failed::from("CPU halted unexpectedly."))),
-        },
+            }
+        }
     };
 
     if always_print_stacktrace || result.is_err() {
