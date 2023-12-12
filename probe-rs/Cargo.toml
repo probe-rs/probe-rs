@@ -71,7 +71,7 @@ cli = [
     "dep:textwrap",
     "dep:addr2line",
     "dep:libtest-mimic",
-    "dep:static_cell"
+    "dep:static_cell",
 ]
 
 vendored-libusb = ["rusb/vendored"]
@@ -193,8 +193,8 @@ ratatui = { version = "0.25.0", default-features = false, features = [
     "crossterm",
 ], optional = true }
 
-libtest-mimic = {git="https://github.com/t-moe/libtest-mimic/", branch="format-json-and-intellij", optional = true, default-features = false}
-static_cell = {version = "2.0.0", optional = true}
+libtest-mimic = { git = "https://github.com/t-moe/libtest-mimic/", branch = "format-json-and-intellij", optional = true, default-features = false }
+static_cell = { version = "2.0.0", optional = true }
 
 [build-dependencies]
 bincode = "1.3.3"
