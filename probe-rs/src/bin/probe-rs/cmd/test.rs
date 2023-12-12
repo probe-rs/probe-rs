@@ -252,8 +252,14 @@ impl Buffer {
     }
 }
 
+#[derive(Debug, serde::Deserialize)]
+struct Tests {
+    pub version: u32,
+    pub tests: Vec<Test>,
+}
+
 #[derive(Debug, Clone, serde::Deserialize)]
-pub struct Test {
+struct Test {
     pub name: String,
     pub should_panic: bool,
     pub ignored: bool,
@@ -281,11 +287,14 @@ fn create_tests(runner_ref: &'static RefCell<Runner>) -> Result<Vec<Trial>> {
         let mut buf = Buffer::from_block_at(core, block_address)?;
         let buf = buf.read(core)?;
 
-        let list: Vec<Test> = serde_json::from_slice(&buf[..])?;
+        let list: Tests = serde_json::from_slice(&buf[..])?;
         tracing::debug!("got list of tests from target: {:?}", list);
+        if list.version != 1 {
+            bail!("Unsupported test list format version: {}", list.version);
+        }
 
         let mut tests = Vec::<Trial>::new();
-        for t in &list {
+        for t in &list.tests {
             let test = t.clone();
             tests.push(
                 Trial::test(&t.name, move || {
