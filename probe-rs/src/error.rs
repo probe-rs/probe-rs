@@ -2,6 +2,7 @@
 
 use crate::architecture::arm::ArmError;
 use crate::architecture::riscv::communication_interface::RiscvError;
+use crate::architecture::xtensa::communication_interface::XtensaError;
 use crate::config::RegistryError;
 use crate::DebugProbeError;
 
@@ -17,6 +18,9 @@ pub enum Error {
     /// A RISC-V specific error occurred.
     #[error("A RISC-V specific error occurred.")]
     Riscv(#[source] RiscvError),
+    /// An Xtensa specific error occurred.
+    #[error("An Xtensa specific error occurred.")]
+    Xtensa(#[source] XtensaError),
     /// The probe could not be opened.
     #[error("Probe could not be opened: {0}")]
     UnableToOpenProbe(&'static str),
