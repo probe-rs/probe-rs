@@ -25,6 +25,7 @@ pub struct Dtm {
     pub probe: Box<dyn JTAGAccess>,
 
     queued_commands: JtagCommandQueue,
+    jtag_results: DeferredResultSet,
 
     /// Number of address bits in the DMI register
     abits: u32,
@@ -67,6 +68,7 @@ impl Dtm {
             probe,
             abits,
             queued_commands: JtagCommandQueue::new(),
+            jtag_results: DeferredResultSet::new(),
         })
     }
 
@@ -96,15 +98,29 @@ impl Dtm {
         Ok(())
     }
 
-    pub fn execute(&mut self) -> Result<DeferredResultSet, RiscvError> {
-        let mut results = DeferredResultSet::with_capacity(self.queued_commands.len());
+    pub fn read_deferred_result(
+        &mut self,
+        index: DeferredResultIndex,
+    ) -> Result<CommandResult, RiscvError> {
+        let result = match self.jtag_results.take(index) {
+            Ok(result) => result,
+            Err(index) => {
+                self.execute()?;
+                self.jtag_results.take(index).expect("This is a bug")
+            }
+        };
+
+        Ok(result)
+    }
+
+    pub fn execute(&mut self) -> Result<(), RiscvError> {
         let mut cmds = std::mem::take(&mut self.queued_commands);
 
         loop {
             match self.probe.write_register_batch(&cmds) {
                 Ok(r) => {
-                    results.merge_from(r);
-                    return Ok(results);
+                    self.jtag_results.merge_from(r);
+                    return Ok(());
                 }
                 Err(e) => match e.error {
                     crate::Error::Riscv(ae) => {
@@ -114,7 +130,7 @@ impl Dtm {
 
                                 // queue up the remaining commands when we retry
                                 cmds.consume(e.results.len());
-                                results.merge_from(e.results);
+                                self.jtag_results.merge_from(e.results);
 
                                 self.probe.set_idle_cycles(self.probe.idle_cycles() + 1);
                             }
@@ -203,6 +219,8 @@ impl Dtm {
         timeout: Duration,
     ) -> Result<u32, RiscvError> {
         let start_time = Instant::now();
+
+        self.execute()?;
 
         loop {
             match self.dmi_register_access(address, value, op)? {
