@@ -852,9 +852,19 @@ impl<'p> ActiveFlasher<'p, Program> {
     fn load_data(&mut self, address: u64, bytes: &[u8]) -> Result<(), FlashError> {
         // TODO: Prevent security settings from locking the device.
 
+        // In case some of the previous preprocessing forgets to pad the last page,
+        // we will fill the missing bytes with the erased byte value.
+        let empty = self.flash_algorithm.flash_properties.erased_byte_value;
         let words: Vec<u32> = bytes
-            .chunks_exact(core::mem::size_of::<u32>())
-            .map(|a| u32::from_le_bytes([a[0], a[1], a[2], a[3]]))
+            .chunks(core::mem::size_of::<u32>())
+            .map(|a| {
+                u32::from_le_bytes([
+                    a[0],
+                    a.get(1).copied().unwrap_or(empty),
+                    a.get(2).copied().unwrap_or(empty),
+                    a.get(3).copied().unwrap_or(empty),
+                ])
+            })
             .collect();
 
         let t1 = Instant::now();
