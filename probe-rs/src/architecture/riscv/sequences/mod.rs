@@ -6,7 +6,9 @@ use std::sync::Arc;
 
 pub mod esp32c2;
 pub mod esp32c3;
-pub mod esp32c6h2;
+pub mod esp32c6;
+pub mod esp32h2;
+mod esp_common;
 
 /// A interface to operate debug sequences for RISC-V targets.
 ///
@@ -15,6 +17,14 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
     /// Executed when the probe establishes a connection to the target.
     fn on_connect(&self, _interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
         Ok(())
+    }
+
+    /// Detects the flash size of the target.
+    fn detect_flash_size(
+        &self,
+        _interface: &mut RiscvCommunicationInterface,
+    ) -> Result<Option<usize>, crate::Error> {
+        Ok(None)
     }
 }
 

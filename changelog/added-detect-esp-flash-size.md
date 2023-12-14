@@ -1,0 +1,1 @@
+Auto-detect ESP32 flash size

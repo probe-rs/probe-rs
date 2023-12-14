@@ -394,7 +394,8 @@ impl Session {
         Ok(interface)
     }
 
-    fn get_riscv_interface(&mut self) -> Result<&mut RiscvCommunicationInterface, RiscvError> {
+    /// Get the RISC-V probe interface.
+    pub fn get_riscv_interface(&mut self) -> Result<&mut RiscvCommunicationInterface, RiscvError> {
         let interface = match &mut self.interface {
             ArchitectureInterface::Riscv(interface) => interface,
             _ => return Err(RiscvError::NoRiscvTarget),

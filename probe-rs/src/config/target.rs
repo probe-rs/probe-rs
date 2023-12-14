@@ -20,7 +20,7 @@ use crate::architecture::arm::{
     ApAddress, DpAddress,
 };
 use crate::architecture::riscv::sequences::{
-    esp32c2::ESP32C2, esp32c3::ESP32C3, esp32c6h2::ESP32C6H2, DefaultRiscvSequence,
+    esp32c2::ESP32C2, esp32c3::ESP32C3, esp32c6::ESP32C6, esp32h2::ESP32H2, DefaultRiscvSequence,
     RiscvDebugSequence,
 };
 use crate::flashing::FlashLoader;
@@ -131,11 +131,13 @@ impl Target {
         {
             DebugSequence::Arm(EFM32xG2::create())
         } else if chip.name.starts_with("esp32c2") {
-            DebugSequence::Riscv(ESP32C2::create())
+            DebugSequence::Riscv(ESP32C2::create(chip))
         } else if chip.name.starts_with("esp32c3") {
-            DebugSequence::Riscv(ESP32C3::create())
-        } else if chip.name.starts_with("esp32c6") || chip.name.starts_with("esp32h2") {
-            DebugSequence::Riscv(ESP32C6H2::create())
+            DebugSequence::Riscv(ESP32C3::create(chip))
+        } else if chip.name.starts_with("esp32c6") {
+            DebugSequence::Riscv(ESP32C6::create(chip))
+        } else if chip.name.starts_with("esp32h2") {
+            DebugSequence::Riscv(ESP32H2::create(chip))
         } else if chip.name.starts_with("nRF5340") {
             DebugSequence::Arm(Nrf5340::create())
         } else if chip.name.starts_with("nRF52") {
@@ -262,7 +264,7 @@ impl Target {
         FlashLoader::new(self.memory_map.clone(), self.source.clone())
     }
 
-    /// Gets a [RawFlashAlgorithm] by name.
+    /// Returns a [RawFlashAlgorithm] by name.
     pub(crate) fn flash_algorithm_by_name(&self, name: &str) -> Option<&RawFlashAlgorithm> {
         self.flash_algorithms.iter().find(|a| a.name == name)
     }
@@ -330,8 +332,6 @@ impl From<Target> for TargetSelector {
 
 /// This is the type to denote a general debug sequence.
 /// It can differentiate between ARM and RISC-V for now.
-/// Currently, only the ARM variant does something sensible;
-/// RISC-V will be ignored when encountered.
 #[derive(Clone, Debug)]
 pub enum DebugSequence {
     /// An ARM debug sequence.
