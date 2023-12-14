@@ -198,6 +198,8 @@ fn core_to_probe_core(value: &Core) -> Result<CoreType, Error> {
         Core::CortexM3 => CoreType::Armv7m,
         Core::CortexM23 => CoreType::Armv8m,
         Core::CortexM33 => CoreType::Armv8m,
+        Core::CortexM55 => CoreType::Armv8m,
+        Core::CortexM85 => CoreType::Armv8m,
         Core::CortexM7 => CoreType::Armv7em,
         Core::StarMC1 => CoreType::Armv8m,
         c => {
