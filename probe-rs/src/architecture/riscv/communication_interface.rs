@@ -837,7 +837,7 @@ impl RiscvCommunicationInterface {
 
         self.schedule_setup_program_buffer(&[
             lw_command,
-            assembly::addi(8, 8, V::WIDTH.byte_width() as u16),
+            assembly::addi(8, 8, V::WIDTH.byte_width() as i16),
         ])?;
 
         self.schedule_write_dm_register(Data0(address))?;
@@ -1012,7 +1012,7 @@ impl RiscvCommunicationInterface {
         // then increase the address for next write.
         self.schedule_setup_program_buffer(&[
             assembly::sw(0, 8, V::WIDTH as u32, 9),
-            assembly::addi(8, 8, V::WIDTH.byte_width() as u16),
+            assembly::addi(8, 8, V::WIDTH.byte_width() as i16),
         ])?;
 
         // write address into s0
@@ -1349,6 +1349,10 @@ impl RiscvCommunicationInterface {
     /// Destruct the interface and return the stored probe driver.
     pub fn close(self) -> Probe {
         Probe::from_attached_probe(self.dtm.probe.into_probe())
+    }
+
+    pub(super) fn execute(&mut self) -> Result<(), RiscvError> {
+        self.dtm.execute()
     }
 
     pub(super) fn schedule_write_dm_register<R: MemoryMappedRegister<u32>>(
