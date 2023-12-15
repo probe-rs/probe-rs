@@ -52,8 +52,8 @@ impl AlgorithmBinary {
         for ph in &elf.program_headers {
             // Only regard sections that contain at least one byte.
             // And are marked loadable (this filters out debug symbols).
-            if ph.p_type == PT_LOAD && ph.p_filesz > 0 {
-                let sector = ph.p_offset..ph.p_offset + ph.p_filesz;
+            if ph.p_type == PT_LOAD && ph.p_memsz > 0 {
+                let sector = ph.p_offset..ph.p_offset + ph.p_memsz;
 
                 log::debug!("Program header: LOAD to VMA {:#010x}", ph.p_vaddr);
 
@@ -61,9 +61,13 @@ impl AlgorithmBinary {
                 for sh in &elf.section_headers {
                     let range = sh.sh_offset..sh.sh_offset + sh.sh_size;
                     if sector.contains_range(&range) {
-                        // If we found a valid section, store its contents.
-                        let data =
-                            Vec::from(&buffer[sh.sh_offset as usize..][..sh.sh_size as usize]);
+                        // If we found a valid section, store its contents if any.
+                        let data = if sh.sh_type == SHT_NOBITS {
+                            Vec::new()
+                        } else {
+                            Vec::from(&buffer[sh.sh_offset as usize..][..sh.sh_size as usize])
+                        };
+
                         let section = Some(Section {
                             start: sh.sh_addr as u32,
                             length: sh.sh_size as u32,
