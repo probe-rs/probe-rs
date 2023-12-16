@@ -691,7 +691,8 @@ impl Debugger {
                             .update_progress(Some(1.0), Some("Erasing Sectors Complete!"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::StartedProgramming => {
+                    probe_rs::flashing::ProgressEvent::StartedProgramming { length } => {
+                        flash_progress.total_page_size = length as usize;
                         debug_adapter
                             .update_progress(Some(0.0), Some("Programming Pages ..."), id)
                             .ok();
