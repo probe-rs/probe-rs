@@ -128,6 +128,10 @@ impl XtensaCommunicationInterface {
         Ok(())
     }
 
+    pub fn available_breakpoint_units(&self) -> u32 {
+        self.hw_breakpoint_num
+    }
+
     pub fn halt_on_reset(&mut self, en: bool) -> Result<(), XtensaError> {
         self.xdm.halt_on_reset(en);
         Ok(())
@@ -217,6 +221,12 @@ impl XtensaCommunicationInterface {
 
         self.resume()?;
         self.wait_for_core_halted(Duration::from_millis(100))?;
+
+        // Avoid stopping again
+        self.write_register_untyped(
+            Register::Special(SpecialRegister::ICount),
+            self.debug_level as u32 + 1,
+        )?;
 
         Ok(())
     }

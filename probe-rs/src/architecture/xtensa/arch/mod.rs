@@ -1,4 +1,5 @@
 #![allow(unused)] // TODO remove
+#![allow(missing_docs)] // TODO remove
 
 use std::ops::Range;
 
