@@ -231,17 +231,13 @@ impl LoadedProbeOptions {
 
     /// Attaches to specified probe and configures it.
     pub fn attach_probe(&self, lister: &Lister) -> Result<Probe, OperationError> {
-        let mut probe = {
-            if self.0.dry_run {
-                Probe::from_specific_probe(Box::new(FakeProbe::new()));
-            }
-
+        let mut probe = if self.0.dry_run {
+            Probe::from_specific_probe(Box::new(FakeProbe::new()))
+        } else {
             // If we got a probe selector as an argument, open the probe
             // matching the selector if possible.
-            match &self.0.probe_selector {
-                Some(selector) => lister
-                    .open(selector)
-                    .map_err(OperationError::FailedToOpenProbe),
+            let probe = match &self.0.probe_selector {
+                Some(selector) => lister.open(selector),
                 None => {
                     // Only automatically select a probe if there is
                     // only a single probe detected.
@@ -250,14 +246,16 @@ impl LoadedProbeOptions {
                         return Err(OperationError::MultipleProbesFound { number: list.len() });
                     }
 
-                    if let Some(info) = list.first() {
-                        lister.open(info).map_err(OperationError::FailedToOpenProbe)
-                    } else {
-                        Err(OperationError::NoProbesFound)
-                    }
+                    let Some(info) = list.first() else {
+                        return Err(OperationError::NoProbesFound);
+                    };
+
+                    lister.open(info)
                 }
-            }
-        }?;
+            };
+
+            probe.map_err(OperationError::FailedToOpenProbe)?
+        };
 
         if let Some(protocol) = self.0.protocol {
             // Select protocol and speed
