@@ -6,9 +6,9 @@ use probe_rs_target::Chip;
 
 use super::RiscvDebugSequence;
 use crate::{
-    architecture::riscv::{
-        communication_interface::RiscvCommunicationInterface,
-        sequences::esp_common::EspFlashSizeDetector,
+    architecture::{
+        esp_common::EspFlashSizeDetector,
+        riscv::communication_interface::RiscvCommunicationInterface,
     },
     MemoryInterface,
 };
@@ -25,6 +25,7 @@ impl ESP32C3 {
         Arc::new(Self {
             inner: EspFlashSizeDetector {
                 stack_pointer: EspFlashSizeDetector::stack_pointer(chip),
+                load_address: 0, // Unused for RISC-V
                 spiflash_peripheral: 0x6000_2000,
                 attach_fn: 0x4000_0164,
             },
@@ -63,6 +64,6 @@ impl RiscvDebugSequence for ESP32C3 {
         &self,
         interface: &mut RiscvCommunicationInterface,
     ) -> Result<Option<usize>, crate::Error> {
-        self.inner.detect_flash_size(interface)
+        self.inner.detect_flash_size_riscv(interface)
     }
 }

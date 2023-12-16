@@ -6,17 +6,30 @@ use probe_rs_target::Chip;
 
 use super::XtensaDebugSequence;
 use crate::{
-    architecture::xtensa::communication_interface::XtensaCommunicationInterface, MemoryInterface,
+    architecture::{
+        esp_common::EspFlashSizeDetector,
+        xtensa::communication_interface::XtensaCommunicationInterface,
+    },
+    MemoryInterface,
 };
 
 /// The debug sequence implementation for the ESP32-S2.
 #[derive(Debug)]
-pub struct ESP32S2 {}
+pub struct ESP32S2 {
+    inner: EspFlashSizeDetector,
+}
 
 impl ESP32S2 {
     /// Creates a new debug sequence handle for the ESP32-S2.
     pub fn create(_chip: &Chip) -> Arc<dyn XtensaDebugSequence> {
-        Arc::new(Self {})
+        Arc::new(Self {
+            inner: EspFlashSizeDetector {
+                stack_pointer: 0x3FFB_8000,
+                load_address: 0x4002_8000,
+                spiflash_peripheral: 0x3f40_2000,
+                attach_fn: 0x4001_7004,
+            },
+        })
     }
 }
 
@@ -49,5 +62,12 @@ impl XtensaDebugSequence for ESP32S2 {
         interface.write_word_32(RTC_WRITE_PROT, 0x0)?; // write protection on
 
         Ok(())
+    }
+
+    fn detect_flash_size(
+        &self,
+        interface: &mut XtensaCommunicationInterface,
+    ) -> Result<Option<usize>, crate::Error> {
+        self.inner.detect_flash_size_xtensa(interface)
     }
 }

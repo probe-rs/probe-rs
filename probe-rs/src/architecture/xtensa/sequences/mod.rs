@@ -17,6 +17,14 @@ pub trait XtensaDebugSequence: Send + Sync + Debug {
     ) -> Result<(), crate::Error> {
         Ok(())
     }
+
+    /// Detects the flash size of the target.
+    fn detect_flash_size(
+        &self,
+        _interface: &mut XtensaCommunicationInterface,
+    ) -> Result<Option<usize>, crate::Error> {
+        Ok(None)
+    }
 }
 
 /// The default sequences that is used for Xtensa chips that do not specify a specific sequence.
