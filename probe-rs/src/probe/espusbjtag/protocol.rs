@@ -267,6 +267,19 @@ impl ProtocolHandler {
             ));
         }
 
+        let req_type = request_type(
+            rusb::Direction::Out,
+            rusb::RequestType::Class,
+            rusb::Recipient::Device,
+        );
+
+        let request = 0x22; // SET_CONTROL_LINE_STATE
+        let value = 0x3; // RTS and DTR
+        let index = 0; // Interface number
+        let buf = []; // No data for this request
+
+        device_handle.write_control(req_type, request, value, index, &buf, USB_TIMEOUT)?;
+
         let mut buffer = [0; 255];
         device_handle.read_control(
             request_type(
