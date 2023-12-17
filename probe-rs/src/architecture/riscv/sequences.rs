@@ -13,6 +13,10 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
         Ok(())
     }
 
+    fn reset(&self, _interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
+        Ok(())
+    }
+
     /// Detects the flash size of the target.
     fn detect_flash_size(
         &self,

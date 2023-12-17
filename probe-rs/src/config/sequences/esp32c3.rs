@@ -65,4 +65,13 @@ impl RiscvDebugSequence for ESP32C3 {
     ) -> Result<Option<usize>, crate::Error> {
         self.inner.detect_flash_size_riscv(interface)
     }
+
+    fn reset(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
+        tracing::info!("SoC Reset...");
+        // trigger a full SoC reset which resets all domains execept the RTC domain
+        interface.write_word_32(0x60008000, 0x9c00a000)?;
+        interface.write_word_32(0x6001F068, 0)?;
+        Ok(())
+    }
+    
 }

@@ -716,6 +716,10 @@ impl<'probe> Core<'probe> {
         self.inner.reset_catch_clear()
     }
 
+    pub(crate) fn reset_catch_set(&mut self) -> Result<(), Error> {
+        self.inner.reset_catch_set()
+    }
+
     pub(crate) fn debug_core_stop(&mut self) -> Result<(), Error> {
         self.inner.debug_core_stop()
     }
@@ -880,7 +884,7 @@ impl<'probe> CoreInterface for Core<'probe> {
     }
 
     fn reset_catch_set(&mut self) -> Result<(), Error> {
-        todo!()
+        self.reset_catch_set()
     }
 
     fn reset_catch_clear(&mut self) -> Result<(), Error> {
