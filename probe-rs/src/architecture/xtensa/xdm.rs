@@ -7,7 +7,10 @@ use crate::{
         arm::ap::DRW,
         xtensa::arch::instruction::{self, Instruction, InstructionEncoding},
     },
-    probe::{JTAGAccess, JtagWriteCommand},
+    probe::{
+        CommandResult, DeferredResultIndex, DeferredResultSet, JTAGAccess, JtagCommandQueue,
+        JtagWriteCommand,
+    },
     DebugProbeError,
 };
 
@@ -49,6 +52,10 @@ impl TapInstruction {
             TapInstruction::PowerControl => 8,
             TapInstruction::PowerStatus => 8,
         }
+    }
+
+    fn capture_to_u8(self, capture: &[u8]) -> u8 {
+        capture[0]
     }
 
     fn capture_to_u32(self, capture: &[u8]) -> u32 {
@@ -127,12 +134,13 @@ pub enum Error {
 pub struct Xdm {
     pub probe: Box<dyn JTAGAccess>,
 
-    queued_commands: Vec<JtagWriteCommand>,
-
     device_id: u32,
     idle_cycles: u8,
 
     last_instruction: Option<Instruction>,
+
+    queue: JtagCommandQueue,
+    result: DeferredResultSet,
 }
 
 impl Xdm {
@@ -144,10 +152,12 @@ impl Xdm {
 
         let mut x = Self {
             probe,
-            queued_commands: Vec::new(),
             device_id: 0,
             idle_cycles: 0,
             last_instruction: None,
+
+            queue: JtagCommandQueue::new(),
+            result: DeferredResultSet::new(),
         };
 
         if let Err(e) = x.init() {
@@ -241,35 +251,130 @@ impl Xdm {
         Ok(instr.capture_to_u32(&capture))
     }
 
+    fn execute(&mut self) -> Result<(), XtensaError> {
+        let queue = std::mem::take(&mut self.queue);
+        match self.probe.write_register_batch(&queue) {
+            Ok(result) => self.result = result,
+            Err(err) => match err.error {
+                crate::Error::Probe(error) => return Err(error.into()),
+                crate::Error::Xtensa(error) => return Err(error),
+                other => panic!("Unexpected error: {other}"),
+            },
+        }
+
+        Ok(())
+    }
+
     /// Perform an access to a register
     fn dbg_read(&mut self, address: u8) -> Result<u32, XtensaError> {
-        let regdata = address << 1;
+        let reader = self.schedule_dbg_read(address);
 
-        self.tap_write(TapInstruction::Nar, regdata as u32);
-        let res = self.tap_read(TapInstruction::Ndr);
+        self.execute()?;
+
+        let res = self.result.take(reader).unwrap().as_u32();
 
         tracing::trace!("dbg_read response: {:?}", res);
 
-        Ok(res?)
+        Ok(res)
     }
 
     /// Perform an access to a register
-    fn dbg_write(&mut self, address: u8, value: u32) -> Result<u32, XtensaError> {
+    fn dbg_write(&mut self, address: u8, value: u32) -> Result<(), XtensaError> {
+        self.schedule_dbg_write(address, value);
+
+        self.execute()?;
+
+        Ok(())
+    }
+
+    /// Perform an access to a register
+    fn schedule_dbg_read(&mut self, address: u8) -> DeferredResultIndex {
+        let regdata = address << 1;
+
+        self.queue.schedule(JtagWriteCommand {
+            address: TapInstruction::Nar.code(),
+            data: regdata.to_le_bytes().to_vec(),
+            len: TapInstruction::Nar.bits(),
+            transform: |capture| {
+                Ok(CommandResult::U8(
+                    TapInstruction::Nar.capture_to_u8(&capture),
+                ))
+            },
+        });
+
+        self.queue.schedule(JtagWriteCommand {
+            address: TapInstruction::Ndr.code(),
+            data: vec![0; 4],
+            len: TapInstruction::Ndr.bits(),
+            transform: |capture| {
+                Ok(CommandResult::U32(
+                    TapInstruction::Ndr.capture_to_u32(&capture),
+                ))
+            },
+        })
+    }
+
+    /// Perform an access to a register
+    fn schedule_dbg_write(&mut self, address: u8, value: u32) -> DeferredResultIndex {
         let regdata = (address << 1) | 1;
 
-        self.tap_write(TapInstruction::Nar, regdata as u32);
-        let res = self.tap_write(TapInstruction::Ndr, value);
+        self.queue.schedule(JtagWriteCommand {
+            address: TapInstruction::Nar.code(),
+            data: regdata.to_le_bytes().to_vec(),
+            len: TapInstruction::Nar.bits(),
+            transform: |capture| {
+                Ok(CommandResult::U8(
+                    TapInstruction::Nar.capture_to_u8(&capture),
+                ))
+            },
+        });
 
-        tracing::trace!("dbg_write response: {:?}", res);
+        self.queue.schedule(JtagWriteCommand {
+            address: TapInstruction::Ndr.code(),
+            data: value.to_le_bytes().to_vec(),
+            len: TapInstruction::Ndr.bits(),
+            transform: |capture| {
+                Ok(CommandResult::U32(
+                    TapInstruction::Ndr.capture_to_u32(&capture),
+                ))
+            },
+        })
+    }
 
-        Ok(res?)
+    fn schedule_read_dbg_status(&mut self) -> DeferredResultIndex {
+        let status = self.queue.schedule(JtagWriteCommand {
+            address: TapInstruction::Nar.code(),
+            data: vec![0; 1],
+            len: TapInstruction::Nar.bits(),
+            transform: |capture| {
+                Ok(CommandResult::U8(
+                    TapInstruction::Nar.capture_to_u8(&capture),
+                ))
+            },
+        });
+
+        self.queue.schedule(JtagWriteCommand {
+            address: TapInstruction::Ndr.code(),
+            data: vec![0; 4],
+            len: TapInstruction::Ndr.bits(),
+            transform: |capture| {
+                Ok(CommandResult::U32(
+                    TapInstruction::Ndr.capture_to_u32(&capture),
+                ))
+            },
+        });
+
+        status
     }
 
     fn dbg_status(&mut self) -> Result<DebugRegisterStatus, XtensaError> {
-        let status = self.tap_read(TapInstruction::Nar);
-        self.tap_read(TapInstruction::Ndr)?;
+        let reader = self.schedule_read_dbg_status();
 
-        Ok(parse_register_status(status? as u8)?)
+        self.execute()?;
+
+        let res = self.result.take(reader).unwrap().as_u8();
+
+        Ok(parse_register_status(res)?)
     }
 
     fn pwr_write(&mut self, dev: PowerDevice, value: u8) -> Result<u8, XtensaError> {
@@ -288,11 +393,11 @@ impl Xdm {
 
     fn read_nexus_register<R: NexusRegister>(&mut self) -> Result<R, XtensaError> {
         tracing::debug!("Reading from {}", R::NAME);
-        let bits = self.dbg_read(R::ADDRESS)?;
+        let bits_reader = self.schedule_dbg_read(R::ADDRESS);
 
-        // TODO: this is inefficient - we should queue up the reads and then read them all at once
         self.dbg_status()?;
 
+        let bits = self.result.take(bits_reader).unwrap().as_u32();
         let reg = R::from_bits(bits)?;
         tracing::debug!("Read: {:?}", reg);
         Ok(reg)
@@ -300,9 +405,7 @@ impl Xdm {
 
     fn write_nexus_register<R: NexusRegister>(&mut self, register: R) -> Result<(), XtensaError> {
         tracing::debug!("Writing {}: {:08x}", R::NAME, register.bits());
-        self.dbg_write(R::ADDRESS, register.bits())?;
-
-        // TODO: we should queue the first status read
+        self.schedule_dbg_write(R::ADDRESS, register.bits());
 
         // TODO: timeout
         while self.dbg_status()? == DebugRegisterStatus::Busy {
