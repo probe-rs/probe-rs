@@ -1008,7 +1008,7 @@ impl RiscvCommunicationInterface {
     }
 
     /// Memory write using system bus
-    fn perform_memory_write_sysbus<V: RiscvValue>(
+    pub (crate) fn perform_memory_write_sysbus<V: RiscvValue>(
         &mut self,
         address: u32,
         data: &[V],
