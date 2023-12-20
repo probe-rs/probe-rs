@@ -950,6 +950,13 @@ impl CommandResult {
             _ => panic!("CommandResult is not a u32"),
         }
     }
+
+    pub fn as_u8(&self) -> u8 {
+        match self {
+            CommandResult::U8(val) => *val,
+            _ => panic!("CommandResult is not a u8"),
+        }
+    }
 }
 
 /// A set of batched commands that will be executed all at once.
