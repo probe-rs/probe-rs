@@ -1,9 +1,7 @@
 use std::collections::HashMap;
-use std::fs::File;
 use std::path::Path;
 use std::time::Duration;
 
-use anyhow::Context;
 use itm::TracePacket;
 use probe_rs::{
     architecture::arm::{
@@ -11,7 +9,6 @@ use probe_rs::{
         memory::PeripheralType,
         DpAddress, SwoConfig,
     },
-    flashing::{FileDownloadError, Format},
     Lister,
 };
 use time::Instant;
@@ -22,7 +19,7 @@ use addr2line::{
     Context as ObjectContext, LookupResult,
 };
 
-use crate::util::flash::run_flash_download;
+use crate::util::flash::{build_loader, run_flash_download};
 use tracing::info;
 
 #[derive(clap::Parser)]
@@ -76,21 +73,7 @@ impl ProfileCmd {
     pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
         let (mut session, probe_options) = self.run.probe_options.simple_attach(lister)?;
 
-        let mut file = match File::open(&self.run.path) {
-            Ok(file) => file,
-            Err(e) => return Err(FileDownloadError::IO(e)).context("Failed to open binary file."),
-        };
-
-        let mut loader = session.target().flash_loader();
-
-        let format = self.run.format_options.into_format(session.target())?;
-        match format {
-            Format::Bin(options) => loader.load_bin_data(&mut file, options),
-            Format::Elf => loader.load_elf_data(&mut file),
-            Format::Hex => loader.load_hex_data(&mut file),
-            Format::Idf(options) => loader.load_idf_data(&mut session, &mut file, options),
-            Format::Uf2 => loader.load_uf2_data(&mut file),
-        }?;
+        let loader = build_loader(&mut session, &self.run.path, self.run.format_options)?;
 
         let bytes = std::fs::read(&self.run.path)?;
         let symbols = Symbols::try_from(&bytes)?;
