@@ -3,24 +3,27 @@ use super::{
     session_data::SessionData,
     startup::{get_file_timestamp, TargetSessionType},
 };
-use crate::cmd::dap_server::{
-    debug_adapter::{
-        dap::{
-            adapter::{get_arguments, DebugAdapter},
-            dap_types::{
-                Capabilities, Event, ExitedEventBody, InitializeRequestArguments, MessageSeverity,
-                Request, RttWindowOpenedArguments, TerminatedEventBody,
+use crate::{
+    cmd::dap_server::{
+        debug_adapter::{
+            dap::{
+                adapter::{get_arguments, DebugAdapter},
+                dap_types::{
+                    Capabilities, Event, ExitedEventBody, InitializeRequestArguments,
+                    MessageSeverity, Request, RttWindowOpenedArguments, TerminatedEventBody,
+                },
+                request_helpers::halt_core,
             },
-            request_helpers::halt_core,
+            protocol::ProtocolAdapter,
         },
-        protocol::ProtocolAdapter,
+        peripherals::svd_variables::SvdCache,
+        DebuggerError,
     },
-    peripherals::svd_variables::SvdCache,
-    DebuggerError,
+    util::flash::build_loader,
 };
 use anyhow::{anyhow, Context};
 use probe_rs::{
-    flashing::{download_file_with_options, DownloadOptions, FlashProgress},
+    flashing::{DownloadOptions, FileDownloadError, FlashProgress},
     Architecture, CoreStatus, Lister,
 };
 use std::{
@@ -728,19 +731,16 @@ impl Debugger {
         });
 
         download_options.progress = flash_progress;
-        let format = self
-            .config
-            .flashing_config
-            .format_options
-            .clone()
-            .into_format(session_data.session.target())?;
 
-        let flash_result = download_file_with_options(
+        let loader = build_loader(
             &mut session_data.session,
             path_to_elf,
-            format,
-            download_options,
-        );
+            self.config.flashing_config.format_options.clone(),
+        )?;
+
+        let flash_result = loader
+            .commit(&mut session_data.session, download_options)
+            .map_err(FileDownloadError::Flash);
 
         debug_adapter = match Rc::try_unwrap(rc_debug_adapter) {
             Ok(debug_adapter) => debug_adapter.into_inner(),
