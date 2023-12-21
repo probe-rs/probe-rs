@@ -20,7 +20,7 @@ pub(crate) mod serialize;
 
 pub use chip::{
     get_ir_lengths, ArmCoreAccessOptions, BinaryFormat, Chip, Core, CoreAccessOptions,
-    RiscvCoreAccessOptions, ScanChainElement,
+    RiscvCoreAccessOptions, ScanChainElement, XtensaCoreAccessOptions,
 };
 pub use chip_family::{
     Architecture, ChipFamily, CoreType, InstructionSet, TargetDescriptionSource,

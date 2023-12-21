@@ -198,6 +198,7 @@ impl DebugCli {
                             capstone::arch::riscv::ArchExtraMode::RiscVC,
                         ))
                         .build(),
+                    InstructionSet::Xtensa => Err(capstone::Error::UnsupportedArch),
                 }
                 .map_err(|err| anyhow!("Error creating capstone: {:?}", err))?;
 
