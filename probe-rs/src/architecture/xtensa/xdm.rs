@@ -114,8 +114,8 @@ fn parse_register_status(byte: u8) -> Result<DebugRegisterStatus, DebugRegisterE
 
 #[derive(thiserror::Error, Debug, Clone, Copy)]
 pub enum Error {
-    #[error("Error while accessing register: {0}")]
-    Xdm(DebugRegisterError),
+    #[error("Error while accessing register")]
+    Xdm(#[from] DebugRegisterError),
 
     #[error("ExecExeception")]
     ExecExeception,
@@ -616,24 +616,6 @@ impl Xdm {
 
     pub(super) fn free(self) -> Box<dyn JTAGAccess> {
         self.probe
-    }
-}
-
-impl From<XtensaError> for crate::Error {
-    fn from(err: XtensaError) -> Self {
-        crate::Error::Xtensa(err)
-    }
-}
-
-impl From<Error> for XtensaError {
-    fn from(e: Error) -> Self {
-        XtensaError::XdmError(e)
-    }
-}
-
-impl From<DebugRegisterError> for Error {
-    fn from(e: DebugRegisterError) -> Self {
-        Error::Xdm(e)
     }
 }
 
