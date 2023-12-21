@@ -170,7 +170,7 @@ pub fn run_flash_download(
 /// flashed etc.
 pub fn build_loader(
     session: &mut Session,
-    path: &Path,
+    path: impl AsRef<Path>,
     format_options: FormatOptions,
 ) -> anyhow::Result<FlashLoader> {
     // Create the flash loader
