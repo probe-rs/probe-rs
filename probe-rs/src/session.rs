@@ -2,6 +2,9 @@ use crate::architecture::arm::component::get_arm_components;
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
 use crate::architecture::arm::{ArmError, DpAddress};
 use crate::architecture::riscv::communication_interface::RiscvError;
+use crate::architecture::xtensa::communication_interface::{
+    XtensaCommunicationInterface, XtensaError,
+};
 use crate::config::{ChipInfo, CoreExt, RegistryError, Target, TargetSelector};
 use crate::core::{Architecture, CombinedCoreState};
 use crate::probe::fake_probe::FakeProbe;
@@ -48,25 +51,30 @@ pub struct Session {
 pub(crate) enum ArchitectureInterface {
     Arm(Box<dyn ArmProbeInterface + 'static>),
     Riscv(Box<RiscvCommunicationInterface>),
+    Xtensa(Box<XtensaCommunicationInterface>),
 }
 
 impl fmt::Debug for ArchitectureInterface {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            ArchitectureInterface::Arm(..) => f.write_str("ArchitectureInterface::Arm(..)"),
+            ArchitectureInterface::Arm(_) => f.write_str("ArchitectureInterface::Arm(..)"),
             ArchitectureInterface::Riscv(iface) => f
                 .debug_tuple("ArchitectureInterface::Riscv")
                 .field(iface)
                 .finish(),
+            ArchitectureInterface::Xtensa(_) => {
+                f.debug_tuple("ArchitectureInterface::Xtensa(..)").finish()
+            }
         }
     }
 }
 
-impl From<ArchitectureInterface> for Architecture {
-    fn from(value: ArchitectureInterface) -> Self {
+impl From<&ArchitectureInterface> for Architecture {
+    fn from(value: &ArchitectureInterface) -> Self {
         match value {
             ArchitectureInterface::Arm(_) => Architecture::Arm,
             ArchitectureInterface::Riscv(_) => Architecture::Riscv,
+            ArchitectureInterface::Xtensa(_) => Architecture::Xtensa,
         }
     }
 }
@@ -77,10 +85,9 @@ impl ArchitectureInterface {
         combined_state: &'probe mut CombinedCoreState,
     ) -> Result<Core<'probe>, Error> {
         match self {
-            ArchitectureInterface::Arm(arm_interface) => combined_state.attach_arm(arm_interface),
-            ArchitectureInterface::Riscv(riscv_interface) => {
-                combined_state.attach_riscv(riscv_interface)
-            }
+            ArchitectureInterface::Arm(iface) => combined_state.attach_arm(iface),
+            ArchitectureInterface::Riscv(iface) => combined_state.attach_riscv(iface),
+            ArchitectureInterface::Xtensa(iface) => combined_state.attach_xtensa(iface),
         }
     }
 }
@@ -116,6 +123,9 @@ impl Session {
             Architecture::Riscv => {
                 Self::attach_riscv(probe, target, attach_method, permissions, cores)?
             }
+            Architecture::Xtensa => {
+                Self::attach_xtensa(probe, target, attach_method, permissions, cores)?
+            }
         };
 
         session.clear_all_hw_breakpoints()?;
@@ -140,9 +150,7 @@ impl Session {
 
         let sequence_handle = match &target.debug_sequence {
             DebugSequence::Arm(sequence) => sequence.clone(),
-            DebugSequence::Riscv(_) => {
-                panic!("Mismatch between architecture and sequence type!")
-            }
+            _ => unreachable!("Mismatch between architecture and sequence type!"),
         };
 
         if AttachMethod::UnderReset == attach_method {
@@ -258,9 +266,7 @@ impl Session {
 
         let sequence_handle = match &target.debug_sequence {
             DebugSequence::Riscv(sequence) => sequence.clone(),
-            DebugSequence::Arm(_) => {
-                panic!("Mismatch between architecture and sequence type!")
-            }
+            _ => unreachable!("Mismatch between architecture and sequence type!"),
         };
 
         if let Some(scan_chain) = target.scan_chain.clone() {
@@ -288,6 +294,47 @@ impl Session {
         }
 
         sequence_handle.on_connect(session.get_riscv_interface()?)?;
+
+        Ok(session)
+    }
+
+    fn attach_xtensa(
+        mut probe: Probe,
+        target: Target,
+        _attach_method: AttachMethod,
+        _permissions: Permissions,
+        cores: Vec<CombinedCoreState>,
+    ) -> Result<Self, Error> {
+        let sequence_handle = match &target.debug_sequence {
+            DebugSequence::Xtensa(sequence) => sequence.clone(),
+            _ => unreachable!("Mismatch between architecture and sequence type!"),
+        };
+
+        if let Some(scan_chain) = target.scan_chain.clone() {
+            probe.set_scan_chain(scan_chain)?;
+        }
+
+        probe.attach_to_unspecified()?;
+
+        let interface = probe
+            .try_into_xtensa_interface()
+            .map_err(|(_probe, err)| err)?;
+
+        let mut session = Session {
+            target,
+            interface: ArchitectureInterface::Xtensa(Box::new(interface)),
+            cores,
+            configured_trace_sink: None,
+        };
+
+        {
+            // Todo: Add multicore support. How to deal with any cores that are not active and won't respond?
+            let mut core = session.core(0)?;
+
+            core.halt(Duration::from_millis(100))?;
+        }
+
+        sequence_handle.on_connect(session.get_xtensa_interface()?)?;
 
         Ok(session)
     }
@@ -404,6 +451,18 @@ impl Session {
         Ok(interface)
     }
 
+    /// Get the Xtensa probe interface.
+    pub fn get_xtensa_interface(
+        &mut self,
+    ) -> Result<&mut XtensaCommunicationInterface, XtensaError> {
+        let interface = match &mut self.interface {
+            ArchitectureInterface::Xtensa(interface) => interface,
+            _ => return Err(XtensaError::NoXtensaTarget),
+        };
+
+        Ok(interface)
+    }
+
     #[tracing::instrument(skip_all)]
     fn reattach_arm_interface(
         interface: &mut Box<dyn ArmProbeInterface>,
@@ -443,7 +502,8 @@ impl Session {
     pub fn has_sequence_erase_all(&self) -> bool {
         match &self.target.debug_sequence {
             DebugSequence::Arm(seq) => seq.debug_erase_sequence().is_some(),
-            DebugSequence::Riscv(_) => false,
+            // Currently, debug_erase_sequence is ARM (and ATSAM) specific
+            _ => false,
         }
     }
 
@@ -456,20 +516,14 @@ impl Session {
     /// NotImplemented if no custom erase sequence exists
     /// Err(e) if the custom erase sequence failed
     pub fn sequence_erase_all(&mut self) -> Result<(), Error> {
-        let interface = match &mut self.interface {
-            ArchitectureInterface::Arm(interface) => interface,
-            ArchitectureInterface::Riscv(_) => {
-                return Err(Error::Probe(crate::DebugProbeError::NotImplemented(
-                    "Debug Erase Sequence",
-                )))
-            }
+        let ArchitectureInterface::Arm(ref mut interface) = self.interface else {
+            return Err(Error::Probe(crate::DebugProbeError::NotImplemented(
+                "Debug Erase Sequence",
+            )));
         };
 
-        let debug_sequence = match &self.target.debug_sequence {
-            DebugSequence::Arm(seq) => seq.clone(),
-            DebugSequence::Riscv(_) => {
-                unreachable!("This should never happen. Please file a bug if it does.")
-            }
+        let DebugSequence::Arm(ref debug_sequence) = self.target.debug_sequence else {
+            unreachable!("This should never happen. Please file a bug if it does.");
         };
 
         let Some(erase_sequence) = debug_sequence.debug_erase_sequence() else {
@@ -485,7 +539,7 @@ impl Session {
             Ok(()) => (),
             // In case this happens after unlock. Try to re-attach the probe once.
             Err(ArmError::ReAttachRequired) => {
-                Self::reattach_arm_interface(interface, &debug_sequence)?;
+                Self::reattach_arm_interface(interface, debug_sequence)?;
                 // For re-setup debugging on all cores
                 for core_state in &self.cores {
                     core_state.enable_arm_debug(interface.deref_mut())?;
@@ -529,9 +583,7 @@ impl Session {
 
         let sequence_handle = match &self.target.debug_sequence {
             DebugSequence::Arm(sequence) => sequence.clone(),
-            DebugSequence::Riscv(_) => {
-                panic!("Mismatch between architecture and sequence type!")
-            }
+            _ => unreachable!("Mismatch between architecture and sequence type!"),
         };
 
         let components = self.get_arm_components(DpAddress::Default)?;
@@ -584,10 +636,7 @@ impl Session {
 
     /// Return the `Architecture` of the currently connected chip.
     pub fn architecture(&self) -> Architecture {
-        match self.interface {
-            ArchitectureInterface::Arm(_) => Architecture::Arm,
-            ArchitectureInterface::Riscv(_) => Architecture::Riscv,
-        }
+        Architecture::from(&self.interface)
     }
 
     /// Clears all hardware breakpoints on all cores

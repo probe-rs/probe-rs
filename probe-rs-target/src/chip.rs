@@ -113,10 +113,12 @@ pub struct Core {
 /// The data required to access a core
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CoreAccessOptions {
-    /// Arm specific options
+    /// ARM specific options
     Arm(ArmCoreAccessOptions),
-    /// Riscv specific options
+    /// RISC-V specific options
     Riscv(RiscvCoreAccessOptions),
+    /// Xtensa specific options
+    Xtensa(XtensaCoreAccessOptions),
 }
 
 /// The data required to access an ARM core
@@ -139,6 +141,10 @@ pub struct ArmCoreAccessOptions {
 /// The data required to access a Risc-V core
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RiscvCoreAccessOptions {}
+
+/// The data required to access an Xtensa core
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct XtensaCoreAccessOptions {}
 
 /// Helper function that interates the scan chain and returns a vector of all of
 /// the ir_lengths of the scan chain elements.

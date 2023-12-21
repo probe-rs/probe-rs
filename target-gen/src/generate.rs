@@ -10,7 +10,9 @@ use probe_rs::{
     flashing::FlashAlgorithm,
     Architecture, CoreType,
 };
-use probe_rs_target::{ArmCoreAccessOptions, CoreAccessOptions, RiscvCoreAccessOptions};
+use probe_rs_target::{
+    ArmCoreAccessOptions, CoreAccessOptions, RiscvCoreAccessOptions, XtensaCoreAccessOptions,
+};
 use std::{
     fs::{self},
     io::Read,
@@ -186,6 +188,7 @@ fn create_core(processor: &Processor) -> Result<ProbeCore> {
                 cti_base: None,
             }),
             Architecture::Riscv => CoreAccessOptions::Riscv(RiscvCoreAccessOptions {}),
+            Architecture::Xtensa => CoreAccessOptions::Xtensa(XtensaCoreAccessOptions {}),
         },
     })
 }
