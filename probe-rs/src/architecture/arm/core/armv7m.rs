@@ -777,7 +777,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
             self.memory.flush()?;
         }
 
-        // Exit halt state ..
+        // Exit halt state...
         dhcsr.set_c_step(false);
         dhcsr.set_c_halt(false);
         dhcsr.enable_write();
@@ -927,7 +927,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         { 0..num_hw_breakpoints }.try_for_each(|bp_unit_index| {
             let raw_val = self.memory.read_word_32(FpCtrl::get_mmio_address())?;
             let ctrl_reg = FpCtrl::from(raw_val);
-            // FpRev1 and FpRev2 needs different decoding of the register value, but the location where we read from is the same ...
+            // FpRev1 and FpRev2 needs different decoding of the register value, but the location where we read from is the same...
             let reg_addr = FpRev1CompX::get_mmio_address() + (bp_unit_index * size_of::<u32>()) as u64;
             // The raw breakpoint address as read from memory.
             let register_value = self.memory.read_word_32(reg_addr)?;

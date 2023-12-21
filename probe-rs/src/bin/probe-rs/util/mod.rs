@@ -31,7 +31,7 @@ pub enum ArtifactError {
     },
     #[error("An IO error occurred during the execution of 'cargo build'.")]
     Io(#[source] std::io::Error),
-    #[error("Failed to run cargo build: exit code = {0:?}.")]
+    #[error("Failed to run cargo build: exit code = {0:?}")]
     CargoBuild(Option<i32>),
     #[error("Multiple binary artifacts were found.")]
     MultipleArtifacts,

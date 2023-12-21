@@ -1881,7 +1881,7 @@ fn provide_register(
         }
         None => {
             return Err(DebugError::UnwindIncompleteResults {
-                    message: format!("Error while calculating `Variable::memory_location`. No value for register #:{}.",
+                    message: format!("Error while calculating `Variable::memory_location`. No value for register #: {}.",
                     register.0
                 )});
         }
@@ -1906,7 +1906,7 @@ fn provide_frame_base(
         Ok(evaluation_result) => evaluation_result,
         Err(error) => {
             return Err(DebugError::UnwindIncompleteResults {
-                message: format!("Error while calculating `Variable::memory_location`:{error}."),
+                message: format!("Error while calculating `Variable::memory_location`: {error}"),
             })
         }
     })

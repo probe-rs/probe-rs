@@ -10,16 +10,16 @@ use crate::DebugProbeError;
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     /// An error in the probe driver occurred.
-    #[error("An error with the usage of the probe occurred")]
+    #[error("An error with the usage of the probe occurred: {0}")]
     Probe(#[from] DebugProbeError),
     /// An ARM specific error occurred.
-    #[error("An ARM specific error occurred.")]
+    #[error("An ARM specific error occurred: {0}")]
     Arm(#[source] ArmError),
     /// A RISC-V specific error occurred.
-    #[error("A RISC-V specific error occurred.")]
+    #[error("A RISC-V specific error occurred: {0}")]
     Riscv(#[source] RiscvError),
     /// An Xtensa specific error occurred.
-    #[error("An Xtensa specific error occurred.")]
+    #[error("An Xtensa specific error occurred: {0}")]
     Xtensa(#[source] XtensaError),
     /// The probe could not be opened.
     #[error("Probe could not be opened: {0}")]
@@ -28,7 +28,7 @@ pub enum Error {
     #[error("Core {0} does not exist")]
     CoreNotFound(usize),
     /// The given chip does not exist.
-    #[error("Unable to load specification for chip")]
+    #[error("Unable to load specification for chip: {0}")]
     ChipNotFound(#[from] RegistryError),
     /// An operation was not performed because the required permissions were not given.
     ///
@@ -37,9 +37,9 @@ pub enum Error {
     #[error("An operation could not be performed because it lacked the permission to do so: {0}")]
     MissingPermissions(String),
     /// An error that is not architecture specific occurred.
-    #[error("A generic core (not architecture specific) error occurred.")]
+    #[error("A generic core (not architecture specific) error occurred: {0}")]
     GenericCoreError(String),
-    /// Errors related to the handling of core registers inside probe-rs .
+    /// Errors related to the handling of core registers inside probe-rs.
     #[error("Register error: {0}")]
     Register(String),
     /// The variant of the function you called is not yet implemented.

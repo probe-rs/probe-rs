@@ -1,8 +1,7 @@
 //! Debug Module Communication
 //!
-//! This module implements communication with a
-//! Debug Module, as described in the RISC-V debug
-//! specification v0.13.2 .
+//! This module implements communication with a Debug Module, as described in the RISC-V debug
+//! specification v0.13.2.
 
 use super::{
     dtm::{DmiOperation, DmiOperationStatus, Dtm},
@@ -28,7 +27,7 @@ pub enum RiscvError {
     #[error("Error during read/write to the DMI register: {0:?}")]
     DmiTransfer(DmiOperationStatus),
     /// An error with operating the debug probe occurred.
-    #[error("Debug Probe Error")]
+    #[error("Debug Probe Error: {0}")]
     DebugProbe(#[from] DebugProbeError),
     /// A timeout occurred during JTAG register access.
     #[error("Timeout during JTAG register access.")]

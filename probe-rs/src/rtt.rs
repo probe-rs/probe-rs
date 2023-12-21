@@ -75,7 +75,7 @@ use std::ops::Range;
 ///
 /// 2. **Scenario: Failure to detect RTT Control Block** The target has been configured correctly, BUT the host creates this interface BEFORE
 /// the target program has initialized RTT.
-///     * This most commonly occurs when the target halts processing before initializing RTT. For example, this could happen ...
+///     * This most commonly occurs when the target halts processing before initializing RTT. For example, this could happen...
 ///         * During debugging, if the user sets a breakpoint in the code before the RTT initialization.
 ///         * After flashing, if the user has configured `probe-rs` to `reset_after_flashing` AND `halt_after_reset`. On most targets, this
 /// will result in the target halting with reason `Exception` and will delay the subsequent RTT initialization.

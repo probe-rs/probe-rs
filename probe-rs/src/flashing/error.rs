@@ -7,7 +7,7 @@ use std::ops::Range;
 pub enum FlashError {
     /// No flash memory contains the entire requested memory range.
     #[error(
-        "No flash memory contains the entire requested memory range {start:#010x}..{end:#010x}."
+        "No flash memory contains the entire requested memory range {start:#010x}..{end:#010x}"
     )]
     NoSuitableNvm {
         /// The start of the requested memory range.
@@ -24,7 +24,7 @@ pub enum FlashError {
         source: Box<dyn std::error::Error + 'static + Send + Sync>,
     },
     /// Erasing the given flash sector failed.
-    #[error("Failed to erase flash sector at address {sector_address:#010x}.")]
+    #[error("Failed to erase flash sector at address {sector_address:#010x}")]
     EraseFailed {
         /// The address of the sector that should have been erased.
         sector_address: u64,
@@ -59,7 +59,7 @@ pub enum FlashError {
         error_code: u32,
     },
     /// The core entered an unexpected status while executing a flashing operation.
-    #[error("The core entered an unexpected status: {status:?}.")]
+    #[error("The core entered an unexpected status: {status:?}")]
     UnexpectedCoreStatus {
         /// The status that the core entered.
         status: crate::CoreStatus,
@@ -100,19 +100,19 @@ pub enum FlashError {
     // TODO: 1 Add information about flash (name, address)
     // TODO: 2 Add source of target definition (built-in, yaml)
     /// No flash algorithm was linked to this target.
-    #[error("Trying to write flash, but no suitable (default) flash loader algorithm is linked to the given target: {name} .")]
+    #[error("Trying to write flash, but no suitable (default) flash loader algorithm is linked to the given target: {name}")]
     NoFlashLoaderAlgorithmAttached {
         /// The name of the chip.
         name: String,
     },
     /// More than one matching flash algorithm was found for the given memory range and all of them is marked as default.
-    #[error("Trying to write flash, but found more than one suitable flash loader algorithim marked as default for {region:?}.")]
+    #[error("Trying to write flash, but found more than one suitable flash loader algorithim marked as default for {region:?}")]
     MultipleDefaultFlashLoaderAlgorithms {
         /// The region which matched more than one flash algorithm.
         region: NvmRegion,
     },
     /// More than one matching flash algorithm was found for the given memory range and none of them is marked as default.
-    #[error("Trying to write flash, but found more than one suitable flash algorithims but none marked as default for {region:?}.")]
+    #[error("Trying to write flash, but found more than one suitable flash algorithims but none marked as default for {region:?}")]
     MultipleFlashLoaderAlgorithmsNoDefault {
         /// The region which matched more than one flash algorithm.
         region: NvmRegion,
@@ -141,7 +141,7 @@ pub enum FlashError {
     /// Two blocks of data overlap each other which means the loaded binary is broken.
     ///
     /// Please check your data and try again.
-    #[error("Adding data for addresses {added_addresses:08X?} overlaps previously added data for addresses {existing_addresses:08X?}.")]
+    #[error("Adding data for addresses {added_addresses:08X?} overlaps previously added data for addresses {existing_addresses:08X?}")]
     DataOverlaps {
         /// The address range that was tried to be added.
         added_addresses: Range<u64>,
@@ -149,10 +149,10 @@ pub enum FlashError {
         existing_addresses: Range<u64>,
     },
     /// No core can access this NVM region.
-    #[error("No core can access the NVM region {0:?}.")]
+    #[error("No core can access the NVM region {0:?}")]
     NoNvmCoreAccess(NvmRegion),
     /// No core can access this RAM region.
-    #[error("No core can access the ram region {0:?}.")]
+    #[error("No core can access the ram region {0:?}")]
     NoRamCoreAccess(RamRegion),
     /// The register value supplied for this flash algorithm is out of the supported range.
     #[error("The register value {0:08X?} is out of the supported range.")]

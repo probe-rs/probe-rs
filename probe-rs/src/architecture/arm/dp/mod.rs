@@ -23,11 +23,13 @@ pub enum DebugPortError {
         /// The version of the operated debug port.
         version: DebugPortVersion,
     },
+
     /// Error parsing a register value.
-    #[error("Error parsing register value.")]
+    #[error("Error parsing register value: {0}")]
     RegisterParse(#[from] RegisterParseError),
+
     /// An error with operating the debug probe occurred.
-    #[error("A Debug Probe Error occurred")]
+    #[error("A Debug Probe Error: {0}")]
     DebugProbe(#[from] DebugProbeError),
 
     /// A timeout occurred.
@@ -43,9 +45,10 @@ pub enum DebugPortError {
     Unsupported(String),
 
     /// An error occurred in the communication with an access port or debug port.
-    #[error("An error occurred in the communication with an access port or debug port.")]
+    #[error("An error occurred in the communication with an access port or debug port: {0}")]
     Dap(#[from] DapError),
 }
+
 /// A typed interface to be implemented on drivers that can control a debug port.
 pub trait DpAccess {
     /// Reads a debug port register.

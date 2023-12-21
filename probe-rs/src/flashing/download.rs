@@ -73,25 +73,25 @@ pub enum FileDownloadError {
     /// An error with the actual flashing procedure has occurred.
     ///
     /// This is mostly an error in the communication with the target inflicted by a bad hardware connection or a probe-rs bug.
-    #[error("Error while flashing")]
+    #[error("Error while flashing: {0}")]
     Flash(#[from] FlashError),
     /// Reading and decoding the IHEX file has failed due to the given error.
-    #[error("Could not read ihex format")]
+    #[error("Could not read ihex format: {0}")]
     IhexRead(#[from] ihex::ReaderError),
     /// An IO error has occurred while reading the firmware file.
-    #[error("I/O error")]
+    #[error("I/O error: {0}")]
     IO(#[from] std::io::Error),
     /// The given error has occurred while reading the object file.
-    #[error("Object Error: {0}.")]
+    #[error("Object Error: {0}")]
     Object(&'static str),
     /// Reading and decoding the given ELF file has resulted in the given error.
-    #[error("Could not read ELF file")]
+    #[error("Could not read ELF file: {0}")]
     Elf(#[from] object::read::Error),
     /// Espflash format error
-    #[error("Failed to format as esp-idf binary")]
+    #[error("Failed to format as esp-idf binary: {0}")]
     Idf(#[from] espflash::error::Error),
     /// The target doesn't support the esp-idf format
-    #[error("Target {0} does not support the esp-idf format")]
+    #[error("Target {0} does not support the esp-idf format.")]
     IdfUnsupported(String),
     /// No loadable segments were found in the ELF file.
     ///

@@ -70,20 +70,24 @@ pub enum DebugError {
     #[error(transparent)]
     IntConversion(#[from] std::num::TryFromIntError),
     /// Errors encountered while determining valid halt locations for breakpoints and stepping.
-    /// These are distinct from other errors because they terminate the current step, and result in a user message, but they do not interrupt the rest of the debug session.
-    #[error("{message}  @program_counter={:#010X}.", pc_at_error)]
+    /// These are distinct from other errors because they terminate the current step, and result in
+    /// a user message, but they do not interrupt the rest of the debug session.
+    #[error("{message}  @program_counter={:#010X}", pc_at_error)]
     NoValidHaltLocation {
         /// A message that can be displayed to the user to help them make an informed recovery choice.
         message: String,
         /// The value of the program counter for which a halt was requested.
         pc_at_error: u64,
     },
-    /// Non-terminal Errors encountered while unwinding the stack, e.g. Could not resolve the value of a variable in the stack.
+    /// Non-terminal Errors encountered while unwinding the stack, e.g. Could not resolve the value
+    /// of a variable in the stack.
     /// These are distinct from other errors because they do not interrupt processing.
-    /// Instead, the cause of incomplete results are reported back/explained to the user, and the stack continues to unwind.
+    /// Instead, the cause of incomplete results are reported back/explained to the user, and the
+    /// stack continues to unwind.
     #[error("{message}")]
     UnwindIncompleteResults {
-        /// A message that can be displayed to the user to help them understand the reason for the incomplete results.
+        /// A message that can be displayed to the user to help them understand the reason for the
+        /// incomplete results.
         message: String,
     },
     /// Some other error occurred.
