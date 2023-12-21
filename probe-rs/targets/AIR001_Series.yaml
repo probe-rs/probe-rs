@@ -51,7 +51,7 @@ flash_algorithms:
     sectors:
     - size: 0x1000
       address: 0x0
-  stack_size: 4096
+  stack_size: 2048
   transfer_encoding: raw
 - name: air001xx_opt
   description: AIR001xx Flash Options
@@ -74,5 +74,5 @@ flash_algorithms:
     sectors:
     - size: 0x10
       address: 0x0
-  stack_size: 4096
+  stack_size: 2048
   transfer_encoding: raw
