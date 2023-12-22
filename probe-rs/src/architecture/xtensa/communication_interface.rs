@@ -13,7 +13,7 @@ use crate::{
         instruction::Instruction, CpuRegister, Register, SpecialRegister,
     },
     probe::JTAGAccess,
-    DebugProbeError, MemoryInterface,
+    DebugProbeError, Error as ProbeRsError, MemoryInterface,
 };
 
 use super::xdm::{Error as XdmError, Xdm};
@@ -22,11 +22,15 @@ use super::xdm::{Error as XdmError, Xdm};
 #[derive(thiserror::Error, Debug)]
 pub enum XtensaError {
     /// An error originating from the DebugProbe
-    #[error("Debug Probe Error: {0}")]
+    #[error("Debug Probe Error")]
     DebugProbe(#[from] DebugProbeError),
     /// Xtensa debug module error
-    #[error("Xtensa debug module error: {0}")]
-    XdmError(XdmError),
+    #[error("Xtensa debug module error")]
+    XdmError(#[from] XdmError),
+    /// A timeout occurred
+    // TODO: maybe we could be a bit more specific
+    #[error("The operation has timed out")]
+    Timeout,
     /// The connected target is not an Xtensa device.
     #[error("Connected target is not an Xtensa device.")]
     NoXtensaTarget,
@@ -40,6 +44,16 @@ impl From<XtensaError> for DebugProbeError {
         match e {
             XtensaError::DebugProbe(err) => err,
             other_error => DebugProbeError::Other(other_error.into()),
+        }
+    }
+}
+
+impl From<XtensaError> for ProbeRsError {
+    fn from(err: XtensaError) -> Self {
+        match err {
+            XtensaError::DebugProbe(e) => e.into(),
+            XtensaError::Timeout => ProbeRsError::Timeout,
+            other => ProbeRsError::Xtensa(other),
         }
     }
 }
@@ -190,7 +204,7 @@ impl XtensaCommunicationInterface {
         let now = Instant::now();
         while !self.is_halted()? {
             if now.elapsed() > timeout {
-                return Err(XtensaError::DebugProbe(DebugProbeError::Timeout));
+                return Err(XtensaError::Timeout);
             }
 
             std::thread::sleep(Duration::from_millis(1));
