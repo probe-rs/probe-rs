@@ -3,7 +3,10 @@
 use std::time::Duration;
 
 use anyhow::Result;
-use probe_rs::{Lister, MemoryInterface, Permissions, Probe};
+use probe_rs::{
+    architecture::xtensa::arch::{instruction::Instruction, CpuRegister, SpecialRegister},
+    Core, Lister, MemoryInterface, Permissions, Probe,
+};
 
 fn main() -> Result<()> {
     pretty_env_logger::init();
@@ -22,46 +25,69 @@ fn main() -> Result<()> {
 
     core.reset_and_halt(Duration::from_millis(500))?;
 
-    const TEST_MEMORY_REGION_START: u64 = 0x600F_E000;
-    const TEST_MEMORY_LEN: usize = 100;
+    // A simple program we can use to step breakpoints and stepping
+    let load_addr: u32 = 0x4037_8000;
+    let mut program = vec![];
 
-    let mut saved_memory = [0; TEST_MEMORY_LEN];
-    core.read_8(TEST_MEMORY_REGION_START, &mut saved_memory[..])?;
+    Instruction::Break(0, 0).encode_into_vec(&mut program);
+    Instruction::Break(0, 0).encode_into_vec(&mut program);
+    Instruction::Rsr(SpecialRegister::DebugCause, CpuRegister::A11).encode_into_vec(&mut program);
+    Instruction::Rsr(SpecialRegister::DebugCause, CpuRegister::A11).encode_into_vec(&mut program);
+    Instruction::Rsr(SpecialRegister::DebugCause, CpuRegister::A11).encode_into_vec(&mut program);
+    Instruction::Rsr(SpecialRegister::DebugCause, CpuRegister::A11).encode_into_vec(&mut program);
+    Instruction::Rsr(SpecialRegister::DebugCause, CpuRegister::A11).encode_into_vec(&mut program);
+    Instruction::Rsr(SpecialRegister::DebugCause, CpuRegister::A11).encode_into_vec(&mut program);
+    Instruction::Rsr(SpecialRegister::DebugCause, CpuRegister::A11).encode_into_vec(&mut program);
+    Instruction::Rsr(SpecialRegister::DebugCause, CpuRegister::A11).encode_into_vec(&mut program);
+    Instruction::Rsr(SpecialRegister::DebugCause, CpuRegister::A11).encode_into_vec(&mut program);
 
-    // Zero the memory
-    core.write_8(TEST_MEMORY_REGION_START, &[0; TEST_MEMORY_LEN])?;
+    // Download code
+    core.write_8(load_addr as u64, &program)?;
 
-    // Write a test word into memory, unaligned
-    core.write_word_32(TEST_MEMORY_REGION_START + 1, 0xDECAFBAD)?;
-    let coffee_opinion = core.read_word_32(TEST_MEMORY_REGION_START + 1)?;
+    tracing::info!("Software breakpoints");
 
-    // Write a test word into memory, aligned
-    core.write_word_32(TEST_MEMORY_REGION_START + 8, 0xFEEDC0DE)?;
-    let aligned_word = core.read_word_32(TEST_MEMORY_REGION_START + 8)?;
+    // Set up processor state
+    core.write_core_reg(core.program_counter(), load_addr)?;
 
-    let mut readback = [0; 12];
-    core.read(TEST_MEMORY_REGION_START, &mut readback[..])?;
+    core.run()?;
+    core.wait_for_core_halted(Duration::from_millis(500))?;
 
-    tracing::info!("coffee_opinion: {:08X}", coffee_opinion);
-    tracing::info!("aligned_word: {:08X}", aligned_word);
-    tracing::info!("readback: {:X?}", readback);
+    // Stopping on a breakpoint means the PC points at the breakpoint instruction
+    assert_pc_eq(&mut core, 0x40378000);
 
     tracing::info!("Single stepping");
 
-    tracing::info!(
-        "PC: {:X}",
-        core.read_core_reg::<u32>(core.program_counter()).unwrap()
-    );
-
+    // Step and stop on breakpoint
     core.step().unwrap();
+    assert_pc_eq(&mut core, 0x40378003);
 
-    tracing::info!(
-        "PC: {:X}",
-        core.read_core_reg::<u32>(core.program_counter()).unwrap()
+    // Step through last breakpoint and first RSR
+    core.step().unwrap();
+    assert_pc_eq(
+        &mut core,
+        0x40378009, // A small weirdness: step() stepped through the breakpoint that stopped us and then the next instruction
     );
 
-    // Restore memory we just overwrote
-    core.write(TEST_MEMORY_REGION_START, &saved_memory[..])?;
+    // Step through next RSR
+    core.step().unwrap();
+    assert_pc_eq(&mut core, 0x4037800C);
+
+    // Set a breakpoint to some further RSR instruction
+    core.set_hw_breakpoint(0x40378015)?;
+
+    core.run()?;
+    core.wait_for_core_halted(Duration::from_millis(500))?;
+
+    assert_pc_eq(&mut core, 0x40378015);
+
+    // Leave the user with a working MCU
+    core.reset()?;
 
     Ok(())
+}
+
+#[track_caller]
+fn assert_pc_eq(core: &mut Core<'_>, b: u32) {
+    let pc = core.read_core_reg::<u32>(core.program_counter()).unwrap();
+    assert_eq!(pc, b, "Expected PC to be {b:#010x}, was {pc:#010x}");
 }

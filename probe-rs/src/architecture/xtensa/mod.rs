@@ -6,7 +6,7 @@ use probe_rs_target::{Architecture, CoreType, InstructionSet};
 
 use crate::{
     architecture::xtensa::{
-        arch::Register,
+        arch::{Register, SpecialRegister},
         communication_interface::DebugCause,
         registers::{FP, PC, RA, SP, XTENSA_CORE_REGSISTERS},
     },
@@ -17,7 +17,7 @@ use crate::{
 
 use self::communication_interface::XtensaCommunicationInterface;
 
-mod arch;
+pub mod arch; // TODO: this module probably shouldn't be public but it's used in the example
 mod xdm;
 
 pub mod communication_interface;
@@ -27,23 +27,44 @@ pub(crate) mod sequences;
 #[derive(Debug)]
 /// Flags used to control the [`SpecificCoreState`](crate::core::SpecificCoreState) for Xtensa
 /// architecture.
-pub struct XtensaState {}
+pub struct XtensaState {
+    breakpoints_enabled: bool,
+    breakpoint_set: [bool; 2],
+
+    /// Whether the PC was written since we last halted. Used to avoid incrementing the PC on
+    /// resume.
+    pc_written: bool,
+}
 
 impl XtensaState {
     /// Creates a new [`XtensaState`].
     pub(crate) fn new() -> Self {
-        Self {}
+        Self {
+            breakpoints_enabled: false,
+            breakpoint_set: [false; 2],
+            pc_written: false,
+        }
+    }
+
+    fn breakpoint_mask(&self) -> u32 {
+        self.breakpoint_set
+            .iter()
+            .enumerate()
+            .fold(0, |acc, (i, &set)| if set { acc | (1 << i) } else { acc })
     }
 }
 
 /// An interface to operate Xtensa cores.
 pub struct Xtensa<'probe> {
     interface: &'probe mut XtensaCommunicationInterface,
-    _state: &'probe mut XtensaState,
+    state: &'probe mut XtensaState,
     id: usize,
 }
 
 impl<'probe> Xtensa<'probe> {
+    const IBREAKA_REGS: [SpecialRegister; 2] =
+        [SpecialRegister::IBreakA0, SpecialRegister::IBreakA1];
+
     /// Create a new Xtensa interface.
     pub fn new(
         interface: &'probe mut XtensaCommunicationInterface,
@@ -53,7 +74,7 @@ impl<'probe> Xtensa<'probe> {
         Self {
             interface,
             id,
-            _state: state,
+            state,
         }
     }
 
@@ -61,6 +82,31 @@ impl<'probe> Xtensa<'probe> {
         let pc = self.read_core_reg(self.program_counter().into())?;
 
         Ok(CoreInformation { pc: pc.try_into()? })
+    }
+
+    fn skip_breakpoint_instruction(&mut self) -> Result<(), Error> {
+        if !self.state.pc_written {
+            let debug_cause = self.interface.read_register::<DebugCause>()?;
+
+            let pc_increment = if debug_cause.break_instruction() {
+                3
+            } else if debug_cause.break_n_instruction() {
+                2
+            } else {
+                0
+            };
+
+            if pc_increment > 0 {
+                // Step through the breakpoint
+                let mut pc = self.read_core_reg(self.program_counter().into())?;
+
+                pc.increment_address(pc_increment)?;
+
+                self.write_core_reg(self.program_counter().into(), pc)?;
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -137,6 +183,11 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
 
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
         self.interface.wait_for_core_halted(timeout)?;
+        self.state.pc_written = false;
+
+        let status = self.status()?;
+
+        tracing::debug!("Core halted: {:#?}", status);
 
         Ok(())
     }
@@ -205,7 +256,7 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     }
 
     fn run(&mut self) -> Result<(), Error> {
-        // TODO: handle breakpoints
+        self.skip_breakpoint_instruction()?;
         Ok(self.interface.resume()?)
     }
 
@@ -220,7 +271,9 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     }
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
+        self.skip_breakpoint_instruction()?;
         self.interface.step()?;
+        self.state.pc_written = false;
 
         self.core_info()
     }
@@ -235,6 +288,10 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error> {
         let value: u32 = value.try_into()?;
 
+        if address == self.program_counter().id {
+            self.state.pc_written = true;
+        }
+
         let register = Register::try_from(address)?;
         self.interface.write_register_untyped(register, value)?;
 
@@ -242,25 +299,68 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     }
 
     fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
-        // TODO
-        Ok(0)
+        Ok(self.interface.available_breakpoint_units())
     }
 
     fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
-        // TODO
-        Ok(vec![])
+        let mut breakpoints = Vec::with_capacity(self.available_breakpoint_units()? as usize);
+
+        let enabled_breakpoints = self
+            .interface
+            .read_register_untyped(Register::Special(SpecialRegister::IBreakEnable))?;
+
+        for i in 0..self.available_breakpoint_units()? as usize {
+            let is_enabled = enabled_breakpoints & (1 << i) != 0;
+            let breakpoint = if is_enabled {
+                let address = self
+                    .interface
+                    .read_register_untyped(Register::Special(Self::IBREAKA_REGS[i]))?;
+
+                Some(address as u64)
+            } else {
+                None
+            };
+
+            breakpoints.push(breakpoint)
+        }
+
+        Ok(breakpoints)
     }
 
-    fn enable_breakpoints(&mut self, _state: bool) -> Result<(), Error> {
-        Err(Error::NotImplemented("Will be added later"))
+    fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error> {
+        self.state.breakpoints_enabled = state;
+        let mask = self.state.breakpoint_mask();
+
+        self.interface
+            .write_register_untyped(SpecialRegister::IBreakEnable, if state { mask } else { 0 })?;
+
+        Ok(())
     }
 
-    fn set_hw_breakpoint(&mut self, _unit_index: usize, _addr: u64) -> Result<(), Error> {
-        Err(Error::NotImplemented("Will be added later"))
+    fn set_hw_breakpoint(&mut self, unit_index: usize, addr: u64) -> Result<(), Error> {
+        self.state.breakpoint_set[unit_index] = true;
+        self.interface
+            .write_register_untyped(Self::IBREAKA_REGS[unit_index], addr as u32)?;
+
+        if self.state.breakpoints_enabled {
+            let mask = self.state.breakpoint_mask();
+            self.interface
+                .write_register_untyped(SpecialRegister::IBreakEnable, mask)?;
+        }
+
+        Ok(())
     }
 
-    fn clear_hw_breakpoint(&mut self, _unit_index: usize) -> Result<(), Error> {
-        Err(Error::NotImplemented("Will be added later"))
+    fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error> {
+        self.state.breakpoint_set[unit_index] = false;
+
+        if self.state.breakpoints_enabled {
+            let mask = self.state.breakpoint_mask();
+            self.interface
+                .write_register_untyped(SpecialRegister::IBreakEnable, mask)?;
+        }
+
+        Ok(())
     }
 
     fn registers(&self) -> &'static CoreRegisters {
@@ -284,7 +384,7 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     }
 
     fn hw_breakpoints_enabled(&self) -> bool {
-        false
+        self.state.breakpoints_enabled
     }
 
     fn architecture(&self) -> Architecture {

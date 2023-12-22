@@ -49,8 +49,8 @@ pub enum InstructionEncoding {
 }
 
 impl Instruction {
-    pub const fn encode(self) -> InstructionEncoding {
-        let narrow = match self {
+    const fn encode_bytes(self) -> (usize, u32) {
+        let word = match self {
             Instruction::Lddr32P(src) => 0x0070E0 | (src as u32 & 0x0F) << 8,
             Instruction::Sddr32P(src) => 0x0070F0 | (src as u32 & 0x0F) << 8,
             Instruction::Rsr(sr, t) => format::rsr(0x030000, sr as u8, t as u8),
@@ -69,6 +69,17 @@ impl Instruction {
             Instruction::Rfdo(_) => 0xF1E000,
         };
 
+        (3, word)
+    }
+
+    pub fn encode_into_vec(self, vec: &mut Vec<u8>) {
+        let (bytes, narrow) = self.encode_bytes();
+
+        vec.extend_from_slice(&narrow.to_le_bytes()[..bytes]);
+    }
+
+    pub const fn encode(self) -> InstructionEncoding {
+        let narrow = self.encode_bytes().1;
         InstructionEncoding::Narrow(narrow)
     }
 }
