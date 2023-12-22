@@ -4,12 +4,11 @@ use std::sync::Arc;
 
 use probe_rs_target::Chip;
 
-use super::XtensaDebugSequence;
 use crate::{
-    architecture::{
-        esp_common::EspFlashSizeDetector,
-        xtensa::communication_interface::XtensaCommunicationInterface,
+    architecture::xtensa::{
+        communication_interface::XtensaCommunicationInterface, sequences::XtensaDebugSequence,
     },
+    config::sequences::esp::EspFlashSizeDetector,
     MemoryInterface,
 };
 

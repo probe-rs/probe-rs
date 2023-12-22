@@ -1,15 +1,15 @@
 //! Sequences for the nRF devices.
 
-use super::ArmDebugSequence;
-use crate::architecture::arm::ap::MemoryAp;
-use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
-use crate::architecture::arm::sequences::ArmDebugSequenceError;
-use crate::architecture::arm::ArmError;
-use crate::architecture::arm::{
-    communication_interface::Initialized, ApAddress, ArmCommunicationInterface, ArmProbeInterface,
-    DapAccess,
+use crate::{
+    architecture::arm::{
+        ap::MemoryAp,
+        communication_interface::Initialized,
+        memory::adi_v5_memory_interface::ArmProbe,
+        sequences::{ArmDebugSequence, ArmDebugSequenceError},
+        ApAddress, ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess,
+    },
+    session::MissingPermissions,
 };
-use crate::session::MissingPermissions;
 use std::fmt::Debug;
 
 pub trait Nrf: Sync + Send + Debug {

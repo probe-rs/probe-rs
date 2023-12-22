@@ -13,12 +13,11 @@ use crate::{
         core::armv7m::{Aircr, Demcr, Dhcsr},
         dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
         memory::adi_v5_memory_interface::ArmProbe,
+        sequences::ArmDebugSequence,
         ApAddress, ArmCommunicationInterface, ArmError, DapAccess, DpAddress,
     },
     core::MemoryMappedRegister,
 };
-
-use super::ArmDebugSequence;
 
 /// Start the debug port, and return if the device was (true) or wasn't (false)
 /// powered down.
