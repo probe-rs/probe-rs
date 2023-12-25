@@ -1,0 +1,62 @@
+name: esp32s3
+manufacturer:
+  cc: 0x0C
+  id: 0x12
+variants:
+  - name: esp32s3
+    part: null
+    scan_chain:
+      - name: main
+        ir_len: 5
+      - name: app
+        ir_len: 5
+    default_binary_format: idf
+    cores:
+      - name: main
+        type: xtensa
+        core_access_options: !Xtensa {}
+    memory_map:
+      - !Nvm
+        range:
+          start: 0x0
+          end: 0x4000000
+        is_boot_memory: true
+        cores:
+          - main
+      - !Ram # Instruction bus for internal SRAM 0
+        range:
+          start: 0x3FC88000
+          end: 0x3FCF0000
+        cores:
+          - main
+      - !Ram # Instruction bus for internal SRAM 1
+        range:
+          start: 0x3FCF0000
+          end: 0x3FD00000
+        cores:
+          - main
+      - !Ram # Data bus for internal SRAM 1
+        range:
+          start: 0x40370000
+          end: 0x40378000
+        cores:
+          - main
+      - !Ram # Data bus for internal SRAM 2
+        range:
+          start: 0x40378000
+          end: 0x403E0000
+        cores:
+          - main
+      - !Nvm # External instruction bus
+        range:
+          start: 0x42000000
+          end: 0x44000000
+        cores:
+          - main
+      - !Nvm # External Data Bus
+        range:
+          start: 0x3C000000
+          end: 0x3E000000
+        cores:
+          - main
+flash_algorithms:

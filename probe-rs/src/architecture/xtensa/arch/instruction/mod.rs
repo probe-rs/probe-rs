@@ -35,34 +35,51 @@ pub enum Instruction {
 
     /// Returns the Core to the Running state
     Rfdo(u8),
+
+    /// Generates a debug exception
+    Break(u8, u8),
 }
 
 /// The architecture supports multi-word instructions. This enum represents the different encodings
 // ... but we only support narrow ones for now
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum InstructionEncoding {
     /// Instruction encoding is narrow enough to fit into DIR0/DIR0EXEC
     Narrow(u32),
 }
 
 impl Instruction {
-    pub fn encode(self) -> InstructionEncoding {
-        let narrow = match self {
-            Instruction::Lddr32P(src) => 0x0070E0 | (src.address() as u32 & 0x0F) << 8,
-            Instruction::Sddr32P(src) => 0x0070F0 | (src.address() as u32 & 0x0F) << 8,
-            Instruction::Rsr(sr, t) => format::rsr(0x030000, sr.address(), t.address()),
-            Instruction::Wsr(sr, t) => format::rsr(0x130000, sr.address(), t.address()),
-            Instruction::S8i(at, as_, offset) => {
-                format::rri8(0x004002, at.address(), as_.address(), offset)
-            }
+    const fn encode_bytes(self) -> (usize, u32) {
+        let word = match self {
+            Instruction::Lddr32P(src) => 0x0070E0 | (src as u32 & 0x0F) << 8,
+            Instruction::Sddr32P(src) => 0x0070F0 | (src as u32 & 0x0F) << 8,
+            Instruction::Rsr(sr, t) => format::rsr(0x030000, sr as u8, t as u8),
+            Instruction::Wsr(sr, t) => format::rsr(0x130000, sr as u8, t as u8),
+            Instruction::S8i(t, s, offset) => format::rri8(0x004002, t as u8, s as u8, offset),
             Instruction::Ihi(src, offset) => {
-                format::rri8(0x0070E2, 0, src.address(), (offset / 4) as u8)
+                format::rri8(0x0070E2, 0, src as u8, (offset / 4) as u8)
             }
             Instruction::Dhwbi(src, offset) => {
-                format::rri8(0x007052, 0, src.address(), (offset / 4) as u8)
+                format::rri8(0x007052, 0, src as u8, (offset / 4) as u8)
+            }
+            Instruction::Break(s, t) => {
+                // 0000 0000 0100 s t 0000
+                format::rrr(0x000000, 4, s, t)
             }
             Instruction::Rfdo(_) => 0xF1E000,
         };
 
+        (3, word)
+    }
+
+    pub fn encode_into_vec(self, vec: &mut Vec<u8>) {
+        let (bytes, narrow) = self.encode_bytes();
+
+        vec.extend_from_slice(&narrow.to_le_bytes()[..bytes]);
+    }
+
+    pub const fn encode(self) -> InstructionEncoding {
+        let narrow = self.encode_bytes().1;
         InstructionEncoding::Narrow(narrow)
     }
 }

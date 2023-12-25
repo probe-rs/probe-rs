@@ -667,25 +667,26 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
             ),
         ];
 
-        for (description, value) in &registers {
+        for (description, value) in registers {
             if let Some(v) = value {
-                self.core.write_core_reg(description.id, *v)?;
+                self.core.write_core_reg(description, v)?;
 
                 if tracing::enabled!(Level::DEBUG) {
-                    let value: u32 = self.core.read_core_reg(*description)?;
+                    let value: u32 = self.core.read_core_reg(description)?;
 
                     tracing::debug!(
                         "content of {} {:#x}: 0x{:08x} should be: 0x{:08x}",
                         description.name(),
                         description.id.0,
                         value,
-                        *v
+                        v
                     );
                 }
             }
         }
 
-        // Ensure RISC-V `ebreak` instruction enters debug mode, this is necessary for soft breakpoints to work.
+        // Ensure RISC-V `ebreak` instructions enter debug mode,
+        // this is necessary for soft breakpoints to work.
         self.core.debug_on_sw_breakpoint(true)?;
 
         // Resume target operation.
@@ -758,7 +759,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
             return Err(FlashError::Core(crate::Error::Timeout));
         }
 
-        let r: u32 = self.core.read_core_reg(regs.result_register(0).id)?;
+        let r: u32 = self.core.read_core_reg(regs.result_register(0))?;
         Ok(r)
     }
 

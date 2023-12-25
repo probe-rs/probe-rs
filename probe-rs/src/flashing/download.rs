@@ -98,6 +98,9 @@ pub enum FileDownloadError {
     /// This is most likely because of a bad linker script.
     #[error("No loadable ELF sections were found.")]
     NoLoadableSegments,
+    /// Some error returned by the flash size detection.
+    #[error("Could not determine flash size.")]
+    FlashSizeDetection(#[from] crate::Error),
 }
 
 /// Options for downloading a file onto a target chip.

@@ -114,8 +114,8 @@ fn parse_register_status(byte: u8) -> Result<DebugRegisterStatus, DebugRegisterE
 
 #[derive(thiserror::Error, Debug, Clone, Copy)]
 pub enum Error {
-    #[error("Error while accessing register: {0}")]
-    Xdm(DebugRegisterError),
+    #[error("Error while accessing register")]
+    Xdm(#[from] DebugRegisterError),
 
     #[error("ExecExeception")]
     ExecExeception,
@@ -139,6 +139,8 @@ pub struct Xdm {
 
     last_instruction: Option<Instruction>,
 
+    halt_on_reset: bool,
+
     queue: JtagCommandQueue,
     result: DeferredResultSet,
 }
@@ -155,6 +157,8 @@ impl Xdm {
             device_id: 0,
             idle_cycles: 0,
             last_instruction: None,
+
+            halt_on_reset: false,
 
             queue: JtagCommandQueue::new(),
             result: DeferredResultSet::new(),
@@ -201,7 +205,7 @@ impl Xdm {
         }
 
         let status = self.status()?;
-        tracing::info!("{:?}", status);
+        tracing::debug!("{:?}", status);
 
         // we might find that an old instruction execution left the core with an exception
         // try to clear problematic bits
@@ -399,7 +403,7 @@ impl Xdm {
 
         let bits = self.result.take(bits_reader).unwrap().as_u32();
         let reg = R::from_bits(bits)?;
-        tracing::debug!("Read: {:?}", reg);
+        tracing::trace!("Read: {:?}", reg);
         Ok(reg)
     }
 
@@ -415,7 +419,7 @@ impl Xdm {
         Ok(())
     }
 
-    fn status(&mut self) -> Result<DebugStatus, XtensaError> {
+    pub(super) fn status(&mut self) -> Result<DebugStatus, XtensaError> {
         self.read_nexus_register::<DebugStatus>()
     }
 
@@ -446,21 +450,12 @@ impl Xdm {
     }
 
     /// Instructs Core to enter Core Stopped state instead of vectoring on a Debug Exception/Interrupt.
-    pub(super) fn enter_ocd_mode(&mut self) -> Result<(), XtensaError> {
+    pub(super) fn halt(&mut self) -> Result<(), XtensaError> {
         self.write_nexus_register(DebugControlSet({
             let mut control = DebugControlBits(0);
 
             control.set_enable_ocd(true);
-
-            control
-        }))?;
-        self.write_nexus_register(DebugControlClear({
-            let mut control = DebugControlBits(0);
-
-            control.set_break_in_en(true);
-            control.set_break_out_en(true);
-            control.set_run_stall_in_en(true);
-            control.set_debug_mode_out_en(true);
+            control.set_debug_interrupt(true);
 
             control
         }))?;
@@ -517,19 +512,12 @@ impl Xdm {
         Ok(())
     }
 
-    pub(super) fn halt(&mut self) -> Result<(), XtensaError> {
-        self.write_nexus_register(DebugControlSet({
-            let mut control = DebugControlBits(0);
-
-            control.set_debug_interrupt(true);
-
-            control
-        }))?;
-
-        Ok(())
+    pub(super) fn is_halted(&mut self) -> Result<bool, XtensaError> {
+        self.status().map(|status| status.stopped())
     }
 
     pub(super) fn resume(&mut self) -> Result<(), XtensaError> {
+        tracing::debug!("resuming...");
         // Clear pending interrupts first that would re-enter us into the Stopped state
         self.write_nexus_register({
             let mut clear_status = DebugStatus(0);
@@ -605,26 +593,29 @@ impl Xdm {
         Ok(())
     }
 
-    fn free(self) -> Box<dyn JTAGAccess> {
+    pub fn target_reset_assert(&mut self) -> Result<(), XtensaError> {
+        self.probe.target_reset_assert()?;
+        Ok(())
+    }
+
+    pub fn target_reset_deassert(&mut self) -> Result<(), XtensaError> {
+        if self.halt_on_reset {
+            self.halt()?;
+        }
+
+        // TODO: OpenOCD seems to have a different reset method that writes PWRCTL.
+        //       check if we need to revisit this
+
+        self.probe.target_reset_deassert()?;
+        Ok(())
+    }
+
+    pub(crate) fn halt_on_reset(&mut self, en: bool) {
+        self.halt_on_reset = en;
+    }
+
+    pub(super) fn free(self) -> Box<dyn JTAGAccess> {
         self.probe
-    }
-}
-
-impl From<XtensaError> for crate::Error {
-    fn from(err: XtensaError) -> Self {
-        crate::Error::Xtensa(err)
-    }
-}
-
-impl From<Error> for XtensaError {
-    fn from(e: Error) -> Self {
-        XtensaError::XdmError(e)
-    }
-}
-
-impl From<DebugRegisterError> for Error {
-    fn from(e: DebugRegisterError) -> Self {
-        Error::Xdm(e)
     }
 }
 

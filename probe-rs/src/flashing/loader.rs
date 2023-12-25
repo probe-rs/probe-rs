@@ -138,18 +138,19 @@ impl FlashLoader {
         file.read_to_end(&mut buf)?;
 
         // Figure out flash size from the memory map. We need a different bootloader for each size.
-        let flash_size = match target.debug_sequence.clone() {
+        let flash_size_result = match target.debug_sequence.clone() {
             DebugSequence::Riscv(sequence) => {
-                match sequence.detect_flash_size(session.get_riscv_interface().unwrap()) {
-                    Ok(size) => size,
-                    Err(err) => {
-                        tracing::warn!("Could not detect flash size, using default of 4MB",);
-                        tracing::debug!("Error: {:?}", err);
-                        None
-                    }
-                }
+                sequence.detect_flash_size(session.get_riscv_interface().unwrap())
+            }
+            DebugSequence::Xtensa(_sequence) => {
+                unimplemented!()
             }
             DebugSequence::Arm(_) => panic!("There are no ARM ESP targets."),
+        };
+
+        let flash_size = match flash_size_result {
+            Ok(size) => size,
+            Err(err) => return Err(FileDownloadError::FlashSizeDetection(err)),
         };
 
         let flash_size = match flash_size {

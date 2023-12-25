@@ -1,8 +1,12 @@
 //! This example demonstrates how to use the implemented parts of the Xtensa interface.
 
+use std::time::Duration;
+
 use anyhow::Result;
-use probe_rs::config::ScanChainElement;
-use probe_rs::{Lister, MemoryInterface, Probe};
+use probe_rs::{
+    architecture::xtensa::arch::{instruction::Instruction, CpuRegister, SpecialRegister},
+    Core, Lister, MemoryInterface, Permissions, Probe,
+};
 
 fn main() -> Result<()> {
     pretty_env_logger::init();
@@ -13,59 +17,77 @@ fn main() -> Result<()> {
     let probes = probe_lister.list_all();
 
     // Use the first probe found.
-    let mut probe: Probe = probes[0].open(&probe_lister)?;
+    let probe: Probe = probes[0].open(&probe_lister)?;
 
-    probe.set_speed(100)?;
-    probe.select_protocol(probe_rs::WireProtocol::Jtag)?;
+    let mut session = probe.attach("esp32s3", Permissions::new()).unwrap();
 
-    // Scan the chain for an esp32s3.
-    probe.set_scan_chain(vec![
-        ScanChainElement {
-            ir_len: Some(5),
-            name: Some("main".to_owned()),
-        },
-        ScanChainElement {
-            ir_len: Some(5),
-            name: Some("second".to_owned()),
-        },
-    ])?;
-    probe.attach_to_unspecified()?;
-    let mut iface = probe.try_into_xtensa_interface().unwrap();
+    let mut core = session.core(0).unwrap();
 
-    iface.enter_ocd_mode()?;
+    core.reset_and_halt(Duration::from_millis(500))?;
 
-    assert!(iface.is_in_ocd_mode()?);
+    // A simple program we can use to step breakpoints and stepping
+    let load_addr: u32 = 0x4037_8000;
+    let mut program = vec![];
 
-    iface.halt()?;
+    Instruction::Break(0, 0).encode_into_vec(&mut program);
+    Instruction::Break(0, 0).encode_into_vec(&mut program);
+    Instruction::Rsr(SpecialRegister::DebugCause, CpuRegister::A11).encode_into_vec(&mut program);
+    Instruction::Rsr(SpecialRegister::DebugCause, CpuRegister::A11).encode_into_vec(&mut program);
+    Instruction::Rsr(SpecialRegister::DebugCause, CpuRegister::A11).encode_into_vec(&mut program);
+    Instruction::Rsr(SpecialRegister::DebugCause, CpuRegister::A11).encode_into_vec(&mut program);
+    Instruction::Rsr(SpecialRegister::DebugCause, CpuRegister::A11).encode_into_vec(&mut program);
+    Instruction::Rsr(SpecialRegister::DebugCause, CpuRegister::A11).encode_into_vec(&mut program);
+    Instruction::Rsr(SpecialRegister::DebugCause, CpuRegister::A11).encode_into_vec(&mut program);
+    Instruction::Rsr(SpecialRegister::DebugCause, CpuRegister::A11).encode_into_vec(&mut program);
+    Instruction::Rsr(SpecialRegister::DebugCause, CpuRegister::A11).encode_into_vec(&mut program);
 
-    const TEST_MEMORY_REGION_START: u64 = 0x600F_E000;
-    const TEST_MEMORY_LEN: usize = 100;
+    // Download code
+    core.write_8(load_addr as u64, &program)?;
 
-    let mut saved_memory = [0; TEST_MEMORY_LEN];
-    iface.read(TEST_MEMORY_REGION_START, &mut saved_memory[..])?;
+    tracing::info!("Software breakpoints");
 
-    // Zero the memory
-    iface.write(TEST_MEMORY_REGION_START, &[0; TEST_MEMORY_LEN])?;
+    // Set up processor state
+    core.write_core_reg(core.program_counter(), load_addr)?;
 
-    // Write a test word into memory, unaligned
-    iface.write_word_32(TEST_MEMORY_REGION_START + 1, 0xDECAFBAD)?;
-    let coffee_opinion = iface.read_word_32(TEST_MEMORY_REGION_START + 1)?;
+    core.run()?;
+    core.wait_for_core_halted(Duration::from_millis(500))?;
 
-    // Write a test word into memory, aligned
-    iface.write_word_32(TEST_MEMORY_REGION_START + 8, 0xFEEDC0DE)?;
-    let aligned_word = iface.read_word_32(TEST_MEMORY_REGION_START + 8)?;
+    // Stopping on a breakpoint means the PC points at the breakpoint instruction
+    assert_pc_eq(&mut core, 0x40378000);
 
-    let mut readback = [0; 12];
-    iface.read(TEST_MEMORY_REGION_START, &mut readback[..])?;
+    tracing::info!("Single stepping");
 
-    tracing::info!("coffee_opinion: {:08X}", coffee_opinion);
-    tracing::info!("aligned_word: {:08X}", aligned_word);
-    tracing::info!("readback: {:X?}", readback);
+    // Step and stop on breakpoint
+    core.step().unwrap();
+    assert_pc_eq(&mut core, 0x40378003);
 
-    // Restore memory we just overwrote
-    iface.write(TEST_MEMORY_REGION_START, &saved_memory[..])?;
+    // Step through last breakpoint and first RSR
+    core.step().unwrap();
+    assert_pc_eq(
+        &mut core,
+        0x40378009, // A small weirdness: step() stepped through the breakpoint that stopped us and then the next instruction
+    );
 
-    iface.leave_ocd_mode()?;
+    // Step through next RSR
+    core.step().unwrap();
+    assert_pc_eq(&mut core, 0x4037800C);
+
+    // Set a breakpoint to some further RSR instruction
+    core.set_hw_breakpoint(0x40378015)?;
+
+    core.run()?;
+    core.wait_for_core_halted(Duration::from_millis(500))?;
+
+    assert_pc_eq(&mut core, 0x40378015);
+
+    // Leave the user with a working MCU
+    core.reset()?;
 
     Ok(())
+}
+
+#[track_caller]
+fn assert_pc_eq(core: &mut Core<'_>, b: u32) {
+    let pc = core.read_core_reg::<u32>(core.program_counter()).unwrap();
+    assert_eq!(pc, b, "Expected PC to be {b:#010x}, was {pc:#010x}");
 }
