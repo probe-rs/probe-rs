@@ -4,15 +4,14 @@ manufacturer:
   id: 0x12
 variants:
   - name: esp32s3
-    part: null
     scan_chain:
-      - name: main
+      - name: cpu0
         ir_len: 5
-      - name: app
+      - name: cpu1
         ir_len: 5
     default_binary_format: idf
     cores:
-      - name: main
+      - name: cpu0
         type: xtensa
         core_access_options: !Xtensa {}
     memory_map:
@@ -22,57 +21,57 @@ variants:
           end: 0x4000000
         is_boot_memory: true
         cores:
-          - main
-      - !Ram # Instruction bus for internal SRAM 0
+          - cpu0
+      - !Ram # Data bus for internal SRAM 1
         range:
           start: 0x3FC88000
           end: 0x3FCF0000
         cores:
-          - main
-      - !Ram # Instruction bus for internal SRAM 1
+          - cpu0
+      - !Ram # Data bus for internal SRAM 2
         range:
           start: 0x3FCF0000
           end: 0x3FD00000
         cores:
-          - main
-      - !Ram # Data bus for internal SRAM 1
+          - cpu0
+      - !Ram # Instruction bus for internal SRAM 1
         range:
           start: 0x40370000
           end: 0x40378000
         cores:
-          - main
-      - !Ram # Data bus for internal SRAM 2
+          - cpu0
+      - !Ram # Instruction bus for internal SRAM 2
         range:
           start: 0x40378000
           end: 0x403E0000
         cores:
-          - main
+          - cpu0
       - !Nvm # External instruction bus
         range:
           start: 0x42000000
           end: 0x44000000
         cores:
-          - main
+          - cpu0
       - !Nvm # External Data Bus
         range:
           start: 0x3C000000
           end: 0x3E000000
         cores:
-          - main
+          - cpu0
     flash_algorithms:
       - esp32s3-flashloader
 flash_algorithms:
   - name: esp32s3-flashloader
     description: A flasher loader for the esp32s3.
     default: true
-    instructions: dB8AQOwKAEAICgBAnAkAQBQKAEBcCgBAAADPPxH//20CfQONBJUEAC0G8EEAAAAAEfr/bQIVBQAtBvBBAAAAABH2/9UFAC0G8EEAABHz/20CfQONBJUFAC0G8EEAAAAAEe7/bQIVBwAtBvBBAAAAADZBAIHj/+AIAAwCgeL/vQLgCAAd8AAAADZBABwIAAhAIKCRgd3/4AgALQod8AAAADZBAIHa/+AIAC0KHfAAAAA2QQAMOICEEBZIACKsEx3wFvMAgdP/rQK9BM0D4AgALQod8AwCHfAANmEADBZpAQxXUcz/iAFgiBAW2ACiwQC9B+AFABbK/kYAAAwKLQod8A==
+    instructions: dB8AQOwKAEAICgBAnAkAQMAJAEBcCgBAAADPPxH//20CfQONBJUEAC0G8EEAAAAAEfr/bQIVBQAtBvBBAAAAABH2/9UFAC0G8EEAABHz/20CfQONBJUFAC0G8EEAAAAAEe7/bQIVBwAtBvBBAAAAADZBAIHj/+AIAAwCgeL/vQLgCAAd8AAAADZBABwIAAhAIKCRgd3/4AgALQod8AAAADZBAIHa/+AIAC0KHfAAAAA2QQAMOICEEBZIACKsEx3wFvMAgdP/rQK9BM0D4AgALQod8AwCHfAANmEADBZpAQxXUcz/iAFgiBAW2ACiwQC9B+AFABbK/kYAAAwKLQod8A==
     pc_init: 0x1c
     pc_uninit: 0x60
     pc_program_page: 0x4c
     pc_erase_sector: 0x30
     pc_erase_all: 0x40
-    data_section_offset: 0x3FC89100
-    load_address: 0x40388000
+    data_section_offset: 0x40378100
+    load_address: 0x40378000
     flash_properties:
       address_range:
         start: 0x0
@@ -85,4 +84,4 @@ flash_algorithms:
         - size: 0x10000
           address: 0x0
     cores:
-      - main
+      - cpu0

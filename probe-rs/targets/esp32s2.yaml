@@ -4,7 +4,6 @@ manufacturer:
   id: 0x12
 variants:
   - name: esp32s2
-    part: null
     scan_chain:
       - name: main
         ir_len: 5
@@ -17,7 +16,7 @@ variants:
       - !Nvm
         range:
           start: 0x0
-          end: 0x2000
+          end: 0x4000000
         cores:
           - main
       - !Ram # SRAM0, Data bus
@@ -50,14 +49,14 @@ flash_algorithms:
   - name: esp32s2-flashloader
     description: A flasher loader for the esp32s2.
     default: true
-    instructions: yF8BQKDkAEAEcAFADHEBQHyQAkAAIEA/AABAAMxxAUB8kAJAAID7PxH//20CfQONBBUHAC0G8EEAAAAAEfr/bQKVBwAtBvBBAAAAABH2/1UIAC0G8EEAABHz/20CfQONBJUJAC0G8EEAAAAAEe7/bQIVCwAtBvBBAAAAADZhAAwWaQEMV1He/4gBYIgQFtgAosEAvQfgBQAWyv5GAAAMCi0KHfA2QQCB1//gCAAMAoHW/70C4AgAHfAAAAA2QQAcCAAIQCCgkYHR/+AIAC0KHfAAAAA2QQCBzv/gCAAtCpZCAYHM/5HM/8AgAJkIDALAIACYCFZ5/x3wAAAANkEADDiAhBAWSAAirBMd8BbzAIHD/60CvQTNA+AIAC0KHfAMAh3wADZBAIG+/+AIAC0KHfAAAAA=
+    instructions: yF8BQKDkAEAEcAFADHEBQHyAAkAAIEA/AABAAMxxAUB8gAJAAID7PxH//20CfQONBBUHAC0G8EEAAAAAEfr/bQKVBwAtBvBBAAAAABH2/1UIAC0G8EEAABHz/20CfQONBJUJAC0G8EEAAAAAEe7/bQIVCwAtBvBBAAAAADZhAAwWaQEMV1He/4gBYIgQFtgAosEAvQfgBQAWyv5GAAAMCi0KHfA2QQCB1//gCAAMAoHW/70C4AgAHfAAAAA2QQAcCAAIQCCgkYHR/+AIAC0KHfAAAAA2QQCBzv/gCAAtCpZCAYHM/5HM/8AgAJkIDALAIACYCFZ5/x3wAAAANkEADDiAhBAWSAAirBMd8BbzAIHD/60CvQTNA+AIAC0KHfAMAh3wADZBAIG+/+AIAC0KHfAAAAA=
     pc_init: 0x28
     pc_uninit: 0x6c
     pc_program_page: 0x58
     pc_erase_sector: 0x3c
     pc_erase_all: 0x4c
-    data_section_offset: 0x3FFB9134
-    load_address: 0x40029000
+    data_section_offset: 0x40028134
+    load_address: 0x40028000
     flash_properties:
       address_range:
         start: 0x0
