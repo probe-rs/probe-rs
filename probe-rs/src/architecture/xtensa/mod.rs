@@ -196,12 +196,14 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     }
 
     fn status(&mut self) -> Result<CoreStatus, Error> {
-        if self.core_halted()? {
+        let status = if self.core_halted()? {
             let debug_cause = self.interface.read_register::<DebugCause>()?;
-            Ok(CoreStatus::Halted(debug_cause.halt_reason()))
+            CoreStatus::Halted(debug_cause.halt_reason())
         } else {
-            Ok(CoreStatus::Running)
-        }
+            CoreStatus::Running
+        };
+
+        Ok(status)
     }
 
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
