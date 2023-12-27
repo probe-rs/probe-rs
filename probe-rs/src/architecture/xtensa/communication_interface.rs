@@ -13,7 +13,7 @@ use crate::{
         instruction::Instruction, CpuRegister, Register, SpecialRegister,
     },
     probe::JTAGAccess,
-    DebugProbeError, Error as ProbeRsError, MemoryInterface,
+    BreakpointCause, DebugProbeError, Error as ProbeRsError, HaltReason, MemoryInterface,
 };
 
 use super::xdm::{Error as XdmError, Xdm};
@@ -766,6 +766,55 @@ bitfield::bitfield! {
     pub dbreak_num,          set_dbreak_num         : 11, 8;
 }
 u32_register!(DebugCause, SpecialRegister::DebugCause);
+
+impl DebugCause {
+    pub fn halt_reason(&self) -> HaltReason {
+        let is_icount_exception = self.icount_exception();
+        let is_ibreak_exception = self.ibreak_exception();
+        let is_break_instruction = self.break_instruction();
+        let is_break_n_instruction = self.break_n_instruction();
+        let is_dbreak_exception = self.dbreak_exception();
+        let is_debug_interrupt = self.debug_interrupt();
+
+        let is_breakpoint = is_break_instruction || is_break_n_instruction;
+
+        let count = is_icount_exception as u8
+            + is_ibreak_exception as u8
+            + is_break_instruction as u8
+            + is_break_n_instruction as u8
+            + is_dbreak_exception as u8
+            + is_debug_interrupt as u8;
+
+        if count > 1 {
+            tracing::debug!("DebugCause: {:?}", self);
+
+            // We cannot identify why the chip halted,
+            // it could be for multiple reasons.
+
+            // For debuggers, it's important to know if
+            // the core halted because of a breakpoint.
+            // Because of this, we still return breakpoint
+            // even if other reasons are possible as well.
+            if is_breakpoint {
+                HaltReason::Breakpoint(BreakpointCause::Unknown)
+            } else {
+                HaltReason::Multiple
+            }
+        } else if is_icount_exception {
+            HaltReason::Step
+        } else if is_ibreak_exception {
+            HaltReason::Breakpoint(BreakpointCause::Hardware)
+        } else if is_breakpoint {
+            HaltReason::Breakpoint(BreakpointCause::Software)
+        } else if is_dbreak_exception {
+            HaltReason::Watchpoint
+        } else if is_debug_interrupt {
+            HaltReason::Request
+        } else {
+            HaltReason::Unknown
+        }
+    }
+}
 
 bitfield::bitfield! {
     #[derive(Copy, Clone)]
