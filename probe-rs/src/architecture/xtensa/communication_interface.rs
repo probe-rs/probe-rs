@@ -1,8 +1,5 @@
 //! Xtensa Debug Module Communication
 
-// TODO: remove
-#![allow(missing_docs)]
-
 use std::{
     collections::HashMap,
     time::{Duration, Instant},
@@ -102,11 +99,10 @@ struct XtensaCommunicationInterfaceState {
     is_halted: bool,
 }
 
-/// A interface that implements controls for Xtensa cores.
-#[allow(unused)] // TODO: remove
+/// An interface that implements controls for Xtensa cores.
 pub struct XtensaCommunicationInterface {
     /// The Xtensa debug module
-    xdm: Xdm,
+    pub(super) xdm: Xdm,
     state: XtensaCommunicationInterfaceState,
 
     hw_breakpoint_num: u32,
@@ -142,25 +138,26 @@ impl XtensaCommunicationInterface {
         Ok(())
     }
 
+    /// Returns the number of hardware breakpoints the target supports.
+    ///
+    /// On the Xtensa architecture this is the `NIBREAK` configuration parameter.
     pub fn available_breakpoint_units(&self) -> u32 {
         self.hw_breakpoint_num
     }
 
-    pub fn halt_on_reset(&mut self, en: bool) -> Result<(), XtensaError> {
-        self.xdm.halt_on_reset(en);
-        Ok(())
-    }
-
+    /// Enters OCD mode and halts the core.
     pub fn enter_ocd_mode(&mut self) -> Result<(), XtensaError> {
         self.xdm.halt()?;
         tracing::info!("Entered OCD mode");
         Ok(())
     }
 
+    /// Returns whether the core is in OCD mode.
     pub fn is_in_ocd_mode(&mut self) -> Result<bool, XtensaError> {
         self.xdm.is_in_ocd_mode()
     }
 
+    /// Leaves OCD mode, restores state and resumes program execution.
     pub fn leave_ocd_mode(&mut self) -> Result<(), XtensaError> {
         self.restore_registers()?;
         self.resume()?;
@@ -169,6 +166,7 @@ impl XtensaCommunicationInterface {
         Ok(())
     }
 
+    /// Resets the processor core.
     pub fn reset(&mut self) -> Result<(), XtensaError> {
         match self.reset_and_halt(Duration::from_millis(500)) {
             Ok(_) => {
@@ -182,6 +180,7 @@ impl XtensaCommunicationInterface {
         }
     }
 
+    /// Resets the processor core and halts it immediately.
     pub fn reset_and_halt(&mut self, timeout: Duration) -> Result<(), XtensaError> {
         self.xdm.target_reset_assert()?;
         self.xdm.halt_on_reset(true);
@@ -202,15 +201,20 @@ impl XtensaCommunicationInterface {
         Ok(())
     }
 
+    /// Halts the core.
     pub fn halt(&mut self) -> Result<(), XtensaError> {
         tracing::debug!("Halting core");
         self.xdm.halt()
     }
 
+    /// Returns whether the core is halted.
     pub fn is_halted(&mut self) -> Result<bool, XtensaError> {
         self.xdm.is_halted()
     }
 
+    /// Waits until the core is halted.
+    ///
+    /// This function lowers the interrupt level to allow halting on debug exceptions.
     pub fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), XtensaError> {
         let now = Instant::now();
         while !self.is_halted()? {
@@ -235,6 +239,7 @@ impl XtensaCommunicationInterface {
         Ok(())
     }
 
+    /// Steps the core by one instruction.
     pub fn step(&mut self) -> Result<(), XtensaError> {
         self.write_register(ICountLevel(self.debug_level as u32))?;
 
@@ -250,6 +255,7 @@ impl XtensaCommunicationInterface {
         Ok(())
     }
 
+    /// Resumes program execution.
     pub fn resume(&mut self) -> Result<(), XtensaError> {
         tracing::debug!("Resuming core");
         self.state.is_halted = false;
@@ -368,18 +374,21 @@ impl XtensaCommunicationInterface {
         status
     }
 
+    /// Read a register.
     pub fn read_register<R: TypedRegister>(&mut self) -> Result<R, XtensaError> {
         let value = self.read_register_untyped(R::register())?;
 
         Ok(R::from_u32(value))
     }
 
+    /// Write a register.
     pub fn write_register<R: TypedRegister>(&mut self, reg: R) -> Result<(), XtensaError> {
         self.write_register_untyped(R::register(), reg.as_u32())?;
 
         Ok(())
     }
 
+    /// Read a register.
     pub fn read_register_untyped(
         &mut self,
         register: impl Into<Register>,
@@ -392,6 +401,7 @@ impl XtensaCommunicationInterface {
         }
     }
 
+    /// Write a register.
     pub fn write_register_untyped(
         &mut self,
         register: impl Into<Register>,
@@ -405,7 +415,7 @@ impl XtensaCommunicationInterface {
         }
     }
 
-    pub fn save_register(
+    fn save_register(
         &mut self,
         register: impl Into<Register>,
     ) -> Result<Option<Register>, XtensaError> {
@@ -728,10 +738,16 @@ impl MemoryInterface for XtensaCommunicationInterface {
     }
 }
 
-pub trait TypedRegister {
+/// An Xtensa core register
+pub trait TypedRegister: Copy {
+    /// Returns the register ID.
     fn register() -> Register;
+
+    /// Creates a new register from the given value.
     fn from_u32(value: u32) -> Self;
-    fn as_u32(&self) -> u32;
+
+    /// Returns the register value.
+    fn as_u32(self) -> u32;
 }
 
 macro_rules! u32_register {
@@ -745,7 +761,7 @@ macro_rules! u32_register {
                 Self(value)
             }
 
-            fn as_u32(&self) -> u32 {
+            fn as_u32(self) -> u32 {
                 self.0
             }
         }
@@ -753,21 +769,36 @@ macro_rules! u32_register {
 }
 
 bitfield::bitfield! {
+    /// The `DEBUGCAUSE` register.
     #[derive(Copy, Clone)]
     pub struct DebugCause(u32);
     impl Debug;
 
+    /// Instruction counter exception
     pub icount_exception,    set_icount_exception   : 0;
+
+    /// Instruction breakpoint exception
     pub ibreak_exception,    set_ibreak_exception   : 1;
+
+    /// Data breakpoint (watchpoint) exception
     pub dbreak_exception,    set_dbreak_exception   : 2;
+
+    /// Break instruction exception
     pub break_instruction,   set_break_instruction  : 3;
+
+    /// Narrow Break instruction exception
     pub break_n_instruction, set_break_n_instruction: 4;
+
+    /// Debug interrupt exception
     pub debug_interrupt,     set_debug_interrupt    : 5;
+
+    /// Data breakpoint number
     pub dbreak_num,          set_dbreak_num         : 11, 8;
 }
 u32_register!(DebugCause, SpecialRegister::DebugCause);
 
 impl DebugCause {
+    /// Returns the reason why the core is halted.
     pub fn halt_reason(&self) -> HaltReason {
         let is_icount_exception = self.icount_exception();
         let is_ibreak_exception = self.ibreak_exception();
@@ -817,28 +848,47 @@ impl DebugCause {
 }
 
 bitfield::bitfield! {
+    /// The `PS` (Program Status) register.
+    ///
+    /// The physical register depends on the debug level.
     #[derive(Copy, Clone)]
     pub struct ProgramStatus(u32);
     impl Debug;
 
+    /// Interrupt level disable
     pub intlevel,  set_intlevel : 4, 0;
+
+    /// Exception mode
     pub excm,      set_excm     : 5;
+
+    /// User mode
     pub user_mode, set_user_mode: 6;
+
+    /// Privilege level (when using the MMU option)
     pub ring,      set_ring     : 8, 7;
+
+    /// Old window base
     pub owb,       set_owb      : 12, 9;
+
+    /// Call increment
     pub callinc,   set_callinc  : 14, 13;
+
+    /// Window overflow-detection enable
     pub woe,       set_woe      : 15;
 }
 u32_register!(ProgramStatus, Register::CurrentPs);
 
+/// The `IBREAKEN` (Instruction Breakpoint Enable) register.
 #[derive(Copy, Clone, Debug)]
 pub struct IBreakEn(pub u32);
 u32_register!(IBreakEn, SpecialRegister::IBreakEnable);
 
+/// The `ICOUNT` (Instruction Counter) register.
 #[derive(Copy, Clone, Debug)]
 pub struct ICount(pub u32);
 u32_register!(ICount, SpecialRegister::ICount);
 
+/// The `ICOUNTLEVEL` (Instruction Count Level) register.
 #[derive(Copy, Clone, Debug)]
 pub struct ICountLevel(pub u32);
 u32_register!(ICountLevel, SpecialRegister::ICountLevel);

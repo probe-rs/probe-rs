@@ -25,7 +25,7 @@ pub mod communication_interface;
 mod dtm;
 pub mod sequences;
 
-/// A interface to operate RISC-V cores.
+/// An interface to operate RISC-V cores.
 pub struct Riscv32<'probe> {
     interface: &'probe mut RiscvCommunicationInterface,
     state: &'probe mut RiscVState,
