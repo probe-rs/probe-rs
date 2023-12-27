@@ -2,10 +2,12 @@
 
 use std::sync::Arc;
 
-use super::{ArmDebugSequence, ArmDebugSequenceError};
 use crate::architecture::arm::{
-    ap::MemoryAp, component::TraceSink, memory::CoresightComponent, ApAddress, ArmError,
-    ArmProbeInterface, DpAddress,
+    ap::MemoryAp,
+    component::TraceSink,
+    memory::CoresightComponent,
+    sequences::{ArmDebugSequence, ArmDebugSequenceError},
+    ApAddress, ArmError, ArmProbeInterface, DpAddress,
 };
 use crate::session::MissingPermissions;
 

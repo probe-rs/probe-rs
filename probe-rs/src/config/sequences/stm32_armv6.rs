@@ -6,9 +6,9 @@ use std::sync::Arc;
 
 use probe_rs_target::CoreType;
 
-use super::ArmDebugSequence;
 use crate::architecture::arm::{
-    ap::MemoryAp, memory::adi_v5_memory_interface::ArmProbe, ArmError, ArmProbeInterface,
+    ap::MemoryAp, memory::adi_v5_memory_interface::ArmProbe, sequences::ArmDebugSequence, ArmError,
+    ArmProbeInterface,
 };
 
 /// Supported families for custom sequences on ARMv6 STM32 devices.

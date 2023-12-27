@@ -4,12 +4,11 @@ use std::sync::Arc;
 
 use probe_rs_target::Chip;
 
-use super::RiscvDebugSequence;
 use crate::{
     architecture::riscv::{
-        communication_interface::RiscvCommunicationInterface,
-        sequences::esp_common::EspFlashSizeDetector,
+        communication_interface::RiscvCommunicationInterface, sequences::RiscvDebugSequence,
     },
+    config::sequences::esp::EspFlashSizeDetector,
     MemoryInterface,
 };
 
@@ -25,6 +24,7 @@ impl ESP32H2 {
         Arc::new(Self {
             inner: EspFlashSizeDetector {
                 stack_pointer: EspFlashSizeDetector::stack_pointer(chip),
+                load_address: 0, // Unused for RISC-V
                 spiflash_peripheral: 0x6000_3000,
                 attach_fn: 0x4000_01D4,
             },
@@ -63,6 +63,6 @@ impl RiscvDebugSequence for ESP32H2 {
         &self,
         interface: &mut RiscvCommunicationInterface,
     ) -> Result<Option<usize>, crate::Error> {
-        self.inner.detect_flash_size(interface)
+        self.inner.detect_flash_size_riscv(interface)
     }
 }

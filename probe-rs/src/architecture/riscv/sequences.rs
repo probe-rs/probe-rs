@@ -4,12 +4,6 @@ use super::communication_interface::RiscvCommunicationInterface;
 use std::fmt::Debug;
 use std::sync::Arc;
 
-pub mod esp32c2;
-pub mod esp32c3;
-pub mod esp32c6;
-pub mod esp32h2;
-mod esp_common;
-
 /// A interface to operate debug sequences for RISC-V targets.
 ///
 /// Should be implemented on a custom handle for chips that require special sequence code.

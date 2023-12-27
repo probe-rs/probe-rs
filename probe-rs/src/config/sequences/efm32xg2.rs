@@ -6,12 +6,11 @@ use crate::{
     architecture::arm::{
         core::armv7m::{Demcr, Dhcsr},
         memory::adi_v5_memory_interface::ArmProbe,
+        sequences::ArmDebugSequence,
         ArmError,
     },
     core::MemoryMappedRegister,
 };
-
-use super::ArmDebugSequence;
 
 /// The sequence handle for the EFM32 Series 2 family.
 ///

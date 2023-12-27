@@ -12,12 +12,11 @@ use crate::{
         communication_interface::Initialized,
         core::armv8m::{Aircr, Demcr, Dhcsr},
         memory::adi_v5_memory_interface::ArmProbe,
+        sequences::ArmDebugSequence,
         ApAddress, ArmCommunicationInterface, ArmError, DapAccess, DpAddress, Pins,
     },
     core::MemoryMappedRegister,
 };
-
-use super::ArmDebugSequence;
 
 /// Debug sequences for MIMXRT5xxS MCUs.
 ///

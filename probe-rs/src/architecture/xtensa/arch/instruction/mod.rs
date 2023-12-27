@@ -36,6 +36,10 @@ pub enum Instruction {
     /// Returns the Core to the Running state
     Rfdo(u8),
 
+    /// Calls the function at the address in `CpuRegister` and instructs the next `entry` to rotate
+    /// the register window by 8.
+    CallX8(CpuRegister),
+
     /// Generates a debug exception
     Break(u8, u8),
 }
@@ -66,6 +70,7 @@ impl Instruction {
                 // 0000 0000 0100 s t 0000
                 format::rrr(0x000000, 4, s, t)
             }
+            Instruction::CallX8(s) => format::callx(2, s as u8),
             Instruction::Rfdo(_) => 0xF1E000,
         };
 

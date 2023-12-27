@@ -1351,11 +1351,11 @@ impl RiscvCommunicationInterface {
         Probe::from_attached_probe(self.dtm.probe.into_probe())
     }
 
-    pub(super) fn execute(&mut self) -> Result<(), RiscvError> {
+    pub(crate) fn execute(&mut self) -> Result<(), RiscvError> {
         self.dtm.execute()
     }
 
-    pub(super) fn schedule_write_dm_register<R: MemoryMappedRegister<u32>>(
+    pub(crate) fn schedule_write_dm_register<R: MemoryMappedRegister<u32>>(
         &mut self,
         register: R,
     ) -> Result<(), RiscvError> {

@@ -142,8 +142,8 @@ impl FlashLoader {
             DebugSequence::Riscv(sequence) => {
                 sequence.detect_flash_size(session.get_riscv_interface().unwrap())
             }
-            DebugSequence::Xtensa(_sequence) => {
-                unimplemented!()
+            DebugSequence::Xtensa(sequence) => {
+                sequence.detect_flash_size(session.get_xtensa_interface().unwrap())
             }
             DebugSequence::Arm(_) => panic!("There are no ARM ESP targets."),
         };

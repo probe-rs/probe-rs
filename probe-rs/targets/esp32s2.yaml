@@ -1,0 +1,73 @@
+name: esp32s2
+manufacturer:
+  cc: 0x0C
+  id: 0x12
+variants:
+  - name: esp32s2
+    part: null
+    scan_chain:
+      - name: main
+        ir_len: 5
+    default_binary_format: idf
+    cores:
+      - name: main
+        type: xtensa
+        core_access_options: !Xtensa {}
+    memory_map:
+      - !Nvm
+        range:
+          start: 0x0
+          end: 0x2000
+        cores:
+          - main
+      - !Ram # SRAM0, Data bus
+        range:
+          start: 0x3FFB0000
+          end: 0x8000
+        cores:
+          - main
+      - !Ram # SRAM1, Data bus
+        range:
+          start: 0x3FFB8000
+          end: 0x48000
+        cores:
+          - main
+      - !Ram # SRAM0, Instruction bus
+        range:
+          start: 0x40020000
+          end: 0x8000
+        cores:
+          - main
+      - !Ram # SRAM1, Instruction bus
+        range:
+          start: 0x40028000
+          end: 0x48000
+        cores:
+          - main
+    flash_algorithms:
+    - esp32s2-flashloader
+flash_algorithms:
+  - name: esp32s2-flashloader
+    description: A flasher loader for the esp32s2.
+    default: true
+    instructions: yF8BQKDkAEAEcAFADHEBQHyQAkAAIEA/AABAAMxxAUB8kAJAAID7PxH//20CfQONBBUHAC0G8EEAAAAAEfr/bQKVBwAtBvBBAAAAABH2/1UIAC0G8EEAABHz/20CfQONBJUJAC0G8EEAAAAAEe7/bQIVCwAtBvBBAAAAADZhAAwWaQEMV1He/4gBYIgQFtgAosEAvQfgBQAWyv5GAAAMCi0KHfA2QQCB1//gCAAMAoHW/70C4AgAHfAAAAA2QQAcCAAIQCCgkYHR/+AIAC0KHfAAAAA2QQCBzv/gCAAtCpZCAYHM/5HM/8AgAJkIDALAIACYCFZ5/x3wAAAANkEADDiAhBAWSAAirBMd8BbzAIHD/60CvQTNA+AIAC0KHfAMAh3wADZBAIG+/+AIAC0KHfAAAAA=
+    pc_init: 0x28
+    pc_uninit: 0x6c
+    pc_program_page: 0x58
+    pc_erase_sector: 0x3c
+    pc_erase_all: 0x4c
+    data_section_offset: 0x3FFB9134
+    load_address: 0x40029000
+    flash_properties:
+      address_range:
+        start: 0x0
+        end: 0x40000000
+      page_size: 0x4000
+      erased_byte_value: 0xff
+      program_page_timeout: 1000
+      erase_sector_timeout: 2000
+      sectors:
+        - size: 0x10000
+          address: 0x0
+    cores:
+      - main

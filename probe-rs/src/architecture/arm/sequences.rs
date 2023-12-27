@@ -1,18 +1,5 @@
 //! Debug sequences to operate special requirements ARM targets.
 
-pub mod atsam;
-pub mod efm32xg2;
-pub mod infineon;
-mod nrf;
-pub mod nrf52;
-pub mod nrf53;
-pub mod nrf91;
-pub mod nxp_armv7m;
-pub mod nxp_armv8m;
-pub mod stm32_armv6;
-pub mod stm32_armv7;
-pub mod stm32h7;
-
 use std::{
     error::Error,
     fmt::Debug,
@@ -56,7 +43,7 @@ pub enum ArmDebugSequenceError {
 }
 
 impl ArmDebugSequenceError {
-    fn custom(message: impl Into<Box<dyn Error + Send + Sync + 'static>>) -> Self {
+    pub(crate) fn custom(message: impl Into<Box<dyn Error + Send + Sync + 'static>>) -> Self {
         ArmDebugSequenceError::SequenceSpecific(message.into())
     }
 }

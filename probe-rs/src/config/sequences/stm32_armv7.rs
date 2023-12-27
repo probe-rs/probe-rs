@@ -12,11 +12,11 @@ use std::sync::Arc;
 
 use probe_rs_target::CoreType;
 
-use super::ArmDebugSequence;
 use crate::architecture::arm::{
     ap::MemoryAp,
     component::TraceSink,
     memory::{adi_v5_memory_interface::ArmProbe, CoresightComponent},
+    sequences::ArmDebugSequence,
     ArmError, ArmProbeInterface,
 };
 

@@ -1,33 +1,35 @@
 use super::{
-    Core, MemoryRegion, RawFlashAlgorithm, RegistryError, ScanChainElement, TargetDescriptionSource,
+    sequences::{
+        atsam::AtSAM,
+        efm32xg2::EFM32xG2,
+        esp32::ESP32,
+        esp32c2::ESP32C2,
+        esp32c3::ESP32C3,
+        esp32c6::ESP32C6,
+        esp32h2::ESP32H2,
+        esp32s2::ESP32S2,
+        esp32s3::ESP32S3,
+        infineon::XMC4000,
+        nrf52::Nrf52,
+        nrf53::Nrf5340,
+        nrf91::Nrf9160,
+        nxp_armv7m::{LPC55Sxx, MIMXRT10xx, MIMXRT11xx},
+        nxp_armv8m::MIMXRT5xxS,
+        stm32_armv6::{Stm32Armv6, Stm32Armv6Family},
+        stm32_armv7::Stm32Armv7,
+        stm32h7::Stm32h7,
+    },
+    Core, MemoryRegion, RawFlashAlgorithm, RegistryError, ScanChainElement,
+    TargetDescriptionSource,
 };
 use crate::architecture::{
     arm::{
         ap::MemoryAp,
-        sequences::{
-            atsam::AtSAM,
-            efm32xg2::EFM32xG2,
-            infineon::XMC4000,
-            nrf52::Nrf52,
-            nrf53::Nrf5340,
-            nrf91::Nrf9160,
-            nxp_armv7m::{LPC55Sxx, MIMXRT10xx, MIMXRT11xx},
-            nxp_armv8m::MIMXRT5xxS,
-            stm32_armv6::{Stm32Armv6, Stm32Armv6Family},
-            stm32_armv7::Stm32Armv7,
-            stm32h7::Stm32h7,
-            ArmDebugSequence, DefaultArmSequence,
-        },
+        sequences::{ArmDebugSequence, DefaultArmSequence},
         ApAddress, DpAddress,
     },
-    riscv::sequences::{
-        esp32c2::ESP32C2, esp32c3::ESP32C3, esp32c6::ESP32C6, esp32h2::ESP32H2,
-        DefaultRiscvSequence, RiscvDebugSequence,
-    },
-    xtensa::sequences::{
-        esp32::ESP32, esp32s2::ESP32S2, esp32s3::ESP32S3, DefaultXtensaSequence,
-        XtensaDebugSequence,
-    },
+    riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
+    xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
 };
 use crate::flashing::FlashLoader;
 use probe_rs_target::{Architecture, BinaryFormat, ChipFamily, MemoryRange};

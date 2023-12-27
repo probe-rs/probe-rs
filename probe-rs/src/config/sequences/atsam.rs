@@ -1,12 +1,13 @@
 //! Sequences for ATSAM D1x/D2x/DAx/D5x/E5x target families
 
-use super::{ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence};
 use crate::{
     architecture::{
         self,
         arm::{
-            ap::MemoryAp, memory::adi_v5_memory_interface::ArmProbe, ApAddress, ArmError,
-            ArmProbeInterface, DpAddress,
+            ap::MemoryAp,
+            memory::adi_v5_memory_interface::ArmProbe,
+            sequences::{ArmDebugSequence, ArmDebugSequenceError, DebugEraseSequence},
+            ApAddress, ArmError, ArmProbeInterface, DpAddress,
         },
     },
     session::MissingPermissions,
