@@ -776,6 +776,8 @@ impl DebugCause {
         let is_dbreak_exception = self.dbreak_exception();
         let is_debug_interrupt = self.debug_interrupt();
 
+        let is_breakpoint = is_break_instruction || is_break_n_instruction;
+
         let count = is_icount_exception as u8
             + is_ibreak_exception as u8
             + is_break_instruction as u8
@@ -784,12 +786,25 @@ impl DebugCause {
             + is_debug_interrupt as u8;
 
         if count > 1 {
-            HaltReason::Multiple
+            tracing::debug!("DebugCause: {:?}", self);
+
+            // We cannot identify why the chip halted,
+            // it could be for multiple reasons.
+
+            // For debuggers, it's important to know if
+            // the core halted because of a breakpoint.
+            // Because of this, we still return breakpoint
+            // even if other reasons are possible as well.
+            if is_breakpoint {
+                HaltReason::Breakpoint(BreakpointCause::Unknown)
+            } else {
+                HaltReason::Multiple
+            }
         } else if is_icount_exception {
             HaltReason::Step
         } else if is_ibreak_exception {
             HaltReason::Breakpoint(BreakpointCause::Hardware)
-        } else if is_break_instruction || is_break_n_instruction {
+        } else if is_breakpoint {
             HaltReason::Breakpoint(BreakpointCause::Software)
         } else if is_dbreak_exception {
             HaltReason::Watchpoint
