@@ -505,6 +505,12 @@ impl XtensaCommunicationInterface {
             return Ok(());
         }
 
+        let was_halted = self.is_halted()?;
+        if !was_halted {
+            self.halt()?;
+            self.wait_for_core_halted(Duration::from_millis(100))?;
+        }
+
         // Write aligned address to the scratch register
         let key = self.save_register(CpuRegister::A3)?;
         self.write_cpu_register(CpuRegister::A3, address as u32 & !0x3)?;
@@ -548,6 +554,10 @@ impl XtensaCommunicationInterface {
 
         self.restore_register(key)?;
 
+        if !was_halted {
+            self.resume()?;
+        }
+
         Ok(())
     }
 
@@ -583,6 +593,12 @@ impl XtensaCommunicationInterface {
             return Ok(());
         }
 
+        let was_halted = self.is_halted()?;
+        if !was_halted {
+            self.halt()?;
+            self.wait_for_core_halted(Duration::from_millis(100))?;
+        }
+
         let key = self.save_register(CpuRegister::A3)?;
 
         let address = address as u32;
@@ -602,7 +618,6 @@ impl XtensaCommunicationInterface {
 
         if buffer.len() > 4 {
             // Prepare store instruction
-            self.save_register(CpuRegister::A3)?;
             self.write_register_untyped(CpuRegister::A3, addr)?;
 
             self.xdm
@@ -627,6 +642,10 @@ impl XtensaCommunicationInterface {
         }
 
         self.restore_register(key)?;
+
+        if !was_halted {
+            self.resume()?;
+        }
 
         // TODO: implement cache flushing on CPUs that need it.
 
