@@ -230,10 +230,7 @@ impl XtensaCommunicationInterface {
         // Force a low INTLEVEL to allow halting on debug exceptions
         // TODO: do this only if we set a breakpoint or watchpoint or single step
         let mut ps = self.read_register::<ProgramStatus>()?;
-
-        ps.set_excm(false);
-        ps.set_intlevel(0);
-
+        ps.set_intlevel(1);
         self.write_register(ps)?;
 
         Ok(())
@@ -508,6 +505,12 @@ impl XtensaCommunicationInterface {
             return Ok(());
         }
 
+        let was_halted = self.is_halted()?;
+        if !was_halted {
+            self.halt()?;
+            self.wait_for_core_halted(Duration::from_millis(100))?;
+        }
+
         // Write aligned address to the scratch register
         let key = self.save_register(CpuRegister::A3)?;
         self.write_cpu_register(CpuRegister::A3, address as u32 & !0x3)?;
@@ -551,6 +554,10 @@ impl XtensaCommunicationInterface {
 
         self.restore_register(key)?;
 
+        if !was_halted {
+            self.resume()?;
+        }
+
         Ok(())
     }
 
@@ -586,6 +593,12 @@ impl XtensaCommunicationInterface {
             return Ok(());
         }
 
+        let was_halted = self.is_halted()?;
+        if !was_halted {
+            self.halt()?;
+            self.wait_for_core_halted(Duration::from_millis(100))?;
+        }
+
         let key = self.save_register(CpuRegister::A3)?;
 
         let address = address as u32;
@@ -605,7 +618,6 @@ impl XtensaCommunicationInterface {
 
         if buffer.len() > 4 {
             // Prepare store instruction
-            self.save_register(CpuRegister::A3)?;
             self.write_register_untyped(CpuRegister::A3, addr)?;
 
             self.xdm
@@ -630,6 +642,10 @@ impl XtensaCommunicationInterface {
         }
 
         self.restore_register(key)?;
+
+        if !was_halted {
+            self.resume()?;
+        }
 
         // TODO: implement cache flushing on CPUs that need it.
 
@@ -856,25 +872,25 @@ bitfield::bitfield! {
     impl Debug;
 
     /// Interrupt level disable
-    pub intlevel,  set_intlevel : 4, 0;
+    pub intlevel,  set_intlevel : 3, 0;
 
     /// Exception mode
-    pub excm,      set_excm     : 5;
+    pub excm,      set_excm     : 4;
 
     /// User mode
-    pub user_mode, set_user_mode: 6;
+    pub user_mode, set_user_mode: 5;
 
     /// Privilege level (when using the MMU option)
-    pub ring,      set_ring     : 8, 7;
+    pub ring,      set_ring     : 7, 6;
 
     /// Old window base
-    pub owb,       set_owb      : 12, 9;
+    pub owb,       set_owb      : 11, 8;
 
     /// Call increment
-    pub callinc,   set_callinc  : 14, 13;
+    pub callinc,   set_callinc  : 17, 16;
 
     /// Window overflow-detection enable
-    pub woe,       set_woe      : 15;
+    pub woe,       set_woe      : 18;
 }
 u32_register!(ProgramStatus, Register::CurrentPs);
 
