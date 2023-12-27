@@ -190,7 +190,14 @@ impl XtensaCommunicationInterface {
         self.xdm.halt_on_reset(false);
 
         // TODO: this is only necessary to run code, so this might not be the best place
-        self.write_register_untyped(Register::CurrentPs, 0x40021)?;
+        // Make sure the CPU is in a known state and is able to run code we download.
+        self.write_register({
+            let mut ps = ProgramStatus(0);
+            ps.set_intlevel(1);
+            ps.set_user_mode(true);
+            ps.set_woe(true);
+            ps
+        })?;
 
         Ok(())
     }
@@ -216,31 +223,29 @@ impl XtensaCommunicationInterface {
         tracing::debug!("Core halted");
         self.state.is_halted = true;
 
-        // Force a low INTLEVEL
+        // Force a low INTLEVEL to allow halting on debug exceptions
         // TODO: do this only if we set a breakpoint or watchpoint or single step
-        let old_ps = self.read_register_untyped(Register::CurrentPs)?;
-        self.write_register_untyped(Register::CurrentPs, (old_ps & !0xF) | 0x1)?;
+        let mut ps = self.read_register::<ProgramStatus>()?;
+
+        ps.set_excm(false);
+        ps.set_intlevel(0);
+
+        self.write_register(ps)?;
 
         Ok(())
     }
 
     pub fn step(&mut self) -> Result<(), XtensaError> {
-        self.write_register_untyped(
-            Register::Special(SpecialRegister::ICountLevel),
-            self.debug_level as u32,
-        )?;
+        self.write_register(ICountLevel(self.debug_level as u32))?;
 
         // An exception is generated at the beginning of an instruction that would overflow ICOUNT.
-        self.write_register_untyped(Register::Special(SpecialRegister::ICount), -2_i32 as u32)?;
+        self.write_register(ICount(-2_i32 as u32))?;
 
         self.resume()?;
         self.wait_for_core_halted(Duration::from_millis(100))?;
 
         // Avoid stopping again
-        self.write_register_untyped(
-            Register::Special(SpecialRegister::ICount),
-            self.debug_level as u32 + 1,
-        )?;
+        self.write_register(ICountLevel(self.debug_level as u32 + 1))?;
 
         Ok(())
     }
@@ -367,6 +372,12 @@ impl XtensaCommunicationInterface {
         let value = self.read_register_untyped(R::register())?;
 
         Ok(R::from_u32(value))
+    }
+
+    pub fn write_register<R: TypedRegister>(&mut self, reg: R) -> Result<(), XtensaError> {
+        self.write_register_untyped(R::register(), reg.as_u32())?;
+
+        Ok(())
     }
 
     pub fn read_register_untyped(
@@ -720,6 +731,25 @@ impl MemoryInterface for XtensaCommunicationInterface {
 pub trait TypedRegister {
     fn register() -> Register;
     fn from_u32(value: u32) -> Self;
+    fn as_u32(&self) -> u32;
+}
+
+macro_rules! u32_register {
+    ($name:ident, $register:expr) => {
+        impl TypedRegister for $name {
+            fn register() -> Register {
+                Register::from($register)
+            }
+
+            fn from_u32(value: u32) -> Self {
+                Self(value)
+            }
+
+            fn as_u32(&self) -> u32 {
+                self.0
+            }
+        }
+    };
 }
 
 bitfield::bitfield! {
@@ -735,13 +765,31 @@ bitfield::bitfield! {
     pub debug_interrupt,     set_debug_interrupt    : 5;
     pub dbreak_num,          set_dbreak_num         : 11, 8;
 }
+u32_register!(DebugCause, SpecialRegister::DebugCause);
 
-impl TypedRegister for DebugCause {
-    fn register() -> Register {
-        Register::Special(SpecialRegister::DebugCause)
-    }
+bitfield::bitfield! {
+    #[derive(Copy, Clone)]
+    pub struct ProgramStatus(u32);
+    impl Debug;
 
-    fn from_u32(value: u32) -> Self {
-        Self(value)
-    }
+    pub intlevel,  set_intlevel : 4, 0;
+    pub excm,      set_excm     : 5;
+    pub user_mode, set_user_mode: 6;
+    pub ring,      set_ring     : 8, 7;
+    pub owb,       set_owb      : 12, 9;
+    pub callinc,   set_callinc  : 14, 13;
+    pub woe,       set_woe      : 15;
 }
+u32_register!(ProgramStatus, Register::CurrentPs);
+
+#[derive(Copy, Clone, Debug)]
+pub struct IBreakEn(pub u32);
+u32_register!(IBreakEn, SpecialRegister::IBreakEnable);
+
+#[derive(Copy, Clone, Debug)]
+pub struct ICount(pub u32);
+u32_register!(ICount, SpecialRegister::ICount);
+
+#[derive(Copy, Clone, Debug)]
+pub struct ICountLevel(pub u32);
+u32_register!(ICountLevel, SpecialRegister::ICountLevel);
