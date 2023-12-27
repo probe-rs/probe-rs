@@ -11,8 +11,7 @@ use crate::{
         registers::{FP, PC, RA, SP, XTENSA_CORE_REGSISTERS},
     },
     core::registers::{CoreRegisters, RegisterId, RegisterValue},
-    BreakpointCause, CoreInformation, CoreInterface, CoreRegister, CoreStatus, Error, HaltReason,
-    MemoryInterface,
+    CoreInformation, CoreInterface, CoreRegister, CoreStatus, Error, MemoryInterface,
 };
 
 use self::communication_interface::XtensaCommunicationInterface;
@@ -199,50 +198,7 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     fn status(&mut self) -> Result<CoreStatus, Error> {
         if self.core_halted()? {
             let debug_cause = self.interface.read_register::<DebugCause>()?;
-
-            let is_icount_exception = debug_cause.icount_exception();
-            let is_ibreak_exception = debug_cause.ibreak_exception();
-            let is_break_instruction = debug_cause.break_instruction();
-            let is_break_n_instruction = debug_cause.break_n_instruction();
-            let is_dbreak_exception = debug_cause.dbreak_exception();
-            let is_debug_interrupt = debug_cause.debug_interrupt();
-
-            let count = is_icount_exception as u8
-                + is_ibreak_exception as u8
-                + is_break_instruction as u8
-                + is_break_n_instruction as u8
-                + is_dbreak_exception as u8
-                + is_debug_interrupt as u8;
-
-            if count > 1 {
-                return Ok(CoreStatus::Halted(HaltReason::Multiple));
-            }
-
-            if is_icount_exception {
-                return Ok(CoreStatus::Halted(HaltReason::Step));
-            }
-
-            if is_ibreak_exception {
-                return Ok(CoreStatus::Halted(HaltReason::Breakpoint(
-                    BreakpointCause::Hardware,
-                )));
-            }
-
-            if is_break_instruction || is_break_n_instruction {
-                return Ok(CoreStatus::Halted(HaltReason::Breakpoint(
-                    BreakpointCause::Software,
-                )));
-            }
-
-            if is_dbreak_exception {
-                return Ok(CoreStatus::Halted(HaltReason::Watchpoint));
-            }
-
-            if is_debug_interrupt {
-                return Ok(CoreStatus::Halted(HaltReason::Request));
-            }
-
-            Ok(CoreStatus::Halted(HaltReason::Unknown))
+            Ok(CoreStatus::Halted(debug_cause.halt_reason()))
         } else {
             Ok(CoreStatus::Running)
         }
