@@ -368,11 +368,13 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     }
 
     fn reset_catch_set(&mut self) -> Result<(), Error> {
-        Ok(self.interface.halt_on_reset(true)?)
+        self.interface.xdm.halt_on_reset(true);
+        Ok(())
     }
 
     fn reset_catch_clear(&mut self) -> Result<(), Error> {
-        Ok(self.interface.halt_on_reset(false)?)
+        self.interface.xdm.halt_on_reset(false);
+        Ok(())
     }
 
     fn debug_core_stop(&mut self) -> Result<(), Error> {
