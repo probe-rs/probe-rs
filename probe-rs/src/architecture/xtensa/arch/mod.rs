@@ -1,7 +1,4 @@
-#![allow(unused)] // TODO remove
 #![allow(missing_docs)] // TODO remove
-
-use std::ops::Range;
 
 use crate::{architecture::xtensa::communication_interface::XtensaError, RegisterId};
 

@@ -1,12 +1,7 @@
-#![allow(unused)] // FIXME remove after testing
-
 use std::fmt::Debug;
 
 use crate::{
-    architecture::{
-        arm::ap::DRW,
-        xtensa::arch::instruction::{self, Instruction, InstructionEncoding},
-    },
+    architecture::xtensa::arch::instruction::{Instruction, InstructionEncoding},
     probe::{
         CommandResult, DeferredResultIndex, DeferredResultSet, JTAGAccess, JtagCommandQueue,
         JtagWriteCommand,
@@ -122,7 +117,6 @@ pub struct Xdm {
     pub probe: Box<dyn JTAGAccess>,
 
     device_id: u32,
-    idle_cycles: u8,
 
     last_instruction: Option<Instruction>,
 
@@ -144,7 +138,6 @@ impl Xdm {
         let mut x = Self {
             probe,
             device_id: 0,
-            idle_cycles: 0,
             last_instruction: None,
 
             halt_on_reset: false,
