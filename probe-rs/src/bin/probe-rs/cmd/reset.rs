@@ -9,9 +9,6 @@ pub struct Cmd {
 
     #[clap(flatten)]
     common: ProbeOptions,
-
-    /// Whether the reset pin should be asserted or deasserted. If left open, just pulse it
-    assert: Option<bool>,
 }
 
 impl Cmd {
