@@ -939,7 +939,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                     continue;
                 }
                 TransferStatus::Failed(DapError::FaultResponse) => {
-                    tracing::debug!("DAP FAULT");
+                    tracing::debug!("DAP FAULT while reading {:#10X}", address);
 
                     // A fault happened during operation.
 
@@ -978,6 +978,14 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                                 Abort::ADDRESS,
                                 abort.into(),
                             )?;
+
+                            tracing::debug!(
+                                "DAP FAULT, (read), retries remaining {}.",
+                                dap_wait_retries - retry
+                            );
+
+                            // Retry operation after a fault due to overrun.
+                            continue;
                         }
                     } else {
                         tracing::warn!(
