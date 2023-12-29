@@ -62,11 +62,12 @@ pub struct Cmd {
     #[clap(long)]
     pub(crate) rtt_scan_memory: bool,
 
-    /// <elf> and the remaining arguments for the test runner (list tests, filter tests etc). Run `probe-rs test -- --help` for more information.
+    /// <elf> and the remaining arguments for the test runner (list tests, filter tests etc). Run `probe-rs test -- <elf> --help` for more information.
     #[clap(last(true))]
     pub(crate) libtest_args: Vec<String>,
 }
 
+// Unfortunately, libtest_mimic requires static lifetime for all test functions, so we need some cells here
 static SESSION: StaticCell<Session> = StaticCell::new();
 static RUNNER: StaticCell<RefCell<Runner>> = StaticCell::new();
 struct Runner {
@@ -79,8 +80,6 @@ struct Runner {
     memory_map: Vec<MemoryRegion>,
     rtt_scan_regions: Vec<Range<u64>>,
 }
-
-const SEMIHOSTING_USER_LIST: u32 = 0x100;
 
 impl Cmd {
     pub fn run(
@@ -118,6 +117,7 @@ impl Cmd {
         };
         let mut core = session.core(0)?;
         if self.catch_hardfault || self.catch_reset {
+            // TODO: We need to enable_vector_catch after every chip reset, or is this persistent?
             core.halt(Duration::from_millis(100))?;
             if self.catch_hardfault {
                 match core.enable_vector_catch(VectorCatchCondition::HardFault) {
@@ -197,12 +197,16 @@ fn run_until_exact_semihosting(core: &mut Core, operation: u32) -> Result<u32> {
     }
 }
 
+// When using semihosting, the target usually allocates a buffer for the host to read/write to.
+// The targets just gives us an address pointing to two u32 values, the address of the buffer and
+// the length of the buffer.
 struct Buffer {
     address: u32,
     len: u32,
 }
 
 impl Buffer {
+    // Constructs a new buffer, reading the address and length from the target.
     fn from_block_at(core: &mut Core, block_addr: u32) -> Result<Self> {
         let mut block: [u32; 2] = [0, 0];
         core.read_32(block_addr as u64, &mut block)?;
@@ -212,6 +216,7 @@ impl Buffer {
         })
     }
 
+    // Reads the buffer from the target.
     fn read(&mut self, core: &mut Core) -> Result<Vec<u8>> {
         let mut buf = vec![0u8; self.len as usize];
         core.read(self.address as u64, &mut buf[..])?;
@@ -234,6 +239,53 @@ impl Buffer {
     }
 }
 
+// Interface that describes how to interact with the test runner in the target.
+struct TestRunnerInterface;
+
+impl TestRunnerInterface {
+    const SYS_GET_CMDLINE: u32 = 0x15;
+
+    // Runs the target until it requests the command line arguments, and provides them to it.
+    fn invoke_with_commandline(core: &mut Core, cmdline: String) -> Result<()> {
+        let block_address = run_until_exact_semihosting(core, Self::SYS_GET_CMDLINE)?;
+        let mut buf = Buffer::from_block_at(core, block_address)?;
+
+        let mut cmdline = cmdline.into_bytes();
+        cmdline.push(0); // zero terminate string
+
+        buf.write_to_block_at(core, block_address, &cmdline)?;
+
+        let reg = core.registers().get_argument_register(0).unwrap();
+        core.write_core_reg(reg, 0u32)?; // signal to target: status = success
+        Ok(())
+    }
+
+    const SEMIHOSTING_USER_LIST: u32 = 0x100;
+
+    // Requests all tests from the target
+    fn list_tests(core: &mut Core) -> Result<Tests> {
+        Self::invoke_with_commandline(core, "list".into())?;
+
+        // Wait until the target calls the user defined Semihosting Operation and reports the tests
+
+        let block_address = run_until_exact_semihosting(core, Self::SEMIHOSTING_USER_LIST)?;
+        let mut buf = Buffer::from_block_at(core, block_address)?;
+        let buf = buf.read(core)?;
+
+        let list: Tests = serde_json::from_slice(&buf[..])?;
+        tracing::debug!("got list of tests from target: {:?}", list);
+        if list.version != 1 {
+            bail!("Unsupported test list format version: {}", list.version);
+        }
+        Ok(list)
+    }
+
+    // Instructs the target to run the specified test
+    fn start_test(core: &mut Core, test: &Test) -> Result<()> {
+        Self::invoke_with_commandline(core, format!("run {}", test.name))
+    }
+}
+
 #[derive(Debug, serde::Deserialize)]
 struct Tests {
     pub version: u32,
@@ -252,42 +304,21 @@ struct Test {
 fn create_tests(runner_ref: &'static RefCell<Runner>) -> Result<Vec<Trial>> {
     let mut runner = runner_ref.borrow_mut();
     let core = &mut runner.core;
-    // Run target with arg "list", so that it lists all tests
-    {
-        const SYS_GET_CMDLINE: u32 = 0x15;
-        let block_address = run_until_exact_semihosting(core, SYS_GET_CMDLINE)?;
-        let mut buf = Buffer::from_block_at(core, block_address)?;
-        buf.write_to_block_at(core, block_address, b"list\0")?;
 
-        let reg = core.registers().get_argument_register(0).unwrap();
-        core.write_core_reg(reg, 0u32)?; // write status = success
+    let list = TestRunnerInterface::list_tests(core)?;
+
+    let mut tests = Vec::<Trial>::new();
+    for t in &list.tests {
+        let test = t.clone();
+        tests.push(
+            Trial::test(&t.name, move || {
+                let mut runner = runner_ref.borrow_mut();
+                run_test(test, &mut *runner)
+            })
+            .with_ignored_flag(t.ignored),
+        )
     }
-
-    // Wait until the target calls the user defined Semihosting Operation and reports the tests
-    {
-        let block_address = run_until_exact_semihosting(core, SEMIHOSTING_USER_LIST)?;
-        let mut buf = Buffer::from_block_at(core, block_address)?;
-        let buf = buf.read(core)?;
-
-        let list: Tests = serde_json::from_slice(&buf[..])?;
-        tracing::debug!("got list of tests from target: {:?}", list);
-        if list.version != 1 {
-            bail!("Unsupported test list format version: {}", list.version);
-        }
-
-        let mut tests = Vec::<Trial>::new();
-        for t in &list.tests {
-            let test = t.clone();
-            tests.push(
-                Trial::test(&t.name, move || {
-                    let mut runner = runner_ref.borrow_mut();
-                    run_test(test, &mut *runner)
-                })
-                .with_ignored_flag(t.ignored),
-            )
-        }
-        Ok(tests)
-    }
+    Ok(tests)
 }
 
 // Run a single test on the target
@@ -296,16 +327,7 @@ fn run_test(test: Test, runner: &mut Runner) -> std::result::Result<(), Failed> 
     tracing::info!("Running test {}", test.name);
     core.reset_and_halt(Duration::from_millis(100))?;
 
-    // Run target with arg "run <testname>"
-    {
-        const SYS_GET_CMDLINE: u32 = 0x15;
-        let block_address = run_until_exact_semihosting(core, SYS_GET_CMDLINE)?;
-        let mut buf = Buffer::from_block_at(core, block_address)?;
-        let cmd = format!("run {}\0", test.name).into_bytes();
-        buf.write_to_block_at(core, block_address, &cmd)?;
-        let reg = core.registers().get_argument_register(0).unwrap();
-        core.write_core_reg(reg, 0u32)?; // write status = success
-    }
+    TestRunnerInterface::start_test(core, &test)?;
 
     let timeout = test.timeout.map(|t| Duration::from_secs(t as u64));
     let timeout = timeout.unwrap_or(Duration::from_secs(60)); // TODO: make global timeout configurable
@@ -388,12 +410,12 @@ fn run_loop(
             probe_rs::CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
                 SemihostingCommand::Unknown { operation, .. },
             ))) if operation == SYS_EXIT_EXTENDED => {
-                tracing::info!("Target wanted to run semihosting SYS_EXIT_EXTENDED (0x20), but probe-rs does not support this operation yet. Continuing...");
+                tracing::debug!("Target wanted to run semihosting SYS_EXIT_EXTENDED (0x20), but probe-rs does not support this operation yet. Continuing...");
                 core.run()?;
             }
             probe_rs::CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
                 SemihostingCommand::Unknown { operation, .. },
-            ))) if operation != SEMIHOSTING_USER_LIST => {
+            ))) if operation != TestRunnerInterface::SEMIHOSTING_USER_LIST => {
                 tracing::error!("Target wanted to run semihosting operation {:#x}, but probe-rs does not support this operation yet. Continuing...", operation);
                 core.run()?;
             }
