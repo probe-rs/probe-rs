@@ -1,4 +1,3 @@
-use std::io::Write;
 use std::ops::Range;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -6,10 +5,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{anyhow, Result};
-use probe_rs::debug::{DebugInfo, DebugRegisters};
 use probe_rs::{
-    exception_handler_for_core, BreakpointCause, Core, CoreInterface, Error, HaltReason, Lister,
-    SemihostingCommand, VectorCatchCondition,
+    BreakpointCause, Core, Error, HaltReason, Lister, SemihostingCommand, VectorCatchCondition,
 };
 use probe_rs_target::MemoryRegion;
 use signal_hook::consts::signal;
@@ -17,10 +14,9 @@ use time::UtcOffset;
 
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 use crate::util::flash::{build_loader, run_flash_download};
-use crate::util::rtt::{self, RttConfig};
+use crate::util::rtt::{self, poll_rtt, try_attach_to_rtt};
+use crate::util::stack_trace::print_stacktrace;
 use crate::FormatOptions;
-
-const RTT_RETRIES: usize = 10;
 
 #[derive(clap::Parser)]
 pub struct Cmd {
@@ -150,7 +146,7 @@ fn run_loop(
         ..Default::default()
     });
 
-    let mut rtta = attach_to_rtt(
+    let mut rtta = try_attach_to_rtt(
         core,
         memory_map,
         rtt_scan_regions,
@@ -163,8 +159,8 @@ fn run_loop(
     let exit = Arc::new(AtomicBool::new(false));
     let sig_id = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
 
-    let mut stdout = std::io::stdout();
-    let mut halt_reason = None;
+    let mut stderr = std::io::stderr();
+    let mut halt_reason: Option<HaltReason> = None;
     while !exit.load(Ordering::Relaxed) && halt_reason.is_none() {
         // check for halt first, poll rtt after.
         // this is important so we do one last poll after halt, so we flush all messages
@@ -185,7 +181,7 @@ fn run_loop(
             }
         }
 
-        let had_rtt_data = poll_rtt(&mut rtta, core, &mut stdout)?;
+        let had_rtt_data = poll_rtt(&mut rtta, core, &mut stderr)?;
 
         // Poll RTT with a frequency of 10 Hz if we do not receive any new data.
         // Once we receive new data, we bump the frequency to 1kHz.
@@ -226,112 +222,4 @@ fn run_loop(
     signal_hook::flag::register_conditional_default(signal::SIGINT, exit)?;
 
     result
-}
-
-/// Prints the stacktrace of the current execution state.
-fn print_stacktrace(core: &mut impl CoreInterface, path: &Path) -> Result<(), anyhow::Error> {
-    let Some(debug_info) = DebugInfo::from_file(path).ok() else {
-        log::error!("No debug info found.");
-        return Ok(());
-    };
-    let initial_registers = DebugRegisters::from_core(core);
-    let exception_interface = exception_handler_for_core(core.core_type());
-    let instruction_set = core.instruction_set().ok();
-    let stack_frames = debug_info
-        .unwind(
-            core,
-            initial_registers,
-            exception_interface.as_ref(),
-            instruction_set,
-        )
-        .unwrap();
-    for (i, frame) in stack_frames.iter().enumerate() {
-        print!("Frame {}: {} @ {}", i, frame.function_name, frame.pc);
-
-        if frame.is_inlined {
-            print!(" inline");
-        }
-        println!();
-
-        if let Some(location) = &frame.source_location {
-            if location.directory.is_some() || location.file.is_some() {
-                print!("       ");
-
-                if let Some(dir) = &location.directory {
-                    print!("{}", dir.to_path().display());
-                }
-
-                if let Some(file) = &location.file {
-                    print!("/{file}");
-
-                    if let Some(line) = location.line {
-                        print!(":{line}");
-
-                        if let Some(col) = location.column {
-                            match col {
-                                probe_rs::debug::ColumnType::LeftEdge => {
-                                    print!(":1")
-                                }
-                                probe_rs::debug::ColumnType::Column(c) => {
-                                    print!(":{c}")
-                                }
-                            }
-                        }
-                    }
-                }
-
-                println!();
-            }
-        }
-    }
-    Ok(())
-}
-
-/// Poll RTT and print the received buffer.
-fn poll_rtt(
-    rtta: &mut Option<rtt::RttActiveTarget>,
-    core: &mut Core<'_>,
-    stdout: &mut std::io::Stdout,
-) -> Result<bool, anyhow::Error> {
-    let mut had_data = false;
-    if let Some(rtta) = rtta {
-        for (_ch, data) in rtta.poll_rtt_fallible(core)? {
-            if !data.is_empty() {
-                had_data = true;
-            }
-            stdout.write_all(data.as_bytes())?;
-        }
-    };
-    Ok(had_data)
-}
-
-/// Attach to the RTT buffers.
-fn attach_to_rtt(
-    core: &mut Core<'_>,
-    memory_map: &[MemoryRegion],
-    scan_regions: &[Range<u64>],
-    path: &Path,
-    rtt_config: RttConfig,
-    timestamp_offset: UtcOffset,
-    log_format: Option<&str>,
-) -> Option<rtt::RttActiveTarget> {
-    for _ in 0..RTT_RETRIES {
-        match rtt::attach_to_rtt(
-            core,
-            memory_map,
-            scan_regions,
-            path,
-            &rtt_config,
-            timestamp_offset,
-            log_format,
-        ) {
-            Ok(target_rtt) => return Some(target_rtt),
-            Err(error) => {
-                log::debug!("{:?} RTT attach error", error);
-            }
-        }
-        std::thread::sleep(std::time::Duration::from_millis(100));
-    }
-    log::error!("Failed to attach to RTT continuing...");
-    None
 }

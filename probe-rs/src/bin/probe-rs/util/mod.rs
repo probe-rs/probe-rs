@@ -2,6 +2,7 @@ pub mod common_options;
 pub mod flash;
 pub mod logging;
 pub mod rtt;
+pub mod stack_trace;
 
 use anyhow::Result;
 

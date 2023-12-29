@@ -9,6 +9,7 @@ use probe_rs_target::MemoryRegion;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::File;
+use std::ops::Range;
 use std::{
     fmt,
     fmt::Write,
@@ -561,4 +562,56 @@ impl fmt::Debug for RttBuffer {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
     }
+}
+
+/// Poll RTT and print the received buffer.
+pub fn poll_rtt(
+    rtta: &mut Option<RttActiveTarget>,
+    core: &mut Core<'_>,
+    stderr: &mut std::io::Stderr,
+) -> Result<bool, anyhow::Error> {
+    use std::io::Write;
+    let mut had_data = false;
+    if let Some(rtta) = rtta {
+        for (_ch, data) in rtta.poll_rtt_fallible(core)? {
+            if !data.is_empty() {
+                had_data = true;
+            }
+            stderr.write_all(data.as_bytes())?;
+        }
+    };
+    Ok(had_data)
+}
+
+const RTT_RETRIES: usize = 10;
+
+/// Attach to the RTT buffers.
+pub fn try_attach_to_rtt(
+    core: &mut Core<'_>,
+    memory_map: &[MemoryRegion],
+    scan_regions: &[Range<u64>],
+    path: &Path,
+    rtt_config: RttConfig,
+    timestamp_offset: UtcOffset,
+    log_format: Option<&str>,
+) -> Option<RttActiveTarget> {
+    for _ in 0..RTT_RETRIES {
+        match attach_to_rtt(
+            core,
+            memory_map,
+            scan_regions,
+            path,
+            &rtt_config,
+            timestamp_offset,
+            log_format,
+        ) {
+            Ok(target_rtt) => return Some(target_rtt),
+            Err(error) => {
+                log::debug!("{:?} RTT attach error", error);
+            }
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+    log::error!("Failed to attach to RTT continuing...");
+    None
 }
