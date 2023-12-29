@@ -5,14 +5,12 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{anyhow, Result};
-use probe_rs::{
-    BreakpointCause, Core, Error, HaltReason, Lister, SemihostingCommand, VectorCatchCondition,
-};
+use probe_rs::{BreakpointCause, Core, HaltReason, Lister, SemihostingCommand};
 use probe_rs_target::MemoryRegion;
 use signal_hook::consts::signal;
 use time::UtcOffset;
 
-use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
+use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions, RunOptions};
 use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::rtt::{self, poll_rtt, try_attach_to_rtt};
 use crate::util::stack_trace::print_stacktrace;
@@ -26,37 +24,18 @@ pub struct Cmd {
     #[clap(flatten)]
     pub(crate) download_options: BinaryDownloadOptions,
 
+    #[clap(flatten)]
+    pub(crate) run_options: RunOptions,
+
     /// The path to the ELF file to flash and run
     pub(crate) path: String,
-
-    /// Always print the stacktrace on ctrl + c.
-    #[clap(long)]
-    pub(crate) always_print_stacktrace: bool,
 
     /// Whether to erase the entire chip before downloading
     #[clap(long)]
     pub(crate) chip_erase: bool,
 
-    /// Suppress filename and line number information from the rtt log
-    #[clap(long)]
-    pub(crate) no_location: bool,
-
     #[clap(flatten)]
     pub(crate) format_options: FormatOptions,
-
-    #[clap(long)]
-    pub(crate) log_format: Option<String>,
-
-    /// Enable reset vector catch if its supported on the target.
-    #[arg(long)]
-    pub catch_reset: bool,
-    /// Enable hardfault vector catch if its supported on the target.
-    #[arg(long)]
-    pub catch_hardfault: bool,
-
-    /// Scan the memory to find the RTT control block
-    #[clap(long)]
-    pub(crate) rtt_scan_memory: bool,
 }
 
 impl Cmd {
@@ -86,27 +65,14 @@ impl Cmd {
         }
 
         let memory_map = session.target().memory_map.clone();
-        let rtt_scan_regions = match self.rtt_scan_memory {
+        let rtt_scan_regions = match self.run_options.rtt_scan_memory {
             true => session.target().rtt_scan_regions.clone(),
             false => Vec::new(),
         };
         let mut core = session.core(0)?;
 
-        if self.catch_hardfault || self.catch_reset {
-            core.halt(Duration::from_millis(100))?;
-            if self.catch_hardfault {
-                match core.enable_vector_catch(VectorCatchCondition::HardFault) {
-                    Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
-                    Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
-                }
-            }
-            if self.catch_reset {
-                match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
-                    Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
-                    Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
-                }
-            }
-        }
+        self.run_options.maybe_enable_vector_catch(&mut core)?;
+
         core.run()?;
 
         run_loop(
@@ -115,9 +81,9 @@ impl Cmd {
             &rtt_scan_regions,
             path,
             timestamp_offset,
-            self.always_print_stacktrace,
-            self.no_location,
-            self.log_format.as_deref(),
+            self.run_options.always_print_stacktrace,
+            self.run_options.no_location,
+            self.run_options.log_format.as_deref(),
         )?;
 
         Ok(())

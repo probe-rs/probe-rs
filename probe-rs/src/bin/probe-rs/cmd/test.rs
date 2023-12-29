@@ -8,15 +8,15 @@ use std::time::{Duration, Instant};
 use anyhow::{anyhow, bail, Result};
 use libtest_mimic::{Failed, Trial};
 use probe_rs::{
-    BreakpointCause, Core, CoreStatus, Error, HaltReason, Lister, MemoryInterface,
-    SemihostingCommand, Session, VectorCatchCondition,
+    BreakpointCause, Core, CoreStatus, HaltReason, Lister, MemoryInterface, SemihostingCommand,
+    Session,
 };
 use probe_rs_target::MemoryRegion;
 use signal_hook::consts::signal;
 use static_cell::StaticCell;
 use time::UtcOffset;
 
-use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
+use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions, RunOptions};
 use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::rtt::{self, poll_rtt, try_attach_to_rtt};
 use crate::util::stack_trace::print_stacktrace;
@@ -30,34 +30,15 @@ pub struct Cmd {
     #[clap(flatten)]
     pub(crate) download_options: BinaryDownloadOptions,
 
-    /// Always print the stacktrace on ctrl + c.
-    #[clap(long)]
-    pub(crate) always_print_stacktrace: bool,
+    #[clap(flatten)]
+    pub(crate) run_options: RunOptions,
 
     /// Whether to erase the entire chip before downloading
     #[clap(long)]
     pub(crate) chip_erase: bool,
 
-    /// Suppress filename and line number information from the rtt log
-    #[clap(long)]
-    pub(crate) no_location: bool,
-
     #[clap(flatten)]
     pub(crate) format_options: FormatOptions,
-
-    #[clap(long)]
-    pub(crate) log_format: Option<String>,
-
-    /// Enable reset vector catch if its supported on the target.
-    #[arg(long)]
-    pub catch_reset: bool,
-    /// Enable hardfault vector catch if its supported on the target.
-    #[arg(long)]
-    pub catch_hardfault: bool,
-
-    /// Scan the memory to find the RTT control block
-    #[clap(long)]
-    pub(crate) rtt_scan_memory: bool,
 
     /// <elf> and the remaining arguments for the test runner (list tests, filter tests etc). Run `probe-rs test -- <elf> --help` for more information.
     #[clap(last(true))]
@@ -108,37 +89,23 @@ impl Cmd {
         }
 
         let memory_map = session.target().memory_map.clone();
-        let rtt_scan_regions = match self.rtt_scan_memory {
+        let rtt_scan_regions = match self.run_options.rtt_scan_memory {
             true => session.target().rtt_scan_regions.clone(),
             false => Vec::new(),
         };
-        let mut core = session.core(0)?;
-        if self.catch_hardfault || self.catch_reset {
-            // TODO: We need to enable_vector_catch after every chip reset, or is this persistent?
-            core.halt(Duration::from_millis(100))?;
-            if self.catch_hardfault {
-                match core.enable_vector_catch(VectorCatchCondition::HardFault) {
-                    Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
-                    Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
-                }
-            }
-            if self.catch_reset {
-                match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
-                    Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
-                    Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
-                }
-            }
-        }
-        drop(core);
+
+        // TODO: We need to enable_vector_catch after every chip reset, or is this persistent?
+        self.run_options
+            .maybe_enable_vector_catch(&mut session.core(0)?)?;
 
         let session = SESSION.init(session);
         let runner = RUNNER.init(RefCell::new(Runner {
             core: session.core(0)?,
             timestamp_offset,
             path: path.to_owned(),
-            always_print_stacktrace: self.always_print_stacktrace,
-            no_location: self.no_location,
-            log_format: self.log_format.clone(),
+            always_print_stacktrace: self.run_options.always_print_stacktrace,
+            no_location: self.run_options.no_location,
+            log_format: self.run_options.log_format.clone(),
             memory_map,
             rtt_scan_regions,
         }));
