@@ -9,11 +9,9 @@ use anyhow::{anyhow, bail, Result};
 use libtest_mimic::{Failed, Trial};
 use probe_rs::{
     BreakpointCause, Core, CoreStatus, HaltReason, Lister, MemoryInterface, SemihostingCommand,
-    Session,
 };
 use probe_rs_target::MemoryRegion;
 use signal_hook::consts::signal;
-use static_cell::StaticCell;
 use time::UtcOffset;
 
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions, RunOptions};
@@ -45,11 +43,8 @@ pub struct Cmd {
     pub(crate) libtest_args: Vec<String>,
 }
 
-// Unfortunately, libtest_mimic requires static lifetime for all test functions, so we need some cells here
-static SESSION: StaticCell<Session> = StaticCell::new();
-static RUNNER: StaticCell<RefCell<Runner>> = StaticCell::new();
-struct Runner {
-    core: Core<'static>,
+struct Runner<'c> {
+    core: Core<'c>,
     timestamp_offset: UtcOffset,
     path: String,
     always_print_stacktrace: bool,
@@ -94,13 +89,13 @@ impl Cmd {
             false => Vec::new(),
         };
 
-        // TODO: We need to enable_vector_catch after every chip reset, or is this persistent?
-        self.run_options
-            .maybe_enable_vector_catch(&mut session.core(0)?)?;
+        let mut core = session.core(0)?;
 
-        let session = SESSION.init(session);
-        let runner = RUNNER.init(RefCell::new(Runner {
-            core: session.core(0)?,
+        // TODO: We need to enable_vector_catch after every chip reset, or is this persistent?
+        self.run_options.maybe_enable_vector_catch(&mut core)?;
+
+        let runner = RefCell::new(Runner {
+            core,
             timestamp_offset,
             path: path.to_owned(),
             always_print_stacktrace: self.run_options.always_print_stacktrace,
@@ -108,7 +103,11 @@ impl Cmd {
             log_format: self.run_options.log_format.clone(),
             memory_map,
             rtt_scan_regions,
-        }));
+        });
+        let runner = &runner;
+        // libtest_mimic requires all test functions to be bound by 'static,
+        //  but since it does not outlive the current scope, we can just cast it...
+        let runner: &'static RefCell<Runner<'_>> = unsafe { std::mem::transmute(runner) };
 
         let tests = create_tests(runner)?;
         libtest_mimic::run(&libtest_args, tests).exit()
