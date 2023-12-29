@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use std::fs::File;
 use std::io::Write;
 use std::ops::Range;
 use std::path::Path;
@@ -7,10 +6,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use anyhow::{anyhow, bail, Context, Result};
+use anyhow::{anyhow, bail, Result};
 use libtest_mimic::{Failed, Trial};
 use probe_rs::debug::{DebugInfo, DebugRegisters};
-use probe_rs::flashing::{FileDownloadError, Format};
 use probe_rs::{
     exception_handler_for_core, BreakpointCause, Core, CoreInterface, CoreStatus, Error,
     HaltReason, Lister, MemoryInterface, SemihostingCommand, Session, VectorCatchCondition,
@@ -21,7 +19,7 @@ use static_cell::StaticCell;
 use time::UtcOffset;
 
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
-use crate::util::flash::run_flash_download;
+use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::rtt::{self, RttConfig};
 use crate::FormatOptions;
 
@@ -97,24 +95,8 @@ impl Cmd {
         let (mut session, probe_options) = self.probe_options.simple_attach(lister)?;
 
         if run_download {
-            let mut file = match File::open(&path) {
-                Ok(file) => file,
-                Err(e) => {
-                    return Err(FileDownloadError::IO(e)).context("Failed to open binary file.")
-                }
-            };
-
-            let mut loader = session.target().flash_loader();
-
-            let format = self.format_options.into_format(session.target())?;
-            match format {
-                Format::Bin(options) => loader.load_bin_data(&mut file, options),
-                Format::Elf => loader.load_elf_data(&mut file),
-                Format::Hex => loader.load_hex_data(&mut file),
-                Format::Idf(options) => loader.load_idf_data(&mut session, &mut file, options),
-                Format::Uf2 => loader.load_uf2_data(&mut file),
-            }?;
             let path = Path::new(&path);
+            let loader = build_loader(&mut session, path, self.format_options)?;
             run_flash_download(
                 &mut session,
                 &path,
