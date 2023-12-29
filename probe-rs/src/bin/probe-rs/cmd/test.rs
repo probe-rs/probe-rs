@@ -104,12 +104,8 @@ impl Cmd {
             memory_map,
             rtt_scan_regions,
         });
-        let runner = &runner;
-        // libtest_mimic requires all test functions to be bound by 'static,
-        //  but since it does not outlive the current scope, we can just cast it...
-        let runner: &'static RefCell<Runner<'_>> = unsafe { std::mem::transmute(runner) };
 
-        let tests = create_tests(runner)?;
+        let tests = create_tests(&runner)?;
         libtest_mimic::run(&libtest_args, tests).exit()
     }
 }
@@ -264,7 +260,7 @@ struct Test {
 }
 
 /// Asks the target for the tests, and create closures to run the tests later
-fn create_tests(runner_ref: &'static RefCell<Runner>) -> Result<Vec<Trial>> {
+fn create_tests<'a>(runner_ref: &'a RefCell<Runner>) -> Result<Vec<Trial<'a>>> {
     let mut runner = runner_ref.borrow_mut();
     let core = &mut runner.core;
 
