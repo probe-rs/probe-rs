@@ -162,7 +162,7 @@ impl<'probe> Riscv32<'probe> {
                 tracing::info!("Semihosting found pc={pc:#x} a0={a0:#x} a1={a1:#x}");
 
                 reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(
-                    decode_semihosting_syscall(a0, a1),
+                    decode_semihosting_syscall(core, a0, a1)?,
                 ));
             }
         }

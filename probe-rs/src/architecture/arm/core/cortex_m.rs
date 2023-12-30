@@ -215,7 +215,7 @@ pub(crate) fn check_for_semihosting(
             tracing::info!("Semihosting found pc={pc:#x} r0={r0:#x} r1={r1:#x}");
 
             reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(
-                decode_semihosting_syscall(r0, r1),
+                decode_semihosting_syscall(core, r0, r1)?,
             ));
         }
     }

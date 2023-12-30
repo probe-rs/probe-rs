@@ -172,9 +172,20 @@ fn run_loop(
                 SemihostingCommand::ExitSuccess,
             )) => Ok(()),
             HaltReason::Breakpoint(BreakpointCause::Semihosting(
-                SemihostingCommand::ExitError { code },
+                SemihostingCommand::ExitError {
+                    reason,
+                    exit_status,
+                    subcode,
+                },
             )) => Err(anyhow!(
-                "Semihosting indicates exit with failure code: {code:#08x} ({code})"
+                "Semihosting indicates exit with reason 0x{:#x}{}",
+                reason,
+                match (exit_status, subcode) {
+                    (Some(exit_status), None) =>
+                        format!(", exit status {} (0x{:#x})", exit_status, exit_status),
+                    (None, Some(subcode)) => format!(", subcode {}(0x{:#x})", subcode, subcode),
+                    (_, _) => "".into(),
+                }
             )),
             _ => Err(anyhow!("CPU halted unexpectedly.")),
         },

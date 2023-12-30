@@ -34,8 +34,16 @@ pub enum SemihostingCommand {
     /// The target indicates that it completed unsuccessfully, with an error
     /// code, and no-longer wishes to run.
     ExitError {
-        /// Some architecture-specific or application specific exit code
-        code: u64,
+        /// Some application specific exit reason:
+        /// <https://github.com/ARM-software/abi-aa/blob/main/semihosting/semihosting.rst#651entry-32-bit>
+        reason: u32,
+
+        /// The exit status of the application, if present (only if reason == `ADP_Stopped_ApplicationExit` `0x20026`).
+        /// This is an exit status code, as passed to the C standard library exit() function.
+        exit_status: Option<u32>,
+
+        /// The subcode of the exit, if present (only if reason != `ADP_Stopped_ApplicationExit` `0x20026`).
+        subcode: Option<u32>,
     },
     /// The target indicated that it would like to run a semihosting operation which we don't support yet
     Unknown {

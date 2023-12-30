@@ -110,19 +110,11 @@ impl Cmd {
     }
 }
 
-const SYS_EXIT_EXTENDED: u32 = 0x20;
-
 fn run_until_semihosting(core: &mut Core) -> Result<SemihostingCommand> {
     core.run()?;
 
     loop {
         match core.status()? {
-            CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
-                SemihostingCommand::Unknown { operation, .. },
-            ))) if operation == SYS_EXIT_EXTENDED => {
-                tracing::debug!("Got SYS_EXIT_EXTENDED. Continuing");
-                core.run()?;
-            }
             CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(s))) => {
                 tracing::debug!("Got semihosting command from target {:?}", s);
                 return Ok(s);
@@ -366,12 +358,6 @@ fn run_loop(
         // this is important so we do one last poll after halt, so we flush all messages
         // the core printed before halting, such as a panic message.
         match core.status()? {
-            probe_rs::CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
-                SemihostingCommand::Unknown { operation, .. },
-            ))) if operation == SYS_EXIT_EXTENDED => {
-                tracing::debug!("Target wanted to run semihosting SYS_EXIT_EXTENDED (0x20), but probe-rs does not support this operation yet. Continuing...");
-                core.run()?;
-            }
             probe_rs::CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
                 SemihostingCommand::Unknown { operation, .. },
             ))) if operation != TestRunnerInterface::SEMIHOSTING_USER_LIST => {
