@@ -71,7 +71,7 @@ impl Cmd {
             let loader = build_loader(&mut session, path, self.format_options)?;
             run_flash_download(
                 &mut session,
-                &path,
+                path,
                 &self.download_options,
                 &probe_options,
                 loader,
@@ -264,7 +264,7 @@ fn create_tests<'a>(runner_ref: &'a RefCell<Runner>) -> Result<Vec<Trial<'a>>> {
         tests.push(
             Trial::test(&t.name, move || {
                 let mut runner = runner_ref.borrow_mut();
-                run_test(test, &mut *runner)
+                run_test(test, &mut runner)
             })
             .with_ignored_flag(t.ignored),
         )
@@ -427,7 +427,8 @@ fn run_loop(
             match exit_status {
                 Err(e) => Ok(Err(e)),
                 Ok(exit_status) => {
-                    if exit_status == !should_panic {
+                    let should_exit_successfully = !should_panic;
+                    if exit_status == should_exit_successfully {
                         if always_print_stacktrace && !exit_status {
                             print_stacktrace(core, path)?;
                         }
