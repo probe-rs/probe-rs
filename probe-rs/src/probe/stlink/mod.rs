@@ -6,6 +6,7 @@ use self::usb_interface::{StLinkUsb, StLinkUsbDevice};
 use super::{DebugProbe, DebugProbeError, ProbeCreationError, WireProtocol};
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::{valid_32bit_arm_address, ArmError};
+use crate::probe::DebugProbeSource;
 use crate::{
     architecture::arm::{
         ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, IDR},
@@ -38,28 +39,15 @@ const STLINK_MAX_WRITE_LEN: usize = 0xFFFC;
 
 const DP_PORT: u16 = 0xFFFF;
 
-#[derive(Debug)]
-pub(crate) struct StLink<D: StLinkUsb> {
-    device: D,
-    name: String,
-    hw_version: u8,
-    jtag_version: u8,
-    protocol: WireProtocol,
-    swd_speed_khz: u32,
-    jtag_speed_khz: u32,
-    swo_enabled: bool,
-    scan_chain: Option<Vec<ScanChainElement>>,
+pub struct StLinkSource;
 
-    /// List of opened APs
-    opened_aps: Vec<u8>,
-}
-
-impl DebugProbe for StLink<StLinkUsbDevice> {
+impl DebugProbeSource for StLinkSource {
     fn new_from_selector(
+        &self,
         selector: &DebugProbeSelector,
     ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         let device = StLinkUsbDevice::new_from_selector(selector)?;
-        let mut stlink = Self {
+        let mut stlink = StLink {
             name: format!("ST-Link {}", &device.info.version_name),
             device,
             hw_version: 0,
@@ -78,6 +66,28 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
         Ok(Box::new(stlink))
     }
 
+    fn list_probes(&self) -> Vec<crate::DebugProbeInfo> {
+        tools::list_stlink_devices()
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct StLink<D: StLinkUsb> {
+    device: D,
+    name: String,
+    hw_version: u8,
+    jtag_version: u8,
+    protocol: WireProtocol,
+    swd_speed_khz: u32,
+    jtag_speed_khz: u32,
+    swo_enabled: bool,
+    scan_chain: Option<Vec<ScanChainElement>>,
+
+    /// List of opened APs
+    opened_aps: Vec<u8>,
+}
+
+impl DebugProbe for StLink<StLinkUsbDevice> {
     fn get_name(&self) -> &str {
         &self.name
     }

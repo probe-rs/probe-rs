@@ -14,7 +14,7 @@ use crate::{
     probe::{
         common::{common_sequence, extract_ir_lengths},
         espusbjtag::protocol::{JtagState, RegisterState},
-        DeferredResultSet, JtagCommandQueue,
+        DebugProbeSource, DeferredResultSet, JtagCommandQueue,
     },
     DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
 };
@@ -27,7 +27,37 @@ use self::protocol::ProtocolHandler;
 use super::{BatchExecutionError, ChainParams, JTAGAccess, JtagChainItem};
 
 use probe_rs_target::ScanChainElement;
-pub use protocol::list_espjtag_devices;
+
+pub struct EspUsbJtagSource;
+
+impl DebugProbeSource for EspUsbJtagSource {
+    fn new_from_selector(
+        &self,
+        selector: &DebugProbeSelector,
+    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+        let protocol = ProtocolHandler::new_from_selector(selector)?;
+
+        Ok(Box::new(EspUsbJtag {
+            protocol,
+            jtag_idle_cycles: 0,
+            current_ir_reg: 1,
+            // default to 5, as most Espressif chips have an irlen of 5
+            max_ir_address: 5,
+            scan_chain: None,
+            chain_params: ChainParams {
+                irpre: 0,
+                irpost: 0,
+                drpre: 0,
+                drpost: 0,
+                irlen: 0,
+            },
+        }))
+    }
+
+    fn list_probes(&self) -> Vec<crate::DebugProbeInfo> {
+        protocol::list_espjtag_devices()
+    }
+}
 
 #[derive(Debug)]
 pub(crate) struct EspUsbJtag {
@@ -427,28 +457,6 @@ impl JTAGAccess for EspUsbJtag {
 }
 
 impl DebugProbe for EspUsbJtag {
-    fn new_from_selector(
-        selector: &DebugProbeSelector,
-    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
-        let protocol = ProtocolHandler::new_from_selector(selector)?;
-
-        Ok(Box::new(EspUsbJtag {
-            protocol,
-            jtag_idle_cycles: 0,
-            current_ir_reg: 1,
-            // default to 5, as most Espressif chips have an irlen of 5
-            max_ir_address: 5,
-            scan_chain: None,
-            chain_params: ChainParams {
-                irpre: 0,
-                irpost: 0,
-                drpre: 0,
-                drpost: 0,
-                irlen: 0,
-            },
-        }))
-    }
-
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         if matches!(protocol, WireProtocol::Jtag) {
             Ok(())

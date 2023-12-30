@@ -256,8 +256,6 @@ fn device_matches(
 pub fn open_device_from_selector(
     selector: &DebugProbeSelector,
 ) -> Result<CmsisDapDevice, ProbeCreationError> {
-    let selector = selector.into();
-
     tracing::trace!("Attempting to open device matching {}", selector);
 
     // We need to use rusb to detect the proper HID interface to use

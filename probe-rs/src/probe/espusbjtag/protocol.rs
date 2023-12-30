@@ -614,7 +614,7 @@ pub(super) fn is_espjtag_device<T: UsbContext>(device: &Device<T>) -> bool {
 }
 
 #[tracing::instrument(skip_all)]
-pub fn list_espjtag_devices() -> Vec<DebugProbeInfo> {
+pub(super) fn list_espjtag_devices() -> Vec<DebugProbeInfo> {
     rusb::Context::new()
         .and_then(|context| context.devices())
         .map_or(vec![], |devices| {

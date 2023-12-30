@@ -1671,15 +1671,6 @@ mod test {
     /// This is just a blanket impl that will crash if used (only relevant in tests,
     /// so no problem as we do not use it) to fulfill the marker requirement.
     impl DebugProbe for MockJaylink {
-        fn new_from_selector(
-            _selector: &crate::DebugProbeSelector,
-        ) -> Result<Box<dyn DebugProbe>, crate::DebugProbeError>
-        where
-            Self: Sized,
-        {
-            todo!()
-        }
-
         fn get_name(&self) -> &str {
             todo!()
         }

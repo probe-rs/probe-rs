@@ -11,6 +11,7 @@ use crate::architecture::arm::{ArmError, RawDapAccess};
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
 use crate::probe::common::bits_to_byte;
+use crate::probe::DebugProbeSource;
 use crate::{
     architecture::{
         arm::{
@@ -27,6 +28,100 @@ use crate::{
 };
 
 const SWO_BUFFER_SIZE: u16 = 128;
+
+pub struct JLinkSource;
+
+impl DebugProbeSource for JLinkSource {
+    fn new_from_selector(
+        &self,
+        selector: &DebugProbeSelector,
+    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+        let mut jlinks = jaylink::scan_usb()?
+            .filter_map(|usb_info| {
+                if usb_info.vid() == selector.vendor_id && usb_info.pid() == selector.product_id {
+                    let device = usb_info.open();
+                    if let Some(serial_number) = selector.serial_number.as_deref() {
+                        if device
+                            .as_ref()
+                            .map(|d| d.serial_string() == serial_number)
+                            .unwrap_or(false)
+                        {
+                            Some(device)
+                        } else {
+                            None
+                        }
+                    } else {
+                        Some(device)
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        if jlinks.is_empty() {
+            return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                super::ProbeCreationError::NotFound,
+            ));
+        } else if jlinks.len() > 1 {
+            tracing::warn!("More than one matching J-Link was found. Opening the first one.")
+        }
+        let jlink_handle = jlinks.pop().unwrap()?;
+
+        // Check which protocols are supported by the J-Link.
+        //
+        // If the J-Link has the SELECT_IF capability, we can just ask
+        // it which interfaces it supports. If it doesn't have the capabilty,
+        // we assume that it justs support JTAG. In that case, we will also
+        // not be able to change protocols.
+
+        let supported_protocols: Vec<WireProtocol> =
+            if jlink_handle.capabilities().contains(Capability::SelectIf) {
+                let interfaces = jlink_handle.available_interfaces();
+
+                let protocols: Vec<_> =
+                    interfaces.into_iter().map(WireProtocol::try_from).collect();
+
+                protocols
+                    .iter()
+                    .filter(|p| p.is_err())
+                    .for_each(|protocol| {
+                        if let Err(JlinkError::UnknownInterface(interface)) = protocol {
+                            tracing::debug!(
+                            "J-Link returned interface {:?}, which is not supported by probe-rs.",
+                            interface
+                        );
+                        }
+                    });
+
+                // We ignore unknown protocols, the chance that this happens is pretty low,
+                // and we can just work with the ones we know and support.
+                protocols.into_iter().filter_map(Result::ok).collect()
+            } else {
+                // The J-Link cannot report which interfaces it supports, and cannot
+                // switch interfaces. We assume it just supports JTAG.
+                vec![WireProtocol::Jtag]
+            };
+
+        Ok(Box::new(JLink {
+            handle: jlink_handle,
+            swo_config: None,
+            supported_protocols,
+            jtag_idle_cycles: 0,
+            ir_len: 0,
+            protocol: None,
+            current_ir_reg: 1,
+            speed_khz: 0,
+            scan_chain: None,
+            swd_settings: SwdSettings::default(),
+            probe_statistics: ProbeStatistics::default(),
+        }))
+    }
+
+    fn list_probes(&self) -> Vec<DebugProbeInfo> {
+        list_jlink_devices()
+    }
+}
 
 #[derive(Debug)]
 pub(crate) struct JLink {
@@ -315,91 +410,6 @@ impl JLink {
 }
 
 impl DebugProbe for JLink {
-    fn new_from_selector(
-        selector: &DebugProbeSelector,
-    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
-        let mut jlinks = jaylink::scan_usb()?
-            .filter_map(|usb_info| {
-                if usb_info.vid() == selector.vendor_id && usb_info.pid() == selector.product_id {
-                    let device = usb_info.open();
-                    if let Some(serial_number) = selector.serial_number.as_deref() {
-                        if device
-                            .as_ref()
-                            .map(|d| d.serial_string() == serial_number)
-                            .unwrap_or(false)
-                        {
-                            Some(device)
-                        } else {
-                            None
-                        }
-                    } else {
-                        Some(device)
-                    }
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-
-        if jlinks.is_empty() {
-            return Err(DebugProbeError::ProbeCouldNotBeCreated(
-                super::ProbeCreationError::NotFound,
-            ));
-        } else if jlinks.len() > 1 {
-            tracing::warn!("More than one matching J-Link was found. Opening the first one.")
-        }
-        let jlink_handle = jlinks.pop().unwrap()?;
-
-        // Check which protocols are supported by the J-Link.
-        //
-        // If the J-Link has the SELECT_IF capability, we can just ask
-        // it which interfaces it supports. If it doesn't have the capabilty,
-        // we assume that it justs support JTAG. In that case, we will also
-        // not be able to change protocols.
-
-        let supported_protocols: Vec<WireProtocol> =
-            if jlink_handle.capabilities().contains(Capability::SelectIf) {
-                let interfaces = jlink_handle.available_interfaces();
-
-                let protocols: Vec<_> =
-                    interfaces.into_iter().map(WireProtocol::try_from).collect();
-
-                protocols
-                    .iter()
-                    .filter(|p| p.is_err())
-                    .for_each(|protocol| {
-                        if let Err(JlinkError::UnknownInterface(interface)) = protocol {
-                            tracing::debug!(
-                            "J-Link returned interface {:?}, which is not supported by probe-rs.",
-                            interface
-                        );
-                        }
-                    });
-
-                // We ignore unknown protocols, the chance that this happens is pretty low,
-                // and we can just work with the ones we know and support.
-                protocols.into_iter().filter_map(Result::ok).collect()
-            } else {
-                // The J-Link cannot report which interfaces it supports, and cannot
-                // switch interfaces. We assume it just supports JTAG.
-                vec![WireProtocol::Jtag]
-            };
-
-        Ok(Box::new(JLink {
-            handle: jlink_handle,
-            swo_config: None,
-            supported_protocols,
-            jtag_idle_cycles: 0,
-            ir_len: 0,
-            protocol: None,
-            current_ir_reg: 1,
-            speed_khz: 0,
-            scan_chain: None,
-            swd_settings: SwdSettings::default(),
-            probe_statistics: ProbeStatistics::default(),
-        }))
-    }
-
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         // try to select the interface
 
@@ -806,7 +816,7 @@ impl SwoAccess for JLink {
 }
 
 #[tracing::instrument(skip_all)]
-pub(crate) fn list_jlink_devices() -> Vec<DebugProbeInfo> {
+fn list_jlink_devices() -> Vec<DebugProbeInfo> {
     match jaylink::scan_usb() {
         Ok(devices) => devices
             .map(|device_info| {

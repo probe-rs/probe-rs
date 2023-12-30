@@ -6,11 +6,10 @@ use crate::architecture::{
 };
 use crate::probe::common::{common_sequence, extract_ir_lengths};
 use crate::probe::{
-    DeferredResultSet, JTAGAccess, JtagCommandQueue, ProbeCreationError, ScanChainElement,
+    DebugProbe, DebugProbeSource, DeferredResultSet, JTAGAccess, JtagCommandQueue,
+    ProbeCreationError, ScanChainElement,
 };
-use crate::{
-    DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, WireProtocol,
-};
+use crate::{DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, WireProtocol};
 use bitvec::{order::Lsb0, slice::BitSlice, vec::BitVec};
 use rusb::UsbContext;
 use std::convert::TryInto;
@@ -372,35 +371,21 @@ impl JtagAdapter {
     }
 }
 
-#[derive(Debug)]
-pub struct FtdiProbe {
-    adapter: JtagAdapter,
-    speed_khz: u32,
-    idle_cycles: u8,
-    scan_chain: Option<Vec<ScanChainElement>>,
-}
+pub struct FtdiProbeSource;
 
-impl DebugProbe for FtdiProbe {
+impl DebugProbeSource for FtdiProbeSource {
     fn new_from_selector(
+        &self,
         selector: &DebugProbeSelector,
-    ) -> Result<Box<dyn DebugProbe>, DebugProbeError>
-    where
-        Self: Sized,
-    {
-        let DebugProbeSelector {
-            vendor_id,
-            product_id,
-            ..
-        } = selector;
-
+    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         // Only open FTDI-compatible probes
-        if !FTDI_COMPAT_DEVICE_IDS.contains(&(vendor_id, product_id)) {
+        if !FTDI_COMPAT_DEVICE_IDS.contains(&(selector.vendor_id, selector.product_id)) {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::NotFound,
             ));
         }
 
-        let adapter = JtagAdapter::open(vendor_id, product_id)
+        let adapter = JtagAdapter::open(selector.vendor_id, selector.product_id)
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
 
         let probe = FtdiProbe {
@@ -413,6 +398,20 @@ impl DebugProbe for FtdiProbe {
         Ok(Box::new(probe))
     }
 
+    fn list_probes(&self) -> Vec<DebugProbeInfo> {
+        list_ftdi_devices()
+    }
+}
+
+#[derive(Debug)]
+pub struct FtdiProbe {
+    adapter: JtagAdapter,
+    speed_khz: u32,
+    idle_cycles: u8,
+    scan_chain: Option<Vec<ScanChainElement>>,
+}
+
+impl DebugProbe for FtdiProbe {
     fn get_name(&self) -> &str {
         "FTDI"
     }
@@ -775,7 +774,7 @@ fn get_device_info(device: &rusb::Device<rusb::Context>) -> Option<DebugProbeInf
 }
 
 #[tracing::instrument(skip_all)]
-pub(crate) fn list_ftdi_devices() -> Vec<DebugProbeInfo> {
+fn list_ftdi_devices() -> Vec<DebugProbeInfo> {
     match rusb::Context::new().and_then(|ctx| ctx.devices()) {
         Ok(devices) => devices
             .iter()

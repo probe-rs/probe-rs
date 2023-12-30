@@ -1,13 +1,9 @@
 use crate::{
-    DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError,
+    probe::DebugProbeSource, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe,
+    ProbeCreationError,
 };
 
-use super::{
-    cmsisdap,
-    espusbjtag::{self, list_espjtag_devices},
-    jlink::{self, list_jlink_devices},
-    stlink, wlink,
-};
+use super::{cmsisdap, espusbjtag, jlink, stlink, wlink};
 
 #[cfg(feature = "ftdi")]
 use super::ftdi;
@@ -79,25 +75,25 @@ impl Default for AllProbesLister {
 }
 
 impl AllProbesLister {
-    pub fn new() -> Self {
+    const SOURCES: &'static [&'static dyn DebugProbeSource] = &[
+        &cmsisdap::CmsisDapSource,
+        #[cfg(feature = "ftdi")]
+        &ftdi::FtdiProbeSource,
+        &stlink::StLinkSource,
+        &jlink::JLinkSource,
+        &espusbjtag::EspUsbJtagSource,
+        &wlink::WchLinkSource,
+    ];
+
+    pub const fn new() -> Self {
         Self
     }
 
     fn open(selector: impl Into<DebugProbeSelector>) -> Result<Probe, DebugProbeError> {
         let selector = selector.into();
 
-        let probes = [
-            cmsisdap::CmsisDap::new_from_selector,
-            #[cfg(feature = "ftdi")]
-            ftdi::FtdiProbe::new_from_selector,
-            stlink::StLink::new_from_selector,
-            jlink::JLink::new_from_selector,
-            espusbjtag::EspUsbJtag::new_from_selector,
-            wlink::WchLink::new_from_selector,
-        ];
-
-        for probe_ctor in probes {
-            match probe_ctor(&selector) {
+        for probe_ctor in Self::SOURCES {
+            match probe_ctor.new_from_selector(&selector) {
                 Ok(link) => return Ok(Probe::from_specific_probe(link)),
                 Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
                 Err(e) => return Err(e),
@@ -110,18 +106,11 @@ impl AllProbesLister {
     }
 
     fn list_all() -> Vec<DebugProbeInfo> {
-        let mut list = cmsisdap::tools::list_cmsisdap_devices();
-        #[cfg(feature = "ftdi")]
-        {
-            list.extend(ftdi::list_ftdi_devices());
+        let mut list = vec![];
+
+        for driver in Self::SOURCES {
+            list.extend(driver.list_probes());
         }
-        list.extend(stlink::tools::list_stlink_devices());
-
-        list.extend(list_jlink_devices());
-
-        list.extend(list_espjtag_devices());
-
-        list.extend(wlink::list_wlink_devices());
 
         list
     }

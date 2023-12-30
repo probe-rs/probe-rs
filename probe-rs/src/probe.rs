@@ -482,19 +482,26 @@ impl Probe {
     }
 }
 
-/// An abstraction over general debug probe functionality.
+/// An abstraction over a probe driver type.
 ///
 /// This trait has to be implemented by ever debug probe driver.
-pub trait DebugProbe: Send + fmt::Debug {
+pub trait DebugProbeSource {
     /// Creates a new boxed [`DebugProbe`] from a given [`DebugProbeSelector`].
     /// This will be called for all available debug drivers when discovering probes.
     /// When opening, it will open the first probe which succeeds during this call.
     fn new_from_selector(
+        &self,
         selector: &DebugProbeSelector,
-    ) -> Result<Box<dyn DebugProbe>, DebugProbeError>
-    where
-        Self: Sized;
+    ) -> Result<Box<dyn DebugProbe>, DebugProbeError>;
 
+    /// Returns a list of all available debug probes of the current type.
+    fn list_probes(&self) -> Vec<DebugProbeInfo>;
+}
+
+/// An abstraction over general debug probe.
+///
+/// This trait has to be implemented by ever debug probe driver.
+pub trait DebugProbe: Send + fmt::Debug {
     /// Get human readable name for the probe.
     fn get_name(&self) -> &str;
 
