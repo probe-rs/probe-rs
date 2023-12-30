@@ -375,6 +375,10 @@ impl DebugProbe for WchLink {
     ) -> Result<(), DebugProbeError> {
         Ok(())
     }
+
+    fn as_jtag_probe(&mut self) -> Option<&mut dyn JTAGAccess> {
+        Some(self)
+    }
 }
 
 /// Wrap WCH-Link's USB based DMI access as a fake JTAGAccess
@@ -408,6 +412,10 @@ impl JTAGAccess for WchLink {
     }
 
     fn set_ir_len(&mut self, _len: u32) {}
+
+    fn set_idle_tdi(&mut self, _tdi: bool) {
+        // This isn't an actual JTAG interface
+    }
 
     fn write_register(
         &mut self,

@@ -1578,6 +1578,8 @@ mod test {
             todo!()
         }
 
+        fn set_idle_tdi(&mut self, _tdi: bool) {}
+
         fn write_register(
             &mut self,
             address: u32,

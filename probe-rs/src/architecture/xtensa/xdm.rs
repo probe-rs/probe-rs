@@ -135,8 +135,6 @@ pub struct Xdm {
 
 impl Xdm {
     pub fn new(probe: Box<dyn JTAGAccess>) -> Result<Self, (Box<dyn JTAGAccess>, XtensaError)> {
-        // TODO implement openocd's esp32_queue_tdi_idle() to prevent potentially damaging flash ICs
-
         let mut x = Self {
             probe,
             device_id: 0,

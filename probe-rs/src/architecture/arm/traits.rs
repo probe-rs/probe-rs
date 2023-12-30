@@ -67,7 +67,7 @@ impl ApAddress {
 ///
 /// Almost everything is the responsibility of the caller. For example, the caller must
 /// handle bank switching and AP selection.
-pub trait RawDapAccess {
+pub trait RawDapAccess: DebugProbe {
     /// Select the debug port to operate on.
     ///
     /// If the probe is connected to a system with multiple debug ports,

@@ -378,6 +378,21 @@ impl Probe {
         }
     }
 
+    /// Configure the level of the TDI line while idle.
+    ///
+    /// See [`JTAGAccess::set_idle_tdi`] for more information and usage
+    pub fn set_jtag_idle_tdi(&mut self, idle_tdi: bool) -> Result<(), DebugProbeError> {
+        if !self.attached {
+            if let Some(jtag) = self.as_jtag_probe() {
+                tracing::debug!("Setting JTAG idle TDI to {:?}", idle_tdi);
+                jtag.set_idle_tdi(idle_tdi);
+            }
+            Ok(())
+        } else {
+            Err(DebugProbeError::Attached)
+        }
+    }
+
     /// Get the currently used maximum speed for the debug protocol in kHz.
     ///
     /// Not all probes report which speed is used, meaning this value is not
@@ -481,6 +496,12 @@ impl Probe {
     /// This does not work on all probes.
     pub fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
         self.inner.get_target_voltage()
+    }
+
+    /// Returns the inner probe as a [`JTAGAccess`] object or `None` if
+    /// the probe does not support JTAG.
+    pub fn as_jtag_probe(&mut self) -> Option<&mut dyn JTAGAccess> {
+        self.inner.as_jtag_probe()
     }
 }
 
@@ -647,6 +668,12 @@ pub trait DebugProbe: Send + fmt::Debug {
     /// if the probe doesn’t support reading the target voltage.
     fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
         Ok(None)
+    }
+
+    /// Returns the inner probe as a [`JTAGAccess`] object or `None` if
+    /// the probe does not support JTAG.
+    fn as_jtag_probe(&mut self) -> Option<&mut dyn JTAGAccess> {
+        None
     }
 }
 
@@ -857,6 +884,12 @@ pub trait JTAGAccess: DebugProbe {
 
     /// Set the IR register length
     fn set_ir_len(&mut self, len: u32);
+
+    /// Set the level of the JTAG TDI line while idle.
+    ///
+    /// In some targets, especially ESP32, the TDI line may be used for other purposes and need
+    /// to be left in a specific state.
+    fn set_idle_tdi(&mut self, idle_tdi: bool);
 
     /// Write to a JTAG register
     ///

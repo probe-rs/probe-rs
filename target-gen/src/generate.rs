@@ -166,6 +166,7 @@ where
             rtt_scan_ranges: None,
             scan_chain: None, // TODO, parse from sdf
             default_binary_format: None,
+            idle_tdi: None,
         });
     }
 

@@ -108,6 +108,7 @@ pub fn cmd_elf(
                 rtt_scan_ranges: None,
                 scan_chain: None,
                 default_binary_format: None,
+                idle_tdi: None,
             }],
             flash_algorithms: vec![algorithm],
             source: BuiltIn,

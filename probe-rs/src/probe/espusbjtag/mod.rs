@@ -40,6 +40,7 @@ impl ProbeDriver for EspUsbJtagSource {
 
         Ok(Box::new(EspUsbJtag {
             protocol,
+            jtag_idle_tdi: false,
             jtag_idle_cycles: 0,
             current_ir_reg: 1,
             // default to 5 bits, as most Espressif chips have an irlen of 5
@@ -58,9 +59,9 @@ impl ProbeDriver for EspUsbJtagSource {
 pub(crate) struct EspUsbJtag {
     protocol: ProtocolHandler,
 
-    /// Idle cycles necessary between consecutive
-    /// accesses to the DMI register
+    /// Idle cycles necessary between consecutive accesses
     jtag_idle_cycles: u8,
+    jtag_idle_tdi: bool,
 
     current_ir_reg: u32,
     max_ir_address: u32,
@@ -263,7 +264,7 @@ impl EspUsbJtag {
 
             // We need to stay in the idle cycle a bit
             let tms = iter::repeat(false).take(self.idle_cycles() as usize);
-            let tdi = iter::repeat(false).take(self.idle_cycles() as usize);
+            let tdi = iter::repeat(self.jtag_idle_tdi).take(self.idle_cycles() as usize);
 
             self.protocol
                 .schedule_jtag_scan(tms, tdi, iter::repeat(false))?;
@@ -309,7 +310,7 @@ impl EspUsbJtag {
 
         // Reset JTAG chain (5 times TMS high), and enter idle state afterwards
         let tms = [true, true, true, true, true, false];
-        let tdi = iter::repeat(true);
+        let tdi = [true, true, true, true, true, self.jtag_idle_tdi];
 
         self.protocol
             .schedule_jtag_scan(tms, tdi, iter::repeat(false))?;
@@ -330,6 +331,11 @@ impl JTAGAccess for EspUsbJtag {
         if len != 5 {
             panic!("Only IR Length of 5 is currently supported");
         }
+    }
+
+    fn set_idle_tdi(&mut self, idle_tdi: bool) {
+        self.jtag_idle_tdi = idle_tdi;
+        self.jtag_idle_cycles = self.jtag_idle_cycles.max(1);
     }
 
     /// Write the data register
@@ -555,5 +561,9 @@ impl DebugProbe for EspUsbJtag {
 
     fn has_xtensa_interface(&self) -> bool {
         true
+    }
+
+    fn as_jtag_probe(&mut self) -> Option<&mut dyn JTAGAccess> {
+        Some(self)
     }
 }

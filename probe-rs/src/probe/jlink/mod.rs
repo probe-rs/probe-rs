@@ -123,6 +123,7 @@ impl ProbeDriver for JLinkSource {
             swo_config: None,
             supported_protocols,
             jtag_idle_cycles: 0,
+            jtag_idle_tdi: false,
             protocol: None,
             current_ir_reg: 1,
             speed_khz: 0,
@@ -155,6 +156,9 @@ pub(crate) struct JLink {
     /// Idle cycles necessary between consecutive
     /// accesses to the DMI register
     jtag_idle_cycles: u8,
+
+    /// The value of TDI during idle cycles
+    jtag_idle_tdi: bool,
 
     /// Currently selected protocol
     protocol: Option<WireProtocol>,
@@ -782,11 +786,20 @@ impl DebugProbe for JLink {
     fn has_xtensa_interface(&self) -> bool {
         self.supported_protocols.contains(&WireProtocol::Jtag)
     }
+
+    fn as_jtag_probe(&mut self) -> Option<&mut dyn JTAGAccess> {
+        Some(self)
+    }
 }
 
 impl JTAGAccess for JLink {
     fn set_ir_len(&mut self, len: u32) {
         self.chain_params.irlen = len as usize;
+    }
+
+    fn set_idle_tdi(&mut self, tdi: bool) {
+        self.jtag_idle_tdi = tdi;
+        self.jtag_idle_cycles = self.jtag_idle_cycles.max(1);
     }
 
     /// Read the data register

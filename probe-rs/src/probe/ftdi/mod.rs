@@ -34,6 +34,7 @@ struct JtagAdapter {
     device: ftdi::Device,
 
     chain_params: ChainParams,
+    idle_tdi: u8,
     jtag_idle_cycles: u8,
 
     current_ir_reg: u32,
@@ -60,6 +61,7 @@ impl JtagAdapter {
             device,
             chain_params: ChainParams::default(),
             jtag_idle_cycles: 0,
+            idle_tdi: 0,
             buffer_size: ftdi.buffer_size,
             jtag_state: JtagState::Reset,
             current_ir_reg: 1,
@@ -70,6 +72,10 @@ impl JtagAdapter {
             in_bits: BitVec::new(),
             scan_chain: None,
         })
+    }
+
+    fn set_idle_tdi(&mut self, idle_tdi: bool) {
+        self.idle_tdi = 0xFF * idle_tdi as u8;
     }
 
     pub fn attach(&mut self) -> Result<(), ftdi::Error> {
@@ -719,6 +725,10 @@ impl DebugProbe for FtdiProbe {
     fn has_xtensa_interface(&self) -> bool {
         true
     }
+
+    fn as_jtag_probe(&mut self) -> Option<&mut dyn JTAGAccess> {
+        Some(self)
+    }
 }
 
 impl JTAGAccess for FtdiProbe {
@@ -727,11 +737,12 @@ impl JTAGAccess for FtdiProbe {
         self.adapter.jtag_idle_cycles = idle_cycles;
     }
 
-    fn idle_cycles(&self) -> u8 {
-        self.adapter.jtag_idle_cycles
+    fn set_idle_tdi(&mut self, idle_tdi: bool) {
+        tracing::debug!("set_idle_tdi({})", idle_tdi);
+        self.adapter.set_idle_tdi(idle_tdi);
+        self.idle_cycles = self.idle_cycles.max(1);
     }
 
-    /// Write the data register
     fn write_register(
         &mut self,
         address: u32,

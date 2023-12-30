@@ -112,6 +112,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 rtt_scan_ranges: None,
                 scan_chain: Some(vec![]),
                 default_binary_format: Some(BinaryFormat::Raw),
+                idle_tdi: None,
             }],
             flash_algorithms: vec![],
             source: TargetDescriptionSource::Generic,

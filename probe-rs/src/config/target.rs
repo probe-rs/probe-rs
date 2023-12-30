@@ -62,6 +62,8 @@ pub struct Target {
     pub scan_chain: Option<Vec<ScanChainElement>>,
     /// The default executable format for the target.
     pub default_format: BinaryFormat,
+    /// Specifies the level of the TDI line while in the idle state.
+    pub idle_tdi: Option<bool>,
 }
 
 impl std::fmt::Debug for Target {
@@ -237,6 +239,7 @@ impl Target {
             rtt_scan_regions,
             scan_chain: chip.scan_chain.clone(),
             default_format: chip.default_binary_format.clone().unwrap_or_default(),
+            idle_tdi: chip.idle_tdi,
         })
     }
 

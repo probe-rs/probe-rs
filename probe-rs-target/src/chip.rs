@@ -73,6 +73,8 @@ pub struct Chip {
     pub scan_chain: Option<Vec<ScanChainElement>>,
     /// The default binary format for this chip
     pub default_binary_format: Option<BinaryFormat>,
+    /// Specifies the level of the TDI line while in the idle state.
+    pub idle_tdi: Option<bool>,
 }
 
 impl Chip {
@@ -94,6 +96,7 @@ impl Chip {
             rtt_scan_ranges: None,
             scan_chain: Some(vec![]),
             default_binary_format: Some(BinaryFormat::Raw),
+            idle_tdi: None,
         }
     }
 }

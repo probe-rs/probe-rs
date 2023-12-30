@@ -173,6 +173,9 @@ impl Session {
         if let Some(scan_chain) = target.scan_chain.clone() {
             probe.set_scan_chain(scan_chain)?;
         }
+        if let Some(idle_tdi) = target.idle_tdi {
+            probe.set_jtag_idle_tdi(idle_tdi)?;
+        }
         probe.attach_to_unspecified()?;
 
         let interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
@@ -273,6 +276,9 @@ impl Session {
         if let Some(scan_chain) = target.scan_chain.clone() {
             probe.set_scan_chain(scan_chain)?;
         }
+        if let Some(idle_tdi) = target.idle_tdi {
+            probe.set_jtag_idle_tdi(idle_tdi)?;
+        }
 
         probe.attach_to_unspecified()?;
 
@@ -313,6 +319,9 @@ impl Session {
 
         if let Some(scan_chain) = target.scan_chain.clone() {
             probe.set_scan_chain(scan_chain)?;
+        }
+        if let Some(idle_tdi) = target.idle_tdi {
+            probe.set_jtag_idle_tdi(idle_tdi)?;
         }
 
         probe.attach_to_unspecified()?;
