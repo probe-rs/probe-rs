@@ -182,7 +182,7 @@ impl EspUsbJtag {
         tracing::trace!("tms: {:?}", tms.clone());
         tracing::trace!("tdi: {:?}", tdi.clone());
 
-        self.protocol.jtag_io_async2(tms, tdi, capture)?;
+        self.protocol.schedule_jtag_scan(tms, tdi, capture)?;
 
         self.protocol
             .jtag_move_to_state(JtagState::Ir(RegisterState::Update))?;
@@ -246,7 +246,7 @@ impl EspUsbJtag {
             .chain(iter::repeat(capture_data).take(register_bits))
             .chain(iter::repeat(false));
 
-        self.protocol.jtag_io_async2(tms, tdi, capture)?;
+        self.protocol.schedule_jtag_scan(tms, tdi, capture)?;
 
         self.protocol
             .jtag_move_to_state(JtagState::Dr(RegisterState::Update))?;
@@ -258,7 +258,8 @@ impl EspUsbJtag {
             let tms = iter::repeat(false).take(self.idle_cycles() as usize);
             let tdi = iter::repeat(false).take(self.idle_cycles() as usize);
 
-            self.protocol.jtag_io_async(tms, tdi, false)?;
+            self.protocol
+                .schedule_jtag_scan(tms, tdi, iter::repeat(false))?;
         }
 
         if capture_data {
@@ -303,7 +304,9 @@ impl EspUsbJtag {
         let tms = [true, true, true, true, true, false];
         let tdi = iter::repeat(true);
 
-        let response = self.protocol.jtag_io(tms, tdi, true)?;
+        self.protocol
+            .schedule_jtag_scan(tms, tdi, iter::repeat(false))?;
+        let response = self.protocol.flush()?;
 
         tracing::debug!("Response to reset: {}", response);
 

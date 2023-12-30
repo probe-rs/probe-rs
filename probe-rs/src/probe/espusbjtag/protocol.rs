@@ -336,41 +336,17 @@ impl ProtocolHandler {
 
     pub(super) fn jtag_move_to_state(&mut self, target: JtagState) -> Result<(), DebugProbeError> {
         while let Some(tms) = self.jtag_state.step_toward(target) {
-            self.jtag_io_async([tms], [false], false)?;
+            self.schedule_jtag_scan([tms], [false], [false])?;
         }
         tracing::debug!("In state: {:?}", self.jtag_state);
         Ok(())
     }
 
     /// Put a bit on TDI and possibly read one from TDO.
-    pub fn jtag_io(
-        &mut self,
-        tms: impl IntoIterator<Item = bool>,
-        tdi: impl IntoIterator<Item = bool>,
-        cap: bool,
-    ) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
-        self.jtag_io_async(tms, tdi, cap)?;
-        self.flush()
-    }
-
-    /// Put a bit on TDI and possibly read one from TDO.
     /// to receive the bytes from this operations call [`ProtocolHandler::flush`]
     ///
     /// Note that if the internal buffer is exceeded bytes will be automatically flushed to usb device
-    pub fn jtag_io_async(
-        &mut self,
-        tms: impl IntoIterator<Item = bool>,
-        tdi: impl IntoIterator<Item = bool>,
-        cap: bool,
-    ) -> Result<(), DebugProbeError> {
-        self.jtag_io_async2(tms, tdi, std::iter::repeat(cap))
-    }
-
-    /// Put a bit on TDI and possibly read one from TDO.
-    /// to receive the bytes from this operations call [`ProtocolHandler::flush`]
-    ///
-    /// Note that if the internal buffer is exceeded bytes will be automatically flushed to usb device
-    pub fn jtag_io_async2(
+    pub fn schedule_jtag_scan(
         &mut self,
         tms: impl IntoIterator<Item = bool>,
         tdi: impl IntoIterator<Item = bool>,
