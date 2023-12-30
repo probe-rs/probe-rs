@@ -315,7 +315,9 @@ impl JLink {
 }
 
 impl DebugProbe for JLink {
-    fn new_from_selector(selector: &DebugProbeSelector) -> Result<Box<Self>, DebugProbeError> {
+    fn new_from_selector(
+        selector: &DebugProbeSelector,
+    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         let mut jlinks = jaylink::scan_usb()?
             .filter_map(|usb_info| {
                 if usb_info.vid() == selector.vendor_id && usb_info.pid() == selector.product_id {

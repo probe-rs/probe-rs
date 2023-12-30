@@ -1673,7 +1673,7 @@ mod test {
     impl DebugProbe for MockJaylink {
         fn new_from_selector(
             _selector: &crate::DebugProbeSelector,
-        ) -> Result<Box<Self>, crate::DebugProbeError>
+        ) -> Result<Box<dyn DebugProbe>, crate::DebugProbeError>
         where
             Self: Sized,
         {

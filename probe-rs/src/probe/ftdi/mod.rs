@@ -381,7 +381,9 @@ pub struct FtdiProbe {
 }
 
 impl DebugProbe for FtdiProbe {
-    fn new_from_selector(selector: &DebugProbeSelector) -> Result<Box<Self>, DebugProbeError>
+    fn new_from_selector(
+        selector: &DebugProbeSelector,
+    ) -> Result<Box<dyn DebugProbe>, DebugProbeError>
     where
         Self: Sized,
     {

@@ -55,7 +55,9 @@ pub(crate) struct StLink<D: StLinkUsb> {
 }
 
 impl DebugProbe for StLink<StLinkUsbDevice> {
-    fn new_from_selector(selector: &DebugProbeSelector) -> Result<Box<Self>, DebugProbeError> {
+    fn new_from_selector(
+        selector: &DebugProbeSelector,
+    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         let device = StLinkUsbDevice::new_from_selector(selector)?;
         let mut stlink = Self {
             name: format!("ST-Link {}", &device.info.version_name),

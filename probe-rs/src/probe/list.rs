@@ -85,37 +85,24 @@ impl AllProbesLister {
 
     fn open(selector: impl Into<DebugProbeSelector>) -> Result<Probe, DebugProbeError> {
         let selector = selector.into();
-        match cmsisdap::CmsisDap::new_from_selector(&selector) {
-            Ok(link) => return Ok(Probe::from_specific_probe(link)),
-            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
-            Err(e) => return Err(e),
-        };
-        #[cfg(feature = "ftdi")]
-        match ftdi::FtdiProbe::new_from_selector(&selector) {
-            Ok(link) => return Ok(Probe::from_specific_probe(link)),
-            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
-            Err(e) => return Err(e),
-        };
-        match stlink::StLink::new_from_selector(&selector) {
-            Ok(link) => return Ok(Probe::from_specific_probe(link)),
-            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
-            Err(e) => return Err(e),
-        };
-        match jlink::JLink::new_from_selector(&selector) {
-            Ok(link) => return Ok(Probe::from_specific_probe(link)),
-            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
-            Err(e) => return Err(e),
-        };
-        match espusbjtag::EspUsbJtag::new_from_selector(&selector) {
-            Ok(link) => return Ok(Probe::from_specific_probe(link)),
-            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
-            Err(e) => return Err(e),
-        };
-        match wlink::WchLink::new_from_selector(&selector) {
-            Ok(link) => return Ok(Probe::from_specific_probe(link)),
-            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
-            Err(e) => return Err(e),
-        };
+
+        let probes = [
+            cmsisdap::CmsisDap::new_from_selector,
+            #[cfg(feature = "ftdi")]
+            ftdi::FtdiProbe::new_from_selector,
+            stlink::StLink::new_from_selector,
+            jlink::JLink::new_from_selector,
+            espusbjtag::EspUsbJtag::new_from_selector,
+            wlink::WchLink::new_from_selector,
+        ];
+
+        for probe_ctor in probes {
+            match probe_ctor(&selector) {
+                Ok(link) => return Ok(Probe::from_specific_probe(link)),
+                Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
+                Err(e) => return Err(e),
+            };
+        }
 
         Err(DebugProbeError::ProbeCouldNotBeCreated(
             ProbeCreationError::NotFound,
