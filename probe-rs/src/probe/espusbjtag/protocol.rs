@@ -176,11 +176,7 @@ impl Debug for ProtocolHandler {
 }
 
 impl ProtocolHandler {
-    pub fn new_from_selector(
-        selector: impl Into<DebugProbeSelector>,
-    ) -> Result<Self, ProbeCreationError> {
-        let selector = selector.into();
-
+    pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, ProbeCreationError> {
         let context = Context::new()?;
 
         tracing::debug!("Acquired libusb context.");
@@ -196,7 +192,7 @@ impl ProtocolHandler {
                     && selector.product_id == descriptor.product_id()
                 {
                     // If the VID & PID match, match the serial if one was given.
-                    if let Some(serial) = &selector.serial_number {
+                    if let Some(serial) = selector.serial_number.as_ref() {
                         let sn_str = read_serial_number(&device, &descriptor).ok();
                         if sn_str.as_ref() == Some(serial) {
                             Some(device)

@@ -18,11 +18,7 @@ pub struct WchLinkUsbDevice {
 }
 
 impl WchLinkUsbDevice {
-    pub fn new_from_selector(
-        selector: impl Into<DebugProbeSelector>,
-    ) -> Result<Self, ProbeCreationError> {
-        let selector = selector.into();
-
+    pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, ProbeCreationError> {
         let context = rusb::Context::new()?;
 
         tracing::trace!("Acquired libusb context.");

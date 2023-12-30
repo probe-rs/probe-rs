@@ -85,33 +85,33 @@ impl AllProbesLister {
 
     fn open(selector: impl Into<DebugProbeSelector>) -> Result<Probe, DebugProbeError> {
         let selector = selector.into();
-        match cmsisdap::CmsisDap::new_from_selector(selector.clone()) {
+        match cmsisdap::CmsisDap::new_from_selector(&selector) {
             Ok(link) => return Ok(Probe::from_specific_probe(link)),
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),
         };
         #[cfg(feature = "ftdi")]
-        match ftdi::FtdiProbe::new_from_selector(selector.clone()) {
+        match ftdi::FtdiProbe::new_from_selector(&selector) {
             Ok(link) => return Ok(Probe::from_specific_probe(link)),
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),
         };
-        match stlink::StLink::new_from_selector(selector.clone()) {
+        match stlink::StLink::new_from_selector(&selector) {
             Ok(link) => return Ok(Probe::from_specific_probe(link)),
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),
         };
-        match jlink::JLink::new_from_selector(selector.clone()) {
+        match jlink::JLink::new_from_selector(&selector) {
             Ok(link) => return Ok(Probe::from_specific_probe(link)),
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),
         };
-        match espusbjtag::EspUsbJtag::new_from_selector(selector.clone()) {
+        match espusbjtag::EspUsbJtag::new_from_selector(&selector) {
             Ok(link) => return Ok(Probe::from_specific_probe(link)),
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),
         };
-        match wlink::WchLink::new_from_selector(selector) {
+        match wlink::WchLink::new_from_selector(&selector) {
             Ok(link) => return Ok(Probe::from_specific_probe(link)),
             Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
             Err(e) => return Err(e),

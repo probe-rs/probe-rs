@@ -381,9 +381,7 @@ pub struct FtdiProbe {
 }
 
 impl DebugProbe for FtdiProbe {
-    fn new_from_selector(
-        selector: impl Into<DebugProbeSelector>,
-    ) -> Result<Box<Self>, DebugProbeError>
+    fn new_from_selector(selector: &DebugProbeSelector) -> Result<Box<Self>, DebugProbeError>
     where
         Self: Sized,
     {
@@ -391,7 +389,7 @@ impl DebugProbe for FtdiProbe {
             vendor_id,
             product_id,
             ..
-        } = selector.into();
+        } = selector;
 
         // Only open FTDI-compatible probes
         if !FTDI_COMPAT_DEVICE_IDS.contains(&(vendor_id, product_id)) {

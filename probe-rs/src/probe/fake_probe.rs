@@ -295,9 +295,7 @@ impl Default for FakeProbe {
 }
 
 impl DebugProbe for FakeProbe {
-    fn new_from_selector(
-        _selector: impl Into<DebugProbeSelector>,
-    ) -> Result<Box<Self>, DebugProbeError>
+    fn new_from_selector(_selector: &DebugProbeSelector) -> Result<Box<Self>, DebugProbeError>
     where
         Self: Sized,
     {

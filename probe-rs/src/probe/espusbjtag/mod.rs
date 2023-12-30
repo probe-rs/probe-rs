@@ -427,9 +427,7 @@ impl JTAGAccess for EspUsbJtag {
 }
 
 impl DebugProbe for EspUsbJtag {
-    fn new_from_selector(
-        selector: impl Into<DebugProbeSelector>,
-    ) -> Result<Box<Self>, DebugProbeError> {
+    fn new_from_selector(selector: &DebugProbeSelector) -> Result<Box<Self>, DebugProbeError> {
         let protocol = ProtocolHandler::new_from_selector(selector)?;
 
         Ok(Box::new(EspUsbJtag {

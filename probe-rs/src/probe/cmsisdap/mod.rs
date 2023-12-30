@@ -700,9 +700,7 @@ impl CmsisDap {
 }
 
 impl DebugProbe for CmsisDap {
-    fn new_from_selector(
-        selector: impl Into<DebugProbeSelector>,
-    ) -> Result<Box<Self>, DebugProbeError>
+    fn new_from_selector(selector: &DebugProbeSelector) -> Result<Box<Self>, DebugProbeError>
     where
         Self: Sized,
     {

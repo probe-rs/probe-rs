@@ -489,9 +489,7 @@ pub trait DebugProbe: Send + fmt::Debug {
     /// Creates a new boxed [`DebugProbe`] from a given [`DebugProbeSelector`].
     /// This will be called for all available debug drivers when discovering probes.
     /// When opening, it will open the first probe which succeeds during this call.
-    fn new_from_selector(
-        selector: impl Into<DebugProbeSelector>,
-    ) -> Result<Box<Self>, DebugProbeError>
+    fn new_from_selector(selector: &DebugProbeSelector) -> Result<Box<Self>, DebugProbeError>
     where
         Self: Sized;
 

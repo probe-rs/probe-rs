@@ -1672,7 +1672,7 @@ mod test {
     /// so no problem as we do not use it) to fulfill the marker requirement.
     impl DebugProbe for MockJaylink {
         fn new_from_selector(
-            _selector: impl Into<crate::DebugProbeSelector>,
+            _selector: &crate::DebugProbeSelector,
         ) -> Result<Box<Self>, crate::DebugProbeError>
         where
             Self: Sized,
