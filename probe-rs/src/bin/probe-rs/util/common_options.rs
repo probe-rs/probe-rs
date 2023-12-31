@@ -33,15 +33,15 @@
 //! ```
 use super::ArtifactError;
 
-use std::{fs::File, path::Path, path::PathBuf, time::Duration};
+use std::{fs::File, path::Path, path::PathBuf};
 
 use crate::util::parse_u64;
 use clap;
 use probe_rs::{
     config::{RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError},
-    Core, DebugProbeError, DebugProbeSelector, Error, FakeProbe, Lister, Permissions, Probe,
-    Session, Target, VectorCatchCondition, WireProtocol,
+    DebugProbeError, DebugProbeSelector, FakeProbe, Lister, Permissions, Probe, Session, Target,
+    WireProtocol,
 };
 use serde::{Deserialize, Serialize};
 
@@ -356,38 +356,9 @@ pub struct RunOptions {
     #[clap(long)]
     pub(crate) log_format: Option<String>,
 
-    /// Enable reset vector catch if its supported on the target.
-    #[arg(long)]
-    pub catch_reset: bool,
-
-    /// Enable hardfault vector catch if its supported on the target.
-    #[arg(long)]
-    pub catch_hardfault: bool,
-
     /// Scan the memory to find the RTT control block
     #[clap(long)]
     pub(crate) rtt_scan_memory: bool,
-}
-
-impl RunOptions {
-    pub fn maybe_enable_vector_catch(&self, core: &mut Core) -> Result<(), Error> {
-        if self.catch_hardfault || self.catch_reset {
-            core.halt(Duration::from_millis(100))?;
-            if self.catch_hardfault {
-                match core.enable_vector_catch(VectorCatchCondition::HardFault) {
-                    Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
-                    Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
-                }
-            }
-            if self.catch_reset {
-                match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
-                    Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
-                    Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
-                }
-            }
-        }
-        Ok(())
-    }
 }
 
 #[derive(clap::Parser, Debug, Default)]

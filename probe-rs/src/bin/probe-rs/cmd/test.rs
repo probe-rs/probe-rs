@@ -8,7 +8,8 @@ use std::time::{Duration, Instant};
 use anyhow::{anyhow, bail, Result};
 use libtest_mimic::{Failed, Trial};
 use probe_rs::{
-    BreakpointCause, Core, CoreStatus, HaltReason, Lister, MemoryInterface, SemihostingCommand,
+    BreakpointCause, Core, CoreStatus, Error, HaltReason, Lister, MemoryInterface,
+    SemihostingCommand, VectorCatchCondition,
 };
 use probe_rs_target::MemoryRegion;
 use signal_hook::consts::signal;
@@ -89,13 +90,8 @@ impl Cmd {
             false => Vec::new(),
         };
 
-        let mut core = session.core(0)?;
-
-        // TODO: We need to enable_vector_catch after every chip reset, or is this persistent?
-        self.run_options.maybe_enable_vector_catch(&mut core)?;
-
         let runner = RefCell::new(Runner {
-            core,
+            core: session.core(0)?,
             timestamp_offset,
             path: path.to_owned(),
             always_print_stacktrace: self.run_options.always_print_stacktrace,
@@ -107,6 +103,19 @@ impl Cmd {
 
         let tests = create_tests(&runner)?;
         libtest_mimic::run(&libtest_args, tests).exit()
+    }
+}
+
+// enable hardfault and reset vector catch. Core must be halted.
+fn enable_vector_catch(core: &mut Core) {
+    match core.enable_vector_catch(VectorCatchCondition::HardFault) {
+        Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
+        Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+    }
+
+    match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
+        Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
+        Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
     }
 }
 
@@ -256,6 +265,8 @@ fn create_tests<'a>(runner_ref: &'a RefCell<Runner>) -> Result<Vec<Trial<'a>>> {
     let mut runner = runner_ref.borrow_mut();
     let core = &mut runner.core;
 
+    enable_vector_catch(core); // we want to catch exceptions and target resets
+
     let list = TestRunnerInterface::list_tests(core)?;
 
     let mut tests = Vec::<Trial>::new();
@@ -277,6 +288,7 @@ fn run_test(test: Test, runner: &mut Runner) -> std::result::Result<(), Failed> 
     let core = &mut runner.core;
     tracing::info!("Running test {}", test.name);
     core.reset_and_halt(Duration::from_millis(100))?;
+    enable_vector_catch(core); // we want to catch exceptions and target resets
 
     TestRunnerInterface::start_test(core, &test)?;
 
