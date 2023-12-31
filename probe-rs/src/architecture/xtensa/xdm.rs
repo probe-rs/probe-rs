@@ -1,12 +1,7 @@
-#![allow(unused)] // FIXME remove after testing
-
 use std::fmt::Debug;
 
 use crate::{
-    architecture::{
-        arm::ap::DRW,
-        xtensa::arch::instruction::{self, Instruction, InstructionEncoding},
-    },
+    architecture::xtensa::arch::instruction::{Instruction, InstructionEncoding},
     probe::{
         CommandResult, DeferredResultIndex, DeferredResultSet, JTAGAccess, JtagCommandQueue,
         JtagWriteCommand,
@@ -122,7 +117,6 @@ pub struct Xdm {
     pub probe: Box<dyn JTAGAccess>,
 
     device_id: u32,
-    idle_cycles: u8,
 
     last_instruction: Option<Instruction>,
 
@@ -144,7 +138,6 @@ impl Xdm {
         let mut x = Self {
             probe,
             device_id: 0,
-            idle_cycles: 0,
             last_instruction: None,
 
             halt_on_reset: false,
@@ -576,7 +569,18 @@ impl Xdm {
     }
 
     pub fn target_reset_assert(&mut self) -> Result<(), XtensaError> {
-        self.probe.target_reset_assert()?;
+        self.pwr_write(PowerDevice::PowerControl, {
+            let mut pwr_control = PowerControl(0);
+
+            pwr_control.set_jtag_debug_use(true);
+            pwr_control.set_debug_wakeup(true);
+            pwr_control.set_mem_wakeup(true);
+            pwr_control.set_core_wakeup(true);
+            pwr_control.set_core_reset(true);
+
+            pwr_control.0
+        })?;
+
         Ok(())
     }
 
@@ -585,10 +589,17 @@ impl Xdm {
             self.halt()?;
         }
 
-        // TODO: OpenOCD seems to have a different reset method that writes PWRCTL.
-        //       check if we need to revisit this
+        self.pwr_write(PowerDevice::PowerControl, {
+            let mut pwr_control = PowerControl(0);
 
-        self.probe.target_reset_deassert()?;
+            pwr_control.set_jtag_debug_use(true);
+            pwr_control.set_debug_wakeup(true);
+            pwr_control.set_mem_wakeup(true);
+            pwr_control.set_core_wakeup(true);
+
+            pwr_control.0
+        })?;
+
         Ok(())
     }
 
