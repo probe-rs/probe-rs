@@ -696,7 +696,7 @@ impl std::fmt::Debug for DebugProbeInfo {
             self.vendor_id,
             self.product_id,
             self.serial_number
-                .clone()
+                .as_ref()
                 .map_or("".to_owned(), |v| format!("Serial: {v}, ")),
             self.probe_type
         )
