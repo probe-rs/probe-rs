@@ -1,0 +1,132 @@
+name: esp32
+manufacturer:
+  cc: 0x0C
+  id: 0x12
+variants:
+  - name: esp32-1.8v
+    scan_chain:
+      - name: main
+        ir_len: 5
+      - name: app
+        ir_len: 5
+    default_binary_format: idf
+    idle_tdi: true
+    cores:
+      - name: main
+        type: xtensa
+        core_access_options: !Xtensa {}
+    memory_map:
+      - !Nvm
+        range:
+          start: 0x0
+          end: 0x4000000
+        is_boot_memory: true
+        cores:
+          - main
+      - !Ram # SRAM2, Data bus
+        range:
+          start: 0x3FFAE000
+          end: 0x3FFE0000
+        cores:
+          - main
+      - !Ram # SRAM1, Data bus
+        range:
+          start: 0x3FFE0000
+          end: 0x40000000
+        cores:
+          - main
+      - !Ram # SRAM0, Instruction bus, cache
+        range:
+          start: 0x40070000
+          end: 0x40080000
+        cores:
+          - main
+      - !Ram # SRAM0, Instruction bus, non-cache
+        range:
+          start: 0x40080000
+          end: 0x400A0000
+        cores:
+          - main
+      - !Ram # SRAM1, Instruction bus
+        range:
+          start: 0x400A0000
+          end: 0x400B0000
+        cores:
+          - main
+      - !Ram # SRAM1, Instruction bus, Remappable
+        range:
+          start: 0x400B0000
+          end: 0x400B8000
+        cores:
+          - main
+      - !Ram # Last part of SRAM1, Instruction bus
+        range:
+          start: 0x400B8000
+          end: 0x400C0000
+        cores:
+          - main
+    flash_algorithms:
+  - name: esp32-3.3v
+    scan_chain:
+      - name: main
+        ir_len: 5
+      - name: app
+        ir_len: 5
+    default_binary_format: idf
+    idle_tdi: false
+    cores:
+      - name: main
+        type: xtensa
+        core_access_options: !Xtensa {}
+    memory_map:
+      - !Nvm
+        range:
+          start: 0x0
+          end: 0x4000000
+        is_boot_memory: true
+        cores:
+          - main
+      - !Ram # SRAM2, Data bus
+        range:
+          start: 0x3FFAE000
+          end: 0x3FFE0000
+        cores:
+          - main
+      - !Ram # SRAM1, Data bus
+        range:
+          start: 0x3FFE0000
+          end: 0x40000000
+        cores:
+          - main
+      - !Ram # SRAM0, Instruction bus, cache
+        range:
+          start: 0x40070000
+          end: 0x40080000
+        cores:
+          - main
+      - !Ram # SRAM0, Instruction bus, non-cache
+        range:
+          start: 0x40080000
+          end: 0x400A0000
+        cores:
+          - main
+      - !Ram # SRAM1, Instruction bus
+        range:
+          start: 0x400A0000
+          end: 0x400B0000
+        cores:
+          - main
+      - !Ram # SRAM1, Instruction bus, Remappable
+        range:
+          start: 0x400B0000
+          end: 0x400B8000
+        cores:
+          - main
+      - !Ram # Last part of SRAM1, Instruction bus
+        range:
+          start: 0x400B8000
+          end: 0x400C0000
+        cores:
+          - main
+    flash_algorithms:
+flash_algorithms:

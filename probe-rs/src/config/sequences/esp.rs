@@ -42,6 +42,20 @@ impl EspFlashSizeDetector {
             .unwrap()
     }
 
+    pub fn detect_flash_size_esp32(
+        &self,
+        interface: &mut XtensaCommunicationInterface,
+    ) -> Result<Option<usize>, crate::Error> {
+        tracing::info!("Detecting flash size");
+        attach_flash_xtensa(
+            interface,
+            self.stack_pointer,
+            self.load_address,
+            self.attach_fn,
+        )?;
+        detect_flash_size_esp32(interface, self.spiflash_peripheral)
+    }
+
     pub fn detect_flash_size_xtensa(
         &self,
         interface: &mut XtensaCommunicationInterface,
@@ -253,6 +267,32 @@ fn detect_flash_size(
             user2: 0x20,
             miso_dlen: 0x28,
             data_buf_0: 0x58,
+        },
+        RDID,
+        24,
+    )?;
+
+    Ok(decode_flash_size(value))
+}
+
+fn detect_flash_size_esp32(
+    interface: &mut impl MemoryInterface,
+    spiflash_addr: u32,
+) -> Result<Option<usize>, crate::Error> {
+    const RDID: u8 = 0x9F;
+
+    let value = execute_flash_command_generic(
+        interface,
+        &SpiRegisters {
+            base: spiflash_addr,
+            cmd: 0x00,
+            addr: 0x04,
+            ctrl: 0x08,
+            user: 0x1C,
+            user1: 0x20,
+            user2: 0x24,
+            miso_dlen: 0x2C,
+            data_buf_0: 0x80,
         },
         RDID,
         24,

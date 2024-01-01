@@ -130,7 +130,12 @@ impl FlashLoader {
         options: IdfOptions,
     ) -> Result<(), FileDownloadError> {
         let target = session.target();
-        let chip = espflash::targets::Chip::from_str(&target.name)
+        let target_name = target
+            .name
+            .split_once('-')
+            .map(|(name, _)| name)
+            .unwrap_or(target.name.as_str());
+        let chip = espflash::targets::Chip::from_str(target_name)
             .map_err(|_| FileDownloadError::IdfUnsupported(target.name.clone()))?
             .into_target();
 

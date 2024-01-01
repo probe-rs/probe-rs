@@ -2,6 +2,7 @@ use super::{
     sequences::{
         atsam::AtSAM,
         efm32xg2::EFM32xG2,
+        esp32::ESP32,
         esp32c2::ESP32C2,
         esp32c3::ESP32C3,
         esp32c6::ESP32C6,
@@ -136,6 +137,8 @@ impl Target {
             || chip.name.starts_with("EFR32ZG2")
         {
             DebugSequence::Arm(EFM32xG2::create())
+        } else if chip.name.starts_with("esp32-") {
+            DebugSequence::Xtensa(ESP32::create(chip))
         } else if chip.name.eq_ignore_ascii_case("esp32s3") {
             DebugSequence::Xtensa(ESP32S3::create(chip))
         } else if chip.name.eq_ignore_ascii_case("esp32c2") {
