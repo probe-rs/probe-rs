@@ -30,6 +30,12 @@ use probe_rs_target::ScanChainElement;
 
 pub struct EspUsbJtagSource;
 
+impl std::fmt::Debug for EspUsbJtagSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("EspJtag").finish()
+    }
+}
+
 impl DebugProbeSource for EspUsbJtagSource {
     fn new_from_selector(
         &self,

@@ -1,6 +1,6 @@
 use super::CmsisDapDevice;
 use crate::{
-    probe::{DebugProbeInfo, DebugProbeType, ProbeCreationError},
+    probe::{cmsisdap::CmsisDapSource, DebugProbeInfo, ProbeCreationError},
     DebugProbeSelector,
 };
 use hidapi::HidApi;
@@ -116,7 +116,7 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
             d_desc.vendor_id(),
             d_desc.product_id(),
             sn_str,
-            DebugProbeType::CmsisDap,
+            &CmsisDapSource,
             hid_interface,
         ))
     } else {
@@ -141,7 +141,7 @@ fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> 
             device.vendor_id(),
             device.product_id(),
             device.serial_number().map(|s| s.to_owned()),
-            DebugProbeType::CmsisDap,
+            &CmsisDapSource,
             Some(device.interface_number() as u8),
         ))
     } else {

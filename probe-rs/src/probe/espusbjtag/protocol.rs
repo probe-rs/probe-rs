@@ -4,7 +4,8 @@ use bitvec::{prelude::*, slice::BitSlice, vec::BitVec};
 use rusb::{request_type, Context, Device, Direction, TransferType, UsbContext};
 
 use crate::{
-    DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, ProbeCreationError,
+    probe::espusbjtag::EspUsbJtagSource, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+    ProbeCreationError,
 };
 
 const JTAG_PROTOCOL_CAPABILITIES_VERSION: u8 = 1;
@@ -646,7 +647,7 @@ pub(super) fn list_espjtag_devices() -> Vec<DebugProbeInfo> {
                         descriptor.vendor_id(),
                         descriptor.product_id(),
                         sn_str,
-                        DebugProbeType::EspJtag,
+                        &EspUsbJtagSource,
                         None,
                     ))
                 })

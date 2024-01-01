@@ -485,7 +485,7 @@ impl Probe {
 /// An abstraction over a probe driver type.
 ///
 /// This trait has to be implemented by ever debug probe driver.
-pub trait DebugProbeSource {
+pub trait DebugProbeSource: std::any::Any + std::fmt::Debug {
     /// Creates a new boxed [`DebugProbe`] from a given [`DebugProbeSelector`].
     /// This will be called for all available debug drivers when discovering probes.
     /// When opening, it will open the first probe which succeeds during this call.
@@ -651,25 +651,21 @@ pub trait DebugProbe: Send + fmt::Debug {
     }
 }
 
-/// Denotes the type of a given [`DebugProbe`].
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
-pub enum DebugProbeType {
-    /// CMSIS-DAP
-    CmsisDap,
-    /// FTDI based debug probe
-    Ftdi,
-    /// ST-Link
-    StLink,
-    /// J-Link
-    JLink,
-    /// Built in RISC-V ESP JTAG debug probe
-    EspJtag,
-    /// WCH-Link
-    WchLink,
+impl PartialEq for dyn DebugProbeSource {
+    fn eq(&self, other: &Self) -> bool {
+        // Consider DebugProbeSource objects equal when their types and data pointers are equal.
+        // Pointer equality is insufficient, because ZST objects may have the same dangling pointer
+        // as their address.
+        self.type_id() == other.type_id()
+            && std::ptr::eq(
+                self as *const _ as *const (),
+                other as *const _ as *const (),
+            )
+    }
 }
 
 /// Gathers some information about a debug probe which was found during a scan.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq)]
 pub struct DebugProbeInfo {
     /// The name of the debug probe.
     pub identifier: String,
@@ -680,7 +676,7 @@ pub struct DebugProbeInfo {
     /// The serial number of the debug probe.
     pub serial_number: Option<String>,
     /// The probe type of the debug probe.
-    pub probe_type: DebugProbeType,
+    pub probe_type: &'static dyn DebugProbeSource,
 
     /// The USB HID interface which should be used.
     /// This is necessary for composite HID devices.
@@ -710,8 +706,8 @@ impl DebugProbeInfo {
         vendor_id: u16,
         product_id: u16,
         serial_number: Option<String>,
-        probe_type: DebugProbeType,
-        usb_hid_interface: Option<u8>,
+        probe_type: &'static dyn DebugProbeSource,
+        hid_interface: Option<u8>,
     ) -> Self {
         Self {
             identifier: identifier.into(),
@@ -719,7 +715,7 @@ impl DebugProbeInfo {
             product_id,
             serial_number,
             probe_type,
-            hid_interface: usb_hid_interface,
+            hid_interface,
         }
     }
 

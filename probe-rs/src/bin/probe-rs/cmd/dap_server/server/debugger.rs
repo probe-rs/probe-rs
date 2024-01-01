@@ -916,11 +916,11 @@ mod test {
     use std::path::PathBuf;
 
     use probe_rs::architecture::arm::ApAddress;
-    use probe_rs::DebugProbeInfo;
     use probe_rs::{
         integration::{FakeProbe, Operation},
         Lister,
     };
+    use probe_rs::{DebugProbeInfo, DebugProbeSource};
     use serde_json::json;
     use time::UtcOffset;
 
@@ -939,6 +939,22 @@ mod test {
         server::{configuration::SessionConfig, debugger::DebugSessionStatus},
         test::TestLister,
     };
+
+    #[derive(Debug)]
+    struct MockProbeSource;
+
+    impl DebugProbeSource for MockProbeSource {
+        fn new_from_selector(
+            &self,
+            _selector: &probe_rs::DebugProbeSelector,
+        ) -> Result<Box<dyn probe_rs::DebugProbe>, probe_rs::DebugProbeError> {
+            todo!()
+        }
+
+        fn list_probes(&self) -> Vec<DebugProbeInfo> {
+            todo!()
+        }
+    }
 
     /// Helper function to get the expected capabilities for the debugger
     ///
@@ -1344,7 +1360,7 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            probe_rs::DebugProbeType::CmsisDap,
+            &MockProbeSource,
             None,
         );
 
@@ -1422,7 +1438,7 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            probe_rs::DebugProbeType::CmsisDap,
+            &MockProbeSource,
             None,
         );
 
@@ -1478,7 +1494,7 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            probe_rs::DebugProbeType::CmsisDap,
+            &MockProbeSource,
             None,
         );
 
@@ -1552,7 +1568,7 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            probe_rs::DebugProbeType::CmsisDap,
+            &MockProbeSource,
             None,
         );
 
@@ -1626,7 +1642,7 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            probe_rs::DebugProbeType::CmsisDap,
+            &MockProbeSource,
             None,
         );
 
@@ -1718,7 +1734,7 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            probe_rs::DebugProbeType::CmsisDap,
+            &MockProbeSource,
             None,
         );
 

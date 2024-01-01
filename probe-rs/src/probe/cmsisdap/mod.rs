@@ -61,6 +61,12 @@ use super::common::{extract_idcodes, extract_ir_lengths, ScanChainError};
 
 pub struct CmsisDapSource;
 
+impl std::fmt::Debug for CmsisDapSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CmsisDap").finish()
+    }
+}
+
 impl DebugProbeSource for CmsisDapSource {
     fn new_from_selector(
         &self,

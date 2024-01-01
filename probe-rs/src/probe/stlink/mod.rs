@@ -41,6 +41,12 @@ const DP_PORT: u16 = 0xFFFF;
 
 pub struct StLinkSource;
 
+impl std::fmt::Debug for StLinkSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StLink").finish()
+    }
+}
+
 impl DebugProbeSource for StLinkSource {
     fn new_from_selector(
         &self,

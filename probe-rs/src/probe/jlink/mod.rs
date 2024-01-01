@@ -22,7 +22,7 @@ use crate::{
     },
     probe::{
         arm_jtag::{ProbeStatistics, RawProtocolIo, SwdSettings},
-        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeType, JTAGAccess, WireProtocol,
+        DebugProbe, DebugProbeError, DebugProbeInfo, JTAGAccess, WireProtocol,
     },
     DebugProbeSelector,
 };
@@ -30,6 +30,12 @@ use crate::{
 const SWO_BUFFER_SIZE: u16 = 128;
 
 pub struct JLinkSource;
+
+impl std::fmt::Debug for JLinkSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("JLink").finish()
+    }
+}
 
 impl DebugProbeSource for JLinkSource {
     fn new_from_selector(
@@ -847,7 +853,7 @@ fn list_jlink_devices() -> Vec<DebugProbeInfo> {
                     vid,
                     pid,
                     serial,
-                    DebugProbeType::JLink,
+                    &JLinkSource,
                     None,
                 )
             })

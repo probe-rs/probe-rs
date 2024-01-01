@@ -9,7 +9,7 @@ use crate::probe::{
     DebugProbe, DebugProbeSource, DeferredResultSet, JTAGAccess, JtagCommandQueue,
     ProbeCreationError, ScanChainElement,
 };
-use crate::{DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, WireProtocol};
+use crate::{DebugProbeError, DebugProbeInfo, DebugProbeSelector, WireProtocol};
 use bitvec::{order::Lsb0, slice::BitSlice, vec::BitVec};
 use rusb::UsbContext;
 use std::convert::TryInto;
@@ -372,6 +372,12 @@ impl JtagAdapter {
 }
 
 pub struct FtdiProbeSource;
+
+impl std::fmt::Debug for FtdiProbeSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("FTDI").finish()
+    }
+}
 
 impl DebugProbeSource for FtdiProbeSource {
     fn new_from_selector(
@@ -768,7 +774,7 @@ fn get_device_info(device: &rusb::Device<rusb::Context>) -> Option<DebugProbeInf
         vendor_id: d_desc.vendor_id(),
         product_id: d_desc.product_id(),
         serial_number: sn_str,
-        probe_type: DebugProbeType::Ftdi,
+        probe_type: &FtdiProbeSource,
         hid_interface: None,
     })
 }

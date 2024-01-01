@@ -12,8 +12,8 @@ use rusb::{Device, UsbContext};
 use crate::{
     architecture::riscv::communication_interface::{RiscvCommunicationInterface, RiscvError},
     probe::DebugProbeSource,
-    DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType,
-    ProbeCreationError, WireProtocol,
+    DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
+    WireProtocol,
 };
 
 use self::{commands::Speed, usb_interface::WchLinkUsbDevice};
@@ -148,6 +148,12 @@ impl RiscvChip {
 }
 
 pub struct WchLinkSource;
+
+impl std::fmt::Debug for WchLinkSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WchLink").finish()
+    }
+}
 
 impl DebugProbeSource for WchLinkSource {
     fn new_from_selector(
@@ -496,7 +502,7 @@ fn get_wlink_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
             VENDOR_ID,
             PRODUCT_ID,
             sn_str,
-            DebugProbeType::WchLink,
+            &WchLinkSource,
             None,
         ))
     } else {
