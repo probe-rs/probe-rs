@@ -79,7 +79,7 @@ pub struct RawFlashAlgorithm {
 
     /// The encoding format accepted by the flash algorithm.
     #[serde(default)]
-    pub transfer_encoding: TransferEncoding,
+    pub transfer_encoding: Option<TransferEncoding>,
 }
 
 pub fn serialize<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>

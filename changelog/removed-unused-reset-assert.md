@@ -1,0 +1,1 @@
+Removed unused `--assert` from `probe-rs reset`

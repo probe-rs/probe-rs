@@ -159,6 +159,7 @@ where
         family.variants.push(Chip {
             name: device_name,
             part: None,
+            svd: None,
             cores,
             memory_map,
             flash_algorithms: flash_algorithm_names,
