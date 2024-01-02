@@ -47,7 +47,7 @@ fn debug_port_start(
 
         let mut timeout = true;
 
-        while start.elapsed() < Duration::from_micros(100_0000) {
+        while start.elapsed() < Duration::from_micros(1_000_000) {
             let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
 
             if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
@@ -153,7 +153,7 @@ impl ArmDebugSequence for LPC55Sxx {
 
         let mut timeout = true;
 
-        while start.elapsed() < Duration::from_micros(10_0000) {
+        while start.elapsed() < Duration::from_micros(100_000) {
             let value = interface.read_word_32(0x40034FE0)?;
 
             if (value & 0x4) == 0x4 {
@@ -247,7 +247,7 @@ impl ArmDebugSequence for LPC55Sxx {
 
         let mut timeout = true;
 
-        while start.elapsed() < Duration::from_micros(50_0000) {
+        while start.elapsed() < Duration::from_micros(500_000) {
             if let Ok(v) = interface.read_word_32(Dhcsr::get_mmio_address()) {
                 let dhcsr = Dhcsr(v);
 
@@ -290,7 +290,7 @@ fn wait_for_stop_after_reset(memory: &mut dyn ArmProbe) -> Result<(), ArmError> 
 
     tracing::info!("Polling for reset");
 
-    while start.elapsed() < Duration::from_micros(50_0000) {
+    while start.elapsed() < Duration::from_micros(500_000) {
         if let Ok(v) = memory.read_word_32(Dhcsr::get_mmio_address()) {
             let dhcsr = Dhcsr(v);
 
@@ -343,7 +343,7 @@ fn enable_debug_mailbox(
     interface.flush()?;
 
     // DAP_Delay(30000)
-    thread::sleep(Duration::from_micros(30000));
+    thread::sleep(Duration::from_micros(30_000));
 
     let _ = interface.read_raw_ap_register(ap, 0)?;
 
@@ -352,7 +352,7 @@ fn enable_debug_mailbox(
     interface.flush()?;
 
     // DAP_Delay(30000)
-    thread::sleep(Duration::from_micros(30000));
+    thread::sleep(Duration::from_micros(30_000));
 
     let _ = interface.read_raw_ap_register(ap, 8)?;
 
@@ -689,7 +689,7 @@ impl ArmDebugSequence for MIMXRT5xxS {
             }
         } else {
             assert_n_reset()?;
-            thread::sleep(Duration::from_micros(100000));
+            thread::sleep(Duration::from_micros(100_000));
         }
 
         Ok(())
