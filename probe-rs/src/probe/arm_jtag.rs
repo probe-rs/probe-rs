@@ -1115,6 +1115,12 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
 
                     abort.set_orunerrclr(true);
 
+                    if (port, address, value) == (PortType::DebugPort, Abort::ADDRESS, abort.into())
+                    {
+                        // avoid endless recursion
+                        continue;
+                    }
+
                     // Because we use overrun detection, we now have to clear the overrun error
                     RawDapAccess::raw_write_register(
                         self,
@@ -1159,6 +1165,13 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                         // Clear sticky error flags
                         abort.set_orunerrclr(ctrl.sticky_orun());
                         abort.set_stkerrclr(ctrl.sticky_err());
+
+                        if (port, address, value)
+                            == (PortType::DebugPort, Abort::ADDRESS, abort.into())
+                        {
+                            // avoid endless recursion
+                            return Err(DapError::FaultResponse.into());
+                        }
 
                         RawDapAccess::raw_write_register(
                             self,

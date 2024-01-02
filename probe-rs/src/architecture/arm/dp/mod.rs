@@ -95,7 +95,7 @@ pub trait DpRegister: Register {
 
 bitfield! {
     /// ABORT, Abort register (see ADI v5.2 B2.2.1)
-    #[derive(Clone, Default)]
+    #[derive(Clone, Copy, Default)]
     pub struct Abort(u32);
     impl Debug;
     /// To clear the CTRL/STAT.STICKYORUN overrun error bit to `0b0`, write `0b1` to this bit.
