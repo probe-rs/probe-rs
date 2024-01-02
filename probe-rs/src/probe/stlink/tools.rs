@@ -72,7 +72,7 @@ pub(super) fn read_serial_number<T: rusb::UsbContext>(
     let handle = device.open()?;
     let language = handle
         .read_languages(timeout)?
-        .get(0)
+        .first()
         .cloned()
         .ok_or(rusb::Error::BadDescriptor)?;
     let sn = handle.read_serial_number_string(language, descriptor, timeout);

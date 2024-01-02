@@ -352,7 +352,7 @@ impl Session {
 
         // Use the first probe found.
         let probe = probes
-            .get(0)
+            .first()
             .ok_or(Error::UnableToOpenProbe("No probe was found"))?
             .open(&lister)?;
 
