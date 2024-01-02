@@ -165,10 +165,10 @@ impl EspUsbJtag {
             .chain(iter::repeat(false).take(post_bits))
             .chain(iter::once(true));
 
-        let tdi = iter::repeat(false)
+        let tdi = iter::repeat(true)
             .take(pre_bits)
             .chain(data.as_bits::<Lsb0>()[..len].iter().map(|b| *b))
-            .chain(iter::repeat(false).take(post_bits));
+            .chain(iter::repeat(true).take(post_bits));
 
         let capture = iter::repeat(false)
             .take(pre_bits)
