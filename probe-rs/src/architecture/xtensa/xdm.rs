@@ -166,10 +166,15 @@ impl Xdm {
         self.pwr_write(PowerDevice::PowerControl, pwr_control.0)?;
 
         tracing::trace!("Waiting for power domain to turn on");
+        let now = std::time::Instant::now();
         loop {
             let bits = self.pwr_read(PowerDevice::PowerStat)?;
             if PowerStatus(bits).debug_domain_on() {
                 break;
+            }
+
+            if now.elapsed().as_millis() > 500 {
+                return Err(XtensaError::Timeout);
             }
         }
 

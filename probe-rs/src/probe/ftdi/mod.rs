@@ -484,13 +484,17 @@ impl DebugProbe for FtdiProbe {
                 .select_target(taps[0].idcode)
                 .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
         } else {
-            let known_idcodes = [
+            const KNOWN_IDCODES: [u32; 2] = [
                 0x1000563d, // GD32VF103
+                0x120034e5, // Little endian Xtensa core
             ];
-            let idcode = taps
-                .iter()
-                .map(|tap| tap.idcode)
-                .find(|idcode| known_idcodes.iter().any(|v| v == idcode));
+            let idcode = taps.iter().map(|tap| tap.idcode).find(|idcode| {
+                let found = KNOWN_IDCODES.contains(idcode);
+                if !found {
+                    tracing::warn!("Unknown IDCODEs: {:x?}", idcode);
+                }
+                found
+            });
             if let Some(idcode) = idcode {
                 self.adapter
                     .select_target(idcode)
