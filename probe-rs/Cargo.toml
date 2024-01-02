@@ -78,7 +78,7 @@ vendored-libusb = ["rusb/vendored"]
 builtin-targets = []
 
 ftdi = ["libftdi1-sys"]
-ftdi-vendored = ["libftdi1-sys/vendored", "libftdi1-sys/libusb1-sys"]
+ftdi-vendored = ["ftdi", "libftdi1-sys/vendored", "libftdi1-sys/libusb1-sys"]
 
 # Enable helpers for testing
 test = []
