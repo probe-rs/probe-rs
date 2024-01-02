@@ -149,7 +149,7 @@ pub struct RiscvCoreAccessOptions {}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XtensaCoreAccessOptions {}
 
-/// Helper function that interates the scan chain and returns a vector of all of
+/// Helper function that iterates the scan chain and returns a vector of all of
 /// the ir_lengths of the scan chain elements.
 /// If an element does not contain an ir_length, the default value of 4 is used.
 /// The first element of the vector is the first element of the scan chain.
