@@ -307,9 +307,7 @@ impl JtagAdapter {
         Ok(targets)
     }
 
-    pub fn select_target(&mut self, idcode: u32) -> io::Result<()> {
-        let taps = self.scan()?;
-
+    pub fn select_target(&mut self, taps: &[JtagChainItem], idx: usize) -> io::Result<()> {
         let mut found = false;
         let mut params = ChainParams {
             irpre: 0,
@@ -318,8 +316,8 @@ impl JtagAdapter {
             drpost: 0,
             irlen: 0,
         };
-        for tap in taps {
-            if tap.idcode == idcode {
+        for (i, tap) in taps.iter().enumerate() {
+            if i == idx {
                 params.irlen = tap.irlen;
                 found = true;
             } else if found {
@@ -481,23 +479,23 @@ impl DebugProbe for FtdiProbe {
         }
         if taps.len() == 1 {
             self.adapter
-                .select_target(taps[0].idcode)
+                .select_target(&taps, 0)
                 .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
         } else {
             const KNOWN_IDCODES: [u32; 2] = [
                 0x1000563d, // GD32VF103
                 0x120034e5, // Little endian Xtensa core
             ];
-            let idcode = taps.iter().map(|tap| tap.idcode).find(|idcode| {
-                let found = KNOWN_IDCODES.contains(idcode);
+            let idcode = taps.iter().map(|tap| tap.idcode).position(|idcode| {
+                let found = KNOWN_IDCODES.contains(&idcode);
                 if !found {
                     tracing::warn!("Unknown IDCODEs: {:x?}", idcode);
                 }
                 found
             });
-            if let Some(idcode) = idcode {
+            if let Some(pos) = idcode {
                 self.adapter
-                    .select_target(idcode)
+                    .select_target(&taps, pos)
                     .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
             } else {
                 return Err(DebugProbeError::TargetNotFound);
