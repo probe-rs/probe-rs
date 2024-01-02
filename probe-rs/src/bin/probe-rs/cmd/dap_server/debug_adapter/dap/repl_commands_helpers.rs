@@ -23,9 +23,7 @@ pub(crate) fn get_local_variable(
     variable_name: VariableName,
     gdb_nuf: GdbNuf,
 ) -> Result<Response, DebuggerError> {
-    let frame_ref = evaluate_arguments
-        .frame_id
-        .and_then(|id| ObjectRef::try_from(id).ok());
+    let frame_ref = evaluate_arguments.frame_id.map(ObjectRef::from);
 
     let stack_frame = match frame_ref {
         Some(frame_id) => target_core

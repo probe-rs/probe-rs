@@ -174,7 +174,7 @@ impl ChipFamily {
             }
 
             // Check that there is at least one core.
-            if let Some(core) = variant.cores.get(0) {
+            if let Some(core) = variant.cores.first() {
                 // Make sure that the core types (architectures) are not mixed.
                 let architecture = core.core_type.architecture();
                 if variant
