@@ -1,1 +1,0 @@
-Added a new `dump` command for the CLI and vscode REPL to dump a full core state (#1783).
