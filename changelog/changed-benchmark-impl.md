@@ -1,1 +1,0 @@
-Rewrote benchmark cli tool, removing report submission and adding multiple speed/size/stride options

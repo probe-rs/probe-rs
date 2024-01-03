@@ -1,1 +1,0 @@
-Hide vector catch errors when it hasn't been implemented for the target.
