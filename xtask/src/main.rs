@@ -396,9 +396,13 @@ fn write_changelog_section(
             anyhow::bail!("Empty changelog fragment {}", fragment.path.display());
         };
 
-        writeln!(writer, " - {}", first_line)?;
+        write!(writer, " - {}", first_line)?;
 
         let mut multiline = false;
+
+        if lines.clone().count() > 0 {
+            writeln!(writer)?;
+        }
 
         // Write remaining lines
         for line in lines {
