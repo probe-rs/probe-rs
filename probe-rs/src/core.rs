@@ -373,6 +373,12 @@ impl MemoryInterface for CoreDump {
         Ok(data[0])
     }
 
+    fn read_word_16(&mut self, address: u64) -> Result<u16, crate::Error> {
+        let mut data = [0u16; 1];
+        self.read_memory_range(address, &mut data)?;
+        Ok(data[0])
+    }
+
     fn read_word_8(&mut self, address: u64) -> Result<u8, crate::Error> {
         let mut data = [0u8; 1];
         self.read_memory_range(address, &mut data)?;
@@ -385,6 +391,11 @@ impl MemoryInterface for CoreDump {
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), crate::Error> {
+        self.read_memory_range(address, data)?;
+        Ok(())
+    }
+
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), crate::Error> {
         self.read_memory_range(address, data)?;
         Ok(())
     }
@@ -402,6 +413,10 @@ impl MemoryInterface for CoreDump {
         todo!()
     }
 
+    fn write_word_16(&mut self, _address: u64, _data: u16) -> Result<(), crate::Error> {
+        todo!()
+    }
+
     fn write_word_8(&mut self, _address: u64, _data: u8) -> Result<(), crate::Error> {
         todo!()
     }
@@ -411,6 +426,10 @@ impl MemoryInterface for CoreDump {
     }
 
     fn write_32(&mut self, _address: u64, _data: &[u32]) -> Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), crate::Error> {
         todo!()
     }
 
@@ -457,6 +476,10 @@ impl<'probe> MemoryInterface for Core<'probe> {
         self.inner.read_word_32(address)
     }
 
+    fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
+        self.inner.read_word_16(address)
+    }
+
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
         self.inner.read_word_8(address)
     }
@@ -467,6 +490,10 @@ impl<'probe> MemoryInterface for Core<'probe> {
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
         self.inner.read_32(address, data)
+    }
+
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
+        self.inner.read_16(address, data)
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
@@ -485,6 +512,10 @@ impl<'probe> MemoryInterface for Core<'probe> {
         self.inner.write_word_32(addr, data)
     }
 
+    fn write_word_16(&mut self, addr: u64, data: u16) -> Result<(), Error> {
+        self.inner.write_word_16(addr, data)
+    }
+
     fn write_word_8(&mut self, addr: u64, data: u8) -> Result<(), Error> {
         self.inner.write_word_8(addr, data)
     }
@@ -495,6 +526,10 @@ impl<'probe> MemoryInterface for Core<'probe> {
 
     fn write_32(&mut self, addr: u64, data: &[u32]) -> Result<(), Error> {
         self.inner.write_32(addr, data)
+    }
+
+    fn write_16(&mut self, addr: u64, data: &[u16]) -> Result<(), Error> {
+        self.inner.write_16(addr, data)
     }
 
     fn write_8(&mut self, addr: u64, data: &[u8]) -> Result<(), Error> {

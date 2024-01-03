@@ -93,6 +93,10 @@ impl MemoryInterface for MockMemory {
         todo!()
     }
 
+    fn read_word_16(&mut self, _address: u64) -> anyhow::Result<u16, crate::Error> {
+        todo!()
+    }
+
     fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> anyhow::Result<(), crate::Error> {
         todo!()
     }
@@ -107,6 +111,10 @@ impl MemoryInterface for MockMemory {
         }
 
         Ok(())
+    }
+
+    fn read_16(&mut self, _address: u64, _data: &mut [u16]) -> anyhow::Result<(), crate::Error> {
+        todo!()
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> anyhow::Result<(), crate::Error> {
@@ -164,6 +172,10 @@ impl MemoryInterface for MockMemory {
         todo!()
     }
 
+    fn write_word_16(&mut self, _address: u64, _data: u16) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
     fn write_word_8(&mut self, _address: u64, _data: u8) -> anyhow::Result<(), crate::Error> {
         todo!()
     }
@@ -173,6 +185,10 @@ impl MemoryInterface for MockMemory {
     }
 
     fn write_32(&mut self, _address: u64, _data: &[u32]) -> anyhow::Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_16(&mut self, _address: u64, _data: &[u16]) -> anyhow::Result<(), crate::Error> {
         todo!()
     }
 

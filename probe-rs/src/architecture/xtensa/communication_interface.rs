@@ -704,6 +704,7 @@ impl XtensaCommunicationInterface {
 /// Don't implement this trait
 unsafe trait DataType: Sized {}
 unsafe impl DataType for u8 {}
+unsafe impl DataType for u16 {}
 unsafe impl DataType for u32 {}
 unsafe impl DataType for u64 {}
 
@@ -724,13 +725,6 @@ impl MemoryInterface for XtensaCommunicationInterface {
         Ok(())
     }
 
-    fn read_word_32(&mut self, address: u64) -> Result<u32, crate::Error> {
-        let mut out = [0; 4];
-        self.read(address, &mut out)?;
-
-        Ok(u32::from_le_bytes(out))
-    }
-
     fn supports_native_64bit_access(&mut self) -> bool {
         false
     }
@@ -740,6 +734,20 @@ impl MemoryInterface for XtensaCommunicationInterface {
         self.read(address, &mut out)?;
 
         Ok(u64::from_le_bytes(out))
+    }
+
+    fn read_word_32(&mut self, address: u64) -> Result<u32, crate::Error> {
+        let mut out = [0; 4];
+        self.read(address, &mut out)?;
+
+        Ok(u32::from_le_bytes(out))
+    }
+
+    fn read_word_16(&mut self, address: u64) -> Result<u16, crate::Error> {
+        let mut out = [0; 2];
+        self.read(address, &mut out)?;
+
+        Ok(u16::from_le_bytes(out))
     }
 
     fn read_word_8(&mut self, address: u64) -> anyhow::Result<u8, crate::Error> {
@@ -753,6 +761,10 @@ impl MemoryInterface for XtensaCommunicationInterface {
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> anyhow::Result<(), crate::Error> {
+        self.read_8(address, as_bytes_mut(data))
+    }
+
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> anyhow::Result<(), crate::Error> {
         self.read_8(address, as_bytes_mut(data))
     }
 
@@ -774,6 +786,10 @@ impl MemoryInterface for XtensaCommunicationInterface {
         self.write(address, &data.to_le_bytes())
     }
 
+    fn write_word_16(&mut self, address: u64, data: u16) -> anyhow::Result<(), crate::Error> {
+        self.write(address, &data.to_le_bytes())
+    }
+
     fn write_word_8(&mut self, address: u64, data: u8) -> anyhow::Result<(), crate::Error> {
         self.write(address, &[data])
     }
@@ -783,6 +799,10 @@ impl MemoryInterface for XtensaCommunicationInterface {
     }
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> anyhow::Result<(), crate::Error> {
+        self.write_8(address, as_bytes(data))
+    }
+
+    fn write_16(&mut self, address: u64, data: &[u16]) -> anyhow::Result<(), crate::Error> {
         self.write_8(address, as_bytes(data))
     }
 

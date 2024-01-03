@@ -1791,6 +1791,13 @@ impl MemoryInterface for RiscvCommunicationInterface {
 
     fn read_word_32(&mut self, address: u64) -> Result<u32, crate::Error> {
         let address = valid_32bit_address(address)?;
+        tracing::debug!("read_word_32 from {:#08x}", address);
+        self.read_word(address)
+    }
+
+    fn read_word_16(&mut self, address: u64) -> Result<u16, crate::Error> {
+        let address = valid_32bit_address(address)?;
+        tracing::debug!("read_word_16 from {:#08x}", address);
         self.read_word(address)
     }
 
@@ -1814,6 +1821,12 @@ impl MemoryInterface for RiscvCommunicationInterface {
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), crate::Error> {
         let address = valid_32bit_address(address)?;
         tracing::debug!("read_32 from {:#08x}", address);
+        self.read_multiple(address, data)
+    }
+
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), crate::Error> {
+        let address = valid_32bit_address(address)?;
+        tracing::debug!("read_16 from {:#08x}", address);
         self.read_multiple(address, data)
     }
 
@@ -1843,6 +1856,11 @@ impl MemoryInterface for RiscvCommunicationInterface {
         self.write_word(address, data)
     }
 
+    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), crate::Error> {
+        let address = valid_32bit_address(address)?;
+        self.write_word(address, data)
+    }
+
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), crate::Error> {
         let address = valid_32bit_address(address)?;
         self.write_word(address, data)
@@ -1862,6 +1880,13 @@ impl MemoryInterface for RiscvCommunicationInterface {
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), crate::Error> {
         let address = valid_32bit_address(address)?;
         tracing::debug!("write_32 to {:#08x}", address);
+
+        self.write_multiple(address, data)
+    }
+
+    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), crate::Error> {
+        let address = valid_32bit_address(address)?;
+        tracing::debug!("write_16 to {:#08x}", address);
 
         self.write_multiple(address, data)
     }

@@ -24,6 +24,12 @@ pub trait MemoryInterface {
     /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
     fn read_word_32(&mut self, address: u64) -> Result<u32, Error>;
 
+    /// Read a 16bit word of at `address`.
+    ///
+    /// The address where the read should be performed at has to be word aligned.
+    /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
+    fn read_word_16(&mut self, address: u64) -> Result<u16, Error>;
+
     /// Read an 8bit word of at `address`.
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error>;
 
@@ -40,6 +46,13 @@ pub trait MemoryInterface {
     /// The address where the read should be performed at has to be word aligned.
     /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error>;
+
+    /// Read a block of 16bit words at `address`.
+    ///
+    /// The number of words read is `data.len()`.
+    /// The address where the read should be performed at has to be word aligned.
+    /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error>;
 
     /// Read a block of 8bit words at `address`.
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error>;
@@ -122,6 +135,12 @@ pub trait MemoryInterface {
     /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
     fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error>;
 
+    /// Write a 16bit word at `address`.
+    ///
+    /// The address where the write should be performed at has to be word aligned.
+    /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
+    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error>;
+
     /// Write an 8bit word at `address`.
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error>;
 
@@ -138,6 +157,13 @@ pub trait MemoryInterface {
     /// The address where the write should be performed at has to be word aligned.
     /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error>;
+
+    /// Write a block of 16bit words at `address`.
+    ///
+    /// The number of words written is `data.len()`.
+    /// The address where the write should be performed at has to be word aligned.
+    /// Returns [`Error::MemoryNotAligned`] if this does not hold true.
+    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error>;
 
     /// Write a block of 8bit words at `address`.
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error>;
@@ -261,6 +287,10 @@ where
         (*self).read_word_32(address)
     }
 
+    fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
+        (*self).read_word_16(address)
+    }
+
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
         (*self).read_word_8(address)
     }
@@ -271,6 +301,10 @@ where
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
         (*self).read_32(address, data)
+    }
+
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
+        (*self).read_16(address, data)
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
@@ -289,6 +323,10 @@ where
         (*self).write_word_32(address, data)
     }
 
+    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
+        (*self).write_word_16(address, data)
+    }
+
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
         (*self).write_word_8(address, data)
     }
@@ -299,6 +337,10 @@ where
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
         (*self).write_32(address, data)
+    }
+
+    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
+        (*self).write_16(address, data)
     }
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {

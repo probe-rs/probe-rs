@@ -12,6 +12,8 @@ use crate::{CoreStatus, DebugProbeError};
 pub trait ArmProbe: SwdSequence {
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError>;
 
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), ArmError>;
+
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError>;
 
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmError>;
@@ -28,6 +30,14 @@ pub trait ArmProbe: SwdSequence {
     fn read_word_32(&mut self, address: u64) -> Result<u32, ArmError> {
         let mut buff = [0];
         self.read_32(address, &mut buff)?;
+
+        Ok(buff[0])
+    }
+
+    /// Reads a 16 bit word from `address`.
+    fn read_word_16(&mut self, address: u64) -> Result<u16, ArmError> {
+        let mut buff = [0];
+        self.read_16(address, &mut buff)?;
 
         Ok(buff[0])
     }
@@ -68,6 +78,8 @@ pub trait ArmProbe: SwdSequence {
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError>;
 
+    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), ArmError>;
+
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError>;
 
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmError>;
@@ -80,6 +92,11 @@ pub trait ArmProbe: SwdSequence {
     /// Writes a 32 bit word to `address`.
     fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), ArmError> {
         self.write_32(address, &[data])
+    }
+
+    /// Writes a 16 bit word to `address`.
+    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), ArmError> {
+        self.write_16(address, &[data])
     }
 
     /// Writes a 8 bit word to `address`.
@@ -376,6 +393,29 @@ where
         Ok(result.data)
     }
 
+    /// Read an 16 bit word at `address`.
+    ///
+    /// The address where the read should be performed at has to be word aligned.
+    /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
+    pub fn read_word_16(&mut self, access_port: MemoryAp, address: u64) -> Result<u16, ArmError> {
+        if self.ap_information.supports_only_32bit_data_size {
+            return Err(ArmError::UnsupportedTransferWidth(16));
+        }
+
+        // Offset of byte in word (little endian)
+        let aligned = address & !3;
+        let bit_offset = (address - aligned) * 8;
+
+        let csw = self.build_csw_register(DataSize::U16);
+        self.write_csw_register(access_port, csw)?;
+        self.write_tar_register(access_port, address)?;
+        let result: DRW = self.read_ap_register(access_port)?;
+
+        // Extract the correct byte
+        // See "Arm Debug Interface Architecture Specification ADIv5.0 to ADIv5.2", C2.2.6
+        Ok(((result.data >> bit_offset) & 0xFFFF) as u16)
+    }
+
     /// Read an 8 bit word at `address`.
     pub fn read_word_8(&mut self, access_port: MemoryAp, address: u64) -> Result<u8, ArmError> {
         if self.ap_information.supports_only_32bit_data_size {
@@ -433,6 +473,67 @@ where
 
             address = address
                 .checked_add(chunk_size as u64 * 4)
+                .ok_or(ArmError::OutOfBounds)?;
+            data = &mut data[chunk_size..];
+        }
+
+        tracing::debug!("Finished reading block");
+
+        Ok(())
+    }
+
+    /// Read a block of 16 bit words at `address`.
+    ///
+    /// The number of words read is `data.len()`.
+    /// The address where the read should be performed at has to be word aligned.
+    /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
+    pub fn read_16(
+        &mut self,
+        access_port: MemoryAp,
+        mut address: u64,
+        mut data: &mut [u16],
+    ) -> Result<(), ArmError> {
+        if self.ap_information.supports_only_32bit_data_size {
+            return Err(ArmError::UnsupportedTransferWidth(8));
+        }
+
+        if (address % 2) != 0 {
+            return Err(ArmError::alignment_error(address, 2));
+        }
+
+        if data.is_empty() {
+            return Ok(());
+        }
+
+        let csw = self.build_csw_register(DataSize::U16);
+        self.write_csw_register(access_port, csw)?;
+
+        while !data.is_empty() {
+            let chunk_size = data.len().min(autoincr_max_bytes(address) / 2);
+
+            tracing::debug!(
+                "Reading chunk with len {} at address {:#08x}",
+                chunk_size,
+                address
+            );
+
+            let mut values = vec![0; chunk_size];
+
+            // autoincrement is limited to the 10 lowest bits, so write TAR every time.
+            self.write_tar_register(access_port, address)?;
+            self.read_ap_register_repeated(access_port, DRW { data: 0 }, &mut values)?;
+
+            // The required shifting logic here is described in C2.2.6 Byte lanes of the ADI v5.2 specification.
+            // All bytes are transfered in their lane, so when we do an access at an address that is not divisible by 4,
+            // we have to shift the word (one or two bytes) to it's correct position.
+            for (target, (i, source)) in
+                data[..chunk_size].iter_mut().zip(values.iter().enumerate())
+            {
+                *target = ((*source >> (((address + i as u64 * 2) % 4) * 8)) & 0xFFFF) as u16;
+            }
+
+            address = address
+                .checked_add(chunk_size as u64 * 2)
                 .ok_or(ArmError::OutOfBounds)?;
             data = &mut data[chunk_size..];
         }
@@ -558,6 +659,37 @@ where
         Ok(())
     }
 
+    /// Write a 16bit word at `address`.
+    ///
+    /// The address where the write should be performed at has to be word aligned.
+    /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
+    pub fn write_word_16(
+        &mut self,
+        access_port: MemoryAp,
+        address: u64,
+        data: u16,
+    ) -> Result<(), ArmError> {
+        if (address % 2) != 0 {
+            return Err(ArmError::alignment_error(address, 2));
+        }
+
+        // Offset of byte in word (little endian)
+        let aligned = address & !3;
+        let bit_offset = (address - aligned) * 8;
+
+        let csw = self.build_csw_register(DataSize::U16);
+        let drw = DRW {
+            data: u32::from(data) << bit_offset,
+        };
+
+        self.write_csw_register(access_port, csw)?;
+
+        self.write_tar_register(access_port, address)?;
+        self.write_ap_register(access_port, drw)?;
+
+        Ok(())
+    }
+
     /// Write an 8 bit word at `address`.
     pub fn write_word_8(
         &mut self,
@@ -627,6 +759,69 @@ where
 
             address = address
                 .checked_add(chunk_size as u64 * 4)
+                .ok_or(ArmError::OutOfBounds)?;
+            data = &data[chunk_size..];
+        }
+
+        tracing::debug!("Finished writing block");
+
+        Ok(())
+    }
+
+    /// Write a block of 16 bit words at `address`.
+    ///
+    /// The number of words written is `data.len()`.
+    /// The address where the write should be performed at has to be word aligned.
+    /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
+    pub fn write_16(
+        &mut self,
+        access_port: MemoryAp,
+        mut address: u64,
+        mut data: &[u16],
+    ) -> Result<(), ArmError> {
+        if self.ap_information.supports_only_32bit_data_size {
+            return Err(ArmError::UnsupportedTransferWidth(8));
+        }
+        if (address % 2) != 0 {
+            return Err(ArmError::alignment_error(address, 2));
+        }
+        if data.is_empty() {
+            return Ok(());
+        }
+
+        tracing::debug!(
+            "Write block with total size {} bytes to address {:#08x}",
+            data.len() * 2,
+            address
+        );
+
+        let csw = self.build_csw_register(DataSize::U16);
+        self.write_csw_register(access_port, csw)?;
+
+        while !data.is_empty() {
+            let chunk_size = data.len().min(autoincr_max_bytes(address) / 2);
+
+            tracing::debug!(
+                "Writing chunk with len {} at address {:#08x}",
+                chunk_size,
+                address
+            );
+
+            // The required shifting logic here is described in C2.2.6 Byte lanes of the ADI v5.2 specification.
+            // All bytes are transfered in their lane, so when we do an access at an address that is not divisible by 4,
+            // we have to shift the word (one or two bytes) to it's correct position.
+            let values = data[..chunk_size]
+                .iter()
+                .enumerate()
+                .map(|(i, v)| (*v as u32) << (((address as usize + i * 2) % 4) * 8))
+                .collect::<Vec<_>>();
+
+            // autoincrement is limited to the 10 lowest bits, so write TAR every time.
+            self.write_tar_register(access_port, address)?;
+            self.write_ap_register_repeated(access_port, DRW { data: 0 }, &values)?;
+
+            address = address
+                .checked_add(chunk_size as u64 * 2)
                 .ok_or(ArmError::OutOfBounds)?;
             data = &data[chunk_size..];
         }
@@ -734,6 +929,16 @@ where
         Ok(())
     }
 
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), ArmError> {
+        if data.len() == 1 {
+            data[0] = self.read_word_16(self.memory_ap, address)?;
+        } else {
+            self.read_16(self.memory_ap, address, data)?;
+        }
+
+        Ok(())
+    }
+
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
         if data.len() == 1 {
             data[0] = self.read_word_32(self.memory_ap, address)?;
@@ -757,6 +962,16 @@ where
             self.write_word_8(self.memory_ap, address, data[0])?;
         } else {
             self.write_8(self.memory_ap, address, data)?;
+        }
+
+        Ok(())
+    }
+
+    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), ArmError> {
+        if data.len() == 1 {
+            self.write_word_16(self.memory_ap, address, data[0])?;
+        } else {
+            self.write_16(self.memory_ap, address, data)?;
         }
 
         Ok(())
