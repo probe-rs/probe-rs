@@ -168,7 +168,7 @@ impl Xdm {
         tracing::trace!("Waiting for power domain to turn on");
         let now = std::time::Instant::now();
         loop {
-            let bits = self.pwr_read(PowerDevice::PowerStat)?;
+            let bits = self.pwr_write(PowerDevice::PowerStat, 0)?;
             if PowerStatus(bits).debug_domain_on() {
                 break;
             }
@@ -231,20 +231,6 @@ impl Xdm {
         })?;
 
         Ok(())
-    }
-
-    fn tap_write(&mut self, instr: TapInstruction, data: u32) -> Result<u32, DebugProbeError> {
-        let capture = self
-            .probe
-            .write_register(instr.code(), &data.to_le_bytes(), instr.bits())?;
-
-        Ok(instr.capture_to_u32(&capture))
-    }
-
-    fn tap_read(&mut self, instr: TapInstruction) -> Result<u32, DebugProbeError> {
-        let capture = self.probe.read_register(instr.code(), instr.bits())?;
-
-        Ok(instr.capture_to_u32(&capture))
     }
 
     pub(super) fn execute(&mut self) -> Result<(), XtensaError> {
@@ -356,17 +342,17 @@ impl Xdm {
     }
 
     fn pwr_write(&mut self, dev: PowerDevice, value: u8) -> Result<u8, XtensaError> {
-        let res = self.tap_write(dev.into(), value as u32)?;
+        let instr = TapInstruction::from(dev);
+
+        let capture = self
+            .probe
+            .write_register(instr.code(), &[value], instr.bits())?;
+
+        let res = instr.capture_to_u8(&capture);
+
         tracing::trace!("pwr_write response: {:?}", res);
 
-        Ok(res as u8)
-    }
-
-    fn pwr_read(&mut self, dev: PowerDevice) -> Result<u8, XtensaError> {
-        let res = self.tap_read(dev.into())?;
-        tracing::trace!("pwr_read response: {:?}", res);
-
-        Ok(res as u8)
+        Ok(res)
     }
 
     fn schedule_read_nexus_register<R: NexusRegister>(&mut self) -> DeferredResultIndex {
