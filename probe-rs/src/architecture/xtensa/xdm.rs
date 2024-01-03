@@ -196,6 +196,7 @@ impl Xdm {
         if device_id == 0 || device_id == !0 {
             return Err(DebugProbeError::TargetNotFound.into());
         }
+        tracing::info!("Found Xtensa device with OCDID: 0x{:08X}", device_id);
 
         let status = self.status()?;
         tracing::debug!("{:?}", status);
@@ -215,8 +216,6 @@ impl Xdm {
         })?;
 
         // TODO check status and clear bits if required
-
-        tracing::info!("Found Xtensa device with OCDID: 0x{:08X}", device_id);
         self.device_id = device_id;
 
         Ok(())
