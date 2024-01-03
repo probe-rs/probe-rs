@@ -8,8 +8,6 @@ use crate::architecture::arm::{
 };
 use crate::architecture::arm::{ArmCommunicationInterface, ArmError};
 use crate::{CoreStatus, DebugProbeError};
-use std::convert::TryInto;
-use std::ops::Range;
 
 pub trait ArmProbe: SwdSequence {
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError>;
@@ -376,10 +374,9 @@ where
             return Err(ArmError::UnsupportedTransferWidth(8));
         }
 
-        let aligned = aligned_range(address, 1)?;
-
         // Offset of byte in word (little endian)
-        let bit_offset = (address - aligned.start) * 8;
+        let aligned = address & !3;
+        let bit_offset = (address - aligned) * 8;
 
         let csw = self.build_csw_register(DataSize::U8);
         self.write_csw_register(access_port, csw)?;
@@ -652,10 +649,9 @@ where
             return Err(ArmError::UnsupportedTransferWidth(8));
         }
 
-        let aligned = aligned_range(address, 1)?;
-
         // Offset of byte in word (little endian)
-        let bit_offset = (address - aligned.start) * 8;
+        let aligned = address & !3;
+        let bit_offset = (address - aligned) * 8;
 
         let csw = self.build_csw_register(DataSize::U8);
         let drw = DRW {
@@ -978,25 +974,6 @@ where
     }
 }
 
-/// Calculates a 32-bit word aligned range from an address/length pair.
-fn aligned_range(address: u64, len: usize) -> Result<Range<u64>, ArmError> {
-    // Round start address down to the nearest multiple of 4
-    let start = address - (address % 4);
-
-    let unaligned_end = len
-        .try_into()
-        .ok()
-        .and_then(|len: u64| len.checked_add(address))
-        .ok_or(ArmError::OutOfBounds)?;
-
-    // Round end address up to the nearest multiple of 4
-    let end = unaligned_end
-        .checked_add((4 - (unaligned_end % 4)) % 4)
-        .ok_or(ArmError::OutOfBounds)?;
-
-    Ok(Range { start, end })
-}
-
 #[cfg(test)]
 mod tests {
     use scroll::Pread;
@@ -1235,18 +1212,5 @@ mod tests {
                 );
             }
         }
-    }
-
-    use super::aligned_range;
-
-    #[test]
-    fn aligned_range_at_limit_does_not_panic() {
-        // The aligned range for address 0xfffffff9 with length
-        // 4 should not panic.
-
-        // Not sure what the best behaviour to handle this is, but
-        // for sure no panic
-
-        let _ = aligned_range(0xfffffff9, 4);
     }
 }
