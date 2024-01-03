@@ -5,6 +5,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.0]
+
+Released 2024-01-03
+
 ### Added
 
  - Add support for CH32V003 RV32EC RISC-V MCU
@@ -1105,7 +1109,8 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.21.1...master
+[unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.22.0...master
+[0.22.0]: https://github.com/probe-rs/probe-rs/compare/v0.21.1...v0.22.0
 [0.21.1]: https://github.com/probe-rs/probe-rs/compare/v0.21.0...v0.21.1
 [0.21.0]: https://github.com/probe-rs/probe-rs/compare/v0.20.0...v0.21.0
 [0.20.0]: https://github.com/probe-rs/probe-rs/compare/v0.19.0...v0.20.0
