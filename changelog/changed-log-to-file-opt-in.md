@@ -1,1 +1,0 @@
-Logging to file is now off by default. Use `--log-to-folder` or `--log-file` to enable.

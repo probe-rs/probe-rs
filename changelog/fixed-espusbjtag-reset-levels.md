@@ -1,1 +1,0 @@
-Correct esp-usbjtag reset assert/deassert levels.
