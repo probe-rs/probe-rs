@@ -1,1 +1,0 @@
-Xtensa: detect flash size
