@@ -3,6 +3,118 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+ - Add support for CH32V003 RV32EC RISC-V MCU
+ - Add support for `SAMV71` series targets (#1861).
+ - target-gen: Add support for Cortex-M55 and Cortex-M85
+ - Add OpenTitan target file with description of the Earl Grey chip.
+ - Added support for riscv semihosting SYS_EXIT syscall.
+   
+   Please note that probe-rs with espflash < 3.0 will probably fail to flash a binary containing semihosting calls due to https://github.com/esp-rs/espflash/issues/522
+
+ - Add support for the esp32c2 target (#1869)
+ - Add support for the esp32s3 target
+ - Auto-detect ESP32 flash size
+ - Added support for EFM32PG1B series microcontrollers.
+ - Xtensa: Add flashing support for the esp32s3
+ - The debugger REPL commands now have an implementation for `backtrace`. The stacktrace is serialized using the yaml format.
+ - Allow specifying the default `Format` for a target
+       
+   Refactor the target definition to allow specifying the default Format
+   for a given target. By default all targets `default_target` is `Elf`,
+   except for the esp32* targets which are now `Idf`.
+
+ - Added initial xtensa support.
+ - Added support for LM3S series targets.
+ - Added the concept of transfer encoding that is applied during firmware download. Added the Miniz encoding.
+ - Added a new `dump` command for the CLI and vscode REPL to dump a full core state (#1783).
+ - Handle the `DW_AT_specification` attribute when unwinding.
+ - Add `--catch-reset` & `--catch-hardfault` cli flags
+ - Custom debug sequences for ATSAMD1x, D2x, DAx micros.  Enables DSU-based chip erase.
+ - Add support for the esp32h2 target (#1862)
+ - Add scan chain support for the esp32* targets and the espusbjtag driver.
+ - The rtthost gets the ability to reset the targert after the RTT session is established.
+ - Added support for PAC52XX series microcontroller.
+ - Added experimental support for WCH-Link probe in RV mode.
+ - Xtensa: detect flash size
+
+### Changed
+
+ - Continue running the core if an unsupported semihosting call occured.
+   
+   Previously, `probe-rs run` would exit with "the CPU halted unexpectedly", whenever an unknown semihosting operation occurred.
+   With this change, `probe-rs run` will print a warning and then automatically continue the core.
+
+ - `dap-server`: Move initial check of core state from `threads` request to `configuration_done` request.
+ - Renamed `JTAGAccess::get_idle_cycles` to `idle_cycles` and removed redundant inherent fns
+ - Reduced logging level for custom debug sequences
+ - The `dump` command that is used by the VSCode REPL can now be used without specifying memory regions.
+   
+   The resulting coredump will include all the memory regions required to unwind the in-scope functions and variables.
+
+ - For CLI builds, statically link to libusb to make installation of precompiled binaries easier.
+ - By default, `probe-rs run` and `probe-rs attach` will only scan the memory for the RTT control block if the `--rtt-scan-memory` flag is provided. It will still always look for a `_SEGGER_RTT` symbol in the ELF file and use that first in all circumstances.
+ - Refactor unwinding code to improve testability, add tests for unwinding.
+ - The `ftdi-vendored` feature now enabled `ftdi` automatically
+ - Hide vector catch errors when it hasn't been implemented for the target.
+ - Logging to file is now off by default. Use `--log-to-folder` or `--log-file` to enable.
+ - Improved RISC-V IO utilisation by batching more operations
+ - The read operations from the `MemoryInterface` trait are moved into a separte `ReadOnlyMemoryInterface` trait, so that it is clear which code actually changes memory.
+ - Updated ESP32 targets to tune flashing speed
+ - Move the stack refresh functionality to poll_cores, and trigger a refresh when the state changes from 'running' to 'halted'.
+ - Rewrote benchmark cli tool, removing report submission and adding multiple speed/size/stride options
+ - RP2040 memory map changed from three blocks (256K + 4K + 4K) to one block (264K). Allows ELF files to contain sections that go over the boundaries.
+ - espusbjtag: don't reset the chip on attach
+ - espusbjtag: capture fewer bits
+ - Refactor esp-usbjtag to clean it up some
+
+### Fixed
+
+ - Disable the second core on LPC55S69 to fix #1802.
+ - Fix LPC55S69 reset sequence 
+   Fix LPC55S69 attach without disturbing target
+
+ - * Improved handling of source file paths in debugger, don't assume paths in the debug information
+     are in the same format as the paths of the host OS.
+
+ - Updated the STM32G4 target yaml to [version 1.5.0](https://www.keil.arm.com/packs/stm32g4xx_dfp-keil/versions/). This fixes the stm32g4xx_256 flash algorithm.
+ - Set DbgSwEnable to 1 during memory access
+ - Flasher: single buffer transfers are now done with u32 writes
+ - cli: Rename struct to avoid debug assert in `profile` subcommand. Fix #1808.
+ - Added missing reset and halt timeout handling for RV32 targets.
+ - Also use serial number to distinguish CMSIS-DAP probes. Fix #1835.
+ - Added missing SRAM entries for STM32L4 microcontrollers.
+ - cli/run: Fix a bug where the last messages printed by the code before crashing (like a panic message) did not get printed.
+ - Fixed cases where probe attachment were inconsistent.
+ - Fix minor bugs of WCH-Link implementation, add new probe varient.
+ - Flash loader will now properly flash all bytes
+ - Update debug sequence for LPC55S69 with newest from pack, fixes an issue where the chip would not reset properly.
+ - Change from openSSL to rustls. 
+   
+   The prebuilt binaries depended on the system openSSL installation on Linux.
+   This meant that they required openSSL1, which is not supported e.g. on Ubuntu 22.04.
+   Changing to rustls removes this dependency.
+
+ - Issue DAPABORT at startup and after receiving WAIT response from CMSIS-DAP
+ - * Mark all ARM memory accesses as cacheable, to indicate they must not bypass
+     the cache and instead should see the same data as the CPU. Fixes #1715.
+
+ - Fix the RAM address mapping for the esp32c3.
+ - Fix core names and regions in LPC55S69 target description.
+ - dap-server: Return correct type for error response.
+ - `target-gen`: Fix incorrect URL formatting (#1860).
+ - espusbjtag: Fixed a potential edge case that could lock up the interface.
+ - Unlock the OS Lock when starting an ARMv8 core
+ - Correct esp-usbjtag reset assert/deassert levels.
+ - Prevent Debug Adapter Protocol workarounds for VSCode quirks from breaking other DAP clients.
+
+### Removed
+
+ - Removed unused `--assert` from `probe-rs reset`
+
 ## [0.21.1]
 
 Released 2023-10-12

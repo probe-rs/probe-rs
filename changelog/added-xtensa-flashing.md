@@ -1,1 +1,0 @@
-Xtensa: Add flashing support for the esp32s3
