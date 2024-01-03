@@ -595,8 +595,9 @@ fn flash(
                         .as_ref()
                         .map(|path| visualizer.write_svg(path));
                 }
-                StartedProgramming => {
+                StartedProgramming { length } => {
                     program_progress.enable_steady_tick(Duration::from_millis(100));
+                    program_progress.set_length(length);
                     program_progress.reset_elapsed();
                 }
                 StartedErasing => {

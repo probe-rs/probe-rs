@@ -8281,4 +8281,267 @@ expression: stack_frames
       name: LocalScopeRoot
       type_name: Unknown
       value: Unknown
+- function_name: "<unknown function @ 0x0000013c>"
+  source_location: ~
+  registers:
+    - core_register:
+        id: 0
+        roles:
+          - Core: R0
+          - Argument: a1
+          - Return: r1
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 0
+      value: ~
+    - core_register:
+        id: 1
+        roles:
+          - Core: R1
+          - Argument: a2
+          - Return: r2
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 1
+      value: ~
+    - core_register:
+        id: 2
+        roles:
+          - Core: R2
+          - Argument: a3
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 2
+      value: ~
+    - core_register:
+        id: 3
+        roles:
+          - Core: R3
+          - Argument: a4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 3
+      value: ~
+    - core_register:
+        id: 4
+        roles:
+          - Core: R4
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 4
+      value:
+        U32: 0
+    - core_register:
+        id: 5
+        roles:
+          - Core: R5
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 5
+      value:
+        U32: 0
+    - core_register:
+        id: 6
+        roles:
+          - Core: R6
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 6
+      value:
+        U32: 0
+    - core_register:
+        id: 7
+        roles:
+          - Core: R7
+          - FramePointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 7
+      value:
+        U32: 0
+    - core_register:
+        id: 8
+        roles:
+          - Core: R8
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 8
+      value:
+        U32: 0
+    - core_register:
+        id: 9
+        roles:
+          - Core: R9
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 9
+      value: ~
+    - core_register:
+        id: 10
+        roles:
+          - Core: R10
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 10
+      value:
+        U32: 0
+    - core_register:
+        id: 11
+        roles:
+          - Core: R11
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 11
+      value:
+        U32: 0
+    - core_register:
+        id: 12
+        roles:
+          - Core: R12
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 12
+      value:
+        U32: 536871464
+    - core_register:
+        id: 13
+        roles:
+          - Core: R13
+          - StackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 13
+      value:
+        U32: 536887296
+    - core_register:
+        id: 14
+        roles:
+          - Core: R14
+          - ReturnAddress
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 14
+      value:
+        U32: 317
+    - core_register:
+        id: 15
+        roles:
+          - Core: R15
+          - ProgramCounter
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 15
+      value:
+        U32: 316
+    - core_register:
+        id: 17
+        roles:
+          - Core: MSP
+          - MainStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 16
+      value: ~
+    - core_register:
+        id: 18
+        roles:
+          - Core: PSP
+          - ProcessStackPointer
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 17
+      value: ~
+    - core_register:
+        id: 16
+        roles:
+          - Core: XPSR
+          - ProcessorStatus
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 18
+      value:
+        U32: 1627389952
+    - core_register:
+        id: 20
+        roles:
+          - Core: EXTRA
+          - Other: EXTRA
+        data_type:
+          UnsignedInteger: 32
+      dwarf_id: 19
+      value: ~
+  pc:
+    U32: 316
+  frame_base: 0
+  is_inlined: false
+  static_variables:
+    Child Variables:
+      name: StaticScopeRoot
+      type_name: Unknown
+      value: ", <unknown> {\n\t<&u16 as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >, \n\t<&nrf_hal_common::pwm::Seq as core::fmt::Debug>::{vtable}: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >}"
+      children:
+        - name:
+            Namespace: nrf_hal_common
+          type_name: Namespace
+          value: ""
+          children:
+            - name:
+                Namespace: "nrf_hal_common::pwm"
+              type_name: Namespace
+              value: ""
+              children:
+                - name:
+                    Named: BUF0
+                  type_name: Unknown
+                  value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                - name:
+                    Named: BUF1
+                  type_name: Unknown
+                  value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                - name:
+                    Named: BUF2
+                  type_name: Unknown
+                  value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+                - name:
+                    Named: BUF3
+                  type_name: Unknown
+                  value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+        - name:
+            Named: "<&u16 as core::fmt::Debug>::{vtable}"
+          type_name: Unknown
+          value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+        - name:
+            Named: "<&nrf_hal_common::pwm::Seq as core::fmt::Debug>::{vtable}"
+          type_name: Unknown
+          value: "< The value of this variable may have been optimized out of the debug info, by the compiler. >"
+  local_variables:
+    Child Variables:
+      name: LocalScopeRoot
+      type_name: Unknown
+      value: "<unknown> {\n\tself: &mut nrf_hal_common::ecb::Ecb = &mut nrf_hal_common::ecb::Ecb @ 0x200040C8, \n\tblock: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >, \n\tkey: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >}"
+      children:
+        - name:
+            Named: self
+          type_name:
+            Pointer: "&mut nrf_hal_common::ecb::Ecb"
+          value: "&mut nrf_hal_common::ecb::Ecb @ 0x200040C8"
+          children:
+            - name:
+                Named: "*self"
+              type_name:
+                Struct: Ecb
+              value: "Ecb {\n\tregs: <unknown> = < Failed to read referenced variable address from memory location 0x200040C8 : The coredump does not include the memory for address 0x200040c8 of size 0x4. >}"
+              children:
+                - name:
+                    Named: regs
+                  type_name: Unknown
+                  value: "< Failed to read referenced variable address from memory location 0x200040C8 : The coredump does not include the memory for address 0x200040c8 of size 0x4. >"
+        - name:
+            Named: block
+          type_name: Unknown
+          value: "< <value optimized away by compiler, out of scope, or dropped> >"
+        - name:
+            Named: key
+          type_name: Unknown
+          value: "< <value optimized away by compiler, out of scope, or dropped> >"
 

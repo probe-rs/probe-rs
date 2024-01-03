@@ -98,10 +98,12 @@ pub enum FileDownloadError {
     /// This is most likely because of a bad linker script.
     #[error("No loadable ELF sections were found.")]
     NoLoadableSegments,
+    /// Some error returned by the flash size detection.
+    #[error("Could not determine flash size.")]
+    FlashSizeDetection(#[from] crate::Error),
 }
 
 /// Options for downloading a file onto a target chip.
-///
 ///
 /// This struct should be created using the [`DownloadOptions::default()`] function, and can be configured by setting
 /// the fields directly:
@@ -171,10 +173,7 @@ pub fn download_file_with_options<P: AsRef<Path>>(
     format: Format,
     options: DownloadOptions,
 ) -> Result<(), FileDownloadError> {
-    let mut file = match File::open(path.as_ref()) {
-        Ok(file) => file,
-        Err(e) => return Err(FileDownloadError::IO(e)),
-    };
+    let mut file = File::open(path.as_ref()).map_err(FileDownloadError::IO)?;
 
     let mut loader = session.target().flash_loader();
 

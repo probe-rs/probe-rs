@@ -12,13 +12,17 @@ use crate::{
             sequences::ArmDebugSequence,
         },
         riscv::registers::RISCV_CORE_REGSISTERS,
+        xtensa::registers::XTENSA_CORE_REGSISTERS,
     },
+    config::DebugSequence,
     debug::{DebugRegister, DebugRegisters},
     error, CoreType, Error, InstructionSet, MemoryInterface, Target,
 };
 use anyhow::anyhow;
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
-use probe_rs_target::{ArmCoreAccessOptions, RiscvCoreAccessOptions};
+use probe_rs_target::{
+    ArmCoreAccessOptions, MemoryRange, RiscvCoreAccessOptions, XtensaCoreAccessOptions,
+};
 use scroll::Pread;
 use std::{
     collections::HashMap,
@@ -135,7 +139,7 @@ pub trait CoreInterface: MemoryInterface {
 
     /// Configure the target to ensure software breakpoints will enter Debug Mode.
     fn debug_on_sw_breakpoint(&mut self, _enabled: bool) -> Result<(), error::Error> {
-        // This default will have override methods for architectures that require special behavior, e.g. RISV-V.
+        // This default will have override methods for architectures that require special behavior, e.g. RISC-V.
         Ok(())
     }
 
@@ -260,8 +264,8 @@ impl CoreDump {
                     &CORTEX_M_CORE_REGISTERS
                 }
             }
-            // TODO: This can be wrong if the CPU is 32 bit. For lack of better design at the time of writing this code
-            // this differentiation has been omitted.
+            // TODO: This can be wrong if the CPU is 32 bit. For lack of better design at the time
+            // of writing this code this differentiation has been omitted.
             CoreType::Armv8a => &AARCH64_CORE_REGSISTERS,
             CoreType::Armv8m => {
                 if self.fpu_support {
@@ -271,6 +275,7 @@ impl CoreDump {
                 }
             }
             CoreType::Riscv => &RISCV_CORE_REGSISTERS,
+            CoreType::Xtensa => &XTENSA_CORE_REGSISTERS,
         };
 
         let mut debug_registers = Vec::<DebugRegister>::new();
@@ -321,7 +326,7 @@ impl CoreDump {
         size_in_bytes: u64,
     ) -> Result<(u64, &Vec<u8>), crate::Error> {
         for (range, memory) in &self.data {
-            if range.contains(&address) && range.contains(&(address + size_in_bytes)) {
+            if range.contains_range(&(address..(address + size_in_bytes))) {
                 return Ok((range.start, memory));
             }
         }
@@ -602,7 +607,7 @@ pub fn exception_handler_for_core(core_type: CoreType) -> Box<dyn ExceptionInter
         CoreType::Armv8m => Box::new(
             crate::architecture::arm::core::exception_handling::armv8m::ArmV8MExceptionHandler,
         ),
-        CoreType::Armv7a | CoreType::Armv8a | CoreType::Riscv => {
+        CoreType::Armv7a | CoreType::Armv8a | CoreType::Riscv | CoreType::Xtensa => {
             Box::new(UnimplementedExceptionHandler)
         }
     }
@@ -642,11 +647,10 @@ impl<'probe> Core<'probe> {
 
         match options {
             CoreAccessOptions::Arm(options) => {
-                let sequence = match &target.debug_sequence {
-                    crate::config::DebugSequence::Arm(seq) => seq.clone(),
-                    crate::config::DebugSequence::Riscv(_) => panic!(
+                let DebugSequence::Arm(sequence) = target.debug_sequence.clone() else {
+                    panic!(
                         "Mismatch between sequence and core kind. This is a bug, please report it."
-                    ),
+                    );
                 };
 
                 let core_state = CoreState::new(ResolvedCoreOptions::Arm { sequence, options });
@@ -659,6 +663,14 @@ impl<'probe> Core<'probe> {
             }
             CoreAccessOptions::Riscv(options) => {
                 let core_state = CoreState::new(ResolvedCoreOptions::Riscv { options });
+                CombinedCoreState {
+                    id,
+                    core_state,
+                    specific_state,
+                }
+            }
+            CoreAccessOptions::Xtensa(options) => {
+                let core_state = CoreState::new(ResolvedCoreOptions::Xtensa { options });
                 CombinedCoreState {
                     id,
                     core_state,
@@ -1135,6 +1147,9 @@ pub enum ResolvedCoreOptions {
     Riscv {
         options: RiscvCoreAccessOptions,
     },
+    Xtensa {
+        options: XtensaCoreAccessOptions,
+    },
 }
 
 impl std::fmt::Debug for ResolvedCoreOptions {
@@ -1146,6 +1161,7 @@ impl std::fmt::Debug for ResolvedCoreOptions {
                 .field("options", options)
                 .finish(),
             Self::Riscv { options } => f.debug_struct("Riscv").field("options", options).finish(),
+            Self::Xtensa { options } => f.debug_struct("Xtensa").field("options", options).finish(),
         }
     }
 }

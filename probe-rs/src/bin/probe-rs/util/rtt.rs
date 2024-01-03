@@ -287,7 +287,7 @@ impl RttActiveChannel {
 
     fn get_string(&self, bytes_read: usize, formatted_data: &mut String) {
         let incoming = String::from_utf8_lossy(&self.rtt_buffer.0[..bytes_read]).to_string();
-        for (_i, line) in incoming.split_terminator('\n').enumerate() {
+        for line in incoming.split_terminator('\n') {
             if self.show_timestamps {
                 write!(
                     formatted_data,
@@ -451,7 +451,7 @@ impl RttActiveTarget {
             })?;
 
             let show_location = active_channels
-                .get(0)
+                .first()
                 .expect("`active_channels` is not empty")
                 .show_location;
 

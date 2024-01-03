@@ -1,1 +1,0 @@
-Add support for CH32V003 RV32EC RISC-V MCU

@@ -13,6 +13,7 @@ pub(crate) mod wlink;
 
 use crate::architecture::arm::ArmError;
 use crate::architecture::riscv::communication_interface::RiscvError;
+use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
 use crate::error::Error;
 use crate::{
     architecture::arm::communication_interface::UninitializedArmProbe,
@@ -31,6 +32,8 @@ use crate::{
 };
 use crate::{Lister, Session};
 use probe_rs_target::ScanChainElement;
+use std::collections::HashMap;
+use std::sync::Arc;
 use std::{convert::TryFrom, fmt};
 
 /// Used to log warnings when the measured target voltage is
@@ -383,6 +386,29 @@ impl Probe {
     }
 
     /// Check if the probe has an interface to
+    /// debug Xtensa chips.
+    pub fn has_xtensa_interface(&self) -> bool {
+        self.inner.has_xtensa_interface()
+    }
+
+    /// Try to get a [`XtensaCommunicationInterface`], which can
+    /// can be used to communicate with chips using the Xtensa
+    /// architecture.
+    ///
+    /// If an error occurs while trying to connect, the probe is returned.
+    pub fn try_into_xtensa_interface(
+        self,
+    ) -> Result<XtensaCommunicationInterface, (Self, DebugProbeError)> {
+        if !self.attached {
+            Err((self, DebugProbeError::NotAttached))
+        } else {
+            self.inner
+                .try_get_xtensa_interface()
+                .map_err(|(probe, err)| (Probe::from_attached_probe(probe), err))
+        }
+    }
+
+    /// Check if the probe has an interface to
     /// debug ARM chips.
     pub fn has_arm_interface(&self) -> bool {
         self.inner.has_arm_interface()
@@ -568,6 +594,22 @@ pub trait DebugProbe: Send + fmt::Debug {
 
     /// Check if the probe offers an interface to debug RISC-V chips.
     fn has_riscv_interface(&self) -> bool {
+        false
+    }
+
+    /// Get the dedicated interface to debug Xtensa chips. Ensure that the
+    /// probe actually supports this by calling [DebugProbe::has_xtensa_interface] first.
+    fn try_get_xtensa_interface(
+        self: Box<Self>,
+    ) -> Result<XtensaCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
+        Err((
+            self.into_probe(),
+            DebugProbeError::InterfaceNotAvailable("Xtensa"),
+        ))
+    }
+
+    /// Check if the probe offers an interface to debug Xtensa chips.
+    fn has_xtensa_interface(&self) -> bool {
         false
     }
 
@@ -819,29 +861,28 @@ pub trait JTAGAccess: DebugProbe {
         len: u32,
     ) -> Result<Vec<u8>, DebugProbeError>;
 
+    /// Executes a sequence of JTAG commands.
     fn write_register_batch(
         &mut self,
-        writes: &[JtagWriteCommand],
-    ) -> Result<Vec<CommandResult>, BatchExecutionError> {
+        writes: &JtagCommandQueue,
+    ) -> Result<DeferredResultSet, BatchExecutionError> {
         tracing::debug!("Using default `JTAGAccess::write_register_batch` this will hurt performance. Please implement proper batching for this probe.");
-        let mut results = Vec::new();
+        let mut results = DeferredResultSet::new();
 
-        for write in writes {
+        for (idx, write) in writes.iter() {
             match self
                 .write_register(write.address, &write.data, write.len)
                 .map_err(crate::Error::Probe)
                 .and_then(|response| (write.transform)(response))
             {
-                Ok(res) => results.push(res),
-                Err(e) => return Err(BatchExecutionError::new(e, results.clone())),
+                Ok(res) => results.push(idx, res),
+                Err(e) => return Err(BatchExecutionError::new(e, results)),
             }
         }
 
         Ok(results)
     }
 }
-
-pub type DeferredResultIndex = usize;
 
 #[derive(Debug, Clone)]
 pub struct JtagWriteCommand {
@@ -872,11 +913,11 @@ pub struct ChainParams {
 pub struct BatchExecutionError {
     #[source]
     pub error: crate::Error,
-    pub results: Vec<CommandResult>,
+    pub results: DeferredResultSet,
 }
 
 impl BatchExecutionError {
-    pub fn new(error: crate::Error, results: Vec<CommandResult>) -> BatchExecutionError {
+    pub fn new(error: crate::Error, results: DeferredResultSet) -> BatchExecutionError {
         BatchExecutionError { error, results }
     }
 }
@@ -900,6 +941,146 @@ pub enum CommandResult {
     U16(u16),
     U32(u32),
     VecU8(Vec<u8>),
+}
+
+impl CommandResult {
+    pub fn as_u32(&self) -> u32 {
+        match self {
+            CommandResult::U32(val) => *val,
+            _ => panic!("CommandResult is not a u32"),
+        }
+    }
+
+    pub fn as_u8(&self) -> u8 {
+        match self {
+            CommandResult::U8(val) => *val,
+            _ => panic!("CommandResult is not a u8"),
+        }
+    }
+}
+
+/// A set of batched commands that will be executed all at once.
+///
+/// This list maintains which commands' results can be read by the issuing code, which then
+/// can be used to skip capturing or processing certain parts of the response.
+#[derive(Default, Debug)]
+pub struct JtagCommandQueue {
+    commands: Vec<(DeferredResultIndex, JtagWriteCommand)>,
+}
+
+impl JtagCommandQueue {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Schedules a command for later execution.
+    ///
+    /// Returns a token value that can be used to retrieve the result of the command.
+    pub fn schedule(&mut self, command: JtagWriteCommand) -> DeferredResultIndex {
+        let index = DeferredResultIndex::new();
+        self.commands.push((index.clone(), command));
+        index
+    }
+
+    pub fn len(&self) -> usize {
+        self.commands.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.commands.is_empty()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &(DeferredResultIndex, JtagWriteCommand)> {
+        self.commands.iter()
+    }
+
+    /// Removes the first `len` number of commands from the batch.
+    pub fn consume(&mut self, len: usize) {
+        self.commands.drain(..len);
+    }
+}
+
+/// The set of results returned by executing a batched command.
+#[derive(Debug, Default)]
+pub struct DeferredResultSet(HashMap<DeferredResultIndex, CommandResult>);
+
+impl DeferredResultSet {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self(HashMap::with_capacity(capacity))
+    }
+
+    pub fn push(&mut self, idx: &DeferredResultIndex, result: CommandResult) {
+        self.0.insert(idx.clone(), result);
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn merge_from(&mut self, other: DeferredResultSet) {
+        self.0.extend(other.0);
+        self.0.retain(|k, _| k.should_capture());
+    }
+
+    pub fn take(
+        &mut self,
+        index: DeferredResultIndex,
+    ) -> Result<CommandResult, DeferredResultIndex> {
+        self.0.remove(&index).ok_or(index)
+    }
+}
+
+/// An index type used to retrieve the result of a deferred command.
+///
+/// This type can detect if the result of a command is not used.
+#[derive(Eq)]
+pub struct DeferredResultIndex(Arc<()>);
+
+impl PartialEq for DeferredResultIndex {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+impl fmt::Debug for DeferredResultIndex {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("DeferredResultIndex")
+            .field(&self.id())
+            .finish()
+    }
+}
+
+impl DeferredResultIndex {
+    // Intentionally private. User code must not be able to create these.
+    fn new() -> Self {
+        Self(Arc::new(()))
+    }
+
+    fn id(&self) -> usize {
+        Arc::as_ptr(&self.0) as usize
+    }
+
+    pub fn should_capture(&self) -> bool {
+        // Both the queue and the user code may hold on to at most one of the references. The queue
+        // execution will be able to detect if the user dropped their read reference, meaning
+        // the read data would be inaccessible.
+        Arc::strong_count(&self.0) > 1
+    }
+
+    // Intentionally private. User code must not be able to clone these.
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+impl std::hash::Hash for DeferredResultIndex {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.id().hash(state)
+    }
 }
 
 /// The method that should be used for attaching.

@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use crate::{
     core::{RegisterDataType, RegisterId, RegisterRole, RegisterValue},
     CoreInterface, CoreRegister, Error,
@@ -15,6 +17,40 @@ pub struct DebugRegister {
 }
 
 impl DebugRegister {
+    /// Test if this register role suggests that the value is a reference to an address in memory.
+    pub(crate) fn is_pointer(&self) -> bool {
+        for role in self.core_register.roles.iter() {
+            if matches!(
+                role,
+                RegisterRole::ProgramCounter
+                    | RegisterRole::FramePointer
+                    | RegisterRole::StackPointer
+                    | RegisterRole::ReturnAddress
+                    | RegisterRole::MainStackPointer
+                    | RegisterRole::ProcessStackPointer
+            ) {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Return the memory range required to read the register value.
+    pub fn memory_range(&self) -> Result<Option<Range<u64>>, Error> {
+        if self.is_pointer() {
+            if let Some(mut register_value) = self.value {
+                let start_address: u64 = register_value.try_into()?;
+                register_value.increment_address(self.core_register.size_in_bytes())?;
+                let end_address: u64 = register_value.try_into()?;
+                return Ok(Some(Range {
+                    start: start_address,
+                    end: end_address,
+                }));
+            }
+        }
+        Ok(None)
+    }
+
     /// Test if this is a 32-bit unsigned integer register
     pub(crate) fn is_u32(&self) -> bool {
         self.core_register.data_type == RegisterDataType::UnsignedInteger(32)

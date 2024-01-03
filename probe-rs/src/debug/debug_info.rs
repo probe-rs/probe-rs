@@ -1,14 +1,16 @@
 use super::ObjectRef;
 use super::{
-    function_die::FunctionDie, get_object_reference, unit_info::UnitInfo, unit_info::UnitIter,
-    variable::*, DebugError, DebugRegisters, SourceLocation, StackFrame, VariableCache,
+    function_die::FunctionDie, get_object_reference, unit_info::UnitInfo, variable::*, DebugError,
+    DebugRegisters, SourceLocation, StackFrame, VariableCache,
 };
 use crate::core::UnwindRule;
+use crate::debug::source_statement::SourceStatement;
 use crate::{
     core::{ExceptionInterface, RegisterRole, RegisterValue},
     debug::{registers, source_statement::SourceStatements},
     MemoryInterface,
 };
+use anyhow::anyhow;
 use gimli::{
     BaseAddresses, ColumnType, DebugFrame, FileEntry, LineProgramHeader, UnwindContext,
     UnwindSection,
@@ -47,6 +49,8 @@ pub struct DebugInfo {
     pub(crate) locations_section: gimli::LocationLists<DwarfReader>,
     pub(crate) address_section: gimli::DebugAddr<DwarfReader>,
     pub(crate) debug_line_section: gimli::DebugLine<DwarfReader>,
+
+    pub(crate) unit_infos: Vec<UnitInfo>,
 }
 
 impl DebugInfo {
@@ -85,12 +89,23 @@ impl DebugInfo {
         let locations_section = gimli::LocationLists::new(debug_loc, debug_loc_lists);
         let debug_line_section = gimli::DebugLine::load(load_section)?;
 
+        let mut unit_infos = Vec::new();
+
+        let mut iter = dwarf_cow.units();
+
+        while let Ok(Some(header)) = iter.next() {
+            if let Ok(unit) = dwarf_cow.unit(header) {
+                unit_infos.push(UnitInfo::new(unit));
+            };
+        }
+
         Ok(DebugInfo {
             dwarf: dwarf_cow,
             frame_section,
             locations_section,
             address_section,
             debug_line_section,
+            unit_infos,
         })
     }
 
@@ -109,15 +124,13 @@ impl DebugInfo {
         address: u64,
         find_inlined: bool,
     ) -> Result<Option<String>, DebugError> {
-        let mut units = self.dwarf.units();
-
-        while let Some(unit_info) = self.get_next_unit_info(&mut units) {
-            let mut functions = unit_info.get_function_dies(address, find_inlined)?;
+        for unit_info in &self.unit_infos {
+            let mut functions = unit_info.get_function_dies(self, address, find_inlined)?;
 
             // Use the last functions from the list, this is the function which most closely
             // corresponds to the PC in case of multiple inlined functions.
             if let Some(die_cursor_state) = functions.pop() {
-                let function_name = die_cursor_state.function_name();
+                let function_name = die_cursor_state.function_name(self);
 
                 if function_name.is_some() {
                     return Ok(function_name);
@@ -130,153 +143,107 @@ impl DebugInfo {
 
     /// Try get the [`SourceLocation`] for a given address.
     pub fn get_source_location(&self, address: u64) -> Option<SourceLocation> {
-        let mut units = self.dwarf.units();
+        for unit_info in &self.unit_infos {
+            let unit = &unit_info.unit;
 
-        while let Ok(Some(header)) = units.next() {
-            let unit = match self.dwarf.unit(header) {
-                Ok(unit) => unit,
-                Err(_) => continue,
-            };
-
-            match self.dwarf.unit_ranges(&unit) {
-                Ok(mut ranges) => {
-                    while let Ok(Some(range)) = ranges.next() {
-                        if range.begin <= address && address < range.end {
-                            // Get the function name.
-
-                            let ilnp = match unit.line_program.as_ref() {
-                                Some(ilnp) => ilnp,
-                                None => return None,
-                            };
-
-                            match ilnp.clone().sequences() {
-                                Ok((program, sequences)) => {
-                                    // Normalize the address.
-                                    let mut target_seq = None;
-
-                                    for seq in sequences {
-                                        if seq.start <= address && address < seq.end {
-                                            target_seq = Some(seq);
-                                            break;
-                                        }
-                                    }
-
-                                    if let Some(target_seq) = target_seq.as_ref() {
-                                        let mut previous_row: Option<gimli::LineRow> = None;
-
-                                        let mut rows = program.resume_from(target_seq);
-
-                                        while let Ok(Some((header, row))) = rows.next_row() {
-                                            match row.address().cmp(&address) {
-                                                Ordering::Greater => {
-                                                    // The address is after the current row, so we use the previous row data. (If we don't do this, you get the artificial effect where the debugger steps to the top of the file when it is steppping out of a function.)
-                                                    if let Some(previous_row) = previous_row {
-                                                        if let Some(file_entry) =
-                                                            previous_row.file(header)
-                                                        {
-                                                            if let Some((file, directory)) = self
-                                                                .find_file_and_directory(
-                                                                    &unit, header, file_entry,
-                                                                )
-                                                            {
-                                                                tracing::debug!(
-                                                                    "{} - {:?}",
-                                                                    address,
-                                                                    previous_row.isa()
-                                                                );
-                                                                return Some(SourceLocation {
-                                                                    line: previous_row
-                                                                        .line()
-                                                                        .map(NonZeroU64::get),
-                                                                    column: Some(
-                                                                        previous_row
-                                                                            .column()
-                                                                            .into(),
-                                                                    ),
-                                                                    file,
-                                                                    directory,
-                                                                    low_pc: Some(
-                                                                        target_seq.start as u32,
-                                                                    ),
-                                                                    high_pc: Some(
-                                                                        target_seq.end as u32,
-                                                                    ),
-                                                                });
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                                Ordering::Less => {}
-                                                Ordering::Equal => {
-                                                    if let Some(file_entry) = row.file(header) {
-                                                        if let Some((file, directory)) = self
-                                                            .find_file_and_directory(
-                                                                &unit, header, file_entry,
-                                                            )
-                                                        {
-                                                            tracing::debug!(
-                                                                "{} - {:?}",
-                                                                address,
-                                                                row.isa()
-                                                            );
-
-                                                            return Some(SourceLocation {
-                                                                line: row
-                                                                    .line()
-                                                                    .map(NonZeroU64::get),
-                                                                column: Some(row.column().into()),
-                                                                file,
-                                                                directory,
-                                                                low_pc: Some(
-                                                                    target_seq.start as u32,
-                                                                ),
-                                                                high_pc: Some(
-                                                                    target_seq.end as u32,
-                                                                ),
-                                                            });
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                            previous_row = Some(*row);
-                                        }
-                                    }
-                                }
-                                Err(error) => {
-                                    tracing::warn!(
-                                        "No valid source code ranges found for address {}: {:?}",
-                                        address,
-                                        error
-                                    );
-                                }
-                            }
-                        }
-                    }
-                }
+            let mut ranges = match self.dwarf.unit_ranges(unit) {
+                Ok(ranges) => ranges,
                 Err(error) => {
                     tracing::warn!(
                         "No valid source code ranges found for address {}: {:?}",
                         address,
                         error
                     );
+                    continue;
+                }
+            };
+
+            while let Ok(Some(range)) = ranges.next() {
+                if !(range.begin <= address && address < range.end) {
+                    continue;
+                }
+                // Get the function name.
+
+                let ilnp = unit.line_program.as_ref()?.clone();
+
+                let (program, sequences) = match ilnp.sequences() {
+                    Ok(value) => value,
+                    Err(error) => {
+                        tracing::warn!(
+                            "No valid source code ranges found for address {}: {:?}",
+                            address,
+                            error
+                        );
+                        continue;
+                    }
+                };
+
+                // Normalize the address.
+                let mut target_seq = None;
+
+                for seq in sequences {
+                    if seq.start <= address && address < seq.end {
+                        target_seq = Some(seq);
+                        break;
+                    }
+                }
+
+                let Some(target_seq) = target_seq.as_ref() else {
+                    continue;
+                };
+
+                let mut previous_row: Option<gimli::LineRow> = None;
+
+                let mut rows = program.resume_from(target_seq);
+
+                while let Ok(Some((header, row))) = rows.next_row() {
+                    match row.address().cmp(&address) {
+                        Ordering::Greater => {
+                            // The address is after the current row, so we use the previous row data.
+                            //
+                            // (If we don't do this, you get the artificial effect where the debugger
+                            // steps to the top of the file when it is steppping out of a function.)
+                            if let Some(previous_row) = previous_row {
+                                if let Some(file_entry) = previous_row.file(header) {
+                                    if let Some((file, directory)) =
+                                        self.find_file_and_directory(unit, header, file_entry)
+                                    {
+                                        tracing::debug!("{} - {:?}", address, previous_row.isa());
+                                        return Some(SourceLocation {
+                                            line: previous_row.line().map(NonZeroU64::get),
+                                            column: Some(previous_row.column().into()),
+                                            file,
+                                            directory,
+                                            low_pc: Some(target_seq.start as u32),
+                                            high_pc: Some(target_seq.end as u32),
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                        Ordering::Less => {}
+                        Ordering::Equal => {
+                            if let Some(file_entry) = row.file(header) {
+                                if let Some((file, directory)) =
+                                    self.find_file_and_directory(unit, header, file_entry)
+                                {
+                                    tracing::debug!("{} - {:?}", address, row.isa());
+
+                                    return Some(SourceLocation {
+                                        line: row.line().map(NonZeroU64::get),
+                                        column: Some(row.column().into()),
+                                        file,
+                                        directory,
+                                        low_pc: Some(target_seq.start as u32),
+                                        high_pc: Some(target_seq.end as u32),
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    previous_row = Some(*row);
                 }
             }
-        }
-        None
-    }
-
-    pub(crate) fn get_units(&self) -> UnitIter {
-        self.dwarf.units()
-    }
-
-    pub(crate) fn get_next_unit_info(&self, units: &mut UnitIter) -> Option<UnitInfo> {
-        while let Ok(Some(header)) = units.next() {
-            if let Ok(unit) = self.dwarf.unit(header) {
-                return Some(UnitInfo {
-                    debug_info: self,
-                    unit,
-                });
-            };
         }
         None
     }
@@ -327,7 +294,7 @@ impl DebugInfo {
     pub fn cache_deferred_variables(
         &self,
         cache: &mut VariableCache,
-        memory: &mut impl MemoryInterface,
+        memory: &mut dyn MemoryInterface,
         parent_variable: &mut Variable,
         stack_frame_registers: &DebugRegisters,
         frame_base: Option<u64>,
@@ -337,135 +304,110 @@ impl DebugInfo {
             return Ok(());
         }
 
+        // Only attempt this part if we have not yet resolved the referenced children.
+        if cache.has_children(parent_variable)? {
+            return Ok(());
+        }
+
+        let Some(header_offset) = parent_variable.unit_header_offset else {
+            return Ok(());
+        };
+
+        let unit_header = self.dwarf.debug_info.header_from_offset(header_offset)?;
+        let unit_info = UnitInfo {
+            unit: gimli::Unit::new(&self.dwarf, unit_header)?,
+        };
+
         match parent_variable.variable_node_type {
             VariableNodeType::ReferenceOffset(reference_offset) => {
-                // Only attempt this part if we have not yet resolved the referenced children.
-                if !cache.has_children(parent_variable)? {
-                    if let Some(header_offset) = parent_variable.unit_header_offset {
-                        let unit_header =
-                            self.dwarf.debug_info.header_from_offset(header_offset)?;
-                        let unit_info = UnitInfo {
-                            debug_info: self,
-                            unit: gimli::Unit::new(&self.dwarf, unit_header)?,
-                        };
-                        // Reference to a type, or an node.entry() to another type or a type modifier which will point to another type.
-                        let mut type_tree = unit_info
-                            .unit
-                            .header
-                            .entries_tree(&unit_info.unit.abbreviations, Some(reference_offset))?;
-                        let referenced_node = type_tree.root()?;
-                        let mut referenced_variable = cache.create_variable(
-                            parent_variable.variable_key,
-                            unit_info.unit.header.offset().as_debug_info_offset(),
-                            Some(referenced_node.entry().offset()),
-                        )?;
+                // Reference to a type, or an node.entry() to another type or a type modifier which will point to another type.
+                let mut type_tree = unit_info
+                    .unit
+                    .header
+                    .entries_tree(&unit_info.unit.abbreviations, Some(reference_offset))?;
+                let referenced_node = type_tree.root()?;
+                let mut referenced_variable = cache.create_variable(
+                    parent_variable.variable_key,
+                    unit_info.unit.header.offset().as_debug_info_offset(),
+                    Some(referenced_node.entry().offset()),
+                )?;
 
-                        match &parent_variable.name {
-                                VariableName::Named(name) => {
-                                    if name.starts_with("Some") {
-                                        referenced_variable.name =
-                                            VariableName::Named(name.replacen('&', "*", 1));
-                                    } else {
-                                        referenced_variable.name =
-                                            VariableName::Named(format!("*{name}"));
-                                    }
-                                }
-                                other => referenced_variable.name = VariableName::Named(format!("Error: Unable to generate name, parent variable does not have a name but is special variable {other:?}")),
-                            }
+                referenced_variable.name = match &parent_variable.name {
+                    VariableName::Named(name) if name.starts_with("Some ") => VariableName::Named(name.replacen('&', "*", 1)) ,
+                    VariableName::Named(name) => VariableName::Named(format!("*{name}")),
+                    other => VariableName::Named(format!("Error: Unable to generate name, parent variable does not have a name but is special variable {other:?}")),
+                };
 
-                        referenced_variable = unit_info.extract_type(
-                            referenced_node,
-                            parent_variable,
-                            referenced_variable,
-                            memory,
-                            stack_frame_registers,
-                            frame_base,
-                            cache,
-                        )?;
+                referenced_variable = unit_info.extract_type(
+                    self,
+                    referenced_node,
+                    parent_variable,
+                    referenced_variable,
+                    memory,
+                    stack_frame_registers,
+                    frame_base,
+                    cache,
+                )?;
 
-                        if referenced_variable.type_name == VariableType::Base("()".to_owned()) {
-                            // Only use this, if it is NOT a unit datatype.
-                            cache.remove_cache_entry(referenced_variable.variable_key)?;
-                        }
-                    }
+                if referenced_variable.type_name == VariableType::Base("()".to_owned()) {
+                    // Only use this, if it is NOT a unit datatype.
+                    cache.remove_cache_entry(referenced_variable.variable_key)?;
                 }
             }
             VariableNodeType::TypeOffset(type_offset) => {
-                // Only attempt this if the children are not already resolved.
-                if !cache.has_children(parent_variable)? {
-                    if let Some(header_offset) = parent_variable.unit_header_offset {
-                        let unit_header =
-                            self.dwarf.debug_info.header_from_offset(header_offset)?;
-                        let unit_info = UnitInfo {
-                            debug_info: self,
-                            unit: gimli::Unit::new(&self.dwarf, unit_header)?,
-                        };
-                        // Find the parent node
-                        let mut type_tree = unit_info
-                            .unit
-                            .header
-                            .entries_tree(&unit_info.unit.abbreviations, Some(type_offset))?;
-                        let parent_node = type_tree.root()?;
+                // Find the parent node
+                let mut type_tree = unit_info
+                    .unit
+                    .header
+                    .entries_tree(&unit_info.unit.abbreviations, Some(type_offset))?;
+                let parent_node = type_tree.root()?;
 
-                        // For process_tree we need to create a temporary parent that will later be eliminated with VariableCache::adopt_grand_children
-                        // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
-                        let mut temporary_variable = parent_variable.clone();
-                        temporary_variable.variable_key = ObjectRef::Invalid;
-                        temporary_variable.parent_key = parent_variable.variable_key;
-                        cache
-                            .add_variable(parent_variable.variable_key, &mut temporary_variable)?;
+                // For process_tree we need to create a temporary parent that will later be eliminated with VariableCache::adopt_grand_children
+                // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
+                let mut temporary_variable = parent_variable.clone();
+                temporary_variable.variable_key = ObjectRef::Invalid;
+                temporary_variable.parent_key = parent_variable.variable_key;
+                cache.add_variable(parent_variable.variable_key, &mut temporary_variable)?;
 
-                        temporary_variable = unit_info.process_tree(
-                            parent_node,
-                            temporary_variable,
-                            memory,
-                            stack_frame_registers,
-                            frame_base,
-                            cache,
-                        )?;
+                temporary_variable = unit_info.process_tree(
+                    self,
+                    parent_node,
+                    temporary_variable,
+                    memory,
+                    stack_frame_registers,
+                    frame_base,
+                    cache,
+                )?;
 
-                        cache.adopt_grand_children(parent_variable, &temporary_variable)?;
-                    }
-                }
+                cache.adopt_grand_children(parent_variable, &temporary_variable)?;
             }
             VariableNodeType::DirectLookup => {
-                // Only attempt this if the children are not already resolved.
-                if !cache.has_children(parent_variable)? {
-                    if let Some(header_offset) = parent_variable.unit_header_offset {
-                        let unit_header =
-                            self.dwarf.debug_info.header_from_offset(header_offset)?;
-                        let unit_info = UnitInfo {
-                            debug_info: self,
-                            unit: gimli::Unit::new(&self.dwarf, unit_header)?,
-                        };
-                        // Find the parent node
-                        let mut type_tree = unit_info.unit.header.entries_tree(
-                            &unit_info.unit.abbreviations,
-                            parent_variable.variable_unit_offset,
-                        )?;
+                // Find the parent node
+                let mut type_tree = unit_info.unit.header.entries_tree(
+                    &unit_info.unit.abbreviations,
+                    parent_variable.variable_unit_offset,
+                )?;
 
-                        // For process_tree we need to create a temporary parent that will later be eliminated with VariableCache::adopt_grand_children
-                        // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
-                        let mut temporary_variable = parent_variable.clone();
-                        temporary_variable.variable_key = ObjectRef::Invalid;
-                        temporary_variable.parent_key = parent_variable.variable_key;
-                        cache
-                            .add_variable(parent_variable.variable_key, &mut temporary_variable)?;
+                // For process_tree we need to create a temporary parent that will later be eliminated with VariableCache::adopt_grand_children
+                // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
+                let mut temporary_variable = parent_variable.clone();
+                temporary_variable.variable_key = ObjectRef::Invalid;
+                temporary_variable.parent_key = parent_variable.variable_key;
+                cache.add_variable(parent_variable.variable_key, &mut temporary_variable)?;
 
-                        let parent_node = type_tree.root()?;
+                let parent_node = type_tree.root()?;
 
-                        temporary_variable = unit_info.process_tree(
-                            parent_node,
-                            temporary_variable,
-                            memory,
-                            stack_frame_registers,
-                            frame_base,
-                            cache,
-                        )?;
+                temporary_variable = unit_info.process_tree(
+                    self,
+                    parent_node,
+                    temporary_variable,
+                    memory,
+                    stack_frame_registers,
+                    frame_base,
+                    cache,
+                )?;
 
-                        cache.adopt_grand_children(parent_variable, &temporary_variable)?;
-                    }
-                }
+                cache.adopt_grand_children(parent_variable, &temporary_variable)?;
             }
             _ => {
                 // Do nothing. These have already been recursed to their maximum.
@@ -482,8 +424,6 @@ impl DebugInfo {
         address: u64,
         unwind_registers: &registers::DebugRegisters,
     ) -> Result<Vec<StackFrame>, DebugError> {
-        let mut units = self.get_units();
-
         // When reporting the address, we format it as a hex string, with the width matching
         // the configured size of the datatype used in the `RegisterValue` address.
         let unknown_function = format!(
@@ -494,8 +434,8 @@ impl DebugInfo {
 
         let mut frames = Vec::new();
 
-        while let Some(unit_info) = self.get_next_unit_info(&mut units) {
-            let functions = unit_info.get_function_dies(address, true)?;
+        for unit_info in &self.unit_infos {
+            let functions = unit_info.get_function_dies(self, address, true)?;
 
             if functions.is_empty() {
                 continue;
@@ -503,13 +443,13 @@ impl DebugInfo {
 
             // The first function is the non-inlined function, and the rest are inlined functions.
             // The frame base only exists for the non-inlined function, so we can reuse it for all the inlined functions.
-            let frame_base = functions[0].frame_base(memory, unwind_registers)?;
+            let frame_base = functions[0].frame_base(self, memory, unwind_registers)?;
 
             // Handle all functions which contain further inlined functions. For
             // these functions, the location is the call site of the inlined function.
             for (index, function_die) in functions[0..functions.len() - 1].iter().enumerate() {
                 let function_name = function_die
-                    .function_name()
+                    .function_name(self)
                     .unwrap_or_else(|| unknown_function.clone());
 
                 tracing::debug!("UNWIND: Function name: {}", function_name);
@@ -527,16 +467,16 @@ impl DebugInfo {
 
                     tracing::debug!(
                         "UNWIND: Callsite for inlined function {:?}",
-                        next_function.function_name()
+                        next_function.function_name(self)
                     );
 
-                    let inlined_caller_source_location = next_function.inline_call_location();
+                    let inlined_caller_source_location = next_function.inline_call_location(self);
 
                     tracing::debug!("UNWIND: Call site: {:?}", inlined_caller_source_location);
 
                     // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
                     // Resolve the statics that belong to the compilation unit that this function is in.
-                    let static_variables = self.create_static_scope_cache(&unit_info).map_or_else(
+                    let static_variables = self.create_static_scope_cache(unit_info).map_or_else(
                         |error| {
                             tracing::error!(
                                 "Could not resolve static variables. {}. Continuing...",
@@ -549,7 +489,7 @@ impl DebugInfo {
 
                     // Next, resolve and cache the function variables.
                     let local_variables = self
-                        .create_function_scope_cache(function_die, &unit_info)
+                        .create_function_scope_cache(function_die, unit_info)
                         .map_or_else(
                             |error| {
                                 tracing::error!(
@@ -586,14 +526,14 @@ impl DebugInfo {
             let last_function = functions.last().unwrap();
 
             let function_name = last_function
-                .function_name()
+                .function_name(self)
                 .unwrap_or_else(|| unknown_function.clone());
 
             let function_location = self.get_source_location(address);
 
             // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
             // Resolve the statics that belong to the compilation unit that this function is in.
-            let static_variables = self.create_static_scope_cache(&unit_info).map_or_else(
+            let static_variables = self.create_static_scope_cache(unit_info).map_or_else(
                 |error| {
                     tracing::error!(
                         "Could not resolve static variables. {}. Continuing...",
@@ -606,7 +546,7 @@ impl DebugInfo {
 
             // Next, resolve and cache the function variables.
             let local_variables = self
-                .create_function_scope_cache(last_function, &unit_info)
+                .create_function_scope_cache(last_function, unit_info)
                 .map_or_else(
                     |error| {
                         tracing::error!(
@@ -744,7 +684,7 @@ impl DebugInfo {
 
             let mut only_exception = false;
 
-            let return_frame = match cached_stack_frames.pop() {
+            let mut return_frame = match cached_stack_frames.pop() {
                 Some(frame) => frame,
                 None => {
                     if let Some(exception_info) = &exception_info {
@@ -866,7 +806,7 @@ impl DebugInfo {
                                 .and_then(|lr| lr.value);
 
                         if let Some(calling_pc) = unwind_registers.get_program_counter_mut() {
-                            if unwind_register(
+                            if let ControlFlow::Break(error) = unwind_register(
                                 calling_pc,
                                 &callee_frame_registers,
                                 None,
@@ -874,10 +814,11 @@ impl DebugInfo {
                                 &mut unwound_return_address,
                                 memory,
                                 instruction_set,
-                            )
-                            .is_break()
-                            {
-                                // We were not able to get a PC for the calling frame, so we cannot continue unwinding.
+                            ) {
+                                // This is not fatal, but we cannot continue unwinding beyond the current frame.
+                                tracing::error!("{:?}", &error);
+                                return_frame.function_name =
+                                    format!("{} : ERROR : {error}", &return_frame.function_name);
                                 stack_frames.push(return_frame);
                                 break 'unwind;
                             } else {
@@ -940,7 +881,7 @@ impl DebugInfo {
             // We sometimes need to keep a copy of the LR value to calculate the PC. For both ARM, and RISC-V, The LR will be unwound before the PC, so we can reference it safely.
             let mut unwound_return_address: Option<RegisterValue> = None;
             for debug_register in unwind_registers.0.iter_mut() {
-                if unwind_register(
+                if let ControlFlow::Break(error) = unwind_register(
                     debug_register,
                     &callee_frame_registers,
                     Some(unwind_info),
@@ -948,9 +889,10 @@ impl DebugInfo {
                     &mut unwound_return_address,
                     memory,
                     instruction_set,
-                )
-                .is_break()
-                {
+                ) {
+                    tracing::error!("{:?}", &error);
+                    return_frame.function_name =
+                        format!("{} : ERROR: {error}", &return_frame.function_name);
                     stack_frames.push(return_frame);
                     break 'unwind;
                 };
@@ -1017,157 +959,16 @@ impl DebugInfo {
                 .unwrap_or_else(|| "-".to_owned())
         );
 
-        let mut unit_iter = self.dwarf.units();
+        for unit_header in &self.unit_infos {
+            let Some(ref line_program) = &unit_header.unit.line_program else {
+                continue;
+            };
 
-        while let Some(unit_header) = self.get_next_unit_info(&mut unit_iter) {
-            let unit = &unit_header.unit;
-
-            if let Some(ref line_program) = unit.line_program {
-                let header = line_program.header();
-
-                for file_name in header.file_names() {
-                    let combined_path = self.get_path(unit, header, file_name);
-                    if combined_path
-                        .map(|p| canonical_path_eq(path, &p))
-                        .unwrap_or(false)
-                    {
-                        let mut rows = line_program.clone().rows();
-
-                        while let Some((header, row)) = rows.next_row()? {
-                            let row_path = row
-                                .file(header)
-                                .and_then(|file_entry| self.get_path(unit, header, file_entry));
-
-                            if row_path
-                                .map(|p| !canonical_path_eq(path, &p))
-                                .unwrap_or(true)
-                            {
-                                continue;
-                            }
-
-                            if let Some(cur_line) = row.line() {
-                                if cur_line.get() == line {
-                                    // The first match of the file and row will be used to build the SourceStatements, and then:
-                                    // 1. If there is an exact column match, we will use the low_pc of the statement at that column and line.
-                                    // 2. If there is no exact column match, we use the first available statement in the line.
-                                    let source_statements =
-                                        SourceStatements::new(self, &unit_header, row.address())?
-                                            .statements;
-                                    if let Some((halt_address, Some(halt_location))) =
-                                        source_statements
-                                            .iter()
-                                            .find(|statement| {
-                                                statement.line == Some(cur_line)
-                                                    && column
-                                                        .and_then(NonZeroU64::new)
-                                                        .map(ColumnType::Column)
-                                                        .map_or(false, |col| {
-                                                            col == statement.column
-                                                        })
-                                            })
-                                            .map(|source_statement| {
-                                                (
-                                                    source_statement.low_pc(),
-                                                    line_program
-                                                        .header()
-                                                        .file(source_statement.file_index)
-                                                        .and_then(|file_entry| {
-                                                            self.find_file_and_directory(
-                                                                &unit_header.unit,
-                                                                line_program.header(),
-                                                                file_entry,
-                                                            )
-                                                            .map(|(file, directory)| {
-                                                                SourceLocation {
-                                                                    line: source_statement
-                                                                        .line
-                                                                        .map(
-                                                                        std::num::NonZeroU64::get,
-                                                                    ),
-                                                                    column: Some(
-                                                                        source_statement
-                                                                            .column
-                                                                            .into(),
-                                                                    ),
-                                                                    file,
-                                                                    directory,
-                                                                    low_pc: Some(
-                                                                        source_statement.low_pc()
-                                                                            as u32,
-                                                                    ),
-                                                                    high_pc: Some(
-                                                                        source_statement
-                                                                            .instruction_range
-                                                                            .end
-                                                                            as u32,
-                                                                    ),
-                                                                }
-                                                            })
-                                                        }),
-                                                )
-                                            })
-                                    {
-                                        return Ok(VerifiedBreakpoint {
-                                            address: halt_address,
-                                            source_location: halt_location,
-                                        });
-                                    } else if let Some((halt_address, Some(halt_location))) =
-                                        source_statements
-                                            .iter()
-                                            .find(|statement| statement.line == Some(cur_line))
-                                            .map(|source_statement| {
-                                                (
-                                                    source_statement.low_pc(),
-                                                    line_program
-                                                        .header()
-                                                        .file(source_statement.file_index)
-                                                        .and_then(|file_entry| {
-                                                            self.find_file_and_directory(
-                                                                &unit_header.unit,
-                                                                line_program.header(),
-                                                                file_entry,
-                                                            )
-                                                            .map(|(file, directory)| {
-                                                                SourceLocation {
-                                                                    line: source_statement
-                                                                        .line
-                                                                        .map(
-                                                                        std::num::NonZeroU64::get,
-                                                                    ),
-                                                                    column: Some(
-                                                                        source_statement
-                                                                            .column
-                                                                            .into(),
-                                                                    ),
-                                                                    file,
-                                                                    directory,
-                                                                    low_pc: Some(
-                                                                        source_statement.low_pc()
-                                                                            as u32,
-                                                                    ),
-                                                                    high_pc: Some(
-                                                                        source_statement
-                                                                            .instruction_range
-                                                                            .end
-                                                                            as u32,
-                                                                    ),
-                                                                }
-                                                            })
-                                                        }),
-                                                )
-                                            })
-                                    {
-                                        return Ok(VerifiedBreakpoint {
-                                            address: halt_address,
-                                            source_location: halt_location,
-                                        });
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            if let Some(location) =
+                self.get_breakpoint_location_in_unit(unit_header, line_program, path, line, column)?
+            {
+                return Ok(location);
+            };
         }
 
         let p = path.to_path();
@@ -1178,6 +979,113 @@ impl DebugInfo {
             line,
             column
         )))
+    }
+
+    fn get_breakpoint_location_in_unit(
+        &self,
+        unit_header: &UnitInfo,
+        line_program: &gimli::IncompleteLineProgram<GimliReader, usize>,
+        path: &TypedPathBuf,
+        line: u64,
+        column: Option<u64>,
+    ) -> Result<Option<VerifiedBreakpoint>, DebugError> {
+        let unit = &unit_header.unit;
+        let header: &LineProgramHeader<GimliReader, usize> = line_program.header();
+
+        // Check if any of the file names in the header match the path we are looking for.
+        if !header.file_names().iter().any(|file_name| {
+            let combined_path = self.get_path(unit, header, file_name);
+
+            combined_path
+                .map(|p| canonical_path_eq(path, &p))
+                .unwrap_or(false)
+        }) {
+            return Ok(None);
+        }
+
+        let mut rows = line_program.clone().rows();
+
+        while let Some((header, row)) = rows.next_row()? {
+            let row_path = row
+                .file(header)
+                .and_then(|file_entry| self.get_path(unit, header, file_entry));
+
+            if row_path
+                .map(|p| !canonical_path_eq(path, &p))
+                .unwrap_or(true)
+            {
+                continue;
+            }
+
+            let Some(cur_line) = row.line() else {
+                continue;
+            };
+
+            if cur_line.get() != line {
+                continue;
+            }
+
+            // The first match of the file and row will be used to build the SourceStatements, and then:
+            // 1. If there is an exact column match, we will use the low_pc of the statement at that column and line.
+            // 2. If there is no exact column match, we use the first available statement in the line.
+            let source_statements =
+                SourceStatements::new(self, unit_header, row.address())?.statements;
+
+            let halt_address_and_location = |source_statement: &SourceStatement| {
+                (
+                    source_statement.low_pc(),
+                    line_program
+                        .header()
+                        .file(source_statement.file_index)
+                        .and_then(|file_entry| {
+                            self.find_file_and_directory(
+                                &unit_header.unit,
+                                line_program.header(),
+                                file_entry,
+                            )
+                            .map(|(file, directory)| SourceLocation {
+                                line: source_statement.line.map(std::num::NonZeroU64::get),
+                                column: Some(source_statement.column.into()),
+                                file,
+                                directory,
+                                low_pc: Some(source_statement.low_pc() as u32),
+                                high_pc: Some(source_statement.instruction_range.end as u32),
+                            })
+                        }),
+                )
+            };
+
+            let first_find = source_statements.iter().find(|statement| {
+                column
+                    .and_then(NonZeroU64::new)
+                    .map(ColumnType::Column)
+                    .map_or(false, |col| col == statement.column)
+                    && statement.line == Some(cur_line)
+            });
+
+            if let Some((halt_address, Some(halt_location))) =
+                first_find.map(halt_address_and_location)
+            {
+                return Ok(Some(VerifiedBreakpoint {
+                    address: halt_address,
+                    source_location: halt_location,
+                }));
+            }
+            let second_find = source_statements
+                .iter()
+                .find(|statement| statement.line == Some(cur_line));
+
+            if let Some((halt_address, Some(halt_location))) =
+                second_find.map(halt_address_and_location)
+            {
+                return Ok(Some(VerifiedBreakpoint {
+                    address: halt_address,
+                    source_location: halt_location,
+                }));
+            }
+        }
+
+        Ok(None)
     }
 
     /// Get the path for an entry in a line program header, using the compilation unit's directory and file entries.
@@ -1259,6 +1167,7 @@ fn get_unwind_info<'a>(
     frame_program_counter: u64,
 ) -> Result<&'a gimli::UnwindTableRow<DwarfReader, gimli::StoreOnHeap>, DebugError> {
     let unwind_bases = BaseAddresses::default();
+
     let frame_descriptor_entry = match frame_section.fde_for_address(
         &unwind_bases,
         frame_program_counter,
@@ -1300,7 +1209,7 @@ fn unwind_register(
     unwound_return_address: &mut Option<RegisterValue>,
     memory: &mut dyn MemoryInterface,
     instruction_set: Option<InstructionSet>,
-) -> ControlFlow<(), ()> {
+) -> ControlFlow<crate::Error, ()> {
     use gimli::read::RegisterRule::*;
     // If we do not have unwind info, or there is no register rule, then use UnwindRule::Undefined.
     let register_rule = debug_register
@@ -1309,7 +1218,9 @@ fn unwind_register(
             unwind_info.map(|unwind_info| unwind_info.register(gimli::Register(register_position)))
         })
         .unwrap_or(gimli::RegisterRule::Undefined);
+
     let mut register_rule_string = format!("{register_rule:?}");
+
     let new_value = match register_rule {
         Undefined => {
             // In many cases, the DWARF has `Undefined` rules for variables like frame pointer, program counter, etc., so we hard-code some rules here to make sure unwinding can continue. If there is a valid rule, it will bypass these hardcoded ones.
@@ -1391,64 +1302,65 @@ fn unwind_register(
             .and_then(|reg| reg.value),
         Offset(address_offset) => {
             // "The previous value of this register is saved at the address CFA+N where CFA is the current CFA value and N is a signed offset"
-            if let Some(unwind_cfa) = unwind_cfa {
-                let address_size = callee_frame_registers.get_address_size_bytes();
-                let previous_frame_register_address =
-                    add_to_address(unwind_cfa, address_offset, address_size);
+            let Some(unwind_cfa) = unwind_cfa else {
+                return ControlFlow::Break(
+                    anyhow!("UNWIND: Tried to unwind `RegisterRule` at CFA = None.").into(),
+                );
+            };
+            let address_size = callee_frame_registers.get_address_size_bytes();
+            let previous_frame_register_address =
+                add_to_address(unwind_cfa, address_offset, address_size);
 
-                register_rule_string = format!("CFA {register_rule:?}");
-                let result = match address_size {
-                    4 => {
-                        let mut buff = [0u8; 4];
-                        memory
-                            .read(previous_frame_register_address, &mut buff)
-                            .map(|_| RegisterValue::U32(u32::from_le_bytes(buff)))
-                    }
-                    8 => {
-                        let mut buff = [0u8; 8];
-                        memory
-                            .read(previous_frame_register_address, &mut buff)
-                            .map(|_| RegisterValue::U64(u64::from_le_bytes(buff)))
-                    }
-                    _ => {
-                        tracing::error!(
-                            "UNWIND: Address size {} not supported.  Please report this as a bug.",
-                            address_size
-                        );
-                        return ControlFlow::Break(());
-                    }
-                };
+            register_rule_string = format!("CFA {register_rule:?}");
+            let result = match address_size {
+                4 => {
+                    let mut buff = [0u8; 4];
+                    memory
+                        .read(previous_frame_register_address, &mut buff)
+                        .map(|_| RegisterValue::U32(u32::from_le_bytes(buff)))
+                }
+                8 => {
+                    let mut buff = [0u8; 8];
+                    memory
+                        .read(previous_frame_register_address, &mut buff)
+                        .map(|_| RegisterValue::U64(u64::from_le_bytes(buff)))
+                }
+                _ => {
+                    return ControlFlow::Break(
+                        anyhow!("UNWIND: Address size {} not supported.", address_size).into(),
+                    );
+                }
+            };
 
-                match result {
-                    Ok(register_value) => {
-                        if debug_register
-                            .core_register
-                            .register_has_role(RegisterRole::ReturnAddress)
-                        {
-                            // We need to store this value to be used by the calculation of the PC.
-                            *unwound_return_address = Some(register_value);
-                        }
-                        Some(register_value)
+            match result {
+                Ok(register_value) => {
+                    if debug_register
+                        .core_register
+                        .register_has_role(RegisterRole::ReturnAddress)
+                    {
+                        // We need to store this value to be used by the calculation of the PC.
+                        *unwound_return_address = Some(register_value);
                     }
-                    Err(error) => {
-                        tracing::error!(
+                    Some(register_value)
+                }
+                Err(error) => {
+                    tracing::error!(
+                        "UNWIND: Rule: Offset {} from address {:#010x}",
+                        address_offset,
+                        unwind_cfa
+                    );
+
+                    return ControlFlow::Break(
+                        anyhow!(
                             "UNWIND: Failed to read value for register {} from address {} ({} bytes): {}",
                             debug_register.get_register_name(),
                             RegisterValue::from(previous_frame_register_address),
                             4,
                             error
-                        );
-                        tracing::error!(
-                            "UNWIND: Rule: Offset {} from address {:#010x}",
-                            address_offset,
-                            unwind_cfa
-                        );
-                        return ControlFlow::Break(());
-                    }
+                        )
+                        .into(),
+                    );
                 }
-            } else {
-                tracing::error!("UNWIND: Tried to unwind `RegisterRule` at CFA = None. Please report this as a bug.");
-                return ControlFlow::Break(());
             }
         }
         //TODO: Implement the remainder of these `RegisterRule`s
@@ -1477,23 +1389,26 @@ fn unwind_program_counter_register(
 ) -> Option<RegisterValue> {
     if return_address.is_max_value() || return_address.is_zero() {
         tracing::warn!("No reliable return address is available, so we cannot determine the program counter to unwind the previous frame.");
-        None
-    } else {
-        match return_address {
-            RegisterValue::U32(return_address) => {
-                if instruction_set == Some(InstructionSet::Thumb2) {
-                    // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section A5.1.2: We have to clear the last bit to ensure the PC is half-word aligned. (on ARM architecture, when in Thumb state for certain instruction types will set the LSB to 1)
-                    *register_rule_string = "PC=(unwound LR & !0b1) (dwarf Undefined)".to_string();
-                    Some(RegisterValue::U32(return_address & !0b1))
-                } else {
-                    Some(RegisterValue::U32(return_address))
-                }
+        return None;
+    }
+
+    match return_address {
+        RegisterValue::U32(return_address) => {
+            if instruction_set == Some(InstructionSet::Thumb2) {
+                // NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section A5.1.2:
+                //
+                // We have to clear the last bit to ensure the PC is half-word aligned. (on ARM architecture,
+                // when in Thumb state for certain instruction types will set the LSB to 1)
+                *register_rule_string = "PC=(unwound LR & !0b1) (dwarf Undefined)".to_string();
+                Some(RegisterValue::U32(return_address & !0b1))
+            } else {
+                Some(RegisterValue::U32(return_address))
             }
-            RegisterValue::U64(return_address) => Some(RegisterValue::U64(return_address)),
-            RegisterValue::U128(_) => {
-                tracing::warn!("128 bit address space not supported");
-                None
-            }
+        }
+        RegisterValue::U64(return_address) => Some(RegisterValue::U64(return_address)),
+        RegisterValue::U128(_) => {
+            tracing::warn!("128 bit address space not supported");
+            None
         }
     }
 }
@@ -1541,10 +1456,7 @@ mod test {
             registers::cortex_m::CORTEX_M_CORE_REGISTERS,
         },
         core::exception_handler_for_core,
-        debug::{
-            stack_frame::TestFormatter, DebugInfo, DebugRegister, DebugRegisters, Variable,
-            VariableCache,
-        },
+        debug::{stack_frame::TestFormatter, DebugInfo, DebugRegister, DebugRegisters},
         test::MockMemory,
         CoreDump, RegisterValue,
     };
@@ -1563,46 +1475,6 @@ mod test {
     /// `elf_file` should be the name of a file(or relative path) in the `tests` directory.
     fn load_test_elf_as_debug_info(elf_file: &str) -> DebugInfo {
         DebugInfo::from_file(get_path_for_test_files(elf_file)).unwrap()
-    }
-
-    /// Recursively process the deferred variables in the variable cache,
-    /// and add their children to the cache.
-    /// We max out at 10 levels, to ensure we don't recurse infinitely on circular references.
-    fn recurse_deferred_variables(
-        debug_info: &DebugInfo,
-        variable_cache: &mut VariableCache,
-        adapter: &mut CoreDump,
-        parent_variable: &mut Variable,
-        registers: &DebugRegisters,
-        frame_base: Option<u64>,
-        recursion_depth: usize,
-    ) {
-        if recursion_depth < 10 {
-            let children_depth = recursion_depth + 1;
-            debug_info
-                .cache_deferred_variables(
-                    variable_cache,
-                    adapter,
-                    parent_variable,
-                    registers,
-                    frame_base,
-                )
-                .unwrap();
-            for mut child in variable_cache
-                .get_children(parent_variable.variable_key)
-                .unwrap()
-            {
-                recurse_deferred_variables(
-                    debug_info,
-                    variable_cache,
-                    adapter,
-                    &mut child,
-                    registers,
-                    frame_base,
-                    children_depth,
-                );
-            }
-        }
     }
 
     #[test]
@@ -2107,7 +1979,7 @@ mod test {
     #[test_case("RP2040"; "Armv6-m using RP2040")]
     #[test_case("nRF52833_xxAA"; "Armv7-m using nRF52833_xxAA")]
     //TODO:  #[test_case("esp32c3"; "RISC-V32E using esp32c3")]
-    fn debug_unwind_tests(chip_name: &str) {
+    fn full_unwind(chip_name: &str) {
         // TODO: Add RISC-V tests.
 
         let debug_info =
@@ -2134,23 +2006,27 @@ mod test {
 
         // Expand and validate the static and local variables for each stack frame.
         for frame in stack_frames.iter_mut() {
-            for variable_cache in [
-                frame.static_variables.as_mut().unwrap(),
-                frame.local_variables.as_mut().unwrap(),
-            ] {
+            let mut variable_caches = Vec::new();
+            if let Some(static_variables) = &mut frame.static_variables {
+                variable_caches.push(static_variables);
+            }
+            if let Some(local_variables) = &mut frame.local_variables {
+                variable_caches.push(local_variables);
+            }
+            for variable_cache in variable_caches {
                 // Cache the deferred top level children of the of the cache.
-                let mut parent_variable = variable_cache.root_variable();
-                recurse_deferred_variables(
+                variable_cache.recurse_deferred_variables(
                     &debug_info,
-                    variable_cache,
                     &mut adapter,
-                    &mut parent_variable,
+                    None,
                     &frame.registers,
                     frame.frame_base,
+                    10,
                     0,
                 );
             }
         }
+
         // Using YAML output because it is easier to read than the default snapshot output,
         // and also because they provide better diffs.
         insta::assert_yaml_snapshot!(snapshot_name, stack_frames);

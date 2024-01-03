@@ -11,7 +11,10 @@ use bitfield::bitfield;
 
 use super::communication_interface::RiscvError;
 use crate::{
-    probe::{CommandResult, DeferredResultIndex, JTAGAccess, JtagWriteCommand},
+    probe::{
+        CommandResult, DeferredResultIndex, DeferredResultSet, JTAGAccess, JtagCommandQueue,
+        JtagWriteCommand,
+    },
     DebugProbeError,
 };
 
@@ -21,7 +24,8 @@ use crate::{
 pub struct Dtm {
     pub probe: Box<dyn JTAGAccess>,
 
-    queued_commands: Vec<JtagWriteCommand>,
+    queued_commands: JtagCommandQueue,
+    jtag_results: DeferredResultSet,
 
     /// Number of address bits in the DMI register
     abits: u32,
@@ -63,7 +67,8 @@ impl Dtm {
         Ok(Self {
             probe,
             abits,
-            queued_commands: Vec::new(),
+            queued_commands: JtagCommandQueue::new(),
+            jtag_results: DeferredResultSet::new(),
         })
     }
 
@@ -93,33 +98,74 @@ impl Dtm {
         Ok(())
     }
 
-    pub fn execute(&mut self) -> Result<Vec<CommandResult>, RiscvError> {
-        let cmds = self.queued_commands.clone();
-        self.queued_commands = Vec::new();
+    pub fn read_deferred_result(
+        &mut self,
+        index: DeferredResultIndex,
+    ) -> Result<CommandResult, RiscvError> {
+        let result = match self.jtag_results.take(index) {
+            Ok(result) => result,
+            Err(index) => {
+                self.execute()?;
+                self.jtag_results.take(index).expect("This is a bug")
+            }
+        };
 
-        match self.probe.write_register_batch(&cmds) {
-            Ok(r) => Ok(r),
-            Err(e) => match e.error {
-                crate::Error::Riscv(ae) => {
-                    match ae {
-                        RiscvError::DmiTransfer(DmiOperationStatus::RequestInProgress) => {
-                            self.reset()?;
+        Ok(result)
+    }
 
-                            // queue up the remaining commands when we retry
-                            self.queued_commands
-                                .extend_from_slice(&cmds[e.results.len()..]);
+    pub fn execute(&mut self) -> Result<(), RiscvError> {
+        let mut cmds = std::mem::take(&mut self.queued_commands);
 
-                            self.probe.set_idle_cycles(self.probe.idle_cycles() + 1);
-
-                            self.execute()
-                        }
-                        _ => Err(ae),
-                    }
+        loop {
+            match self.probe.write_register_batch(&cmds) {
+                Ok(r) => {
+                    self.jtag_results.merge_from(r);
+                    return Ok(());
                 }
-                crate::Error::Probe(err) => Err(err.into()),
-                _other => todo!("Handle this better, should never occur."),
-            },
+                Err(e) => match e.error {
+                    crate::Error::Riscv(ae) => {
+                        match ae {
+                            RiscvError::DmiTransfer(DmiOperationStatus::RequestInProgress) => {
+                                self.reset()?;
+
+                                // queue up the remaining commands when we retry
+                                cmds.consume(e.results.len());
+                                self.jtag_results.merge_from(e.results);
+
+                                self.probe.set_idle_cycles(self.probe.idle_cycles() + 1);
+                            }
+                            _ => return Err(ae),
+                        }
+                    }
+                    crate::Error::Probe(err) => return Err(err.into()),
+                    _other => unreachable!(),
+                },
+            }
         }
+    }
+
+    fn transform_dmi_result(response_bytes: Vec<u8>) -> Result<u32, DmiOperationStatus> {
+        let response_value: u128 = response_bytes.iter().enumerate().fold(0, |acc, elem| {
+            let (byte_offset, value) = elem;
+            acc + ((*value as u128) << (8 * byte_offset))
+        });
+
+        // Verify that the transfer was ok
+        let op = (response_value & DMI_OP_MASK) as u8;
+
+        if op != 0 {
+            return Err(DmiOperationStatus::parse(op).expect("INVALID DMI OP status"));
+        }
+
+        Ok((response_value >> 2) as u32)
+    }
+
+    fn dmi_command(address: u64, value: u32, op: DmiOperation) -> [u8; 16] {
+        let register_value: u128 = ((address as u128) << DMI_ADDRESS_BIT_OFFSET)
+            | ((value as u128) << DMI_VALUE_BIT_OFFSET)
+            | op as u128;
+
+        register_value.to_le_bytes()
     }
 
     pub fn schedule_dmi_register_access(
@@ -128,40 +174,20 @@ impl Dtm {
         value: u32,
         op: DmiOperation,
     ) -> Result<DeferredResultIndex, RiscvError> {
-        let register_value: u128 = ((address as u128) << DMI_ADDRESS_BIT_OFFSET)
-            | ((value as u128) << DMI_VALUE_BIT_OFFSET)
-            | op as u128;
-
-        let bytes = register_value.to_le_bytes();
+        let bytes = Self::dmi_command(address, value, op);
 
         let bit_size = self.abits + DMI_ADDRESS_BIT_OFFSET;
 
-        self.queued_commands.push(JtagWriteCommand {
+        Ok(self.queued_commands.schedule(JtagWriteCommand {
             address: DMI_ADDRESS,
             data: bytes.to_vec(),
-            transform: |response_bytes| {
-                let response_value: u128 =
-                    response_bytes.iter().enumerate().fold(0, |acc, elem| {
-                        let (byte_offset, value) = elem;
-                        acc + ((*value as u128) << (8 * byte_offset))
-                    });
-
-                // Verify that the transfer was ok
-                let op = (response_value & DMI_OP_MASK) as u8;
-
-                if op != 0 {
-                    return Err(crate::Error::Riscv(RiscvError::DmiTransfer(
-                        DmiOperationStatus::parse(op).expect("INVALID DMI OP status"),
-                    )));
-                }
-
-                let value = (response_value >> 2) as u32;
-                Ok(CommandResult::U32(value))
+            transform: |result| {
+                Self::transform_dmi_result(result)
+                    .map(CommandResult::U32)
+                    .map_err(|status| crate::Error::Riscv(RiscvError::DmiTransfer(status)))
             },
             len: bit_size,
-        });
-
-        Ok(self.queued_commands.len() - 1)
+        }))
     }
 
     /// Perform an access to the dmi register of the JTAG Transport module.
@@ -174,31 +200,13 @@ impl Dtm {
         value: u32,
         op: DmiOperation,
     ) -> Result<Result<u32, DmiOperationStatus>, DebugProbeError> {
-        let register_value: u128 = ((address as u128) << DMI_ADDRESS_BIT_OFFSET)
-            | ((value as u128) << DMI_VALUE_BIT_OFFSET)
-            | op as u128;
-
-        let bytes = register_value.to_le_bytes();
+        let bytes = Self::dmi_command(address, value, op);
 
         let bit_size = self.abits + DMI_ADDRESS_BIT_OFFSET;
 
-        let response_bytes = self.probe.write_register(DMI_ADDRESS, &bytes, bit_size)?;
-
-        let response_value: u128 = response_bytes.iter().enumerate().fold(0, |acc, elem| {
-            let (byte_offset, value) = elem;
-            acc + ((*value as u128) << (8 * byte_offset))
-        });
-
-        // Verify that the transfer was ok
-        let op = (response_value & DMI_OP_MASK) as u8;
-
-        if op != 0 {
-            return Ok(Err(DmiOperationStatus::parse(op).unwrap()));
-        }
-
-        let value = (response_value >> 2) as u32;
-
-        Ok(Ok(value))
+        self.probe
+            .write_register(DMI_ADDRESS, &bytes, bit_size)
+            .map(Self::transform_dmi_result)
     }
 
     /// Read or write the `dmi` register. If a busy value is returned, the access is
@@ -211,6 +219,8 @@ impl Dtm {
         timeout: Duration,
     ) -> Result<u32, RiscvError> {
         let start_time = Instant::now();
+
+        self.execute()?;
 
         loop {
             match self.dmi_register_access(address, value, op)? {

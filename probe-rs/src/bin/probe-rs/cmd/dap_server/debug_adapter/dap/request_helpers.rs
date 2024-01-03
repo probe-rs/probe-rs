@@ -44,6 +44,7 @@ pub(crate) fn disassemble_target_memory(
                     .instruction_set()?
                     .get_minimum_instruction_size() as i64
         }
+        InstructionSet::Xtensa => return Err(DebuggerError::Unimplemented),
     };
     let mut assembly_lines: Vec<DisassembledInstruction> = vec![];
     let mut code_buffer: Vec<u8> = vec![];
@@ -261,6 +262,7 @@ pub(crate) fn get_capstone(target_core: &mut CoreHandle) -> Result<Capstone, Deb
                 capstone::arch::riscv::ArchExtraMode::RiscVC,
             ))
             .build(),
+        InstructionSet::Xtensa => return Err(DebuggerError::Unimplemented),
     }
     .map_err(|err| anyhow!("Error creating capstone: {:?}", err))?;
     let _ = cs.set_skipdata(true);

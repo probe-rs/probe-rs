@@ -25,7 +25,7 @@ pub mod communication_interface;
 mod dtm;
 pub mod sequences;
 
-/// A interface to operate RISC-V cores.
+/// An interface to operate RISC-V cores.
 pub struct Riscv32<'probe> {
     interface: &'probe mut RiscvCommunicationInterface,
     state: &'probe mut RiscVState,
@@ -237,10 +237,15 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         // write 1 to the haltreq register, which is part
         // of the dmcontrol register
 
-        tracing::debug!(
-            "Before requesting halt, the Dmcontrol register value was: {:?}",
-            self.interface.read_dm_register::<Dmcontrol>()?
-        );
+        if tracing::enabled!(tracing::Level::DEBUG) {
+            // For some reason inlining this read into the log macro causes it to be printed
+            // even if debug prints are disabled.
+            let dmc = self.interface.read_dm_register::<Dmcontrol>()?;
+            tracing::debug!(
+                "Before requesting halt, the Dmcontrol register value was: {:?}",
+                dmc
+            );
+        }
 
         let mut dmcontrol = Dmcontrol(0);
 

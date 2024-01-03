@@ -20,12 +20,12 @@ pub(crate) mod serialize;
 
 pub use chip::{
     get_ir_lengths, ArmCoreAccessOptions, BinaryFormat, Chip, Core, CoreAccessOptions,
-    RiscvCoreAccessOptions, ScanChainElement,
+    RiscvCoreAccessOptions, ScanChainElement, XtensaCoreAccessOptions,
 };
 pub use chip_family::{
     Architecture, ChipFamily, CoreType, InstructionSet, TargetDescriptionSource,
 };
-pub use flash_algorithm::RawFlashAlgorithm;
+pub use flash_algorithm::{RawFlashAlgorithm, TransferEncoding};
 pub use flash_properties::FlashProperties;
 pub use memory::{
     GenericRegion, MemoryRange, MemoryRegion, NvmRegion, PageInfo, RamRegion, SectorDescription,

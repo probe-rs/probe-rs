@@ -1,7 +1,9 @@
 use super::FlashError;
 use crate::{architecture::riscv, core::Architecture, Target};
-use probe_rs_target::{FlashProperties, PageInfo, RamRegion, RawFlashAlgorithm, SectorInfo};
-use std::{cmp::max, convert::TryInto, mem::size_of_val};
+use probe_rs_target::{
+    FlashProperties, PageInfo, RamRegion, RawFlashAlgorithm, SectorInfo, TransferEncoding,
+};
+use std::{convert::TryInto, mem::size_of_val};
 
 /// A flash algorithm, which has been assembled for a specific
 /// chip.
@@ -48,6 +50,9 @@ pub struct FlashAlgorithm {
 
     /// The properties of the flash on the device.
     pub flash_properties: FlashProperties,
+
+    /// The encoding format accepted by the flash algorithm.
+    pub transfer_encoding: TransferEncoding,
 }
 
 impl FlashAlgorithm {
@@ -174,19 +179,25 @@ impl FlashAlgorithm {
         0x0477_0D1F,
     ];
 
+    const XTENSA_FLASH_BLOB_HEADER: [u32; 0] = [];
+
     /// When the target architecture is not known, and we need to allocate space for the header,
     /// this function returns the maximum size of the header of supported architectures.
     pub fn get_max_algorithm_header_size() -> u64 {
-        max(
-            size_of_val(&Self::ARM_FLASH_BLOB_HEADER),
-            size_of_val(&Self::RISCV_FLASH_BLOB_HEADER),
-        ) as u64
+        let algos = [
+            Self::algorithm_header(Architecture::Arm),
+            Self::algorithm_header(Architecture::Riscv),
+            Self::algorithm_header(Architecture::Xtensa),
+        ];
+
+        algos.iter().copied().map(size_of_val).max().unwrap() as u64
     }
 
-    fn get_algorithm_header(architecture: Architecture) -> &'static [u32] {
+    fn algorithm_header(architecture: Architecture) -> &'static [u32] {
         match architecture {
             Architecture::Arm => &Self::ARM_FLASH_BLOB_HEADER,
             Architecture::Riscv => &Self::RISCV_FLASH_BLOB_HEADER,
+            Architecture::Xtensa => &Self::XTENSA_FLASH_BLOB_HEADER,
         }
     }
 
@@ -214,7 +225,7 @@ impl FlashAlgorithm {
             });
         }
 
-        let header = Self::get_algorithm_header(target.architecture());
+        let header = Self::algorithm_header(target.architecture());
         let instructions: Vec<u32> = header
             .iter()
             .copied()
@@ -222,6 +233,8 @@ impl FlashAlgorithm {
                 assembled_instructions.map(|bytes| u32::from_le_bytes(bytes.try_into().unwrap())),
             )
             .collect();
+
+        let header_size = size_of_val(header) as u64;
 
         let mut offset = 0;
         let mut addr_stack = 0;
@@ -255,14 +268,14 @@ impl FlashAlgorithm {
             addr_load = raw
                 .load_address
                 .map(|a| {
-                    a.checked_sub(std::mem::size_of_val(header) as u64) // adjust the raw load address to account for the algo header
+                    a.checked_sub(header_size) // adjust the raw load address to account for the algo header
                         .ok_or(FlashError::InvalidFlashAlgorithmLoadAddress { address: addr_load })
                 })
                 .unwrap_or(Ok(ram_region.range.start))?;
             if addr_load < ram_region.range.start {
                 return Err(FlashError::InvalidFlashAlgorithmLoadAddress { address: addr_load });
             }
-            offset += (std::mem::size_of_val(header)) as u64;
+            offset += header_size;
             code_start = addr_load + offset;
             offset += (instructions.len() * size_of::<u32>()) as u64;
 
@@ -312,6 +325,7 @@ impl FlashAlgorithm {
             page_buffers: page_buffers.clone(),
             rtt_control_block: raw.rtt_location,
             flash_properties: raw.flash_properties.clone(),
+            transfer_encoding: raw.transfer_encoding.unwrap_or_default(),
         })
     }
 }

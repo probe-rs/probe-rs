@@ -223,8 +223,7 @@ impl<'defmt> App<'defmt> {
                     .map(|s| ListItem::new(vec![Line::from(Span::raw(s))]))
                     .collect();
 
-                let messages =
-                    List::new(messages.as_slice()).block(Block::default().borders(Borders::NONE));
+                let messages = List::new(messages).block(Block::default().borders(Borders::NONE));
                 f.render_widget(messages, chunks[1]);
 
                 if has_down_channel {

@@ -13,7 +13,7 @@ use probe_rs::{
     debug::{ObjectRef, VariableName},
     CoreStatus, HaltReason,
 };
-use std::{fmt::Display, path::Path, str::FromStr, time::Duration};
+use std::{fmt::Display, ops::Range, path::Path, str::FromStr, time::Duration};
 
 /// The handler is a function that takes a reference to the target core, and a reference to the response body.
 /// The response body is used to populate the response to the client.
@@ -383,7 +383,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
 
                 let frame_id = request_arguments
                     .frame_id
-                    .and_then(|id| ObjectRef::try_from(id).ok());
+                    .map(ObjectRef::from);
 
                 input_address = if let Some(frame_pc) = frame_id
                     .and_then(|frame_id| {
@@ -408,12 +408,12 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
     },
     ReplCommand {
         command: "dump",
-        help_text: "Create a core dump at a target location",
+        help_text: "Create a core dump at a target location. Specify memory ranges to dump, or leave blank to dump in-scope memory regions.",
         sub_commands: None,
         args: Some(&[
             ReplCommandArgs::Optional("memory start address"),
             ReplCommandArgs::Optional("memory size in bytes"),
-            ReplCommandArgs::Optional("path"),
+            ReplCommandArgs::Optional("path (default: ./coredump)"),
         ]),
         handler: |target_core, command_arguments, _request_arguments| {
             let mut args = command_arguments.split_whitespace().collect_vec();
@@ -429,7 +429,13 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                 .unwrap_or("./coredump"),
             );
 
-            let ranges = args
+            let ranges = if args.is_empty() {
+                // No specific memory ranges were requested, so we will dump the
+                // memory ranges we know are specifically referenced by the variables
+                // in the current scope.
+                target_core.get_memory_ranges()
+            } else {
+                args
                 .chunks(2)
                 .map(|c| {
                     let start = if let Some(start) = c.first() {
@@ -446,16 +452,31 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
                         unreachable!("This should never be reached as there cannot be an odd number of arguments. Please report this as a bug.")
                     };
 
-                    Ok::<_, DebuggerError>(start..start + size)
+                    Ok::<_, DebuggerError>(Range {start,end: start + size})
                 })
-                .collect::<Result<Vec<_>, _>>()?;
-
+                .collect::<Result<Vec<Range<u64>>, _>>()?
+            };
+            let mut range_string = String::new();
+            for memory_range in &ranges {
+                range_string.push_str(&format!(
+                    "{:#x}..{:#x}, ",
+                    &memory_range.start, &memory_range.end
+                ));
+            }
+            if range_string.is_empty() {
+                range_string = "(No memory ranges specified)".to_string();
+            } else {
+                range_string = range_string.trim_end_matches(", ").to_string();
+                range_string = format!("(Includes memory ranges: {range_string})");
+            }
             target_core.core.dump(ranges)?.store(location)?;
 
             Ok(Response {
                 command: "dump".to_string(),
                 success: true,
-                message: Some(format!("Core dump successfully stored at {location:?}",)),
+                message: Some(format!(
+                    "Core dump {range_string} successfully stored at {location:?}.",
+                )),
                 type_: "response".to_string(),
                 request_seq: 0,
                 seq: 0,

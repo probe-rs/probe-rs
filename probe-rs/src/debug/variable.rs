@@ -1,7 +1,8 @@
 use super::*;
 use anyhow::anyhow;
 use gimli::{DebugInfoOffset, UnitOffset};
-use std::str::FromStr;
+use num_traits::Zero;
+use std::{ops::Range, str::FromStr};
 
 /// Define the role that a variable plays in a Variant relationship. See section '5.7.10 Variant Entries' of the DWARF 5 specification
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
@@ -874,6 +875,25 @@ impl Variable {
                 // We don't have a value, and we can't generate one from children values, so use the type_name
                 format!("{:\t<indentation$}{}", "", self.type_name)
             }
+        }
+    }
+
+    /// Calculate the memory range that contains the value of this variable.
+    /// If the location and/or byte size is not known, then return None.
+    /// Note: We don't do any validation of the memory range here, and leave it up to the caller to
+    /// validate the memory ranges before attempting to read them.
+    pub fn memory_range(&self) -> Option<Range<u64>> {
+        if let VariableLocation::Address(address) = self.memory_location {
+            if self.byte_size.is_some_and(|byte_size| byte_size.is_zero()) {
+                // This can happen for instance with empty arrays, and even though we don't need to read the
+                // array data, we need to read the array structure type.
+                Some(address..address + 4)
+            } else {
+                self.byte_size
+                    .map(|byte_size| address..(address + byte_size))
+            }
+        } else {
+            None
         }
     }
 }

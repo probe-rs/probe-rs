@@ -12,6 +12,7 @@ use super::{
     extract_from_elf, BinOptions, DownloadOptions, FileDownloadError, FlashError, Flasher,
     IdfOptions,
 };
+use crate::config::DebugSequence;
 use crate::memory::MemoryInterface;
 use crate::session::Session;
 use crate::Target;
@@ -136,6 +137,37 @@ impl FlashLoader {
         let mut buf = Vec::new();
         file.read_to_end(&mut buf)?;
 
+        // Figure out flash size from the memory map. We need a different bootloader for each size.
+        let flash_size_result = match target.debug_sequence.clone() {
+            DebugSequence::Riscv(sequence) => {
+                sequence.detect_flash_size(session.get_riscv_interface().unwrap())
+            }
+            DebugSequence::Xtensa(sequence) => {
+                sequence.detect_flash_size(session.get_xtensa_interface().unwrap())
+            }
+            DebugSequence::Arm(_) => panic!("There are no ARM ESP targets."),
+        };
+
+        let flash_size = match flash_size_result {
+            Ok(size) => size,
+            Err(err) => return Err(FileDownloadError::FlashSizeDetection(err)),
+        };
+
+        let flash_size = match flash_size {
+            Some(0x40000) => Some(espflash::flasher::FlashSize::_256Kb),
+            Some(0x80000) => Some(espflash::flasher::FlashSize::_512Kb),
+            Some(0x100000) => Some(espflash::flasher::FlashSize::_1Mb),
+            Some(0x200000) => Some(espflash::flasher::FlashSize::_2Mb),
+            Some(0x400000) => Some(espflash::flasher::FlashSize::_4Mb),
+            Some(0x800000) => Some(espflash::flasher::FlashSize::_8Mb),
+            Some(0x1000000) => Some(espflash::flasher::FlashSize::_16Mb),
+            Some(0x2000000) => Some(espflash::flasher::FlashSize::_32Mb),
+            Some(0x4000000) => Some(espflash::flasher::FlashSize::_64Mb),
+            Some(0x8000000) => Some(espflash::flasher::FlashSize::_128Mb),
+            Some(0x10000000) => Some(espflash::flasher::FlashSize::_256Mb),
+            _ => None,
+        };
+
         let firmware = espflash::elf::ElfFirmwareImage::try_from(&buf[..])?;
         let image = chip.get_flash_image(
             &firmware,
@@ -144,7 +176,7 @@ impl FlashLoader {
             None,
             None,
             None,
-            None,
+            flash_size,
             None,
         )?;
         let parts: Vec<_> = image.flash_segments().collect();

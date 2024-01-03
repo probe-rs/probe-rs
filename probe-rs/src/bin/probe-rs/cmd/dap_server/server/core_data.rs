@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::{fs::File, ops::Range};
 
 use super::session_data::{self, ActiveBreakpoint, BreakpointType, SourceLocationScope};
 use crate::cmd::dap_server::{
@@ -383,4 +383,158 @@ impl<'p> CoreHandle<'p> {
         }
         Ok(())
     }
+
+    /// Traverse all the variables in the available stack frames, and return the memory ranges
+    /// required to resolve the values of these variables. This is used to provide the minimal
+    /// memory ranges required to create a [`CoreDump`] for the current scope.
+    pub(crate) fn get_memory_ranges(&mut self) -> Vec<Range<u64>> {
+        let mut all_discrete_memory_ranges = Vec::new();
+        // Expand and validate the static and local variables for each stack frame.
+        for frame in self.core_data.stack_frames.iter_mut() {
+            let mut variable_caches = Vec::new();
+            if let Some(static_variables) = &mut frame.static_variables {
+                variable_caches.push(static_variables);
+            }
+            if let Some(local_variables) = &mut frame.local_variables {
+                variable_caches.push(local_variables);
+            }
+            for variable_cache in variable_caches {
+                // Cache the deferred top level children of the of the cache.
+                variable_cache.recurse_deferred_variables(
+                    &self.core_data.debug_info,
+                    &mut self.core,
+                    None,
+                    &frame.registers,
+                    frame.frame_base,
+                    10,
+                    0,
+                );
+                all_discrete_memory_ranges.append(&mut variable_cache.get_discrete_memory_ranges());
+            }
+            // Also capture memory addresses for essential registers.
+            for register in frame.registers.0.iter() {
+                if let Ok(Some(memory_range)) = register.memory_range() {
+                    all_discrete_memory_ranges.push(memory_range);
+                }
+            }
+        }
+        // Consolidating all memory ranges that are withing 0x400 bytes of each other.
+        consolidate_memory_ranges(all_discrete_memory_ranges, 0x400)
+    }
+}
+
+/// Return a Vec of memory ranges that consolidate the adjacent memory ranges of the input ranges.
+/// Note: The concept of "adjacent" is calculated to include a gap of up to specicied number of bytes between ranges.
+/// This serves to consolidate memory ranges that are separated by a small gap, but are still close enough for the purpose of the caller.
+fn consolidate_memory_ranges(
+    mut discrete_memory_ranges: Vec<Range<u64>>,
+    include_bytes_between_ranges: u64,
+) -> Vec<Range<u64>> {
+    discrete_memory_ranges.sort_by_cached_key(|range| (range.start, range.end));
+    discrete_memory_ranges.dedup();
+    let mut consolidated_memory_ranges: Vec<Range<u64>> = Vec::new();
+    let mut condensed_range: Option<Range<u64>> = None;
+
+    for memory_range in discrete_memory_ranges.iter() {
+        if let Some(range_comparitor) = condensed_range {
+            if memory_range.start <= range_comparitor.end + include_bytes_between_ranges + 1 {
+                let new_end = std::cmp::max(range_comparitor.end, memory_range.end);
+                condensed_range = Some(Range {
+                    start: range_comparitor.start,
+                    end: new_end,
+                });
+            } else {
+                consolidated_memory_ranges.push(range_comparitor);
+                condensed_range = Some(memory_range.clone());
+            }
+        } else {
+            condensed_range = Some(memory_range.clone());
+        }
+    }
+
+    if let Some(range_comparitor) = condensed_range {
+        consolidated_memory_ranges.push(range_comparitor);
+    }
+
+    consolidated_memory_ranges
+}
+
+/// A single range should remain the same after consolidation.
+#[test]
+fn test_single_range() {
+    let input = vec![Range { start: 0, end: 5 }];
+    let expected = vec![Range { start: 0, end: 5 }];
+    let result = consolidate_memory_ranges(input, 0);
+    assert_eq!(result, expected);
+}
+
+/// Three ranges that are adjacent should be consolidated into one.
+#[test]
+fn test_three_adjacent_ranges() {
+    let input = vec![
+        Range { start: 0, end: 5 },
+        Range { start: 6, end: 10 },
+        Range { start: 11, end: 15 },
+    ];
+    let expected = vec![Range { start: 0, end: 15 }];
+    let result = consolidate_memory_ranges(input, 0);
+    assert_eq!(result, expected);
+}
+
+/// Two ranges that are distinct should remain distinct after consolidation.
+#[test]
+fn test_distinct_ranges() {
+    let input = vec![Range { start: 0, end: 5 }, Range { start: 7, end: 10 }];
+    let expected = vec![Range { start: 0, end: 5 }, Range { start: 7, end: 10 }];
+    let result = consolidate_memory_ranges(input, 0);
+    assert_eq!(result, expected);
+}
+
+/// Two ranges that are contiguous should be consolidated into one.
+#[test]
+fn test_contiguous_ranges() {
+    let input = vec![Range { start: 0, end: 5 }, Range { start: 5, end: 10 }];
+    let expected = vec![Range { start: 0, end: 10 }];
+    let result = consolidate_memory_ranges(input, 0);
+    assert_eq!(result, expected);
+}
+
+/// Three ranges where the first two are adjacent and the third is distinct should be consolidated into two.
+#[test]
+fn test_adjacent_and_distinct_ranges() {
+    let input = vec![
+        Range { start: 0, end: 5 },
+        Range { start: 6, end: 10 },
+        Range { start: 12, end: 15 },
+    ];
+    let expected = vec![Range { start: 0, end: 10 }, Range { start: 12, end: 15 }];
+    let result = consolidate_memory_ranges(input, 0);
+    assert_eq!(result, expected);
+}
+
+/// Two ranges where the second starts and ends before the first should remain distinct after consolidation.
+#[test]
+fn test_non_overlapping_ranges() {
+    let input = vec![Range { start: 10, end: 20 }, Range { start: 0, end: 5 }];
+    let expected = vec![Range { start: 0, end: 5 }, Range { start: 10, end: 20 }];
+    let result = consolidate_memory_ranges(input, 0);
+    assert_eq!(result, expected);
+}
+
+/// Two ranges where the second starts and ends before the first but are consolidated because they are within 5 bytes of each other.
+#[test]
+fn test_non_overlapping_ranges_with_extra_bytes() {
+    let input = vec![Range { start: 10, end: 20 }, Range { start: 0, end: 5 }];
+    let expected = vec![Range { start: 0, end: 20 }];
+    let result = consolidate_memory_ranges(input, 5);
+    assert_eq!(result, expected);
+}
+
+/// Two ranges where the second starts before, but intersects with the first, should be consolidated.
+#[test]
+fn test_reversed_intersecting_ranges() {
+    let input = vec![Range { start: 10, end: 20 }, Range { start: 5, end: 15 }];
+    let expected = vec![Range { start: 5, end: 20 }];
+    let result = consolidate_memory_ranges(input, 0);
+    assert_eq!(result, expected);
 }

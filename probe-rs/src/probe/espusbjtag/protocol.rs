@@ -30,23 +30,129 @@ const USB_PID: u16 = 0x1001;
 
 const VENDOR_DESCRIPTOR_JTAG_CAPABILITIES: u16 = 0x2000;
 
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub(super) enum RegisterState {
+    Select,
+    Capture,
+    Shift,
+    Exit1,
+    Pause,
+    Exit2,
+    Update,
+}
+
+impl RegisterState {
+    fn step_toward(self, target: Self) -> bool {
+        match self {
+            Self::Select => false,
+            Self::Capture if target == Self::Shift => false,
+            Self::Exit1 if target == Self::Pause => false,
+            Self::Exit2 if target == Self::Shift => false,
+            Self::Update => unreachable!(),
+            _ => true,
+        }
+    }
+
+    fn update(self, tms: bool) -> Self {
+        if tms {
+            match self {
+                Self::Capture | Self::Shift => Self::Exit1,
+                Self::Exit1 | Self::Exit2 => Self::Update,
+                Self::Pause => Self::Exit2,
+                Self::Select => unreachable!(),
+                Self::Update => unreachable!(),
+            }
+        } else {
+            match self {
+                Self::Select => Self::Capture,
+                Self::Capture | Self::Shift => Self::Shift,
+                Self::Exit1 | Self::Pause => Self::Pause,
+                Self::Exit2 => Self::Shift,
+                Self::Update => unreachable!(),
+            }
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub(super) enum JtagState {
+    Reset,
+    Idle,
+    Dr(RegisterState),
+    Ir(RegisterState),
+}
+
+impl JtagState {
+    fn step_toward(self, target: Self) -> Option<bool> {
+        let tms = match self {
+            state if target == state => return None,
+            Self::Reset => true,
+            Self::Idle => true,
+            Self::Dr(RegisterState::Select) => !matches!(target, Self::Dr(_)),
+            Self::Ir(RegisterState::Select) => !matches!(target, Self::Ir(_)),
+            Self::Dr(RegisterState::Update) | Self::Ir(RegisterState::Update) => {
+                matches!(target, Self::Ir(_) | Self::Dr(_))
+            }
+            Self::Dr(state) => {
+                let next = if let Self::Dr(target) = target {
+                    target
+                } else {
+                    RegisterState::Update
+                };
+                state.step_toward(next)
+            }
+            Self::Ir(state) => {
+                let next = if let Self::Ir(target) = target {
+                    target
+                } else {
+                    RegisterState::Update
+                };
+                state.step_toward(next)
+            }
+        };
+        Some(tms)
+    }
+
+    fn update(&mut self, tms: bool) {
+        *self = match *self {
+            Self::Reset if tms => Self::Idle,
+            Self::Reset => Self::Reset,
+            Self::Idle if tms => Self::Dr(RegisterState::Select),
+            Self::Idle => Self::Idle,
+            Self::Dr(RegisterState::Select) if tms => Self::Ir(RegisterState::Select),
+            Self::Ir(RegisterState::Select) if tms => Self::Reset,
+            Self::Dr(RegisterState::Update) | Self::Ir(RegisterState::Update) => {
+                if tms {
+                    Self::Dr(RegisterState::Select)
+                } else {
+                    Self::Idle
+                }
+            }
+            Self::Dr(state) => Self::Dr(state.update(tms)),
+            Self::Ir(state) => Self::Ir(state.update(tms)),
+        };
+    }
+}
+
 pub(super) struct ProtocolHandler {
-    // The USB device handle.
+    /// The USB device handle.
     device_handle: rusb::DeviceHandle<rusb::Context>,
 
-    // The command in the queue and their additional repetitions.
-    // For now we do one command at a time.
+    /// The command in the queue and their additional repetitions.
+    /// For now we do one command at a time.
     command_queue: Option<(RepeatableCommand, usize)>,
-    // The buffer for all commands to be sent to the target. This already contains `repeated` commands which are basically
-    // a mechanism to compress the datastream by adding a `Repeat` command to repeat the previous command `n` times instead of
-    // actually putting the command into the queue `n` times.
+    /// The buffer for all commands to be sent to the target. This already contains `repeated`
+    /// commands which is the interface's RLE mechanism to reduce the amount of data sent.
     output_buffer: Vec<Command>,
-    // A store for all the read bits (from the target) such that the BitIter the methods return can borrow and iterate over it.
+    /// A store for all the read bits (from the target) such that the BitIter the methods return
+    /// can borrow and iterate over it.
     response: BitVec<u8, Lsb0>,
     pending_in_bits: usize,
 
     ep_out: u8,
     ep_in: u8,
+
+    jtag_state: JtagState,
 
     pub(crate) base_speed_khz: u32,
     pub(crate) div_min: u16,
@@ -64,6 +170,7 @@ impl Debug for ProtocolHandler {
             .field("base_speed_khz", &self.base_speed_khz)
             .field("div_min", &self.div_min)
             .field("div_max", &self.div_max)
+            .field("jtag_state", &self.jtag_state)
             .finish()
     }
 }
@@ -222,7 +329,17 @@ impl ProtocolHandler {
             base_speed_khz,
             div_min,
             div_max,
+
+            jtag_state: JtagState::Reset,
         })
+    }
+
+    pub(super) fn jtag_move_to_state(&mut self, target: JtagState) -> Result<(), DebugProbeError> {
+        while let Some(tms) = self.jtag_state.step_toward(target) {
+            self.jtag_io_async([tms], [false], false)?;
+        }
+        tracing::debug!("In state: {:?}", self.jtag_state);
+        Ok(())
     }
 
     /// Put a bit on TDI and possibly read one from TDO.
@@ -246,8 +363,36 @@ impl ProtocolHandler {
         tdi: impl IntoIterator<Item = bool>,
         cap: bool,
     ) -> Result<(), DebugProbeError> {
-        tracing::debug!("JTAG IO! {} ", cap);
-        for (tms, tdi) in tms.into_iter().zip(tdi.into_iter()) {
+        self.jtag_io_async2(tms, tdi, std::iter::repeat(cap))
+    }
+
+    /// Put a bit on TDI and possibly read one from TDO.
+    /// to receive the bytes from this operations call [`ProtocolHandler::flush`]
+    ///
+    /// Note that if the internal buffer is exceeded bytes will be automatically flushed to usb device
+    pub fn jtag_io_async2(
+        &mut self,
+        tms: impl IntoIterator<Item = bool>,
+        tdi: impl IntoIterator<Item = bool>,
+        cap: impl IntoIterator<Item = bool>,
+    ) -> Result<(), DebugProbeError> {
+        for ((tms, tdi), cap) in tms.into_iter().zip(tdi.into_iter()).zip(cap.into_iter()) {
+            self.jtag_state.update(tms);
+            if cap && self.pending_in_bits == 128 * 8 {
+                // From the ESP32-S3 TRM:
+                // [A] command stream can cause at most 128 bytes of capture data to be
+                // generated [...] without the host acting to receive the generated data. If
+                // more data is generated anyway, the command stream is paused and the device
+                // will not accept more commands before the generated capture data is read out.
+
+                // Let's break the command stream here and flush the data.
+                // We do this before we would capture the 1025th bit, so we don't do an
+                // extra flush if we only ever want to capture 1024 bits.
+                self.finalize_previous_command()?;
+                self.send_buffer()?;
+                self.receive_buffer()?;
+            }
+
             self.push_command(RepeatableCommand::Clock { cap, tdi, tms })?;
             if cap {
                 self.pending_in_bits += 1;
@@ -256,10 +401,9 @@ impl ProtocolHandler {
         Ok(())
     }
 
-    /// Sets the two different resets on the target.
-    /// NOTE: Only `srst` can be set for now. Setting `trst` is not implemented yet.
-    pub fn set_reset(&mut self, _trst: bool, srst: bool) -> Result<(), DebugProbeError> {
-        // TODO: Handle trst using setup commands. This is not necessarily required and can be left as is for the moiment..
+    /// Sets the system reset signal on the target.
+    pub fn set_reset(&mut self, srst: bool) -> Result<(), DebugProbeError> {
+        self.finalize_previous_command()?;
         self.add_raw_command(Command::Reset(srst))?;
         self.flush()?;
         Ok(())
@@ -268,14 +412,16 @@ impl ProtocolHandler {
     /// Adds a command to the command queue.
     /// This will properly add repeat commands if possible.
     fn push_command(&mut self, command: RepeatableCommand) -> Result<(), DebugProbeError> {
-        if let Some((command_in_queue, repetitions)) = self.command_queue.as_mut() {
-            if command == *command_in_queue && *repetitions < MAX_COMMAND_REPETITIONS {
+        if let Some((command_in_queue, ref mut repetitions)) = self.command_queue {
+            if command == command_in_queue && *repetitions < MAX_COMMAND_REPETITIONS {
                 *repetitions += 1;
                 return Ok(());
             }
+
+            let repetitions = *repetitions;
+            self.write_stream(command_in_queue, repetitions)?;
         }
 
-        self.finalize_previous_command()?;
         self.command_queue = Some((command, 0));
 
         Ok(())
@@ -293,16 +439,19 @@ impl ProtocolHandler {
     pub fn flush(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
         self.finalize_previous_command()?;
 
-        tracing::debug!("Flushing ...");
+        // Only flush if we have anything to do.
+        if !self.output_buffer.is_empty() || self.pending_in_bits != 0 {
+            tracing::debug!("Flushing ...");
 
-        self.add_raw_command(Command::Flush)?;
-        self.send_buffer()?;
+            self.add_raw_command(Command::Flush)?;
+            self.send_buffer()?;
 
-        while self.pending_in_bits != 0 {
-            self.receive_buffer()?;
+            while self.pending_in_bits != 0 {
+                self.receive_buffer()?;
+            }
         }
 
-        Ok(std::mem::replace(&mut self.response, BitVec::new()))
+        Ok(std::mem::take(&mut self.response))
     }
 
     /// Writes a command one or multiple times into the raw buffer we send to the USB EP later
@@ -340,8 +489,6 @@ impl ProtocolHandler {
 
     /// Adds a single command to the output buffer and writes it to the USB EP if the buffer reaches a limit of `OUT_BUFFER_SIZE`.
     fn add_raw_command(&mut self, command: Command) -> Result<(), DebugProbeError> {
-        self.finalize_previous_command()?;
-
         self.output_buffer.push(command);
 
         // If we reach a maximal size of the output buffer, we flush.
@@ -349,55 +496,42 @@ impl ProtocolHandler {
             self.send_buffer()?;
         }
 
-        // Undocumented condition to flush buffer.
-        // First check, whether the output buffer is suitable for flushing? it should be modulo of the EP buffer size
-        if self.output_buffer.len() % OUT_EP_BUFFER_SIZE == 0 {
-            // Second check, if it is suitable, is there enough to flush
-            if self.pending_in_bits > (IN_EP_BUFFER_SIZE + HW_FIFO_SIZE) * 8 {
-                self.send_buffer()?;
-            }
-        }
-
         Ok(())
     }
 
     /// Sends the commands stored in the output buffer to the USB EP.
     fn send_buffer(&mut self) -> Result<(), DebugProbeError> {
-        let commands = self
-            .output_buffer
-            .chunks(2)
-            .map(|chunk| {
+        let mut commands = [0; OUT_EP_BUFFER_SIZE];
+        for (out, byte) in commands
+            .iter_mut()
+            .zip(self.output_buffer.chunks(2).map(|chunk| {
                 let unibble: u8 = chunk[0].into();
-                let lnibble: u8 = if chunk.len() == 2 {
-                    chunk[1].into()
-                } else {
-                    // Make sure we add an additional nibble to the command buffer if the number of
-                    // nibbles is odd, as we cannot send a standalone nibble.
-                    Command::Flush.into()
-                };
+                // Make sure we add an additional nibble to the command buffer if the number of
+                // nibbles is odd, as we cannot send a standalone nibble.
+                let lnibble: u8 = chunk.get(1).copied().unwrap_or(Command::Flush).into();
 
                 (unibble << 4) | lnibble
-            })
-            .collect::<Vec<_>>();
+            }))
+        {
+            *out = byte;
+        }
+
+        let len = (self.output_buffer.len() + 1) / 2;
 
         tracing::trace!(
             "Writing {} bytes ({} nibbles) to usb endpoint",
-            commands.len(),
+            len,
             self.output_buffer.len()
         );
-        let mut offset = 0;
-        let mut total = 0;
-        loop {
+
+        let mut commands = &commands[..len];
+        while !commands.is_empty() {
             let bytes = self
                 .device_handle
-                .write_bulk(self.ep_out, &commands[offset..], USB_TIMEOUT)
+                .write_bulk(self.ep_out, commands, USB_TIMEOUT)
                 .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))?;
-            total += bytes;
-            offset += bytes;
 
-            if total == commands.len() {
-                break;
-            }
+            commands = &commands[bytes..];
         }
 
         // We only clear the output buffer on a successful transmission of all bytes.
@@ -414,52 +548,34 @@ impl ProtocolHandler {
     /// Tries to receive pending in bits from the USB EP.
     fn receive_buffer(&mut self) -> Result<(), DebugProbeError> {
         let count = ((self.pending_in_bits + 7) / 8).min(IN_EP_BUFFER_SIZE);
-        let mut incoming = vec![0; count];
+        let mut incoming = [0; IN_EP_BUFFER_SIZE];
 
         tracing::trace!("Receiving buffer, pending bits: {}", self.pending_in_bits);
 
-        if count == 0 {
+        if self.pending_in_bits == 0 {
             return Ok(());
         }
 
-        let mut offset = 0;
-        let mut total = 0;
-        loop {
-            let read_bytes = self
-                .device_handle
-                .read_bulk(self.ep_in, &mut incoming[offset..], USB_TIMEOUT)
-                .map_err(|e| {
-                    tracing::warn!(
-                        "Something went wrong in read_bulk {:?} when trying to read {}bytes - pending_in_bits: {}",
-                        e,
-                        count,
-                        self.pending_in_bits,
-                    );
-                    DebugProbeError::Usb(Some(Box::new(e)))
-                })?;
-            total += read_bytes;
-            offset += read_bytes;
+        let read_bytes = self
+            .device_handle
+            .read_bulk(self.ep_in, &mut incoming, USB_TIMEOUT)
+            .map_err(|e| {
+                tracing::warn!(
+                    "Something went wrong in read_bulk {:?} when trying to read {}bytes - pending_in_bits: {}",
+                    e,
+                    count,
+                    self.pending_in_bits,
+                );
+                DebugProbeError::Usb(Some(Box::new(e)))
+            })?;
 
-            if read_bytes == 0 {
-                tracing::debug!("Read 0 bytes from USB");
-                return Ok(());
-            }
-
-            if total == count {
-                break;
-            } else {
-                tracing::warn!("USB only recieved {} out of {} bytes", read_bytes, count);
-            }
-
-            tracing::trace!("Received {} bytes.", read_bytes);
-        }
-
-        let bits_in_buffer = self.pending_in_bits.min(total * 8);
+        let bits_in_buffer = self.pending_in_bits.min(read_bytes * 8);
+        let incoming = &incoming[..count];
 
         tracing::trace!("Read: {:?}, length = {}", incoming, bits_in_buffer);
         self.pending_in_bits -= bits_in_buffer;
 
-        let bs: &BitSlice<_, Lsb0> = BitSlice::from_slice(&incoming);
+        let bs: &BitSlice<_, Lsb0> = BitSlice::from_slice(incoming);
         self.response.extend_from_bitslice(&bs[..bits_in_buffer]);
 
         Ok(())
@@ -510,7 +626,7 @@ fn read_serial_number<T: rusb::UsbContext>(
     let handle = device.open()?;
     let language = handle
         .read_languages(timeout)?
-        .get(0)
+        .first()
         .cloned()
         .ok_or(rusb::Error::BadDescriptor)?;
     handle.read_serial_number_string(language, descriptor, timeout)

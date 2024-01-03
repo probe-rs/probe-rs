@@ -35,6 +35,8 @@ pub struct Chip {
     /// The `PART` register of the chip.
     /// This value can be determined via the `cli info` command.
     pub part: Option<u16>,
+    /// An URL to the SVD file for this chip.
+    pub svd: Option<String>,
     /// The cores available on the chip.
     #[serde(default)]
     pub cores: Vec<Core>,
@@ -81,6 +83,7 @@ impl Chip {
         Chip {
             name: name.to_string(),
             part: None,
+            svd: None,
             cores: vec![Core {
                 name: "main".to_string(),
                 core_type,
@@ -113,10 +116,12 @@ pub struct Core {
 /// The data required to access a core
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CoreAccessOptions {
-    /// Arm specific options
+    /// ARM specific options
     Arm(ArmCoreAccessOptions),
-    /// Riscv specific options
+    /// RISC-V specific options
     Riscv(RiscvCoreAccessOptions),
+    /// Xtensa specific options
+    Xtensa(XtensaCoreAccessOptions),
 }
 
 /// The data required to access an ARM core
@@ -140,7 +145,11 @@ pub struct ArmCoreAccessOptions {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RiscvCoreAccessOptions {}
 
-/// Helper function that interates the scan chain and returns a vector of all of
+/// The data required to access an Xtensa core
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct XtensaCoreAccessOptions {}
+
+/// Helper function that iterates the scan chain and returns a vector of all of
 /// the ir_lengths of the scan chain elements.
 /// If an element does not contain an ir_length, the default value of 4 is used.
 /// The first element of the vector is the first element of the scan chain.

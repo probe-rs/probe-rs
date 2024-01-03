@@ -95,10 +95,20 @@ const CHANGELOG_FILE: &str = "CHANGELOG.md";
 #[derive(Debug)]
 struct FragmentList {
     /// List of fragments, grouped by category
-    fragments: HashMap<String, Vec<PathBuf>>,
+    fragments: HashMap<String, Vec<Fragment>>,
 
     /// List of invalid fragments (not matching the expected pattern)
     invalid_fragments: Vec<PathBuf>,
+}
+
+#[derive(Debug)]
+struct Fragment {
+    /// The number of the PR that added the fragment
+    pr_number: Option<String>,
+    /// The author of the PR that added the fragment
+    author: Option<String>,
+    /// The path to the fragment file
+    path: PathBuf,
 }
 
 impl FragmentList {
@@ -118,6 +128,7 @@ impl FragmentList {
 
 fn get_changelog_fragments(fragments_dir: &Path) -> Result<FragmentList> {
     let mut list = FragmentList::new();
+    let github_token = std::env::var("GITHUB_TOKEN").context("GITHUB_TOKEN not set")?;
 
     let fragment_files = std::fs::read_dir(fragments_dir)
         .with_context(|| format!("Unable to read fragments from {}", fragments_dir.display()))?;
@@ -144,7 +155,20 @@ fn get_changelog_fragments(fragments_dir: &Path) -> Result<FragmentList> {
             };
 
             if let Some(fragments) = list.fragments.get_mut(category) {
-                fragments.push(path);
+                let sh = Shell::new()?;
+                let sha = cmd!(sh, "git blame -l -s {path}").read()?;
+                let sha = sha.split(' ').next().unwrap();
+                println!("fetching PR info for sha: {}", sha);
+
+                let response = cmd!(sh, "curl -L -H 'Accept: application/vnd.github+json' -H 'Authorization: Bearer '{github_token} https://api.github.com/repos/probe-rs/probe-rs/commits/{sha}/pulls").read()?;
+
+                let json = serde_json::from_str::<serde_json::Value>(&response).unwrap();
+
+                fragments.push(Fragment {
+                    pr_number: json[0]["number"].as_i64().map(|n| n.to_string()),
+                    author: json[0]["user"]["login"].as_str().map(|s| s.to_string()),
+                    path: path.clone(),
+                });
             } else {
                 list.invalid_fragments.push(path);
             }
@@ -237,7 +261,12 @@ fn check_fragments() -> Result<(), anyhow::Error> {
             println!(" {group}:");
 
             for fragment in fragments {
-                println!("  - {}", fragment.display());
+                println!(
+                    "  - {} (#{}) by @{}",
+                    fragment.path.display(),
+                    fragment.pr_number.as_deref().unwrap_or("<unknown>"),
+                    fragment.author.as_deref().unwrap_or("<unknown>")
+                );
             }
         }
     }
@@ -322,10 +351,10 @@ fn assemble_changelog(
     if !no_cleanup {
         println!("Cleaning up fragments...");
 
-        for fragment in fragment_list.fragments.values() {
-            for fragment_path in fragment {
-                println!(" Removing {}", fragment_path.display());
-                std::fs::remove_file(fragment_path)?;
+        for fragments in fragment_list.fragments.values() {
+            for fragment in fragments {
+                println!(" Removing {}", fragment.path.display());
+                std::fs::remove_file(&fragment.path)?;
             }
         }
     }
@@ -337,7 +366,7 @@ fn assemble_changelog(
         cmd!(shell, "git rm {FRAGMENTS_DIR}/*.md").run()?;
         cmd!(
             shell,
-            "git commit -m 'Update changelog for version {version}'"
+            "git commit -m 'Update changelog for version '{version}"
         )
         .run()?;
     }
@@ -348,34 +377,45 @@ fn assemble_changelog(
 fn write_changelog_section(
     mut writer: impl std::io::Write,
     heading: &str,
-    fragments: &[PathBuf],
+    fragments: &[Fragment],
 ) -> anyhow::Result<()> {
     writeln!(writer, "### {}", heading)?;
     writeln!(writer)?;
 
-    for fragment_path in fragments {
-        let fragment = std::fs::read_to_string(fragment_path).with_context(|| {
+    for fragment in fragments {
+        let text = std::fs::read_to_string(&fragment.path).with_context(|| {
             format!(
                 "Failed to read changelog fragment {}",
-                fragment_path.display()
+                fragment.path.display()
             )
         })?;
 
-        let mut lines = fragment.lines();
+        let mut lines = text.lines();
 
         let Some(first_line) = lines.next() else {
-            anyhow::bail!("Empty changelog fragment {}", fragment_path.display());
+            anyhow::bail!("Empty changelog fragment {}", fragment.path.display());
         };
 
-        writeln!(writer, " - {}", first_line)?;
+        write!(writer, " - {}", first_line)?;
 
         let mut multiline = false;
 
         // Write remaining lines
         for line in lines {
-            writeln!(writer, "   {}", line)?;
+            writeln!(writer)?;
+            write!(writer, "   {}", line)?;
             multiline = true;
         }
+
+        if let Some(pr_number) = &fragment.pr_number {
+            write!(writer, " (#{pr_number})")?;
+        }
+
+        if let Some(author) = &fragment.author {
+            write!(writer, " by @{author}")?;
+        }
+
+        writeln!(writer)?;
 
         // Add an empty line between multiline fragments
         if multiline {
