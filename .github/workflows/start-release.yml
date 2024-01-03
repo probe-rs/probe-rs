@@ -61,6 +61,7 @@ jobs:
           cargo xtask assemble-changelog --commit ${{ inputs.version }}
         env:
           SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
 
       - name: Bump versions
         run: |
