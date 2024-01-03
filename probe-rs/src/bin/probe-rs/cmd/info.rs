@@ -14,6 +14,7 @@ use probe_rs::{
             ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation, Register,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
+        xtensa::communication_interface::XtensaCommunicationInterface,
     },
     Lister, MemoryMappedRegister, Probe, WireProtocol,
 };
@@ -106,39 +107,59 @@ fn try_show_info(
             }
         }
     } else {
+        println!("No DAP interface was found on the connected probe. ARM-specific information cannot be printed.");
+    }
+
+    if probe.has_riscv_interface() {
+        match probe.try_into_riscv_interface() {
+            Ok(mut interface) => {
+                if let Err(e) = show_riscv_info(&mut interface) {
+                    log::warn!("Error showing RISC-V chip information: {}", e);
+                }
+
+                probe = interface.close();
+            }
+            Err((interface_probe, e)) => {
+                let mut source = Some(&e as &dyn Error);
+
+                while let Some(parent) = source {
+                    log::error!("Error: {}", parent);
+                    source = parent.source();
+                }
+
+                probe = interface_probe;
+            }
+        }
+    } else {
         println!(
-            "No DAP interface was found on the connected probe. Thus, ARM info cannot be printed."
+            "Unable to debug RISC-V targets using the current probe. RISC-V specific information cannot be printed."
         );
     }
 
-    if protocol == WireProtocol::Jtag {
-        if probe.has_riscv_interface() {
-            match probe.try_into_riscv_interface() {
-                Ok(mut interface) => {
-                    if let Err(e) = show_riscv_info(&mut interface) {
-                        log::warn!("Error showing RISC-V chip information: {}", e);
-                    }
-
-                    probe = interface.close();
+    if probe.has_xtensa_interface() {
+        match probe.try_into_xtensa_interface() {
+            Ok(mut interface) => {
+                if let Err(e) = show_xtensa_info(&mut interface) {
+                    log::warn!("Error showing Xtensa chip information: {}", e);
                 }
-                Err((interface_probe, e)) => {
-                    let mut source = Some(&e as &dyn Error);
 
-                    while let Some(parent) = source {
-                        log::error!("Error: {}", parent);
-                        source = parent.source();
-                    }
-
-                    probe = interface_probe;
-                }
+                probe = interface.close();
             }
-        } else {
-            println!(
-            "Unable to debug RISC-V targets using the current probe. RISC-V specific information cannot be printed."
-        );
+            Err((interface_probe, e)) => {
+                let mut source = Some(&e as &dyn Error);
+
+                while let Some(parent) = source {
+                    log::error!("Error: {}", parent);
+                    source = parent.source();
+                }
+
+                probe = interface_probe;
+            }
         }
     } else {
-        tracing::info!("Debugging RISC-V-Targets over SWD is not supported.");
+        println!(
+            "Unable to debug Xtensa targets using the current probe. Xtensa specific information cannot be printed."
+        );
     }
 
     (probe, Ok(()))
@@ -376,6 +397,27 @@ fn show_riscv_info(interface: &mut RiscvCommunicationInterface) -> Result<()> {
     let jep_id = jep106::JEP106Code::new(jep_cc as u8, jep_id as u8);
 
     println!("RISC-V Chip:");
+    println!("\tIDCODE: {idcode:010x}");
+    println!("\t Version:      {version}");
+    println!("\t Part:         {part_number}");
+    println!("\t Manufacturer: {manufacturer_id} ({jep_id})");
+
+    Ok(())
+}
+
+fn show_xtensa_info(interface: &mut XtensaCommunicationInterface) -> Result<()> {
+    let idcode = interface.read_idcode()?;
+
+    let version = (idcode >> 28) & 0xf;
+    let part_number = (idcode >> 12) & 0xffff;
+    let manufacturer_id = (idcode >> 1) & 0x7ff;
+
+    let jep_cc = (manufacturer_id >> 7) & 0xf;
+    let jep_id = manufacturer_id & 0x3f;
+
+    let jep_id = jep106::JEP106Code::new(jep_cc as u8, jep_id as u8);
+
+    println!("Xtensa Chip:");
     println!("\tIDCODE: {idcode:010x}");
     println!("\t Version:      {version}");
     println!("\t Part:         {part_number}");

@@ -28,6 +28,7 @@ enum TapInstruction {
     Ndr,
     PowerControl,
     PowerStatus,
+    Idcode,
 }
 
 impl TapInstruction {
@@ -37,6 +38,7 @@ impl TapInstruction {
             TapInstruction::Ndr => 0x1C,
             TapInstruction::PowerControl => 0x08,
             TapInstruction::PowerStatus => 0x09,
+            TapInstruction::Idcode => 0x1E,
         }
     }
 
@@ -46,6 +48,7 @@ impl TapInstruction {
             TapInstruction::Ndr => 32,
             TapInstruction::PowerControl => 8,
             TapInstruction::PowerStatus => 8,
+            TapInstruction::Idcode => 32,
         }
     }
 
@@ -55,7 +58,9 @@ impl TapInstruction {
 
     fn capture_to_u32(self, capture: &[u8]) -> u32 {
         match self {
-            TapInstruction::Ndr => u32::from_le_bytes(capture.try_into().unwrap()),
+            TapInstruction::Ndr | TapInstruction::Idcode => {
+                u32::from_le_bytes(capture.try_into().unwrap())
+            }
             _ => capture[0] as u32,
         }
     }
@@ -351,6 +356,20 @@ impl Xdm {
         let res = instr.capture_to_u8(&capture);
 
         tracing::trace!("pwr_write response: {:?}", res);
+
+        Ok(res)
+    }
+
+    pub(super) fn read_idcode(&mut self) -> Result<u32, XtensaError> {
+        let instr = TapInstruction::Idcode;
+
+        let capture = self
+            .probe
+            .write_register(instr.code(), &[0, 0, 0, 0], instr.bits())?;
+
+        let res = instr.capture_to_u32(&capture);
+
+        tracing::debug!("idcode response: {:x?}", res);
 
         Ok(res)
     }
