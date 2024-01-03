@@ -396,13 +396,14 @@ fn write_changelog_section(
             anyhow::bail!("Empty changelog fragment {}", fragment.path.display());
         };
 
-        writeln!(writer, " - {}", first_line)?;
+        write!(writer, " - {}", first_line)?;
 
         let mut multiline = false;
 
         // Write remaining lines
         for line in lines {
-            writeln!(writer, "   {}", line)?;
+            writeln!(writer)?;
+            write!(writer, "   {}", line)?;
             multiline = true;
         }
 
@@ -413,6 +414,8 @@ fn write_changelog_section(
         if let Some(author) = &fragment.author {
             write!(writer, " by @{author}")?;
         }
+
+        writeln!(writer)?;
 
         // Add an empty line between multiline fragments
         if multiline {
