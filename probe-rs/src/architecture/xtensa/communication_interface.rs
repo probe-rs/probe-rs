@@ -380,7 +380,7 @@ impl XtensaCommunicationInterface {
         register: impl Into<Register>,
     ) -> Result<u32, XtensaError> {
         let reader = self.schedule_read_register_untyped(register)?;
-        Ok(self.xdm.read_deferred_result(reader)?.as_u32())
+        Ok(self.xdm.read_deferred_result(reader)?.into_u32())
     }
 
     /// Schedules writing a register.
@@ -449,7 +449,7 @@ impl XtensaCommunicationInterface {
 
         if let Some(value) = self.state.saved_registers.get_mut(&key) {
             let reader = value.take().unwrap();
-            let value = self.xdm.read_deferred_result(reader)?.as_u32();
+            let value = self.xdm.read_deferred_result(reader)?.into_u32();
             self.write_register_untyped(key, value)?;
 
             self.state.saved_registers.remove(&key);
@@ -486,7 +486,7 @@ impl XtensaCommunicationInterface {
                 .unwrap()
                 .take()
                 .unwrap();
-            let value = self.xdm.read_deferred_result(reader)?.as_u32();
+            let value = self.xdm.read_deferred_result(reader)?.into_u32();
 
             if register == Register::Cpu(CpuRegister::A3) {
                 // We need to handle the scratch register (A3) separately as restoring a special
@@ -507,7 +507,7 @@ impl XtensaCommunicationInterface {
                 .get_mut(&Register::Cpu(CpuRegister::A3))
             {
                 if let Some(reader) = reader.take() {
-                    let value = self.xdm.read_deferred_result(reader)?.as_u32();
+                    let value = self.xdm.read_deferred_result(reader)?.into_u32();
 
                     restore_scratch = Some(value);
                 }
@@ -579,14 +579,22 @@ impl XtensaCommunicationInterface {
         };
 
         if let Some((read, offset, bytes_to_copy)) = first_read {
-            let word = self.xdm.read_deferred_result(read)?.as_u32().to_le_bytes();
+            let word = self
+                .xdm
+                .read_deferred_result(read)?
+                .into_u32()
+                .to_le_bytes();
 
             dst[..bytes_to_copy].copy_from_slice(&word[offset..][..bytes_to_copy]);
             dst = &mut dst[bytes_to_copy..];
         }
 
         for read in aligned_reads {
-            let word = self.xdm.read_deferred_result(read)?.as_u32().to_le_bytes();
+            let word = self
+                .xdm
+                .read_deferred_result(read)?
+                .into_u32()
+                .to_le_bytes();
 
             let bytes = dst.len().min(4);
 
