@@ -210,9 +210,6 @@ pretty_assertions = "1.4.0"
 test-case = "3"
 termtree = "0.4.1"
 
-# Enable the test feature for dev builds
-probe-rs = { version = "0.22.0", path = ".", features = ["test"] }
-
 [[package.metadata.release.pre-release-replacements]]
 file = "../CHANGELOG.md"
 search = "## \\[Unreleased\\]"

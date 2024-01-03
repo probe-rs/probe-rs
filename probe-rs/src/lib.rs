@@ -80,6 +80,7 @@ mod error;
 pub mod flashing;
 #[cfg(feature = "gdb-server")]
 pub mod gdb_server;
+pub mod integration;
 #[warn(missing_docs)]
 mod memory;
 #[warn(missing_docs)]
@@ -102,13 +103,7 @@ pub use crate::core::{
 pub use crate::error::Error;
 pub use crate::memory::MemoryInterface;
 pub use crate::probe::{
-    fake_probe::FakeProbe, list::Lister, AttachMethod, DebugProbe, DebugProbeError, DebugProbeInfo,
-    DebugProbeSelector, DebugProbeType, Probe, ProbeCreationError, WireProtocol,
+    list::Lister, AttachMethod, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+    DebugProbeType, Probe, ProbeCreationError, WireProtocol,
 };
 pub use crate::session::{Permissions, Session};
-
-// Exports only used in tests
-#[cfg(feature = "test")]
-pub use crate::probe::fake_probe::Operation as ProbeOperation;
-#[cfg(feature = "test")]
-pub use crate::probe::list::ProbeLister;

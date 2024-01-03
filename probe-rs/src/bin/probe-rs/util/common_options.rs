@@ -40,8 +40,8 @@ use clap;
 use probe_rs::{
     config::{RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError},
-    DebugProbeError, DebugProbeSelector, FakeProbe, Lister, Permissions, Probe, Session, Target,
-    WireProtocol,
+    integration::FakeProbe,
+    DebugProbeError, DebugProbeSelector, Lister, Permissions, Probe, Session, Target, WireProtocol,
 };
 use serde::{Deserialize, Serialize};
 
