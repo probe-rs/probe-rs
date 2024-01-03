@@ -184,10 +184,14 @@ impl Xdm {
         self.pwr_write(PowerDevice::PowerControl, pwr_control.0)?;
 
         // enable the debug module
-        self.dbg_write(NARADR_DCRSET, 1)?;
+        self.write_nexus_register(DebugControlSet({
+            let mut reg = DebugControlBits(0);
+            reg.set_enable_ocd(true);
+            reg
+        }))?;
 
         // read the device_id
-        let device_id = self.dbg_read(NARADR_OCDID)?;
+        let device_id = self.read_nexus_register::<OcdId>()?.0;
 
         if device_id == 0 || device_id == !0 {
             return Err(DebugProbeError::TargetNotFound.into());
@@ -278,25 +282,6 @@ impl Xdm {
                 self.jtag_results.merge_from(e.results);
             }
         }
-
-        Ok(())
-    }
-
-    /// Perform an access to a register
-    fn dbg_read(&mut self, address: u8) -> Result<u32, XtensaError> {
-        let reader = self.schedule_dbg_read(address);
-
-        let res = self.read_deferred_result(reader)?.as_u32();
-
-        tracing::trace!("dbg_read response: {:?}", res);
-
-        Ok(res)
-    }
-
-    /// Perform an access to a register
-    fn dbg_write(&mut self, address: u8, value: u32) -> Result<(), XtensaError> {
-        self.schedule_dbg_write(address, value);
-        self.execute()?;
 
         Ok(())
     }
@@ -739,6 +724,23 @@ trait NexusRegister: Sized + Copy + Debug {
 impl NexusRegister for DebugStatus {
     const ADDRESS: u8 = NARADR_DSR;
     const NAME: &'static str = "DebugStatus";
+
+    fn from_bits(bits: u32) -> Result<Self, XtensaError> {
+        Ok(Self(bits))
+    }
+
+    fn bits(&self) -> u32 {
+        self.0
+    }
+}
+
+/// Writes and executes DIR.
+#[derive(Copy, Clone, Debug)]
+struct OcdId(u32);
+
+impl NexusRegister for OcdId {
+    const ADDRESS: u8 = NARADR_OCDID;
+    const NAME: &'static str = "OCDID";
 
     fn from_bits(bits: u32) -> Result<Self, XtensaError> {
         Ok(Self(bits))
