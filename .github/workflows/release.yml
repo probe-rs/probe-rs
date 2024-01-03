@@ -42,7 +42,6 @@ on:
     tags:
       - '**[0-9]+.[0-9]+.[0-9]+*'
   pull_request:
-  workflow_dispatch:
 
 jobs:
   # Run 'cargo dist plan' (or host) to determine what tasks we need to do
