@@ -15,7 +15,7 @@ use crate::{
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
             CmsisDapError,
         },
-        BatchCommand,
+        BatchCommand, ProbeDriver,
     },
     CoreStatus, DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
 };
@@ -58,6 +58,26 @@ use std::{result::Result, time::Duration};
 use bitvec::prelude::*;
 
 use super::common::{extract_idcodes, extract_ir_lengths, ScanChainError};
+
+pub struct CmsisDapSource;
+
+impl std::fmt::Debug for CmsisDapSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CmsisDap").finish()
+    }
+}
+
+impl ProbeDriver for CmsisDapSource {
+    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+        Ok(Box::new(CmsisDap::new_from_device(
+            tools::open_device_from_selector(selector)?,
+        )?))
+    }
+
+    fn list_probes(&self) -> Vec<crate::DebugProbeInfo> {
+        tools::list_cmsisdap_devices()
+    }
+}
 
 pub struct CmsisDap {
     pub device: CmsisDapDevice,
@@ -700,17 +720,6 @@ impl CmsisDap {
 }
 
 impl DebugProbe for CmsisDap {
-    fn new_from_selector(
-        selector: impl Into<DebugProbeSelector>,
-    ) -> Result<Box<Self>, DebugProbeError>
-    where
-        Self: Sized,
-    {
-        Ok(Box::new(Self::new_from_device(
-            tools::open_device_from_selector(selector)?,
-        )?))
-    }
-
     fn get_name(&self) -> &str {
         "CMSIS-DAP"
     }

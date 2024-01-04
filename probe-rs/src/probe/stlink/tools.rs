@@ -1,7 +1,8 @@
 use rusb::Device;
 use rusb::UsbContext;
 
-use crate::probe::{DebugProbeInfo, DebugProbeType};
+use crate::probe::stlink::StLinkSource;
+use crate::probe::DebugProbeInfo;
 
 use super::usb_interface::USB_PID_EP_MAP;
 use super::usb_interface::USB_VID;
@@ -54,7 +55,7 @@ pub fn list_stlink_devices() -> Vec<DebugProbeInfo> {
                         descriptor.vendor_id(),
                         descriptor.product_id(),
                         sn_str,
-                        DebugProbeType::StLink,
+                        &StLinkSource,
                         None,
                     ))
                 })
