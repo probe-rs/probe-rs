@@ -1,1 +1,1 @@
-Extract DebugProbeSource from DebugProbe
+Extract ProbeDriver from DebugProbe
