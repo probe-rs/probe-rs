@@ -126,6 +126,15 @@ pub(crate) fn extract_idcodes(
     Ok(idcodes)
 }
 
+pub(crate) fn common_sequence<'a, S: BitStore>(
+    a: &'a BitSlice<S>,
+    b: &BitSlice<S>,
+) -> &'a BitSlice<S> {
+    let common_length = a.iter().zip(b.iter()).take_while(|(a, b)| *a == *b).count();
+
+    &a[..common_length]
+}
+
 /// Best-effort extraction of IR lengths from a test-logic-reset IR chain `ir`,
 /// which is known to contain `n_taps` TAPs (as discovered by scanning DR for IDCODEs).
 ///

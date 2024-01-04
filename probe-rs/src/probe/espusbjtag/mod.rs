@@ -12,7 +12,7 @@ use crate::{
         xtensa::communication_interface::XtensaCommunicationInterface,
     },
     probe::{
-        common::extract_ir_lengths,
+        common::{common_sequence, extract_ir_lengths},
         espusbjtag::protocol::{JtagState, RegisterState},
         DeferredResultSet, JtagCommandQueue,
     },
@@ -44,20 +44,11 @@ pub(crate) struct EspUsbJtag {
 }
 
 impl EspUsbJtag {
-    fn scan(&mut self) -> Result<Vec<super::JtagChainItem>, DebugProbeError> {
-        let chain = self.reset_scan()?;
-        Ok(chain
-            .0
-            .iter()
-            .zip(chain.1.iter())
-            .map(|(&id, &ir)| JtagChainItem {
-                irlen: ir,
-                idcode: id,
-            })
-            .collect())
+    fn scan(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError> {
+        self.reset_scan()
     }
 
-    fn reset_scan(&mut self) -> Result<(Vec<u32>, Vec<usize>), super::DebugProbeError> {
+    fn reset_scan(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError> {
         let max_chain = 8;
 
         self.jtag_reset()?;
@@ -92,8 +83,16 @@ impl EspUsbJtag {
             idcodes
         );
 
-        let input = Vec::from_iter(iter::repeat(0xffu8).take(idcodes.len()));
-        let mut response = self.write_ir(&input, idcodes.len() * 8, true).unwrap();
+        // First shift out all ones
+        let input = vec![0xff; idcodes.len()];
+        let response = self.write_ir(&input, input.len() * 8, true).unwrap();
+
+        // Next, shift out same amount of zeros, then ones to make sure the IRs contain BYPASS.
+        let input = iter::repeat(0)
+            .take(idcodes.len())
+            .chain(input.iter().copied())
+            .collect::<Vec<_>>();
+        let response_zeros = self.write_ir(&input, input.len() * 8, true).unwrap();
 
         let expected = if let Some(ref chain) = self.scan_chain {
             let expected = chain
@@ -101,19 +100,24 @@ impl EspUsbJtag {
                 .filter_map(|s| s.ir_len)
                 .map(|s| s as usize)
                 .collect::<Vec<usize>>();
-            response.truncate(expected.iter().sum());
             Some(expected)
         } else {
             None
         };
 
-        tracing::trace!("IR scan: {}", response.as_bitslice());
+        let response = response.as_bitslice();
+        let response = common_sequence(response, response_zeros.as_bitslice());
 
-        let ir_lens =
-            extract_ir_lengths(response.as_bitslice(), idcodes.len(), expected.as_deref()).unwrap();
-        tracing::trace!("Detected IR lens: {:?}", ir_lens);
+        tracing::debug!("IR scan: {}", response);
 
-        Ok((idcodes, ir_lens))
+        let ir_lens = extract_ir_lengths(response, idcodes.len(), expected.as_deref()).unwrap();
+        tracing::debug!("Detected IR lens: {:?}", ir_lens);
+
+        Ok(idcodes
+            .into_iter()
+            .zip(ir_lens)
+            .map(|(idcode, irlen)| JtagChainItem { irlen, idcode })
+            .collect())
     }
 
     /// Write IR register with the specified data. The
