@@ -15,6 +15,7 @@ use bitvec::{order::Lsb0, slice::BitSlice, vec::BitVec};
 use rusb::UsbContext;
 use std::convert::TryInto;
 use std::io::{self, Read, Write};
+use std::iter;
 use std::time::Duration;
 
 mod ftdi_impl;
@@ -252,14 +253,21 @@ impl JtagAdapter {
 
         self.reset()?;
 
-        let cmd = vec![0xff; max_device_count];
-        let r = self.transfer_ir(&cmd, cmd.len() * 8)?;
+        let input = vec![0xff; idcodes.len()];
+        let r = self.transfer_ir(&input, input.len() * 8)?;
+
+        let input = iter::repeat(0)
+            .take(idcodes.len())
+            .chain(input.iter().copied())
+            .collect::<Vec<_>>();
+        let r_zeros = self.transfer_ir(&input, input.len() * 8)?;
 
         let response = BitSlice::<u8, Lsb0>::from_slice(&r);
+        let response_zeros = BitSlice::<u8, Lsb0>::from_slice(&r_zeros);
 
         tracing::debug!("IR scan: {:?}", response);
 
-        let lengths = extract_ir_lengths(response, idcodes.len(), None).unwrap();
+        let lengths = extract_ir_lengths(response, response_zeros, idcodes.len(), None).unwrap();
         tracing::debug!("Detected IR lens: {:?}", lengths);
 
         Ok(idcodes

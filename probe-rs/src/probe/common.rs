@@ -143,10 +143,19 @@ pub(crate) fn extract_idcodes(
 ///
 /// Returns Vec<usize>, with an entry for each TAP.
 pub(crate) fn extract_ir_lengths(
-    ir: &BitSlice<u8>,
+    ir_ones: &BitSlice<u8>,
+    ir_zeros: &BitSlice<u8>,
     n_taps: usize,
     expected: Option<&[usize]>,
 ) -> Result<Vec<usize>, ScanChainError> {
+    let common_length = ir_ones
+        .iter()
+        .zip(ir_zeros.iter())
+        .take_while(|(a, b)| *a == *b)
+        .count();
+
+    let ir = &ir_ones[..common_length];
+
     // Find all `10` patterns which indicate potential IR start positions.
     let starts = ir
         .windows(2)
@@ -245,7 +254,7 @@ mod tests {
         let n_taps = 1;
         let expected = None;
 
-        let ir_lengths = extract_ir_lengths(ir, n_taps, expected).unwrap();
+        let ir_lengths = extract_ir_lengths(ir, ir, n_taps, expected).unwrap();
 
         assert_eq!(ir_lengths, vec![4]);
     }
@@ -259,7 +268,7 @@ mod tests {
         let n_taps = 2;
         let expected = None;
 
-        let ir_lengths = extract_ir_lengths(ir, n_taps, expected).unwrap();
+        let ir_lengths = extract_ir_lengths(ir, ir, n_taps, expected).unwrap();
 
         assert_eq!(ir_lengths, vec![4, 5]);
     }
