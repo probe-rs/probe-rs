@@ -94,6 +94,9 @@ fn starts_to_lengths(starts: &[usize], total: usize) -> Vec<usize> {
 /// We can therefore unambiguously scan through the DR capture to find
 /// all IDCODEs and TAPs in BYPASS.
 ///
+/// Because we don't know how many TAPs there are, we scan until we find
+/// a 32-bit IDCODE of all 1s, which comes after the last TAP in the chain.
+///
 /// Returns Vec<Option<IdCode>>, with None for TAPs in BYPASS.
 pub(crate) fn extract_idcodes(
     mut dr: &BitSlice<u8>,
@@ -108,6 +111,11 @@ pub(crate) fn extract_idcodes(
             }
 
             let idcode = dr[0..32].load_le::<u32>();
+
+            if idcode == u32::MAX {
+                break;
+            }
+
             let idcode = IdCode(idcode);
 
             if !idcode.valid() {
