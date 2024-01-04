@@ -14,7 +14,7 @@ use crate::{
     probe::{
         common::{common_sequence, extract_ir_lengths},
         espusbjtag::protocol::{JtagState, RegisterState},
-        DebugProbeSource, DeferredResultSet, JtagCommandQueue,
+        DeferredResultSet, JtagCommandQueue, ProbeDriver,
     },
     DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
 };
@@ -36,11 +36,8 @@ impl std::fmt::Debug for EspUsbJtagSource {
     }
 }
 
-impl DebugProbeSource for EspUsbJtagSource {
-    fn new_from_selector(
-        &self,
-        selector: &DebugProbeSelector,
-    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+impl ProbeDriver for EspUsbJtagSource {
+    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         let protocol = ProtocolHandler::new_from_selector(selector)?;
 
         Ok(Box::new(EspUsbJtag {

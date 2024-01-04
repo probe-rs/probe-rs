@@ -11,7 +11,7 @@ use crate::architecture::arm::{ArmError, RawDapAccess};
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
 use crate::probe::common::bits_to_byte;
-use crate::probe::DebugProbeSource;
+use crate::probe::ProbeDriver;
 use crate::{
     architecture::{
         arm::{
@@ -37,11 +37,8 @@ impl std::fmt::Debug for JLinkSource {
     }
 }
 
-impl DebugProbeSource for JLinkSource {
-    fn new_from_selector(
-        &self,
-        selector: &DebugProbeSelector,
-    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+impl ProbeDriver for JLinkSource {
+    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         let mut jlinks = jaylink::scan_usb()?
             .filter_map(|usb_info| {
                 if usb_info.vid() == selector.vendor_id && usb_info.pid() == selector.product_id {

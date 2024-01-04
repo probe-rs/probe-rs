@@ -6,7 +6,7 @@ use self::usb_interface::{StLinkUsb, StLinkUsbDevice};
 use super::{DebugProbe, DebugProbeError, ProbeCreationError, WireProtocol};
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::{valid_32bit_arm_address, ArmError};
-use crate::probe::DebugProbeSource;
+use crate::probe::ProbeDriver;
 use crate::{
     architecture::arm::{
         ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, IDR},
@@ -47,11 +47,8 @@ impl std::fmt::Debug for StLinkSource {
     }
 }
 
-impl DebugProbeSource for StLinkSource {
-    fn new_from_selector(
-        &self,
-        selector: &DebugProbeSelector,
-    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+impl ProbeDriver for StLinkSource {
+    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         let device = StLinkUsbDevice::new_from_selector(selector)?;
         let mut stlink = StLink {
             name: format!("ST-Link {}", &device.info.version_name),

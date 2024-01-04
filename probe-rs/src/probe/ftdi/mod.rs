@@ -6,8 +6,8 @@ use crate::architecture::{
 };
 use crate::probe::common::{common_sequence, extract_ir_lengths};
 use crate::probe::{
-    DebugProbe, DebugProbeSource, DeferredResultSet, JTAGAccess, JtagCommandQueue,
-    ProbeCreationError, ScanChainElement,
+    DebugProbe, DeferredResultSet, JTAGAccess, JtagCommandQueue, ProbeCreationError, ProbeDriver,
+    ScanChainElement,
 };
 use crate::{DebugProbeError, DebugProbeInfo, DebugProbeSelector, WireProtocol};
 use bitvec::{order::Lsb0, slice::BitSlice, vec::BitVec};
@@ -379,11 +379,8 @@ impl std::fmt::Debug for FtdiProbeSource {
     }
 }
 
-impl DebugProbeSource for FtdiProbeSource {
-    fn new_from_selector(
-        &self,
-        selector: &DebugProbeSelector,
-    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+impl ProbeDriver for FtdiProbeSource {
+    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         // Only open FTDI-compatible probes
         if !FTDI_COMPAT_DEVICE_IDS.contains(&(selector.vendor_id, selector.product_id)) {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(

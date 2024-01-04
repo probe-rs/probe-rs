@@ -1,5 +1,5 @@
 use crate::{
-    probe::DebugProbeSource, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe,
+    probe::ProbeDriver, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe,
     ProbeCreationError,
 };
 
@@ -75,7 +75,7 @@ impl Default for AllProbesLister {
 }
 
 impl AllProbesLister {
-    const SOURCES: &'static [&'static dyn DebugProbeSource] = &[
+    const DRIVERS: &'static [&'static dyn ProbeDriver] = &[
         &cmsisdap::CmsisDapSource,
         #[cfg(feature = "ftdi")]
         &ftdi::FtdiProbeSource,
@@ -92,8 +92,8 @@ impl AllProbesLister {
     fn open(selector: impl Into<DebugProbeSelector>) -> Result<Probe, DebugProbeError> {
         let selector = selector.into();
 
-        for probe_ctor in Self::SOURCES {
-            match probe_ctor.new_from_selector(&selector) {
+        for probe_ctor in Self::DRIVERS {
+            match probe_ctor.open(&selector) {
                 Ok(link) => return Ok(Probe::from_specific_probe(link)),
                 Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
                 Err(e) => return Err(e),
@@ -108,7 +108,7 @@ impl AllProbesLister {
     fn list_all() -> Vec<DebugProbeInfo> {
         let mut list = vec![];
 
-        for driver in Self::SOURCES {
+        for driver in Self::DRIVERS {
             list.extend(driver.list_probes());
         }
 

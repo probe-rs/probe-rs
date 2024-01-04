@@ -15,7 +15,7 @@ use crate::{
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
             CmsisDapError,
         },
-        BatchCommand, DebugProbeSource,
+        BatchCommand, ProbeDriver,
     },
     CoreStatus, DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
 };
@@ -67,11 +67,8 @@ impl std::fmt::Debug for CmsisDapSource {
     }
 }
 
-impl DebugProbeSource for CmsisDapSource {
-    fn new_from_selector(
-        &self,
-        selector: &DebugProbeSelector,
-    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+impl ProbeDriver for CmsisDapSource {
+    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         Ok(Box::new(CmsisDap::new_from_device(
             tools::open_device_from_selector(selector)?,
         )?))

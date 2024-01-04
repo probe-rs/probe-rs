@@ -11,7 +11,7 @@ use rusb::{Device, UsbContext};
 
 use crate::{
     architecture::riscv::communication_interface::{RiscvCommunicationInterface, RiscvError},
-    probe::DebugProbeSource,
+    probe::ProbeDriver,
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
     WireProtocol,
 };
@@ -155,11 +155,8 @@ impl std::fmt::Debug for WchLinkSource {
     }
 }
 
-impl DebugProbeSource for WchLinkSource {
-    fn new_from_selector(
-        &self,
-        selector: &DebugProbeSelector,
-    ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+impl ProbeDriver for WchLinkSource {
+    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         let device = WchLinkUsbDevice::new_from_selector(selector)?;
         let mut wlink = WchLink {
             device,

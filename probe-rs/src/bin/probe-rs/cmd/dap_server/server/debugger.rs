@@ -920,31 +920,34 @@ mod test {
         integration::{FakeProbe, Operation},
         Lister,
     };
-    use probe_rs::{DebugProbeInfo, DebugProbeSource};
+    use probe_rs::{DebugProbeInfo, ProbeDriver};
     use serde_json::json;
     use time::UtcOffset;
 
-    use crate::cmd::dap_server::debug_adapter::dap::dap_types::{
-        DisconnectArguments, ErrorResponseBody, Message, Response, Thread, ThreadsResponseBody,
-    };
-    use crate::cmd::dap_server::server::configuration::{ConsoleLog, CoreConfig, FlashingConfig};
     use crate::cmd::dap_server::{
         debug_adapter::{
             dap::{
                 adapter::DebugAdapter,
-                dap_types::{Capabilities, InitializeRequestArguments, Request},
+                dap_types::{
+                    Capabilities, DisconnectArguments, ErrorResponseBody,
+                    InitializeRequestArguments, Message, Request, Response, Thread,
+                    ThreadsResponseBody,
+                },
             },
             protocol::ProtocolAdapter,
         },
-        server::{configuration::SessionConfig, debugger::DebugSessionStatus},
+        server::{
+            configuration::{ConsoleLog, CoreConfig, FlashingConfig, SessionConfig},
+            debugger::DebugSessionStatus,
+        },
         test::TestLister,
     };
 
     #[derive(Debug)]
     struct MockProbeSource;
 
-    impl DebugProbeSource for MockProbeSource {
-        fn new_from_selector(
+    impl ProbeDriver for MockProbeSource {
+        fn open(
             &self,
             _selector: &probe_rs::DebugProbeSelector,
         ) -> Result<Box<dyn probe_rs::DebugProbe>, probe_rs::DebugProbeError> {
