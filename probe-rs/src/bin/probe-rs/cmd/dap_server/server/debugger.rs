@@ -1986,7 +1986,21 @@ mod test {
                     end_column: None,
                     module_id: None,
                     end_line: None,
-                },];
+                },
+                StackFrame {
+                    can_restart: Some(false),
+                    column: 0,
+                    id: 30,
+                    instruction_pointer_reference: Some("0x0000013c".to_string()),
+                    line: 0,
+                    name: "<unknown function @ 0x0000013c>".to_string(),
+                    presentation_hint: Some("normal".to_string()),
+                    source: None,
+                    end_column: None,
+                    module_id: None,
+                    end_line: None,
+                },
+            ];
 
         protocol_adapter
             .add_request("stackTrace")
@@ -1999,7 +2013,7 @@ mod test {
             .and_succesful_response()
             .with_body(StackTraceResponseBody {
                 stack_frames: all_frames.to_vec(),
-                total_frames: Some(9),
+                total_frames: Some(10),
             });
 
         protocol_adapter
@@ -2013,7 +2027,7 @@ mod test {
             .and_succesful_response()
             .with_body(StackTraceResponseBody {
                 stack_frames: all_frames[1..].to_vec(),
-                total_frames: Some(9),
+                total_frames: Some(10),
             });
 
         protocol_adapter
@@ -2027,7 +2041,7 @@ mod test {
             .and_succesful_response()
             .with_body(StackTraceResponseBody {
                 stack_frames: all_frames[3..].to_vec(),
-                total_frames: Some(9),
+                total_frames: Some(10),
             });
 
         protocol_adapter
