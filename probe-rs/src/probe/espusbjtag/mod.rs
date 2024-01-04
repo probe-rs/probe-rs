@@ -44,20 +44,11 @@ pub(crate) struct EspUsbJtag {
 }
 
 impl EspUsbJtag {
-    fn scan(&mut self) -> Result<Vec<super::JtagChainItem>, DebugProbeError> {
-        let chain = self.reset_scan()?;
-        Ok(chain
-            .0
-            .iter()
-            .zip(chain.1.iter())
-            .map(|(&id, &ir)| JtagChainItem {
-                irlen: ir,
-                idcode: id,
-            })
-            .collect())
+    fn scan(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError> {
+        self.reset_scan()
     }
 
-    fn reset_scan(&mut self) -> Result<(Vec<u32>, Vec<usize>), super::DebugProbeError> {
+    fn reset_scan(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError> {
         let max_chain = 8;
 
         self.jtag_reset()?;
@@ -107,13 +98,17 @@ impl EspUsbJtag {
             None
         };
 
-        tracing::trace!("IR scan: {}", response.as_bitslice());
+        let response = response.as_bitslice();
+        tracing::debug!("IR scan: {}", response);
 
-        let ir_lens =
-            extract_ir_lengths(response.as_bitslice(), idcodes.len(), expected.as_deref()).unwrap();
-        tracing::trace!("Detected IR lens: {:?}", ir_lens);
+        let ir_lens = extract_ir_lengths(response, idcodes.len(), expected.as_deref()).unwrap();
+        tracing::debug!("Detected IR lens: {:?}", ir_lens);
 
-        Ok((idcodes, ir_lens))
+        Ok(idcodes
+            .into_iter()
+            .zip(ir_lens.into_iter())
+            .map(|(idcode, irlen)| JtagChainItem { irlen, idcode })
+            .collect())
     }
 
     /// Write IR register with the specified data. The
