@@ -144,7 +144,7 @@ bytesize = { version = "1", optional = true }
 capstone = { version = "0.11.0", optional = true }
 cargo_metadata = { version = "0.18.1", optional = true }
 cargo_toml = { version = "0.17.2", optional = true }
-clap = { version = "4.4", features = ["derive"], optional = true }
+clap = { version = "4.4", features = ["derive", "env"], optional = true }
 colored = { version = "2.1.0", optional = true }
 crossterm = { version = "<= 0.27.0", optional = true }
 defmt-decoder = { version = "0.3.9", features = ["unstable"], optional = true }
@@ -209,9 +209,6 @@ itm = { version = "0.9.0-rc.1", default-features = false }
 pretty_assertions = "1.4.0"
 test-case = "3"
 termtree = "0.4.1"
-
-# Enable the test feature for dev builds
-probe-rs = { version = "0.22.0", path = ".", features = ["test"] }
 
 [[package.metadata.release.pre-release-replacements]]
 file = "../CHANGELOG.md"

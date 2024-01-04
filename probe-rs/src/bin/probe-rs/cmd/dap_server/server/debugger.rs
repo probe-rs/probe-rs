@@ -928,9 +928,12 @@ mod test {
     use std::collections::{BTreeMap, HashMap, VecDeque};
     use std::path::PathBuf;
 
-    use probe_rs::architecture::arm::ApAddress;
-    use probe_rs::{CoreDump, DebugProbeInfo, FakeProbe, MockCore, MockCoreState};
-    use probe_rs::{Lister, ProbeOperation};
+    use probe_rs::integration::{MockCore, MockCoreState};
+    use probe_rs::{
+        architecture::arm::ApAddress,
+        integration::{FakeProbe, Operation},
+        CoreDump, DebugProbeInfo, Lister,
+    };
     use serde_json::json;
     use time::UtcOffset;
 
@@ -1366,7 +1369,7 @@ mod test {
         let fake_probe = FakeProbe::with_mocked_core(MockCore::new(MockCoreState::Running));
 
         // Indicate that the core is unlocked
-        fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
             ap: ApAddress::with_default_dp(1),
             address: 0xC,
             result: 1,
@@ -1444,7 +1447,7 @@ mod test {
         let fake_probe = FakeProbe::with_mocked_core(MockCore::new(MockCoreState::Running));
 
         // Indicate that the core is unlocked
-        fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
             ap: ApAddress::with_default_dp(1),
             address: 0xC,
             result: 1,
@@ -1500,7 +1503,7 @@ mod test {
         let fake_probe = FakeProbe::with_mocked_core(MockCore::new(MockCoreState::Running));
 
         // Indicate that the core is unlocked
-        fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
             ap: ApAddress::with_default_dp(1),
             address: 0xC,
             result: 1,
@@ -1574,7 +1577,7 @@ mod test {
         let fake_probe = FakeProbe::with_mocked_core(MockCore::new(MockCoreState::Running));
 
         // Indicate that the core is unlocked
-        fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
             ap: ApAddress::with_default_dp(1),
             address: 0xC,
             result: 1,
@@ -1648,7 +1651,7 @@ mod test {
         let fake_probe = FakeProbe::with_mocked_core(MockCore::new(MockCoreState::Running));
 
         // Indicate that the core is unlocked
-        fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
             ap: ApAddress::with_default_dp(1),
             address: 0xC,
             result: 1,
@@ -1740,7 +1743,7 @@ mod test {
         let fake_probe = FakeProbe::with_mocked_core(MockCore::new(MockCoreState::Running));
 
         // Indicate that the core is unlocked
-        fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
             ap: ApAddress::with_default_dp(1),
             address: 0xC,
             result: 1,
@@ -2138,7 +2141,7 @@ mod test {
         let fake_probe = FakeProbe::with_mocked_core(core);
 
         // Indicate that the core is unlocked
-        fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
             ap: ApAddress::with_default_dp(1),
             address: 0xC,
             result: 1,

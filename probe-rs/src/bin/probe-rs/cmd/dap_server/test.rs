@@ -1,7 +1,8 @@
 use std::cell::RefCell;
 
 use probe_rs::{
-    DebugProbeError, DebugProbeInfo, DebugProbeSelector, FakeProbe, Probe, ProbeLister,
+    integration::{FakeProbe, ProbeLister},
+    DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe,
 };
 
 #[derive(Debug)]

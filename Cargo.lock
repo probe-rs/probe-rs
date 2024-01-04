@@ -2545,7 +2545,6 @@ dependencies = [
  "paste",
  "pretty_assertions",
  "pretty_env_logger",
- "probe-rs",
  "probe-rs-target",
  "rand",
  "ratatui",

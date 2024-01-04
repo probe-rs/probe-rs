@@ -10,7 +10,7 @@ use crate::{
         instruction::Instruction, CpuRegister, Register, SpecialRegister,
     },
     probe::{DeferredResultIndex, JTAGAccess},
-    BreakpointCause, DebugProbeError, Error as ProbeRsError, HaltReason, MemoryInterface,
+    BreakpointCause, DebugProbeError, Error as ProbeRsError, HaltReason, MemoryInterface, Probe,
 };
 
 use super::xdm::{Error as XdmError, Xdm};
@@ -128,6 +128,16 @@ impl XtensaCommunicationInterface {
 
             Err(e) => Err((s.xdm.free(), e.into())),
         }
+    }
+
+    /// Destruct the interface and return the stored probe driver.
+    pub fn close(self) -> Probe {
+        Probe::from_attached_probe(self.xdm.probe.into_probe())
+    }
+
+    /// Read the targets IDCODE.
+    pub fn read_idcode(&mut self) -> Result<u32, DebugProbeError> {
+        Ok(self.xdm.read_idcode()?)
     }
 
     fn init(&mut self) -> Result<(), XtensaError> {
