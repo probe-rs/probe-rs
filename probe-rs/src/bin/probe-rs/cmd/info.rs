@@ -406,7 +406,7 @@ fn print_idcode_info(architecture: &str, idcode: u32) {
     let manufacturer_id = (idcode >> 1) & 0x7ff;
 
     let jep_cc = (manufacturer_id >> 7) & 0xf;
-    let jep_id = manufacturer_id & 0x3f;
+    let jep_id = manufacturer_id & 0x7f;
 
     let jep_id = jep106::JEP106Code::new(jep_cc as u8, jep_id as u8);
 
