@@ -12,7 +12,7 @@ use crate::{
         xtensa::communication_interface::XtensaCommunicationInterface,
     },
     probe::{
-        common::extract_ir_lengths,
+        common::{common_sequence, extract_ir_lengths},
         espusbjtag::protocol::{JtagState, RegisterState},
         DeferredResultSet, JtagCommandQueue,
     },
@@ -106,20 +106,16 @@ impl EspUsbJtag {
         };
 
         let response = response.as_bitslice();
+        let response = common_sequence(response, response_zeros.as_bitslice());
+
         tracing::debug!("IR scan: {}", response);
 
-        let ir_lens = extract_ir_lengths(
-            response,
-            response_zeros.as_bitslice(),
-            idcodes.len(),
-            expected.as_deref(),
-        )
-        .unwrap();
+        let ir_lens = extract_ir_lengths(response, idcodes.len(), expected.as_deref()).unwrap();
         tracing::debug!("Detected IR lens: {:?}", ir_lens);
 
         Ok(idcodes
             .into_iter()
-            .zip(ir_lens.into_iter())
+            .zip(ir_lens)
             .map(|(idcode, irlen)| JtagChainItem { irlen, idcode })
             .collect())
     }

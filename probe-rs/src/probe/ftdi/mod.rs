@@ -4,7 +4,7 @@ use crate::architecture::{
     arm::communication_interface::UninitializedArmProbe,
     riscv::communication_interface::RiscvCommunicationInterface,
 };
-use crate::probe::common::extract_ir_lengths;
+use crate::probe::common::{common_sequence, extract_ir_lengths};
 use crate::probe::{
     DeferredResultSet, JTAGAccess, JtagCommandQueue, ProbeCreationError, ScanChainElement,
 };
@@ -265,14 +265,15 @@ impl JtagAdapter {
         let response = BitSlice::<u8, Lsb0>::from_slice(&r);
         let response_zeros = BitSlice::<u8, Lsb0>::from_slice(&r_zeros);
 
+        let response = common_sequence(response, response_zeros);
         tracing::debug!("IR scan: {:?}", response);
 
-        let lengths = extract_ir_lengths(response, response_zeros, idcodes.len(), None).unwrap();
+        let lengths = extract_ir_lengths(response, idcodes.len(), None).unwrap();
         tracing::debug!("Detected IR lens: {:?}", lengths);
 
         Ok(idcodes
             .into_iter()
-            .zip(lengths.into_iter())
+            .zip(lengths)
             .map(|(idcode, irlen)| JtagChainItem { idcode, irlen })
             .collect())
     }

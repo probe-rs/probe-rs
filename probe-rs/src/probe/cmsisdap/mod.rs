@@ -208,7 +208,7 @@ impl CmsisDap {
     fn jtag_scan(&mut self, ir_lengths: Option<&[usize]>) -> Result<JtagChain, CmsisDapError> {
         let (ir, dr) = self.jtag_reset_scan()?;
         let idcodes = extract_idcodes(&dr)?;
-        let irlens = extract_ir_lengths(&ir, &ir, idcodes.len(), ir_lengths)?;
+        let irlens = extract_ir_lengths(&ir, idcodes.len(), ir_lengths)?;
 
         let chain = JtagChain { irlens };
 
