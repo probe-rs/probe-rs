@@ -1,6 +1,6 @@
 mod protocol;
 
-use std::{convert::TryInto, iter};
+use std::iter;
 
 use crate::{
     architecture::{
@@ -12,7 +12,7 @@ use crate::{
         xtensa::communication_interface::XtensaCommunicationInterface,
     },
     probe::{
-        common::{common_sequence, extract_ir_lengths},
+        common::{common_sequence, extract_idcodes, extract_ir_lengths},
         espusbjtag::protocol::{JtagState, RegisterState},
         DeferredResultSet, JtagCommandQueue, ProbeDriver,
     },
@@ -47,13 +47,7 @@ impl ProbeDriver for EspUsbJtagSource {
             // default to 5, as most Espressif chips have an irlen of 5
             max_ir_address: 5,
             scan_chain: None,
-            chain_params: ChainParams {
-                irpre: 0,
-                irpost: 0,
-                drpre: 0,
-                drpost: 0,
-                irlen: 0,
-            },
+            chain_params: ChainParams::default(),
         }))
     }
 
@@ -86,29 +80,15 @@ impl EspUsbJtag {
 
         self.jtag_reset()?;
 
-        self.chain_params = ChainParams {
-            irpre: 0,
-            irpost: 0,
-            drpre: 0,
-            drpost: 0,
-            irlen: 0,
-        };
+        self.chain_params = ChainParams::default();
 
-        let input = Vec::from_iter(iter::repeat(0xFFu8).take(4 * max_chain));
-        let response = self.write_dr(&input, 4 * max_chain * 8).unwrap();
+        let input = vec![0xFF; 4 * max_chain];
+        let response = self.write_dr(&input, input.len() * 8).unwrap();
 
-        tracing::trace!("DR: {:?}", response);
+        tracing::debug!("DR: {:?}", response);
 
-        let mut idcodes = Vec::new();
-
-        for idcode in response.chunks(4) {
-            assert_eq!(idcode.len(), 4, "Bad length");
-
-            if idcode == [0xFF, 0xFF, 0xFF, 0xFF] {
-                break;
-            }
-            idcodes.push(u32::from_le_bytes((idcode).try_into().unwrap()));
-        }
+        let idcodes = extract_idcodes(BitSlice::<u8, Lsb0>::from_slice(&response))
+            .map_err(|e| DebugProbeError::Other(e.into()))?;
 
         tracing::info!(
             "JTAG DR scan complete, found {} TAPs. {:?}",
@@ -493,7 +473,7 @@ impl DebugProbe for EspUsbJtag {
         Ok(())
     }
 
-    fn attach(&mut self) -> Result<(), super::DebugProbeError> {
+    fn attach(&mut self) -> Result<(), DebugProbeError> {
         tracing::debug!("Attaching to ESP USB JTAG");
 
         let taps = self.scan()?;
@@ -501,31 +481,12 @@ impl DebugProbe for EspUsbJtag {
 
         let selected = 0;
         if taps.len() > 1 {
-            tracing::warn!("More than one TAP detected, defaulting to tap0")
+            tracing::warn!("More than one TAP detected, defaulting to tap0");
         }
 
-        let mut params = ChainParams {
-            irpre: 0,
-            irpost: 0,
-            drpre: 0,
-            drpost: 0,
-            irlen: 0,
+        let Some(params) = ChainParams::from_jtag_chain(&taps, selected) else {
+            return Err(DebugProbeError::TargetNotFound);
         };
-
-        let mut found = false;
-        for (index, tap) in taps.iter().enumerate() {
-            tracing::info!("{:?}", tap);
-            if index == selected {
-                params.irlen = tap.irlen;
-                found = true;
-            } else if found {
-                params.irpost += tap.irlen;
-                params.drpost += 1;
-            } else {
-                params.irpre += tap.irlen;
-                params.drpre += 1;
-            }
-        }
 
         tracing::info!("Setting chain params: {:?}", params);
 
@@ -541,8 +502,8 @@ impl DebugProbe for EspUsbJtag {
         Ok(())
     }
 
-    fn target_reset(&mut self) -> Result<(), super::DebugProbeError> {
-        Err(super::DebugProbeError::NotImplemented("target_reset"))
+    fn target_reset(&mut self) -> Result<(), DebugProbeError> {
+        Err(DebugProbeError::NotImplemented("target_reset"))
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
