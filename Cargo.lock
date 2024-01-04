@@ -1997,18 +1997,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af150ab688ff2122fcef229be89cb50dd66af9e01a4ff320cc137eecc9bacc38"
 
 [[package]]
-name = "jaylink"
-version = "0.3.0"
-source = "git+https://github.com/Dirbaio/jaylink?rev=15001acd2f3443423ee6994e039743aa0059a061#15001acd2f3443423ee6994e039743aa0059a061"
-dependencies = [
- "bitflags 1.3.2",
- "byteorder",
- "futures-lite 1.13.0",
- "log",
- "nusb",
-]
-
-[[package]]
 name = "jep106"
 version = "0.2.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2666,8 +2654,10 @@ dependencies = [
  "base64",
  "bincode",
  "bitfield",
+ "bitflags 1.3.2",
  "bitvec",
  "byte-unit",
+ "byteorder",
  "bytesize",
  "capstone",
  "cargo_metadata",
@@ -2695,7 +2685,6 @@ dependencies = [
  "is-terminal",
  "itertools 0.12.0",
  "itm",
- "jaylink",
  "jep106",
  "kmp",
  "libftdi1-sys",
