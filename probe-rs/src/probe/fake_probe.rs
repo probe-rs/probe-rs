@@ -70,15 +70,13 @@ impl MockCore {
             is_halted = true;
         }
 
-        let core = Self {
+        Self {
             dhcsr,
             is_halted,
             dfsr: Dfsr::from(0),
             dcsr: Dcrsr::from(0),
             memory: None,
-        };
-
-        core
+        }
     }
 
     pub fn add_core_dump(&mut self, dump: CoreDump) {
@@ -160,7 +158,7 @@ impl ArmProbe for &mut MockCore {
 
                 _ => {
                     if let Some(core_dump) = &mut self.memory {
-                        let value = core_dump.read_word_32(address as u64).unwrap_or_default();
+                        let value = core_dump.read_word_32(address).unwrap_or_default();
                         *val = value;
                         println!("Read  {:#010x} = {:#010x}", address, val);
                     } else {

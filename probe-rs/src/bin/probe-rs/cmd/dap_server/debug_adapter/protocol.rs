@@ -241,7 +241,7 @@ where
             }
         }
 
-        result.map_err(|e| e.into())
+        result
     }
 }
 
