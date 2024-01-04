@@ -168,7 +168,7 @@ impl Xdm {
         tracing::trace!("Waiting for power domain to turn on");
         let now = std::time::Instant::now();
         loop {
-            let bits = self.pwr_read(PowerDevice::PowerStat)?;
+            let bits = self.pwr_write(PowerDevice::PowerStat, 0)?;
             if PowerStatus(bits).debug_domain_on() {
                 break;
             }
@@ -184,14 +184,19 @@ impl Xdm {
         self.pwr_write(PowerDevice::PowerControl, pwr_control.0)?;
 
         // enable the debug module
-        self.dbg_write(NARADR_DCRSET, 1)?;
+        self.write_nexus_register(DebugControlSet({
+            let mut reg = DebugControlBits(0);
+            reg.set_enable_ocd(true);
+            reg
+        }))?;
 
         // read the device_id
-        let device_id = self.dbg_read(NARADR_OCDID)?;
+        let device_id = self.read_nexus_register::<OcdId>()?.0;
 
         if device_id == 0 || device_id == !0 {
             return Err(DebugProbeError::TargetNotFound.into());
         }
+        tracing::info!("Found Xtensa device with OCDID: 0x{:08X}", device_id);
 
         let status = self.status()?;
         tracing::debug!("{:?}", status);
@@ -211,8 +216,6 @@ impl Xdm {
         })?;
 
         // TODO check status and clear bits if required
-
-        tracing::info!("Found Xtensa device with OCDID: 0x{:08X}", device_id);
         self.device_id = device_id;
 
         Ok(())
@@ -228,20 +231,6 @@ impl Xdm {
         })?;
 
         Ok(())
-    }
-
-    fn tap_write(&mut self, instr: TapInstruction, data: u32) -> Result<u32, DebugProbeError> {
-        let capture = self
-            .probe
-            .write_register(instr.code(), &data.to_le_bytes(), instr.bits())?;
-
-        Ok(instr.capture_to_u32(&capture))
-    }
-
-    fn tap_read(&mut self, instr: TapInstruction) -> Result<u32, DebugProbeError> {
-        let capture = self.probe.read_register(instr.code(), instr.bits())?;
-
-        Ok(instr.capture_to_u32(&capture))
     }
 
     pub(super) fn execute(&mut self) -> Result<(), XtensaError> {
@@ -278,25 +267,6 @@ impl Xdm {
                 self.jtag_results.merge_from(e.results);
             }
         }
-
-        Ok(())
-    }
-
-    /// Perform an access to a register
-    fn dbg_read(&mut self, address: u8) -> Result<u32, XtensaError> {
-        let reader = self.schedule_dbg_read(address);
-
-        let res = self.read_deferred_result(reader)?.as_u32();
-
-        tracing::trace!("dbg_read response: {:?}", res);
-
-        Ok(res)
-    }
-
-    /// Perform an access to a register
-    fn dbg_write(&mut self, address: u8, value: u32) -> Result<(), XtensaError> {
-        self.schedule_dbg_write(address, value);
-        self.execute()?;
 
         Ok(())
     }
@@ -372,17 +342,17 @@ impl Xdm {
     }
 
     fn pwr_write(&mut self, dev: PowerDevice, value: u8) -> Result<u8, XtensaError> {
-        let res = self.tap_write(dev.into(), value as u32)?;
+        let instr = TapInstruction::from(dev);
+
+        let capture = self
+            .probe
+            .write_register(instr.code(), &[value], instr.bits())?;
+
+        let res = instr.capture_to_u8(&capture);
+
         tracing::trace!("pwr_write response: {:?}", res);
 
-        Ok(res as u8)
-    }
-
-    fn pwr_read(&mut self, dev: PowerDevice) -> Result<u8, XtensaError> {
-        let res = self.tap_read(dev.into())?;
-        tracing::trace!("pwr_read response: {:?}", res);
-
-        Ok(res as u8)
+        Ok(res)
     }
 
     fn schedule_read_nexus_register<R: NexusRegister>(&mut self) -> DeferredResultIndex {
@@ -739,6 +709,23 @@ trait NexusRegister: Sized + Copy + Debug {
 impl NexusRegister for DebugStatus {
     const ADDRESS: u8 = NARADR_DSR;
     const NAME: &'static str = "DebugStatus";
+
+    fn from_bits(bits: u32) -> Result<Self, XtensaError> {
+        Ok(Self(bits))
+    }
+
+    fn bits(&self) -> u32 {
+        self.0
+    }
+}
+
+/// Writes and executes DIR.
+#[derive(Copy, Clone, Debug)]
+struct OcdId(u32);
+
+impl NexusRegister for OcdId {
+    const ADDRESS: u8 = NARADR_OCDID;
+    const NAME: &'static str = "OCDID";
 
     fn from_bits(bits: u32) -> Result<Self, XtensaError> {
         Ok(Self(bits))
