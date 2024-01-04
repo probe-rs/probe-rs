@@ -387,20 +387,7 @@ fn cpu_info_tree(scs: &mut Scs) -> Result<Tree<String>> {
 fn show_riscv_info(interface: &mut RiscvCommunicationInterface) -> Result<()> {
     let idcode = interface.read_idcode()?;
 
-    let version = (idcode >> 28) & 0xf;
-    let part_number = (idcode >> 12) & 0xffff;
-    let manufacturer_id = (idcode >> 1) & 0x7ff;
-
-    let jep_cc = (manufacturer_id >> 7) & 0xf;
-    let jep_id = manufacturer_id & 0x3f;
-
-    let jep_id = jep106::JEP106Code::new(jep_cc as u8, jep_id as u8);
-
-    println!("RISC-V Chip:");
-    println!("\tIDCODE: {idcode:010x}");
-    println!("\t Version:      {version}");
-    println!("\t Part:         {part_number}");
-    println!("\t Manufacturer: {manufacturer_id} ({jep_id})");
+    print_idcode_info("RISC-V", idcode);
 
     Ok(())
 }
@@ -408,6 +395,12 @@ fn show_riscv_info(interface: &mut RiscvCommunicationInterface) -> Result<()> {
 fn show_xtensa_info(interface: &mut XtensaCommunicationInterface) -> Result<()> {
     let idcode = interface.read_idcode()?;
 
+    print_idcode_info("Xtensa", idcode);
+
+    Ok(())
+}
+
+fn print_idcode_info(architecture: &str, idcode: u32) {
     let version = (idcode >> 28) & 0xf;
     let part_number = (idcode >> 12) & 0xffff;
     let manufacturer_id = (idcode >> 1) & 0x7ff;
@@ -417,11 +410,9 @@ fn show_xtensa_info(interface: &mut XtensaCommunicationInterface) -> Result<()> 
 
     let jep_id = jep106::JEP106Code::new(jep_cc as u8, jep_id as u8);
 
-    println!("Xtensa Chip:");
-    println!("\tIDCODE: {idcode:010x}");
-    println!("\t Version:      {version}");
-    println!("\t Part:         {part_number}");
-    println!("\t Manufacturer: {manufacturer_id} ({jep_id})");
-
-    Ok(())
+    println!("{architecture} Chip:");
+    println!("  IDCODE: {idcode:010x}");
+    println!("    Version:      {version}");
+    println!("    Part:         {part_number}");
+    println!("    Manufacturer: {manufacturer_id} ({jep_id})");
 }
