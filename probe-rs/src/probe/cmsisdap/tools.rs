@@ -73,8 +73,19 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
     let config_descriptor = device.active_config_descriptor().ok()?;
     let mut cmsis_dap_interface = false;
     let mut hid_interface = None;
-    for interface in config_descriptor.interfaces() {
+    'outer: for interface in config_descriptor.interfaces() {
         for descriptor in interface.descriptors() {
+            let is_hid_descriptor = descriptor.class_code() == LIBUSB_CLASS_HID;
+
+            // Do not read iface strings if we already found a CMSIS-DAP interface,
+            // or if we are looking for a HID interface and this is not one.
+            let read_iface_strings =
+                is_hid_descriptor || !(cmsis_dap_interface || cmsis_dap_product);
+
+            if !read_iface_strings {
+                continue;
+            }
+
             let Ok(interface_desc) = handle.read_interface_string(language, &descriptor, timeout)
             else {
                 tracing::trace!(
@@ -87,10 +98,10 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
             if is_cmsis_dap(&interface_desc) {
                 tracing::trace!("  Interface {}: {}", interface.number(), interface_desc);
                 cmsis_dap_interface = true;
-                if descriptor.class_code() == LIBUSB_CLASS_HID {
+                if is_hid_descriptor {
                     tracing::trace!("    HID interface found");
                     hid_interface = Some(interface.number());
-                    break;
+                    break 'outer;
                 }
             }
         }
