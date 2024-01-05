@@ -75,16 +75,13 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
     let mut hid_interface = None;
     for interface in config_descriptor.interfaces() {
         for descriptor in interface.descriptors() {
-            let interface_desc = match handle.read_interface_string(language, &descriptor, timeout)
-            {
-                Ok(desc) => desc,
-                Err(_) => {
-                    tracing::trace!(
-                        "Could not read string for interface {}, skipping",
-                        interface.number()
-                    );
-                    continue;
-                }
+            let Ok(interface_desc) = handle.read_interface_string(language, &descriptor, timeout)
+            else {
+                tracing::trace!(
+                    "Could not read string for interface {}, skipping",
+                    interface.number()
+                );
+                continue;
             };
 
             if is_cmsis_dap(&interface_desc) {
