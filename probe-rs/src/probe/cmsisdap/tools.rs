@@ -93,6 +93,7 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
                 if descriptor.class_code() == LIBUSB_CLASS_HID {
                     tracing::trace!("    HID interface found");
                     hid_interface = Some(interface.number());
+                    break;
                 }
             }
         }
