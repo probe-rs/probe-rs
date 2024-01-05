@@ -106,7 +106,8 @@ object = { version = "0.32.2", default-features = false, features = [
     "std",
 ] }
 paste = "1.0.14"
-nusb = { version = "0.1.3" }
+#nusb = { version = "0.1.3" }
+nusb = { git = "https://github.com/kevinmehall/nusb", rev = "131e0461ed41ba3fb7de13a8ae92d2bba28c876a"}
 futures-lite = "1.13.0"
 async-io = "2.1.0"
 scroll = "0.12.0"
