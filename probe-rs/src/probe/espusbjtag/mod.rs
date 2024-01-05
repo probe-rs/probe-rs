@@ -81,7 +81,7 @@ impl EspUsbJtag {
         self.chain_params = ChainParams::default();
 
         let input = vec![0xFF; 4 * max_chain];
-        let response = self.write_dr(&input, input.len() * 8).unwrap();
+        let response = self.write_dr(&input, input.len() * 8)?;
 
         tracing::debug!("DR: {:?}", response);
 
@@ -96,14 +96,14 @@ impl EspUsbJtag {
 
         // First shift out all ones
         let input = vec![0xff; idcodes.len()];
-        let response = self.write_ir(&input, input.len() * 8, true).unwrap();
+        let response = self.write_ir(&input, input.len() * 8, true)?;
 
         // Next, shift out same amount of zeros, then ones to make sure the IRs contain BYPASS.
         let input = iter::repeat(0)
             .take(idcodes.len())
             .chain(input.iter().copied())
             .collect::<Vec<_>>();
-        let response_zeros = self.write_ir(&input, input.len() * 8, true).unwrap();
+        let response_zeros = self.write_ir(&input, input.len() * 8, true)?;
 
         let expected = if let Some(ref chain) = self.scan_chain {
             let expected = chain
@@ -121,7 +121,8 @@ impl EspUsbJtag {
 
         tracing::debug!("IR scan: {}", response);
 
-        let ir_lens = extract_ir_lengths(response, idcodes.len(), expected.as_deref()).unwrap();
+        let ir_lens = extract_ir_lengths(response, idcodes.len(), expected.as_deref())
+            .map_err(|e| DebugProbeError::Other(e.into()))?;
         tracing::debug!("Detected IR lens: {:?}", ir_lens);
 
         Ok(idcodes

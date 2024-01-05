@@ -354,7 +354,7 @@ impl JLink {
         self.jtag_reset()?;
 
         let input = vec![0xFF; 4 * max_chain];
-        let response = self.write_dr(&input, input.len() * 8).unwrap();
+        let response = self.write_dr(&input, input.len() * 8)?;
 
         tracing::trace!("DR: {:?}", response);
 
@@ -369,14 +369,14 @@ impl JLink {
 
         // First shift out all ones
         let input = vec![0xff; idcodes.len()];
-        let response = self.write_ir(&input, input.len() * 8).unwrap();
+        let response = self.write_ir(&input, input.len() * 8)?;
 
         // Next, shift out same amount of zeros, then ones to make sure the IRs contain BYPASS.
         let input = iter::repeat(0)
             .take(idcodes.len())
             .chain(input)
             .collect::<Vec<_>>();
-        let response_zeros = self.write_ir(&input, input.len() * 8).unwrap();
+        let response_zeros = self.write_ir(&input, input.len() * 8)?;
 
         let expected = if let Some(ref chain) = self.scan_chain {
             let expected = chain
@@ -394,7 +394,8 @@ impl JLink {
 
         tracing::debug!("IR scan: {}", response);
 
-        let ir_lens = extract_ir_lengths(response, idcodes.len(), expected.as_deref()).unwrap();
+        let ir_lens = extract_ir_lengths(response, idcodes.len(), expected.as_deref())
+            .map_err(|e| DebugProbeError::Other(e.into()))?;
         tracing::debug!("Detected IR lens: {:?}", ir_lens);
 
         Ok(idcodes
@@ -634,7 +635,7 @@ impl DebugProbe for JLink {
                 Err((probe, err)) => Err((probe.into_probe(), err)),
             }
         } else {
-            Err((self, DebugProbeError::InterfaceNotAvailable("JTAG").into()))
+            Err((self, DebugProbeError::InterfaceNotAvailable("JTAG")))
         }
     }
 
