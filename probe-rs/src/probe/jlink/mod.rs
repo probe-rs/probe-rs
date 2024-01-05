@@ -303,7 +303,7 @@ impl JLink {
     }
 
     fn jtag_move_to_state(&mut self, target: JtagState) -> Result<(), DebugProbeError> {
-        tracing::debug!("Changing state: {:?} -> {:?}", self.jtag_state, target);
+        tracing::trace!("Changing state: {:?} -> {:?}", self.jtag_state, target);
         let mut steps = vec![];
         while let Some(tms) = self.jtag_state.step_toward(target) {
             steps.push(tms);
@@ -312,7 +312,7 @@ impl JLink {
         let tdi = std::iter::repeat(false).take(steps.len());
         // Don't use jtag_io here, as we don't want to update the state twice
         self.handle.jtag_io(steps, tdi)?;
-        tracing::debug!("In state: {:?}", self.jtag_state);
+        tracing::trace!("In state: {:?}", self.jtag_state);
         Ok(())
     }
 

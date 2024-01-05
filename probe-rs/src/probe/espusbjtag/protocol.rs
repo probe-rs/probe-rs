@@ -224,10 +224,11 @@ impl ProtocolHandler {
     }
 
     pub(super) fn jtag_move_to_state(&mut self, target: JtagState) -> Result<(), DebugProbeError> {
+        tracing::trace!("Changing state: {:?} -> {:?}", self.jtag_state, target);
         while let Some(tms) = self.jtag_state.step_toward(target) {
             self.schedule_jtag_scan([tms], [false], [false])?;
         }
-        tracing::debug!("In state: {:?}", self.jtag_state);
+        tracing::trace!("In state: {:?}", self.jtag_state);
         Ok(())
     }
 
