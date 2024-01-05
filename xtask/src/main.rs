@@ -128,7 +128,7 @@ impl FragmentList {
 
 fn get_changelog_fragments(fragments_dir: &Path) -> Result<FragmentList> {
     let mut list = FragmentList::new();
-    let github_token = std::env::var("GITHUB_TOKEN").context("GITHUB_TOKEN not set")?;
+    let github_token = std::env::var("GH_TOKEN").context("GH_TOKEN not set")?;
 
     let fragment_files = std::fs::read_dir(fragments_dir)
         .with_context(|| format!("Unable to read fragments from {}", fragments_dir.display()))?;
