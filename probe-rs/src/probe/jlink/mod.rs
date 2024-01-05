@@ -12,7 +12,7 @@ use probe_rs_target::ScanChainElement;
 use std::convert::TryFrom;
 use std::iter;
 
-use crate::architecture::arm::{ArmError, RawDapAccess};
+use crate::architecture::arm::ArmError;
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
 use crate::probe::common::{
@@ -569,18 +569,18 @@ impl DebugProbe for JLink {
     }
 
     fn try_get_riscv_interface(
-        self: Box<Self>,
+        mut self: Box<Self>,
     ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
         if self.supported_protocols.contains(&WireProtocol::Jtag) {
+            if let Err(e) = self.select_protocol(WireProtocol::Jtag) {
+                return Err((self, e.into()));
+            }
             match RiscvCommunicationInterface::new(self) {
                 Ok(interface) => Ok(interface),
                 Err((probe, err)) => Err((probe.into_probe(), err)),
             }
         } else {
-            Err((
-                RawDapAccess::into_probe(self),
-                DebugProbeError::InterfaceNotAvailable("JTAG").into(),
-            ))
+            Err((self, DebugProbeError::InterfaceNotAvailable("JTAG").into()))
         }
     }
 
@@ -623,17 +623,23 @@ impl DebugProbe for JLink {
     }
 
     fn try_get_xtensa_interface(
-        self: Box<Self>,
+        mut self: Box<Self>,
     ) -> Result<XtensaCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
-        // This probe is intended for Xtensa.
-        match XtensaCommunicationInterface::new(self) {
-            Ok(interface) => Ok(interface),
-            Err((probe, err)) => Err((probe.into_probe(), err)),
+        if self.supported_protocols.contains(&WireProtocol::Jtag) {
+            if let Err(e) = self.select_protocol(WireProtocol::Jtag) {
+                return Err((self, e));
+            }
+            match XtensaCommunicationInterface::new(self) {
+                Ok(interface) => Ok(interface),
+                Err((probe, err)) => Err((probe.into_probe(), err)),
+            }
+        } else {
+            Err((self, DebugProbeError::InterfaceNotAvailable("JTAG").into()))
         }
     }
 
     fn has_xtensa_interface(&self) -> bool {
-        true
+        self.supported_protocols.contains(&WireProtocol::Jtag)
     }
 }
 
