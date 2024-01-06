@@ -4,7 +4,8 @@ use bitvec::{prelude::*, slice::BitSlice, vec::BitVec};
 use rusb::{request_type, Context, Device, Direction, TransferType, UsbContext};
 
 use crate::{
-    DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, ProbeCreationError,
+    probe::espusbjtag::EspUsbJtagSource, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+    ProbeCreationError,
 };
 
 const JTAG_PROTOCOL_CAPABILITIES_VERSION: u8 = 1;
@@ -176,11 +177,7 @@ impl Debug for ProtocolHandler {
 }
 
 impl ProtocolHandler {
-    pub fn new_from_selector(
-        selector: impl Into<DebugProbeSelector>,
-    ) -> Result<Self, ProbeCreationError> {
-        let selector = selector.into();
-
+    pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, ProbeCreationError> {
         let context = Context::new()?;
 
         tracing::debug!("Acquired libusb context.");
@@ -196,7 +193,7 @@ impl ProtocolHandler {
                     && selector.product_id == descriptor.product_id()
                 {
                     // If the VID & PID match, match the serial if one was given.
-                    if let Some(serial) = &selector.serial_number {
+                    if let Some(serial) = selector.serial_number.as_ref() {
                         let sn_str = read_serial_number(&device, &descriptor).ok();
                         if sn_str.as_ref() == Some(serial) {
                             Some(device)
@@ -336,41 +333,17 @@ impl ProtocolHandler {
 
     pub(super) fn jtag_move_to_state(&mut self, target: JtagState) -> Result<(), DebugProbeError> {
         while let Some(tms) = self.jtag_state.step_toward(target) {
-            self.jtag_io_async([tms], [false], false)?;
+            self.schedule_jtag_scan([tms], [false], [false])?;
         }
         tracing::debug!("In state: {:?}", self.jtag_state);
         Ok(())
     }
 
     /// Put a bit on TDI and possibly read one from TDO.
-    pub fn jtag_io(
-        &mut self,
-        tms: impl IntoIterator<Item = bool>,
-        tdi: impl IntoIterator<Item = bool>,
-        cap: bool,
-    ) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
-        self.jtag_io_async(tms, tdi, cap)?;
-        self.flush()
-    }
-
-    /// Put a bit on TDI and possibly read one from TDO.
     /// to receive the bytes from this operations call [`ProtocolHandler::flush`]
     ///
     /// Note that if the internal buffer is exceeded bytes will be automatically flushed to usb device
-    pub fn jtag_io_async(
-        &mut self,
-        tms: impl IntoIterator<Item = bool>,
-        tdi: impl IntoIterator<Item = bool>,
-        cap: bool,
-    ) -> Result<(), DebugProbeError> {
-        self.jtag_io_async2(tms, tdi, std::iter::repeat(cap))
-    }
-
-    /// Put a bit on TDI and possibly read one from TDO.
-    /// to receive the bytes from this operations call [`ProtocolHandler::flush`]
-    ///
-    /// Note that if the internal buffer is exceeded bytes will be automatically flushed to usb device
-    pub fn jtag_io_async2(
+    pub fn schedule_jtag_scan(
         &mut self,
         tms: impl IntoIterator<Item = bool>,
         tdi: impl IntoIterator<Item = bool>,
@@ -642,7 +615,7 @@ pub(super) fn is_espjtag_device<T: UsbContext>(device: &Device<T>) -> bool {
 }
 
 #[tracing::instrument(skip_all)]
-pub fn list_espjtag_devices() -> Vec<DebugProbeInfo> {
+pub(super) fn list_espjtag_devices() -> Vec<DebugProbeInfo> {
     rusb::Context::new()
         .and_then(|context| context.devices())
         .map_or(vec![], |devices| {
@@ -674,7 +647,7 @@ pub fn list_espjtag_devices() -> Vec<DebugProbeInfo> {
                         descriptor.vendor_id(),
                         descriptor.product_id(),
                         sn_str,
-                        DebugProbeType::EspJtag,
+                        &EspUsbJtagSource,
                         None,
                     ))
                 })

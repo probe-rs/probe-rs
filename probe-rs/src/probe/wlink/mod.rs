@@ -11,8 +11,9 @@ use rusb::{Device, UsbContext};
 
 use crate::{
     architecture::riscv::communication_interface::{RiscvCommunicationInterface, RiscvError},
-    DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType,
-    ProbeCreationError, WireProtocol,
+    probe::ProbeDriver,
+    DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
+    WireProtocol,
 };
 
 use self::{commands::Speed, usb_interface::WchLinkUsbDevice};
@@ -146,6 +147,40 @@ impl RiscvChip {
     }
 }
 
+pub struct WchLinkSource;
+
+impl std::fmt::Debug for WchLinkSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("WchLink").finish()
+    }
+}
+
+impl ProbeDriver for WchLinkSource {
+    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+        let device = WchLinkUsbDevice::new_from_selector(selector)?;
+        let mut wlink = WchLink {
+            device,
+            name: "WCH-Link".into(),
+            variant: WchLinkVariant::Ch549,
+            v_major: 0,
+            v_minor: 0,
+            chip_id: 0,
+            chip_family: RiscvChip::CH32V103,
+            last_dmi_read: None,
+            speed: Speed::default(),
+            idle_cycles: 0,
+        };
+
+        wlink.init()?;
+
+        Ok(Box::new(wlink))
+    }
+
+    fn list_probes(&self) -> Vec<DebugProbeInfo> {
+        list_wlink_devices()
+    }
+}
+
 /// WCH-Link device (mod:RV)
 #[derive(Debug)]
 pub(crate) struct WchLink {
@@ -226,31 +261,6 @@ impl WchLink {
 }
 
 impl DebugProbe for WchLink {
-    fn new_from_selector(
-        selector: impl Into<DebugProbeSelector>,
-    ) -> Result<Box<Self>, DebugProbeError>
-    where
-        Self: Sized,
-    {
-        let device = WchLinkUsbDevice::new_from_selector(selector)?;
-        let mut wlink = Self {
-            device,
-            name: "WCH-Link".into(),
-            variant: WchLinkVariant::Ch549,
-            v_major: 0,
-            v_minor: 0,
-            chip_id: 0,
-            chip_family: RiscvChip::CH32V103,
-            last_dmi_read: None,
-            speed: Speed::default(),
-            idle_cycles: 0,
-        };
-
-        wlink.init()?;
-
-        Ok(Box::new(wlink))
-    }
-
     fn get_name(&self) -> &str {
         &self.name
     }
@@ -489,7 +499,7 @@ fn get_wlink_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
             VENDOR_ID,
             PRODUCT_ID,
             sn_str,
-            DebugProbeType::WchLink,
+            &WchLinkSource,
             None,
         ))
     } else {
@@ -498,7 +508,7 @@ fn get_wlink_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
 }
 
 #[tracing::instrument(skip_all)]
-pub fn list_wlink_devices() -> Vec<DebugProbeInfo> {
+fn list_wlink_devices() -> Vec<DebugProbeInfo> {
     tracing::debug!("Searching for WCH-Link(RV) probes using libusb");
     let probes = match rusb::Context::new().and_then(|ctx| ctx.devices()) {
         Ok(devices) => devices

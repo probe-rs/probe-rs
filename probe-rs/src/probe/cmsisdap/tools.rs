@@ -1,6 +1,6 @@
 use super::CmsisDapDevice;
 use crate::{
-    probe::{DebugProbeInfo, DebugProbeType, ProbeCreationError},
+    probe::{cmsisdap::CmsisDapSource, DebugProbeInfo, ProbeCreationError},
     DebugProbeSelector,
 };
 use hidapi::HidApi;
@@ -116,7 +116,7 @@ fn get_cmsisdap_info(device: &Device<rusb::Context>) -> Option<DebugProbeInfo> {
             d_desc.vendor_id(),
             d_desc.product_id(),
             sn_str,
-            DebugProbeType::CmsisDap,
+            &CmsisDapSource,
             hid_interface,
         ))
     } else {
@@ -141,7 +141,7 @@ fn get_cmsisdap_hid_info(device: &hidapi::DeviceInfo) -> Option<DebugProbeInfo> 
             device.vendor_id(),
             device.product_id(),
             device.serial_number().map(|s| s.to_owned()),
-            DebugProbeType::CmsisDap,
+            &CmsisDapSource,
             Some(device.interface_number() as u8),
         ))
     } else {
@@ -254,10 +254,8 @@ fn device_matches(
 /// Attempt to open the given DebugProbeInfo in CMSIS-DAP v2 mode if possible,
 /// otherwise in v1 mode.
 pub fn open_device_from_selector(
-    selector: impl Into<DebugProbeSelector>,
+    selector: &DebugProbeSelector,
 ) -> Result<CmsisDapDevice, ProbeCreationError> {
-    let selector = selector.into();
-
     tracing::trace!("Attempting to open device matching {}", selector);
 
     // We need to use rusb to detect the proper HID interface to use
@@ -309,7 +307,7 @@ pub fn open_device_from_selector(
             // multiple open handles are not allowed on Windows.
             drop(handle);
 
-            if device_matches(d_desc, &selector, sn_str) {
+            if device_matches(d_desc, selector, sn_str) {
                 hid_device_info = get_cmsisdap_info(&device);
 
                 if hid_device_info.is_some() {
@@ -329,7 +327,7 @@ pub fn open_device_from_selector(
     // If rusb failed or the device didn't support v2, try using hidapi to open in v1 mode.
     let vid = selector.vendor_id;
     let pid = selector.product_id;
-    let sn = &selector.serial_number;
+    let sn = selector.serial_number.as_deref();
 
     tracing::debug!(
         "Attempting to open {:04x}:{:04x} in CMSIS-DAP v1 mode",
@@ -351,7 +349,7 @@ pub fn open_device_from_selector(
             let mut device_match = info.vendor_id() == vid && info.product_id() == pid;
 
             if let Some(sn) = sn {
-                device_match &= Some(sn.as_ref()) == info.serial_number();
+                device_match &= Some(sn) == info.serial_number();
             }
 
             if let Some(hid_interface) =
