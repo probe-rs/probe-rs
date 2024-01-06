@@ -83,6 +83,47 @@ impl CombinedCoreState {
         })
     }
 
+    pub(crate) fn attach_riscv<'probe>(
+        &'probe mut self,
+        interface: &'probe mut RiscvCommunicationInterface,
+    ) -> Result<Core<'probe>, Error> {
+        let (_options, debug_sequence) = match &self.core_state.core_access_options {
+            ResolvedCoreOptions::Riscv { options, sequence } => (options, sequence.clone()),
+            _ => {
+                return Err(Error::UnableToOpenProbe(
+                    "Core architecture and Probe mismatch.",
+                ))
+            }
+        };
+        match &mut self.specific_state {
+            SpecificCoreState::Riscv(s) => Ok(Core::new(crate::architecture::riscv::Riscv32::new(
+                interface,
+                s,
+                debug_sequence,
+                self.id,
+            ))),
+            _ => Err(Error::UnableToOpenProbe(
+                "Core architecture and Probe mismatch.",
+            )),
+        }
+    }
+
+    pub(crate) fn attach_xtensa<'probe>(
+        &'probe mut self,
+        interface: &'probe mut XtensaCommunicationInterface,
+    ) -> Result<Core<'probe>, Error> {
+        Ok(match &mut self.specific_state {
+            SpecificCoreState::Xtensa(s) => Core::new(crate::architecture::xtensa::Xtensa::new(
+                interface, s, self.id,
+            )),
+            _ => {
+                return Err(Error::UnableToOpenProbe(
+                    "Core architecture and Probe mismatch.",
+                ))
+            }
+        })
+    }
+
     pub(crate) fn enable_arm_debug(
         &self,
         interface: &mut dyn ArmProbeInterface,
@@ -123,38 +164,6 @@ impl CombinedCoreState {
         drop(reset_catch_span);
 
         Ok(())
-    }
-
-    pub(crate) fn attach_riscv<'probe>(
-        &'probe mut self,
-        interface: &'probe mut RiscvCommunicationInterface,
-    ) -> Result<Core<'probe>, Error> {
-        Ok(match &mut self.specific_state {
-            SpecificCoreState::Riscv(s) => Core::new(crate::architecture::riscv::Riscv32::new(
-                interface, s, self.id,
-            )),
-            _ => {
-                return Err(Error::UnableToOpenProbe(
-                    "Core architecture and Probe mismatch.",
-                ))
-            }
-        })
-    }
-
-    pub(crate) fn attach_xtensa<'probe>(
-        &'probe mut self,
-        interface: &'probe mut XtensaCommunicationInterface,
-    ) -> Result<Core<'probe>, Error> {
-        Ok(match &mut self.specific_state {
-            SpecificCoreState::Xtensa(s) => Core::new(crate::architecture::xtensa::Xtensa::new(
-                interface, s, self.id,
-            )),
-            _ => {
-                return Err(Error::UnableToOpenProbe(
-                    "Core architecture and Probe mismatch.",
-                ))
-            }
-        })
     }
 
     /// Get the memory AP for this core.

@@ -2,7 +2,7 @@
 
 #![allow(clippy::inconsistent_digit_grouping)]
 
-use self::registers::*;
+use self::{registers::*, sequences::RiscvDebugSequence};
 use crate::{
     core::{
         Architecture, BreakpointCause, CoreInformation, CoreRegisters, RegisterId, RegisterValue,
@@ -15,7 +15,10 @@ use anyhow::{anyhow, Result};
 use bitfield::bitfield;
 use communication_interface::{AbstractCommandErrorKind, RiscvCommunicationInterface, RiscvError};
 use registers::RISCV_CORE_REGSISTERS;
-use std::time::{Duration, Instant};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 #[macro_use]
 pub(crate) mod registers;
@@ -30,6 +33,8 @@ pub struct Riscv32<'probe> {
     interface: &'probe mut RiscvCommunicationInterface,
     state: &'probe mut RiscVState,
     id: usize,
+
+    sequence: Arc<dyn RiscvDebugSequence>,
 }
 
 impl<'probe> Riscv32<'probe> {
@@ -37,45 +42,23 @@ impl<'probe> Riscv32<'probe> {
     pub fn new(
         interface: &'probe mut RiscvCommunicationInterface,
         state: &'probe mut RiscVState,
+        sequence: Arc<dyn RiscvDebugSequence>,
         id: usize,
     ) -> Self {
         Self {
             interface,
             state,
             id,
+            sequence,
         }
     }
 
     fn read_csr(&mut self, address: u16) -> Result<u32, RiscvError> {
-        // We need to use the "Access Register Command",
-        // which has cmdtype 0
-
-        // write needs to be clear
-        // transfer has to be set
-
-        tracing::debug!("Reading CSR {:#x}", address);
-
-        // always try to read register with abstract command, fallback to program buffer,
-        // if not supported
-        match self.interface.abstract_cmd_register_read(address) {
-            Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
-                tracing::debug!("Could not read core register {:#x} with abstract command, falling back to program buffer", address);
-                self.interface.read_csr_progbuf(address)
-            }
-            other => other,
-        }
+        read_csr(self.interface, address)
     }
 
     fn write_csr(&mut self, address: u16, value: u32) -> Result<(), RiscvError> {
-        tracing::debug!("Writing CSR {:#x}", address);
-
-        match self.interface.abstract_cmd_register_write(address, value) {
-            Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
-                tracing::debug!("Could not write core register {:#x} with abstract command, falling back to program buffer", address);
-                self.interface.write_csr_progbuf(address, value)
-            }
-            other => other,
-        }
+        write_csr(self.interface, address, value)
     }
 
     // Resume the core.
@@ -357,8 +340,8 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
         self.interface.write_dm_register(dmcontrol)?;
 
-        // Reenable halt on breakpoint because this gets disabled if we reset the core
-        self.debug_on_sw_breakpoint(true)?; // TODO: only restore if enabled before?
+        // Re-enable debug, register gets reset on hart reset
+        self.sequence.debug_core_start(&mut self.interface)?;
 
         let pc = self.read_core_reg(RegisterId(0x7b1))?;
 
@@ -682,16 +665,6 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         self.state.hw_breakpoints_enabled
     }
 
-    fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), crate::error::Error> {
-        let mut dcsr = Dcsr(self.read_core_reg(RegisterId(0x7b0))?.try_into()?);
-
-        dcsr.set_ebreakm(enabled);
-        dcsr.set_ebreaks(enabled);
-        dcsr.set_ebreaku(enabled);
-
-        self.write_csr(0x7b0, dcsr.0).map_err(|e| e.into())
-    }
-
     fn architecture(&self) -> Architecture {
         Architecture::Riscv
     }
@@ -762,7 +735,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn debug_core_stop(&mut self) -> Result<(), Error> {
-        self.debug_on_sw_breakpoint(false)?;
+        self.sequence.debug_core_stop(&mut self.interface)?;
         Ok(())
     }
 }
@@ -830,6 +803,45 @@ impl<'probe> MemoryInterface for Riscv32<'probe> {
 
     fn flush(&mut self) -> Result<(), Error> {
         self.interface.flush()
+    }
+}
+
+pub(crate) fn read_csr(
+    interface: &mut RiscvCommunicationInterface,
+    address: u16,
+) -> Result<u32, RiscvError> {
+    // We need to use the "Access Register Command",
+    // which has cmdtype 0
+
+    // write needs to be clear
+    // transfer has to be set
+
+    tracing::debug!("Reading CSR {:#x}", address);
+
+    // always try to read register with abstract command, fallback to program buffer,
+    // if not supported
+    match interface.abstract_cmd_register_read(address) {
+        Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
+            tracing::debug!("Could not read core register {:#x} with abstract command, falling back to program buffer", address);
+            interface.read_csr_progbuf(address)
+        }
+        other => other,
+    }
+}
+
+pub(crate) fn write_csr(
+    interface: &mut RiscvCommunicationInterface,
+    address: u16,
+    value: u32,
+) -> Result<(), RiscvError> {
+    tracing::debug!("Writing CSR {:#x}", address);
+
+    match interface.abstract_cmd_register_write(address, value) {
+        Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
+            tracing::debug!("Could not write core register {:#x} with abstract command, falling back to program buffer", address);
+            interface.write_csr_progbuf(address, value)
+        }
+        other => other,
     }
 }
 

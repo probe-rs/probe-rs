@@ -1,6 +1,7 @@
 //! Debug sequences to operate special requirements RISC-V targets.
 
 use super::communication_interface::RiscvCommunicationInterface;
+use super::{read_csr, write_csr, Dcsr};
 use std::fmt::Debug;
 use std::sync::Arc;
 
@@ -20,6 +21,33 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
     ) -> Result<Option<usize>, crate::Error> {
         Ok(None)
     }
+
+    fn debug_core_start(
+        &self,
+        interface: &mut RiscvCommunicationInterface,
+    ) -> Result<(), crate::Error> {
+        debug_on_sw_breakpoint(interface, true)
+    }
+
+    fn debug_core_stop(
+        &self,
+        interface: &mut RiscvCommunicationInterface,
+    ) -> Result<(), crate::Error> {
+        debug_on_sw_breakpoint(interface, false)
+    }
+}
+
+fn debug_on_sw_breakpoint(
+    interface: &mut RiscvCommunicationInterface,
+    enabled: bool,
+) -> Result<(), crate::Error> {
+    let mut dcsr = Dcsr(read_csr(interface, 0x7b0)?);
+
+    dcsr.set_ebreakm(enabled);
+    dcsr.set_ebreaks(enabled);
+    dcsr.set_ebreaku(enabled);
+
+    write_csr(interface, 0x7b0, dcsr.0).map_err(|e| e.into())
 }
 
 /// The default sequences that is used for RISC-V chips that do not specify a specific sequence.

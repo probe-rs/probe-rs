@@ -295,6 +295,8 @@ impl Session {
 
         sequence_handle.on_connect(session.get_riscv_interface()?)?;
 
+        sequence_handle.debug_core_start(session.get_riscv_interface()?)?;
+
         Ok(session)
     }
 

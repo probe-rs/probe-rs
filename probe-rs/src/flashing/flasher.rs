@@ -685,10 +685,6 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
             }
         }
 
-        // Ensure RISC-V `ebreak` instructions enter debug mode,
-        // this is necessary for soft breakpoints to work.
-        self.core.debug_on_sw_breakpoint(true)?;
-
         // Resume target operation.
         self.core.run()?;
 

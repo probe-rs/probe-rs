@@ -11,7 +11,7 @@ use crate::{
             },
             sequences::ArmDebugSequence,
         },
-        riscv::registers::RISCV_CORE_REGSISTERS,
+        riscv::{registers::RISCV_CORE_REGSISTERS, sequences::RiscvDebugSequence},
         xtensa::registers::XTENSA_CORE_REGSISTERS,
     },
     config::DebugSequence,
@@ -136,12 +136,6 @@ pub trait CoreInterface: MemoryInterface {
 
     /// Returns `true` if hardware breakpoints are enabled, `false` otherwise.
     fn hw_breakpoints_enabled(&self) -> bool;
-
-    /// Configure the target to ensure software breakpoints will enter Debug Mode.
-    fn debug_on_sw_breakpoint(&mut self, _enabled: bool) -> Result<(), error::Error> {
-        // This default will have override methods for architectures that require special behavior, e.g. RISC-V.
-        Ok(())
-    }
 
     /// Get the `Architecture` of the Core.
     fn architecture(&self) -> Architecture;
@@ -662,7 +656,12 @@ impl<'probe> Core<'probe> {
                 }
             }
             CoreAccessOptions::Riscv(options) => {
-                let core_state = CoreState::new(ResolvedCoreOptions::Riscv { options });
+                let DebugSequence::Riscv(sequence) = target.debug_sequence.clone() else {
+                    panic!(
+                        "Mismatch between sequence and core kind. This is a bug, please report it."
+                    );
+                };
+                let core_state = CoreState::new(ResolvedCoreOptions::Riscv { sequence, options });
                 CombinedCoreState {
                     id,
                     core_state,
@@ -800,12 +799,6 @@ impl<'probe> Core<'probe> {
     /// Enables breakpoints on this core. If a breakpoint is set, it will halt as soon as it is hit.
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), error::Error> {
         self.inner.enable_breakpoints(state)
-    }
-
-    /// Configure the debug module to ensure software breakpoints will enter Debug Mode.
-    #[tracing::instrument(skip(self))]
-    pub fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), error::Error> {
-        self.inner.debug_on_sw_breakpoint(enabled)
     }
 
     /// Returns a list of all the registers of this core.
@@ -1145,6 +1138,7 @@ pub enum ResolvedCoreOptions {
         options: ArmCoreAccessOptions,
     },
     Riscv {
+        sequence: Arc<dyn RiscvDebugSequence>,
         options: RiscvCoreAccessOptions,
     },
     Xtensa {
@@ -1160,7 +1154,14 @@ impl std::fmt::Debug for ResolvedCoreOptions {
                 .field("sequence", &"<ArmDebugSequence>")
                 .field("options", options)
                 .finish(),
-            Self::Riscv { options } => f.debug_struct("Riscv").field("options", options).finish(),
+            Self::Riscv {
+                options,
+                sequence: _,
+            } => f
+                .debug_struct("Riscv")
+                .field("sequence", &"<RiscvDebugSequence>")
+                .field("options", options)
+                .finish(),
             Self::Xtensa { options } => f.debug_struct("Xtensa").field("options", options).finish(),
         }
     }
