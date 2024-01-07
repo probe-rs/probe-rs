@@ -341,7 +341,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         self.interface.write_dm_register(dmcontrol)?;
 
         // Re-enable debug, register gets reset on hart reset
-        self.sequence.debug_core_start(&mut self.interface)?;
+        self.sequence.debug_core_start(self.interface)?;
 
         let pc = self.read_core_reg(RegisterId(0x7b1))?;
 
@@ -735,7 +735,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn debug_core_stop(&mut self) -> Result<(), Error> {
-        self.sequence.debug_core_stop(&mut self.interface)?;
+        self.sequence.debug_core_stop(self.interface)?;
         Ok(())
     }
 }

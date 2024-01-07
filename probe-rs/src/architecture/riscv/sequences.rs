@@ -22,6 +22,9 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
         Ok(None)
     }
 
+    /// Enable debugging for a core (hart).
+    ///
+    /// This should enable software breakpoints.
     fn debug_core_start(
         &self,
         interface: &mut RiscvCommunicationInterface,
@@ -29,6 +32,9 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
         debug_on_sw_breakpoint(interface, true)
     }
 
+    /// Disable debugging for a core (hart).
+    ///
+    /// This should disable software breakpoints.
     fn debug_core_stop(
         &self,
         interface: &mut RiscvCommunicationInterface,
