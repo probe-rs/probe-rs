@@ -1,5 +1,7 @@
 //! Support for J-Link Debug probes
 
+mod jaylink;
+
 use jaylink::{Capability, Interface, JayLink, SpeedConfig, SwoMode};
 use probe_rs_target::ScanChainElement;
 
@@ -40,25 +42,14 @@ impl std::fmt::Debug for JLinkSource {
 impl ProbeDriver for JLinkSource {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         let mut jlinks = jaylink::scan_usb()?
-            .filter_map(|usb_info| {
-                if usb_info.vid() == selector.vendor_id && usb_info.pid() == selector.product_id {
-                    let device = usb_info.open();
-                    if let Some(serial_number) = selector.serial_number.as_deref() {
-                        if device
-                            .as_ref()
-                            .map(|d| d.serial_string() == serial_number)
-                            .unwrap_or(false)
-                        {
-                            Some(device)
-                        } else {
-                            None
-                        }
-                    } else {
-                        Some(device)
-                    }
-                } else {
-                    None
-                }
+            .filter(|usb_info| {
+                usb_info.vendor_id() == selector.vendor_id
+                    && usb_info.product_id() == selector.product_id
+                    && selector
+                        .serial_number
+                        .as_ref()
+                        .map(|s| usb_info.serial_number() == Some(s))
+                        .unwrap_or(true)
             })
             .collect::<Vec<_>>();
 
@@ -69,7 +60,8 @@ impl ProbeDriver for JLinkSource {
         } else if jlinks.len() > 1 {
             tracing::warn!("More than one matching J-Link was found. Opening the first one.")
         }
-        let jlink_handle = jlinks.pop().unwrap()?;
+
+        let jlink_handle = JayLink::open_usb(jlinks.pop().unwrap())?;
 
         // Check which protocols are supported by the J-Link.
         //
@@ -497,8 +489,6 @@ impl DebugProbe for JLink {
         let capabilities = self.handle.capabilities();
 
         // Log some information about the probe
-        let serial = self.handle.serial_string().trim_start_matches('0');
-        tracing::info!("J-Link: S/N: {}", serial);
         tracing::debug!("J-Link: Capabilities: {:?}", capabilities);
         let fw_version = self
             .handle
@@ -823,33 +813,17 @@ fn list_jlink_devices() -> Vec<DebugProbeInfo> {
     match jaylink::scan_usb() {
         Ok(devices) => devices
             .map(|device_info| {
-                let vid = device_info.vid();
-                let pid = device_info.pid();
-                let (serial, product) = if let Ok(device) = device_info.open() {
-                    let serial = device.serial_string();
-                    let serial = if serial.is_empty() {
-                        None
-                    } else {
-                        Some(serial.to_owned())
-                    };
-                    let product = device.product_string();
-                    let product = if product.is_empty() {
-                        None
-                    } else {
-                        Some(product.to_owned())
-                    };
-                    (serial, product)
-                } else {
-                    (None, None)
-                };
                 DebugProbeInfo::new(
                     format!(
                         "J-Link{}",
-                        product.map(|p| format!(" ({p})")).unwrap_or_default()
+                        device_info
+                            .product_string()
+                            .map(|p| format!(" ({p})"))
+                            .unwrap_or_default()
                     ),
-                    vid,
-                    pid,
-                    serial,
+                    device_info.vendor_id(),
+                    device_info.product_id(),
+                    device_info.serial_number().map(|s| s.to_string()),
                     &JLinkSource,
                     None,
                 )

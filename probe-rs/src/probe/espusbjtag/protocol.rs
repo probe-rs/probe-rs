@@ -1,11 +1,13 @@
+use bitvec::{prelude::*, slice::BitSlice, vec::BitVec};
+use nusb::{
+    transfer::{ControlIn, Direction, EndpointType},
+    DeviceInfo,
+};
 use std::{fmt::Debug, time::Duration};
 
-use bitvec::{prelude::*, slice::BitSlice, vec::BitVec};
-use rusb::{request_type, Context, Device, Direction, TransferType, UsbContext};
-
 use crate::{
-    probe::espusbjtag::EspUsbJtagSource, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-    ProbeCreationError,
+    probe::espusbjtag::EspUsbJtagSource, probe::usb_util::InterfaceExt, DebugProbeError,
+    DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
 };
 
 const JTAG_PROTOCOL_CAPABILITIES_VERSION: u8 = 1;
@@ -22,9 +24,7 @@ const USB_TIMEOUT: Duration = Duration::from_millis(5000);
 const USB_DEVICE_CLASS: u8 = 0xFF;
 const USB_DEVICE_SUBCLASS: u8 = 0xFF;
 const USB_DEVICE_PROTOCOL: u8 = 0x01;
-const USB_DEVICE_TRANSFER_TYPE: TransferType = TransferType::Bulk;
-
-const USB_CONFIGURATION: u8 = 0x0;
+const USB_DEVICE_TRANSFER_TYPE: EndpointType = EndpointType::Bulk;
 
 const USB_VID: u16 = 0x303A;
 const USB_PID: u16 = 0x1001;
@@ -135,9 +135,11 @@ impl JtagState {
     }
 }
 
+const USB_REQUEST_GET_DESCRIPTOR: u8 = 0x06;
+
 pub(super) struct ProtocolHandler {
-    /// The USB device handle.
-    device_handle: rusb::DeviceHandle<rusb::Context>,
+    // The USB device handle.
+    device_handle: nusb::Interface,
 
     /// The command in the queue and their additional repetitions.
     /// For now we do one command at a time.
@@ -178,24 +180,17 @@ impl Debug for ProtocolHandler {
 
 impl ProtocolHandler {
     pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, ProbeCreationError> {
-        let context = Context::new()?;
-
-        tracing::debug!("Acquired libusb context.");
-
-        let device = context
-            .devices()?
-            .iter()
+        let device = nusb::list_devices()
+            .map_err(ProbeCreationError::Usb)?
             .filter(is_espjtag_device)
             .find_map(|device| {
-                let descriptor = device.device_descriptor().ok()?;
                 // First match the VID & PID.
-                if selector.vendor_id == descriptor.vendor_id()
-                    && selector.product_id == descriptor.product_id()
+                if selector.vendor_id == device.vendor_id()
+                    && selector.product_id == device.product_id()
                 {
                     // If the VID & PID match, match the serial if one was given.
-                    if let Some(serial) = selector.serial_number.as_ref() {
-                        let sn_str = read_serial_number(&device, &descriptor).ok();
-                        if sn_str.as_ref() == Some(serial) {
+                    if let Some(serial) = &selector.serial_number {
+                        if device.serial_number() == Some(serial) {
                             Some(device)
                         } else {
                             None
@@ -210,31 +205,30 @@ impl ProtocolHandler {
             })
             .map_or(Err(ProbeCreationError::NotFound), Ok)?;
 
-        let mut device_handle = device.open()?;
+        let device_handle = device.open().map_err(ProbeCreationError::Usb)?;
 
         tracing::debug!("Aquired handle for probe");
 
-        let config = device.config_descriptor(USB_CONFIGURATION)?;
+        let config = device_handle.configurations().next().unwrap();
 
         tracing::debug!("Active config descriptor: {:?}", &config);
 
-        let descriptor = device.device_descriptor()?;
-
-        tracing::debug!("Device descriptor: {:?}", &descriptor);
-
-        let mut ep_out = None;
-        let mut ep_in = None;
+        let mut found = None;
 
         for interface in config.interfaces() {
-            tracing::trace!("Interface {}", interface.number());
-            let descriptor = interface.descriptors().next();
+            tracing::trace!("Interface {}", interface.interface_number());
+
+            let mut ep_out = None;
+            let mut ep_in = None;
+
+            let descriptor = interface.alt_settings().next();
             if let Some(descriptor) = descriptor {
-                if descriptor.class_code() == USB_DEVICE_CLASS
-                    && descriptor.sub_class_code() == USB_DEVICE_SUBCLASS
-                    && descriptor.protocol_code() == USB_DEVICE_PROTOCOL
+                if descriptor.class() == USB_DEVICE_CLASS
+                    && descriptor.subclass() == USB_DEVICE_SUBCLASS
+                    && descriptor.protocol() == USB_DEVICE_PROTOCOL
                 {
-                    for endpoint in descriptor.endpoint_descriptors() {
-                        tracing::trace!("Endpoint {}: {}", endpoint.number(), endpoint.address());
+                    for endpoint in descriptor.endpoints() {
+                        tracing::trace!("Endpoint {}", endpoint.address());
                         if endpoint.transfer_type() == USB_DEVICE_TRANSFER_TYPE {
                             if endpoint.direction() == Direction::In {
                                 ep_in = Some(endpoint.address());
@@ -249,34 +243,37 @@ impl ProtocolHandler {
             if let (Some(ep_in), Some(ep_out)) = (ep_in, ep_out) {
                 tracing::debug!(
                     "Claiming interface {} with IN EP {} and OUT EP {}.",
-                    interface.number(),
+                    interface.interface_number(),
                     ep_in,
                     ep_out
                 );
-                device_handle.claim_interface(interface.number())?;
+
+                let iface = device_handle
+                    .claim_interface(interface.interface_number())
+                    .map_err(ProbeCreationError::Usb)?;
+
+                found = Some((iface, ep_in, ep_out));
+                break;
             }
         }
 
-        if let (Some(_), Some(_)) = (ep_in, ep_out) {
-        } else {
+        let Some((iface, ep_in, ep_out)) = found else {
             return Err(ProbeCreationError::ProbeSpecific(
                 "USB interface or endpoints could not be found.".into(),
             ));
-        }
+        };
 
-        let mut buffer = [0; 255];
-        device_handle.read_control(
-            request_type(
-                rusb::Direction::In,
-                rusb::RequestType::Standard,
-                rusb::Recipient::Device,
-            ),
-            rusb::constants::LIBUSB_REQUEST_GET_DESCRIPTOR,
-            VENDOR_DESCRIPTOR_JTAG_CAPABILITIES,
-            0,
-            &mut buffer,
-            USB_TIMEOUT,
-        )?;
+        let control = ControlIn {
+            recipient: nusb::transfer::Recipient::Device,
+            control_type: nusb::transfer::ControlType::Standard,
+            request: USB_REQUEST_GET_DESCRIPTOR,
+            value: VENDOR_DESCRIPTOR_JTAG_CAPABILITIES,
+            index: 0,
+            length: 255,
+        };
+        let buffer = iface
+            .read_control(control, USB_TIMEOUT)
+            .map_err(ProbeCreationError::Usb)?;
 
         let mut base_speed_khz = 1000;
         let mut div_min = 1;
@@ -314,13 +311,12 @@ impl ProtocolHandler {
         tracing::debug!("Succesfully attached to ESP USB JTAG.");
 
         Ok(Self {
-            device_handle,
+            device_handle: iface,
             command_queue: None,
             output_buffer: Vec::with_capacity(OUT_BUFFER_SIZE),
             response: BitVec::new(),
-            // The following expects are okay as we check that the values we call them on are `Some`.
-            ep_out: ep_out.expect("This is a bug. Please report it."),
-            ep_in: ep_in.expect("This is a bug. Please report it."),
+            ep_out,
+            ep_in,
             pending_in_bits: 0,
 
             base_speed_khz,
@@ -502,7 +498,7 @@ impl ProtocolHandler {
             let bytes = self
                 .device_handle
                 .write_bulk(self.ep_out, commands, USB_TIMEOUT)
-                .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))?;
+                .map_err(DebugProbeError::Usb)?;
 
             commands = &commands[bytes..];
         }
@@ -539,7 +535,7 @@ impl ProtocolHandler {
                     count,
                     self.pending_in_bits,
                 );
-                DebugProbeError::Usb(Some(Box::new(e)))
+                DebugProbeError::Usb(e)
             })?;
 
         let bits_in_buffer = self.pending_in_bits.min(read_bytes * 8);
@@ -589,68 +585,28 @@ impl From<Command> for u8 {
     }
 }
 
-/// Try to read the serial number of a USB device.
-fn read_serial_number<T: rusb::UsbContext>(
-    device: &rusb::Device<T>,
-    descriptor: &rusb::DeviceDescriptor,
-) -> Result<String, rusb::Error> {
-    let timeout = Duration::from_millis(100);
-
-    let handle = device.open()?;
-    let language = handle
-        .read_languages(timeout)?
-        .first()
-        .cloned()
-        .ok_or(rusb::Error::BadDescriptor)?;
-    handle.read_serial_number_string(language, descriptor, timeout)
-}
-
-pub(super) fn is_espjtag_device<T: UsbContext>(device: &Device<T>) -> bool {
+pub(super) fn is_espjtag_device(device: &DeviceInfo) -> bool {
     // Check the VID/PID.
-    if let Ok(descriptor) = device.device_descriptor() {
-        descriptor.vendor_id() == USB_VID && descriptor.product_id() == USB_PID
-    } else {
-        false
-    }
+    device.vendor_id() == USB_VID && device.product_id() == USB_PID
 }
 
 #[tracing::instrument(skip_all)]
 pub(super) fn list_espjtag_devices() -> Vec<DebugProbeInfo> {
-    rusb::Context::new()
-        .and_then(|context| context.devices())
-        .map_or(vec![], |devices| {
-            devices
-                .iter()
-                .filter(is_espjtag_device)
-                .filter_map(|device| {
-                    let descriptor = device.device_descriptor().ok()?;
+    let Ok(devices) = nusb::list_devices() else {
+        return vec![];
+    };
 
-                    let sn_str = match read_serial_number(&device, &descriptor) {
-                        Ok(serial_number) => Some(serial_number),
-                        Err(e) => {
-                            // Reading the serial number can fail, e.g. if the driver for the probe
-                            // is not installed. In this case we can still list the probe,
-                            // just without serial number.
-                            tracing::debug!(
-                                "Failed to read serial number of device {:04x}:{:04x} : {}",
-                                descriptor.vendor_id(),
-                                descriptor.product_id(),
-                                e
-                            );
-                            tracing::debug!("This might be happening because of a missing driver.");
-                            None
-                        }
-                    };
-
-                    Some(DebugProbeInfo::new(
-                        "ESP JTAG".to_string(),
-                        descriptor.vendor_id(),
-                        descriptor.product_id(),
-                        sn_str,
-                        &EspUsbJtagSource,
-                        None,
-                    ))
-                })
-                .collect::<Vec<_>>()
+    devices
+        .filter(is_espjtag_device)
+        .map(|device| {
+            DebugProbeInfo::new(
+                "ESP JTAG".to_string(),
+                device.vendor_id(),
+                device.product_id(),
+                device.serial_number().map(Into::into),
+                &EspUsbJtagSource,
+                None,
+            )
         })
+        .collect()
 }
