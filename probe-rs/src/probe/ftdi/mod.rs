@@ -12,7 +12,7 @@ use crate::probe::{
 use crate::{DebugProbeError, DebugProbeInfo, DebugProbeSelector, WireProtocol};
 use anyhow::anyhow;
 use bitvec::{order::Lsb0, slice::BitSlice, vec::BitVec};
-use rusb::UsbContext;
+use nusb::DeviceInfo;
 use std::io::{self, Read, Write};
 use std::iter;
 use std::time::Duration;
@@ -723,36 +723,16 @@ static FTDI_COMPAT_DEVICE_IDS: &[(u16, u16)] = &[
     (0x15ba, 0x002a), // Olimex Ltd. ARM-USB-TINY-H JTAG interface
 ];
 
-fn get_device_info(device: &rusb::Device<rusb::Context>) -> Option<DebugProbeInfo> {
-    let d_desc = device.device_descriptor().ok()?;
-
-    if !FTDI_COMPAT_DEVICE_IDS
-        .iter()
-        .any(|(vid, pid)| d_desc.vendor_id() == *vid && d_desc.product_id() == *pid)
-    {
+fn get_device_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
+    if !FTDI_COMPAT_DEVICE_IDS.contains(&(device.vendor_id(), device.product_id())) {
         return None;
     }
 
-    let handle = match device.open() {
-        Err(rusb::Error::Access) => {
-            tracing::warn!("Access denied: probe device {:#?}", device);
-            return None;
-        }
-        Err(e) => {
-            tracing::warn!("Can't open probe device {:#?} -- Error: {:#?}", device, e);
-            return None;
-        }
-        Ok(v) => v,
-    };
-
-    let prod_str = handle.read_product_string_ascii(&d_desc).ok()?;
-    let sn_str = handle.read_serial_number_string_ascii(&d_desc).ok();
-
     Some(DebugProbeInfo {
-        identifier: prod_str,
-        vendor_id: d_desc.vendor_id(),
-        product_id: d_desc.product_id(),
-        serial_number: sn_str,
+        identifier: device.product_string()?.to_string(),
+        vendor_id: device.vendor_id(),
+        product_id: device.product_id(),
+        serial_number: device.serial_number().map(|s| s.to_string()),
         probe_type: &FtdiProbeSource,
         hid_interface: None,
     })
@@ -760,9 +740,8 @@ fn get_device_info(device: &rusb::Device<rusb::Context>) -> Option<DebugProbeInf
 
 #[tracing::instrument(skip_all)]
 fn list_ftdi_devices() -> Vec<DebugProbeInfo> {
-    match rusb::Context::new().and_then(|ctx| ctx.devices()) {
+    match nusb::list_devices() {
         Ok(devices) => devices
-            .iter()
             .filter_map(|device| get_device_info(&device))
             .collect(),
         Err(_) => vec![],
