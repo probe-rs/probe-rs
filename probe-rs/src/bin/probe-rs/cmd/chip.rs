@@ -7,7 +7,7 @@ pub struct Cmd {
 }
 
 #[derive(clap::Subcommand)]
-/// Inspect internal registry of supported chips
+/// List supported chips and their properties.
 enum Subcommand {
     /// Lists all the available families and their chips with their full.
     #[clap(name = "list")]
