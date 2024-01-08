@@ -82,12 +82,13 @@ impl From<&ArchitectureInterface> for Architecture {
 impl ArchitectureInterface {
     fn attach<'probe, 'target: 'probe>(
         &'probe mut self,
+        target: &'probe Target,
         combined_state: &'probe mut CombinedCoreState,
     ) -> Result<Core<'probe>, Error> {
         match self {
-            ArchitectureInterface::Arm(iface) => combined_state.attach_arm(iface),
-            ArchitectureInterface::Riscv(iface) => combined_state.attach_riscv(iface),
-            ArchitectureInterface::Xtensa(iface) => combined_state.attach_xtensa(iface),
+            ArchitectureInterface::Arm(iface) => combined_state.attach_arm(target, iface),
+            ArchitectureInterface::Riscv(iface) => combined_state.attach_riscv(target, iface),
+            ArchitectureInterface::Xtensa(iface) => combined_state.attach_xtensa(target, iface),
         }
     }
 }
@@ -386,7 +387,7 @@ impl Session {
             .cores
             .get_mut(core_index)
             .ok_or(Error::CoreNotFound(core_index))?;
-        self.interface.attach(combined_state)
+        self.interface.attach(&self.target, combined_state)
     }
 
     /// Read available trace data from the specified data sink.

@@ -57,7 +57,6 @@ impl XtensaState {
 pub struct Xtensa<'probe> {
     interface: &'probe mut XtensaCommunicationInterface,
     state: &'probe mut XtensaState,
-    id: usize,
 }
 
 impl<'probe> Xtensa<'probe> {
@@ -68,13 +67,8 @@ impl<'probe> Xtensa<'probe> {
     pub fn new(
         interface: &'probe mut XtensaCommunicationInterface,
         state: &'probe mut XtensaState,
-        id: usize,
     ) -> Self {
-        Self {
-            interface,
-            id,
-            state,
-        }
+        Self { interface, state }
     }
 
     fn core_info(&mut self) -> Result<CoreInformation, Error> {
@@ -176,10 +170,6 @@ impl<'probe> MemoryInterface for Xtensa<'probe> {
 }
 
 impl<'probe> CoreInterface for Xtensa<'probe> {
-    fn id(&self) -> usize {
-        self.id
-    }
-
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
         self.interface.wait_for_core_halted(timeout)?;
         self.state.pc_written = false;

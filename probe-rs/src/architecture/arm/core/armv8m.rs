@@ -33,8 +33,6 @@ pub struct Armv8m<'probe> {
     state: &'probe mut CortexMState,
 
     sequence: Arc<dyn ArmDebugSequence>,
-
-    id: usize,
 }
 
 impl<'probe> Armv8m<'probe> {
@@ -42,7 +40,6 @@ impl<'probe> Armv8m<'probe> {
         mut memory: Box<dyn ArmProbe + 'probe>,
         state: &'probe mut CortexMState,
         sequence: Arc<dyn ArmDebugSequence>,
-        id: usize,
     ) -> Result<Self, Error> {
         if !state.initialized() {
             // determine current state
@@ -80,7 +77,6 @@ impl<'probe> Armv8m<'probe> {
             memory,
             state,
             sequence,
-            id,
         })
     }
 
@@ -446,10 +442,6 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
     fn floating_point_register_count(&mut self) -> Result<usize, crate::error::Error> {
         Ok(32)
-    }
-
-    fn id(&self) -> usize {
-        self.id
     }
 
     #[tracing::instrument(skip(self))]

@@ -1,8 +1,8 @@
 use std::{path::Path, time::Instant};
 
 use colored::Colorize;
+use linkme::distributed_slice;
 use probe_rs::{
-    config::MemoryRegion,
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format},
     Architecture, Core, MemoryInterface, Session,
 };
@@ -11,16 +11,10 @@ pub mod stepping;
 
 use anyhow::{Context, Result};
 
-use crate::{println_test_status, TestTracker};
+use crate::{println_test_status, TestTracker, CORE_TESTS};
 
-pub fn test_register_access(tracker: &TestTracker, core: &mut Core) -> Result<()> {
-    test_register_read(tracker, core)?;
-    test_register_write(tracker, core)?;
-
-    Ok(())
-}
-
-pub fn test_register_read(tracker: &TestTracker, core: &mut Core) -> Result<()> {
+#[distributed_slice(CORE_TESTS)]
+pub fn test_register_read(tracker: &TestTracker, core: &mut Core) -> Result<(), probe_rs::Error> {
     println_test_status!(tracker, blue, "Testing register read...");
 
     let register = core.registers();
@@ -34,7 +28,8 @@ pub fn test_register_read(tracker: &TestTracker, core: &mut Core) -> Result<()> 
     Ok(())
 }
 
-pub fn test_register_write(tracker: &TestTracker, core: &mut Core) -> Result<()> {
+#[distributed_slice(CORE_TESTS)]
+fn test_register_write(tracker: &TestTracker, core: &mut Core) -> Result<(), probe_rs::Error> {
     println_test_status!(tracker, blue, "Testing register write...");
 
     let register = core.registers();
@@ -74,18 +69,14 @@ pub fn test_register_write(tracker: &TestTracker, core: &mut Core) -> Result<()>
     Ok(())
 }
 
-pub fn test_memory_access(
-    tracker: &TestTracker,
-    core: &mut Core,
-    core_name: &str,
-    memory_regions: &[MemoryRegion],
-) -> Result<()> {
+#[distributed_slice(CORE_TESTS)]
+fn test_memory_access(tracker: &TestTracker, core: &mut Core) -> Result<(), probe_rs::Error> {
+    let memory_regions = core.memory_regions().cloned().collect::<Vec<_>>();
+
     // Try to write all memory regions
     for region in memory_regions {
         match region {
-            probe_rs::config::MemoryRegion::Ram(ram)
-                if ram.cores.iter().any(|c| c == core_name) =>
-            {
+            probe_rs::config::MemoryRegion::Ram(ram) => {
                 let ram_start = ram.range.start;
                 let ram_size = ram.range.end - ram.range.start;
 
@@ -141,12 +132,11 @@ pub fn test_memory_access(
     Ok(())
 }
 
-pub fn test_hw_breakpoints(
-    tracker: &TestTracker,
-    core: &mut Core,
-    memory_regions: &[MemoryRegion],
-) -> Result<()> {
+#[distributed_slice(CORE_TESTS)]
+fn test_hw_breakpoints(tracker: &TestTracker, core: &mut Core) -> Result<(), probe_rs::Error> {
     println_test_status!(tracker, blue, "Testing HW breakpoints");
+
+    let memory_regions: Vec<_> = core.memory_regions().cloned().collect();
 
     // For this test, we assume that code is executed from Flash / non-volatile memory, and try to set breakpoints
     // in these regions.

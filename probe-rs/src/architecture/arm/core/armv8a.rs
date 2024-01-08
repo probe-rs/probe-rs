@@ -61,8 +61,6 @@ pub struct Armv8a<'probe> {
     sequence: Arc<dyn ArmDebugSequence>,
 
     num_breakpoints: Option<u32>,
-
-    id: usize,
 }
 
 impl<'probe> Armv8a<'probe> {
@@ -72,7 +70,6 @@ impl<'probe> Armv8a<'probe> {
         base_address: u64,
         cti_address: u64,
         sequence: Arc<dyn ArmDebugSequence>,
-        id: usize,
     ) -> Result<Self, Error> {
         if !state.initialized() {
             // determine current state
@@ -104,7 +101,6 @@ impl<'probe> Armv8a<'probe> {
             cti_address,
             sequence,
             num_breakpoints: None,
-            id,
         };
 
         if !core.state.initialized() {
@@ -1130,10 +1126,6 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         Ok(self.state.fp_reg_count)
     }
 
-    fn id(&self) -> usize {
-        self.id
-    }
-
     #[tracing::instrument(skip(self))]
     fn reset_catch_set(&mut self) -> Result<(), Error> {
         self.sequence.reset_catch_set(
@@ -1806,7 +1798,6 @@ mod test {
             TEST_BASE_ADDRESS,
             TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1842,7 +1833,6 @@ mod test {
             TEST_BASE_ADDRESS,
             TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1880,7 +1870,6 @@ mod test {
             TEST_BASE_ADDRESS,
             TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1913,7 +1902,6 @@ mod test {
             TEST_BASE_ADDRESS,
             TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1943,7 +1931,6 @@ mod test {
             TEST_BASE_ADDRESS,
             TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1974,7 +1961,6 @@ mod test {
             TEST_BASE_ADDRESS,
             TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -2012,7 +1998,6 @@ mod test {
             TEST_BASE_ADDRESS,
             TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -2051,7 +2036,6 @@ mod test {
             TEST_BASE_ADDRESS,
             TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -2090,7 +2074,6 @@ mod test {
             TEST_BASE_ADDRESS,
             TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -2129,7 +2112,6 @@ mod test {
             TEST_BASE_ADDRESS,
             TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -2168,7 +2150,6 @@ mod test {
             TEST_BASE_ADDRESS,
             TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -2217,7 +2198,6 @@ mod test {
             TEST_BASE_ADDRESS,
             TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -2252,7 +2232,6 @@ mod test {
             TEST_BASE_ADDRESS,
             TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -2279,7 +2258,6 @@ mod test {
             TEST_BASE_ADDRESS,
             TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -2361,7 +2339,6 @@ mod test {
             TEST_BASE_ADDRESS,
             TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -2412,7 +2389,6 @@ mod test {
             TEST_BASE_ADDRESS,
             TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -2449,7 +2425,6 @@ mod test {
             TEST_BASE_ADDRESS,
             TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -2481,7 +2456,6 @@ mod test {
             TEST_BASE_ADDRESS,
             TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -2513,7 +2487,6 @@ mod test {
             TEST_BASE_ADDRESS,
             TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -2545,7 +2518,6 @@ mod test {
             TEST_BASE_ADDRESS,
             TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -2577,7 +2549,6 @@ mod test {
             TEST_BASE_ADDRESS,
             TEST_CTI_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
