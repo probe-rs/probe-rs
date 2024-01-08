@@ -109,7 +109,7 @@ fn read_interface_string(
 /// Checks if a given Device is a CMSIS-DAP probe, returning Some(DebugProbeInfo) if so.
 fn get_cmsisdap_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
     // Open device handle and read basic information
-    let prod_str = device.product_string()?;
+    let prod_str = device.product_string().unwrap_or("");
     let sn_str = device.serial_number();
 
     // Most CMSIS-DAP probes say something like "CMSIS-DAP"
