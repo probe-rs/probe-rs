@@ -15,6 +15,7 @@ use crate::architecture::arm::ArmError;
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
 use crate::error::Error;
+use crate::probe::common::IdCode;
 use crate::{
     architecture::arm::communication_interface::UninitializedArmProbe,
     config::{RegistryError, TargetSelector},
@@ -895,18 +896,41 @@ pub struct JtagWriteCommand {
 /// Represents a Jtag Tap within the chain.
 #[derive(Debug)]
 pub struct JtagChainItem {
-    pub idcode: u32,
+    pub idcode: Option<IdCode>,
     pub irlen: usize,
 }
 
 /// Chain parameters to select a target tap within the chain.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct ChainParams {
     pub irpre: usize,
     pub irpost: usize,
     pub drpre: usize,
     pub drpost: usize,
     pub irlen: usize,
+}
+
+impl ChainParams {
+    fn from_jtag_chain(chain: &[JtagChainItem], selected: usize) -> Option<Self> {
+        let mut params = Self::default();
+
+        let mut found = false;
+        for (index, tap) in chain.iter().enumerate() {
+            tracing::info!("{:?}", tap);
+            if index == selected {
+                params.irlen = tap.irlen;
+                found = true;
+            } else if found {
+                params.irpost += tap.irlen;
+                params.drpost += 1;
+            } else {
+                params.irpre += tap.irlen;
+                params.drpre += 1;
+            }
+        }
+
+        found.then_some(params)
+    }
 }
 
 #[derive(thiserror::Error, Debug)]
