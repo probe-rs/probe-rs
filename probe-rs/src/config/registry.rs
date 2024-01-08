@@ -15,7 +15,7 @@ static REGISTRY: Lazy<Arc<Mutex<Registry>>> =
 #[derive(Debug, thiserror::Error)]
 pub enum RegistryError {
     /// The requested chip was not found in the registry.
-    #[error("The requested chip '{0}' was not found in the list of known targets.")]
+    #[error("The requested chip '{0}' was not found in the list of known targets. Run `probe-rs chip list` to see which chips are supported.")]
     ChipNotFound(String),
     /// Multiple chips found which match the given string, unable to return a single chip.
     #[error("Found multiple chips matching '{0}', unable to select a single chip. ({1})")]
