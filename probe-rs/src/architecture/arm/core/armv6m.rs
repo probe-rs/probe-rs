@@ -636,15 +636,15 @@ impl<'probe> CoreInterface for Armv6m<'probe> {
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
         // First check if we stopped on a breakpoint, because this requires special handling before we can continue.
-        let pc_before_step = self.read_core_reg(self.program_counter().into())?;
-        let was_breakpoint = if matches!(
+        let (was_breakpoint, pc_before_step) = if matches!(
             self.state.current_state,
             CoreStatus::Halted(HaltReason::Breakpoint(_))
         ) {
+            let pc_before_step = self.read_core_reg(self.program_counter().into())?;
             self.enable_breakpoints(false)?;
-            true
+            (true, pc_before_step)
         } else {
-            false
+            (false, RegisterValue::U32(0)) // Dummy register value that won't be used
         };
 
         let mut value = Dhcsr(0);
