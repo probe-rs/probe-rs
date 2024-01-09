@@ -347,7 +347,7 @@ where
 
     /// Read a 64bit word at `address`.
     ///
-    /// The address where the read should be performed at has to be word aligned.
+    /// The address where the read should be performed at has to be a multiple of 8.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
     pub fn read_word_64(&mut self, access_port: MemoryAp, address: u64) -> Result<u64, ArmError> {
         if (address % 8) != 0 {
@@ -377,7 +377,7 @@ where
 
     /// Read a 32bit word at `addr`.
     ///
-    /// The address where the read should be performed at has to be word aligned.
+    /// The address where the read should be performed at has to be a multiple of 4.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
     pub fn read_word_32(&mut self, access_port: MemoryAp, address: u64) -> Result<u32, ArmError> {
         if (address % 4) != 0 {
@@ -395,7 +395,7 @@ where
 
     /// Read an 16 bit word at `address`.
     ///
-    /// The address where the read should be performed at has to be word aligned.
+    /// The address where the read should be performed at has to be a multiple of 2.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
     pub fn read_word_16(&mut self, access_port: MemoryAp, address: u64) -> Result<u16, ArmError> {
         if self.ap_information.supports_only_32bit_data_size {
@@ -439,7 +439,7 @@ where
     /// Read a block of 32 bit words at `address`.
     ///
     /// The number of words read is `data.len()`.
-    /// The address where the read should be performed at has to be word aligned.
+    /// The address where the read should be performed at has to be a multiple of 4.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
     pub fn read_32(
         &mut self,
@@ -485,7 +485,7 @@ where
     /// Read a block of 16 bit words at `address`.
     ///
     /// The number of words read is `data.len()`.
-    /// The address where the read should be performed at has to be word aligned.
+    /// The address where the read should be performed at has to be a multiple of 2.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
     pub fn read_16(
         &mut self,
@@ -600,7 +600,7 @@ where
 
     /// Write a 64bit word at `addr`.
     ///
-    /// The address where the write should be performed at has to be word aligned.
+    /// The address where the write should be performed at has to be a multiple of 8.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
     pub fn write_word_64(
         &mut self,
@@ -636,7 +636,7 @@ where
 
     /// Write a 32bit word at `address`.
     ///
-    /// The address where the write should be performed at has to be word aligned.
+    /// The address where the write should be performed at has to be a multiple of 4.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
     pub fn write_word_32(
         &mut self,
@@ -661,7 +661,7 @@ where
 
     /// Write a 16bit word at `address`.
     ///
-    /// The address where the write should be performed at has to be word aligned.
+    /// The address where the write should be performed at has to be a multiple of 2.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
     pub fn write_word_16(
         &mut self,
@@ -719,7 +719,7 @@ where
     /// Write a block of 32 bit words at `address`.
     ///
     /// The number of words written is `data.len()`.
-    /// The address where the write should be performed at has to be word aligned.
+    /// The address where the write should be performed at has to be a multiple of 4.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
     pub fn write_32(
         &mut self,
@@ -771,7 +771,7 @@ where
     /// Write a block of 16 bit words at `address`.
     ///
     /// The number of words written is `data.len()`.
-    /// The address where the write should be performed at has to be word aligned.
+    /// The address where the write should be performed at has to be a multiple of 2.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
     pub fn write_16(
         &mut self,
