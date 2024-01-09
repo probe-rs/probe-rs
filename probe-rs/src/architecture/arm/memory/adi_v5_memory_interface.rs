@@ -1060,6 +1060,11 @@ mod tests {
         128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143,
     ];
 
+    // DATA8 interpreted as little endian 16-bit words
+    const DATA16: &[u16] = &[
+        0x8180, 0x8382, 0x8584, 0x8786, 0x8988, 0x8b8a, 0x8d8c, 0x8f8e,
+    ];
+
     // DATA8 interpreted as little endian 32-bit words
     const DATA32: &[u32] = &[0x83828180, 0x87868584, 0x8b8a8988, 0x8f8e8d8c];
 
@@ -1074,6 +1079,20 @@ mod tests {
                 .read_word_32(DUMMY_AP, address)
                 .expect("read_word_32 failed");
             assert_eq!(value, DATA32[address as usize / 4]);
+        }
+    }
+
+    #[test]
+    fn read_word_16() {
+        let mut mock = MockMemoryAp::with_pattern();
+        mock.memory[..8].copy_from_slice(&DATA8[..8]);
+        let mut mi = ADIMemoryInterface::new_mock(&mut mock);
+
+        for &address in &[0, 2, 4, 6] {
+            let value = mi
+                .read_word_16(DUMMY_AP, address)
+                .expect("read_word_16 failed");
+            assert_eq!(value, DATA16[address as usize / 2]);
         }
     }
 
@@ -1101,6 +1120,21 @@ mod tests {
             expected[(address as usize)..(address as usize) + 4].copy_from_slice(&DATA8[..4]);
 
             mi.write_word_32(DUMMY_AP, address, DATA32[0])
+                .unwrap_or_else(|_| panic!("write_word_32 failed, address = {address}"));
+            assert_eq!(mi.mock_memory(), expected.as_slice(), "address = {address}");
+        }
+    }
+
+    #[test]
+    fn write_word_16() {
+        for &address in &[0, 2, 4, 6] {
+            let mut mock = MockMemoryAp::with_pattern();
+            let mut mi = ADIMemoryInterface::new_mock(&mut mock);
+
+            let mut expected = Vec::from(mi.mock_memory());
+            expected[(address as usize)..(address as usize) + 2].copy_from_slice(&DATA8[..2]);
+
+            mi.write_word_16(DUMMY_AP, address, DATA16[0])
                 .unwrap_or_else(|_| panic!("write_word_32 failed, address = {address}"));
             assert_eq!(mi.mock_memory(), expected.as_slice(), "address = {address}");
         }
@@ -1177,6 +1211,27 @@ mod tests {
     }
 
     #[test]
+    fn read_16() {
+        let mut mock = MockMemoryAp::with_pattern();
+        mock.memory[..DATA8.len()].copy_from_slice(DATA8);
+        let mut mi = ADIMemoryInterface::new_mock(&mut mock);
+
+        for &address in &[0, 2, 4, 6] {
+            for len in 0..4 {
+                let mut data = vec![0u16; len];
+                mi.read_16(DUMMY_AP, address, &mut data)
+                    .unwrap_or_else(|_| panic!("read_16 failed, address = {address}, len = {len}"));
+
+                assert_eq!(
+                    data.as_slice(),
+                    &DATA16[(address / 2) as usize..(address / 2) as usize + len],
+                    "address = {address}, len = {len}"
+                );
+            }
+        }
+    }
+
+    #[test]
     fn read_8() {
         let mut mock = MockMemoryAp::with_pattern();
         mock.memory[..DATA8.len()].copy_from_slice(DATA8);
@@ -1211,6 +1266,31 @@ mod tests {
                 let data = &DATA32[..len];
                 mi.write_32(DUMMY_AP, address, data).unwrap_or_else(|_| {
                     panic!("write_32 failed, address = {address}, len = {len}")
+                });
+
+                assert_eq!(
+                    mi.mock_memory(),
+                    expected.as_slice(),
+                    "address = {address}, len = {len}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn write_16() {
+        for &address in &[0, 2, 4, 6] {
+            for len in 0..3 {
+                let mut mock = MockMemoryAp::with_pattern();
+                let mut mi = ADIMemoryInterface::new_mock(&mut mock);
+
+                let mut expected = Vec::from(mi.mock_memory());
+                expected[address as usize..(address as usize) + len * 2]
+                    .copy_from_slice(&DATA8[..len * 2]);
+
+                let data = &DATA16[..len];
+                mi.write_16(DUMMY_AP, address, data).unwrap_or_else(|_| {
+                    panic!("write_16 failed, address = {address}, len = {len}")
                 });
 
                 assert_eq!(
