@@ -218,7 +218,7 @@ impl CmsisDap {
     ///
     /// If IR lengths for each TAP are known, provide them in `ir_lengths`.
     ///
-    /// Returns a new JTAGChain.
+    /// Returns a new JTAG chain.
     fn jtag_scan(
         &mut self,
         ir_lengths: Option<&[usize]>,

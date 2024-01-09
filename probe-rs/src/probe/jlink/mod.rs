@@ -2,18 +2,24 @@
 
 mod jaylink;
 
+use anyhow::anyhow;
+
+use bitvec::prelude::*;
+use bitvec::vec::BitVec;
 use jaylink::{Capability, Interface, JayLink, SpeedConfig, SwoMode};
 use probe_rs_target::ScanChainElement;
 
-use std::convert::{TryFrom, TryInto};
+use std::convert::TryFrom;
 use std::iter;
-use std::time::{Duration, Instant};
 
-use crate::architecture::arm::{ArmError, RawDapAccess};
+use crate::architecture::arm::ArmError;
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
-use crate::probe::common::bits_to_byte;
+use crate::probe::common::{
+    common_sequence, extract_idcodes, extract_ir_lengths, JtagState, RegisterState,
+};
 use crate::probe::ProbeDriver;
+use crate::probe::{ChainParams, JtagChainItem};
 use crate::{
     architecture::{
         arm::{
@@ -103,13 +109,15 @@ impl ProbeDriver for JLinkSource {
             swo_config: None,
             supported_protocols,
             jtag_idle_cycles: 0,
-            ir_len: 0,
             protocol: None,
             current_ir_reg: 1,
             speed_khz: 0,
             scan_chain: None,
             swd_settings: SwdSettings::default(),
             probe_statistics: ProbeStatistics::default(),
+            max_ir_address: 0x1F,
+            chain_params: ChainParams::default(),
+            jtag_state: JtagState::Reset,
         }))
     }
 
@@ -127,9 +135,6 @@ pub(crate) struct JLink {
     /// accesses to the DMI register
     jtag_idle_cycles: u8,
 
-    // JTAG IR register length
-    ir_len: usize,
-
     /// Currently selected protocol
     protocol: Option<WireProtocol>,
 
@@ -137,10 +142,14 @@ pub(crate) struct JLink {
     supported_protocols: Vec<WireProtocol>,
 
     current_ir_reg: u32,
+    max_ir_address: u32,
 
     speed_khz: u32,
 
     scan_chain: Option<Vec<ScanChainElement>>,
+    chain_params: ChainParams,
+
+    jtag_state: JtagState,
 
     probe_statistics: ProbeStatistics,
     swd_settings: SwdSettings,
@@ -190,217 +199,210 @@ impl JLink {
     fn read_dr(&mut self, register_bits: usize) -> Result<Vec<u8>, DebugProbeError> {
         tracing::debug!("Read {} bits from DR", register_bits);
 
-        let tms_enter_shift = [true, false, false];
-
-        // Last bit of data is shifted out when we exi the SHIFT-DR State
-        let tms_shift_out_value = iter::repeat(false).take(register_bits - 1);
-
-        let tms_enter_idle = [true, true, false];
-
-        let mut tms = Vec::with_capacity(register_bits + 7);
-
-        tms.extend_from_slice(&tms_enter_shift);
-        tms.extend(tms_shift_out_value);
-        tms.extend_from_slice(&tms_enter_idle);
-
-        let tdi = iter::repeat(false).take(tms.len() + self.idle_cycles() as usize);
-
-        // We have to stay in the idle cycle a bit
-        tms.extend(iter::repeat(false).take(self.idle_cycles() as usize));
-
-        let mut response = self.handle.jtag_io(tms, tdi)?;
-
-        tracing::trace!("Response: {:?}", response);
-
-        let _remainder = response.split_off(tms_enter_shift.len());
-
-        let mut remaining_bits = register_bits;
-
-        let mut result = Vec::new();
-
-        while remaining_bits >= 8 {
-            let byte = bits_to_byte(response.split_off(8)) as u8;
-            result.push(byte);
-            remaining_bits -= 8;
-        }
-
-        // Handle leftover bytes
-        if remaining_bits > 0 {
-            result.push(bits_to_byte(response.split_off(remaining_bits)) as u8);
-        }
-
-        tracing::debug!("Read from DR: {:?}", result);
-
-        Ok(result)
+        self.write_dr(&vec![0x00; (register_bits + 7) / 8], register_bits)
     }
 
     /// Write IR register with the specified data. The
     /// IR register might have an odd length, so the dta
     /// will be truncated to `len` bits. If data has less
     /// than `len` bits, an error will be returned.
-    fn write_ir(&mut self, data: &[u8], len: usize) -> Result<(), DebugProbeError> {
+    fn write_ir(&mut self, data: &[u8], len: usize) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
         tracing::debug!("Write IR: {:?}, len={}", data, len);
 
-        // Check the bit length, enough data has to be
-        // available
-        if data.len() * 8 < len {
-            todo!("Proper error for incorrect length");
+        // Check the bit length, enough data has to be available
+        if data.len() * 8 < len || len == 0 {
+            return Err(DebugProbeError::Other(anyhow!("Invalid data length")));
         }
 
-        // At least one bit has to be sent
-        if len < 1 {
-            todo!("Proper error for incorrect length");
-        }
-
-        let tms_enter_ir_shift = [true, true, false, false];
+        // BYPASS commands before and after shifting out data where required
+        let pre_bits = self.chain_params.irpre;
+        let post_bits = self.chain_params.irpost;
 
         // The last bit will be transmitted when exiting the shift state,
-        // so we need to stay in the shift stay for one period less than
-        // we have bits to transmit
+        // so we need to stay in the shift state for one period less than
+        // we have bits to transmit.
         let tms_data = iter::repeat(false).take(len - 1);
 
-        let tms_enter_idle = [true, true, false];
+        // Enter IR shift
+        self.jtag_move_to_state(JtagState::Ir(RegisterState::Shift))?;
 
-        let mut tms = Vec::with_capacity(tms_enter_ir_shift.len() + len + tms_enter_ir_shift.len());
+        let tms = iter::repeat(false)
+            .take(pre_bits)
+            .chain(tms_data)
+            .chain(iter::repeat(false).take(post_bits))
+            .chain(iter::once(true));
 
-        tms.extend_from_slice(&tms_enter_ir_shift);
-        tms.extend(tms_data);
-        tms.extend_from_slice(&tms_enter_idle);
+        let tdi = iter::repeat(true)
+            .take(pre_bits)
+            .chain(data.as_bits::<Lsb0>()[..len].iter().map(|b| *b))
+            .chain(iter::repeat(true).take(post_bits));
 
-        let tdi_enter_ir_shift = [false, false, false, false];
+        tracing::trace!("tms: {:?}", tms.clone());
+        tracing::trace!("tdi: {:?}", tdi.clone());
 
-        // This is one less than the enter idle for tms, because
-        // the last bit is transmitted when exiting the IR shift state
-        let tdi_enter_idle = [false, false];
+        let response = self.jtag_io(tms, tdi)?;
 
-        let mut tdi = Vec::with_capacity(tdi_enter_ir_shift.len() + tdi_enter_idle.len() + len);
+        let result = response[pre_bits..][..len].to_bitvec();
 
-        tdi.extend_from_slice(&tdi_enter_ir_shift);
+        self.jtag_move_to_state(JtagState::Ir(RegisterState::Update))?;
 
-        let num_bytes = len / 8;
-
-        let num_bits = len - (num_bytes * 8);
-
-        for bytes in &data[..num_bytes] {
-            let mut byte = *bytes;
-
-            for _ in 0..8 {
-                tdi.push(byte & 1 == 1);
-
-                byte >>= 1;
-            }
-        }
-
-        if num_bits > 0 {
-            let mut remaining_byte = data[num_bytes];
-
-            for _ in 0..num_bits {
-                tdi.push(remaining_byte & 1 == 1);
-                remaining_byte >>= 1;
-            }
-        }
-
-        tdi.extend_from_slice(&tdi_enter_idle);
-
-        tracing::trace!("tms: {:?}", tms);
-        tracing::trace!("tdi: {:?}", tdi);
-
-        let response = self.handle.jtag_io(tms, tdi)?;
-
-        tracing::trace!("Response: {:?}", response);
-
-        if len >= 8 {
-            return Err(DebugProbeError::NotImplemented(
-                "Not yet implemented for IR registers larger than 8 bit",
-            ));
-        }
-
-        self.current_ir_reg = data[0] as u32;
-
-        // Maybe we could return the previous state of the IR register here...
-
-        Ok(())
+        Ok(result)
     }
 
     fn write_dr(&mut self, data: &[u8], register_bits: usize) -> Result<Vec<u8>, DebugProbeError> {
         tracing::debug!("Write DR: {:?}, len={}", data, register_bits);
 
-        let tms_enter_shift = [true, false, false];
+        // Check the bit length, enough data has to be available
+        if data.len() * 8 < register_bits || register_bits == 0 {
+            return Err(DebugProbeError::Other(anyhow!("Invalid data length")));
+        }
 
-        // Last bit of data is shifted out when we exi the SHIFT-DR State
+        // Last bit of data is shifted out when we exit the SHIFT-DR State
         let tms_shift_out_value = iter::repeat(false).take(register_bits - 1);
 
-        let tms_enter_idle = [true, true, false];
+        // Enter DR shift
+        self.jtag_move_to_state(JtagState::Dr(RegisterState::Shift))?;
 
-        let mut tms = Vec::with_capacity(register_bits + 7);
+        // dummy bits to account for bypasses
+        let pre_bits = self.chain_params.drpre;
+        let post_bits = self.chain_params.drpost;
 
-        tms.extend_from_slice(&tms_enter_shift);
-        tms.extend(tms_shift_out_value);
-        tms.extend_from_slice(&tms_enter_idle);
+        let tms = iter::repeat(false)
+            .take(pre_bits)
+            .chain(tms_shift_out_value)
+            .chain(iter::repeat(false).take(post_bits))
+            .chain(iter::once(true));
 
-        let tdi_enter_shift = [false, false, false];
+        let tdi = iter::repeat(false)
+            .take(pre_bits)
+            .chain(data.as_bits::<Lsb0>()[..register_bits].iter().map(|b| *b))
+            .chain(iter::repeat(false).take(post_bits));
 
-        let tdi_enter_idle = [false, false];
+        let response = self.jtag_io(tms, tdi)?;
 
-        // TODO: TDI data
-        let mut tdi =
-            Vec::with_capacity(tdi_enter_shift.len() + tdi_enter_idle.len() + register_bits);
+        self.jtag_move_to_state(JtagState::Dr(RegisterState::Update))?;
 
-        tdi.extend_from_slice(&tdi_enter_shift);
+        if self.idle_cycles() > 0 {
+            self.jtag_move_to_state(JtagState::Idle)?;
 
-        let num_bytes = register_bits / 8;
+            // We need to stay in the idle cycle a bit
+            let tms = iter::repeat(false).take(self.idle_cycles() as usize);
+            let tdi = iter::repeat(false).take(self.idle_cycles() as usize);
 
-        let num_bits = register_bits - (num_bytes * 8);
-
-        for bytes in &data[..num_bytes] {
-            let mut byte = *bytes;
-
-            for _ in 0..8 {
-                tdi.push(byte & 1 == 1);
-
-                byte >>= 1;
-            }
+            self.jtag_io(tms, tdi)?;
         }
-
-        if num_bits > 0 {
-            let mut remaining_byte = data[num_bytes];
-
-            for _ in 0..num_bits {
-                tdi.push(remaining_byte & 1 == 1);
-                remaining_byte >>= 1;
-            }
-        }
-
-        tdi.extend_from_slice(&tdi_enter_idle);
-
-        // We need to stay in the idle cycle a bit
-        tms.extend(iter::repeat(false).take(self.idle_cycles() as usize));
-        tdi.extend(iter::repeat(false).take(self.idle_cycles() as usize));
-
-        let mut response = self.handle.jtag_io(tms, tdi)?;
 
         tracing::trace!("Response: {:?}", response);
 
-        let _remainder = response.split_off(tms_enter_shift.len());
-
-        let mut remaining_bits = register_bits;
-
-        let mut result = Vec::new();
-
-        while remaining_bits >= 8 {
-            let byte = bits_to_byte(response.split_off(8)) as u8;
-            result.push(byte);
-            remaining_bits -= 8;
-        }
-
-        // Handle leftover bytes
-        if remaining_bits > 0 {
-            result.push(bits_to_byte(response.split_off(remaining_bits)) as u8);
-        }
+        let mut result = response[pre_bits..][..register_bits].to_bitvec();
 
         tracing::trace!("result: {:?}", result);
 
-        Ok(result)
+        result.force_align();
+        Ok(result.into_vec())
+    }
+
+    fn jtag_move_to_state(&mut self, target: JtagState) -> Result<(), DebugProbeError> {
+        tracing::trace!("Changing state: {:?} -> {:?}", self.jtag_state, target);
+        let mut steps = vec![];
+        while let Some(tms) = self.jtag_state.step_toward(target) {
+            steps.push(tms);
+            self.jtag_state.update(tms);
+        }
+        let tdi = std::iter::repeat(false).take(steps.len());
+        // Don't use jtag_io here, as we don't want to update the state twice
+        self.handle.jtag_io(steps, tdi)?;
+        tracing::trace!("In state: {:?}", self.jtag_state);
+        Ok(())
+    }
+
+    fn jtag_io(
+        &mut self,
+        tms: impl IntoIterator<Item = bool> + Clone,
+        tdi: impl IntoIterator<Item = bool>,
+    ) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
+        let tms_bits = tms.clone().into_iter();
+        let tdi_bits = tdi.into_iter();
+
+        let response = self.handle.jtag_io(tms_bits, tdi_bits)?;
+        let response = BitVec::<u8, Lsb0>::from_iter(response);
+
+        for tms in tms.into_iter() {
+            self.jtag_state.update(tms);
+        }
+
+        Ok(response)
+    }
+
+    fn jtag_reset(&mut self) -> Result<(), DebugProbeError> {
+        tracing::debug!("Resetting JTAG chain by setting tms high for 5 bits");
+
+        // Reset JTAG chain (5 times TMS high), and enter idle state afterwards
+        let tms = [true, true, true, true, true, false];
+        let tdi = iter::repeat(false).take(6);
+
+        let response = self.jtag_io(tms, tdi)?;
+
+        tracing::debug!("Response to reset: {:?}", response);
+
+        Ok(())
+    }
+
+    fn scan(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError> {
+        let max_chain = 8;
+
+        self.jtag_reset()?;
+
+        let input = vec![0xFF; 4 * max_chain];
+        let response = self.write_dr(&input, input.len() * 8)?;
+
+        tracing::trace!("DR: {:?}", response);
+
+        let idcodes = extract_idcodes(BitSlice::<u8, Lsb0>::from_slice(&response))
+            .map_err(|e| DebugProbeError::Other(e.into()))?;
+
+        tracing::info!(
+            "JTAG DR scan complete, found {} TAPs. {:?}",
+            idcodes.len(),
+            idcodes
+        );
+
+        // First shift out all ones
+        let input = vec![0xff; idcodes.len()];
+        let response = self.write_ir(&input, input.len() * 8)?;
+
+        // Next, shift out same amount of zeros, then ones to make sure the IRs contain BYPASS.
+        let input = iter::repeat(0)
+            .take(idcodes.len())
+            .chain(input)
+            .collect::<Vec<_>>();
+        let response_zeros = self.write_ir(&input, input.len() * 8)?;
+
+        let expected = if let Some(ref chain) = self.scan_chain {
+            let expected = chain
+                .iter()
+                .filter_map(|s| s.ir_len)
+                .map(|s| s as usize)
+                .collect::<Vec<usize>>();
+            Some(expected)
+        } else {
+            None
+        };
+
+        let response = response.as_bitslice();
+        let response = common_sequence(response, response_zeros.as_bitslice());
+
+        tracing::debug!("IR scan: {}", response);
+
+        let ir_lens = extract_ir_lengths(response, idcodes.len(), expected.as_deref())
+            .map_err(|e| DebugProbeError::Other(e.into()))?;
+        tracing::debug!("Detected IR lens: {:?}", ir_lens);
+
+        Ok(idcodes
+            .into_iter()
+            .zip(ir_lens)
+            .map(|(idcode, irlen)| JtagChainItem { irlen, idcode })
+            .collect())
     }
 }
 
@@ -461,7 +463,7 @@ impl DebugProbe for JLink {
         Ok(speed_khz)
     }
 
-    fn attach(&mut self) -> Result<(), super::DebugProbeError> {
+    fn attach(&mut self) -> Result<(), DebugProbeError> {
         tracing::debug!("Attaching to J-Link");
 
         let configured_protocol = match self.protocol {
@@ -518,28 +520,24 @@ impl DebugProbe for JLink {
                 tracing::debug!("Resetting JTAG chain using trst");
                 self.handle.reset_trst()?;
 
-                tracing::debug!("Resetting JTAG chain by setting tms high for 32 bits");
+                let taps = self.scan()?;
+                tracing::info!("Found {} TAPs on reset scan", taps.len());
 
-                // Reset JTAG chain (5 times TMS high), and enter idle state afterwards
-                let tms = vec![true, true, true, true, true, false];
-                let tdi = iter::repeat(false).take(6);
+                let selected = 0;
+                if taps.len() > 1 {
+                    tracing::warn!("More than one TAP detected, defaulting to tap0");
+                }
 
-                let response: Vec<_> = self.handle.jtag_io(tms, tdi)?.collect();
-
-                tracing::debug!("Response to reset: {:?}", response);
-
-                // try to read the idcode until we have some non-zero bytes
-                let start = Instant::now();
-                let idcode = loop {
-                    let idcode_bytes = self.read_dr(32)?;
-                    if idcode_bytes.iter().any(|&x| x != 0)
-                        || Instant::now().duration_since(start) > Duration::from_secs(1)
-                    {
-                        break u32::from_le_bytes((&idcode_bytes[..]).try_into().unwrap());
-                    }
+                let Some(params) = ChainParams::from_jtag_chain(&taps, selected) else {
+                    return Err(DebugProbeError::TargetNotFound);
                 };
 
-                tracing::info!("JTAG IDCODE: {:#010x}", idcode);
+                tracing::info!("Setting chain params: {:?}", params);
+
+                // set the max address to the max number of bits irlen can represent
+                self.max_ir_address = (1 << params.irlen) - 1;
+                tracing::debug!("Setting max_ir_address to {}", self.max_ir_address);
+                self.chain_params = params;
             }
             WireProtocol::Swd => {
                 // Attaching is handled in sequence
@@ -557,8 +555,8 @@ impl DebugProbe for JLink {
         Ok(())
     }
 
-    fn target_reset(&mut self) -> Result<(), super::DebugProbeError> {
-        Err(super::DebugProbeError::NotImplemented("target_reset"))
+    fn target_reset(&mut self) -> Result<(), DebugProbeError> {
+        Err(DebugProbeError::NotImplemented("target_reset"))
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
@@ -572,18 +570,18 @@ impl DebugProbe for JLink {
     }
 
     fn try_get_riscv_interface(
-        self: Box<Self>,
+        mut self: Box<Self>,
     ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
         if self.supported_protocols.contains(&WireProtocol::Jtag) {
+            if let Err(e) = self.select_protocol(WireProtocol::Jtag) {
+                return Err((self, e.into()));
+            }
             match RiscvCommunicationInterface::new(self) {
                 Ok(interface) => Ok(interface),
                 Err((probe, err)) => Err((probe.into_probe(), err)),
             }
         } else {
-            Err((
-                RawDapAccess::into_probe(self),
-                DebugProbeError::InterfaceNotAvailable("JTAG").into(),
-            ))
+            Err((self, DebugProbeError::InterfaceNotAvailable("JTAG").into()))
         }
     }
 
@@ -626,39 +624,46 @@ impl DebugProbe for JLink {
     }
 
     fn try_get_xtensa_interface(
-        self: Box<Self>,
+        mut self: Box<Self>,
     ) -> Result<XtensaCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
-        // This probe is intended for Xtensa.
-        match XtensaCommunicationInterface::new(self) {
-            Ok(interface) => Ok(interface),
-            Err((probe, err)) => Err((probe.into_probe(), err)),
+        if self.supported_protocols.contains(&WireProtocol::Jtag) {
+            if let Err(e) = self.select_protocol(WireProtocol::Jtag) {
+                return Err((self, e));
+            }
+            match XtensaCommunicationInterface::new(self) {
+                Ok(interface) => Ok(interface),
+                Err((probe, err)) => Err((probe.into_probe(), err)),
+            }
+        } else {
+            Err((self, DebugProbeError::InterfaceNotAvailable("JTAG")))
         }
     }
 
     fn has_xtensa_interface(&self) -> bool {
-        true
+        self.supported_protocols.contains(&WireProtocol::Jtag)
     }
 }
 
 impl JTAGAccess for JLink {
     fn set_ir_len(&mut self, len: u32) {
-        self.ir_len = len as usize;
+        self.chain_params.irlen = len as usize;
     }
 
     /// Read the data register
     fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
         let address_bits = address.to_le_bytes();
 
-        // TODO: This is limited to 5 bit addresses for now
-        if address > 0x1f {
-            return Err(DebugProbeError::NotImplemented(
-                "JTAG Register addresses are fixed to 5 bits",
-            ));
+        if address > self.max_ir_address {
+            return Err(DebugProbeError::Other(anyhow!(
+                "JTAG Register addresses are fixed to {} bits",
+                self.chain_params.irlen
+            )));
         }
 
         if self.current_ir_reg != address {
             // Write IR register
-            self.write_ir(&address_bits[..1], self.ir_len)?;
+            self.write_ir(&address_bits, self.chain_params.irlen)?;
+            self.current_ir_reg = address;
         }
 
         // read DR register
@@ -674,16 +679,17 @@ impl JTAGAccess for JLink {
     ) -> Result<Vec<u8>, DebugProbeError> {
         let address_bits = address.to_le_bytes();
 
-        // TODO: This is limited to 5 bit addresses for now
-        if address > 0x1f {
-            return Err(DebugProbeError::NotImplemented(
-                "JTAG Register addresses are fixed to 5 bits",
-            ));
+        if address > self.max_ir_address {
+            return Err(DebugProbeError::Other(anyhow!(
+                "JTAG Register addresses are fixed to {} bits",
+                self.chain_params.irlen
+            )));
         }
 
         if self.current_ir_reg != address {
             // Write IR register
-            self.write_ir(&address_bits[..1], self.ir_len)?;
+            self.write_ir(&address_bits, self.chain_params.irlen)?;
+            self.current_ir_reg = address;
         }
 
         // write DR register

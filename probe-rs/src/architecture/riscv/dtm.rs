@@ -33,9 +33,6 @@ pub struct Dtm {
 
 impl Dtm {
     pub fn new(mut probe: Box<dyn JTAGAccess>) -> Result<Self, (Box<dyn JTAGAccess>, RiscvError)> {
-        // Always 5 bits for now
-        probe.set_ir_len(5);
-
         let dtmcs_raw = match probe.read_register(DTMCS_ADDRESS, DTMCS_WIDTH) {
             Ok(value) => value,
             Err(e) => return Err((probe, e.into())),
