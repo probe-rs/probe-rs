@@ -15,7 +15,7 @@ use crate::{
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
             CmsisDapError,
         },
-        BatchCommand,
+        BatchCommand, JtagChainItem, ProbeDriver,
     },
     CoreStatus, DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
 };
@@ -59,6 +59,26 @@ use bitvec::prelude::*;
 
 use super::common::{extract_idcodes, extract_ir_lengths, ScanChainError};
 
+pub struct CmsisDapSource;
+
+impl std::fmt::Debug for CmsisDapSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CmsisDap").finish()
+    }
+}
+
+impl ProbeDriver for CmsisDapSource {
+    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+        Ok(Box::new(CmsisDap::new_from_device(
+            tools::open_device_from_selector(selector)?,
+        )?))
+    }
+
+    fn list_probes(&self) -> Vec<crate::DebugProbeInfo> {
+        tools::list_cmsisdap_devices()
+    }
+}
+
 pub struct CmsisDap {
     pub device: CmsisDapDevice,
     _hw_version: u8,
@@ -78,12 +98,6 @@ pub struct CmsisDap {
     scan_chain: Option<Vec<ScanChainElement>>,
 
     batch: Vec<BatchCommand>,
-}
-
-/// Stores information about a JTAG scan chain,
-/// including IR lengths.
-struct JtagChain {
-    pub irlens: Vec<usize>,
 }
 
 impl std::fmt::Debug for CmsisDap {
@@ -205,14 +219,19 @@ impl CmsisDap {
     /// If IR lengths for each TAP are known, provide them in `ir_lengths`.
     ///
     /// Returns a new JTAGChain.
-    fn jtag_scan(&mut self, ir_lengths: Option<&[usize]>) -> Result<JtagChain, CmsisDapError> {
+    fn jtag_scan(
+        &mut self,
+        ir_lengths: Option<&[usize]>,
+    ) -> Result<Vec<JtagChainItem>, CmsisDapError> {
         let (ir, dr) = self.jtag_reset_scan()?;
         let idcodes = extract_idcodes(&dr)?;
-        let irlens = extract_ir_lengths(&ir, idcodes.len(), ir_lengths)?;
+        let ir_lens = extract_ir_lengths(&ir, idcodes.len(), ir_lengths)?;
 
-        let chain = JtagChain { irlens };
-
-        Ok(chain)
+        Ok(idcodes
+            .into_iter()
+            .zip(ir_lens)
+            .map(|(idcode, irlen)| JtagChainItem { irlen, idcode })
+            .collect())
     }
 
     /// Capture the power-up scan chain values, including all IDCODEs.
@@ -700,17 +719,6 @@ impl CmsisDap {
 }
 
 impl DebugProbe for CmsisDap {
-    fn new_from_selector(
-        selector: impl Into<DebugProbeSelector>,
-    ) -> Result<Box<Self>, DebugProbeError>
-    where
-        Self: Sized,
-    {
-        Ok(Box::new(Self::new_from_device(
-            tools::open_device_from_selector(selector)?,
-        )?))
-    }
-
     fn get_name(&self) -> &str {
         "CMSIS-DAP"
     }
@@ -1042,7 +1050,7 @@ impl RawDapAccess for CmsisDap {
         } else {
             tracing::info!("No scan chain provided, doing runtime detection");
             let chain = self.jtag_scan(None)?;
-            chain.irlens.iter().map(|len| *len as u8).collect()
+            chain.iter().map(|item| item.irlen as u8).collect()
         };
         tracing::info!("Configuring JTAG with ir lengths: {:?}", ir_lengths);
         self.send_jtag_configure(JtagConfigureRequest::new(ir_lengths)?)?;

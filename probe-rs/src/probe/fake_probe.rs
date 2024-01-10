@@ -18,8 +18,8 @@ use crate::{
         ApAddress, ArmError, ArmProbeInterface, DapAccess, DpAddress, MemoryApInformation,
         PortType, RawDapAccess, SwoAccess,
     },
-    CoreDump, DebugProbe, DebugProbeError, DebugProbeSelector, Error, MemoryInterface,
-    MemoryMappedRegister, Probe, WireProtocol,
+    CoreDump, DebugProbe, DebugProbeError, Error, MemoryInterface, MemoryMappedRegister, Probe,
+    WireProtocol,
 };
 
 /// This is a mock probe which can be used for mocking things in tests or for dry runs.
@@ -381,15 +381,6 @@ impl Default for FakeProbe {
 }
 
 impl DebugProbe for FakeProbe {
-    fn new_from_selector(
-        _selector: impl Into<DebugProbeSelector>,
-    ) -> Result<Box<Self>, DebugProbeError>
-    where
-        Self: Sized,
-    {
-        Ok(Box::new(FakeProbe::new()))
-    }
-
     /// Get human readable name for the probe
     fn get_name(&self) -> &str {
         "Mock probe for testing"
