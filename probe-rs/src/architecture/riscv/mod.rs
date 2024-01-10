@@ -29,7 +29,6 @@ pub mod sequences;
 pub struct Riscv32<'probe> {
     interface: &'probe mut RiscvCommunicationInterface,
     state: &'probe mut RiscVState,
-    id: usize,
 }
 
 impl<'probe> Riscv32<'probe> {
@@ -37,13 +36,8 @@ impl<'probe> Riscv32<'probe> {
     pub fn new(
         interface: &'probe mut RiscvCommunicationInterface,
         state: &'probe mut RiscVState,
-        id: usize,
     ) -> Self {
-        Self {
-            interface,
-            state,
-            id,
-        }
+        Self { interface, state }
     }
 
     fn read_csr(&mut self, address: u16) -> Result<u32, RiscvError> {
@@ -727,10 +721,6 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         // Mask for the D(double float), F(single float) and Q(quad float) extension bits.
         let mask = (1 << 3) | (1 << 5) | (1 << 16);
         Ok(isa_extensions & mask != 0)
-    }
-
-    fn id(&self) -> usize {
-        self.id
     }
 
     fn reset_catch_set(&mut self) -> Result<(), Error> {
