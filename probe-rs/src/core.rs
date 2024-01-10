@@ -619,10 +619,8 @@ pub fn exception_handler_for_core(core_type: CoreType) -> Box<dyn ExceptionInter
 /// to allow potential other shareholders of the session struct to grab a core handle too.
 pub struct Core<'probe> {
     id: usize,
-
     name: &'probe str,
-
-    memories: &'probe [MemoryRegion],
+    memory_regions: &'probe [MemoryRegion],
 
     inner: Box<dyn CoreInterface + 'probe>,
 }
@@ -643,14 +641,14 @@ impl<'probe> Core<'probe> {
         Self {
             id,
             name,
-            memories: memory_regions,
+            memory_regions,
             inner: Box::new(core),
         }
     }
 
     /// Return the memory regions associated with this core.
     pub fn memory_regions(&self) -> impl Iterator<Item = &MemoryRegion> {
-        self.memories
+        self.memory_regions
             .iter()
             .filter(|r| r.cores().iter().any(|m| m == self.name))
     }
