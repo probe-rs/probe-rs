@@ -3,12 +3,10 @@ use crate::{
     probe::{cmsisdap::CmsisDapSource, DebugProbeInfo, ProbeCreationError},
     DebugProbeSelector,
 };
-use async_io::{block_on, Timer};
-use futures_lite::FutureExt;
 use hidapi::HidApi;
 use nusb::{
-    descriptors::InterfaceAltSetting,
-    transfer::{ControlIn, ControlType, Direction, EndpointType},
+    descriptors::{language_id::US_ENGLISH, InterfaceAltSetting},
+    transfer::{Direction, EndpointType},
     DeviceInfo,
 };
 use std::{io, time::Duration};
@@ -64,52 +62,19 @@ fn read_interface_string(
     device: &nusb::Device,
     iface_info: &InterfaceAltSetting,
 ) -> std::io::Result<String> {
-    const USB_REQUEST_GET_DESCRIPTOR: u8 = 0x06;
-    const USB_DESCRIPTOR_TYPE_STRING: u8 = 0x03;
+    let timeout = Duration::from_millis(1000);
 
     let index = iface_info
         .string_index()
         .ok_or_else(|| io::Error::other("No description string index in iface"))?;
 
-    // nusb supports doing control requests on the device without claiming an
-    // interface, but only on linux.
-    #[cfg(not(target_os = "linux"))]
-    let device = device.claim_interface(iface_info.interface_number())?;
-
-    let control = ControlIn {
-        recipient: nusb::transfer::Recipient::Device,
-        control_type: ControlType::Standard,
-        request: USB_REQUEST_GET_DESCRIPTOR,
-        value: (USB_DESCRIPTOR_TYPE_STRING as u16) << 8 | index as u16,
-        index: 0,
-        length: 255,
-    };
-    let timeout = Duration::from_millis(1000);
-
-    let fut = async {
-        let comp = device.control_in(control).await;
-        comp.status.map_err(io::Error::other)?;
-
-        Ok(comp.data)
-    };
-
-    let data = block_on(fut.or(async {
-        Timer::after(timeout).await;
-        Err(std::io::Error::from(std::io::ErrorKind::TimedOut))
-    }))?;
-
-    let data16: Vec<u16> = data[2..]
-        .chunks_exact(2)
-        .map(|a| u16::from_le_bytes([a[0], a[1]]))
-        .collect();
-
-    String::from_utf16(&data16).map_err(io::Error::other)
+    device.get_string_descriptor(index, US_ENGLISH, timeout)
 }
 
 /// Checks if a given Device is a CMSIS-DAP probe, returning Some(DebugProbeInfo) if so.
 fn get_cmsisdap_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
     // Open device handle and read basic information
-    let prod_str = device.product_string()?;
+    let prod_str = device.product_string().unwrap_or("");
     let sn_str = device.serial_number();
 
     // Most CMSIS-DAP probes say something like "CMSIS-DAP"
