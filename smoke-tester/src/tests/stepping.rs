@@ -28,9 +28,9 @@ fn test_stepping(_tracker: &TestTracker, core: &mut Core) -> Result<(), probe_rs
     let ram_region = if let Some(ram_region) = ram_region {
         ram_region.clone()
     } else {
-        return Err(probe_rs::Error::Other(
-            anyhow::anyhow!("No RAM configured for core!").into(),
-        ));
+        return Err(probe_rs::Error::Other(anyhow::anyhow!(
+            "No RAM configured for core!"
+        )));
     };
 
     core.reset_and_halt(Duration::from_millis(100))?;
