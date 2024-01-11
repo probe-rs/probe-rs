@@ -258,15 +258,15 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
         // First check if we stopped on a breakpoint, because this requires special handling before we can continue.
-        let pc_before_step = self.read_core_reg(self.program_counter().into())?;
-        let was_breakpoint = if matches!(
+        let breakpoint_at_pc = if matches!(
             self.state.current_state,
             CoreStatus::Halted(HaltReason::Breakpoint(_))
         ) {
+            let pc_before_step = self.read_core_reg(self.program_counter().into())?;
             self.enable_breakpoints(false)?;
-            true
+            Some(pc_before_step)
         } else {
-            false
+            None
         };
 
         let mut value = Dhcsr(0);
@@ -288,7 +288,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         let mut pc_after_step = self.read_core_reg(self.program_counter().into())?;
 
         // Re-enable breakpoints before we continue.
-        if was_breakpoint {
+        if let Some(pc_before_step) = breakpoint_at_pc {
             // If we were stopped on a software breakpoint, then we need to manually advance the PC, or else we will be stuck here forever.
             if pc_before_step == pc_after_step
                 && !self
