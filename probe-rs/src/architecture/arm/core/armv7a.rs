@@ -936,7 +936,7 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
         for (i, byte) in data.iter().enumerate() {
-            self.write_word_8(address + ((i as u64) * 4), *byte)?;
+            self.write_word_8(address + (i as u64), *byte)?;
         }
 
         Ok(())
