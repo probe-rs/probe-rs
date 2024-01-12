@@ -296,7 +296,7 @@ impl JtagState {
     pub fn step_toward(self, target: Self) -> Option<bool> {
         let tms = match self {
             state if target == state => return None,
-            Self::Reset => true,
+            Self::Reset => false,
             Self::Idle => true,
             Self::Dr(RegisterState::Select) => !matches!(target, Self::Dr(_)),
             Self::Ir(RegisterState::Select) => !matches!(target, Self::Ir(_)),
@@ -434,5 +434,20 @@ mod tests {
         let mut state = JtagState::Reset;
         state.update(false);
         assert_eq!(state, JtagState::Idle);
+    }
+
+    #[test]
+    fn generated_bits_lead_to_correct_state() {
+        for (start, goal) in [(JtagState::Reset, JtagState::Idle)] {
+            let mut state = start;
+            let mut transitions = 0;
+            while state != goal && transitions < 10 {
+                let tms = state.step_toward(goal).unwrap();
+                state.update(tms);
+                transitions += 1;
+            }
+
+            assert!(transitions < 10);
+        }
     }
 }
