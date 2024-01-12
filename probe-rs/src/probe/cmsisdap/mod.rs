@@ -15,7 +15,7 @@ use crate::{
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
             CmsisDapError,
         },
-        BatchCommand, ProbeDriver,
+        BatchCommand, JtagChainItem, ProbeDriver,
     },
     CoreStatus, DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
 };
@@ -98,12 +98,6 @@ pub struct CmsisDap {
     scan_chain: Option<Vec<ScanChainElement>>,
 
     batch: Vec<BatchCommand>,
-}
-
-/// Stores information about a JTAG scan chain,
-/// including IR lengths.
-struct JtagChain {
-    pub irlens: Vec<usize>,
 }
 
 impl std::fmt::Debug for CmsisDap {
@@ -224,15 +218,20 @@ impl CmsisDap {
     ///
     /// If IR lengths for each TAP are known, provide them in `ir_lengths`.
     ///
-    /// Returns a new JTAGChain.
-    fn jtag_scan(&mut self, ir_lengths: Option<&[usize]>) -> Result<JtagChain, CmsisDapError> {
+    /// Returns a new JTAG chain.
+    fn jtag_scan(
+        &mut self,
+        ir_lengths: Option<&[usize]>,
+    ) -> Result<Vec<JtagChainItem>, CmsisDapError> {
         let (ir, dr) = self.jtag_reset_scan()?;
         let idcodes = extract_idcodes(&dr)?;
-        let irlens = extract_ir_lengths(&ir, idcodes.len(), ir_lengths)?;
+        let ir_lens = extract_ir_lengths(&ir, idcodes.len(), ir_lengths)?;
 
-        let chain = JtagChain { irlens };
-
-        Ok(chain)
+        Ok(idcodes
+            .into_iter()
+            .zip(ir_lens)
+            .map(|(idcode, irlen)| JtagChainItem { irlen, idcode })
+            .collect())
     }
 
     /// Capture the power-up scan chain values, including all IDCODEs.
@@ -1051,7 +1050,7 @@ impl RawDapAccess for CmsisDap {
         } else {
             tracing::info!("No scan chain provided, doing runtime detection");
             let chain = self.jtag_scan(None)?;
-            chain.irlens.iter().map(|len| *len as u8).collect()
+            chain.iter().map(|item| item.irlen as u8).collect()
         };
         tracing::info!("Configuring JTAG with ir lengths: {:?}", ir_lengths);
         self.send_jtag_configure(JtagConfigureRequest::new(ir_lengths)?)?;

@@ -9,15 +9,13 @@ use std::{
 
 use crate::{
     dut_definition::{DefinitionSource, DutDefinition},
-    tests::{
-        stepping::test_stepping, test_flashing, test_hw_breakpoints, test_memory_access,
-        test_register_access,
-    },
+    tests::test_flashing,
 };
 use anyhow::{Context, Result};
 use colored::Colorize;
 
 use clap::{Arg, Command};
+use linkme::distributed_slice;
 use probe_rs::Permissions;
 
 mod dut_definition;
@@ -95,8 +93,6 @@ fn main() -> Result<ExitCode> {
         let mut session = probe
             .attach(definition.chip.clone(), permissions)
             .context("Failed to attach to chip")?;
-        let target = session.target();
-        let memory_regions = target.memory_map.clone();
         let cores = session.list_cores();
 
         // TODO: Handle different cores. Handling multiple cores is not supported properly yet,
@@ -104,34 +100,15 @@ fn main() -> Result<ExitCode> {
         for (core_index, core_type) in cores.into_iter().take(1) {
             println_dut_status!(tracker, blue, "Core {}: {:?}", core_index, core_type);
 
-            let target = session.target();
-            let core_name = target.cores[core_index].name.clone();
-
             let mut core = session.core(core_index)?;
 
             println_dut_status!(tracker, blue, "Halting core..");
 
             core.reset_and_halt(Duration::from_millis(500))?;
 
-            tracker.run_test(|tracker| {
-                test_register_access(tracker, &mut core)?;
-                Ok(())
-            })?;
-
-            tracker.run_test(|tracker| {
-                test_memory_access(tracker, &mut core, &core_name, &memory_regions)?;
-                Ok(())
-            })?;
-
-            tracker.run_test(|tracker| {
-                test_hw_breakpoints(tracker, &mut core, &memory_regions)?;
-                Ok(())
-            })?;
-
-            tracker.run_test(|_tracker| {
-                test_stepping(&mut core, &memory_regions)?;
-                Ok(())
-            })?;
+            for test_fn in CORE_TESTS {
+                tracker.run_test(|tracker| test_fn(tracker, &mut core))?;
+            }
 
             // Ensure core is not running anymore.
             core.reset_and_halt(Duration::from_millis(200))?;
@@ -404,3 +381,7 @@ impl<'a> TestTracker<'a> {
         test_result
     }
 }
+
+/// A list of all tests which run on cores.
+#[distributed_slice]
+pub static CORE_TESTS: [fn(&TestTracker, &mut probe_rs::Core) -> Result<(), probe_rs::Error>];

@@ -94,6 +94,9 @@ fn starts_to_lengths(starts: &[usize], total: usize) -> Vec<usize> {
 /// We can therefore unambiguously scan through the DR capture to find
 /// all IDCODEs and TAPs in BYPASS.
 ///
+/// Because we don't know how many TAPs there are, we scan until we find
+/// a 32-bit IDCODE of all 1s, which comes after the last TAP in the chain.
+///
 /// Returns Vec<Option<IdCode>>, with None for TAPs in BYPASS.
 pub(crate) fn extract_idcodes(
     mut dr: &BitSlice<u8>,
@@ -108,6 +111,11 @@ pub(crate) fn extract_idcodes(
             }
 
             let idcode = dr[0..32].load_le::<u32>();
+
+            if idcode == u32::MAX {
+                break;
+            }
+
             let idcode = IdCode(idcode);
 
             if !idcode.valid() {
@@ -229,6 +237,110 @@ pub(crate) fn extract_ir_lengths(
     } else {
         tracing::error!("IR lengths are ambiguous and must be explicitly configured.");
         Err(ScanChainError::InvalidIR)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub(crate) enum RegisterState {
+    Select,
+    Capture,
+    Shift,
+    Exit1,
+    Pause,
+    Exit2,
+    Update,
+}
+
+impl RegisterState {
+    fn step_toward(self, target: Self) -> bool {
+        match self {
+            Self::Select => false,
+            Self::Capture if target == Self::Shift => false,
+            Self::Exit1 if target == Self::Pause => false,
+            Self::Exit2 if target == Self::Shift => false,
+            Self::Update => unreachable!(),
+            _ => true,
+        }
+    }
+
+    fn update(self, tms: bool) -> Self {
+        if tms {
+            match self {
+                Self::Capture | Self::Shift => Self::Exit1,
+                Self::Exit1 | Self::Exit2 => Self::Update,
+                Self::Pause => Self::Exit2,
+                Self::Select => unreachable!(),
+                Self::Update => unreachable!(),
+            }
+        } else {
+            match self {
+                Self::Select => Self::Capture,
+                Self::Capture | Self::Shift => Self::Shift,
+                Self::Exit1 | Self::Pause => Self::Pause,
+                Self::Exit2 => Self::Shift,
+                Self::Update => unreachable!(),
+            }
+        }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub(crate) enum JtagState {
+    Reset,
+    Idle,
+    Dr(RegisterState),
+    Ir(RegisterState),
+}
+
+impl JtagState {
+    pub fn step_toward(self, target: Self) -> Option<bool> {
+        let tms = match self {
+            state if target == state => return None,
+            Self::Reset => true,
+            Self::Idle => true,
+            Self::Dr(RegisterState::Select) => !matches!(target, Self::Dr(_)),
+            Self::Ir(RegisterState::Select) => !matches!(target, Self::Ir(_)),
+            Self::Dr(RegisterState::Update) | Self::Ir(RegisterState::Update) => {
+                matches!(target, Self::Ir(_) | Self::Dr(_))
+            }
+            Self::Dr(state) => {
+                let next = if let Self::Dr(target) = target {
+                    target
+                } else {
+                    RegisterState::Update
+                };
+                state.step_toward(next)
+            }
+            Self::Ir(state) => {
+                let next = if let Self::Ir(target) = target {
+                    target
+                } else {
+                    RegisterState::Update
+                };
+                state.step_toward(next)
+            }
+        };
+        Some(tms)
+    }
+
+    pub fn update(&mut self, tms: bool) {
+        *self = match *self {
+            Self::Reset if tms => Self::Idle,
+            Self::Reset => Self::Reset,
+            Self::Idle if tms => Self::Dr(RegisterState::Select),
+            Self::Idle => Self::Idle,
+            Self::Dr(RegisterState::Select) if tms => Self::Ir(RegisterState::Select),
+            Self::Ir(RegisterState::Select) if tms => Self::Reset,
+            Self::Dr(RegisterState::Update) | Self::Ir(RegisterState::Update) => {
+                if tms {
+                    Self::Dr(RegisterState::Select)
+                } else {
+                    Self::Idle
+                }
+            }
+            Self::Dr(state) => Self::Dr(state.update(tms)),
+            Self::Ir(state) => Self::Ir(state.update(tms)),
+        };
     }
 }
 

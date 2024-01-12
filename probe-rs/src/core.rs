@@ -21,7 +21,8 @@ use crate::{
 use anyhow::anyhow;
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
 use probe_rs_target::{
-    ArmCoreAccessOptions, MemoryRange, RiscvCoreAccessOptions, XtensaCoreAccessOptions,
+    ArmCoreAccessOptions, MemoryRange, MemoryRegion, RiscvCoreAccessOptions,
+    XtensaCoreAccessOptions,
 };
 use scroll::Pread;
 use std::{
@@ -53,9 +54,6 @@ pub struct CoreInformation {
 
 /// A generic interface to control a MCU core.
 pub trait CoreInterface: MemoryInterface {
-    /// Numerical ID of the core. Can be used as an argument to `Session::core()`.
-    fn id(&self) -> usize;
-
     /// Wait until the core is halted. If the core does not halt on its own,
     /// a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) error will be returned.
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), error::Error>;
@@ -620,6 +618,10 @@ pub fn exception_handler_for_core(core_type: CoreType) -> Box<dyn ExceptionInter
 /// As soon as you did your atomic task (e.g. halt the core, read the core state and all other debug relevant info) you should drop this object,
 /// to allow potential other shareholders of the session struct to grab a core handle too.
 pub struct Core<'probe> {
+    id: usize,
+    name: &'probe str,
+    memory_regions: &'probe [MemoryRegion],
+
     inner: Box<dyn CoreInterface + 'probe>,
 }
 
@@ -630,10 +632,25 @@ impl<'probe> Core<'probe> {
     }
 
     /// Create a new [`Core`].
-    pub(crate) fn new(core: impl CoreInterface + 'probe) -> Core<'probe> {
+    pub(crate) fn new(
+        id: usize,
+        name: &'probe str,
+        memory_regions: &'probe [MemoryRegion],
+        core: impl CoreInterface + 'probe,
+    ) -> Core<'probe> {
         Self {
+            id,
+            name,
+            memory_regions,
             inner: Box::new(core),
         }
+    }
+
+    /// Return the memory regions associated with this core.
+    pub fn memory_regions(&self) -> impl Iterator<Item = &MemoryRegion> {
+        self.memory_regions
+            .iter()
+            .filter(|r| r.cores().iter().any(|m| m == self.name))
     }
 
     /// Creates a new [`CoreState`]
@@ -682,7 +699,7 @@ impl<'probe> Core<'probe> {
 
     /// Returns the ID of this core.
     pub fn id(&self) -> usize {
-        self.inner.id()
+        self.id
     }
 
     /// Wait until the core is halted. If the core does not halt on its own,
@@ -1011,10 +1028,6 @@ impl<'probe> Core<'probe> {
 }
 
 impl<'probe> CoreInterface for Core<'probe> {
-    fn id(&self) -> usize {
-        self.id()
-    }
-
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), error::Error> {
         self.wait_for_core_halted(timeout)
     }
