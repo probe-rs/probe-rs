@@ -14,7 +14,7 @@ use crate::{
     vendor::{
         espressif::sequences::{
             esp32::ESP32, esp32c2::ESP32C2, esp32c3::ESP32C3, esp32c6::ESP32C6, esp32h2::ESP32H2,
-            esp32s2::ESP32S2, esp32s3::ESP32S3,
+            esp32p4::ESP32P4, esp32s2::ESP32S2, esp32s3::ESP32S3,
         },
         Vendor,
     },
@@ -83,6 +83,8 @@ impl Vendor for Espressif {
             DebugSequence::Riscv(ESP32C6::create())
         } else if chip.name.eq_ignore_ascii_case("esp32h2") {
             DebugSequence::Riscv(ESP32H2::create())
+        } else if chip.name.eq_ignore_ascii_case("esp32p4") {
+            DebugSequence::Riscv(ESP32P4::create())
         } else if chip.name.starts_with("esp32") {
             DebugSequence::Xtensa(ESP32::create())
         } else {

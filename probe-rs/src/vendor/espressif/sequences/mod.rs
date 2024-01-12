@@ -8,6 +8,7 @@ pub mod esp32c2;
 pub mod esp32c3;
 pub mod esp32c6;
 pub mod esp32h2;
+pub mod esp32p4;
 
 // Xtensa ESP32 devices
 pub mod esp32;

@@ -417,7 +417,7 @@ impl<'state> RiscvCommunicationInterface<'state> {
 
     /// Select current hart
     pub fn select_hart(&mut self, hart: u32) -> Result<(), RiscvError> {
-        if self.state.enabled_harts & (1 << hart) == 0 {
+        if !self.hart_enabled(hart) {
             return Err(RiscvError::HartUnavailable);
         }
 

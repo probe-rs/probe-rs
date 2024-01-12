@@ -1,0 +1,62 @@
+name: esp32p4
+manufacturer:
+  cc: 0x0C
+  id: 0x12
+chip_detection:
+- !Espressif
+  idcode: 0x12c25
+  variants:
+    0x0: esp32p4
+    0x0addbad0: esp32p4
+variants:
+- name: esp32p4
+  cores:
+    - name: cpu0
+      type: riscv
+      core_access_options: 
+        !Riscv
+          jtag_tap: 1
+          hart_id: 0
+    - name: cpu1
+      type: riscv
+      core_access_options: 
+        !Riscv
+          jtag_tap: 1
+          hart_id: 1
+  memory_map:
+    - !Nvm
+      range:
+        start: 0x0
+        end: 0x4000000
+      access:
+        boot: true
+      cores:
+        - cpu0
+        - cpu1
+    - !Nvm
+      range:
+        start: 0x40000000
+        end: 0x44000000
+      access:
+        boot: false
+      cores:
+        - cpu0
+        - cpu1
+    - !Ram
+      range:
+        start: 0x4FF00000
+        end: 0x4FFC0000
+      access:
+        boot: false
+      cores:
+        - cpu0
+        - cpu1
+  flash_algorithms: []
+  jtag:
+    scan_chain:
+      - name: lpcpu
+        ir_len: 5
+      - name: hp
+        ir_len: 5
+  default_binary_format: idf
+flash_algorithms: []
