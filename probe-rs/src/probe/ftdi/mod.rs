@@ -729,7 +729,7 @@ fn get_device_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
     }
 
     Some(DebugProbeInfo {
-        identifier: device.product_string()?.to_string(),
+        identifier: device.product_string().unwrap_or("FTDI").to_string(),
         vendor_id: device.vendor_id(),
         product_id: device.product_id(),
         serial_number: device.serial_number().map(|s| s.to_string()),
