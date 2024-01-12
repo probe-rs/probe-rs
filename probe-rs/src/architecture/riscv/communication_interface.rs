@@ -396,6 +396,11 @@ impl RiscvCommunicationInterface {
         // Reset error bits from previous connections
         self.dtm.reset()?;
 
+        // enable the debug module
+        let mut control = Dmcontrol(0);
+        control.set_dmactive(true);
+        self.write_dm_register(control)?;
+
         // read the  version of the debug module
         let status: Dmstatus = self.read_dm_register()?;
 
@@ -427,13 +432,10 @@ impl RiscvCommunicationInterface {
 
         tracing::debug!("dmstatus: {:?}", status);
 
-        // enable the debug module
-        let mut control = Dmcontrol(0);
-        control.set_dmactive(true);
-        self.write_dm_register(control)?;
-
         // Select all harts to determine the width
         // of the hartsel register.
+        let mut control = Dmcontrol(0);
+        control.set_dmactive(true);
         control.set_hartsel(0xffff_ffff);
 
         self.write_dm_register(control)?;

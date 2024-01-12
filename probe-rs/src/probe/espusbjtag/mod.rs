@@ -12,7 +12,9 @@ use crate::{
         xtensa::communication_interface::XtensaCommunicationInterface,
     },
     probe::{
-        common::{common_sequence, extract_idcodes, extract_ir_lengths, JtagState, RegisterState},
+        common::{
+            common_sequence, extract_idcodes, extract_ir_lengths, IdCode, JtagState, RegisterState,
+        },
         DeferredResultSet, JtagCommandQueue, ProbeDriver,
     },
     DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
@@ -484,9 +486,16 @@ impl DebugProbe for EspUsbJtag {
         let taps = self.scan()?;
         tracing::info!("Found {} TAPs on reset scan", taps.len());
 
-        let selected = 0;
+        let mut selected = 0;
         if taps.len() > 1 {
-            tracing::warn!("More than one TAP detected, defaulting to tap0");
+            // TODO: https://github.com/probe-rs/probe-rs/issues/2058
+            // There is no way to select the tap currently
+            // The HP cores of the ESP32-P4 are 2nd in the chain,
+            // therefore we default to selecting tap1
+            if taps.iter().any(|x| x.idcode == Some(IdCode(0x0012c25))) {
+                selected = 1;
+            }
+            tracing::warn!("More than one TAP detected, defaulting to tap{}", selected);
         }
 
         let Some(params) = ChainParams::from_jtag_chain(&taps, selected) else {
