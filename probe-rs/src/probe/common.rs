@@ -325,8 +325,8 @@ impl JtagState {
 
     pub fn update(&mut self, tms: bool) {
         *self = match *self {
-            Self::Reset if tms => Self::Idle,
-            Self::Reset => Self::Reset,
+            Self::Reset if tms => Self::Reset,
+            Self::Reset => Self::Idle,
             Self::Idle if tms => Self::Dr(RegisterState::Select),
             Self::Idle => Self::Idle,
             Self::Dr(RegisterState::Select) if tms => Self::Ir(RegisterState::Select),
@@ -416,5 +416,23 @@ mod tests {
         let idcodes = extract_idcodes(&dr).unwrap();
 
         assert_eq!(idcodes, vec![Some(ARM_TAP), None, Some(STM_BS_TAP)]);
+    }
+
+    #[test]
+    fn reset_from_ir_shift() {
+        let mut state = JtagState::Ir(RegisterState::Shift);
+        state.update(true);
+        state.update(true);
+        state.update(true);
+        state.update(true);
+        state.update(true);
+        assert_eq!(state, JtagState::Reset);
+    }
+
+    #[test]
+    fn idle_from_reset() {
+        let mut state = JtagState::Reset;
+        state.update(false);
+        assert_eq!(state, JtagState::Idle);
     }
 }
