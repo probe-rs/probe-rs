@@ -25,6 +25,288 @@ use ftdi_impl as ftdi;
 
 use super::{ChainParams, JtagChainItem};
 
+#[derive(Clone, Debug)]
+enum Command {
+    None {
+        tms: bool,
+    },
+    TmsBits {
+        bit_count: usize,
+        tms_bits: u8,
+        tdi: bool,
+        capture: bool,
+    },
+    TdiBits {
+        bit_count: usize,
+        tdi_bits: u8,
+        capture: bool,
+    },
+    TdiSequence {
+        tdi_bytes: Vec<u8>,
+        bit_count: usize,
+        tdi_bits: u8,
+        capture: bool,
+    },
+}
+
+impl Default for Command {
+    fn default() -> Self {
+        Self::None { tms: false }
+    }
+}
+
+impl Command {
+    fn update(&mut self, tms: bool, tdi: bool, capture: bool) -> Option<Self> {
+        match self {
+            Self::None { tms: tms_prev } => {
+                *self = if !tms && !*tms_prev {
+                    Self::TdiBits {
+                        bit_count: 1,
+                        tdi_bits: tdi as u8,
+                        capture,
+                    }
+                } else {
+                    Self::TmsBits {
+                        bit_count: 1,
+                        tms_bits: tms as u8,
+                        tdi,
+                        capture,
+                    }
+                };
+
+                None
+            }
+
+            Self::TmsBits {
+                bit_count,
+                tms_bits,
+                tdi: tdi_prev,
+                capture: capture_prev,
+            } => {
+                let same_tdi = *tdi_prev == tdi;
+                let same_capture = *capture_prev == capture;
+                let tms_prev = *tms_bits & (0x01 << (*bit_count - 1)) != 0;
+
+                if same_tdi && same_capture {
+                    *tms_bits |= (tms as u8) << *bit_count;
+                    *bit_count += 1;
+
+                    if *bit_count == 6 {
+                        Some(self.take())
+                    } else {
+                        None
+                    }
+                } else {
+                    let mut new = Self::None { tms: tms_prev };
+                    new.update(tms, tdi, capture);
+                    Some(std::mem::replace(self, new))
+                }
+            }
+
+            Self::TdiBits {
+                bit_count,
+                tdi_bits,
+                capture: capture_prev,
+            } => {
+                let same_tms = !tms;
+                let same_capture = *capture_prev == capture;
+
+                if same_tms && same_capture {
+                    *tdi_bits |= (tdi as u8) << *bit_count;
+                    *bit_count += 1;
+
+                    if *bit_count == 8 {
+                        *self = Self::TdiSequence {
+                            tdi_bytes: vec![*tdi_bits],
+                            bit_count: 0,
+                            tdi_bits: 0,
+                            capture,
+                        };
+                    }
+                    None
+                } else {
+                    let mut new = Self::None { tms: false };
+                    new.update(tms, tdi, capture);
+                    Some(std::mem::replace(self, new))
+                }
+            }
+
+            Self::TdiSequence {
+                tdi_bytes,
+                bit_count,
+                tdi_bits,
+                capture: capture_prev,
+            } => {
+                let same_tms = !tms;
+                let same_capture = *capture_prev == capture;
+
+                if same_tms && same_capture {
+                    *tdi_bits |= (tdi as u8) << *bit_count;
+                    *bit_count += 1;
+
+                    if *bit_count == 8 {
+                        tdi_bytes.push(*tdi_bits);
+                        *bit_count = 0;
+                        *tdi_bits = 0;
+                    }
+
+                    // Split early, but make sure we won't split inside a command
+                    if tdi_bytes.len() == 16380 {
+                        Some(self.take())
+                    } else {
+                        None
+                    }
+                } else {
+                    let mut new = Self::None { tms: false };
+                    new.update(tms, tdi, capture);
+                    Some(std::mem::replace(self, new))
+                }
+            }
+        }
+    }
+
+    fn len(&self) -> usize {
+        match self {
+            Self::None { .. } => 0,
+            Self::TmsBits { .. } | Self::TdiBits { .. } => 3,
+            Self::TdiSequence {
+                tdi_bytes,
+                bit_count,
+                ..
+            } => tdi_bytes.len() + 3 + if *bit_count > 0 { 3 } else { 0 },
+        }
+    }
+
+    fn encode(&self, out: &mut Vec<u8>) {
+        match self {
+            Self::None { .. } => {}
+            Self::TmsBits {
+                tms_bits,
+                tdi,
+                capture,
+                bit_count,
+            } => {
+                let tms_byte = tms_bits | ((*tdi as u8) << 7);
+                let cap_bit = if *capture { 0x20 } else { 0 };
+
+                out.extend_from_slice(&[0x4b | cap_bit, *bit_count as u8 - 1, tms_byte]);
+            }
+            Self::TdiBits {
+                tdi_bits,
+                capture,
+                bit_count,
+                ..
+            } => {
+                let cap_bit = if *capture { 0x20 } else { 0 };
+
+                let mut tdi_bits = *tdi_bits;
+                let mut bit_count = *bit_count as u8;
+
+                if bit_count >= 7 {
+                    // Some FTDI chips have trouble with 7 bits
+                    // output 6 bits
+                    out.extend_from_slice(&[0x1b | cap_bit, 5, tdi_bits]);
+
+                    tdi_bits >>= 6;
+                    bit_count -= 6;
+                }
+                out.extend_from_slice(&[0x1b | cap_bit, bit_count - 1, tdi_bits]);
+            }
+            Self::TdiSequence {
+                tdi_bytes,
+                tdi_bits,
+                capture,
+                bit_count,
+                ..
+            } => {
+                let cap_bit = if *capture { 0x20 } else { 0 };
+
+                // Append full bytes
+                let [n_low, n_high] = (tdi_bytes.len() as u16 - 1).to_le_bytes();
+                out.extend_from_slice(&[0x19 | cap_bit, n_low, n_high]);
+                out.extend_from_slice(tdi_bytes);
+
+                // Append remaining bits
+                let mut tdi_bits = *tdi_bits;
+                let mut bit_count = *bit_count as u8;
+
+                if bit_count > 0 {
+                    if bit_count >= 7 {
+                        // Some FTDI chips have trouble with 7 bits
+                        // output 6 bits
+                        out.extend_from_slice(&[0x1b | cap_bit, 5, tdi_bits]);
+
+                        tdi_bits >>= 6;
+                        bit_count -= 6;
+                    }
+
+                    out.extend_from_slice(&[0x1b | cap_bit, bit_count - 1, tdi_bits]);
+                }
+            }
+        }
+    }
+
+    fn take(&mut self) -> Self {
+        let this = std::mem::take(self);
+
+        let tms = match &this {
+            Self::None { tms } => *tms,
+            Self::TmsBits {
+                tms_bits,
+                bit_count,
+                ..
+            } => (*tms_bits & (0x01 << (*bit_count - 1))) != 0,
+            Self::TdiBits { .. } => false,
+            Self::TdiSequence { .. } => false,
+        };
+
+        *self = Self::None { tms };
+
+        this
+    }
+
+    fn add_captured_bits(&self, bits: &mut Vec<usize>) {
+        let capture = match self {
+            Self::None { .. } => false,
+            Self::TmsBits { capture, .. } | Self::TdiBits { capture, .. } => *capture,
+            Self::TdiSequence { capture, .. } => *capture,
+        };
+
+        if !capture {
+            return;
+        }
+
+        match self {
+            Self::None { .. } => {}
+            Self::TmsBits { bit_count, .. } => bits.push(*bit_count),
+            Self::TdiBits { bit_count, .. } => {
+                if *bit_count == 7 {
+                    bits.push(6);
+                    bits.push(1);
+                } else {
+                    bits.push(*bit_count);
+                }
+            }
+            Self::TdiSequence {
+                tdi_bytes,
+                bit_count,
+                ..
+            } => {
+                for _ in 0..tdi_bytes.len() {
+                    bits.push(8);
+                }
+
+                if *bit_count == 7 {
+                    bits.push(6);
+                    bits.push(1);
+                } else if *bit_count > 0 {
+                    bits.push(*bit_count);
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct JtagAdapter {
     device: ftdi::Device,
@@ -36,6 +318,7 @@ pub struct JtagAdapter {
 
     jtag_state: JtagState,
 
+    command: Command,
     commands: Vec<u8>,
     in_bit_counts: Vec<usize>,
     in_bits: BitVec<u8, Lsb0>,
@@ -56,6 +339,7 @@ impl JtagAdapter {
             jtag_state: JtagState::Reset,
             current_ir_reg: 1,
             max_ir_address: 0x1F,
+            command: Command::default(),
             commands: Vec::with_capacity(16384),
             in_bit_counts: vec![],
             in_bits: BitVec::with_capacity(16384),
@@ -156,31 +440,31 @@ impl JtagAdapter {
         Ok(())
     }
 
-    fn schedule_bit(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError> {
-        let required = 3 + 1; // +1 for the immediate flush command
-
+    fn append_command(&mut self, command: Command) -> Result<(), DebugProbeError> {
+        tracing::debug!("Appending {:?}", command);
         // Max MPSSE buffer size is supposed to be 65536 bytes but due to some limitation 16K works
         // better for me.
-        if self.commands.len() + required >= 16384 {
+        // 1 byte is reserved for the send immediate command
+        if self.commands.len() + command.len() + 1 >= 16384 {
             self.send_buffer()?;
             self.read_response()
                 .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
         }
 
-        // FIXME merge writes if we can
-        let tms = if tms {
-            0x03 // 0x03 helps avoiding a high-low-high glitch
-        } else {
-            0
-        };
-        let tms_byte = tms | ((tdi as u8) << 7);
-        let cap_bit = if capture { 0x20 } else { 0 };
+        command.add_captured_bits(&mut self.in_bit_counts);
+        command.encode(&mut self.commands);
 
-        self.commands
-            .extend_from_slice(&[0x4b | cap_bit, 0x00, tms_byte]);
+        Ok(())
+    }
 
-        if capture {
-            self.in_bit_counts.push(1);
+    fn finalize_command(&mut self) -> Result<(), DebugProbeError> {
+        let command = self.command.take();
+        self.append_command(command)
+    }
+
+    fn schedule_bit(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError> {
+        if let Some(command) = self.command.update(tms, tdi, capture) {
+            self.append_command(command)?;
         }
 
         Ok(())
@@ -206,6 +490,8 @@ impl JtagAdapter {
         // section 5.1
         self.commands.push(0x87);
 
+        tracing::trace!("Sending buffer: {:X?}", self.commands);
+
         self.device
             .write_all(&self.commands)
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
@@ -216,6 +502,7 @@ impl JtagAdapter {
     }
 
     fn flush(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
+        self.finalize_command()?;
         if !self.commands.is_empty() {
             self.send_buffer()?;
         }
@@ -406,6 +693,8 @@ impl JtagAdapter {
             idcodes.len(),
             idcodes
         );
+
+        self.reset()?;
 
         // First shift out all ones
         let input = vec![0xff; idcodes.len()];
