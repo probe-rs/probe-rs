@@ -1,0 +1,1 @@
+Added `chipDescriptionPath` to debug server configuration
