@@ -67,18 +67,9 @@ impl SessionData {
     ) -> Result<Self, DebuggerError> {
         let target_selector = TargetSelector::from(config.chip.as_deref());
 
-        let options = config
-            .probe_options()
-            .load()
-            .map_err(|err| DebuggerError::Other(err.into()))?;
-
-        let target_probe = options
-            .attach_probe(lister)
-            .map_err(|err| DebuggerError::Other(err.into()))?;
-
-        let target_session = options
-            .attach_session(target_probe, target_selector)
-            .map_err(|err| DebuggerError::Other(err.into()))?;
+        let options = config.probe_options().load()?;
+        let target_probe = options.attach_probe(lister)?;
+        let target_session = options.attach_session(target_probe, target_selector)?;
 
         // Change the current working directory if `config.cwd` is `Some(T)`.
         if let Some(new_cwd) = config.cwd.clone() {
@@ -120,8 +111,8 @@ impl SessionData {
                 ),
                 debug_info: debug_info_from_binary(core_configuration)?,
                 core_peripherals: None,
-                stack_frames: Vec::<probe_rs::debug::stack_frame::StackFrame>::new(),
-                breakpoints: Vec::<ActiveBreakpoint>::new(),
+                stack_frames: vec![],
+                breakpoints: vec![],
                 rtt_connection: None,
             })
         }
@@ -279,17 +270,13 @@ impl SessionData {
     }
 }
 
-pub(crate) fn debug_info_from_binary(
-    core_configuration: &CoreConfig,
-) -> Result<DebugInfo, DebuggerError> {
-    let debug_info = if let Some(binary_path) = &core_configuration.program_binary {
-        DebugInfo::from_file(binary_path).map_err(|error| DebuggerError::Other(anyhow!(error)))?
-    } else {
+fn debug_info_from_binary(core_configuration: &CoreConfig) -> anyhow::Result<DebugInfo> {
+    let Some(ref binary_path) = core_configuration.program_binary else {
         return Err(anyhow!(
-            "Please provide a valid `program_binary` for debug core: {:?}",
+            "Please provide a valid `program_binary` for debug core: {}",
             core_configuration.core_index
-        )
-        .into());
+        ));
     };
-    Ok(debug_info)
+
+    DebugInfo::from_file(binary_path).map_err(|error| anyhow!(error))
 }

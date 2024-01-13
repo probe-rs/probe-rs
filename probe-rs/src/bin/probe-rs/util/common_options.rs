@@ -35,7 +35,7 @@ use super::ArtifactError;
 
 use std::{fs::File, path::Path, path::PathBuf};
 
-use crate::util::parse_u64;
+use crate::{cmd::dap_server::DebuggerError, util::parse_u64};
 use clap;
 use probe_rs::{
     config::{RegistryError, TargetSelector},
@@ -546,6 +546,12 @@ pub enum OperationError {
 impl From<std::io::Error> for OperationError {
     fn from(e: std::io::Error) -> Self {
         OperationError::IOError(e)
+    }
+}
+
+impl From<OperationError> for DebuggerError {
+    fn from(e: OperationError) -> Self {
+        DebuggerError::Other(e.into())
     }
 }
 
