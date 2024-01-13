@@ -13,12 +13,14 @@ fn main() -> Result<()> {
     // Use the first probe found.
     let mut probe: Probe = probes[0].open(&probe_lister)?;
 
+    let core0 = DpAddress::Multidrop(0x01002927);
+
     probe.set_speed(100)?;
     probe.attach_to_unspecified()?;
     let mut iface = probe
         .try_into_arm_interface()
         .unwrap()
-        .initialize_unspecified()
+        .initialize_unspecified(core0)
         .unwrap();
 
     // This is an example on how to do raw DP register access with multidrop.

@@ -493,6 +493,10 @@ impl CmsisDap {
             tracing::debug!("{:?} of batch of {} items executed", count, batch.len());
 
             if response.last_transfer_response.protocol_error {
+                if count > 0 {
+                    tracing::debug!("Protocol error in response to command {}", batch[count - 1]);
+                }
+
                 return Err(DapError::SwdProtocol.into());
             } else {
                 match response.last_transfer_response.ack {

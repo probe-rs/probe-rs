@@ -80,12 +80,15 @@ fn try_show_info(
         return (probe, Err(e.into()));
     }
 
+    // TODO: Make this configurable
+    let dp = DpAddress::Default;
+
     let mut probe = probe;
 
     if probe.has_arm_interface() {
         match probe.try_into_arm_interface() {
             Ok(interface) => {
-                match interface.initialize(DefaultArmSequence::create()) {
+                match interface.initialize(DefaultArmSequence::create(), dp) {
                     Ok(mut interface) => {
                         if let Err(e) = show_arm_info(&mut *interface) {
                             // Log error?

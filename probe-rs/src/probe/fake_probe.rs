@@ -414,7 +414,7 @@ impl RawDapAccess for FakeProbe {
 struct FakeArmInterface<S: ArmDebugState> {
     probe: Box<FakeProbe>,
 
-    _state: S,
+    state: S,
 }
 
 impl FakeArmInterface<Uninitialized> {
@@ -423,18 +423,16 @@ impl FakeArmInterface<Uninitialized> {
             use_overrun_detect: false,
         };
 
-        Self {
-            probe,
-            _state: state,
-        }
+        Self { probe, state }
     }
 
     fn into_initialized(
         self,
         sequence: Arc<dyn ArmDebugSequence>,
+        dp: DpAddress,
     ) -> Result<FakeArmInterface<Initialized>, (Box<Self>, DebugProbeError)> {
         Ok(FakeArmInterface::<Initialized>::from_uninitialized(
-            self, sequence,
+            self, sequence, dp,
         ))
     }
 }
@@ -443,10 +441,11 @@ impl FakeArmInterface<Initialized> {
     fn from_uninitialized(
         interface: FakeArmInterface<Uninitialized>,
         sequence: Arc<dyn ArmDebugSequence>,
+        dp: DpAddress,
     ) -> Self {
         FakeArmInterface::<Initialized> {
             probe: interface.probe,
-            _state: Initialized::new(sequence, false),
+            state: Initialized::new(sequence, false, dp),
         }
     }
 }
@@ -474,12 +473,13 @@ impl UninitializedArmProbe for FakeArmInterface<Uninitialized> {
     fn initialize(
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
+        dp: DpAddress,
     ) -> Result<Box<dyn ArmProbeInterface>, (Box<dyn UninitializedArmProbe>, Error)> {
         // TODO: Do we need this?
         // sequence.debug_port_setup(&mut self.probe)?;
 
         let interface = self
-            .into_initialized(sequence)
+            .into_initialized(sequence, dp)
             .map_err(|(s, err)| (s as Box<_>, Error::Probe(err)))?;
 
         Ok(Box::new(interface))
@@ -536,6 +536,10 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
 
     fn close(self: Box<Self>) -> Probe {
         Probe::from_attached_probe(self.probe)
+    }
+
+    fn current_debug_port(&self) -> DpAddress {
+        self.state.current_dp
     }
 }
 

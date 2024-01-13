@@ -19,7 +19,7 @@ fn main() -> Result<()> {
     let mut iface = probe
         .try_into_arm_interface()
         .unwrap()
-        .initialize_unspecified()
+        .initialize_unspecified(DpAddress::Default)
         .unwrap();
 
     // This is an example on how to do a "recover" operation (erase+unlock a locked chip)

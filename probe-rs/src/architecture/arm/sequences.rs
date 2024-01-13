@@ -446,7 +446,11 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     ///
     /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#debugPortSetup
     #[doc(alias = "DebugPortSetup")]
-    fn debug_port_setup(&self, interface: &mut dyn DapProbe) -> Result<(), ArmError> {
+    fn debug_port_setup(
+        &self,
+        interface: &mut dyn DapProbe,
+        dp: DpAddress,
+    ) -> Result<(), ArmError> {
         // TODO: Handle this differently for ST-Link?
 
         // TODO: Use atomic block
@@ -491,7 +495,9 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         // End of atomic block.
 
         // Read DPIDR to enable SWD interface.
-        let _ = interface.raw_read_register(PortType::DebugPort, DPIDR::ADDRESS);
+        let dpidr = interface.raw_read_register(PortType::DebugPort, DPIDR::ADDRESS);
+
+        tracing::debug!("Result of DPIDR read: {:#x?}", dpidr);
 
         // TODO: Figure a way how to do this.
         // interface.read_dpidr()?;
