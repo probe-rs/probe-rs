@@ -73,15 +73,15 @@ impl SessionData {
         let options = config
             .probe_options()
             .load()
-            .map_err(|err| anyhow!("Failed to load probe options: {:?}.", err))?;
+            .map_err(|err| DebuggerError::Other(err.into()))?;
 
         let target_probe = options
             .attach_probe(lister)
-            .map_err(|err| anyhow!("Failed to select probe: {:?}.", err))?;
+            .map_err(|err| DebuggerError::Other(err.into()))?;
 
         let target_session = options
             .attach_session(target_probe, target_selector)
-            .map_err(|err| anyhow!("Error attaching to the probe: {:?}.", err))?;
+            .map_err(|err| DebuggerError::Other(err.into()))?;
 
         // Change the current working directory if `config.cwd` is `Some(T)`.
         if let Some(new_cwd) = config.cwd.clone() {
