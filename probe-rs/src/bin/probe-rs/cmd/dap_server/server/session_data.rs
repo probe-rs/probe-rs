@@ -65,10 +65,7 @@ impl SessionData {
         config: &mut configuration::SessionConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<Self, DebuggerError> {
-        let target_selector = match &config.chip {
-            Some(identifier) => identifier.into(),
-            None => TargetSelector::Auto,
-        };
+        let target_selector = TargetSelector::from(config.chip.as_deref());
 
         let options = config
             .probe_options()
