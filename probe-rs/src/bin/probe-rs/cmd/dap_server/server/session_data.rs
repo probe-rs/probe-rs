@@ -100,21 +100,16 @@ impl SessionData {
         }
 
         // Filter `CoreConfig` entries based on those that match an actual core on the target probe.
-        let valid_core_configs = config
-            .core_configs
-            .iter()
-            .filter(|&core_config| {
-                target_session
-                    .list_cores()
-                    .iter()
-                    .any(|(target_core_index, _)| *target_core_index == core_config.core_index)
-            })
-            .cloned()
-            .collect::<Vec<CoreConfig>>();
+        let valid_core_configs = config.core_configs.iter().filter(|&core_config| {
+            target_session
+                .list_cores()
+                .iter()
+                .any(|(target_core_index, _)| *target_core_index == core_config.core_index)
+        });
 
         let mut core_data_vec = vec![];
 
-        for core_configuration in &valid_core_configs {
+        for core_configuration in valid_core_configs {
             core_data_vec.push(CoreData {
                 core_index: core_configuration.core_index,
                 last_known_status: CoreStatus::Unknown,
