@@ -1,3 +1,4 @@
+use crate::util::common_options::ProbeOptions;
 use crate::util::rtt;
 use crate::{cmd::dap_server::DebuggerError, FormatOptions};
 use anyhow::{anyhow, Result};
@@ -141,6 +142,19 @@ impl SessionConfig {
                 }
             }
         })
+    }
+
+    pub(crate) fn probe_options(&self) -> ProbeOptions {
+        ProbeOptions {
+            chip: self.chip.clone(),
+            chip_description_path: self.chip_description_path.clone(),
+            protocol: self.wire_protocol,
+            probe_selector: self.probe_selector.clone(),
+            speed: self.speed,
+            connect_under_reset: self.connect_under_reset,
+            dry_run: false,
+            allow_erase_all: self.allow_erase_all,
+        }
     }
 }
 

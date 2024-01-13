@@ -12,8 +12,7 @@ use anyhow::{anyhow, Result};
 use probe_rs::{
     config::TargetSelector,
     debug::{debug_info::DebugInfo, DebugRegisters, SourceLocation},
-    exception_handler_for_core, CoreStatus, DebugProbeError, Lister, Permissions,
-    ProbeCreationError, Session,
+    exception_handler_for_core, CoreStatus, Lister, Session,
 };
 use std::env::set_current_dir;
 use time::UtcOffset;
@@ -66,74 +65,23 @@ impl SessionData {
         config: &mut configuration::SessionConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<Self, DebuggerError> {
-        // `SessionConfig` Probe/Session level configurations initialization.
-        let mut target_probe = match config.probe_selector.clone() {
-            Some(selector) => lister.open(&selector).map_err(|e| match e {
-                DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound) => {
-                    DebuggerError::Other(anyhow!(
-                        "Could not find the probe_selector specified as {:04x}:{:04x}:{:?}",
-                        selector.vendor_id,
-                        selector.product_id,
-                        selector.serial_number
-                    ))
-                }
-                other_error => DebuggerError::DebugProbe(other_error),
-            }),
-            None => {
-                // Only automatically select a probe if there is only a single probe detected.
-                let list = lister.list_all();
-                if list.len() > 1 {
-                    return Err(DebuggerError::Other(anyhow!(
-                        "Found multiple ({}) probes",
-                        list.len()
-                    )));
-                }
-
-                if let Some(info) = list.first() {
-                    lister.open(info).map_err(DebuggerError::DebugProbe)
-                } else {
-                    return Err(DebuggerError::Other(anyhow!(
-                        "No probes found. Please check your USB connections."
-                    )));
-                }
-            }
-        }?;
-
         let target_selector = match &config.chip {
             Some(identifier) => identifier.into(),
             None => TargetSelector::Auto,
         };
 
-        // Set the protocol, if the user explicitly selected a protocol. Otherwise, use the default protocol of the probe.
-        if let Some(wire_protocol) = config.wire_protocol {
-            target_probe.select_protocol(wire_protocol)?;
-        }
+        let options = config
+            .probe_options()
+            .load()
+            .map_err(|err| anyhow!("Failed to load probe options: {:?}.", err))?;
 
-        // Set the speed.
-        if let Some(speed) = config.speed {
-            let actual_speed = target_probe.set_speed(speed)?;
-            if actual_speed != speed {
-                tracing::warn!(
-                    "Protocol speed {} kHz not supported, actual speed is {} kHz",
-                    speed,
-                    actual_speed
-                );
-            }
-        }
+        let target_probe = options
+            .attach_probe(lister)
+            .map_err(|err| anyhow!("Failed to select probe: {:?}.", err))?;
 
-        let mut permissions = Permissions::new();
-        if config.allow_erase_all {
-            permissions = permissions.allow_erase_all();
-        }
-
-        // Attach to the probe.
-        let target_session = if config.connect_under_reset {
-            target_probe.attach_under_reset(target_selector, permissions)?
-        } else {
-            target_probe
-                .attach(target_selector, permissions)
-                .map_err(|err| anyhow!("Error attaching to the probe: {:?}.", err))?
-        };
+        let target_session = options
+            .attach_session(target_probe, target_selector)
+            .map_err(|err| anyhow!("Error attaching to the probe: {:?}.", err))?;
 
         // Change the current working directory if `config.cwd` is `Some(T)`.
         if let Some(new_cwd) = config.cwd.clone() {
