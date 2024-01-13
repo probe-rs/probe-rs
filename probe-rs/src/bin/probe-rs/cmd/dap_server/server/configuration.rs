@@ -167,7 +167,7 @@ fn get_absolute_path(
         Some(temp_path) => {
             let mut new_path = PathBuf::new();
             if temp_path.is_relative() {
-                if let Some(cwd_path) = configured_cwd.clone() {
+                if let Some(cwd_path) = configured_cwd {
                     new_path.push(cwd_path);
                 } else {
                     return Err(DebuggerError::Other(anyhow!(
