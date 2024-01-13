@@ -99,7 +99,7 @@ impl SessionData {
         // `CoreConfig` probe level initialization.
         if config.core_configs.len() != 1 {
             // TODO: For multi-core, allow > 1.
-            return Err(DebuggerError::Other(anyhow!("probe-rs-debugger requires that one, and only one, core  be configured for debugging.")));
+            return Err(DebuggerError::Other(anyhow!("probe-rs-debugger requires that one, and only one, core be configured for debugging.")));
         }
 
         // Filter `CoreConfig` entries based on those that match an actual core on the target probe.
