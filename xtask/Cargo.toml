@@ -7,7 +7,7 @@ publish = false
 
 [dependencies]
 xshell = "0.2"
-regex = "1.10"
+regex = "1.9"
 clap = { version = "4", features = ["derive"] }
 chrono = "0.4.31"
 anyhow.workspace = true
