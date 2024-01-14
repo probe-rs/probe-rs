@@ -240,6 +240,7 @@ pub(crate) fn extract_ir_lengths(
     }
 }
 
+/// Inner states of the parallel arms (IR-Scan and DR-Scan) of the JTAG state machine.
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub(crate) enum RegisterState {
     Select,
@@ -255,9 +256,9 @@ impl RegisterState {
     fn step_toward(self, target: Self) -> bool {
         match self {
             Self::Select => false,
-            Self::Capture if target == Self::Shift => false,
-            Self::Exit1 if target == Self::Pause => false,
-            Self::Exit2 if target == Self::Shift => false,
+            Self::Capture if matches!(target, Self::Shift) => false,
+            Self::Exit1 if matches!(target, Self::Pause | Self::Exit2) => false,
+            Self::Exit2 if matches!(target, Self::Shift | Self::Exit1 | Self::Pause) => false,
             Self::Update => {
                 unreachable!("This is a bug, this case should have been handled by JtagState.")
             }
@@ -298,6 +299,9 @@ pub(crate) enum JtagState {
 }
 
 impl JtagState {
+    /// Returns the TMS value that takes a step from the current state toward the target state.
+    ///
+    /// Returns `None` if the state machine is already in the target state.
     pub fn step_toward(self, target: Self) -> Option<bool> {
         let tms = match self {
             state if target == state => return None,
@@ -309,17 +313,25 @@ impl JtagState {
                 matches!(target, Self::Ir(_) | Self::Dr(_))
             }
             Self::Dr(state) => {
+                // Decide if we need to stay in the current arm or not.
+                // The inner state machine will handle the case where we need to loop back
+                // through Run-Test/Idle.
                 let next = if let Self::Dr(target) = target {
                     target
                 } else {
+                    // Let's aim for the inner state that can exit the scan arm.
                     RegisterState::Update
                 };
                 state.step_toward(next)
             }
             Self::Ir(state) => {
+                // Decide if we need to stay in the current arm or not.
+                // The inner state machine will handle the case where we need to loop back
+                // through Run-Test/Idle.
                 let next = if let Self::Ir(target) = target {
                     target
                 } else {
+                    // Let's aim for the inner state that can exit the scan arm.
                     RegisterState::Update
                 };
                 state.step_toward(next)
@@ -328,6 +340,7 @@ impl JtagState {
         Some(tms)
     }
 
+    /// Updates the state machine from the given TMS bit.
     pub fn update(&mut self, tms: bool) {
         *self = match *self {
             Self::Reset if tms => Self::Reset,
