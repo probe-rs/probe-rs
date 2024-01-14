@@ -258,7 +258,9 @@ impl RegisterState {
             Self::Capture if target == Self::Shift => false,
             Self::Exit1 if target == Self::Pause => false,
             Self::Exit2 if target == Self::Shift => false,
-            Self::Update => unreachable!(),
+            Self::Update => {
+                unreachable!("This is a bug, this case should have been handled by JtagState.")
+            }
             _ => true,
         }
     }
@@ -269,8 +271,9 @@ impl RegisterState {
                 Self::Capture | Self::Shift => Self::Exit1,
                 Self::Exit1 | Self::Exit2 => Self::Update,
                 Self::Pause => Self::Exit2,
-                Self::Select => unreachable!(),
-                Self::Update => unreachable!(),
+                Self::Select | Self::Update => {
+                    unreachable!("This is a bug, this case should have been handled by JtagState.")
+                }
             }
         } else {
             match self {
@@ -278,7 +281,9 @@ impl RegisterState {
                 Self::Capture | Self::Shift => Self::Shift,
                 Self::Exit1 | Self::Pause => Self::Pause,
                 Self::Exit2 => Self::Shift,
-                Self::Update => unreachable!(),
+                Self::Update => {
+                    unreachable!("This is a bug, this case should have been handled by JtagState.")
+                }
             }
         }
     }
