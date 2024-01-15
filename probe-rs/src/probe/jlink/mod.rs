@@ -18,7 +18,7 @@ use crate::architecture::xtensa::communication_interface::XtensaCommunicationInt
 use crate::probe::common::{
     common_sequence, extract_idcodes, extract_ir_lengths, JtagState, RegisterState,
 };
-use crate::probe::ProbeDriver;
+use crate::probe::{BatchExecutionError, DeferredResultSet, JtagCommandQueue, ProbeDriver};
 use crate::probe::{ChainParams, JtagChainItem};
 use crate::{
     architecture::{
@@ -118,6 +118,11 @@ impl ProbeDriver for JLinkSource {
             max_ir_address: 0x1F,
             chain_params: ChainParams::default(),
             jtag_state: JtagState::Reset,
+
+            jtag_tms_bits: vec![],
+            jtag_tdi_bits: vec![],
+            jtag_capture_tdo: vec![],
+            jtag_response: BitVec::new(),
         }))
     }
 
@@ -149,6 +154,10 @@ pub(crate) struct JLink {
     scan_chain: Option<Vec<ScanChainElement>>,
     chain_params: ChainParams,
 
+    jtag_tms_bits: Vec<bool>,
+    jtag_tdi_bits: Vec<bool>,
+    jtag_capture_tdo: Vec<bool>,
+    jtag_response: BitVec<u8, Lsb0>,
     jtag_state: JtagState,
 
     probe_statistics: ProbeStatistics,
@@ -206,7 +215,25 @@ impl JLink {
     /// IR register might have an odd length, so the dta
     /// will be truncated to `len` bits. If data has less
     /// than `len` bits, an error will be returned.
-    fn write_ir(&mut self, data: &[u8], len: usize) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
+    fn write_ir(
+        &mut self,
+        data: &[u8],
+        len: usize,
+        capture_response: bool,
+    ) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
+        self.schedule_ir_scan(data, len, capture_response)?;
+        let response = self.flush()?;
+        tracing::trace!("Response: {:?}", response);
+
+        Ok(response)
+    }
+
+    fn schedule_ir_scan(
+        &mut self,
+        data: &[u8],
+        len: usize,
+        capture_data: bool,
+    ) -> Result<(), DebugProbeError> {
         tracing::debug!("Write IR: {:?}, len={}", data, len);
 
         // Check the bit length, enough data has to be available
@@ -237,19 +264,43 @@ impl JLink {
             .chain(data.as_bits::<Lsb0>()[..len].iter().map(|b| *b))
             .chain(iter::repeat(true).take(post_bits));
 
+        let capture = iter::repeat(false)
+            .take(pre_bits)
+            .chain(iter::repeat(capture_data).take(len))
+            .chain(iter::repeat(false));
+
         tracing::trace!("tms: {:?}", tms.clone());
         tracing::trace!("tdi: {:?}", tdi.clone());
 
-        let response = self.jtag_io(tms, tdi)?;
-
-        let result = response[pre_bits..][..len].to_bitvec();
+        self.schedule_jtag_io(tms, tdi, capture)?;
 
         self.jtag_move_to_state(JtagState::Ir(RegisterState::Update))?;
 
-        Ok(result)
+        Ok(())
     }
 
     fn write_dr(&mut self, data: &[u8], register_bits: usize) -> Result<Vec<u8>, DebugProbeError> {
+        self.schedule_dr_scan(data, register_bits, true)?;
+        let response = self.flush()?;
+        self.recieve_dr_scan(response)
+    }
+
+    fn recieve_dr_scan(
+        &mut self,
+        mut response: BitVec<u8, Lsb0>,
+    ) -> Result<Vec<u8>, DebugProbeError> {
+        response.force_align();
+        let result = response.into_vec();
+        tracing::trace!("recieve_write_dr result: {:?}", result);
+        Ok(result)
+    }
+
+    fn schedule_dr_scan(
+        &mut self,
+        data: &[u8],
+        register_bits: usize,
+        capture_data: bool,
+    ) -> Result<usize, DebugProbeError> {
         tracing::debug!("Write DR: {:?}, len={}", data, register_bits);
 
         // Check the bit length, enough data has to be available
@@ -278,7 +329,12 @@ impl JLink {
             .chain(data.as_bits::<Lsb0>()[..register_bits].iter().map(|b| *b))
             .chain(iter::repeat(false).take(post_bits));
 
-        let response = self.jtag_io(tms, tdi)?;
+        let capture = iter::repeat(false)
+            .take(pre_bits)
+            .chain(iter::repeat(capture_data).take(register_bits))
+            .chain(iter::repeat(false));
+
+        self.schedule_jtag_io(tms, tdi, capture)?;
 
         self.jtag_move_to_state(JtagState::Dr(RegisterState::Update))?;
 
@@ -289,47 +345,82 @@ impl JLink {
             let tms = iter::repeat(false).take(self.idle_cycles() as usize);
             let tdi = iter::repeat(false).take(self.idle_cycles() as usize);
 
-            self.jtag_io(tms, tdi)?;
+            self.schedule_jtag_io(tms, tdi, std::iter::repeat(false))?;
         }
 
-        tracing::trace!("Response: {:?}", response);
-
-        let mut result = response[pre_bits..][..register_bits].to_bitvec();
-
-        tracing::trace!("result: {:?}", result);
-
-        result.force_align();
-        Ok(result.into_vec())
+        if capture_data {
+            Ok(register_bits)
+        } else {
+            Ok(0)
+        }
     }
 
     fn jtag_move_to_state(&mut self, target: JtagState) -> Result<(), DebugProbeError> {
         tracing::trace!("Changing state: {:?} -> {:?}", self.jtag_state, target);
-        let mut steps = vec![];
+
         while let Some(tms) = self.jtag_state.step_toward(target) {
-            steps.push(tms);
-            self.jtag_state.update(tms);
+            self.schedule_jtag_io([tms], [false], [false])?;
         }
-        let tdi = std::iter::repeat(false).take(steps.len());
-        // Don't use jtag_io here, as we don't want to update the state twice
-        self.handle.jtag_io(steps, tdi)?;
+
         tracing::trace!("In state: {:?}", self.jtag_state);
         Ok(())
     }
 
+    fn schedule_jtag_io(
+        &mut self,
+        tms: impl IntoIterator<Item = bool>,
+        tdi: impl IntoIterator<Item = bool>,
+        capture: impl IntoIterator<Item = bool>,
+    ) -> Result<(), DebugProbeError> {
+        const CHUNK_SIZE: usize = 16384;
+
+        for ((tms, tdi), capture) in tms.into_iter().zip(tdi).zip(capture) {
+            self.jtag_state.update(tms);
+
+            self.jtag_tms_bits.push(tms);
+            self.jtag_tdi_bits.push(tdi);
+            self.jtag_capture_tdo.push(capture);
+
+            if self.jtag_tms_bits.len() >= CHUNK_SIZE {
+                self.do_io()?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn do_io(&mut self) -> Result<(), DebugProbeError> {
+        let response = self.handle.jtag_io(
+            std::mem::take(&mut self.jtag_tms_bits),
+            std::mem::take(&mut self.jtag_tdi_bits),
+        )?;
+
+        for (bit, capture) in response.zip(std::mem::take(&mut self.jtag_capture_tdo)) {
+            if capture {
+                self.jtag_response.push(bit);
+            }
+        }
+
+        Ok(())
+    }
+
+    fn flush(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
+        self.do_io()?;
+
+        let response = std::mem::take(&mut self.jtag_response);
+
+        Ok(response)
+    }
+
     fn jtag_io(
         &mut self,
-        tms: impl IntoIterator<Item = bool> + Clone,
+        tms: impl IntoIterator<Item = bool>,
         tdi: impl IntoIterator<Item = bool>,
+        capture: impl IntoIterator<Item = bool>,
     ) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
-        let tms_bits = tms.clone().into_iter();
-        let tdi_bits = tdi.into_iter();
+        self.schedule_jtag_io(tms, tdi, capture)?;
 
-        let response = self.handle.jtag_io(tms_bits, tdi_bits)?;
-        let response = BitVec::<u8, Lsb0>::from_iter(response);
-
-        for tms in tms.into_iter() {
-            self.jtag_state.update(tms);
-        }
+        let response = self.flush()?;
 
         Ok(response)
     }
@@ -339,9 +430,9 @@ impl JLink {
 
         // Reset JTAG chain (5 times TMS high), and enter idle state afterwards
         let tms = [true, true, true, true, true, false];
-        let tdi = iter::repeat(false).take(6);
+        let tdi = iter::repeat(false);
 
-        let response = self.jtag_io(tms, tdi)?;
+        let response = self.jtag_io(tms, tdi, std::iter::repeat(true))?;
 
         tracing::debug!("Response to reset: {:?}", response);
 
@@ -369,14 +460,14 @@ impl JLink {
 
         // First shift out all ones
         let input = vec![0xff; idcodes.len()];
-        let response = self.write_ir(&input, input.len() * 8)?;
+        let response = self.write_ir(&input, input.len() * 8, true)?;
 
         // Next, shift out same amount of zeros, then ones to make sure the IRs contain BYPASS.
         let input = iter::repeat(0)
             .take(idcodes.len())
             .chain(input)
             .collect::<Vec<_>>();
-        let response_zeros = self.write_ir(&input, input.len() * 8)?;
+        let response_zeros = self.write_ir(&input, input.len() * 8, true)?;
 
         let expected = if let Some(ref chain) = self.scan_chain {
             let expected = chain
@@ -404,6 +495,38 @@ impl JLink {
             .map(|(idcode, irlen)| JtagChainItem { irlen, idcode })
             .collect())
     }
+
+    /// Write the data register
+    fn prepare_write_register(
+        &mut self,
+        address: u32,
+        data: &[u8],
+        len: u32,
+        capture_data: bool,
+    ) -> Result<DeferredRegisterWrite, DebugProbeError> {
+        if address > self.max_ir_address {
+            return Err(DebugProbeError::Other(anyhow!(
+                "Invalid instruction register access: {}",
+                address
+            )));
+        }
+        let address_bytes = address.to_le_bytes();
+
+        if self.current_ir_reg != address {
+            // Write IR register
+            self.schedule_ir_scan(&address_bytes, self.chain_params.irlen, false)?;
+            self.current_ir_reg = address;
+        }
+
+        // write DR register
+        let len = self.schedule_dr_scan(data, len as usize, capture_data)?;
+
+        Ok(DeferredRegisterWrite { len })
+    }
+}
+
+struct DeferredRegisterWrite {
+    len: usize,
 }
 
 impl DebugProbe for JLink {
@@ -662,7 +785,7 @@ impl JTAGAccess for JLink {
 
         if self.current_ir_reg != address {
             // Write IR register
-            self.write_ir(&address_bits, self.chain_params.irlen)?;
+            self.write_ir(&address_bits, self.chain_params.irlen, false)?;
             self.current_ir_reg = address;
         }
 
@@ -688,7 +811,7 @@ impl JTAGAccess for JLink {
 
         if self.current_ir_reg != address {
             // Write IR register
-            self.write_ir(&address_bits, self.chain_params.irlen)?;
+            self.write_ir(&address_bits, self.chain_params.irlen, false)?;
             self.current_ir_reg = address;
         }
 
@@ -702,6 +825,51 @@ impl JTAGAccess for JLink {
 
     fn idle_cycles(&self) -> u8 {
         self.jtag_idle_cycles
+    }
+
+    fn write_register_batch(
+        &mut self,
+        writes: &JtagCommandQueue,
+    ) -> Result<DeferredResultSet, BatchExecutionError> {
+        let mut bits = Vec::with_capacity(writes.len());
+        let t1 = std::time::Instant::now();
+        tracing::debug!("Preparing {} writes...", writes.len());
+        for (idx, write) in writes.iter() {
+            // If an error happens during prep, return no results as chip will be in an inconsistent state
+            let op = self
+                .prepare_write_register(write.address, &write.data, write.len, idx.should_capture())
+                .map_err(|e| BatchExecutionError::new(e.into(), DeferredResultSet::new()))?;
+
+            bits.push((idx, write.transform, op));
+        }
+
+        tracing::debug!("Sending to chip...");
+        // If an error happens during the final flush, also retry whole operation
+        let bitstream = self
+            .flush()
+            .map_err(|e| BatchExecutionError::new(e.into(), DeferredResultSet::new()))?;
+
+        tracing::debug!("Got responses! Took {:?}! Processing...", t1.elapsed());
+        let mut responses = DeferredResultSet::with_capacity(bits.len());
+
+        let mut bitstream = bitstream.as_bitslice();
+        for (idx, transform, bit) in bits.into_iter() {
+            if idx.should_capture() {
+                let write_response = match self.recieve_dr_scan(bitstream[..bit.len].to_bitvec()) {
+                    Ok(response_bits) => transform(response_bits),
+                    Err(e) => Err(e.into()),
+                };
+
+                match write_response {
+                    Ok(response) => responses.push(idx, response),
+                    Err(e) => return Err(BatchExecutionError::new(e, responses)),
+                }
+            }
+
+            bitstream = &bitstream[bit.len..];
+        }
+
+        Ok(responses)
     }
 }
 
