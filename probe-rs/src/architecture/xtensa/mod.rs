@@ -16,7 +16,7 @@ use crate::{
 
 use self::communication_interface::XtensaCommunicationInterface;
 
-pub mod arch; // TODO: this module probably shouldn't be public but it's used in the example
+pub(crate) mod arch;
 mod xdm;
 
 pub mod communication_interface;
