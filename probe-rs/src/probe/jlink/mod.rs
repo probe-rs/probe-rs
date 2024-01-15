@@ -73,7 +73,7 @@ impl ProbeDriver for JLinkSource {
         //
         // If the J-Link has the SELECT_IF capability, we can just ask
         // it which interfaces it supports. If it doesn't have the capabilty,
-        // we assume that it justs support JTAG. In that case, we will also
+        // we assume that it just supports JTAG. In that case, we will also
         // not be able to change protocols.
 
         let supported_protocols: Vec<WireProtocol> =
@@ -104,6 +104,20 @@ impl ProbeDriver for JLinkSource {
                 vec![WireProtocol::Jtag]
             };
 
+        // Some devices can't handle large transfers, so we limit the chunk size
+        // While it would be nice to read this directly from the device,
+        // `read_max_mem_block`'s return value does not directly correspond to the
+        // maximum transfer size, and it's not clear how to get the actual value.
+        // The number of *bits* is encoded as a u16, so the maximum value is 65535
+        let chunk_size = match selector.product_id {
+            // 0x0101: J-Link EDU
+            0x0101 => 65535,
+            // 0x1051: J-Link OB-K22-SiFive: 504 bits
+            0x1051 => 504,
+            // Assume the lowest value is a safe default
+            _ => 504,
+        };
+
         Ok(Box::new(JLink {
             handle: jlink_handle,
             swo_config: None,
@@ -123,6 +137,8 @@ impl ProbeDriver for JLinkSource {
             jtag_tdi_bits: vec![],
             jtag_capture_tdo: vec![],
             jtag_response: BitVec::new(),
+
+            chunk_size,
         }))
     }
 
@@ -159,6 +175,9 @@ pub(crate) struct JLink {
     jtag_capture_tdo: Vec<bool>,
     jtag_response: BitVec<u8, Lsb0>,
     jtag_state: JtagState,
+
+    // max number of bits in a transfer chunk
+    chunk_size: usize,
 
     probe_statistics: ProbeStatistics,
     swd_settings: SwdSettings,
@@ -372,8 +391,6 @@ impl JLink {
         tdi: impl IntoIterator<Item = bool>,
         capture: impl IntoIterator<Item = bool>,
     ) -> Result<(), DebugProbeError> {
-        const CHUNK_SIZE: usize = 16384;
-
         for ((tms, tdi), capture) in tms.into_iter().zip(tdi).zip(capture) {
             self.jtag_state.update(tms);
 
@@ -381,7 +398,7 @@ impl JLink {
             self.jtag_tdi_bits.push(tdi);
             self.jtag_capture_tdo.push(capture);
 
-            if self.jtag_tms_bits.len() >= CHUNK_SIZE {
+            if self.jtag_tms_bits.len() >= self.chunk_size {
                 self.do_io()?;
             }
         }
@@ -390,6 +407,10 @@ impl JLink {
     }
 
     fn do_io(&mut self) -> Result<(), DebugProbeError> {
+        if self.jtag_tms_bits.is_empty() {
+            return Ok(());
+        }
+
         let response = self.handle.jtag_io(
             std::mem::take(&mut self.jtag_tms_bits),
             std::mem::take(&mut self.jtag_tdi_bits),
@@ -457,6 +478,8 @@ impl JLink {
             idcodes.len(),
             idcodes
         );
+
+        self.jtag_reset()?;
 
         // First shift out all ones
         let input = vec![0xff; idcodes.len()];

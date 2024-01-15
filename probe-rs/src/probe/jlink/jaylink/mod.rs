@@ -846,7 +846,7 @@ impl JayLink {
         self.write_cmd(&buf)?;
 
         // Round bit count up to multple of 8 to get the number of response bytes.
-        let num_resp_bytes = (tms_bit_count + 7) >> 3;
+        let num_resp_bytes = (tms_bit_count + 7) / 8;
         trace!(
             "{} TMS/TDI bits sent; reading {} response bytes",
             tms_bit_count,
