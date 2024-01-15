@@ -137,11 +137,7 @@ fn main() -> Result<()> {
         }
     };
 
-    let target_selector = opts
-        .chip
-        .clone()
-        .map(TargetSelector::Unspecified)
-        .unwrap_or(TargetSelector::Auto);
+    let target_selector = TargetSelector::from(opts.chip.as_deref());
 
     let mut session = match probe.attach(target_selector, Permissions::default()) {
         Ok(session) => session,

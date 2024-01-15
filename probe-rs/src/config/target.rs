@@ -327,6 +327,15 @@ impl From<String> for TargetSelector {
     }
 }
 
+impl From<Option<&str>> for TargetSelector {
+    fn from(value: Option<&str>) -> Self {
+        match value {
+            Some(identifier) => identifier.into(),
+            None => TargetSelector::Auto,
+        }
+    }
+}
+
 impl From<()> for TargetSelector {
     fn from(_value: ()) -> Self {
         TargetSelector::Auto
