@@ -98,12 +98,18 @@ impl EspUsbJtag {
         let input = vec![0xff; idcodes.len()];
         let response = self.write_ir(&input, input.len() * 8, true)?;
 
+        tracing::debug!("IR scan: {}", response);
+
+        self.jtag_reset()?;
+
         // Next, shift out same amount of zeros, then ones to make sure the IRs contain BYPASS.
         let input = iter::repeat(0)
             .take(idcodes.len())
             .chain(input.iter().copied())
             .collect::<Vec<_>>();
         let response_zeros = self.write_ir(&input, input.len() * 8, true)?;
+
+        tracing::debug!("IR scan: {}", response_zeros);
 
         let expected = if let Some(ref chain) = self.scan_chain {
             let expected = chain
