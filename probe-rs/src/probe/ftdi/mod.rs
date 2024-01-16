@@ -313,9 +313,6 @@ impl JtagAdapter {
             .chain(iter::repeat(capture_data).take(len))
             .chain(iter::repeat(false));
 
-        tracing::trace!("tms: {:?}", tms.clone());
-        tracing::trace!("tdi: {:?}", tdi.clone());
-
         self.schedule_jtag_scan(tms, tdi, capture)?;
 
         self.jtag_move_to_state(JtagState::Ir(RegisterState::Update))?;
