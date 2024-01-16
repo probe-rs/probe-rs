@@ -1,5 +1,3 @@
-use super::MAX_COMMAND_SIZE;
-
 #[derive(Clone, Debug)]
 pub enum Command {
     /// No command should be output.
@@ -173,12 +171,7 @@ impl Command {
                     *tdi_bits = 0;
                 }
 
-                // Split early, but make sure we won't split inside a command
-                if tdi_bytes.len() == MAX_COMMAND_SIZE - 3 {
-                    self.take()
-                } else {
-                    None
-                }
+                None
             }
         }
     }

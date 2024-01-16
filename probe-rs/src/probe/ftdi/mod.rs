@@ -25,10 +25,6 @@ use ftdi_impl as ftdi;
 
 mod command_compacter;
 
-// Max MPSSE buffer size is supposed to be 65536 bytes but due to some limitation 16K works
-// better for me.
-const MAX_COMMAND_SIZE: usize = 16384;
-
 use super::{ChainParams, JtagChainItem};
 
 use command_compacter::Command;
@@ -42,6 +38,7 @@ pub struct JtagAdapter {
     current_ir_reg: u32,
     max_ir_address: u32,
 
+    buffer_size: usize,
     jtag_state: JtagState,
 
     command: Command,
@@ -62,13 +59,14 @@ impl JtagAdapter {
             device,
             chain_params: ChainParams::default(),
             jtag_idle_cycles: 0,
+            buffer_size: 128,
             jtag_state: JtagState::Reset,
             current_ir_reg: 1,
             max_ir_address: 0x1F,
             command: Command::default(),
-            commands: Vec::with_capacity(MAX_COMMAND_SIZE),
+            commands: vec![],
             in_bit_counts: vec![],
-            in_bits: BitVec::with_capacity(MAX_COMMAND_SIZE),
+            in_bits: BitVec::new(),
             scan_chain: None,
         })
     }
@@ -169,7 +167,7 @@ impl JtagAdapter {
     fn append_command(&mut self, command: Command) -> Result<(), DebugProbeError> {
         tracing::debug!("Appending {:?}", command);
         // 1 byte is reserved for the send immediate command
-        if self.commands.len() + command.len() + 1 >= MAX_COMMAND_SIZE {
+        if self.commands.len() + command.len() + 1 >= self.buffer_size {
             self.send_buffer()?;
             self.read_response()
                 .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
@@ -529,14 +527,20 @@ impl std::fmt::Debug for FtdiProbeSource {
 impl ProbeDriver for FtdiProbeSource {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         // Only open FTDI-compatible probes
-        if !FTDI_COMPAT_DEVICE_IDS.contains(&(selector.vendor_id, selector.product_id)) {
+
+        let Some(device) = FTDI_COMPAT_DEVICE_IDS
+            .iter()
+            .find(|ftdi| ftdi.id == (selector.vendor_id, selector.product_id))
+        else {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::NotFound,
             ));
-        }
+        };
 
-        let adapter = JtagAdapter::open(selector.vendor_id, selector.product_id)
+        let mut adapter = JtagAdapter::open(selector.vendor_id, selector.product_id)
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
+
+        adapter.buffer_size = device.buffer_size;
 
         let probe = FtdiProbe {
             adapter,
@@ -783,16 +787,40 @@ impl JTAGAccess for FtdiProbe {
     }
 }
 
+struct FtdiDevice {
+    id: (u16, u16),
+    buffer_size: usize,
+}
+
 /// (VendorId, ProductId)
-static FTDI_COMPAT_DEVICE_IDS: &[(u16, u16)] = &[
-    (0x0403, 0x6010), // FTDI Ltd. FT2232C/D/H Dual UART/FIFO IC
-    (0x0403, 0x6011), // FTDI Ltd. FT4232H Quad HS USB-UART/FIFO IC
-    (0x0403, 0x6014), // FTDI Ltd. FT232H Single HS USB-UART/FIFO IC
-    (0x15ba, 0x002a), // Olimex Ltd. ARM-USB-TINY-H JTAG interface
+static FTDI_COMPAT_DEVICE_IDS: &[FtdiDevice] = &[
+    // FTDI Ltd. FT2232C/D/H Dual UART/FIFO IC
+    FtdiDevice {
+        id: (0x0403, 0x6010),
+        buffer_size: 4096,
+    },
+    // FTDI Ltd. FT4232H Quad HS USB-UART/FIFO IC
+    FtdiDevice {
+        id: (0x0403, 0x6011),
+        buffer_size: 1024,
+    },
+    // FTDI Ltd. FT232H Single HS USB-UART/FIFO IC
+    FtdiDevice {
+        id: (0x0403, 0x6014),
+        buffer_size: 1024,
+    },
+    // Olimex Ltd. ARM-USB-TINY-H JTAG interface
+    FtdiDevice {
+        id: (0x15ba, 0x002a),
+        buffer_size: 4096,
+    },
 ];
 
 fn get_device_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
-    if !FTDI_COMPAT_DEVICE_IDS.contains(&(device.vendor_id(), device.product_id())) {
+    if !FTDI_COMPAT_DEVICE_IDS
+        .iter()
+        .any(|ftdi| ftdi.id == (device.vendor_id(), device.product_id()))
+    {
         return None;
     }
 
