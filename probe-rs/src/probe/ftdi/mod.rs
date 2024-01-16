@@ -30,8 +30,9 @@ use super::{ChainParams, JtagChainItem};
 use command_compacter::Command;
 
 #[derive(Debug)]
-pub struct JtagAdapter {
+struct JtagAdapter {
     device: ftdi::Device,
+
     chain_params: ChainParams,
     jtag_idle_cycles: u8,
 
@@ -50,10 +51,10 @@ pub struct JtagAdapter {
 }
 
 impl JtagAdapter {
-    pub fn open(vid: u16, pid: u16) -> Result<Self, ftdi::Error> {
+    fn open(ftdi: &FtdiDevice) -> Result<Self, ftdi::Error> {
         let mut builder = ftdi::Builder::new();
         builder.set_interface(ftdi::Interface::A)?;
-        let device = builder.usb_open(vid, pid)?;
+        let device = builder.usb_open(ftdi.id.0, ftdi.id.1)?;
 
         Ok(Self {
             device,
@@ -537,8 +538,8 @@ impl ProbeDriver for FtdiProbeSource {
             ));
         };
 
-        let mut adapter = JtagAdapter::open(selector.vendor_id, selector.product_id)
-            .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
+        let mut adapter =
+            JtagAdapter::open(device).map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
 
         adapter.buffer_size = device.buffer_size;
 
@@ -787,32 +788,55 @@ impl JTAGAccess for FtdiProbe {
     }
 }
 
+#[derive(Debug)]
 struct FtdiDevice {
     id: (u16, u16),
     buffer_size: usize,
 }
+
+const BUFFER_SIZE_FTDI2232C_D: usize = 128;
+const BUFFER_SIZE_FTDI2232_UNKNOWN: usize = BUFFER_SIZE_FTDI2232C_D;
+const BUFFER_SIZE_FTDI232H: usize = 1024;
+const BUFFER_SIZE_FTDI2232H: usize = 4096;
 
 /// (VendorId, ProductId)
 static FTDI_COMPAT_DEVICE_IDS: &[FtdiDevice] = &[
     // FTDI Ltd. FT2232C/D/H Dual UART/FIFO IC
     FtdiDevice {
         id: (0x0403, 0x6010),
-        buffer_size: 4096,
+        // FIXME: We are using a very small buffer size here to support 2232D devices. In
+        //        the future, we should detect the device type and use a larger buffer size.
+        buffer_size: BUFFER_SIZE_FTDI2232_UNKNOWN,
     },
     // FTDI Ltd. FT4232H Quad HS USB-UART/FIFO IC
     FtdiDevice {
         id: (0x0403, 0x6011),
-        buffer_size: 1024,
+        buffer_size: BUFFER_SIZE_FTDI232H,
     },
     // FTDI Ltd. FT232H Single HS USB-UART/FIFO IC
     FtdiDevice {
         id: (0x0403, 0x6014),
-        buffer_size: 1024,
+        buffer_size: BUFFER_SIZE_FTDI232H,
     },
-    // Olimex Ltd. ARM-USB-TINY-H JTAG interface
+    // Olimex Ltd. ARM-USB-OCD JTAG interface, FTDI2232C
+    FtdiDevice {
+        id: (0x15ba, 0x0003),
+        buffer_size: BUFFER_SIZE_FTDI2232C_D,
+    },
+    // Olimex Ltd. ARM-USB-TINY JTAG interface, FTDI2232C
+    FtdiDevice {
+        id: (0x15ba, 0x0004),
+        buffer_size: BUFFER_SIZE_FTDI2232C_D,
+    },
+    // Olimex Ltd. ARM-USB-TINY-H JTAG interface, FTDI2232H
     FtdiDevice {
         id: (0x15ba, 0x002a),
-        buffer_size: 4096,
+        buffer_size: BUFFER_SIZE_FTDI2232H,
+    },
+    // Olimex Ltd. ARM-USB-OCD-H JTAG interface, FTDI2232H
+    FtdiDevice {
+        id: (0x15ba, 0x002b),
+        buffer_size: BUFFER_SIZE_FTDI2232H,
     },
 ];
 
