@@ -96,7 +96,8 @@ impl EspUsbJtag {
 
         // First shift out all ones
         let input = vec![0xff; idcodes.len()];
-        let response = self.write_ir(&input, input.len() * 8, true)?;
+        self.prepare_write_ir(&input, input.len() * 8, true)?;
+        let response = self.protocol.flush()?;
 
         tracing::debug!("IR scan: {}", response);
 
@@ -107,7 +108,8 @@ impl EspUsbJtag {
             .take(idcodes.len())
             .chain(input.iter().copied())
             .collect::<Vec<_>>();
-        let response_zeros = self.write_ir(&input, input.len() * 8, true)?;
+        self.prepare_write_ir(&input, input.len() * 8, true)?;
+        let response_zeros = self.protocol.flush()?;
 
         tracing::debug!("IR scan: {}", response_zeros);
 
@@ -142,19 +144,6 @@ impl EspUsbJtag {
     /// IR register might have an odd length, so the data
     /// will be truncated to `len` bits. If data has less
     /// than `len` bits, an error will be returned.
-    fn write_ir(
-        &mut self,
-        data: &[u8],
-        len: usize,
-        capture_response: bool,
-    ) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
-        self.prepare_write_ir(data, len, capture_response)?;
-        let response = self.protocol.flush()?;
-        tracing::trace!("Response: {:?}", response);
-
-        Ok(response)
-    }
-
     fn prepare_write_ir(
         &mut self,
         data: &[u8],
@@ -355,7 +344,7 @@ impl JTAGAccess for EspUsbJtag {
 
         if self.current_ir_reg != address {
             // Write IR register
-            self.write_ir(&address_bytes, self.chain_params.irlen, false)?;
+            self.prepare_write_ir(&address_bytes, self.chain_params.irlen, false)?;
             self.current_ir_reg = address;
         }
 
@@ -381,7 +370,7 @@ impl JTAGAccess for EspUsbJtag {
 
         if self.current_ir_reg != address {
             // Write IR register
-            self.write_ir(&address_bytes, self.chain_params.irlen, false)?;
+            self.prepare_write_ir(&address_bytes, self.chain_params.irlen, false)?;
             self.current_ir_reg = address;
         }
 
