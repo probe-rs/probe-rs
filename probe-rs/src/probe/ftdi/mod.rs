@@ -165,13 +165,19 @@ impl JtagAdapter {
         Ok(())
     }
 
+    fn do_io(&mut self) -> Result<(), DebugProbeError> {
+        self.send_buffer()?;
+        self.read_response()
+            .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
+
+        Ok(())
+    }
+
     fn append_command(&mut self, command: Command) -> Result<(), DebugProbeError> {
         tracing::debug!("Appending {:?}", command);
         // 1 byte is reserved for the send immediate command
         if self.commands.len() + command.len() + 1 >= self.buffer_size {
-            self.send_buffer()?;
-            self.read_response()
-                .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
+            self.do_io()?;
         }
 
         command.add_captured_bits(&mut self.in_bit_counts);
@@ -211,6 +217,10 @@ impl JtagAdapter {
     }
 
     fn send_buffer(&mut self) -> Result<(), DebugProbeError> {
+        if self.commands.is_empty() {
+            return Ok(());
+        }
+
         // Send Immediate: This will make the FTDI chip flush its buffer back to the PC.
         // See https://www.ftdichip.com/Support/Documents/AppNotes/AN_108_Command_Processor_for_MPSSE_and_MCU_Host_Bus_Emulation_Modes.pdf
         // section 5.1
@@ -229,14 +239,7 @@ impl JtagAdapter {
 
     fn flush(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
         self.finalize_command()?;
-        if !self.commands.is_empty() {
-            self.send_buffer()?;
-        }
-
-        if !self.in_bit_counts.is_empty() {
-            self.read_response()
-                .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
-        }
+        self.do_io()?;
 
         Ok(std::mem::take(&mut self.in_bits))
     }
@@ -721,8 +724,11 @@ impl JTAGAccess for FtdiProbe {
 
         if self.adapter.current_ir_reg != address {
             // Write IR register
-            self.adapter
-                .scan_ir(&address_bytes, self.adapter.chain_params.irlen, false)?;
+            self.adapter.schedule_ir_scan(
+                &address_bytes,
+                self.adapter.chain_params.irlen,
+                false,
+            )?;
             self.adapter.current_ir_reg = address;
         }
 
