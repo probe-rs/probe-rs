@@ -224,12 +224,6 @@ impl JLink {
         }
     }
 
-    fn read_dr(&mut self, register_bits: usize) -> Result<Vec<u8>, DebugProbeError> {
-        tracing::debug!("Read {} bits from DR", register_bits);
-
-        self.write_dr(&vec![0x00; (register_bits + 7) / 8], register_bits)
-    }
-
     /// Write IR register with the specified data. The
     /// IR register might have an odd length, so the dta
     /// will be truncated to `len` bits. If data has less
@@ -797,23 +791,9 @@ impl JTAGAccess for JLink {
 
     /// Read the data register
     fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
-        let address_bits = address.to_le_bytes();
+        let data = vec![0u8; (len as usize + 7) / 8];
 
-        if address > self.max_ir_address {
-            return Err(DebugProbeError::Other(anyhow!(
-                "JTAG Register addresses are fixed to {} bits",
-                self.chain_params.irlen
-            )));
-        }
-
-        if self.current_ir_reg != address {
-            // Write IR register
-            self.write_ir(&address_bits, self.chain_params.irlen, false)?;
-            self.current_ir_reg = address;
-        }
-
-        // read DR register
-        self.read_dr(len as usize)
+        self.write_register(address, &data, len)
     }
 
     /// Write the data register
@@ -834,7 +814,7 @@ impl JTAGAccess for JLink {
 
         if self.current_ir_reg != address {
             // Write IR register
-            self.write_ir(&address_bits, self.chain_params.irlen, false)?;
+            self.schedule_ir_scan(&address_bits, self.chain_params.irlen, false)?;
             self.current_ir_reg = address;
         }
 
