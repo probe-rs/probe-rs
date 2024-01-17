@@ -837,7 +837,14 @@ impl fmt::Display for DebugProbeSelector {
 /// This trait should be implemented by all probes which offer low-level access to
 /// the JTAG protocol, i.e. direction control over the bytes sent and received.
 pub trait JTAGAccess: DebugProbe {
-    fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError>;
+    /// Read a JTAG register.
+    ///
+    /// This function emulates a read by performing a write with all zeros to the DR.
+    fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
+        let data = vec![0u8; (len as usize + 7) / 8];
+
+        self.write_register(address, &data, len)
+    }
 
     /// For RISC-V, and possibly other interfaces, the JTAG interface has to remain in
     /// the idle state for several cycles between consecutive accesses to the DR register.

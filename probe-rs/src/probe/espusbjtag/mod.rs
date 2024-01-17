@@ -332,13 +332,6 @@ impl JTAGAccess for EspUsbJtag {
         }
     }
 
-    /// Read the data register
-    fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
-        let data = vec![0u8; (len as usize + 7) / 8];
-
-        self.write_register(address, &data, len)
-    }
-
     /// Write the data register
     fn write_register(
         &mut self,
