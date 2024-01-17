@@ -334,23 +334,9 @@ impl JTAGAccess for EspUsbJtag {
 
     /// Read the data register
     fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
-        if address > self.max_ir_address {
-            return Err(DebugProbeError::Other(anyhow!(
-                "Invalid instruction register access: {}",
-                address
-            )));
-        }
-        let address_bytes = address.to_le_bytes();
+        let data = vec![0u8; (len as usize + 7) / 8];
 
-        if self.current_ir_reg != address {
-            // Write IR register
-            self.prepare_write_ir(&address_bytes, self.chain_params.irlen, false)?;
-            self.current_ir_reg = address;
-        }
-
-        // read DR register by transfering len bits to the chain
-        let data: Vec<u8> = iter::repeat(0).take((len as usize + 7) / 8).collect();
-        self.write_dr(&data, len as usize)
+        self.write_register(address, &data, len)
     }
 
     /// Write the data register
