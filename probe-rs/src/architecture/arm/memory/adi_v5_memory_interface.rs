@@ -250,12 +250,12 @@ where
         }
     }
 
-    fn write_csw_register(&mut self, access_port: MemoryAp, value: CSW) -> Result<(), ArmError> {
+    fn write_csw_register(&mut self, value: CSW) -> Result<(), ArmError> {
         // Check if the write is necessary
         match self.cached_csw_value {
             Some(cached_value) if cached_value == value => Ok(()),
             _ => {
-                self.write_ap_register(access_port, value)?;
+                self.write_ap_register(value)?;
 
                 self.cached_csw_value = Some(value);
 
@@ -264,20 +264,20 @@ where
         }
     }
 
-    fn write_tar_register(&mut self, access_port: MemoryAp, address: u64) -> Result<(), ArmError> {
+    fn write_tar_register(&mut self, address: u64) -> Result<(), ArmError> {
         let address_lower = address as u32;
         let address_upper = (address >> 32) as u32;
 
         let tar = TAR {
             address: address_lower,
         };
-        self.write_ap_register(access_port, tar)?;
+        self.write_ap_register(tar)?;
 
         if self.ap_information.has_large_address_extension {
             let tar = TAR2 {
                 address: address_upper,
             };
-            self.write_ap_register(access_port, tar)?;
+            self.write_ap_register(tar)?;
         } else if address_upper != 0 {
             return Err(ArmError::OutOfBounds);
         }
@@ -286,60 +286,60 @@ where
     }
 
     /// Read a 32 bit register on the given AP.
-    fn read_ap_register<R>(&mut self, access_port: MemoryAp) -> Result<R, ArmError>
+    fn read_ap_register<R>(&mut self) -> Result<R, ArmError>
     where
         R: ApRegister<MemoryAp>,
         AP: ApAccess,
     {
         self.interface
-            .read_ap_register(access_port)
+            .read_ap_register(self.memory_ap)
             .map_err(AccessPortError::register_read_error::<R, _>)
-            .map_err(|error| ArmError::from_access_port(error, access_port))
+            .map_err(|error| ArmError::from_access_port(error, self.memory_ap))
     }
 
     /// Read multiple 32 bit values from the DRW register on the given AP.
-    fn read_drw(&mut self, access_port: MemoryAp, values: &mut [u32]) -> Result<(), ArmError>
+    fn read_drw(&mut self, values: &mut [u32]) -> Result<(), ArmError>
     where
         AP: ApAccess,
     {
         if values.len() == 1 {
             // If transferring only 1 word, use non-repeated register access, because it might be faster depending on the probe.
-            let drw: DRW = self.read_ap_register(access_port)?;
+            let drw: DRW = self.read_ap_register()?;
             values[0] = drw.data;
             Ok(())
         } else {
             self.interface
-                .read_ap_register_repeated(access_port, DRW { data: 0 }, values)
+                .read_ap_register_repeated(self.memory_ap, DRW { data: 0 }, values)
                 .map_err(AccessPortError::register_read_error::<DRW, _>)
-                .map_err(|err| ArmError::from_access_port(err, access_port))
+                .map_err(|err| ArmError::from_access_port(err, self.memory_ap))
         }
     }
 
     /// Write a 32 bit register on the given AP.
-    fn write_ap_register<R>(&mut self, access_port: MemoryAp, register: R) -> Result<(), ArmError>
+    fn write_ap_register<R>(&mut self, register: R) -> Result<(), ArmError>
     where
         R: ApRegister<MemoryAp>,
         AP: ApAccess,
     {
         self.interface
-            .write_ap_register(access_port, register)
+            .write_ap_register(self.memory_ap, register)
             .map_err(AccessPortError::register_write_error::<R, _>)
-            .map_err(|e| ArmError::from_access_port(e, access_port))
+            .map_err(|e| ArmError::from_access_port(e, self.memory_ap))
     }
 
     /// Write multiple 32 bit values to the DRW register on the given AP.
-    fn write_drw(&mut self, access_port: MemoryAp, values: &[u32]) -> Result<(), ArmError>
+    fn write_drw(&mut self, values: &[u32]) -> Result<(), ArmError>
     where
         AP: ApAccess,
     {
         if values.len() == 1 {
             // If transferring only 1 word, use non-repeated register access, because it might be faster depending on the probe.
-            self.write_ap_register(access_port, DRW { data: values[0] })
+            self.write_ap_register(DRW { data: values[0] })
         } else {
             self.interface
-                .write_ap_register_repeated(access_port, DRW { data: 0 }, values)
+                .write_ap_register_repeated(self.memory_ap, DRW { data: 0 }, values)
                 .map_err(AccessPortError::register_write_error::<DRW, _>)
-                .map_err(|e| ArmError::from_access_port(e, access_port))
+                .map_err(|e| ArmError::from_access_port(e, self.memory_ap))
         }
     }
 
@@ -347,7 +347,7 @@ where
     ///
     /// The address where the read should be performed at has to be a multiple of 8.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
-    pub fn read_word_64(&mut self, access_port: MemoryAp, address: u64) -> Result<u64, ArmError> {
+    pub fn read_word_64(&mut self, address: u64) -> Result<u64, ArmError> {
         if (address % 8) != 0 {
             return Err(ArmError::alignment_error(address, 4));
         }
@@ -355,13 +355,13 @@ where
         let mut buf = [0u32; 2];
 
         if !self.ap_information.has_large_data_extension {
-            self.read_32(access_port, address, &mut buf)?;
+            self.read_32(address, &mut buf)?;
         } else {
             let csw = self.build_csw_register(DataSize::U64);
 
-            self.write_csw_register(access_port, csw)?;
-            self.write_tar_register(access_port, address)?;
-            self.read_drw(access_port, &mut buf)?;
+            self.write_csw_register(csw)?;
+            self.write_tar_register(address)?;
+            self.read_drw(&mut buf)?;
         }
 
         Ok(buf[0] as u64 | (buf[1] as u64) << 32)
@@ -372,12 +372,7 @@ where
     /// The number of words read is `data.len()`.
     /// The address where the read should be performed at has to be a multiple of 4.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
-    pub fn read_32(
-        &mut self,
-        access_port: MemoryAp,
-        mut address: u64,
-        mut data: &mut [u32],
-    ) -> Result<(), ArmError> {
+    pub fn read_32(&mut self, mut address: u64, mut data: &mut [u32]) -> Result<(), ArmError> {
         if data.is_empty() {
             return Ok(());
         }
@@ -387,7 +382,7 @@ where
         }
 
         let csw = self.build_csw_register(DataSize::U32);
-        self.write_csw_register(access_port, csw)?;
+        self.write_csw_register(csw)?;
 
         while !data.is_empty() {
             let chunk_size = data.len().min(autoincr_max_bytes(address) / 4);
@@ -399,8 +394,8 @@ where
             );
 
             // autoincrement is limited to the 10 lowest bits, so write TAR every time.
-            self.write_tar_register(access_port, address)?;
-            self.read_drw(access_port, &mut data[..chunk_size])?;
+            self.write_tar_register(address)?;
+            self.read_drw(&mut data[..chunk_size])?;
 
             address = address
                 .checked_add(chunk_size as u64 * 4)
@@ -418,12 +413,7 @@ where
     /// The number of words read is `data.len()`.
     /// The address where the read should be performed at has to be a multiple of 2.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
-    pub fn read_16(
-        &mut self,
-        access_port: MemoryAp,
-        mut address: u64,
-        mut data: &mut [u16],
-    ) -> Result<(), ArmError> {
+    pub fn read_16(&mut self, mut address: u64, mut data: &mut [u16]) -> Result<(), ArmError> {
         if self.ap_information.supports_only_32bit_data_size {
             return Err(ArmError::UnsupportedTransferWidth(8));
         }
@@ -437,7 +427,7 @@ where
         }
 
         let csw = self.build_csw_register(DataSize::U16);
-        self.write_csw_register(access_port, csw)?;
+        self.write_csw_register(csw)?;
 
         while !data.is_empty() {
             let chunk_size = data.len().min(autoincr_max_bytes(address) / 2);
@@ -451,8 +441,8 @@ where
             let mut values = vec![0; chunk_size];
 
             // autoincrement is limited to the 10 lowest bits, so write TAR every time.
-            self.write_tar_register(access_port, address)?;
-            self.read_drw(access_port, &mut values)?;
+            self.write_tar_register(address)?;
+            self.read_drw(&mut values)?;
 
             // The required shifting logic here is described in C2.2.6 Byte lanes of the ADI v5.2 specification.
             // All bytes are transfered in their lane, so when we do an access at an address that is not divisible by 4,
@@ -477,12 +467,7 @@ where
     /// Read a block of 8 bit words at `address`.
     ///
     /// The number of words read is `data.len()`.
-    pub fn read_8(
-        &mut self,
-        access_port: MemoryAp,
-        mut address: u64,
-        mut data: &mut [u8],
-    ) -> Result<(), ArmError> {
+    pub fn read_8(&mut self, mut address: u64, mut data: &mut [u8]) -> Result<(), ArmError> {
         if self.ap_information.supports_only_32bit_data_size {
             return Err(ArmError::UnsupportedTransferWidth(8));
         }
@@ -492,7 +477,7 @@ where
         }
 
         let csw = self.build_csw_register(DataSize::U8);
-        self.write_csw_register(access_port, csw)?;
+        self.write_csw_register(csw)?;
 
         while !data.is_empty() {
             let chunk_size = data.len().min(autoincr_max_bytes(address));
@@ -506,8 +491,8 @@ where
             let mut values = vec![0; chunk_size];
 
             // autoincrement is limited to the 10 lowest bits, so write TAR every time.
-            self.write_tar_register(access_port, address)?;
-            self.read_drw(access_port, &mut values)?;
+            self.write_tar_register(address)?;
+            self.read_drw(&mut values)?;
 
             // The required shifting logic here is described in C2.2.6 Byte lanes of the ADI v5.2 specification.
             // All bytes are transfered in their lane, so when we do an access at an address that is not divisible by 4,
@@ -533,12 +518,7 @@ where
     ///
     /// The address where the write should be performed at has to be a multiple of 8.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
-    pub fn write_word_64(
-        &mut self,
-        access_port: MemoryAp,
-        address: u64,
-        data: u64,
-    ) -> Result<(), ArmError> {
+    pub fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), ArmError> {
         if (address % 8) != 0 {
             return Err(ArmError::alignment_error(address, 4));
         }
@@ -546,12 +526,12 @@ where
         let buf = [data as u32, (data >> 32) as u32];
 
         if !self.ap_information.has_large_data_extension {
-            self.write_32(access_port, address, &buf)
+            self.write_32(address, &buf)
         } else {
             let csw = self.build_csw_register(DataSize::U64);
-            self.write_csw_register(access_port, csw)?;
-            self.write_tar_register(access_port, address)?;
-            self.write_drw(access_port, &buf)?;
+            self.write_csw_register(csw)?;
+            self.write_tar_register(address)?;
+            self.write_drw(&buf)?;
             Ok(())
         }
     }
@@ -561,12 +541,7 @@ where
     /// The number of words written is `data.len()`.
     /// The address where the write should be performed at has to be a multiple of 4.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
-    pub fn write_32(
-        &mut self,
-        access_port: MemoryAp,
-        mut address: u64,
-        mut data: &[u32],
-    ) -> Result<(), ArmError> {
+    pub fn write_32(&mut self, mut address: u64, mut data: &[u32]) -> Result<(), ArmError> {
         if (address % 4) != 0 {
             return Err(ArmError::alignment_error(address, 4));
         }
@@ -582,7 +557,7 @@ where
         );
 
         let csw = self.build_csw_register(DataSize::U32);
-        self.write_csw_register(access_port, csw)?;
+        self.write_csw_register(csw)?;
 
         while !data.is_empty() {
             let chunk_size = data.len().min(autoincr_max_bytes(address) / 4);
@@ -594,8 +569,8 @@ where
             );
 
             // autoincrement is limited to the 10 lowest bits, so write TAR every time.
-            self.write_tar_register(access_port, address)?;
-            self.write_drw(access_port, &data[..chunk_size])?;
+            self.write_tar_register(address)?;
+            self.write_drw(&data[..chunk_size])?;
 
             address = address
                 .checked_add(chunk_size as u64 * 4)
@@ -613,12 +588,7 @@ where
     /// The number of words written is `data.len()`.
     /// The address where the write should be performed at has to be a multiple of 2.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
-    pub fn write_16(
-        &mut self,
-        access_port: MemoryAp,
-        mut address: u64,
-        mut data: &[u16],
-    ) -> Result<(), ArmError> {
+    pub fn write_16(&mut self, mut address: u64, mut data: &[u16]) -> Result<(), ArmError> {
         if self.ap_information.supports_only_32bit_data_size {
             return Err(ArmError::UnsupportedTransferWidth(8));
         }
@@ -636,7 +606,7 @@ where
         );
 
         let csw = self.build_csw_register(DataSize::U16);
-        self.write_csw_register(access_port, csw)?;
+        self.write_csw_register(csw)?;
 
         while !data.is_empty() {
             let chunk_size = data.len().min(autoincr_max_bytes(address) / 2);
@@ -657,8 +627,8 @@ where
                 .collect::<Vec<_>>();
 
             // autoincrement is limited to the 10 lowest bits, so write TAR every time.
-            self.write_tar_register(access_port, address)?;
-            self.write_drw(access_port, &values)?;
+            self.write_tar_register(address)?;
+            self.write_drw(&values)?;
 
             address = address
                 .checked_add(chunk_size as u64 * 2)
@@ -674,12 +644,7 @@ where
     /// Write a block of 8 bit words at `address`.
     ///
     /// The number of words written is `data.len()`.
-    pub fn write_8(
-        &mut self,
-        access_port: MemoryAp,
-        mut address: u64,
-        mut data: &[u8],
-    ) -> Result<(), ArmError> {
+    pub fn write_8(&mut self, mut address: u64, mut data: &[u8]) -> Result<(), ArmError> {
         if self.ap_information.supports_only_32bit_data_size {
             return Err(ArmError::UnsupportedTransferWidth(8));
         }
@@ -695,7 +660,7 @@ where
         );
 
         let csw = self.build_csw_register(DataSize::U8);
-        self.write_csw_register(access_port, csw)?;
+        self.write_csw_register(csw)?;
 
         while !data.is_empty() {
             let chunk_size = data.len().min(autoincr_max_bytes(address));
@@ -716,8 +681,8 @@ where
                 .collect::<Vec<_>>();
 
             // autoincrement is limited to the 10 lowest bits, so write TAR every time.
-            self.write_tar_register(access_port, address)?;
-            self.write_drw(access_port, &values)?;
+            self.write_tar_register(address)?;
+            self.write_drw(&values)?;
 
             address = address
                 .checked_add(chunk_size as u64)
@@ -760,40 +725,40 @@ where
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
-        self.read_8(self.memory_ap, address, data)
+        self.read_8(address, data)
     }
 
     fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), ArmError> {
-        self.read_16(self.memory_ap, address, data)
+        self.read_16(address, data)
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
-        self.read_32(self.memory_ap, address, data)
+        self.read_32(address, data)
     }
 
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmError> {
         for (i, d) in data.iter_mut().enumerate() {
-            *d = self.read_word_64(self.memory_ap, address + (i as u64 * 8))?;
+            *d = self.read_word_64(address + (i as u64 * 8))?;
         }
 
         Ok(())
     }
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
-        self.write_8(self.memory_ap, address, data)
+        self.write_8(address, data)
     }
 
     fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), ArmError> {
-        self.write_16(self.memory_ap, address, data)
+        self.write_16(address, data)
     }
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), ArmError> {
-        self.write_32(self.memory_ap, address, data)
+        self.write_32(address, data)
     }
 
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmError> {
         for (i, d) in data.iter().enumerate() {
-            self.write_word_64(self.memory_ap, address + (i as u64 * 8), *d)?;
+            self.write_word_64(address + (i as u64 * 8), *d)?;
         }
 
         Ok(())
@@ -965,7 +930,7 @@ mod tests {
         for &address in &[0, 4] {
             for len in 0..3 {
                 let mut data = vec![0u32; len];
-                mi.read_32(DUMMY_AP, address, &mut data)
+                mi.read_32(address, &mut data)
                     .unwrap_or_else(|_| panic!("read_32 failed, address = {address}, len = {len}"));
 
                 assert_eq!(
@@ -989,7 +954,7 @@ mod tests {
         let mut mi = ADIMemoryInterface::new_mock(&mut mock);
 
         let mut data = vec![0u32; 513];
-        mi.read_32(DUMMY_AP, 0, &mut data)
+        mi.read_32(0, &mut data)
             .unwrap_or_else(|_| panic!("read_32 failed, address = {}, len = {}", 0, data.len()));
 
         assert_eq!(
@@ -1007,7 +972,7 @@ mod tests {
         let mut mi = ADIMemoryInterface::new_mock(&mut mock);
 
         for &address in &[1, 3, 127] {
-            assert!(mi.read_32(DUMMY_AP, address, &mut [0u32; 4]).is_err());
+            assert!(mi.read_32(address, &mut [0u32; 4]).is_err());
         }
     }
 
@@ -1020,7 +985,7 @@ mod tests {
         for &address in &[0, 2, 4, 6] {
             for len in 0..4 {
                 let mut data = vec![0u16; len];
-                mi.read_16(DUMMY_AP, address, &mut data)
+                mi.read_16(address, &mut data)
                     .unwrap_or_else(|_| panic!("read_16 failed, address = {address}, len = {len}"));
 
                 assert_eq!(
@@ -1041,7 +1006,7 @@ mod tests {
         for address in 0..4 {
             for len in 0..12 {
                 let mut data = vec![0u8; len];
-                mi.read_8(DUMMY_AP, address, &mut data)
+                mi.read_8(address, &mut data)
                     .unwrap_or_else(|_| panic!("read_8 failed, address = {address}, len = {len}"));
 
                 assert_eq!(
@@ -1065,7 +1030,7 @@ mod tests {
                     .copy_from_slice(&DATA8[..len * 4]);
 
                 let data = &DATA32[..len];
-                mi.write_32(DUMMY_AP, address, data).unwrap_or_else(|_| {
+                mi.write_32(address, data).unwrap_or_else(|_| {
                     panic!("write_32 failed, address = {address}, len = {len}")
                 });
 
@@ -1090,7 +1055,7 @@ mod tests {
                     .copy_from_slice(&DATA8[..len * 2]);
 
                 let data = &DATA16[..len];
-                mi.write_16(DUMMY_AP, address, data).unwrap_or_else(|_| {
+                mi.write_16(address, data).unwrap_or_else(|_| {
                     panic!("write_16 failed, address = {address}, len = {len}")
                 });
 
@@ -1109,9 +1074,7 @@ mod tests {
         let mut mi = ADIMemoryInterface::new_mock(&mut mock);
 
         for &address in &[1, 3, 127] {
-            assert!(mi
-                .write_32(DUMMY_AP, address, &[0xDEAD_BEEF, 0xABBA_BABE])
-                .is_err());
+            assert!(mi.write_32(address, &[0xDEAD_BEEF, 0xABBA_BABE]).is_err());
         }
     }
 
@@ -1126,7 +1089,7 @@ mod tests {
                 expected[address as usize..(address as usize) + len].copy_from_slice(&DATA8[..len]);
 
                 let data = &DATA8[..len];
-                mi.write_8(DUMMY_AP, address, data)
+                mi.write_8(address, data)
                     .unwrap_or_else(|_| panic!("write_8 failed, address = {address}, len = {len}"));
 
                 assert_eq!(
