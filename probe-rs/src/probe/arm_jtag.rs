@@ -184,13 +184,16 @@ fn perform_jtag_transfer<P: JTAGAccess + RawProtocolIo>(
     let (payload, address) = build_jtag_payload_and_address(transfer);
     let data = payload.to_le_bytes();
 
+    let idle_cycles = probe.idle_cycles();
+    probe.set_idle_cycles(transfer.idle_cycles_after.min(255) as u8);
+
     // This is a bit confusing, but a read from any port is still
     // a JTAG write as we have to transmit the address
-    let result = probe.write_register(address, &data[..], JTAG_DR_BIT_LENGTH)?;
+    let result = probe.write_register(address, &data[..], JTAG_DR_BIT_LENGTH);
 
-    // Clock out any idle time
-    let idle_sequence = iter::repeat(false).take(transfer.idle_cycles_after);
-    probe.jtag_shift_tdi(false, idle_sequence)?;
+    probe.set_idle_cycles(idle_cycles);
+
+    let result = result?;
 
     let received = parse_jtag_response(&result);
 
@@ -1401,6 +1404,8 @@ mod test {
         probe_statistics: ProbeStatistics,
 
         protocol: crate::WireProtocol,
+
+        idle_cycles: u8,
     }
 
     impl MockJaylink {
@@ -1418,6 +1423,8 @@ mod test {
                 probe_statistics: ProbeStatistics::default(),
 
                 protocol: crate::WireProtocol::Swd,
+
+                idle_cycles: 0,
             }
         }
 
@@ -1570,12 +1577,12 @@ mod test {
             todo!()
         }
 
-        fn set_idle_cycles(&mut self, _idle_cycles: u8) {
-            todo!()
+        fn set_idle_cycles(&mut self, idle_cycles: u8) {
+            self.idle_cycles = idle_cycles;
         }
 
         fn idle_cycles(&self) -> u8 {
-            todo!()
+            self.idle_cycles
         }
 
         fn write_register(
