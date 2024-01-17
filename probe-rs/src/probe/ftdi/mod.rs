@@ -834,8 +834,6 @@ impl FtdiDevice {
     }
 }
 
-// TODO: these devices have 384 byte RX and 128 byte TX buffers. We should take this into account
-// for better perf.
 const BUFFER_SIZE_FTDI2232C_D: usize = 128;
 const BUFFER_SIZE_FTDI232H: usize = 1024;
 const BUFFER_SIZE_FTDI2232H: usize = 4096;
