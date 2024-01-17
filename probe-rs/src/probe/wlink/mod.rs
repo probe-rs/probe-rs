@@ -11,7 +11,7 @@ use probe_rs_target::ScanChainElement;
 
 use crate::{
     architecture::riscv::communication_interface::{RiscvCommunicationInterface, RiscvError},
-    probe::ProbeDriver,
+    probe::{JtagChainItem, ProbeDriver},
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
     WireProtocol,
 };
@@ -379,6 +379,14 @@ impl DebugProbe for WchLink {
 
 /// Wrap WCH-Link's USB based DMI access as a fake JTAGAccess
 impl JTAGAccess for WchLink {
+    fn reset_jtag_state_machine(&mut self) -> Result<(), DebugProbeError> {
+        Ok(())
+    }
+
+    fn scan_chain(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError> {
+        Ok(vec![])
+    }
+
     fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
         tracing::debug!("read register 0x{:08x}", address);
         assert_eq!(len, 32);

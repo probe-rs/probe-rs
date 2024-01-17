@@ -837,6 +837,9 @@ impl fmt::Display for DebugProbeSelector {
 /// This trait should be implemented by all probes which offer low-level access to
 /// the JTAG protocol, i.e. direction control over the bytes sent and received.
 pub trait JTAGAccess: DebugProbe {
+    fn reset_jtag_state_machine(&mut self) -> Result<(), DebugProbeError>;
+    fn scan_chain(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError>;
+
     /// Read a JTAG register.
     ///
     /// This function emulates a read by performing a write with all zeros to the DR.
