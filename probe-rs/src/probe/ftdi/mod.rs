@@ -60,7 +60,7 @@ impl JtagAdapter {
             device,
             chain_params: ChainParams::default(),
             jtag_idle_cycles: 0,
-            buffer_size: 128,
+            buffer_size: ftdi.buffer_size,
             jtag_state: JtagState::Reset,
             current_ir_reg: 1,
             max_ir_address: 0x1F,
@@ -529,19 +529,43 @@ impl ProbeDriver for FtdiProbeSource {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         // Only open FTDI-compatible probes
 
-        let Some(device) = FTDI_COMPAT_DEVICE_IDS
-            .iter()
-            .find(|ftdi| ftdi.id == (selector.vendor_id, selector.product_id))
-        else {
+        let device = match nusb::list_devices() {
+            Ok(devices) => {
+                let mut matched = None;
+                for device in devices {
+                    // Is this the device we're looking for?
+                    if (device.product_id(), device.vendor_id())
+                        != (selector.product_id, selector.vendor_id)
+                    {
+                        continue;
+                    }
+
+                    // FTDI devices don't have serial numbers, so we can only match on VID/PID.
+                    // Bail if we find more than one matching device.
+                    if matched.is_some() {
+                        return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                            ProbeCreationError::Other("Multiple FTDI devices found. Please unplug all but one FTDI device."),
+                        ));
+                    }
+
+                    matched = FTDI_COMPAT_DEVICES
+                        .iter()
+                        .find(|ftdi| ftdi.matches(&device));
+                }
+
+                matched
+            }
+            Err(_) => None,
+        };
+
+        let Some(device) = device else {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::NotFound,
             ));
         };
 
-        let mut adapter =
+        let adapter =
             JtagAdapter::open(device).map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
-
-        adapter.buffer_size = device.buffer_size;
 
         let probe = FtdiProbe {
             adapter,
@@ -793,61 +817,86 @@ impl JTAGAccess for FtdiProbe {
 
 #[derive(Debug)]
 struct FtdiDevice {
+    /// The (VID, PID) pair of this device.
     id: (u16, u16),
+
+    /// If set, only an exact match of this product string will be accepted.
+    product_string: Option<&'static str>,
+
+    /// The size of the device's TX/RX buffers.
     buffer_size: usize,
 }
 
+impl FtdiDevice {
+    fn matches(&self, device: &DeviceInfo) -> bool {
+        self.id == (device.vendor_id(), device.product_id())
+            && (self.product_string.is_none() || self.product_string == device.product_string())
+    }
+}
+
+// TODO: these devices have 384 byte RX and 128 byte TX buffers. We should take this into account
+// for better perf.
 const BUFFER_SIZE_FTDI2232C_D: usize = 128;
-const BUFFER_SIZE_FTDI2232_UNKNOWN: usize = BUFFER_SIZE_FTDI2232C_D;
 const BUFFER_SIZE_FTDI232H: usize = 1024;
 const BUFFER_SIZE_FTDI2232H: usize = 4096;
 
-/// (VendorId, ProductId)
-static FTDI_COMPAT_DEVICE_IDS: &[FtdiDevice] = &[
-    // FTDI Ltd. FT2232C/D/H Dual UART/FIFO IC
+/// Known FTDI device variants. Matched from first to last, meaning that more specific devices
+/// (i.e. those wih product strings) should be listed first.
+static FTDI_COMPAT_DEVICES: &[FtdiDevice] = &[
+    // FTDI Ltd. FT2232H Dual UART/FIFO IC
     FtdiDevice {
         id: (0x0403, 0x6010),
+        product_string: Some("Dual RS232-HS"),
+        buffer_size: BUFFER_SIZE_FTDI2232H,
+    },
+    // Unidentified FTDI Ltd. FT2232C/D/H Dual UART/FIFO IC
+    FtdiDevice {
+        id: (0x0403, 0x6010),
+        product_string: None,
         // FIXME: We are using a very small buffer size here to support 2232D devices. In
         //        the future, we should detect the device type and use a larger buffer size.
-        buffer_size: BUFFER_SIZE_FTDI2232_UNKNOWN,
+        buffer_size: BUFFER_SIZE_FTDI2232C_D,
     },
     // FTDI Ltd. FT4232H Quad HS USB-UART/FIFO IC
     FtdiDevice {
         id: (0x0403, 0x6011),
+        product_string: None,
         buffer_size: BUFFER_SIZE_FTDI232H,
     },
     // FTDI Ltd. FT232H Single HS USB-UART/FIFO IC
     FtdiDevice {
         id: (0x0403, 0x6014),
+        product_string: None,
         buffer_size: BUFFER_SIZE_FTDI232H,
     },
     // Olimex Ltd. ARM-USB-OCD JTAG interface, FTDI2232C
     FtdiDevice {
         id: (0x15ba, 0x0003),
+        product_string: None,
         buffer_size: BUFFER_SIZE_FTDI2232C_D,
     },
     // Olimex Ltd. ARM-USB-TINY JTAG interface, FTDI2232C
     FtdiDevice {
         id: (0x15ba, 0x0004),
+        product_string: None,
         buffer_size: BUFFER_SIZE_FTDI2232C_D,
     },
     // Olimex Ltd. ARM-USB-TINY-H JTAG interface, FTDI2232H
     FtdiDevice {
         id: (0x15ba, 0x002a),
+        product_string: None,
         buffer_size: BUFFER_SIZE_FTDI2232H,
     },
     // Olimex Ltd. ARM-USB-OCD-H JTAG interface, FTDI2232H
     FtdiDevice {
         id: (0x15ba, 0x002b),
+        product_string: None,
         buffer_size: BUFFER_SIZE_FTDI2232H,
     },
 ];
 
 fn get_device_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
-    if !FTDI_COMPAT_DEVICE_IDS
-        .iter()
-        .any(|ftdi| ftdi.id == (device.vendor_id(), device.product_id()))
-    {
+    if !FTDI_COMPAT_DEVICES.iter().any(|ftdi| ftdi.matches(device)) {
         return None;
     }
 
