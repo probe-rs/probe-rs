@@ -96,7 +96,8 @@ impl EspUsbJtag {
 
         // First shift out all ones
         let input = vec![0xff; idcodes.len()];
-        let response = self.write_ir(&input, input.len() * 8, true)?;
+        self.prepare_write_ir(&input, input.len() * 8, true)?;
+        let response = self.protocol.flush()?;
 
         tracing::debug!("IR scan: {}", response);
 
@@ -107,7 +108,8 @@ impl EspUsbJtag {
             .take(idcodes.len())
             .chain(input.iter().copied())
             .collect::<Vec<_>>();
-        let response_zeros = self.write_ir(&input, input.len() * 8, true)?;
+        self.prepare_write_ir(&input, input.len() * 8, true)?;
+        let response_zeros = self.protocol.flush()?;
 
         tracing::debug!("IR scan: {}", response_zeros);
 
@@ -142,19 +144,6 @@ impl EspUsbJtag {
     /// IR register might have an odd length, so the data
     /// will be truncated to `len` bits. If data has less
     /// than `len` bits, an error will be returned.
-    fn write_ir(
-        &mut self,
-        data: &[u8],
-        len: usize,
-        capture_response: bool,
-    ) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
-        self.prepare_write_ir(data, len, capture_response)?;
-        let response = self.protocol.flush()?;
-        tracing::trace!("Response: {:?}", response);
-
-        Ok(response)
-    }
-
     fn prepare_write_ir(
         &mut self,
         data: &[u8],
@@ -343,27 +332,6 @@ impl JTAGAccess for EspUsbJtag {
         }
     }
 
-    /// Read the data register
-    fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
-        if address > self.max_ir_address {
-            return Err(DebugProbeError::Other(anyhow!(
-                "Invalid instruction register access: {}",
-                address
-            )));
-        }
-        let address_bytes = address.to_le_bytes();
-
-        if self.current_ir_reg != address {
-            // Write IR register
-            self.write_ir(&address_bytes, self.chain_params.irlen, false)?;
-            self.current_ir_reg = address;
-        }
-
-        // read DR register by transfering len bits to the chain
-        let data: Vec<u8> = iter::repeat(0).take((len as usize + 7) / 8).collect();
-        self.write_dr(&data, len as usize)
-    }
-
     /// Write the data register
     fn write_register(
         &mut self,
@@ -381,7 +349,7 @@ impl JTAGAccess for EspUsbJtag {
 
         if self.current_ir_reg != address {
             // Write IR register
-            self.write_ir(&address_bytes, self.chain_params.irlen, false)?;
+            self.prepare_write_ir(&address_bytes, self.chain_params.irlen, false)?;
             self.current_ir_reg = address;
         }
 
