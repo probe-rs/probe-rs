@@ -626,16 +626,28 @@ impl XtensaCommunicationInterface {
         let offset = address as usize % 4;
         let aligned_address = address & !0x3;
 
-        // Read the aligned word
-        let mut word = [0; 4];
-        self.read_memory(aligned_address as u64, &mut word)?;
+        assert!(
+            offset + data.len() <= 4,
+            "Trying to write data crossing a word boundary"
+        );
 
-        // Replace the written bytes. This will also panic if the input is crossing a word boundary
-        word[offset..][..data.len()].copy_from_slice(data);
+        // Avoid reading back if we have a complete word
+        let data = if offset == 0 && data.len() == 4 {
+            data.try_into().unwrap()
+        } else {
+            // Read the aligned word
+            let mut word = [0; 4];
+            self.read_memory(aligned_address as u64, &mut word)?;
+
+            // Replace the written bytes. This will also panic if the input is crossing a word boundary
+            word[offset..][..data.len()].copy_from_slice(data);
+
+            word
+        };
 
         // Write the word back
         self.schedule_write_register_untyped(CpuRegister::A3, aligned_address)?;
-        self.xdm.schedule_write_ddr(u32::from_le_bytes(word));
+        self.xdm.schedule_write_ddr(u32::from_le_bytes(data));
         self.xdm
             .schedule_execute_instruction(Instruction::Sddr32P(CpuRegister::A3));
         self.restore_register(key)?;
