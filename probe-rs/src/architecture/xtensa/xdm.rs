@@ -282,15 +282,16 @@ impl Xdm {
         &mut self,
         index: DeferredResultIndex,
     ) -> Result<CommandResult, XtensaError> {
-        let result = match self.jtag_results.take(index) {
-            Ok(result) => result,
+        match self.jtag_results.take(index) {
+            Ok(result) => Ok(result),
             Err(index) => {
                 self.execute()?;
-                self.jtag_results.take(index).expect("This is a bug")
+                // We can lose data if `execute` fails.
+                self.jtag_results
+                    .take(index)
+                    .map_err(|_| XtensaError::BatchedResultNotAvailable)
             }
-        };
-
-        Ok(result)
+        }
     }
 
     fn do_nexus_op(&mut self, nar: u8, ndr: u32, transform: TransformFn) -> DeferredResultIndex {

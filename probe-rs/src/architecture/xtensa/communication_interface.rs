@@ -34,6 +34,9 @@ pub enum XtensaError {
     /// The requested register is not available.
     #[error("The requested register is not available.")]
     RegisterNotAvailable,
+    /// The result index of a batched command is not available.
+    #[error("The requested data is not available due to a previous error.")]
+    BatchedResultNotAvailable,
 }
 
 impl From<XtensaError> for DebugProbeError {

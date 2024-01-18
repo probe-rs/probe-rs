@@ -99,15 +99,16 @@ impl Dtm {
         &mut self,
         index: DeferredResultIndex,
     ) -> Result<CommandResult, RiscvError> {
-        let result = match self.jtag_results.take(index) {
-            Ok(result) => result,
+        match self.jtag_results.take(index) {
+            Ok(result) => Ok(result),
             Err(index) => {
                 self.execute()?;
-                self.jtag_results.take(index).expect("This is a bug")
+                // We can lose data if `execute` fails.
+                self.jtag_results
+                    .take(index)
+                    .map_err(|_| RiscvError::BatchedResultNotAvailable)
             }
-        };
-
-        Ok(result)
+        }
     }
 
     pub fn execute(&mut self) -> Result<(), RiscvError> {

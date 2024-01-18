@@ -69,6 +69,9 @@ pub enum RiscvError {
     /// The target does not support halt after reset.
     #[error("The target does not support halt after reset.")]
     ResetHaltRequestNotSupported,
+    /// The result index of a batched command is not available.
+    #[error("The requested data is not available due to a previous error.")]
+    BatchedResultNotAvailable,
 }
 
 impl From<RiscvError> for ProbeRsError {
