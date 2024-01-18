@@ -492,7 +492,7 @@ impl XtensaCommunicationInterface {
                         register
                     )
                 });
-            let value = self.xdm.read_deferred_result(reader)?.into_32();
+            let value = self.xdm.read_deferred_result(reader)?.into_u32();
 
             if register == Register::Cpu(CpuRegister::A3) {
                 // We need to handle the scratch register (A3) separately as restoring a special
