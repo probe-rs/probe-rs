@@ -276,7 +276,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             Ok(_) => self.resume_core()?,
             Err(error) => {
                 return Err(RiscvError::DebugProbe(crate::DebugProbeError::Other(
-                    anyhow::anyhow!("Error during reset : {:?}", error),
+                    anyhow::anyhow!("Error during reset").context(error),
                 ))
                 .into());
             }

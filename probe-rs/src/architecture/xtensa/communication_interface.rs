@@ -185,7 +185,7 @@ impl XtensaCommunicationInterface {
                 Ok(())
             }
             Err(error) => Err(XtensaError::DebugProbe(DebugProbeError::Other(
-                anyhow::anyhow!("Error during reset: {:?}", error),
+                anyhow::anyhow!("Error during reset").context(error),
             ))),
         }
     }
