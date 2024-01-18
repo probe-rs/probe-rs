@@ -785,10 +785,6 @@ impl DebugProbe for JLink {
 }
 
 impl JTAGAccess for JLink {
-    fn set_ir_len(&mut self, len: u32) {
-        self.chain_params.irlen = len as usize;
-    }
-
     /// Read the data register
     fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
         let data = vec![0u8; (len as usize + 7) / 8];

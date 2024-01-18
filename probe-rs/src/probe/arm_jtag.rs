@@ -1559,10 +1559,6 @@ mod test {
     }
 
     impl JTAGAccess for MockJaylink {
-        fn set_ir_len(&mut self, _len: u32) {
-            todo!()
-        }
-
         fn read_register(&mut self, _address: u32, _len: u32) -> Result<Vec<u8>, DebugProbeError> {
             todo!()
         }

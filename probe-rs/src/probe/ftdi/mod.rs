@@ -760,10 +760,6 @@ impl JTAGAccess for FtdiProbe {
         self.adapter.scan_dr(data, len as usize)
     }
 
-    fn set_ir_len(&mut self, _len: u32) {
-        // The FTDI implementation automatically sets this, so no need to act on this data
-    }
-
     fn write_register_batch(
         &mut self,
         writes: &JtagCommandQueue,

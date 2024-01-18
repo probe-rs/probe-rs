@@ -407,8 +407,6 @@ impl JTAGAccess for WchLink {
         self.idle_cycles
     }
 
-    fn set_ir_len(&mut self, _len: u32) {}
-
     fn write_register(
         &mut self,
         address: u32,
