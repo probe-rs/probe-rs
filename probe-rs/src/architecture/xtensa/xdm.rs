@@ -379,7 +379,7 @@ impl Xdm {
     fn read_nexus_register<R: NexusRegister>(&mut self) -> Result<R, XtensaError> {
         let bits_reader = self.schedule_read_nexus_register::<R>();
 
-        let bits = self.read_deferred_result(bits_reader)?.as_u32();
+        let bits = self.read_deferred_result(bits_reader)?.into_u32();
         let reg = R::from_bits(bits)?;
         tracing::trace!("Read: {:?}", reg);
         Ok(reg)

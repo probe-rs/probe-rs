@@ -74,13 +74,13 @@ impl EspUsbJtag {
     }
 
     fn reset_scan(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError> {
-        let max_chain = 8;
+        const MAX_CHAIN: usize = 8;
 
         self.jtag_reset()?;
 
         self.chain_params = ChainParams::default();
 
-        let input = vec![0xFF; 4 * max_chain];
+        let input = vec![0xFF; 4 * MAX_CHAIN];
         let response = self.write_dr(&input, input.len() * 8)?;
 
         tracing::debug!("DR: {:?}", response);
@@ -321,7 +321,7 @@ impl EspUsbJtag {
     }
 }
 
-pub struct DeferredRegisterWrite {
+struct DeferredRegisterWrite {
     len: usize,
 }
 

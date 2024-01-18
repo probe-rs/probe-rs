@@ -976,16 +976,16 @@ pub enum CommandResult {
 }
 
 impl CommandResult {
-    pub fn as_u32(&self) -> u32 {
+    pub fn into_u32(self) -> u32 {
         match self {
-            CommandResult::U32(val) => *val,
+            CommandResult::U32(val) => val,
             _ => panic!("CommandResult is not a u32"),
         }
     }
 
-    pub fn as_u8(&self) -> u8 {
+    pub fn into_u8(self) -> u8 {
         match self {
-            CommandResult::U8(val) => *val,
+            CommandResult::U8(val) => val,
             _ => panic!("CommandResult is not a u8"),
         }
     }

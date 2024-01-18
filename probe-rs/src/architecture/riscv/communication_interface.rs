@@ -605,7 +605,7 @@ impl RiscvCommunicationInterface {
     /// Use the [`read_dm_register`] function if possible.
     fn read_dm_register_untyped(&mut self, address: u64) -> Result<u32, RiscvError> {
         let read_idx = self.schedule_read_dm_register_untyped(address)?;
-        let register_value = self.dtm.read_deferred_result(read_idx)?.as_u32();
+        let register_value = self.dtm.read_deferred_result(read_idx)?.into_u32();
 
         Ok(register_value)
     }
@@ -718,7 +718,7 @@ impl RiscvCommunicationInterface {
         if sbcs.sberror() != 0 {
             Err(RiscvError::SystemBusAccess)
         } else {
-            let data = V::from_register_value(self.dtm.read_deferred_result(data_idx)?.as_u32());
+            let data = V::from_register_value(self.dtm.read_deferred_result(data_idx)?.into_u32());
 
             Ok(data)
         }
@@ -762,7 +762,8 @@ impl RiscvCommunicationInterface {
         let sbcs = self.read_dm_register::<Sbcs>()?;
 
         for (out_index, idx) in read_results.into_iter().enumerate() {
-            data[out_index] = V::from_register_value(self.dtm.read_deferred_result(idx)?.as_u32());
+            data[out_index] =
+                V::from_register_value(self.dtm.read_deferred_result(idx)?.into_u32());
         }
 
         // Check that the read was succesful
@@ -810,7 +811,7 @@ impl RiscvCommunicationInterface {
         // Read back s0
         let value = self.abstract_cmd_register_read(&registers::S0)?;
 
-        let abstractcs = Abstractcs(self.dtm.read_deferred_result(abstractcs_idx)?.as_u32());
+        let abstractcs = Abstractcs(self.dtm.read_deferred_result(abstractcs_idx)?.into_u32());
         if abstractcs.cmderr() != 0 {
             return Err(RiscvError::AbstractCommand(
                 AbstractCommandErrorKind::parse(abstractcs.cmderr() as u8),
@@ -886,7 +887,7 @@ impl RiscvCommunicationInterface {
         data[data.len() - 1] = V::from_register_value(last_value);
 
         for (out_idx, value_idx) in result_idxs {
-            let value = Data0::from(self.dtm.read_deferred_result(value_idx)?.as_u32());
+            let value = Data0::from(self.dtm.read_deferred_result(value_idx)?.into_u32());
 
             data[out_idx] = V::from_register_value(value.0);
         }
