@@ -1325,9 +1325,6 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
             bits >>= 1;
         }
 
-        // ARM / SWJ uses 4 bit IR length
-        self.set_ir_len(4);
-
         match protocol {
             Some(crate::WireProtocol::Jtag) => {
                 // Swj sequences should be shifted out to tms, since that is the pin
