@@ -253,8 +253,6 @@ impl XtensaCommunicationInterface {
         // An exception is generated at the beginning of an instruction that would overflow ICOUNT.
         self.schedule_write_register(ICount(-2_i32 as u32))?;
 
-        self.xdm.execute()?;
-
         self.resume()?;
         self.wait_for_core_halted(Duration::from_millis(100))?;
 
