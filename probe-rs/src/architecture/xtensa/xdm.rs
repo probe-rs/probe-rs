@@ -242,31 +242,36 @@ impl Xdm {
         // We take now to avoid a possibly recursive call to clear before it's time.
         let _idxs = std::mem::take(&mut self.status_idxs);
 
-        match self.probe.write_register_batch(&queue) {
-            Ok(result) => self.jtag_results.merge_from(result),
-            Err(e) => {
-                match e.error {
-                    ProbeRsError::Xtensa(XtensaError::XdmError(Error::Xdm(
-                        DebugRegisterError::Busy,
-                    ))) => {
-                        // The specific nexus register may need some longer delay. For now we just
-                        // retry, but we should probably add some no-ops later.
-                    }
-                    ProbeRsError::Xtensa(XtensaError::XdmError(Error::ExecBusy)) => {
-                        // The instruction is still executing. We don't do anything except clear the
-                        // error and retry.
-                        // While this is recursive, this register read-write does not involve
-                        // instructions so we can't end up with an unbounded recursion here.
-                        self.clear_exec_exception()?;
-                    }
-                    ProbeRsError::Probe(error) => return Err(error.into()),
-                    ProbeRsError::Xtensa(error) => return Err(error),
-                    other => panic!("Unexpected error: {other}"),
+        while !queue.is_empty() {
+            match self.probe.write_register_batch(&queue) {
+                Ok(result) => {
+                    self.jtag_results.merge_from(result);
+                    return Ok(());
                 }
+                Err(e) => {
+                    match e.error {
+                        ProbeRsError::Xtensa(XtensaError::XdmError(Error::Xdm(
+                            DebugRegisterError::Busy,
+                        ))) => {
+                            // The specific nexus register may need some longer delay. For now we just
+                            // retry, but we should probably add some no-ops later.
+                        }
+                        ProbeRsError::Xtensa(XtensaError::XdmError(Error::ExecBusy)) => {
+                            // The instruction is still executing. We don't do anything except clear the
+                            // error and retry.
+                            // While this is recursive, this register read-write does not involve
+                            // instructions so we can't end up with an unbounded recursion here.
+                            self.clear_exec_exception()?;
+                        }
+                        ProbeRsError::Probe(error) => return Err(error.into()),
+                        ProbeRsError::Xtensa(error) => return Err(error),
+                        other => panic!("Unexpected error: {other}"),
+                    }
 
-                // queue up the remaining commands when we retry
-                queue.consume(e.results.len());
-                self.jtag_results.merge_from(e.results);
+                    // queue up the remaining commands when we retry
+                    queue.consume(e.results.len());
+                    self.jtag_results.merge_from(e.results);
+                }
             }
         }
 

@@ -113,7 +113,7 @@ impl Dtm {
     pub fn execute(&mut self) -> Result<(), RiscvError> {
         let mut cmds = std::mem::take(&mut self.queued_commands);
 
-        loop {
+        while !cmds.is_empty() {
             match self.probe.write_register_batch(&cmds) {
                 Ok(r) => {
                     self.jtag_results.merge_from(r);
@@ -139,6 +139,8 @@ impl Dtm {
                 },
             }
         }
+
+        Ok(())
     }
 
     fn transform_dmi_result(response_bytes: Vec<u8>) -> Result<u32, DmiOperationStatus> {
