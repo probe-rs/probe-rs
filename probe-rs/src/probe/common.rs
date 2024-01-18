@@ -653,44 +653,47 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
             idcodes
         );
 
-        // First shift out all ones
-        let input = vec![0xff; idcodes.len()];
-        shift_ir(self, &input, input.len() * 8, true)?;
-        let response = self.read_captured_bits()?;
-
-        tracing::debug!("IR scan: {}", response);
-
-        self.reset_jtag_state_machine()?;
-
-        // Next, shift out same amount of zeros, then ones to make sure the IRs contain BYPASS.
-        let input = iter::repeat(0)
-            .take(idcodes.len())
-            .chain(input.iter().copied())
-            .collect::<Vec<_>>();
-        shift_ir(self, &input, input.len() * 8, true)?;
-        let response_zeros = self.read_captured_bits()?;
-
-        tracing::debug!("IR scan: {}", response_zeros);
-
-        let expected = if let Some(ref chain) = self.state().expected_scan_chain {
-            let expected = chain
+        let ir_lens = if let Some(ref chain) = self.state().expected_scan_chain {
+            tracing::debug!("Using configured scan chain: {:?}", chain);
+            chain
                 .iter()
                 .filter_map(|s| s.ir_len)
                 .map(|s| s as usize)
-                .collect::<Vec<usize>>();
-            Some(expected)
+                .collect::<Vec<usize>>()
         } else {
-            None
+            tracing::debug!("Measuing IR lengths");
+
+            // First shift out all ones
+            let input = vec![0xff; idcodes.len()];
+            shift_ir(self, &input, input.len() * 8, true)?;
+            let response = self.read_captured_bits()?;
+
+            tracing::debug!("IR scan: {}", response);
+
+            self.reset_jtag_state_machine()?;
+
+            // Next, shift out same amount of zeros, then ones to make sure the IRs contain BYPASS.
+            let input = iter::repeat(0)
+                .take(idcodes.len())
+                .chain(input.iter().copied())
+                .collect::<Vec<_>>();
+            shift_ir(self, &input, input.len() * 8, true)?;
+            let response_zeros = self.read_captured_bits()?;
+
+            tracing::debug!("IR scan: {}", response_zeros);
+
+            let response = response.as_bitslice();
+            let response = common_sequence(response, response_zeros.as_bitslice());
+
+            tracing::debug!("IR scan: {}", response);
+
+            let ir_lens = extract_ir_lengths(response, idcodes.len(), None)
+                .map_err(|e| DebugProbeError::Other(e.into()))?;
+
+            tracing::debug!("Detected IR lens: {:?}", ir_lens);
+
+            ir_lens
         };
-
-        let response = response.as_bitslice();
-        let response = common_sequence(response, response_zeros.as_bitslice());
-
-        tracing::debug!("IR scan: {}", response);
-
-        let ir_lens = extract_ir_lengths(response, idcodes.len(), expected.as_deref())
-            .map_err(|e| DebugProbeError::Other(e.into()))?;
-        tracing::debug!("Detected IR lens: {:?}", ir_lens);
 
         Ok(idcodes
             .into_iter()
