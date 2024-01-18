@@ -448,12 +448,12 @@ impl XtensaCommunicationInterface {
 
         tracing::debug!("Restoring register: {:?}", key);
 
-        if let Some(value) = self.state.saved_registers.get_mut(&key) {
-            let reader = value.take().unwrap();
+        // Remove the result early, so an error here will not cause a panic in `restore_registers`.
+        if let Some(value) = self.state.saved_registers.remove(&key) {
+            let reader = value.unwrap();
             let value = self.xdm.read_deferred_result(reader)?.into_u32();
-            self.write_register_untyped(key, value)?;
 
-            self.state.saved_registers.remove(&key);
+            self.write_register_untyped(key, value)?;
         }
 
         Ok(())
