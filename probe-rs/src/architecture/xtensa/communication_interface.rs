@@ -485,8 +485,13 @@ impl XtensaCommunicationInterface {
                 .get_mut(&register)
                 .unwrap()
                 .take()
-                .unwrap();
-            let value = self.xdm.read_deferred_result(reader)?.into_u32();
+                .unwrap_or_else(|| {
+                    panic!(
+                        "Failed to get original value of dirty register {:?}. This is a bug.",
+                        register
+                    )
+                });
+            let value = self.xdm.read_deferred_result(reader)?.into_32();
 
             if register == Register::Cpu(CpuRegister::A3) {
                 // We need to handle the scratch register (A3) separately as restoring a special

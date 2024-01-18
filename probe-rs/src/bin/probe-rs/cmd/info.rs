@@ -1,7 +1,6 @@
-use std::error::Error;
 use std::fmt::Write;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use probe_rs::{
     architecture::{
         arm::{
@@ -90,21 +89,20 @@ fn try_show_info(
                     Ok(mut interface) => {
                         if let Err(e) = show_arm_info(&mut *interface) {
                             // Log error?
-                            println!("Error showing ARM chip information:");
-                            println!("{e:?}")
+                            log::warn!("Error showing ARM chip information: {:?}", anyhow!(e));
                         }
 
                         probe = interface.close();
                     }
                     Err((interface, e)) => {
-                        println!("Error showing ARM chip information: {e}");
+                        log::warn!("Error showing ARM chip information: {:?}", anyhow!(e));
 
                         probe = interface.close();
                     }
                 }
             }
             Err((interface_probe, e)) => {
-                print_error(&e);
+                log::warn!("Error showing ARM chip information: {:?}", anyhow!(e));
                 probe = interface_probe;
             }
         }
@@ -117,13 +115,13 @@ fn try_show_info(
         match probe.try_into_riscv_interface() {
             Ok(mut interface) => {
                 if let Err(e) = show_riscv_info(&mut interface) {
-                    log::warn!("Error showing RISC-V chip information: {}", e);
+                    log::warn!("Error showing RISC-V chip information: {:?}", anyhow!(e));
                 }
 
                 probe = interface.close();
             }
             Err((interface_probe, e)) => {
-                print_error(&e);
+                log::warn!("Error while reading RISC-V info: {:?}", anyhow!(e));
                 probe = interface_probe;
             }
         }
@@ -138,13 +136,13 @@ fn try_show_info(
         match probe.try_into_xtensa_interface() {
             Ok(mut interface) => {
                 if let Err(e) = show_xtensa_info(&mut interface) {
-                    log::warn!("Error showing Xtensa chip information: {}", e);
+                    log::warn!("Error showing Xtensa chip information: {:?}", anyhow!(e));
                 }
 
                 probe = interface.close();
             }
             Err((interface_probe, e)) => {
-                print_error(&e);
+                log::warn!("Error showing Xtensa chip information: {:?}", anyhow!(e));
                 probe = interface_probe;
             }
         }
@@ -155,15 +153,6 @@ fn try_show_info(
     }
 
     (probe, Ok(()))
-}
-
-fn print_error(error: &dyn Error) {
-    let mut source = Some(error);
-
-    while let Some(parent) = source {
-        log::error!("Error: {}", parent);
-        source = parent.source();
-    }
 }
 
 fn show_arm_info(interface: &mut dyn ArmProbeInterface) -> Result<()> {
