@@ -325,10 +325,8 @@ fn attach_to_rtt(
             timestamp_offset,
             log_format,
         ) {
-            Ok(target_rtt) => return Some(target_rtt),
-            Err(error) => {
-                log::debug!("{:?} RTT attach error", error);
-            }
+            Ok(target_rtt) => return target_rtt,
+            Err(error) => log::debug!("{:?} RTT attach error", error),
         }
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
