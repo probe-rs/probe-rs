@@ -89,20 +89,20 @@ fn try_show_info(
                     Ok(mut interface) => {
                         if let Err(e) = show_arm_info(&mut *interface) {
                             // Log error?
-                            log::warn!("Error showing ARM chip information: {:?}", anyhow!(e));
+                            println!("Error showing ARM chip information: {:?}", anyhow!(e));
                         }
 
                         probe = interface.close();
                     }
                     Err((interface, e)) => {
-                        log::warn!("Error showing ARM chip information: {:?}", anyhow!(e));
+                        println!("Error showing ARM chip information: {:?}", anyhow!(e));
 
                         probe = interface.close();
                     }
                 }
             }
             Err((interface_probe, e)) => {
-                log::warn!("Error showing ARM chip information: {:?}", anyhow!(e));
+                println!("Error showing ARM chip information: {:?}", anyhow!(e));
                 probe = interface_probe;
             }
         }
@@ -115,13 +115,13 @@ fn try_show_info(
         match probe.try_into_riscv_interface() {
             Ok(mut interface) => {
                 if let Err(e) = show_riscv_info(&mut interface) {
-                    log::warn!("Error showing RISC-V chip information: {:?}", anyhow!(e));
+                    println!("Error showing RISC-V chip information: {:?}", anyhow!(e));
                 }
 
                 probe = interface.close();
             }
             Err((interface_probe, e)) => {
-                log::warn!("Error while reading RISC-V info: {:?}", anyhow!(e));
+                println!("Error while reading RISC-V info: {:?}", anyhow!(e));
                 probe = interface_probe;
             }
         }
@@ -136,13 +136,13 @@ fn try_show_info(
         match probe.try_into_xtensa_interface() {
             Ok(mut interface) => {
                 if let Err(e) = show_xtensa_info(&mut interface) {
-                    log::warn!("Error showing Xtensa chip information: {:?}", anyhow!(e));
+                    println!("Error showing Xtensa chip information: {:?}", anyhow!(e));
                 }
 
                 probe = interface.close();
             }
             Err((interface_probe, e)) => {
-                log::warn!("Error showing Xtensa chip information: {:?}", anyhow!(e));
+                println!("Error showing Xtensa chip information: {:?}", anyhow!(e));
                 probe = interface_probe;
             }
         }
