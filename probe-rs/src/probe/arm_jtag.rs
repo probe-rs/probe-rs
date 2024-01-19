@@ -1321,8 +1321,7 @@ mod test {
     use crate::{
         architecture::arm::{PortType, RawDapAccess},
         probe::{JTAGAccess, JtagChainItem, ScanChainElement},
-        probe::{JTAGAccess, ScanChainElement},
-        DebugProbe, DebugProbe, DebugProbeError, DebugProbeError, WireProtocol,
+        DebugProbe, DebugProbeError, WireProtocol,
     };
 
     use super::{
@@ -1534,10 +1533,6 @@ mod test {
         }
 
         fn scan_chain(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError> {
-            todo!()
-        }
-
-        fn set_ir_len(&mut self, _len: u32) {
             todo!()
         }
 
