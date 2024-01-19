@@ -13,6 +13,9 @@ variants:
       - name: main
         type: riscv
         core_access_options: !Riscv {}
+      - name: lp
+        type: riscv
+        core_access_options: !Riscv {}        
     memory_map:
       - !Nvm
         range: #16 Mb Max addressable Flash size
@@ -21,6 +24,7 @@ variants:
         is_boot_memory: true
         cores:
           - main
+          - lp
       - !Nvm
         range: # External Flash on Instruction/Data Bus
           start: 0x42000000
@@ -28,6 +32,7 @@ variants:
         is_boot_memory: false
         cores:
           - main
+          - lp
       - !Ram
         range:
           start: 0x40800000
@@ -35,6 +40,15 @@ variants:
         is_boot_memory: false
         cores:
           - main
+          - lp
+      - !Ram
+        range:
+          start: 0x50000000
+          end: 0x50003FFF
+        is_boot_memory: false
+        cores:
+          - main
+          - lp
     flash_algorithms:
       - esp32c6-flashloader
 flash_algorithms:

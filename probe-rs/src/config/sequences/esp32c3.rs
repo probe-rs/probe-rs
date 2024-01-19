@@ -34,6 +34,8 @@ impl ESP32C3 {
 
 impl RiscvDebugSequence for ESP32C3 {
     fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
+        interface.select_hart(0)?;
+
         tracing::info!("Disabling esp32c3 watchdogs...");
         // disable super wdt
         interface.write_word_32(0x600080B0, 0x8F1D312A)?; // write protection off

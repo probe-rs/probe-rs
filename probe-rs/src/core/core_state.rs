@@ -156,7 +156,7 @@ impl CombinedCoreState {
                 self.id,
                 name,
                 memory_regions,
-                crate::architecture::riscv::Riscv32::new(interface, s),
+                crate::architecture::riscv::Riscv32::new(self.id, interface, s)?,
             ),
             _ => {
                 return Err(Error::UnableToOpenProbe(

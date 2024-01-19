@@ -72,13 +72,15 @@ pub enum RiscvError {
     /// The result index of a batched command is not available.
     #[error("The requested data is not available due to a previous error.")]
     BatchedResultNotAvailable,
+    /// The hart is unavailable
+    #[error("The requested hart is unavailable.")]
+    HartUnavailable,
 }
 
 impl From<RiscvError> for ProbeRsError {
     fn from(err: RiscvError) -> Self {
         match err {
             RiscvError::DebugProbe(e) => e.into(),
-            RiscvError::Timeout => ProbeRsError::Timeout,
             other => ProbeRsError::Riscv(other),
         }
     }
@@ -316,6 +318,8 @@ pub struct RiscvCommunicationInterface {
     /// communicate with the Debug Module on the target chip.
     dtm: Dtm,
     state: RiscvCommunicationInterfaceState,
+    enabled_harts: u32,
+    last_selected_hart: usize,
 }
 
 impl RiscvCommunicationInterface {
@@ -324,13 +328,40 @@ impl RiscvCommunicationInterface {
         let state = RiscvCommunicationInterfaceState::new();
         let dtm = Dtm::new(probe)?;
 
-        let mut s = Self { dtm, state };
+        let mut s = Self {
+            dtm,
+            state,
+            enabled_harts: 0,
+            last_selected_hart: 0,
+        };
 
         if let Err(err) = s.enter_debug_mode() {
             return Err((s.dtm.probe, err));
         }
 
         Ok(s)
+    }
+
+    /// Select current hart
+    pub fn select_hart(&mut self, hart: usize) -> Result<bool, RiscvError> {
+        if self.enabled_harts & (1 << hart) == 0 {
+            return Ok(false);
+        }
+
+        if self.last_selected_hart == hart {
+            return Ok(true);
+        }
+
+        let mut control: Dmcontrol = self.read_dm_register()?;
+        control.set_hartsel(hart as u32);
+        self.write_dm_register(control)?;
+        self.last_selected_hart = hart;
+        Ok(true)
+    }
+
+    /// Check if the given hart is enabled
+    pub fn hart_enabled(&self, hart: usize) -> bool {
+        self.enabled_harts & (1 << hart) != 0
     }
 
     /// Deassert the target reset.
@@ -453,6 +484,7 @@ impl RiscvCommunicationInterface {
 
         // Hart 0 exists on every chip
         let mut num_harts = 1;
+        self.enabled_harts = 1;
 
         // Check if anynonexistent is avaliable.
         // Some chips that have only one hart do not implement anynonexistent and allnonexistent.
@@ -481,6 +513,10 @@ impl RiscvCommunicationInterface {
                     break;
                 }
 
+                if !status.allunavail() {
+                    self.enabled_harts |= 1 << num_harts;
+                }
+
                 num_harts += 1;
             }
         } else {
@@ -491,7 +527,7 @@ impl RiscvCommunicationInterface {
 
         self.state.num_harts = num_harts;
 
-        // Select hart 0 again
+        // Select hart 0 again - assuming all harts are same in regards of discovered features
         let mut control = Dmcontrol(0);
         control.set_hartsel(0);
         control.set_dmactive(true);
@@ -579,6 +615,70 @@ impl RiscvCommunicationInterface {
         }
 
         Ok(())
+    }
+
+    pub(crate) fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, RiscvError> {
+        // write 1 to the haltreq register, which is part
+        // of the dmcontrol register
+
+        let mut dmcontrol: Dmcontrol = self.read_dm_register()?;
+        tracing::debug!(
+            "Before requesting halt, the Dmcontrol register value was: {:?}",
+            dmcontrol
+        );
+
+        dmcontrol.set_haltreq(true);
+
+        self.write_dm_register(dmcontrol)?;
+
+        self.wait_for_core_halted(timeout)?;
+
+        // clear the halt request
+        dmcontrol.set_haltreq(false);
+
+        self.write_dm_register(dmcontrol)?;
+
+        let pc: u64 = self
+            .read_csr(super::registers::PC.id().0)
+            .map(|v| v.into())?;
+
+        Ok(CoreInformation { pc })
+    }
+
+    pub(crate) fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), RiscvError> {
+        let start = Instant::now();
+
+        while start.elapsed() < timeout {
+            let dmstatus: Dmstatus = self.read_dm_register()?;
+
+            tracing::trace!("{:?}", dmstatus);
+
+            if dmstatus.allhalted() {
+                return Ok(());
+            }
+        }
+
+        Err(RiscvError::Timeout)
+    }
+
+    pub(super) fn read_csr(&mut self, address: u16) -> Result<u32, RiscvError> {
+        // We need to use the "Access Register Command",
+        // which has cmdtype 0
+
+        // write needs to be clear
+        // transfer has to be set
+
+        tracing::debug!("Reading CSR {:#x}", address);
+
+        // always try to read register with abstract command, fallback to program buffer,
+        // if not supported
+        match self.abstract_cmd_register_read(address) {
+            Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
+                tracing::debug!("Could not read core register {:#x} with abstract command, falling back to program buffer", address);
+                self.read_csr_progbuf(address)
+            }
+            other => other,
+        }
     }
 
     /// Schedules a DM register read, flushes the queue and returns the result.
@@ -1071,7 +1171,7 @@ impl RiscvCommunicationInterface {
         // resumereq    = 0
         // ackhavereset = 0
 
-        let mut dmcontrol = Dmcontrol(0);
+        let mut dmcontrol: Dmcontrol = self.read_dm_register()?;
         dmcontrol.set_haltreq(false);
         dmcontrol.set_resumereq(false);
         dmcontrol.set_ackhavereset(false);

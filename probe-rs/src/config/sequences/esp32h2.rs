@@ -34,6 +34,8 @@ impl ESP32H2 {
 
 impl RiscvDebugSequence for ESP32H2 {
     fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
+        interface.select_hart(0)?;
+
         tracing::info!("Disabling esp32h2 watchdogs...");
         // disable super wdt
         interface.write_word_32(0x600B1C20, 0x50D83AA1)?; // write protection off
