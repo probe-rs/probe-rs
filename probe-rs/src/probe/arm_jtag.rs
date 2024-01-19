@@ -1293,9 +1293,6 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
             bits >>= 1;
         }
 
-        // ARM / SWJ uses 4 bit IR length
-        self.set_ir_len(4);
-
         match protocol {
             Some(WireProtocol::Jtag) => {
                 // Swj sequences should be shifted out to tms, since that is the pin
@@ -1531,10 +1528,6 @@ mod test {
     }
 
     impl JTAGAccess for MockJaylink {
-        fn set_ir_len(&mut self, _len: u32) {
-            todo!()
-        }
-
         fn read_register(&mut self, _address: u32, _len: u32) -> Result<Vec<u8>, DebugProbeError> {
             todo!()
         }

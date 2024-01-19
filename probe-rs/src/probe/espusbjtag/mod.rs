@@ -326,12 +326,6 @@ struct DeferredRegisterWrite {
 }
 
 impl JTAGAccess for EspUsbJtag {
-    fn set_ir_len(&mut self, len: u32) {
-        if len != 5 {
-            panic!("Only IR Length of 5 is currently supported");
-        }
-    }
-
     /// Write the data register
     fn write_register(
         &mut self,
