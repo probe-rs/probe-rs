@@ -143,25 +143,14 @@ Please reach out to [@Yatekii](https://github.com/Yatekii)
 
 ### Building
 
-Building requires Rust and Cargo which can be installed [using rustup](https://rustup.rs/). probe-rs also depends on libusb and libftdi. On linux these can be installed with your package manager:
+Building requires Rust and Cargo which can be installed [using rustup](https://rustup.rs/). On linux these can be installed with your package manager:
 
 ```console
 # Ubuntu
-> sudo apt install -y libusb-1.0-0-dev libftdi1-dev libudev-dev libssl-dev
+> sudo apt install -y libudev-dev libssl-dev
 
 # Fedora
-> sudo dnf install -y libusbx-devel libftdi-devel libudev-devel openssl-devel
-```
-
-On Windows you can use [vcpkg](https://github.com/microsoft/vcpkg#quick-start-windows):
-
-```console
-# dynamic linking 64-bit
-> vcpkg install libftdi1:x64-windows libusb:x64-windows
-> set VCPKGRS_DYNAMIC=1
-
-# static linking 64-bit
-> vcpkg install libftdi1:x64-windows-static-md libusb:x64-windows-static-md
+> sudo dnf install -y libudev-devel openssl-devel
 ```
 
 See [the vcpkg crate documentation](https://docs.rs/vcpkg/) for more information about configuring vcpkg with rust.
