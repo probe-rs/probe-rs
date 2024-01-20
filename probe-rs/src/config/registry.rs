@@ -110,7 +110,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 memory_map: vec![],
                 flash_algorithms: vec![],
                 rtt_scan_ranges: None,
-                scan_chain: Some(vec![]),
+                scan_chain: None,
                 default_binary_format: Some(BinaryFormat::Raw),
             }],
             flash_algorithms: vec![],
