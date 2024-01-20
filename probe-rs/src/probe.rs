@@ -5,7 +5,6 @@ pub(crate) mod usb_util;
 pub(crate) mod cmsisdap;
 pub(crate) mod espusbjtag;
 pub(crate) mod fake_probe;
-#[cfg(feature = "ftdi")]
 pub(crate) mod ftdi;
 pub(crate) mod jlink;
 pub(crate) mod list;

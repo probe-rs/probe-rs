@@ -1,0 +1,1 @@
+Removed the `ftdi` and `ftdi-vendored` features
