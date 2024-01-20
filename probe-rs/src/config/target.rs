@@ -20,16 +20,19 @@ use super::{
     Core, MemoryRegion, RawFlashAlgorithm, RegistryError, ScanChainElement,
     TargetDescriptionSource,
 };
-use crate::architecture::{
-    arm::{
-        ap::MemoryAp,
-        sequences::{ArmDebugSequence, DefaultArmSequence},
-        ApAddress, DpAddress,
-    },
-    riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
-    xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
-};
 use crate::flashing::FlashLoader;
+use crate::{
+    architecture::{
+        arm::{
+            ap::MemoryAp,
+            sequences::{ArmDebugSequence, DefaultArmSequence},
+            ApAddress, DpAddress,
+        },
+        riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
+        xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
+    },
+    config::sequences::esp32p4::ESP32P4,
+};
 use probe_rs_target::{Architecture, BinaryFormat, ChipFamily, MemoryRange};
 use std::sync::Arc;
 
@@ -146,6 +149,8 @@ impl Target {
             DebugSequence::Riscv(ESP32C6::create(chip))
         } else if chip.name.eq_ignore_ascii_case("esp32h2") {
             DebugSequence::Riscv(ESP32H2::create(chip))
+        } else if chip.name.eq_ignore_ascii_case("esp32p4") {
+            DebugSequence::Riscv(ESP32P4::create(chip))
         } else if chip.name.starts_with("nRF5340") {
             DebugSequence::Arm(Nrf5340::create())
         } else if chip.name.starts_with("nRF52") {

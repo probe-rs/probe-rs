@@ -1,0 +1,41 @@
+name: esp32p4
+manufacturer:
+  cc: 0x0C
+  id: 0x12
+variants:
+  - name: esp32p4
+    part: null
+    scan_chain:
+      - name: lpcpu
+        ir_len: 5
+      - name: hp
+        ir_len: 5
+    default_binary_format: idf
+    cores:
+      - name: main
+        type: riscv
+        core_access_options: !Riscv {}
+    memory_map:
+      - !Nvm
+        range:
+          start: 0x0
+          end: 0x4000000
+        is_boot_memory: true
+        cores:
+          - main
+      - !Nvm
+        range:
+          start: 0x40000000
+          end: 0x43FFFFFF
+        is_boot_memory: false
+        cores:
+          - main
+      - !Ram
+        range:
+          start: 0x4FF00000
+          end: 0x4FFBFFFF
+        is_boot_memory: false
+        cores:
+          - main
+    flash_algorithms: []
+flash_algorithms: []
