@@ -34,6 +34,9 @@ pub enum XtensaError {
     /// The requested register is not available.
     #[error("The requested register is not available.")]
     RegisterNotAvailable,
+    /// The result index of a batched command is not available.
+    #[error("The requested data is not available due to a previous error.")]
+    BatchedResultNotAvailable,
 }
 
 impl From<XtensaError> for DebugProbeError {
@@ -182,7 +185,7 @@ impl XtensaCommunicationInterface {
                 Ok(())
             }
             Err(error) => Err(XtensaError::DebugProbe(DebugProbeError::Other(
-                anyhow::anyhow!("Error during reset: {:?}", error),
+                anyhow::anyhow!("Error during reset").context(error),
             ))),
         }
     }
@@ -252,8 +255,6 @@ impl XtensaCommunicationInterface {
 
         // An exception is generated at the beginning of an instruction that would overflow ICOUNT.
         self.schedule_write_register(ICount(-2_i32 as u32))?;
-
-        self.xdm.execute()?;
 
         self.resume()?;
         self.wait_for_core_halted(Duration::from_millis(100))?;
@@ -447,12 +448,12 @@ impl XtensaCommunicationInterface {
 
         tracing::debug!("Restoring register: {:?}", key);
 
-        if let Some(value) = self.state.saved_registers.get_mut(&key) {
-            let reader = value.take().unwrap();
+        // Remove the result early, so an error here will not cause a panic in `restore_registers`.
+        if let Some(value) = self.state.saved_registers.remove(&key) {
+            let reader = value.unwrap();
             let value = self.xdm.read_deferred_result(reader)?.into_u32();
-            self.write_register_untyped(key, value)?;
 
-            self.state.saved_registers.remove(&key);
+            self.write_register_untyped(key, value)?;
         }
 
         Ok(())
@@ -485,7 +486,12 @@ impl XtensaCommunicationInterface {
                 .get_mut(&register)
                 .unwrap()
                 .take()
-                .unwrap();
+                .unwrap_or_else(|| {
+                    panic!(
+                        "Failed to get original value of dirty register {:?}. This is a bug.",
+                        register
+                    )
+                });
             let value = self.xdm.read_deferred_result(reader)?.into_u32();
 
             if register == Register::Cpu(CpuRegister::A3) {
@@ -621,16 +627,28 @@ impl XtensaCommunicationInterface {
         let offset = address as usize % 4;
         let aligned_address = address & !0x3;
 
-        // Read the aligned word
-        let mut word = [0; 4];
-        self.read_memory(aligned_address as u64, &mut word)?;
+        assert!(
+            offset + data.len() <= 4,
+            "Trying to write data crossing a word boundary"
+        );
 
-        // Replace the written bytes. This will also panic if the input is crossing a word boundary
-        word[offset..][..data.len()].copy_from_slice(data);
+        // Avoid reading back if we have a complete word
+        let data = if offset == 0 && data.len() == 4 {
+            data.try_into().unwrap()
+        } else {
+            // Read the aligned word
+            let mut word = [0; 4];
+            self.read_memory(aligned_address as u64, &mut word)?;
+
+            // Replace the written bytes. This will also panic if the input is crossing a word boundary
+            word[offset..][..data.len()].copy_from_slice(data);
+
+            word
+        };
 
         // Write the word back
         self.schedule_write_register_untyped(CpuRegister::A3, aligned_address)?;
-        self.xdm.schedule_write_ddr(u32::from_le_bytes(word));
+        self.xdm.schedule_write_ddr(u32::from_le_bytes(data));
         self.xdm
             .schedule_execute_instruction(Instruction::Sddr32P(CpuRegister::A3));
         self.restore_register(key)?;

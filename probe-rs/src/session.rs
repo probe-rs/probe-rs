@@ -19,6 +19,7 @@ use crate::{
     config::DebugSequence,
 };
 use crate::{AttachMethod, Core, CoreType, Error, Lister, Probe};
+use anyhow::anyhow;
 use std::ops::DerefMut;
 use std::{fmt, sync::Arc, time::Duration};
 
@@ -660,14 +661,20 @@ impl Drop for Session {
             self.core(i)
                 .and_then(|mut core| core.clear_all_hw_breakpoints())
         }) {
-            tracing::warn!("Could not clear all hardware breakpoints: {:?}", err);
+            tracing::warn!(
+                "Could not clear all hardware breakpoints: {:?}",
+                anyhow!(err)
+            );
         }
 
         // Call any necessary deconfiguration/shutdown hooks.
         if let Err(err) = { 0..self.cores.len() }
             .try_for_each(|i| self.core(i).and_then(|mut core| core.debug_core_stop()))
         {
-            tracing::warn!("Failed to deconfigure device during shutdown: {err:?}");
+            tracing::warn!(
+                "Failed to deconfigure device during shutdown: {:?}",
+                anyhow!(err)
+            );
         }
     }
 }
