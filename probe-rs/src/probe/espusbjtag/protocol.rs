@@ -272,8 +272,10 @@ impl ProtocolHandler {
         Ok(())
     }
 
-    /// Flushes all the pending commands to the JTAG adapter.
-    pub fn flush(&mut self) -> Result<(), DebugProbeError> {
+    /// Flushes pending commands and reads the captured bits from the target.
+    ///
+    /// The captured bits will be stored in the response buffer.
+    pub(super) fn flush(&mut self) -> Result<(), DebugProbeError> {
         self.finalize_previous_command()?;
 
         // Only flush if we have anything to do.
@@ -291,8 +293,11 @@ impl ProtocolHandler {
         Ok(())
     }
 
-    /// Flushes all the pending commands to the JTAG adapter.
-    pub fn read_captured_bits(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
+    /// Flushes pending commands and reads the captured bits from the target.
+    ///
+    /// This method returns the response buffer and clears it. The returned buffer will contain
+    /// all bits captured since the last call to `read_captured_bits`.
+    pub(super) fn read_captured_bits(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
         self.flush()?;
 
         Ok(std::mem::take(&mut self.response))
