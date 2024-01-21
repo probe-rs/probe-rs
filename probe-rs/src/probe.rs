@@ -837,9 +837,6 @@ impl fmt::Display for DebugProbeSelector {
 /// This trait should be implemented by all probes which offer low-level access to
 /// the JTAG protocol, i.e. direction control over the bytes sent and received.
 pub trait JTAGAccess: DebugProbe {
-    /// Resets the JTAG state machine by shifting out a number of high TMS bits.
-    fn reset_jtag_state_machine(&mut self) -> Result<(), DebugProbeError>;
-
     /// Returns `IDCODE` and `IR` length information about the devices on the JTAG chain.
     ///
     /// If configured, this will use the data from [`DebugProbe::set_scan_chain`]. Otherwise, it

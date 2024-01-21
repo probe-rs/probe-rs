@@ -440,6 +440,23 @@ pub(crate) trait RawJtagIo {
         self.state_mut().chain_params.irlen = len;
     }
 
+    /// Resets the JTAG state machine by shifting out a number of high TMS bits.
+    fn reset_jtag_state_machine(&mut self) -> Result<(), DebugProbeError> {
+        tracing::debug!("Resetting JTAG chain by setting tms high for 5 bits");
+
+        // Reset JTAG chain (5 times TMS high), and enter idle state afterwards
+        let tms = [true, true, true, true, true, false];
+        let tdi = iter::repeat(true);
+
+        self.shift_bits(tms, tdi, iter::repeat(false))?;
+        let response = self.read_captured_bits()?;
+
+        tracing::debug!("Response to reset: {}", response);
+
+        Ok(())
+    }
+
+    /// Configures the probe to address the given target.
     fn select_target(
         &mut self,
         chain: &[JtagChainItem],
@@ -616,21 +633,6 @@ fn prepare_write_register(
 }
 
 impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
-    fn reset_jtag_state_machine(&mut self) -> Result<(), DebugProbeError> {
-        tracing::debug!("Resetting JTAG chain by setting tms high for 5 bits");
-
-        // Reset JTAG chain (5 times TMS high), and enter idle state afterwards
-        let tms = [true, true, true, true, true, false];
-        let tdi = iter::repeat(true);
-
-        self.shift_bits(tms, tdi, iter::repeat(false))?;
-        let response = self.read_captured_bits()?;
-
-        tracing::debug!("Response to reset: {}", response);
-
-        Ok(())
-    }
-
     fn scan_chain(&mut self) -> Result<Vec<super::JtagChainItem>, DebugProbeError> {
         const MAX_CHAIN: usize = 8;
 

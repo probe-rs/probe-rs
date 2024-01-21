@@ -1528,10 +1528,6 @@ mod test {
     }
 
     impl JTAGAccess for MockJaylink {
-        fn reset_jtag_state_machine(&mut self) -> Result<(), DebugProbeError> {
-            todo!()
-        }
-
         fn scan_chain(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError> {
             todo!()
         }
