@@ -850,6 +850,12 @@ fn line_reset<P: RawProtocolIo + JTAGAccess + RawDapAccess>(this: &mut P) -> Res
 
         this.swj_sequence(NUM_RESET_BITS, 0x7FFFFFFFFFFFF)?;
 
+        // TODO: there are two unhandled implications:
+        // - A line reset deselects the current multidrop target
+        // - A line reset sets CTRL/STAT.STICKYORUN to 0b1
+        // ^ both of these are handled in select_dp. We should reuse it, but carefully to avoid
+        //   an endless loop.
+
         // Read DPIDR register
         //
         // The `raw_read_register` function cannot be called here, because that function can call `line_reset` again,
