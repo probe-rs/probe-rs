@@ -216,7 +216,20 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
                     For usage examples see https://github.com/probe-rs/cargo-embed/blob/master/src/config/default.toml .",
                     list.iter().enumerate().fold(String::new(), |mut s, (num, link)| { let _ = writeln!(s, "[{num}]: {link:?}"); s })));
         }
-        Err(_) => todo!(),
+        Err(OperationError::AttachingFailed {
+            source,
+            connect_under_reset,
+        }) => {
+            log::info!("The target seems to be unable to be attached to.");
+            if !connect_under_reset {
+                log::info!(
+                    "A hard reset during attaching might help. This will reset the entire chip."
+                );
+                log::info!("Set `general.connect_under_reset` in your cargo-embed configuration file to enable this feature.");
+            }
+            return Err(source).context("failed attaching to target");
+        }
+        Err(e) => return Err(e.into()),
     };
 
     if config.flashing.enabled {
