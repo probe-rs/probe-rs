@@ -48,7 +48,7 @@ variants:
           !Arm
             ap: 0x0
             psel: 0x0
-    jtag:
+    jtag: {}
     memory_map:
       - !Ram
           range:
