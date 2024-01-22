@@ -487,7 +487,7 @@ impl Probe {
 /// An abstraction over a probe driver type.
 ///
 /// This trait has to be implemented by ever debug probe driver.
-pub trait ProbeDriver: std::any::Any + std::fmt::Debug {
+pub trait ProbeDriver: std::any::Any + std::fmt::Debug + Sync {
     /// Creates a new boxed [`DebugProbe`] from a given [`DebugProbeSelector`].
     /// This will be called for all available debug drivers when discovering probes.
     /// When opening, it will open the first probe which succeeds during this call.

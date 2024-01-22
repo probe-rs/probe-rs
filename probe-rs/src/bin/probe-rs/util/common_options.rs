@@ -41,7 +41,8 @@ use probe_rs::{
     config::{RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError},
     integration::FakeProbe,
-    DebugProbeError, DebugProbeSelector, Lister, Permissions, Probe, Session, Target, WireProtocol,
+    DebugProbeError, DebugProbeInfo, DebugProbeSelector, Lister, Permissions, Probe, Session,
+    Target, WireProtocol,
 };
 use serde::{Deserialize, Serialize};
 
@@ -243,7 +244,7 @@ impl LoadedProbeOptions {
                     // only a single probe detected.
                     let list = lister.list_all();
                     if list.len() > 1 {
-                        return Err(OperationError::MultipleProbesFound { number: list.len() });
+                        return Err(OperationError::MultipleProbesFound { list });
                     }
 
                     let Some(info) = list.first() else {
@@ -471,8 +472,8 @@ pub enum OperationError {
     FailedToLoadElfData(#[source] FileDownloadError),
     #[error("Failed to open the debug probe.")]
     FailedToOpenProbe(#[source] DebugProbeError),
-    #[error("{number} probes were found.")]
-    MultipleProbesFound { number: usize },
+    #[error("Multiple probes were found.")]
+    MultipleProbesFound { list: Vec<DebugProbeInfo> },
     #[error("The flashing procedure failed for '{path}'.")]
     FlashingFailed {
         #[source]

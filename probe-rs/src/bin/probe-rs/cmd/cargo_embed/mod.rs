@@ -27,7 +27,7 @@ use std::{
 use time::{OffsetDateTime, UtcOffset};
 
 use self::rttui::channel::DataFormat;
-use crate::util::common_options::ProbeOptions;
+use crate::util::common_options::{OperationError, ProbeOptions};
 use crate::util::{build_artifact, common_options::CargoOptions, logging};
 
 #[derive(Debug, clap::Parser)]
@@ -177,7 +177,15 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
                 product_id: u16::from_str_radix(pid, 16)?,
                 serial_number: config.probe.serial.clone(),
             }),
-            _ => None,
+            (vid, pid) => {
+                if vid.is_some() {
+                    log::warn!("USB VID ignored, because PID is not specified.");
+                }
+                if pid.is_some() {
+                    log::warn!("USB PID ignored, because VID is not specified.");
+                }
+                None
+            }
         }
     };
 
@@ -195,6 +203,19 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
     let (mut session, _probe_options) = match probe_options.simple_attach(&lister) {
         Ok((session, probe_options)) => (session, probe_options),
 
+        Err(OperationError::MultipleProbesFound { list }) => {
+            use std::fmt::Write;
+
+            return Err(anyhow!("The following devices were found:\n \
+                    {} \
+                        \
+                    Use '--probe VID:PID'\n \
+                                            \
+                    You can also set the [default.probe] config attribute \
+                    (in your Embed.toml) to select which probe to use. \
+                    For usage examples see https://github.com/probe-rs/cargo-embed/blob/master/src/config/default.toml .",
+                    list.iter().enumerate().fold(String::new(), |mut s, (num, link)| { let _ = writeln!(s, "[{num}]: {link:?}"); s })));
+        }
         Err(_) => todo!(),
     };
 
