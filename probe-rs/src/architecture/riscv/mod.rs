@@ -27,7 +27,7 @@ pub mod sequences;
 
 /// An interface to operate RISC-V cores.
 pub struct Riscv32<'probe> {
-    hart: usize,
+    hart: u32,
     interface: &'probe mut RiscvCommunicationInterface,
     state: &'probe mut RiscVState,
 }
@@ -35,7 +35,7 @@ pub struct Riscv32<'probe> {
 impl<'probe> Riscv32<'probe> {
     /// Create a new RISC-V interface.
     pub fn new(
-        hart: usize,
+        hart: u32,
         interface: &'probe mut RiscvCommunicationInterface,
         state: &'probe mut RiscVState,
     ) -> Result<Self, RiscvError> {

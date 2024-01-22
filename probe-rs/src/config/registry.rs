@@ -105,7 +105,9 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 cores: vec![Core {
                     name: "core".to_owned(),
                     core_type: CoreType::Riscv,
-                    core_access_options: CoreAccessOptions::Riscv(RiscvCoreAccessOptions {}),
+                    core_access_options: CoreAccessOptions::Riscv(RiscvCoreAccessOptions {
+                        hart_id: None,
+                    }),
                 }],
                 memory_map: vec![],
                 flash_algorithms: vec![],

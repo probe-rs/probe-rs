@@ -143,7 +143,10 @@ pub struct ArmCoreAccessOptions {
 
 /// The data required to access a Risc-V core
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RiscvCoreAccessOptions {}
+pub struct RiscvCoreAccessOptions {
+    /// The hart id
+    pub hart_id: Option<u32>,
+}
 
 /// The data required to access an Xtensa core
 #[derive(Debug, Clone, Serialize, Deserialize)]

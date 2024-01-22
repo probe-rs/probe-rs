@@ -80,8 +80,6 @@ fn attach_flash_riscv(
         registers::SP,
     };
 
-    interface.select_hart(0)?;
-
     // Set a valid-ish stack pointer
     interface.abstract_cmd_register_write(SP, stack_pointer)?;
 

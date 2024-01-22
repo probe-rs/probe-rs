@@ -151,12 +151,25 @@ impl CombinedCoreState {
         let memory_regions = &target.memory_map;
         let name = &target.cores[self.id].name;
 
+        let options = match &self.core_state.core_access_options {
+            ResolvedCoreOptions::Riscv { options } => options,
+            _ => {
+                return Err(Error::UnableToOpenProbe(
+                    "Core architecture and Probe mismatch.",
+                ))
+            }
+        };
+
         Ok(match &mut self.specific_state {
             SpecificCoreState::Riscv(s) => Core::new(
                 self.id,
                 name,
                 memory_regions,
-                crate::architecture::riscv::Riscv32::new(self.id, interface, s)?,
+                crate::architecture::riscv::Riscv32::new(
+                    options.hart_id.unwrap_or_default(),
+                    interface,
+                    s,
+                )?,
             ),
             _ => {
                 return Err(Error::UnableToOpenProbe(

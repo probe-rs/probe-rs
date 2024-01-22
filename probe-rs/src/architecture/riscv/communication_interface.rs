@@ -319,7 +319,7 @@ pub struct RiscvCommunicationInterface {
     dtm: Dtm,
     state: RiscvCommunicationInterfaceState,
     enabled_harts: u32,
-    last_selected_hart: usize,
+    last_selected_hart: u32,
 }
 
 impl RiscvCommunicationInterface {
@@ -343,7 +343,7 @@ impl RiscvCommunicationInterface {
     }
 
     /// Select current hart
-    pub fn select_hart(&mut self, hart: usize) -> Result<bool, RiscvError> {
+    pub fn select_hart(&mut self, hart: u32) -> Result<bool, RiscvError> {
         if self.enabled_harts & (1 << hart) == 0 {
             return Ok(false);
         }
@@ -360,7 +360,7 @@ impl RiscvCommunicationInterface {
     }
 
     /// Check if the given hart is enabled
-    pub fn hart_enabled(&self, hart: usize) -> bool {
+    pub fn hart_enabled(&self, hart: u32) -> bool {
         self.enabled_harts & (1 << hart) != 0
     }
 
