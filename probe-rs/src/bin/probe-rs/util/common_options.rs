@@ -472,7 +472,7 @@ pub enum OperationError {
     FailedToLoadElfData(#[source] FileDownloadError),
     #[error("Failed to open the debug probe.")]
     FailedToOpenProbe(#[source] DebugProbeError),
-    #[error("Multiple probes were found.")]
+    #[error("{} probes were found.", .list.len())]
     MultipleProbesFound { list: Vec<DebugProbeInfo> },
     #[error("The flashing procedure failed for '{path}'.")]
     FlashingFailed {
