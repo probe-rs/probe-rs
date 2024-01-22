@@ -610,6 +610,22 @@ impl IoSequence {
         }
     }
 
+    fn from_bytes(data: &[u8], mut bits: usize) -> Self {
+        let mut this = Self::new();
+
+        'outer: for byte in data {
+            for i in 0..8 {
+                this.add_output(byte & (1 << i) != 0);
+                bits -= 1;
+                if bits == 0 {
+                    break 'outer;
+                }
+            }
+        }
+
+        this
+    }
+
     fn add_output(&mut self, bit: bool) {
         self.io.push(bit);
         self.direction.push(Self::OUTPUT);
@@ -834,6 +850,12 @@ fn line_reset<P: RawProtocolIo + JTAGAccess + RawDapAccess>(this: &mut P) -> Res
 
         this.swj_sequence(NUM_RESET_BITS, 0x7FFFFFFFFFFFF)?;
 
+        // TODO: there are two unhandled implications:
+        // - A line reset deselects the current multidrop target
+        // - A line reset sets CTRL/STAT.STICKYORUN to 0b1
+        // ^ both of these are handled in select_dp. We should reuse it, but carefully to avoid
+        //   an endless loop.
+
         // Read DPIDR register
         //
         // The `raw_read_register` function cannot be called here, because that function can call `line_reset` again,
@@ -863,10 +885,99 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
     fn select_dp(&mut self, dp: DpAddress) -> Result<(), ArmError> {
         match dp {
             DpAddress::Default => Ok(()), // nop
-            DpAddress::Multidrop(_) => Err(DebugProbeError::ProbeSpecific(
-                anyhow::anyhow!("No support for multidrop SWD yet").into(),
-            )
-            .into()),
+            DpAddress::Multidrop(targetsel) => {
+                let protocol = self.active_protocol().expect("No protocol set");
+                for _i in 0..5 {
+                    tracing::debug!("Starting leave-dormant-sequence");
+
+                    // 0 or 1 selects between JTAG and SWD, while F is part of the following line reset
+                    let activation_code = match protocol {
+                        WireProtocol::Jtag => 0xf0,
+                        WireProtocol::Swd => 0xf1,
+                    };
+
+                    // Dormant-to-swd + line reset
+                    let sequence = &[
+                        0xff,
+                        0x92,
+                        0xf3,
+                        0x09,
+                        0x62,
+                        0x95,
+                        0x2d,
+                        0x85,
+                        0x86,
+                        0xe9,
+                        0xaf,
+                        0xdd,
+                        0xe3,
+                        0xa2,
+                        0x0e,
+                        0xbc,
+                        0x19,
+                        0xa0,
+                        activation_code,
+                        0xff,
+                        0xff,
+                        0xff,
+                        0xff,
+                        0xff,
+                        0xff,
+                        0xff,
+                        0xff,
+                        0x00,
+                    ];
+                    let dormant_sequence = IoSequence::from_bytes(sequence, 28 * 8);
+                    send_sequence(self, protocol, &dormant_sequence)?;
+
+                    // TARGETSEL write.
+                    // The TARGETSEL write is not ACKed by design. We can't use a normal register
+                    // write because many probes don't even send the data phase when NAK.
+                    // To select or deselect the target, a write to TARGETSEL must immediately
+                    // follow a line reset sequence
+
+                    let parity = targetsel.count_ones() % 2 == 1;
+                    let sequence = &((parity as u64) << 45 | (targetsel as u64) << 13 | 0x1f99)
+                        .to_le_bytes()[..6];
+                    let target_sel_sequence = IoSequence::from_bytes(sequence, 6 * 8);
+                    send_sequence(self, protocol, &target_sel_sequence)?;
+
+                    // "A write to the TARGETSEL register must always be followed by a read of the DPIDR register or a line reset. If the
+                    // response to the DPIDR read is incorrect, or there is no response, the host must start the sequence again."
+
+                    // raw_read_register is trying too hard to recover from errors. This is an issue for DPIDR reads
+                    // where the line must not be reset, otherwise the target gets deselected.
+                    let mut dpidr_transfer = DapTransfer::read(PortType::DebugPort, 0);
+                    perform_transfers(self, std::slice::from_mut(&mut dpidr_transfer), 0)?;
+                    match dpidr_transfer.status {
+                        TransferStatus::Ok => {
+                            tracing::debug!("DPIDR read {:08x}", dpidr_transfer.value);
+
+                            // "If overrun detection is enabled, then the line reset sets
+                            // CTRL/STAT.STICKYORUN to 0b1"
+
+                            // Because we use overrun detection, we now have to clear the overrun error.
+                            let mut abort = Abort(0);
+
+                            abort.set_orunerrclr(true);
+
+                            RawDapAccess::raw_write_register(
+                                self,
+                                PortType::DebugPort,
+                                Abort::ADDRESS,
+                                abort.into(),
+                            )?;
+                            return Ok(());
+                        }
+                        status => {
+                            tracing::debug!("DPIDR read failed, retrying. Error: {:?}", status);
+                        }
+                    }
+                }
+
+                tracing::warn!("Giving up on TARGETSEL, too many retries.");
+                Err(DapError::NoAcknowledge.into())
+            }
         }
     }
 
@@ -889,7 +1000,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                 TransferStatus::Failed(DapError::WaitResponse) => {
                     // If ack[1] is set the host must retry the request. So let's do that right away!
                     tracing::debug!(
-                        "DAP WAIT, (read), retries remaining {}.",
+                        "DAP WAIT (read), retries remaining {}.",
                         dap_wait_retries - retry
                     );
 
@@ -931,7 +1042,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                             Ctrl::ADDRESS,
                         )?;
                         let ctrl = Ctrl::try_from(response)?;
-                        tracing::debug!(
+                        tracing::warn!(
                             "Reading DAP register failed. Ctrl/Stat register value is: {:#?}",
                             ctrl
                         );
@@ -1011,11 +1122,11 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                         successful_transfers += 1;
                     }
                     TransferStatus::Failed(err) => {
-                        tracing::debug!(
-                            "Error in access {}/{} of block access: {}",
+                        tracing::warn!(
+                            "Error in access {}/{} of block access: {:?}",
                             successful_transfers + 1,
                             values.len(),
-                            err
+                            anyhow::anyhow!(err)
                         );
 
                         if err == DapError::WaitResponse {
@@ -1105,7 +1216,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                     continue;
                 }
                 TransferStatus::Failed(DapError::FaultResponse) => {
-                    tracing::debug!("DAP FAULT");
+                    tracing::warn!("DAP FAULT");
                     // A fault happened during operation.
 
                     // To get a clue about the actual fault we read the ctrl register,
@@ -1115,7 +1226,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                         RawDapAccess::raw_read_register(self, PortType::DebugPort, Ctrl::ADDRESS)?;
 
                     let ctrl = Ctrl::try_from(response)?;
-                    tracing::trace!(
+                    tracing::warn!(
                         "Writing DAP register failed. Ctrl/Stat register value is: {:#?}",
                         ctrl
                     );
@@ -1282,35 +1393,35 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         Ok(())
     }
 
-    fn swj_sequence(&mut self, bit_len: u8, mut bits: u64) -> Result<(), DebugProbeError> {
-        let protocol = self.active_protocol();
+    fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
+        let protocol = self.active_protocol().unwrap();
 
-        let mut io_sequence = IoSequence::new();
-
-        for _ in 0..bit_len {
-            io_sequence.add_output(bits & 1 == 1);
-
-            bits >>= 1;
-        }
-
-        match protocol {
-            Some(WireProtocol::Jtag) => {
-                // Swj sequences should be shifted out to tms, since that is the pin
-                // shared between swd and jtag modes.
-                self.jtag_shift_tms(io_sequence.io_bits(), false)?;
-            }
-            Some(WireProtocol::Swd) => {
-                self.swd_io(io_sequence.direction_bits(), io_sequence.io_bits())?;
-            }
-            _ => {}
-        }
-
-        Ok(())
+        let io_sequence = IoSequence::from_bytes(&bits.to_le_bytes(), bit_len as usize);
+        send_sequence(self, protocol, &io_sequence)
     }
 
     fn core_status_notification(&mut self, _: crate::CoreStatus) -> Result<(), DebugProbeError> {
         Ok(())
     }
+}
+
+fn send_sequence<P: RawProtocolIo + JTAGAccess>(
+    probe: &mut P,
+    protocol: WireProtocol,
+    sequence: &IoSequence,
+) -> Result<(), DebugProbeError> {
+    match protocol {
+        WireProtocol::Jtag => {
+            // Swj sequences should be shifted out to tms, since that is the pin
+            // shared between swd and jtag modes.
+            probe.jtag_shift_tms(sequence.io_bits(), false)?;
+        }
+        WireProtocol::Swd => {
+            probe.swd_io(sequence.direction_bits(), sequence.io_bits())?;
+        }
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
