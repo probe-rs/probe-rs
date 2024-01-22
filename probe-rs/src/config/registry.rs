@@ -445,7 +445,6 @@ fn match_name_prefix(pattern: &str, name: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use probe_rs_target::get_ir_lengths;
     use std::fs::File;
     type TestResult = Result<(), RegistryError>;
 
@@ -541,20 +540,6 @@ mod tests {
         let scan_chain = target.scan_chain.unwrap();
         assert_eq!(scan_chain[0].ir_len, Some(FIRST_IR_LENGTH));
         assert_eq!(scan_chain[1].ir_len, Some(SECOND_IR_LENGTH));
-
-        Ok(())
-    }
-
-    #[test]
-    fn check_get_ir_lengths_helper() -> TestResult {
-        let file = File::open("tests/scan_chain_test.yaml")?;
-        add_target_from_yaml(file)?;
-
-        // Check that the scan chain can read from a target correctly
-        let target = get_target_by_name("FULL_SCAN_CHAIN").unwrap();
-        let scan_chain = target.scan_chain.unwrap();
-        let ir_lengths = get_ir_lengths(&scan_chain);
-        assert_eq!(ir_lengths, vec![FIRST_IR_LENGTH, SECOND_IR_LENGTH]);
 
         Ok(())
     }

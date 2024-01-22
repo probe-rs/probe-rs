@@ -148,16 +148,3 @@ pub struct RiscvCoreAccessOptions {}
 /// The data required to access an Xtensa core
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XtensaCoreAccessOptions {}
-
-/// Helper function that iterates the scan chain and returns a vector of all of
-/// the ir_lengths of the scan chain elements.
-/// If an element does not contain an ir_length, the default value of 4 is used.
-/// The first element of the vector is the first element of the scan chain.
-pub fn get_ir_lengths(scan_chain: &Vec<ScanChainElement>) -> Vec<u8> {
-    let mut ir_lengths = Vec::new();
-    for element in scan_chain {
-        let ir_len = element.ir_len.unwrap_or(4);
-        ir_lengths.push(ir_len);
-    }
-    ir_lengths
-}
