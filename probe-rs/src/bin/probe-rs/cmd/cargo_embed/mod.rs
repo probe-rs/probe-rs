@@ -10,9 +10,8 @@ use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::rtt::{Rtt, ScanRegion};
 use probe_rs::Lister;
 use probe_rs::{
-    config::TargetSelector,
     flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
-    DebugProbeSelector, Permissions, Session,
+    DebugProbeSelector, Session,
 };
 use std::ffi::OsString;
 use std::{
@@ -28,6 +27,7 @@ use std::{
 use time::{OffsetDateTime, UtcOffset};
 
 use self::rttui::channel::DataFormat;
+use crate::util::common_options::{OperationError, ProbeOptions};
 use crate::util::{build_artifact, common_options::CargoOptions, logging};
 
 #[derive(Debug, clap::Parser)]
@@ -136,13 +136,6 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
             .with_context(|| format!("failed to load the chip description from {cdp}"))?;
     }
 
-    let chip = opt
-        .chip
-        .as_ref()
-        .or(config.general.chip.as_ref())
-        .map(|chip| chip.into())
-        .unwrap_or(TargetSelector::Auto);
-
     // Remove executable name from the arguments list.
     args.remove(0);
 
@@ -175,97 +168,68 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
     let lister = Lister::new();
 
     // If we got a probe selector in the config, open the probe matching the selector if possible.
-    let mut probe = if let Some(ref selector) = opt.probe_selector {
-        lister.open(selector)?
+    let selector = if let Some(selector) = opt.probe_selector {
+        Some(selector)
     } else {
         match (config.probe.usb_vid.as_ref(), config.probe.usb_pid.as_ref()) {
-            (Some(vid), Some(pid)) => {
-                let selector = DebugProbeSelector {
-                    vendor_id: u16::from_str_radix(vid, 16)?,
-                    product_id: u16::from_str_radix(pid, 16)?,
-                    serial_number: config.probe.serial.clone(),
-                };
-                // if two probes with the same VID:PID pair exist we just choose one
-                lister.open(selector)?
-            }
-            _ => {
-                if config.probe.usb_vid.is_some() {
+            (Some(vid), Some(pid)) => Some(DebugProbeSelector {
+                vendor_id: u16::from_str_radix(vid, 16)?,
+                product_id: u16::from_str_radix(pid, 16)?,
+                serial_number: config.probe.serial.clone(),
+            }),
+            (vid, pid) => {
+                if vid.is_some() {
                     log::warn!("USB VID ignored, because PID is not specified.");
                 }
-                if config.probe.usb_pid.is_some() {
+                if pid.is_some() {
                     log::warn!("USB PID ignored, because VID is not specified.");
                 }
-
-                // Only automatically select a probe if there is only
-                // a single probe detected.
-                let list = lister.list_all();
-                if list.len() > 1 {
-                    use std::fmt::Write;
-
-                    return Err(anyhow!("The following devices were found:\n \
-                                    {} \
-                                        \
-                                    Use '--probe VID:PID'\n \
-                                                            \
-                                    You can also set the [default.probe] config attribute \
-                                    (in your Embed.toml) to select which probe to use. \
-                                    For usage examples see https://github.com/probe-rs/cargo-embed/blob/master/src/config/default.toml .",
-                                    list.iter().enumerate().fold(String::new(), |mut s, (num, link)| { let _ = writeln!(s, "[{num}]: {link:?}"); s })));
-                }
-
-                lister.open(
-                    list.first()
-                        .ok_or_else(|| anyhow!("No supported probe was found"))?,
-                )?
+                None
             }
         }
     };
 
-    probe
-        .select_protocol(config.probe.protocol)
-        .context("failed to select protocol")?;
+    let probe_options = ProbeOptions {
+        chip: opt.chip,
+        chip_description_path: None,
+        protocol: Some(config.probe.protocol),
+        probe_selector: selector,
+        speed: config.probe.speed,
+        connect_under_reset: config.general.connect_under_reset,
+        dry_run: false,
+        allow_erase_all: config.flashing.enabled || config.gdb.enabled,
+    };
 
-    let protocol_speed = if let Some(speed) = config.probe.speed {
-        let actual_speed = probe.set_speed(speed).context("failed to set speed")?;
+    let (mut session, _probe_options) = match probe_options.simple_attach(&lister) {
+        Ok((session, probe_options)) => (session, probe_options),
 
-        if actual_speed < speed {
-            log::warn!(
-                "Unable to use specified speed of {} kHz, actual speed used is {} kHz",
-                speed,
-                actual_speed
-            );
+        Err(OperationError::MultipleProbesFound { list }) => {
+            use std::fmt::Write;
+
+            return Err(anyhow!("The following devices were found:\n \
+                    {} \
+                        \
+                    Use '--probe VID:PID'\n \
+                                            \
+                    You can also set the [default.probe] config attribute \
+                    (in your Embed.toml) to select which probe to use. \
+                    For usage examples see https://github.com/probe-rs/cargo-embed/blob/master/src/config/default.toml .",
+                    list.iter().enumerate().fold(String::new(), |mut s, (num, link)| { let _ = writeln!(s, "[{num}]: {link:?}"); s })));
         }
-
-        actual_speed
-    } else {
-        probe.speed_khz()
-    };
-
-    log::info!("Protocol speed {} kHz", protocol_speed);
-
-    let permissions = if config.flashing.enabled || config.gdb.enabled {
-        Permissions::new().allow_erase_all()
-    } else {
-        Permissions::new()
-    };
-
-    let mut session = if config.general.connect_under_reset {
-        probe
-            .attach_under_reset(chip, permissions)
-            .context("failed attaching to target")?
-    } else {
-        let potential_session = probe.attach(chip, permissions);
-        match potential_session {
-            Ok(session) => session,
-            Err(err) => {
-                log::info!("The target seems to be unable to be attached to.");
+        Err(OperationError::AttachingFailed {
+            source,
+            connect_under_reset,
+        }) => {
+            log::info!("The target seems to be unable to be attached to.");
+            if !connect_under_reset {
                 log::info!(
                     "A hard reset during attaching might help. This will reset the entire chip."
                 );
                 log::info!("Set `general.connect_under_reset` in your cargo-embed configuration file to enable this feature.");
-                return Err(err).context("failed attaching to target");
             }
+            return Err(source).context("failed attaching to target");
         }
+        Err(e) => return Err(e.into()),
     };
 
     if config.flashing.enabled {
