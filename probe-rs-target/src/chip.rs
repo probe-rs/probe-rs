@@ -92,7 +92,7 @@ impl Chip {
             memory_map: vec![],
             flash_algorithms: vec![],
             rtt_scan_ranges: None,
-            scan_chain: Some(vec![]),
+            scan_chain: None,
             default_binary_format: Some(BinaryFormat::Raw),
         }
     }
