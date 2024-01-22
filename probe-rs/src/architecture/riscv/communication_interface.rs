@@ -353,7 +353,7 @@ impl RiscvCommunicationInterface {
         }
 
         let mut control: Dmcontrol = self.read_dm_register()?;
-        control.set_hartsel(hart as u32);
+        control.set_hartsel(hart);
         self.write_dm_register(control)?;
         self.last_selected_hart = hart;
         Ok(true)
