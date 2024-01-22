@@ -343,20 +343,20 @@ impl RiscvCommunicationInterface {
     }
 
     /// Select current hart
-    pub fn select_hart(&mut self, hart: u32) -> Result<bool, RiscvError> {
+    pub fn select_hart(&mut self, hart: u32) -> Result<(), RiscvError> {
         if self.enabled_harts & (1 << hart) == 0 {
-            return Ok(false);
+            return Err(RiscvError::HartUnavailable);
         }
 
         if self.last_selected_hart == hart {
-            return Ok(true);
+            return Ok(());
         }
 
         let mut control: Dmcontrol = self.read_dm_register()?;
         control.set_hartsel(hart);
         self.write_dm_register(control)?;
         self.last_selected_hart = hart;
-        Ok(true)
+        Ok(())
     }
 
     /// Check if the given hart is enabled

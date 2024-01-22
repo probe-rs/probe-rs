@@ -486,10 +486,8 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     /// See docs on the [`CoreInterface::hw_breakpoints`] trait
     /// NOTE: For riscv, this assumes that only execution breakpoints are used.
     fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
-        // this can be called w/o halting the core via Session::new - ignore on disabled hart, halt if not halted
-        if !self.interface.select_hart(self.hart)? {
-            return Ok(Vec::new());
-        }
+        // this can be called w/o halting the core via Session::new - temporarily halt if not halted
+        self.interface.select_hart(self.hart)?;
 
         let was_running = !self.core_halted()?;
         if was_running {
@@ -632,10 +630,8 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), crate::Error> {
-        // this can be called w/o halting the core via Session::new - ignore on disabled hart, halt if not halted
-        if !self.interface.select_hart(self.hart)? {
-            return Ok(());
-        }
+        // this can be called w/o halting the core via Session::new - temporarily halt if not halted
+        self.interface.select_hart(self.hart)?;
 
         let was_running = !self.core_halted()?;
         if was_running {
