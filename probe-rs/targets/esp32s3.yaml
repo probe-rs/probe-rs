@@ -4,11 +4,12 @@ manufacturer:
   id: 0x12
 variants:
   - name: esp32s3
-    scan_chain:
-      - name: cpu0
-        ir_len: 5
-      - name: cpu1
-        ir_len: 5
+    jtag:
+      scan_chain:
+        - name: cpu0
+          ir_len: 5
+        - name: cpu1
+          ir_len: 5
     default_binary_format: idf
     cores:
       - name: cpu0
