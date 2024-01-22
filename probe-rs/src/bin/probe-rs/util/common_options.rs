@@ -472,7 +472,7 @@ pub enum OperationError {
     FailedToLoadElfData(#[source] FileDownloadError),
     #[error("Failed to open the debug probe.")]
     FailedToOpenProbe(#[source] DebugProbeError),
-    #[error("{} probes were found.", .list.len())]
+    #[error("{} probes were found: {}", .list.len(), print_list(.list))]
     MultipleProbesFound { list: Vec<DebugProbeInfo> },
     #[error("The flashing procedure failed for '{path}'.")]
     FlashingFailed {
@@ -542,6 +542,17 @@ pub enum OperationError {
     IOError(#[source] std::io::Error),
     #[error("Failed to parse CLI arguments.")]
     CliArgument(#[from] clap::Error),
+}
+
+/// Used in errors it can print a list of items.
+fn print_list(list: &[impl std::fmt::Debug]) -> String {
+    let mut output = String::new();
+
+    for (i, entry) in list.iter().enumerate() {
+        output.push_str(&format!("\n    {}. {:?}", i + 1, entry));
+    }
+
+    output
 }
 
 impl From<std::io::Error> for OperationError {
