@@ -217,10 +217,10 @@ impl<AP> ADIMemoryInterface<'_, AP>
 where
     AP: ApAccess + DpAccess,
 {
-    /// Build the correct CSW register for a memory access
+    /// Build and write the correct CSW register for a memory access
     ///
     /// Currently, only AMBA AHB Access is supported.
-    fn build_csw_register(&self, data_size: DataSize) -> CSW {
+    fn write_csw_register(&mut self, data_size: DataSize) -> Result<(), ArmError> {
         // The CSW Register is set for an AMBA AHB Acccess, according to
         // the ARM Debug Interface Architecture Specification.
         //
@@ -239,7 +239,7 @@ where
         // to ensure we observe the same state as the CPU core. On cores without
         // cache the bit is RAZ/WI.
 
-        CSW {
+        let value = CSW {
             DbgSwEnable: 0b1,
             HNONSEC: !self.ap_information.supports_hnonsec as u8,
             PROT: 0b10,
@@ -247,10 +247,8 @@ where
             AddrInc: AddressIncrement::Single,
             SIZE: data_size,
             ..Default::default()
-        }
-    }
+        };
 
-    fn write_csw_register(&mut self, value: CSW) -> Result<(), ArmError> {
         // Check if the write is necessary
         match self.cached_csw_value {
             Some(cached_value) if cached_value == value => Ok(()),
@@ -357,9 +355,7 @@ where
         if !self.ap_information.has_large_data_extension {
             self.read_32(address, &mut buf)?;
         } else {
-            let csw = self.build_csw_register(DataSize::U64);
-
-            self.write_csw_register(csw)?;
+            self.write_csw_register(DataSize::U64)?;
             self.write_tar_register(address)?;
             self.read_drw(&mut buf)?;
         }
@@ -381,8 +377,7 @@ where
             return Err(ArmError::alignment_error(address, 4));
         }
 
-        let csw = self.build_csw_register(DataSize::U32);
-        self.write_csw_register(csw)?;
+        self.write_csw_register(DataSize::U32)?;
 
         while !data.is_empty() {
             let chunk_size = data.len().min(autoincr_max_bytes(address) / 4);
@@ -426,8 +421,7 @@ where
             return Ok(());
         }
 
-        let csw = self.build_csw_register(DataSize::U16);
-        self.write_csw_register(csw)?;
+        self.write_csw_register(DataSize::U16)?;
 
         while !data.is_empty() {
             let chunk_size = data.len().min(autoincr_max_bytes(address) / 2);
@@ -476,8 +470,7 @@ where
             return Ok(());
         }
 
-        let csw = self.build_csw_register(DataSize::U8);
-        self.write_csw_register(csw)?;
+        self.write_csw_register(DataSize::U8)?;
 
         while !data.is_empty() {
             let chunk_size = data.len().min(autoincr_max_bytes(address));
@@ -528,8 +521,7 @@ where
         if !self.ap_information.has_large_data_extension {
             self.write_32(address, &buf)
         } else {
-            let csw = self.build_csw_register(DataSize::U64);
-            self.write_csw_register(csw)?;
+            self.write_csw_register(DataSize::U64)?;
             self.write_tar_register(address)?;
             self.write_drw(&buf)?;
             Ok(())
@@ -556,8 +548,7 @@ where
             address
         );
 
-        let csw = self.build_csw_register(DataSize::U32);
-        self.write_csw_register(csw)?;
+        self.write_csw_register(DataSize::U32)?;
 
         while !data.is_empty() {
             let chunk_size = data.len().min(autoincr_max_bytes(address) / 4);
@@ -605,8 +596,7 @@ where
             address
         );
 
-        let csw = self.build_csw_register(DataSize::U16);
-        self.write_csw_register(csw)?;
+        self.write_csw_register(DataSize::U16)?;
 
         while !data.is_empty() {
             let chunk_size = data.len().min(autoincr_max_bytes(address) / 2);
@@ -659,8 +649,7 @@ where
             address
         );
 
-        let csw = self.build_csw_register(DataSize::U8);
-        self.write_csw_register(csw)?;
+        self.write_csw_register(DataSize::U8)?;
 
         while !data.is_empty() {
             let chunk_size = data.len().min(autoincr_max_bytes(address));
