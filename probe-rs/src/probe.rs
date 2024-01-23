@@ -33,6 +33,7 @@ use crate::{
     Permissions,
 };
 use crate::{Lister, Session};
+use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -758,6 +759,18 @@ pub struct DebugProbeSelector {
     pub product_id: u16,
     /// The the serial number of the debug probe to be used.
     pub serial_number: Option<String>,
+}
+
+impl DebugProbeSelector {
+    pub(crate) fn matches(&self, info: &DeviceInfo) -> bool {
+        info.vendor_id() == self.vendor_id
+            && info.product_id() == self.product_id
+            && self
+                .serial_number
+                .as_ref()
+                .map(|s| info.serial_number() == Some(s))
+                .unwrap_or(true)
+    }
 }
 
 impl TryFrom<&str> for DebugProbeSelector {

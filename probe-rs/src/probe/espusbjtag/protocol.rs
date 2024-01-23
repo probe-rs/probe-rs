@@ -75,22 +75,7 @@ impl ProtocolHandler {
         let device = nusb::list_devices()
             .map_err(ProbeCreationError::Usb)?
             .filter(is_espjtag_device)
-            .find(|device| {
-                // First match the VID & PID.
-                if selector.vendor_id == device.vendor_id()
-                    && selector.product_id == device.product_id()
-                {
-                    // If the VID & PID match, match the serial if one was given.
-                    if let Some(serial) = &selector.serial_number {
-                        device.serial_number() == Some(serial)
-                    } else {
-                        // If no serial was given, the VID & PID match is enough; return the device.
-                        true
-                    }
-                } else {
-                    false
-                }
-            })
+            .find(|device| selector.matches(device))
             .ok_or(ProbeCreationError::NotFound)?;
 
         let device_handle = device.open().map_err(ProbeCreationError::Usb)?;

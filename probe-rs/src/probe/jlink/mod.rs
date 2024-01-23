@@ -44,15 +44,7 @@ impl std::fmt::Debug for JLinkSource {
 impl ProbeDriver for JLinkSource {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         let mut jlinks = jaylink::scan_usb()?
-            .filter(|usb_info| {
-                usb_info.vendor_id() == selector.vendor_id
-                    && usb_info.product_id() == selector.product_id
-                    && selector
-                        .serial_number
-                        .as_ref()
-                        .map(|s| usb_info.serial_number() == Some(s))
-                        .unwrap_or(true)
-            })
+            .filter(|info| selector.matches(info))
             .collect::<Vec<_>>();
 
         if jlinks.is_empty() {
