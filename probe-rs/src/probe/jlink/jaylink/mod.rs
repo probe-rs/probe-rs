@@ -194,6 +194,7 @@ pub enum SwoMode {
 
 bitflags! {
     /// SWO status returned by probe on SWO buffer read.
+    #[derive(Copy, Clone, Debug, Eq, PartialEq)]
     struct SwoStatus: u32 {
         /// The on-probe buffer has overflowed. Device data was lost.
         const OVERRUN = 1 << 0;
