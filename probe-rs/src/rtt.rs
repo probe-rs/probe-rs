@@ -12,7 +12,7 @@
 //!
 //! ```no_run
 //! use std::sync::{Arc, Mutex};
-//! use probe_rs::{Probe, Permissions, Lister};
+//! use probe_rs::{Probe, Permissions, probe::list::Lister};
 //! use probe_rs::rtt::Rtt;
 //!
 //! // First obtain a probe-rs session (see probe-rs documentation for details)

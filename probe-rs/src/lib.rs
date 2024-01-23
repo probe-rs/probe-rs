@@ -11,7 +11,7 @@
 //! ## Halting the attached chip
 //! ```no_run
 //! # use probe_rs::Error;
-//! use probe_rs::{Lister, Probe, Permissions};
+//! use probe_rs::{probe::list::Lister, Probe, Permissions};
 //!
 //! // Get a list of all available debug probes.
 //! let lister = Lister::new();
@@ -121,7 +121,7 @@ pub use crate::session::{Permissions, Session};
 /// to create a new `Probe`:
 ///
 /// ```no_run
-/// use probe_rs::{Lister, Probe};
+/// use probe_rs::{probe::list::Lister, Probe};
 ///
 /// let lister = Lister::new();
 ///

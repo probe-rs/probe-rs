@@ -455,7 +455,7 @@ pub enum DebugProbeSelectorParseError {
 ///
 /// ```
 /// use std::convert::TryInto;
-/// let selector: probe_rs::DebugProbeSelector = "1942:1337:SERIAL".try_into().unwrap();
+/// let selector: probe_rs::probe::DebugProbeSelector = "1942:1337:SERIAL".try_into().unwrap();
 ///
 /// assert_eq!(selector.vendor_id, 0x1942);
 /// assert_eq!(selector.product_id, 0x1337);
@@ -818,6 +818,11 @@ impl DeferredResultSet {
     /// Returns the number of results in the set.
     pub fn len(&self) -> usize {
         self.0.len()
+    }
+
+    /// Returns whether the set is empty.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 
     pub(crate) fn merge_from(&mut self, other: DeferredResultSet) {
