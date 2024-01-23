@@ -14,7 +14,7 @@ use anyhow::{Context, Result};
 use clap::Parser;
 use itertools::Itertools;
 use probe_rs::flashing::{BinOptions, Format, IdfOptions};
-use probe_rs::{Lister, Target};
+use probe_rs::{probe::list::Lister, Target};
 use serde::Serialize;
 use serde::{de::Error, Deserialize, Deserializer};
 use serde_json::Value;

@@ -1,15 +1,16 @@
+//! Probe drivers
 pub(crate) mod arm_jtag;
 pub(crate) mod common;
 pub(crate) mod usb_util;
 
-pub(crate) mod cmsisdap;
-pub(crate) mod espusbjtag;
-pub(crate) mod fake_probe;
-pub(crate) mod ftdi;
-pub(crate) mod jlink;
-pub(crate) mod list;
-pub(crate) mod stlink;
-pub(crate) mod wlink;
+pub mod cmsisdap;
+pub mod espusbjtag;
+pub mod fake_probe;
+pub mod ftdi;
+pub mod jlink;
+pub mod list;
+pub mod stlink;
+pub mod wlink;
 
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
@@ -21,7 +22,7 @@ use crate::probe::common::IdCode;
 use crate::{
     architecture::arm::communication_interface::UninitializedArmProbe, config::RegistryError,
 };
-use crate::{Lister, Probe};
+use crate::{probe::list::Lister, Probe};
 use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
 use std::collections::HashMap;

@@ -15,7 +15,9 @@ use probe_rs::{
         riscv::communication_interface::RiscvCommunicationInterface,
         xtensa::communication_interface::XtensaCommunicationInterface,
     },
-    Lister, MemoryMappedRegister, Probe, WireProtocol,
+    probe::list::Lister,
+    probe::WireProtocol,
+    MemoryMappedRegister, Probe,
 };
 use termtree::Tree;
 

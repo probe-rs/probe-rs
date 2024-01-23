@@ -5,9 +5,9 @@ use nusb::{
 };
 use std::{fmt::Debug, time::Duration};
 
-use crate::{
-    probe::espusbjtag::EspUsbJtagFactory, probe::usb_util::InterfaceExt, DebugProbeError,
-    DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
+use crate::probe::{
+    espusbjtag::EspUsbJtagFactory, usb_util::InterfaceExt, DebugProbeError, DebugProbeInfo,
+    DebugProbeSelector, ProbeCreationError,
 };
 
 const JTAG_PROTOCOL_CAPABILITIES_VERSION: u8 = 1;

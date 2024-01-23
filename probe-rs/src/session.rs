@@ -18,7 +18,7 @@ use crate::{
     },
     config::DebugSequence,
 };
-use crate::{AttachMethod, Core, CoreType, Error, Lister, Probe};
+use crate::{probe::list::Lister, AttachMethod, Core, CoreType, Error, Probe};
 use anyhow::anyhow;
 use std::ops::DerefMut;
 use std::{fmt, sync::Arc, time::Duration};

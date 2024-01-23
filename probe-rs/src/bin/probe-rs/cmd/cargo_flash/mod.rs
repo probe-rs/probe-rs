@@ -2,7 +2,7 @@ mod diagnostics;
 
 use colored::*;
 use diagnostics::render_diagnostics;
-use probe_rs::Lister;
+use probe_rs::probe::list::Lister;
 use std::ffi::OsString;
 use std::{path::PathBuf, process};
 

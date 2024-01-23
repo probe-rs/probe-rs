@@ -1,4 +1,4 @@
-use probe_rs::{Lister, MemoryInterface};
+use probe_rs::{probe::list::Lister, MemoryInterface};
 
 use crate::util::common_options::{ProbeOptions, ReadWriteBitWidth, ReadWriteOptions};
 use crate::util::parse_u64;

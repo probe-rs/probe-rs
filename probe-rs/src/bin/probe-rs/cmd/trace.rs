@@ -3,7 +3,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::time::Instant;
 
-use probe_rs::Lister;
+use probe_rs::probe::list::Lister;
 use probe_rs::MemoryInterface;
 use scroll::{Pwrite, LE};
 

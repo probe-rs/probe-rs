@@ -2,8 +2,8 @@ use std::time::Duration;
 
 use nusb::Interface;
 
-use crate::{
-    probe::usb_util::InterfaceExt, DebugProbeError, DebugProbeSelector, ProbeCreationError,
+use crate::probe::{
+    usb_util::InterfaceExt, DebugProbeError, DebugProbeSelector, ProbeCreationError,
 };
 
 use super::{commands::WchLinkCommand, get_wlink_info, WchLinkError};

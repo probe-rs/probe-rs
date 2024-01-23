@@ -1,6 +1,6 @@
 use probe_rs::rtt::{Channels, Rtt, RttChannel, ScanRegion};
-use probe_rs::{config::TargetSelector, DebugProbeInfo};
-use probe_rs::{Lister, Permissions};
+use probe_rs::{config::TargetSelector, probe::DebugProbeInfo};
+use probe_rs::{probe::list::Lister, Permissions};
 
 use anyhow::{bail, Result};
 use clap::Parser;

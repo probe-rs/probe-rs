@@ -15,9 +15,10 @@ use crate::{
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
             CmsisDapError,
         },
-        BatchCommand, JtagChainItem, ProbeFactory,
+        BatchCommand, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+        JtagChainItem, ProbeFactory,
     },
-    CoreStatus, DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
+    CoreStatus, WireProtocol,
 };
 
 use commands::{
@@ -74,7 +75,7 @@ impl ProbeFactory for CmsisDapFactory {
         )?))
     }
 
-    fn list_probes(&self) -> Vec<crate::DebugProbeInfo> {
+    fn list_probes(&self) -> Vec<DebugProbeInfo> {
         tools::list_cmsisdap_devices()
     }
 }

@@ -47,9 +47,8 @@ use crate::{
     },
     probe::{
         arm_jtag::{ProbeStatistics, RawProtocolIo, SwdSettings},
-        DebugProbe, DebugProbeError, DebugProbeInfo, WireProtocol,
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, WireProtocol,
     },
-    DebugProbeSelector,
 };
 
 const SWO_BUFFER_SIZE: u16 = 128;

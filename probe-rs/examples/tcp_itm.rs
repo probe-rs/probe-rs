@@ -1,5 +1,5 @@
 use probe_rs::architecture::arm::{component::TraceSink, swo::SwoConfig};
-use probe_rs::{Error, Lister, Permissions};
+use probe_rs::{probe::list::Lister, Error, Permissions};
 
 use itm::{Decoder, DecoderOptions, TracePacket};
 

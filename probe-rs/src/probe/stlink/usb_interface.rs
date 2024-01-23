@@ -7,10 +7,7 @@ use crate::probe::{stlink::StlinkError, usb_util::InterfaceExt};
 use std::collections::HashMap;
 
 use super::tools::{is_stlink_device, read_serial_number};
-use crate::{
-    probe::{DebugProbeError, ProbeCreationError},
-    DebugProbeSelector,
-};
+use crate::probe::{DebugProbeError, DebugProbeSelector, ProbeCreationError};
 
 /// The USB Command packet size.
 const CMD_LEN: usize = 16;

@@ -2,7 +2,8 @@ use std::cell::RefCell;
 
 use probe_rs::{
     integration::{FakeProbe, ProbeLister},
-    DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe,
+    probe::{DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError},
+    Probe,
 };
 
 #[derive(Debug)]
@@ -32,7 +33,7 @@ impl ProbeLister for TestLister {
             Ok(Probe::from_specific_probe(Box::new(probe)))
         } else {
             Err(DebugProbeError::ProbeCouldNotBeCreated(
-                probe_rs::ProbeCreationError::CouldNotOpen,
+                ProbeCreationError::CouldNotOpen,
             ))
         }
     }

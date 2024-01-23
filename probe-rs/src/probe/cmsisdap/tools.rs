@@ -1,7 +1,6 @@
 use super::CmsisDapDevice;
-use crate::{
-    probe::{cmsisdap::CmsisDapFactory, DebugProbeInfo, ProbeCreationError},
-    DebugProbeSelector,
+use crate::probe::{
+    cmsisdap::CmsisDapFactory, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
 };
 use hidapi::HidApi;
 use nusb::{

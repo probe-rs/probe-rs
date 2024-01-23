@@ -24,7 +24,8 @@ use crate::{
 use anyhow::{anyhow, Context};
 use probe_rs::{
     flashing::{DownloadOptions, FileDownloadError, FlashProgress},
-    Architecture, CoreStatus, Lister,
+    probe::list::Lister,
+    Architecture, CoreStatus,
 };
 use std::{
     cell::RefCell,
@@ -916,11 +917,13 @@ mod test {
     use std::path::PathBuf;
 
     use probe_rs::architecture::arm::ApAddress;
+    use probe_rs::probe::{
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory,
+    };
     use probe_rs::{
         integration::{FakeProbe, Operation},
-        Lister,
+        probe::list::Lister,
     };
-    use probe_rs::{DebugProbeInfo, ProbeFactory};
     use serde_json::json;
     use time::UtcOffset;
 
@@ -949,8 +952,8 @@ mod test {
     impl ProbeFactory for MockProbeFactory {
         fn open(
             &self,
-            _selector: &probe_rs::DebugProbeSelector,
-        ) -> Result<Box<dyn probe_rs::DebugProbe>, probe_rs::DebugProbeError> {
+            _selector: &DebugProbeSelector,
+        ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
             todo!()
         }
 

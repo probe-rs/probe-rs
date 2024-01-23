@@ -1,4 +1,4 @@
-use probe_rs::Lister;
+use probe_rs::probe::list::Lister;
 use time::UtcOffset;
 
 #[derive(clap::Parser)]

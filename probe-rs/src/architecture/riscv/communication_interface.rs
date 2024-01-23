@@ -13,8 +13,9 @@ use crate::{
     core::RegisterId,
     memory::valid_32bit_address,
     memory_mapped_bitfield_register,
+    probe::DebugProbeError,
     probe::{DeferredResultIndex, JTAGAccess},
-    DebugProbeError, Error as ProbeRsError, MemoryInterface, MemoryMappedRegister, Probe,
+    Error as ProbeRsError, MemoryInterface, MemoryMappedRegister, Probe,
 };
 use std::{
     collections::HashMap,

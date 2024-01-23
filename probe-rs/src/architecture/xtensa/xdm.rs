@@ -2,11 +2,12 @@ use std::fmt::Debug;
 
 use crate::{
     architecture::xtensa::arch::instruction::{Instruction, InstructionEncoding},
+    probe::DebugProbeError,
     probe::{
         CommandResult, DeferredResultIndex, DeferredResultSet, JTAGAccess, JtagCommandQueue,
         JtagWriteCommand,
     },
-    DebugProbeError, Error as ProbeRsError,
+    Error as ProbeRsError,
 };
 
 use super::communication_interface::XtensaError;

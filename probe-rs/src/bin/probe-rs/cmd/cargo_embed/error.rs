@@ -1,4 +1,4 @@
-use probe_rs::{architecture::arm::ap::AccessPortError, DebugProbeError};
+use probe_rs::{architecture::arm::ap::AccessPortError, probe::DebugProbeError};
 use std::error::Error;
 use std::fmt;
 

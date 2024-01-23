@@ -1,6 +1,5 @@
-use crate::{
-    probe::ProbeFactory, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe,
-    ProbeCreationError,
+use crate::probe::{
+    DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError, ProbeFactory,
 };
 
 use super::{cmsisdap, espusbjtag, ftdi, jlink, stlink, wlink};

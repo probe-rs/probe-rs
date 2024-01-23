@@ -6,7 +6,6 @@ use self::usb_interface::{StLinkUsb, StLinkUsbDevice};
 use super::{DebugProbe, DebugProbeError, ProbeCreationError, WireProtocol};
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::{valid_32bit_arm_address, ArmError};
-use crate::probe::ProbeFactory;
 use crate::{
     architecture::arm::{
         ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, IDR},
@@ -18,7 +17,8 @@ use crate::{
         ApAddress, ApInformation, ArmChipInfo, DapAccess, DpAddress, Pins, SwoAccess, SwoConfig,
         SwoMode,
     },
-    DebugProbeSelector, Error as ProbeRsError, Probe,
+    probe::{DebugProbeInfo, DebugProbeSelector, ProbeFactory},
+    Error as ProbeRsError, Probe,
 };
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use probe_rs_target::ScanChainElement;
@@ -69,7 +69,7 @@ impl ProbeFactory for StLinkFactory {
         Ok(Box::new(stlink))
     }
 
-    fn list_probes(&self) -> Vec<crate::DebugProbeInfo> {
+    fn list_probes(&self) -> Vec<DebugProbeInfo> {
         tools::list_stlink_devices()
     }
 }

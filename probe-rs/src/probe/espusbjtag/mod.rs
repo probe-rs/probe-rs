@@ -9,8 +9,11 @@ use crate::{
         riscv::communication_interface::{RiscvCommunicationInterface, RiscvError},
         xtensa::communication_interface::XtensaCommunicationInterface,
     },
-    probe::{common::RawJtagIo, ProbeFactory},
-    DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
+    probe::{
+        common::RawJtagIo, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+        ProbeFactory,
+    },
+    WireProtocol,
 };
 use bitvec::prelude::*;
 
@@ -38,7 +41,7 @@ impl ProbeFactory for EspUsbJtagFactory {
         }))
     }
 
-    fn list_probes(&self) -> Vec<crate::DebugProbeInfo> {
+    fn list_probes(&self) -> Vec<DebugProbeInfo> {
         protocol::list_espjtag_devices()
     }
 }

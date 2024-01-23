@@ -10,12 +10,9 @@ use std::{
 use bitfield::bitfield;
 
 use super::communication_interface::RiscvError;
-use crate::{
-    probe::{
-        CommandResult, DeferredResultIndex, DeferredResultSet, JTAGAccess, JtagCommandQueue,
-        JtagWriteCommand,
-    },
-    DebugProbeError,
+use crate::probe::{
+    CommandResult, DebugProbeError, DeferredResultIndex, DeferredResultSet, JTAGAccess,
+    JtagCommandQueue, JtagWriteCommand,
 };
 
 /// Access to the Debug Transport Module (DTM),
