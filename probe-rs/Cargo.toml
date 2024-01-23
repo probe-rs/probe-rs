@@ -216,4 +216,4 @@ replace = "[unreleased]: https://github.com/probe-rs/probe-rs/compare/v{{version
 
 # Config for 'cargo dist'
 [package.metadata.dist]
-features = ["cli", "vendored-libusb"]
+features = ["cli"]
