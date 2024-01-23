@@ -2011,27 +2011,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a08173bc88b7955d1b3145aa561539096c421ac8debde8cbc3612ec635fee29b"
 
 [[package]]
-name = "libftdi1-source-lgpl"
-version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4412918d38c7b78f59c5b0cefec46e2099876dfd95f07f9bb2269d1d7b09fdb1"
-
-[[package]]
-name = "libftdi1-sys"
-version = "1.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "575286f9af093f56c7805f4f94874871b84216d1545f499d2cbad9e370000fe7"
-dependencies = [
- "cc",
- "cfg-if",
- "libc",
- "libftdi1-source-lgpl",
- "libusb1-sys",
- "pkg-config",
- "vcpkg",
-]
-
-[[package]]
 name = "libudev"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2049,18 +2028,6 @@ checksum = "3c8469b4a23b962c1396b9b451dda50ef5b283e8dd309d69033475fa9b334324"
 dependencies = [
  "libc",
  "pkg-config",
-]
-
-[[package]]
-name = "libusb1-sys"
-version = "0.6.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f9d0e2afce4245f2c9a418511e5af8718bcaf2fa408aefb259504d1a9cb25f27"
-dependencies = [
- "cc",
- "libc",
- "pkg-config",
- "vcpkg",
 ]
 
 [[package]]
@@ -2676,7 +2643,6 @@ dependencies = [
  "itm",
  "jep106",
  "kmp",
- "libftdi1-sys",
  "log",
  "miniz_oxide",
  "num-traits",
@@ -4487,12 +4453,6 @@ name = "valuable"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "830b7e5d4d90034032940e4ace0d9a9a057e7a45cd94e6c007832e39edb82f6d"
-
-[[package]]
-name = "vcpkg"
-version = "0.2.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426"
 
 [[package]]
 name = "version_check"

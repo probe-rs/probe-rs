@@ -1,86 +1,83 @@
-use crate::architecture::riscv::communication_interface::RiscvError;
-use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
-use crate::architecture::{
-    arm::communication_interface::UninitializedArmProbe,
-    riscv::communication_interface::RiscvCommunicationInterface,
-};
-use crate::probe::common::{JtagDriverState, RawJtagIo};
 use crate::{
-    probe::{DebugProbe, JTAGAccess, ProbeCreationError, ProbeDriver, ScanChainElement},
+    architecture::{
+        arm::communication_interface::UninitializedArmProbe,
+        riscv::communication_interface::{RiscvCommunicationInterface, RiscvError},
+        xtensa::communication_interface::XtensaCommunicationInterface,
+    },
+    probe::{
+        common::{JtagDriverState, RawJtagIo},
+        DebugProbe, JTAGAccess, ProbeCreationError, ProbeDriver, ScanChainElement,
+    },
     DebugProbeError, DebugProbeInfo, DebugProbeSelector, WireProtocol,
 };
 use anyhow::anyhow;
 use bitvec::prelude::*;
 use nusb::DeviceInfo;
-use std::io::{Read, Write};
-use std::time::Duration;
-
-mod ftdi_impl;
-use ftdi_impl as ftdi;
+use std::{
+    io::{Read, Write},
+    time::{Duration, Instant},
+};
 
 mod command_compacter;
+mod ftdaye;
 
 use command_compacter::Command;
-
-impl From<ftdi::Error> for DebugProbeError {
-    fn from(e: ftdi::Error) -> Self {
-        DebugProbeError::ProbeSpecific(Box::new(e))
-    }
-}
+use ftdaye::{error::FtdiError, ChipType};
 
 #[derive(Debug)]
 struct JtagAdapter {
-    device: ftdi::Device,
-    ftdi: FtdiDevice,
+    device: ftdaye::Device,
     speed_khz: u32,
-
-    buffer_size: usize,
 
     command: Command,
     commands: Vec<u8>,
     in_bit_counts: Vec<usize>,
     in_bits: BitVec<u8, Lsb0>,
+    ftdi: FtdiProperties,
 }
 
 impl JtagAdapter {
-    fn open(ftdi: &FtdiDevice) -> Result<Self, ftdi::Error> {
-        let mut builder = ftdi::Builder::new();
-        builder.set_interface(ftdi::Interface::A)?;
-        let device = builder.usb_open(ftdi.id.0, ftdi.id.1)?;
+    fn open(ftdi: FtdiDevice, usb_device: DeviceInfo) -> Result<Self, DebugProbeError> {
+        let device = ftdaye::Builder::new()
+            .with_interface(ftdaye::Interface::A)
+            .with_read_timeout(Duration::from_secs(5))
+            .with_write_timeout(Duration::from_secs(5))
+            .usb_open(usb_device)?;
+
+        let ftdi = FtdiProperties::try_from((ftdi, device.chip_type()))?;
 
         Ok(Self {
             device,
-            ftdi: ftdi.clone(),
             speed_khz: 1000,
-            buffer_size: ftdi.buffer_size,
             command: Command::default(),
             commands: vec![],
             in_bit_counts: vec![],
             in_bits: BitVec::new(),
+            ftdi,
         })
     }
 
-    pub fn attach(&mut self) -> Result<(), ftdi::Error> {
+    pub fn attach(&mut self) -> Result<(), FtdiError> {
         self.device.usb_reset()?;
+        // 0x0B configures pins for JTAG
+        self.device.set_bitmode(0x0b, ftdaye::BitMode::Mpsse)?;
         self.device.set_latency_timer(1)?;
-        self.device.set_bitmode(0x0b, ftdi::BitMode::Mpsse)?;
         self.device.usb_purge_buffers()?;
 
         let mut junk = vec![];
         let _ = self.device.read_to_end(&mut junk);
 
-        // Minimal values, may not work with all probes
-        let output: u16 = 0x0008;
-        let direction: u16 = 0x000b;
-        self.device
-            .write_all(&[0x80, output as u8, direction as u8])?;
-        self.device
-            .write_all(&[0x82, (output >> 8) as u8, (direction >> 8) as u8])?;
+        // TMS starts high
+        let output = 0x0008;
+
+        // TMS, TDO and TCK are outputs
+        let direction = 0x000b;
+
+        self.device.set_pins(output, direction)?;
 
         self.apply_clock_speed(self.speed_khz)?;
 
-        // Disable loopback
-        self.device.write_all(&[0x85])?;
+        self.device.disable_loopback()?;
 
         Ok(())
     }
@@ -94,28 +91,23 @@ impl JtagAdapter {
         self.speed_khz
     }
 
-    fn apply_clock_speed(&mut self, speed_khz: u32) -> Result<u32, ftdi::Error> {
+    fn apply_clock_speed(&mut self, speed_khz: u32) -> Result<u32, FtdiError> {
         // Disable divide-by-5 mode if available
         if self.ftdi.has_divide_by_5 {
-            self.device.write_all(&[0x8A])?;
+            self.device.disable_divide_by_5()?;
         } else {
             // Force enable divide-by-5 mode if not available or unknown
-            self.device.write_all(&[0x8B])?;
+            self.device.enable_divide_by_5()?;
         }
 
         // If `speed_khz` is not a divisor of the maximum supported speed, we need to round up
-        let is_exact = self.ftdi.max_clock_frequency_khz % speed_khz == 0;
+        let is_exact = self.ftdi.max_clock % speed_khz == 0;
 
         // If `speed_khz` is 0, use the maximum supported speed
-        let divisor = (self
-            .ftdi
-            .max_clock_frequency_khz
-            .checked_div(speed_khz)
-            .unwrap_or(1)
-            - is_exact as u32)
-            .min(0xFFFF);
+        let divisor =
+            (self.ftdi.max_clock.checked_div(speed_khz).unwrap_or(1) - is_exact as u32).min(0xFFFF);
 
-        let actual_speed = self.ftdi.max_clock_frequency_khz / (divisor + 1);
+        let actual_speed = self.ftdi.max_clock / (divisor + 1);
 
         tracing::info!(
             "Setting speed to {} kHz (divisor: {}, actual speed: {} kHz)",
@@ -124,8 +116,7 @@ impl JtagAdapter {
             actual_speed
         );
 
-        let [l, h] = (divisor as u16).to_le_bytes();
-        self.device.write_all(&[0x86, l, h])?;
+        self.device.configure_clock_divider(divisor as u16)?;
 
         self.speed_khz = actual_speed;
         Ok(actual_speed)
@@ -136,7 +127,7 @@ impl JtagAdapter {
             return Ok(());
         }
 
-        let mut t0 = std::time::Instant::now();
+        let mut t0 = Instant::now();
         let timeout = Duration::from_millis(10);
 
         let mut reply = Vec::with_capacity(self.in_bit_counts.len());
@@ -153,10 +144,10 @@ impl JtagAdapter {
             let read = self
                 .device
                 .read_to_end(&mut reply)
-                .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
+                .map_err(FtdiError::from)?;
 
             if read > 0 {
-                t0 = std::time::Instant::now();
+                t0 = Instant::now();
             }
         }
 
@@ -189,10 +180,9 @@ impl JtagAdapter {
     fn append_command(&mut self, command: Command) -> Result<(), DebugProbeError> {
         tracing::debug!("Appending {:?}", command);
         // 1 byte is reserved for the send immediate command
-        if self.commands.len() + command.len() + 1 >= self.buffer_size {
+        if self.commands.len() + command.len() + 1 >= self.ftdi.buffer_size {
             self.send_buffer()?;
-            self.read_response()
-                .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
+            self.read_response()?;
         }
 
         command.add_captured_bits(&mut self.in_bit_counts);
@@ -231,7 +221,7 @@ impl JtagAdapter {
 
         self.device
             .write_all(&self.commands)
-            .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
+            .map_err(FtdiError::from)?;
 
         self.commands.clear();
 
@@ -256,40 +246,31 @@ impl std::fmt::Debug for FtdiProbeSource {
 impl ProbeDriver for FtdiProbeSource {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         // Only open FTDI-compatible probes
-
-        let device = match nusb::list_devices() {
-            Ok(devices) => {
-                let mut matched = None;
-                for device in devices.filter(|info| selector.matches(info)) {
-                    // FTDI devices don't have serial numbers, so we can only match on VID/PID.
-                    // Bail if we find more than one matching device.
-                    if matched.is_some() {
-                        return Err(DebugProbeError::ProbeCouldNotBeCreated(
-                            ProbeCreationError::Other("Multiple FTDI devices found. Please unplug all but one FTDI device."),
-                        ));
-                    }
-
-                    matched = FTDI_COMPAT_DEVICES
-                        .iter()
-                        .find(|ftdi| ftdi.matches(&device));
-                }
-
-                matched
-            }
-            Err(_) => None,
-        };
-
-        let Some(device) = device else {
+        let Some(ftdi) = FTDI_COMPAT_DEVICES
+            .iter()
+            .find(|ftdi| ftdi.id == (selector.vendor_id, selector.product_id))
+            .copied()
+        else {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::NotFound,
             ));
         };
 
-        let adapter =
-            JtagAdapter::open(device).map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
+        let mut probes = nusb::list_devices()
+            .map_err(FtdiError::from)?
+            .filter(|usb_info| selector.matches(usb_info))
+            .collect::<Vec<_>>();
+
+        if probes.is_empty() {
+            return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                ProbeCreationError::NotFound,
+            ));
+        } else if probes.len() > 1 {
+            tracing::warn!("More than one matching FTDI probe was found. Opening the first one.");
+        }
 
         let probe = FtdiProbe {
-            adapter,
+            adapter: JtagAdapter::open(ftdi, probes.pop().unwrap())?,
             jtag_state: JtagDriverState::default(),
         };
         tracing::debug!("opened probe: {:?}", probe);
@@ -348,18 +329,23 @@ impl DebugProbe for FtdiProbe {
     }
 
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        tracing::error!("FTDI target_reset");
-        unimplemented!()
+        // TODO we could add this by using a GPIO. However, different probes may connect
+        // different pins (if any) to the reset line, so we would need to make this configurable.
+        Err(DebugProbeError::NotImplemented(
+            "target_reset is not implemented for FTDI probes",
+        ))
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
-        tracing::error!("FTDI target_reset_assert");
-        unimplemented!()
+        Err(DebugProbeError::NotImplemented(
+            "target_reset_assert is not implemented for FTDI probes",
+        ))
     }
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
-        tracing::error!("FTDI target_reset_deassert");
-        unimplemented!()
+        Err(DebugProbeError::NotImplemented(
+            "target_reset_deassert is not implemented for FTDI probes",
+        ))
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
@@ -378,6 +364,7 @@ impl DebugProbe for FtdiProbe {
     fn try_get_riscv_interface(
         self: Box<Self>,
     ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
+        // TODO: send 0x97 to disable adaptive clocking once ARM support is added
         match RiscvCommunicationInterface::new(self) {
             Ok(interface) => Ok(interface),
             Err((probe, err)) => Err((probe.into_probe(), err)),
@@ -396,13 +383,15 @@ impl DebugProbe for FtdiProbe {
         self: Box<Self>,
     ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
     {
+        // TODO we could implement this. We should enable adaptive clocking by sending 0x96,
+        // which connects RTCK to GPIOL3.
         todo!()
     }
 
     fn try_get_xtensa_interface(
         self: Box<Self>,
     ) -> Result<XtensaCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
-        // This probe is intended for Xtensa.
+        // TODO: send 0x97 to disable adaptive clocking once ARM support is added
         match XtensaCommunicationInterface::new(self) {
             Ok(interface) => Ok(interface),
             Err((probe, err)) => Err((probe.into_probe(), err)),
@@ -442,109 +431,137 @@ impl RawJtagIo for FtdiProbe {
         self.adapter.flush()
     }
 }
+/// Known properties associated to particular FTDI chip types.
+#[derive(Debug)]
+struct FtdiProperties {
+    /// The size of the device's RX buffer.
+    ///
+    /// We can push down this many bytes to the device in one batch.
+    buffer_size: usize,
 
-#[derive(Debug, Clone)]
+    /// The maximum TCK clock speed supported by the device, in kHz.
+    max_clock: u32,
+
+    /// Whether the device supports the divide-by-5 clock mode for "FT2232D compatibility".
+    ///
+    /// Newer devices have 60MHz internal clocks, instead of 12MHz, however, they still
+    /// fall back to 12MHz by default. This flag indicates whether we can disable the clock divider.
+    has_divide_by_5: bool,
+}
+
+impl TryFrom<(FtdiDevice, Option<ChipType>)> for FtdiProperties {
+    type Error = FtdiError;
+
+    fn try_from((ftdi, chip_type): (FtdiDevice, Option<ChipType>)) -> Result<Self, Self::Error> {
+        let chip_type = match chip_type {
+            Some(ty) => ty,
+            None => {
+                tracing::warn!("Unknown FTDI chip. Assuming {:?}", ftdi.fallback_chip_type);
+                ftdi.fallback_chip_type
+            }
+        };
+
+        let properties = match chip_type {
+            ChipType::FT2232H | ChipType::FT4232H => Self {
+                buffer_size: 4096,
+                max_clock: 30_000,
+                has_divide_by_5: true,
+            },
+            ChipType::FT232H => Self {
+                buffer_size: 1024,
+                max_clock: 6_000,
+                has_divide_by_5: true,
+            },
+            ChipType::FT2232C => Self {
+                buffer_size: 128,
+                max_clock: 6_000,
+                has_divide_by_5: false,
+            },
+            not_mpsse => {
+                tracing::warn!("Unsupported FTDI chip: {:?}", not_mpsse);
+                return Err(FtdiError::UnsupportedChipType(not_mpsse));
+            }
+        };
+
+        Ok(properties)
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 struct FtdiDevice {
     /// The (VID, PID) pair of this device.
     id: (u16, u16),
 
-    /// If set, only an exact match of this product string will be accepted.
-    product_string: Option<&'static str>,
-
-    /// The size of the device's TX/RX buffers.
-    buffer_size: usize,
-
-    /// The maximum output clock frequency of the device in kHz.
-    max_clock_frequency_khz: u32,
-
-    /// Whether the device supports a divide-by-5 mode for FT2232D compatibility.
-    has_divide_by_5: bool,
+    /// FTDI chip type to use if the device is not recognized.
+    ///
+    /// "FTDI compatible" devices may use the same VID/PID pair as an FTDI device, but
+    /// they may be implemented by a completely third party solution. In this case,
+    /// we still try the same `bcdDevice` based detection, but if it fails, we fall back
+    /// to this chip type.
+    fallback_chip_type: ChipType,
 }
-
-const BUFFER_SIZE_FTDI2232C_D: usize = 128;
-const BUFFER_SIZE_FTDI232H: usize = 1024;
-const BUFFER_SIZE_FTDI2232H: usize = 4096;
 
 impl FtdiDevice {
-    const fn ft2232cd(id: (u16, u16), product_string: Option<&'static str>) -> Self {
-        Self {
-            id,
-            product_string,
-            buffer_size: BUFFER_SIZE_FTDI2232C_D,
-            max_clock_frequency_khz: 6_000,
-            has_divide_by_5: false,
-        }
-    }
-
-    const fn ft232h(id: (u16, u16), product_string: Option<&'static str>) -> Self {
-        Self {
-            id,
-            product_string,
-            buffer_size: BUFFER_SIZE_FTDI232H,
-            max_clock_frequency_khz: 30_000,
-            has_divide_by_5: true,
-        }
-    }
-
-    const fn ft2232h(id: (u16, u16), product_string: Option<&'static str>) -> Self {
-        Self {
-            id,
-            product_string,
-            buffer_size: BUFFER_SIZE_FTDI2232H,
-            max_clock_frequency_khz: 30_000,
-            has_divide_by_5: true,
-        }
-    }
-
-    const fn ft4232h(id: (u16, u16), product_string: Option<&'static str>) -> FtdiDevice {
-        Self {
-            id,
-            product_string,
-            buffer_size: BUFFER_SIZE_FTDI2232H,
-            max_clock_frequency_khz: 30_000,
-            has_divide_by_5: true,
-        }
-    }
-
     fn matches(&self, device: &DeviceInfo) -> bool {
         self.id == (device.vendor_id(), device.product_id())
-            && (self.product_string.is_none() || self.product_string == device.product_string())
     }
 }
 
-/// Known FTDI device variants. Matched from first to last, meaning that more specific devices
-/// (i.e. those wih product strings) should be listed first.
+/// Known FTDI device variants.
 static FTDI_COMPAT_DEVICES: &[FtdiDevice] = &[
-    // FTDI Ltd. FT2232H Dual UART/FIFO IC
-    FtdiDevice::ft2232h((0x0403, 0x6010), Some("Dual RS232-HS")),
-    // Unidentified FTDI Ltd. FT2232C/D/H Dual UART/FIFO IC -> fall back to FT2232D
-    FtdiDevice::ft2232cd((0x0403, 0x6010), None),
+    //
+    // --- FTDI VID/PID pairs ---
+    //
+    // FTDI Ltd. FT2232C/D/H Dual UART/FIFO IC
+    FtdiDevice {
+        id: (0x0403, 0x6010),
+        fallback_chip_type: ChipType::FT2232C,
+    },
     // FTDI Ltd. FT4232H Quad HS USB-UART/FIFO IC
-    FtdiDevice::ft4232h((0x0403, 0x6011), None),
+    FtdiDevice {
+        id: (0x0403, 0x6011),
+        fallback_chip_type: ChipType::FT4232H,
+    },
     // FTDI Ltd. FT232H Single HS USB-UART/FIFO IC
-    FtdiDevice::ft232h((0x0403, 0x6014), None),
-    // Olimex Ltd. ARM-USB-OCD JTAG interface, FTDI2232C
-    FtdiDevice::ft2232cd((0x15ba, 0x0003), None),
-    // Olimex Ltd. ARM-USB-TINY JTAG interface, FTDI2232C
-    FtdiDevice::ft2232cd((0x15ba, 0x0004), None),
-    // Olimex Ltd. ARM-USB-TINY-H JTAG interface, FTDI2232H
-    FtdiDevice::ft2232h((0x15ba, 0x002a), None),
-    // Olimex Ltd. ARM-USB-OCD-H JTAG interface, FTDI2232H
-    FtdiDevice::ft2232h((0x15ba, 0x002b), None),
+    FtdiDevice {
+        id: (0x0403, 0x6014),
+        fallback_chip_type: ChipType::FT232H,
+    },
+    //
+    // --- Third-party VID/PID pairs ---
+    //
+    // Olimex Ltd. ARM-USB-OCD
+    FtdiDevice {
+        id: (0x15ba, 0x0003),
+        fallback_chip_type: ChipType::FT2232C,
+    },
+    // Olimex Ltd. ARM-USB-TINY
+    FtdiDevice {
+        id: (0x15ba, 0x0004),
+        fallback_chip_type: ChipType::FT2232C,
+    },
+    // Olimex Ltd. ARM-USB-TINY-H
+    FtdiDevice {
+        id: (0x15ba, 0x002a),
+        fallback_chip_type: ChipType::FT2232H,
+    },
+    // Olimex Ltd. ARM-USB-OCD-H
+    FtdiDevice {
+        id: (0x15ba, 0x002b),
+        fallback_chip_type: ChipType::FT2232H,
+    },
 ];
 
 fn get_device_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
-    if !FTDI_COMPAT_DEVICES.iter().any(|ftdi| ftdi.matches(device)) {
-        return None;
-    }
-
-    Some(DebugProbeInfo {
-        identifier: device.product_string().unwrap_or("FTDI").to_string(),
-        vendor_id: device.vendor_id(),
-        product_id: device.product_id(),
-        serial_number: device.serial_number().map(|s| s.to_string()),
-        probe_type: &FtdiProbeSource,
-        hid_interface: None,
+    FTDI_COMPAT_DEVICES.iter().find_map(|ftdi| {
+        ftdi.matches(device).then(|| DebugProbeInfo {
+            identifier: device.product_string().unwrap_or("FTDI").to_string(),
+            vendor_id: device.vendor_id(),
+            product_id: device.product_id(),
+            serial_number: device.serial_number().map(|s| s.to_string()),
+            probe_type: &FtdiProbeSource,
+            hid_interface: None,
+        })
     })
 }
 

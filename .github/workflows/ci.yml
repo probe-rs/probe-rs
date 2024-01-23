@@ -31,10 +31,10 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Install libusb, libudev (linux)
+      - name: Install libudev (linux)
         run: |
           sudo apt update
-          sudo apt install -y libusb-1.0-0-dev libudev-dev
+          sudo apt install -y libudev-dev
         # Only install on Ubuntu
         if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-20.04')
 
@@ -69,10 +69,10 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Install libusb (linux)
+      - name: Install libudev (linux)
         run: |
           sudo apt update
-          sudo apt install -y libusb-1.0-0-dev libudev-dev
+          sudo apt install -y libudev-dev
         # Only install on Ubuntu
         if: matrix.os == 'ubuntu-latest'
 
@@ -107,10 +107,10 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Install libusb
+      - name: Install libudev
         run: |
           sudo apt update
-          sudo apt install -y libusb-1.0-0-dev libudev-dev
+          sudo apt install -y libudev-dev
 
       - uses: ./.github/actions/setup
         with:
@@ -135,10 +135,10 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Install libusb
+      - name: Install libudev
         run: |
           sudo apt update
-          sudo apt install -y libusb-1.0-0-dev libudev-dev
+          sudo apt install -y libudev-dev
 
       - uses: ./.github/actions/setup
 
