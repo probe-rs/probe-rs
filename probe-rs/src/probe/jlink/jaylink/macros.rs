@@ -26,6 +26,7 @@ macro_rules! enum_and_set {
         }
 
         ::bitflags::bitflags! {
+            #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
             struct $flags_name: $flags_ty {
                 $(
                     const $name = 1 << $id;
