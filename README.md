@@ -147,10 +147,10 @@ Building requires Rust and Cargo which can be installed [using rustup](https://r
 
 ```console
 # Ubuntu
-> sudo apt install -y libudev-dev libssl-dev
+> sudo apt install -y libudev-dev
 
 # Fedora
-> sudo dnf install -y libudev-devel openssl-devel
+> sudo dnf install -y libudev-devel
 ```
 
 See [the vcpkg crate documentation](https://docs.rs/vcpkg/) for more information about configuring vcpkg with rust.
