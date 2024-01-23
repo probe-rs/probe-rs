@@ -3,11 +3,11 @@
 #[macro_use]
 mod macros;
 mod bits;
-mod capabilities;
+pub mod capabilities;
 mod error;
 mod interface;
 mod speed;
-mod swo;
+pub mod swo;
 
 use std::convert::TryFrom;
 use std::iter;
@@ -54,6 +54,7 @@ use crate::{
 const SWO_BUFFER_SIZE: u16 = 128;
 const TIMEOUT_DEFAULT: Duration = Duration::from_millis(500);
 
+/// Factory to create [`JLink`] probes.
 pub struct JLinkFactory;
 
 impl std::fmt::Debug for JLinkFactory {
@@ -299,7 +300,8 @@ enum Command {
     WriteConfig = 0xF3,
 }
 
-pub(crate) struct JLink {
+/// A J-Link probe.
+pub struct JLink {
     handle: nusb::Interface,
 
     read_ep: u8,
@@ -344,6 +346,11 @@ impl fmt::Debug for JLink {
 }
 
 impl JLink {
+    /// Returns the supported J-Link capabilities.
+    pub fn capabilites(&self) -> Capabilities {
+        self.caps
+    }
+
     /// Reads the advertised capabilities from the device.
     fn fill_capabilities(&mut self) -> Result<(), JlinkError> {
         self.write_cmd(&[Command::GetCaps as u8])?;
@@ -1116,13 +1123,13 @@ impl TryFrom<Interface> for WireProtocol {
     }
 }
 
-/// A hardware version returned by [`JayLink::read_hardware_version`].
+/// A hardware version returned by [`JLink::read_hardware_version`].
 ///
 /// Note that the reported hardware version does not allow reliable feature detection, since
 /// embedded J-Link probes might return a hardware version of 1.0.0 despite supporting SWD and other
 /// much newer features.
 #[derive(Debug)]
-pub struct HardwareVersion(u32);
+struct HardwareVersion(u32);
 
 impl HardwareVersion {
     fn from_u32(raw: u32) -> Self {
@@ -1169,7 +1176,7 @@ impl fmt::Display for HardwareVersion {
 /// The hardware/product type of the device.
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum HardwareType {
+enum HardwareType {
     JLink,
     JTrace,
     Flasher,

@@ -1,3 +1,5 @@
+//! Listing probes of various types.
+
 use crate::probe::{
     DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError, ProbeFactory,
 };
@@ -51,6 +53,7 @@ pub trait ProbeLister: std::fmt::Debug {
     fn list_all(&self) -> Vec<DebugProbeInfo>;
 }
 
+/// Default lister implementation that includes all built-in probe drivers.
 #[derive(Debug, PartialEq, Eq)]
 pub struct AllProbesLister;
 
@@ -80,6 +83,7 @@ impl AllProbesLister {
         &wlink::WchLinkFactory,
     ];
 
+    /// Create a new lister with all built-in probe drivers.
     pub const fn new() -> Self {
         Self
     }

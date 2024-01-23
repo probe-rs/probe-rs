@@ -75,7 +75,8 @@ impl std::fmt::Debug for StLinkUsbDevice {
     }
 }
 
-pub(crate) trait StLinkUsb: std::fmt::Debug {
+pub trait StLinkUsb: std::fmt::Debug {
+    /// Writes to the probe and reads back data if needed.
     fn write(
         &mut self,
         cmd: &[u8],
@@ -88,6 +89,7 @@ pub(crate) trait StLinkUsb: std::fmt::Debug {
     /// STLink does not respond to USB requests.
     fn reset(&mut self) -> Result<(), DebugProbeError>;
 
+    /// Reads SWO data from the probe.
     fn read_swo(
         &mut self,
         read_data: &mut [u8],

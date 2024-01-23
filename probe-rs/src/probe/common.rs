@@ -633,7 +633,7 @@ fn prepare_write_register(
 }
 
 impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
-    fn scan_chain(&mut self) -> Result<Vec<super::JtagChainItem>, DebugProbeError> {
+    fn scan_chain(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError> {
         const MAX_CHAIN: usize = 8;
 
         self.reset_jtag_state_machine()?;

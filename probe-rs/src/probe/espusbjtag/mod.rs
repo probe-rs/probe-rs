@@ -1,3 +1,4 @@
+//! ESP USB JTAG probe implementation.
 mod protocol;
 
 use crate::{
@@ -23,6 +24,7 @@ use super::{common::JtagDriverState, JTAGAccess};
 
 use probe_rs_target::ScanChainElement;
 
+/// Probe factory for USB JTAG interfaces built into certain ESP32 chips.
 pub struct EspUsbJtagFactory;
 
 impl std::fmt::Debug for EspUsbJtagFactory {
@@ -46,8 +48,9 @@ impl ProbeFactory for EspUsbJtagFactory {
     }
 }
 
+/// A USB JTAG interface built into certain ESP32 chips.
 #[derive(Debug)]
-pub(crate) struct EspUsbJtag {
+pub struct EspUsbJtag {
     protocol: ProtocolHandler,
 
     jtag_state: JtagDriverState,

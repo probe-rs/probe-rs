@@ -1,5 +1,6 @@
-pub mod commands;
-pub mod tools;
+//! CMSIS-DAP probe implementation.
+mod commands;
+mod tools;
 
 use crate::{
     architecture::arm::{
@@ -60,6 +61,7 @@ use bitvec::prelude::*;
 
 use super::common::{extract_idcodes, extract_ir_lengths, ScanChainError};
 
+/// A factory for creating [`CmsisDap`] probes.
 pub struct CmsisDapFactory;
 
 impl std::fmt::Debug for CmsisDapFactory {
@@ -80,8 +82,9 @@ impl ProbeFactory for CmsisDapFactory {
     }
 }
 
+/// A CMSIS-DAP probe.
 pub struct CmsisDap {
-    pub device: CmsisDapDevice,
+    device: CmsisDapDevice,
     _hw_version: u8,
     _jtag_version: u8,
     protocol: Option<WireProtocol>,
@@ -117,7 +120,7 @@ impl std::fmt::Debug for CmsisDap {
 }
 
 impl CmsisDap {
-    pub fn new_from_device(mut device: CmsisDapDevice) -> Result<Self, DebugProbeError> {
+    fn new_from_device(mut device: CmsisDapDevice) -> Result<Self, DebugProbeError> {
         // Discard anything left in buffer, as otherwise
         // we'll get out of sync between requests and responses.
         device.drain();

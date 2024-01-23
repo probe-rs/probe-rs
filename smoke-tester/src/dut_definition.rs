@@ -20,7 +20,7 @@ use std::{
 struct RawDutDefinition {
     chip: String,
     /// Selector for the debug probe to be used.
-    /// See [probe_rs::DebugProbeSelector].
+    /// See [probe_rs::probe::DebugProbeSelector].
     probe_selector: String,
 
     flash_test_binary: Option<String>,
@@ -51,7 +51,7 @@ pub struct DutDefinition {
     pub chip: Target,
 
     /// Selector for the debug probe to be used.
-    /// See [probe_rs::DebugProbeSelector].
+    /// See [probe_rs::probe::DebugProbeSelector].
     ///
     /// If not set, any detected probe will be used.
     /// If multiple probes are found, an error is returned.

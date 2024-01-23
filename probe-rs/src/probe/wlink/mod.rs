@@ -131,7 +131,7 @@ impl RiscvChip {
         }
     }
 
-    pub fn support_flash_protect(&self) -> bool {
+    fn support_flash_protect(&self) -> bool {
         matches!(
             self,
             RiscvChip::CH32V103
@@ -146,6 +146,7 @@ impl RiscvChip {
     }
 }
 
+/// Factory for creating [`WchLink`] probes.
 pub struct WchLinkFactory;
 
 impl std::fmt::Debug for WchLinkFactory {
@@ -180,8 +181,8 @@ impl ProbeFactory for WchLinkFactory {
     }
 }
 
-/// WCH-Link device (mod:RV)
-pub(crate) struct WchLink {
+/// A WCH-Link device (mod:RV)
+pub struct WchLink {
     device: WchLinkUsbDevice,
     name: String,
     variant: WchLinkVariant,

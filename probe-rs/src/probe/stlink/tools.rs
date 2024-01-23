@@ -11,7 +11,7 @@ pub(super) fn is_stlink_device(device: &nusb::DeviceInfo) -> bool {
 }
 
 #[tracing::instrument(skip_all)]
-pub fn list_stlink_devices() -> Vec<DebugProbeInfo> {
+pub(super) fn list_stlink_devices() -> Vec<DebugProbeInfo> {
     let devices = match nusb::list_devices() {
         Ok(d) => d,
         Err(e) => {

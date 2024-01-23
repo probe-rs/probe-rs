@@ -1,3 +1,4 @@
+//! FTDI-based debug probes.
 use crate::{
     architecture::{
         arm::{
@@ -241,6 +242,7 @@ impl JtagAdapter {
     }
 }
 
+/// A factory for creating [`FtdiProbe`] instances.
 pub struct FtdiProbeFactory;
 
 impl std::fmt::Debug for FtdiProbeFactory {
@@ -290,6 +292,7 @@ impl ProbeFactory for FtdiProbeFactory {
     }
 }
 
+/// An FTDI-based debug probe.
 #[derive(Debug)]
 pub struct FtdiProbe {
     adapter: JtagAdapter,
