@@ -22,10 +22,7 @@ impl WchLinkUsbDevice {
     pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, ProbeCreationError> {
         let device = nusb::list_devices()
             .map_err(ProbeCreationError::Usb)?
-            .filter(|device| {
-                device.vendor_id() == selector.vendor_id
-                    && device.product_id() == selector.product_id
-            })
+            .filter(|device| selector.matches(device))
             .find(|device| get_wlink_info(device).is_some())
             .ok_or(ProbeCreationError::NotFound)?;
 

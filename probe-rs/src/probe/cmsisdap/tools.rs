@@ -228,18 +228,6 @@ pub fn open_v2_device(device_info: &DeviceInfo) -> Option<CmsisDapDevice> {
     None
 }
 
-fn device_matches(device: &DeviceInfo, selector: &DebugProbeSelector) -> bool {
-    if device.vendor_id() == selector.vendor_id && device.product_id() == selector.product_id {
-        if selector.serial_number.is_some() {
-            device.serial_number() == selector.serial_number.as_deref()
-        } else {
-            true
-        }
-    } else {
-        false
-    }
-}
-
 /// Attempt to open the given DebugProbeInfo in CMSIS-DAP v2 mode if possible,
 /// otherwise in v1 mode.
 pub fn open_device_from_selector(
@@ -263,7 +251,7 @@ pub fn open_device_from_selector(
         for device in devices {
             tracing::trace!("Trying device {:?}", device);
 
-            if device_matches(&device, selector) {
+            if selector.matches(&device) {
                 hid_device_info = get_cmsisdap_info(&device);
 
                 if hid_device_info.is_some() {

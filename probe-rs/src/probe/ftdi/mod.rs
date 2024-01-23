@@ -202,14 +202,7 @@ impl ProbeDriver for FtdiProbeSource {
         let device = match nusb::list_devices() {
             Ok(devices) => {
                 let mut matched = None;
-                for device in devices {
-                    // Is this the device we're looking for?
-                    if (device.product_id(), device.vendor_id())
-                        != (selector.product_id, selector.vendor_id)
-                    {
-                        continue;
-                    }
-
+                for device in devices.filter(|info| selector.matches(info)) {
                     // FTDI devices don't have serial numbers, so we can only match on VID/PID.
                     // Bail if we find more than one matching device.
                     if matched.is_some() {
