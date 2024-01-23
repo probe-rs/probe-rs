@@ -22,9 +22,17 @@ mod command_compacter;
 
 use command_compacter::Command;
 
+impl From<ftdi::Error> for DebugProbeError {
+    fn from(e: ftdi::Error) -> Self {
+        DebugProbeError::ProbeSpecific(Box::new(e))
+    }
+}
+
 #[derive(Debug)]
 struct JtagAdapter {
     device: ftdi::Device,
+    ftdi: FtdiDevice,
+    speed_khz: u32,
 
     buffer_size: usize,
 
@@ -42,6 +50,8 @@ impl JtagAdapter {
 
         Ok(Self {
             device,
+            ftdi: ftdi.clone(),
+            speed_khz: 1000,
             buffer_size: ftdi.buffer_size,
             command: Command::default(),
             commands: vec![],
@@ -67,10 +77,58 @@ impl JtagAdapter {
         self.device
             .write_all(&[0x82, (output >> 8) as u8, (direction >> 8) as u8])?;
 
+        self.apply_clock_speed(self.speed_khz)?;
+
         // Disable loopback
         self.device.write_all(&[0x85])?;
 
         Ok(())
+    }
+
+    fn speed_khz(&self) -> u32 {
+        self.speed_khz
+    }
+
+    fn set_speed_khz(&mut self, speed_khz: u32) -> u32 {
+        self.speed_khz = speed_khz;
+        self.speed_khz
+    }
+
+    fn apply_clock_speed(&mut self, speed_khz: u32) -> Result<u32, ftdi::Error> {
+        // Disable divide-by-5 mode if available
+        if self.ftdi.has_divide_by_5 {
+            self.device.write_all(&[0x8A])?;
+        } else {
+            // Force enable divide-by-5 mode if not available or unknown
+            self.device.write_all(&[0x8B])?;
+        }
+
+        // If `speed_khz` is not a divisor of the maximum supported speed, we need to round up
+        let is_exact = self.ftdi.max_clock_frequency_khz % speed_khz == 0;
+
+        // If `speed_khz` is 0, use the maximum supported speed
+        let divisor = (self
+            .ftdi
+            .max_clock_frequency_khz
+            .checked_div(speed_khz)
+            .unwrap_or(1)
+            - is_exact as u32)
+            .min(0xFFFF);
+
+        let actual_speed = self.ftdi.max_clock_frequency_khz / (divisor + 1);
+
+        tracing::info!(
+            "Setting speed to {} kHz (divisor: {}, actual speed: {} kHz)",
+            speed_khz,
+            divisor,
+            actual_speed
+        );
+
+        let [l, h] = (divisor as u16).to_le_bytes();
+        self.device.write_all(&[0x86, l, h])?;
+
+        self.speed_khz = actual_speed;
+        Ok(actual_speed)
     }
 
     fn read_response(&mut self) -> Result<(), DebugProbeError> {
@@ -232,7 +290,6 @@ impl ProbeDriver for FtdiProbeSource {
 
         let probe = FtdiProbe {
             adapter,
-            speed_khz: 0,
             jtag_state: JtagDriverState::default(),
         };
         tracing::debug!("opened probe: {:?}", probe);
@@ -248,7 +305,6 @@ impl ProbeDriver for FtdiProbeSource {
 pub struct FtdiProbe {
     adapter: JtagAdapter,
     jtag_state: JtagDriverState,
-    speed_khz: u32,
 }
 
 impl DebugProbe for FtdiProbe {
@@ -257,13 +313,11 @@ impl DebugProbe for FtdiProbe {
     }
 
     fn speed_khz(&self) -> u32 {
-        self.speed_khz
+        self.adapter.speed_khz()
     }
 
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
-        self.speed_khz = speed_khz;
-        // TODO
-        Ok(speed_khz)
+        Ok(self.adapter.set_speed_khz(speed_khz))
     }
 
     fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
@@ -389,7 +443,7 @@ impl RawJtagIo for FtdiProbe {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct FtdiDevice {
     /// The (VID, PID) pair of this device.
     id: (u16, u16),
@@ -399,72 +453,84 @@ struct FtdiDevice {
 
     /// The size of the device's TX/RX buffers.
     buffer_size: usize,
-}
 
-impl FtdiDevice {
-    fn matches(&self, device: &DeviceInfo) -> bool {
-        self.id == (device.vendor_id(), device.product_id())
-            && (self.product_string.is_none() || self.product_string == device.product_string())
-    }
+    /// The maximum output clock frequency of the device in kHz.
+    max_clock_frequency_khz: u32,
+
+    /// Whether the device supports a divide-by-5 mode for FT2232D compatibility.
+    has_divide_by_5: bool,
 }
 
 const BUFFER_SIZE_FTDI2232C_D: usize = 128;
 const BUFFER_SIZE_FTDI232H: usize = 1024;
 const BUFFER_SIZE_FTDI2232H: usize = 4096;
 
+impl FtdiDevice {
+    const fn ft2232cd(id: (u16, u16), product_string: Option<&'static str>) -> Self {
+        Self {
+            id,
+            product_string,
+            buffer_size: BUFFER_SIZE_FTDI2232C_D,
+            max_clock_frequency_khz: 6_000,
+            has_divide_by_5: false,
+        }
+    }
+
+    const fn ft232h(id: (u16, u16), product_string: Option<&'static str>) -> Self {
+        Self {
+            id,
+            product_string,
+            buffer_size: BUFFER_SIZE_FTDI232H,
+            max_clock_frequency_khz: 30_000,
+            has_divide_by_5: true,
+        }
+    }
+
+    const fn ft2232h(id: (u16, u16), product_string: Option<&'static str>) -> Self {
+        Self {
+            id,
+            product_string,
+            buffer_size: BUFFER_SIZE_FTDI2232H,
+            max_clock_frequency_khz: 30_000,
+            has_divide_by_5: true,
+        }
+    }
+
+    const fn ft4232h(id: (u16, u16), product_string: Option<&'static str>) -> FtdiDevice {
+        Self {
+            id,
+            product_string,
+            buffer_size: BUFFER_SIZE_FTDI2232H,
+            max_clock_frequency_khz: 30_000,
+            has_divide_by_5: true,
+        }
+    }
+
+    fn matches(&self, device: &DeviceInfo) -> bool {
+        self.id == (device.vendor_id(), device.product_id())
+            && (self.product_string.is_none() || self.product_string == device.product_string())
+    }
+}
+
 /// Known FTDI device variants. Matched from first to last, meaning that more specific devices
 /// (i.e. those wih product strings) should be listed first.
 static FTDI_COMPAT_DEVICES: &[FtdiDevice] = &[
     // FTDI Ltd. FT2232H Dual UART/FIFO IC
-    FtdiDevice {
-        id: (0x0403, 0x6010),
-        product_string: Some("Dual RS232-HS"),
-        buffer_size: BUFFER_SIZE_FTDI2232H,
-    },
-    // Unidentified FTDI Ltd. FT2232C/D/H Dual UART/FIFO IC
-    FtdiDevice {
-        id: (0x0403, 0x6010),
-        product_string: None,
-        // FIXME: We are using a very small buffer size here to support 2232D devices. In
-        //        the future, we should detect the device type and use a larger buffer size.
-        buffer_size: BUFFER_SIZE_FTDI2232C_D,
-    },
+    FtdiDevice::ft2232h((0x0403, 0x6010), Some("Dual RS232-HS")),
+    // Unidentified FTDI Ltd. FT2232C/D/H Dual UART/FIFO IC -> fall back to FT2232D
+    FtdiDevice::ft2232cd((0x0403, 0x6010), None),
     // FTDI Ltd. FT4232H Quad HS USB-UART/FIFO IC
-    FtdiDevice {
-        id: (0x0403, 0x6011),
-        product_string: None,
-        buffer_size: BUFFER_SIZE_FTDI232H,
-    },
+    FtdiDevice::ft4232h((0x0403, 0x6011), None),
     // FTDI Ltd. FT232H Single HS USB-UART/FIFO IC
-    FtdiDevice {
-        id: (0x0403, 0x6014),
-        product_string: None,
-        buffer_size: BUFFER_SIZE_FTDI232H,
-    },
+    FtdiDevice::ft232h((0x0403, 0x6014), None),
     // Olimex Ltd. ARM-USB-OCD JTAG interface, FTDI2232C
-    FtdiDevice {
-        id: (0x15ba, 0x0003),
-        product_string: None,
-        buffer_size: BUFFER_SIZE_FTDI2232C_D,
-    },
+    FtdiDevice::ft2232cd((0x15ba, 0x0003), None),
     // Olimex Ltd. ARM-USB-TINY JTAG interface, FTDI2232C
-    FtdiDevice {
-        id: (0x15ba, 0x0004),
-        product_string: None,
-        buffer_size: BUFFER_SIZE_FTDI2232C_D,
-    },
+    FtdiDevice::ft2232cd((0x15ba, 0x0004), None),
     // Olimex Ltd. ARM-USB-TINY-H JTAG interface, FTDI2232H
-    FtdiDevice {
-        id: (0x15ba, 0x002a),
-        product_string: None,
-        buffer_size: BUFFER_SIZE_FTDI2232H,
-    },
+    FtdiDevice::ft2232h((0x15ba, 0x002a), None),
     // Olimex Ltd. ARM-USB-OCD-H JTAG interface, FTDI2232H
-    FtdiDevice {
-        id: (0x15ba, 0x002b),
-        product_string: None,
-        buffer_size: BUFFER_SIZE_FTDI2232H,
-    },
+    FtdiDevice::ft2232h((0x15ba, 0x002b), None),
 ];
 
 fn get_device_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {

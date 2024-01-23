@@ -199,51 +199,42 @@ impl Device {
         }
     }
 
-    pub fn set_baudrate(&mut self, baudrate: i32) -> io::Result<()> {
+    pub fn set_baudrate(&mut self, baudrate: i32) -> Result<()> {
         let result = unsafe { ffi::ftdi_set_baudrate(self.context, baudrate) };
-        match result {
-            0 => Ok(()),
-            -1 => Err(io::Error::new(ErrorKind::InvalidInput, "invalid baudrate")),
-            -2 => Err(io::Error::new(ErrorKind::Other, "setting baudrate failed")),
-            -3 => Err(io::Error::new(ErrorKind::Other, "USB device unavailable")),
-            _ => Err(io::Error::new(
-                ErrorKind::Other,
-                "unknown set baudrate error",
-            )),
-        }
+        let error = match result {
+            0 => return Ok(()),
+            -1 => io::Error::new(ErrorKind::InvalidInput, "invalid baudrate"),
+            -2 => io::Error::new(ErrorKind::Other, "setting baudrate failed"),
+            -3 => io::Error::new(ErrorKind::Other, "USB device unavailable"),
+            _ => io::Error::new(ErrorKind::Other, "unknown set baudrate error"),
+        };
+
+        Err(error.into())
     }
 
-    pub fn set_bitmode(&mut self, bitmask: u8, mode: BitMode) -> io::Result<()> {
+    pub fn set_bitmode(&mut self, bitmask: u8, mode: BitMode) -> Result<()> {
         let mode: ffi::ftdi_mpsse_mode = mode.into();
         let result = unsafe { ffi::ftdi_set_bitmode(self.context, bitmask, mode.0 as u8) };
-        match result {
-            0 => Ok(()),
-            -1 => Err(io::Error::new(
-                ErrorKind::Other,
-                "can't enable bitbang mode",
-            )),
-            -2 => Err(io::Error::new(ErrorKind::Other, "USB device unavailable")),
-            _ => Err(io::Error::new(
-                ErrorKind::Other,
-                "unknown set bitmode error",
-            )),
-        }
+        let error = match result {
+            0 => return Ok(()),
+            -1 => io::Error::new(ErrorKind::Other, "can't enable bitbang mode"),
+            -2 => io::Error::new(ErrorKind::Other, "USB device unavailable"),
+            _ => io::Error::new(ErrorKind::Other, "unknown set bitmode error"),
+        };
+
+        Err(error.into())
     }
 
-    pub fn disable_bitbang(&mut self) -> io::Result<()> {
+    pub fn disable_bitbang(&mut self) -> Result<()> {
         let result = unsafe { ffi::ftdi_disable_bitbang(self.context) };
-        match result {
-            0 => Ok(()),
-            -1 => Err(io::Error::new(
-                ErrorKind::Other,
-                "can't disable bitbang mode",
-            )),
-            -2 => Err(io::Error::new(ErrorKind::Other, "USB device unavailable")),
-            _ => Err(io::Error::new(
-                ErrorKind::Other,
-                "unknown disable bitbang error",
-            )),
-        }
+        let error = match result {
+            0 => return Ok(()),
+            -1 => io::Error::new(ErrorKind::Other, "can't disable bitbang mode"),
+            -2 => io::Error::new(ErrorKind::Other, "USB device unavailable"),
+            _ => io::Error::new(ErrorKind::Other, "unknown disable bitbang error"),
+        };
+
+        Err(error.into())
     }
 }
 
