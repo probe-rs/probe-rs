@@ -487,7 +487,7 @@ impl Probe {
 /// An abstraction over a probe driver type.
 ///
 /// This trait has to be implemented by ever debug probe driver.
-pub trait ProbeDriver: std::any::Any + std::fmt::Debug + Sync {
+pub trait ProbeFactory: std::any::Any + std::fmt::Debug + Sync {
     /// Creates a new boxed [`DebugProbe`] from a given [`DebugProbeSelector`].
     /// This will be called for all available debug drivers when discovering probes.
     /// When opening, it will open the first probe which succeeds during this call.
@@ -650,9 +650,9 @@ pub trait DebugProbe: Send + fmt::Debug {
     }
 }
 
-impl PartialEq for dyn ProbeDriver {
+impl PartialEq for dyn ProbeFactory {
     fn eq(&self, other: &Self) -> bool {
-        // Consider ProbeDriver objects equal when their types and data pointers are equal.
+        // Consider ProbeFactory objects equal when their types and data pointers are equal.
         // Pointer equality is insufficient, because ZST objects may have the same dangling pointer
         // as their address.
         self.type_id() == other.type_id()
@@ -675,7 +675,7 @@ pub struct DebugProbeInfo {
     /// The serial number of the debug probe.
     pub serial_number: Option<String>,
     /// The probe type of the debug probe.
-    pub probe_type: &'static dyn ProbeDriver,
+    pub probe_type: &'static dyn ProbeFactory,
 
     /// The USB HID interface which should be used.
     /// This is necessary for composite HID devices.
@@ -705,7 +705,7 @@ impl DebugProbeInfo {
         vendor_id: u16,
         product_id: u16,
         serial_number: Option<String>,
-        probe_type: &'static dyn ProbeDriver,
+        probe_type: &'static dyn ProbeFactory,
         hid_interface: Option<u8>,
     ) -> Self {
         Self {

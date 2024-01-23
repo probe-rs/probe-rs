@@ -1,4 +1,4 @@
-use crate::probe::stlink::StLinkSource;
+use crate::probe::stlink::StLinkFactory;
 use crate::probe::DebugProbeInfo;
 
 use super::usb_interface::USB_PID_EP_MAP;
@@ -31,7 +31,7 @@ pub fn list_stlink_devices() -> Vec<DebugProbeInfo> {
                 device.vendor_id(),
                 device.product_id(),
                 read_serial_number(&device),
-                &StLinkSource,
+                &StLinkFactory,
                 None,
             )
         })

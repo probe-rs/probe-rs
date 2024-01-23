@@ -1,5 +1,5 @@
 use crate::{
-    probe::ProbeDriver, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe,
+    probe::ProbeFactory, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe,
     ProbeCreationError,
 };
 
@@ -72,13 +72,13 @@ impl Default for AllProbesLister {
 }
 
 impl AllProbesLister {
-    const DRIVERS: &'static [&'static dyn ProbeDriver] = &[
-        &cmsisdap::CmsisDapSource,
-        &ftdi::FtdiProbeSource,
-        &stlink::StLinkSource,
-        &jlink::JLinkSource,
-        &espusbjtag::EspUsbJtagSource,
-        &wlink::WchLinkSource,
+    const DRIVERS: &'static [&'static dyn ProbeFactory] = &[
+        &cmsisdap::CmsisDapFactory,
+        &ftdi::FtdiProbeFactory,
+        &stlink::StLinkFactory,
+        &jlink::JLinkFactory,
+        &espusbjtag::EspUsbJtagFactory,
+        &wlink::WchLinkFactory,
     ];
 
     pub const fn new() -> Self {

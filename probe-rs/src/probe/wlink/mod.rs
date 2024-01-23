@@ -11,7 +11,7 @@ use probe_rs_target::ScanChainElement;
 
 use crate::{
     architecture::riscv::communication_interface::{RiscvCommunicationInterface, RiscvError},
-    probe::{JtagChainItem, ProbeDriver},
+    probe::{JtagChainItem, ProbeFactory},
     DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
     WireProtocol,
 };
@@ -147,15 +147,15 @@ impl RiscvChip {
     }
 }
 
-pub struct WchLinkSource;
+pub struct WchLinkFactory;
 
-impl std::fmt::Debug for WchLinkSource {
+impl std::fmt::Debug for WchLinkFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("WchLink").finish()
     }
 }
 
-impl ProbeDriver for WchLinkSource {
+impl ProbeFactory for WchLinkFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         let device = WchLinkUsbDevice::new_from_selector(selector)?;
         let mut wlink = WchLink {
@@ -503,7 +503,7 @@ fn get_wlink_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
             VENDOR_ID,
             PRODUCT_ID,
             device.serial_number().map(|s| s.to_string()),
-            &WchLinkSource,
+            &WchLinkFactory,
             None,
         ))
     } else {

@@ -10,7 +10,7 @@ use crate::{
     probe::{
         arm_jtag::{ProbeStatistics, RawProtocolIo, SwdSettings},
         common::{JtagDriverState, RawJtagIo},
-        DebugProbe, JTAGAccess, ProbeCreationError, ProbeDriver, ScanChainElement,
+        DebugProbe, JTAGAccess, ProbeCreationError, ProbeFactory, ScanChainElement,
     },
     DebugProbeError, DebugProbeInfo, DebugProbeSelector, WireProtocol,
 };
@@ -240,15 +240,15 @@ impl JtagAdapter {
     }
 }
 
-pub struct FtdiProbeSource;
+pub struct FtdiProbeFactory;
 
-impl std::fmt::Debug for FtdiProbeSource {
+impl std::fmt::Debug for FtdiProbeFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("FTDI").finish()
     }
 }
 
-impl ProbeDriver for FtdiProbeSource {
+impl ProbeFactory for FtdiProbeFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         // Only open FTDI-compatible probes
         let Some(ftdi) = FTDI_COMPAT_DEVICES
@@ -624,7 +624,7 @@ fn get_device_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
             vendor_id: device.vendor_id(),
             product_id: device.product_id(),
             serial_number: device.serial_number().map(|s| s.to_string()),
-            probe_type: &FtdiProbeSource,
+            probe_type: &FtdiProbeFactory,
             hid_interface: None,
         })
     })

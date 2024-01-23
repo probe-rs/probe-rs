@@ -103,6 +103,6 @@ pub use crate::error::Error;
 pub use crate::memory::MemoryInterface;
 pub use crate::probe::{
     list::Lister, AttachMethod, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-    Probe, ProbeCreationError, ProbeDriver, WireProtocol,
+    Probe, ProbeCreationError, ProbeFactory, WireProtocol,
 };
 pub use crate::session::{Permissions, Session};

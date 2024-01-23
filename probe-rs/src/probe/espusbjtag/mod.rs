@@ -9,7 +9,7 @@ use crate::{
         riscv::communication_interface::{RiscvCommunicationInterface, RiscvError},
         xtensa::communication_interface::XtensaCommunicationInterface,
     },
-    probe::{common::RawJtagIo, ProbeDriver},
+    probe::{common::RawJtagIo, ProbeFactory},
     DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
 };
 use bitvec::prelude::*;
@@ -20,15 +20,15 @@ use super::{common::JtagDriverState, JTAGAccess};
 
 use probe_rs_target::ScanChainElement;
 
-pub struct EspUsbJtagSource;
+pub struct EspUsbJtagFactory;
 
-impl std::fmt::Debug for EspUsbJtagSource {
+impl std::fmt::Debug for EspUsbJtagFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("EspJtag").finish()
     }
 }
 
-impl ProbeDriver for EspUsbJtagSource {
+impl ProbeFactory for EspUsbJtagFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         let protocol = ProtocolHandler::new_from_selector(selector)?;
 

@@ -6,7 +6,7 @@ use nusb::{
 use std::{fmt::Debug, time::Duration};
 
 use crate::{
-    probe::espusbjtag::EspUsbJtagSource, probe::usb_util::InterfaceExt, DebugProbeError,
+    probe::espusbjtag::EspUsbJtagFactory, probe::usb_util::InterfaceExt, DebugProbeError,
     DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
 };
 
@@ -469,7 +469,7 @@ pub(super) fn list_espjtag_devices() -> Vec<DebugProbeInfo> {
                 device.vendor_id(),
                 device.product_id(),
                 device.serial_number().map(Into::into),
-                &EspUsbJtagSource,
+                &EspUsbJtagFactory,
                 None,
             )
         })

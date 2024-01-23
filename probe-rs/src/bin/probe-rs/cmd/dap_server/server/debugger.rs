@@ -920,7 +920,7 @@ mod test {
         integration::{FakeProbe, Operation},
         Lister,
     };
-    use probe_rs::{DebugProbeInfo, ProbeDriver};
+    use probe_rs::{DebugProbeInfo, ProbeFactory};
     use serde_json::json;
     use time::UtcOffset;
 
@@ -944,9 +944,9 @@ mod test {
     };
 
     #[derive(Debug)]
-    struct MockProbeSource;
+    struct MockProbeFactory;
 
-    impl ProbeDriver for MockProbeSource {
+    impl ProbeFactory for MockProbeFactory {
         fn open(
             &self,
             _selector: &probe_rs::DebugProbeSelector,
@@ -1362,7 +1362,7 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            &MockProbeSource,
+            &MockProbeFactory,
             None,
         );
 
@@ -1440,7 +1440,7 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            &MockProbeSource,
+            &MockProbeFactory,
             None,
         );
 
@@ -1496,7 +1496,7 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            &MockProbeSource,
+            &MockProbeFactory,
             None,
         );
 
@@ -1570,7 +1570,7 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            &MockProbeSource,
+            &MockProbeFactory,
             None,
         );
 
@@ -1644,7 +1644,7 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            &MockProbeSource,
+            &MockProbeFactory,
             None,
         );
 
@@ -1736,7 +1736,7 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            &MockProbeSource,
+            &MockProbeFactory,
             None,
         );
 

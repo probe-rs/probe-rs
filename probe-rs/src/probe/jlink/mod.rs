@@ -36,7 +36,7 @@ use crate::probe::common::{JtagDriverState, RawJtagIo};
 use crate::probe::jlink::bits::IteratorExt;
 use crate::probe::usb_util::InterfaceExt;
 use crate::probe::JTAGAccess;
-use crate::probe::ProbeDriver;
+use crate::probe::ProbeFactory;
 use crate::{
     architecture::{
         arm::{
@@ -55,15 +55,15 @@ use crate::{
 const SWO_BUFFER_SIZE: u16 = 128;
 const TIMEOUT_DEFAULT: Duration = Duration::from_millis(500);
 
-pub struct JLinkSource;
+pub struct JLinkFactory;
 
-impl std::fmt::Debug for JLinkSource {
+impl std::fmt::Debug for JLinkFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("JLink").finish()
     }
 }
 
-impl ProbeDriver for JLinkSource {
+impl ProbeFactory for JLinkFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         fn open_error(e: std::io::Error, while_: &'static str) -> DebugProbeError {
             let help = if cfg!(windows) {
@@ -1098,7 +1098,7 @@ fn list_jlink_devices() -> Vec<DebugProbeInfo> {
                 info.vendor_id(),
                 info.product_id(),
                 info.serial_number().map(|s| s.to_string()),
-                &JLinkSource,
+                &JLinkFactory,
                 None,
             )
         })

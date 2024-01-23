@@ -15,7 +15,7 @@ use crate::{
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
             CmsisDapError,
         },
-        BatchCommand, JtagChainItem, ProbeDriver,
+        BatchCommand, JtagChainItem, ProbeFactory,
     },
     CoreStatus, DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
 };
@@ -59,15 +59,15 @@ use bitvec::prelude::*;
 
 use super::common::{extract_idcodes, extract_ir_lengths, ScanChainError};
 
-pub struct CmsisDapSource;
+pub struct CmsisDapFactory;
 
-impl std::fmt::Debug for CmsisDapSource {
+impl std::fmt::Debug for CmsisDapFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("CmsisDap").finish()
     }
 }
 
-impl ProbeDriver for CmsisDapSource {
+impl ProbeFactory for CmsisDapFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         Ok(Box::new(CmsisDap::new_from_device(
             tools::open_device_from_selector(selector)?,
