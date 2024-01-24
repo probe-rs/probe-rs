@@ -279,23 +279,21 @@ impl FlashAlgorithm {
 
         let buffer_page_size = raw.flash_properties.page_size as u64;
 
-        let mut actual_stack_size = stack_size;
-
         let remaining_ram = ram_region.range.end - code_end;
 
         // Reduce stack size if it does not fit.
-        if buffer_page_size + actual_stack_size > remaining_ram {
+        let stack_size = if buffer_page_size + stack_size > remaining_ram {
             if buffer_page_size >= remaining_ram {
                 return Err(FlashError::InvalidFlashAlgorithmLoadAddress { address: addr_load });
             }
-            actual_stack_size = remaining_ram - buffer_page_size;
-        }
+            remaining_ram - buffer_page_size
+        } else {
+            stack_size
+        };
 
-        tracing::debug!(
-            "The flash algorithm will be configured with {actual_stack_size} bytes of stack"
-        );
+        tracing::debug!("The flash algorithm will be configured with {stack_size} bytes of stack");
 
-        let addr_stack = code_end + actual_stack_size;
+        let addr_stack = code_end + stack_size;
 
         // Data buffer 1
         let addr_data = addr_stack;
