@@ -233,7 +233,7 @@ impl FlashAlgorithm {
 
         let header_size = size_of_val(header) as u64;
 
-        // Load address
+        // The start address where we try to load the flash algorithm.
         let addr_load = match raw.load_address {
             Some(address) => {
                 // adjust the raw load address to account for the algo header
