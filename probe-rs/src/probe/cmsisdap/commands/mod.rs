@@ -252,7 +252,7 @@ impl CmsisDapDevice {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub(crate) enum Status {
     DAPOk = 0x00,
     DAPError = 0xFF,

@@ -26,6 +26,12 @@ use crate::util::common_options::ProbeOptions;
 pub struct Cmd {
     #[clap(flatten)]
     common: ProbeOptions,
+    #[arg(long, value_parser = parse_hex)]
+    target_sel: Option<u32>,
+}
+
+fn parse_hex(src: &str) -> Result<u32, std::num::ParseIntError> {
+    u32::from_str_radix(src.trim_start_matches("0x"), 16)
 }
 
 impl Cmd {
@@ -43,8 +49,12 @@ impl Cmd {
             println!("Probing target via {protocol}");
             println!();
 
-            let (new_probe, result) =
-                try_show_info(probe, protocol, probe_options.connect_under_reset());
+            let (new_probe, result) = try_show_info(
+                probe,
+                protocol,
+                probe_options.connect_under_reset(),
+                self.target_sel,
+            );
 
             probe = new_probe;
 
@@ -65,6 +75,7 @@ fn try_show_info(
     mut probe: Probe,
     protocol: WireProtocol,
     connect_under_reset: bool,
+    target_sel: Option<u32>,
 ) -> (Probe, Result<()>) {
     if let Err(e) = probe.select_protocol(protocol) {
         return (probe, Err(e.into()));
@@ -81,7 +92,9 @@ fn try_show_info(
     }
 
     // TODO: Make this configurable
-    let dp = DpAddress::Default;
+    let dp = target_sel
+        .map(|target_sel| DpAddress::Multidrop(target_sel))
+        .unwrap_or_default();
 
     let mut probe = probe;
 
@@ -90,7 +103,7 @@ fn try_show_info(
             Ok(interface) => {
                 match interface.initialize(DefaultArmSequence::create(), dp) {
                     Ok(mut interface) => {
-                        if let Err(e) = show_arm_info(&mut *interface) {
+                        if let Err(e) = show_arm_info(&mut *interface, dp) {
                             // Log error?
                             println!("Error showing ARM chip information:");
                             println!("{e:?}")
@@ -168,8 +181,8 @@ fn try_show_info(
     (probe, Ok(()))
 }
 
-fn show_arm_info(interface: &mut dyn ArmProbeInterface) -> Result<()> {
-    let dp_info = interface.read_raw_dp_register(DpAddress::Default, DPIDR::ADDRESS)?;
+fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result<()> {
+    let dp_info = interface.read_raw_dp_register(dp, DPIDR::ADDRESS)?;
     let dp_info = DPIDR(dp_info);
 
     let mut dp_node = String::new();
@@ -183,7 +196,7 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface) -> Result<()> {
     let jep_code = jep106::JEP106Code::new(dp_info.jep_cc(), dp_info.jep_id());
 
     if dp_info.version() == 2 {
-        let target_id = interface.read_raw_dp_register(DpAddress::Default, TARGETID::ADDRESS)?;
+        let target_id = interface.read_raw_dp_register(dp, TARGETID::ADDRESS)?;
 
         let target_id = TARGETID(target_id);
 
@@ -214,7 +227,6 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface) -> Result<()> {
 
     let mut tree = Tree::new(dp_node);
 
-    let dp = DpAddress::Default;
     let num_access_ports = interface.num_access_ports(dp)?;
 
     for ap_index in 0..num_access_ports {

@@ -31,10 +31,11 @@ bitfield::bitfield! {
 }
 
 /// Debug port address.
-#[derive(Debug, Eq, PartialEq, Clone, Copy, Hash)]
+#[derive(Debug, Eq, PartialEq, Clone, Copy, Hash, Default)]
 pub enum DpAddress {
     /// Access the single DP on the bus, assuming there is only one.
     /// Will cause corruption if multiple are present.
+    #[default]
     Default,
     /// Select a particular DP on a SWDv2 multidrop bus. The contained `u32` is
     /// the `TARGETSEL` value to select it.
@@ -149,6 +150,13 @@ pub trait RawDapAccess {
     /// This can only be used for output, and should be used to generate
     /// the initial reset sequence, for example.
     fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError>;
+
+    fn swd_sequence(
+        &mut self,
+        cycles: u8,
+        is_output: bool,
+        data: u64,
+    ) -> Result<(), DebugProbeError>;
 
     /// Set the state of debugger output pins directly.
     ///

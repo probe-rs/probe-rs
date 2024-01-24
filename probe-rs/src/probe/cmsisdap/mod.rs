@@ -53,7 +53,7 @@ use commands::{
 };
 use probe_rs_target::{get_ir_lengths, ScanChainElement};
 
-use std::{result::Result, time::Duration};
+use std::{fmt::Write, result::Result, time::Duration};
 
 use bitvec::prelude::*;
 
@@ -392,6 +392,9 @@ impl CmsisDap {
     }
 
     fn send_swj_sequences(&mut self, request: SequenceRequest) -> Result<(), CmsisDapError> {
+        // Ensure all pending commands are processed.
+        //self.process_batch()?;
+
         commands::send_command::<SequenceRequest>(&mut self.device, request)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v {
@@ -1079,6 +1082,23 @@ impl RawDapAccess for CmsisDap {
 
         let data = bits.to_le_bytes();
 
+        if tracing::enabled!(tracing::Level::TRACE) {
+            let mut seq = String::new();
+
+            let _ = write!(&mut seq, "swj sequence:");
+
+            for i in 0..bit_len {
+                let bit = (bits >> i) & 1;
+
+                if bit == 1 {
+                    let _ = write!(&mut seq, "1");
+                } else {
+                    let _ = write!(&mut seq, "0");
+                }
+            }
+            tracing::trace!("{}", seq);
+        }
+
         self.send_swj_sequences(SequenceRequest::new(&data, bit_len)?)?;
 
         Ok(())
@@ -1097,6 +1117,37 @@ impl RawDapAccess for CmsisDap {
         let Pins(response) = commands::send_command(&mut self.device, request)?;
 
         Ok(response as u32)
+    }
+
+    fn swd_sequence(
+        &mut self,
+        cycles: u8,
+        is_output: bool,
+        data: u64,
+    ) -> Result<(), DebugProbeError> {
+        self.connect_if_needed()?;
+
+        tracing::debug!(
+            "swd_sequence: cycles={}, is_output={}, data={:x}",
+            cycles,
+            is_output,
+            data
+        );
+
+        let data = data.to_le_bytes();
+
+        let sequence = swd::sequence::Sequence::new(cycles, is_output, data)?;
+
+        let request = swd::sequence::SequenceRequest::new(vec![sequence])?;
+
+        let swd::sequence::SequenceResponse(status, _data) =
+            commands::send_command(&mut self.device, request)?;
+
+        if status != Status::DAPOk {
+            return Err(CmsisDapError::ErrorResponse.into());
+        }
+
+        Ok(())
     }
 }
 

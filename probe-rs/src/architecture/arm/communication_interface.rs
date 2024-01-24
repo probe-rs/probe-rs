@@ -499,11 +499,17 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         if self.state.current_dp != dp {
             tracing::debug!("Selecting DP {:x?}", dp);
 
-            if let Err(e) = self.probe.select_dp(dp) {
-                // TODO: This means that we are not connected to a DP anymore.
-                //       We should prevent use of the communication interface until we are connected again.
-                return Err(e);
-            }
+            self.probe.raw_flush()?;
+
+            // TODO: This means that we are not connected to a DP anymore.
+            //       We should prevent use of the communication interface until we are connected again.
+            self.state.sequence.debug_port_setup(&mut *self.probe, dp)?;
+
+            //if let Err(e) = self.probe.select_dp(dp) {
+            //    // TODO: This means that we are not connected to a DP anymore.
+            //    //       We should prevent use of the communication interface until we are connected again.
+            //    return Err(e);
+            //}
             self.state.current_dp = dp;
         }
 

@@ -452,57 +452,155 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         dp: DpAddress,
     ) -> Result<(), ArmError> {
         // TODO: Handle this differently for ST-Link?
+        tracing::debug!("Setting up debug port {dp:?}");
 
         // TODO: Use atomic block
 
-        // Ensure current debug interface is in reset state.
-        interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
+        let has_dormant = matches!(dp, DpAddress::Multidrop(_));
 
-        // Make sure the debug port is in the correct mode based on what the probe
-        // has selected via active_protocol
-        match interface.active_protocol() {
-            Some(crate::WireProtocol::Jtag) => {
-                // Execute SWJ-DP Switch Sequence SWD to JTAG (0xE73C).
-                interface.swj_sequence(16, 0xE73C)?;
+        let num_retries = 5;
 
-                // Execute at least >5 TCK cycles with TMS high to enter the Test-Logic-Reset state
-                interface.swj_sequence(6, 0x3F)?;
+        for _ in 0..num_retries {
+            // Make sure the debug port is in the correct mode based on what the probe
+            // has selected via active_protocol
+            match interface.active_protocol() {
+                Some(crate::WireProtocol::Jtag) => {
+                    if has_dormant {
+                        // Ensure current debug interface is in reset state.
+                        interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
 
-                // Enter Run-Test-Idle state, as required by the DAP_Transfer command when using JTAG
-                interface.jtag_sequence(1, false, 0x01)?;
+                        // Select Dormant State (from SWD).
+                        interface.swj_sequence(16, 0xE3BC)?;
 
-                // Configure JTAG IR lengths in probe
-                interface.configure_jtag()?;
+                        interface.swj_sequence(8, 0xFF)?;
+
+                        // Alert Sequence Bits  0.. 63
+                        interface.swj_sequence(64, 0x86852D956209F392)?;
+
+                        // Alert Sequence Bits 64..127
+                        interface.swj_sequence(64, 0x19BC0EA2E3DDAFE9)?;
+
+                        // 4 cycles SWDIO/TMS LOW + 8-Bit JTAG Activation Code (0x0A)
+                        interface.swj_sequence(12, 0x0A0)?;
+
+                        // Ensure JTAG interface is reset
+                        interface.swj_sequence(6, 0x3F)?;
+                    } else {
+                        // Ensure current debug interface is in reset state.
+                        interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
+
+                        // Execute SWJ-DP Switch Sequence SWD to JTAG (0xE73C).
+                        interface.swj_sequence(16, 0xE73C)?;
+
+                        // Execute at least >5 TCK cycles with TMS high to enter the Test-Logic-Reset state
+                        interface.swj_sequence(6, 0x3F)?;
+                    }
+
+                    // JTAG "Soft" reset
+                    interface.jtag_sequence(6, true, 0x3F)?;
+
+                    // Enter Run-Test-Idle state, as required by the DAP_Transfer command when using JTAG
+                    interface.jtag_sequence(1, false, 0x01)?;
+
+                    // Configure JTAG IR lengths in probe
+                    interface.configure_jtag()?;
+                }
+                Some(crate::WireProtocol::Swd) => {
+                    if has_dormant {
+                        tracing::trace!("SWD Line reset / JTAG TAP into Test-Logic-Reset state");
+                        interface.swj_sequence(51, 0x0007FFFFFFFFFFFF)?;
+
+                        // Select Dormant State (from JTAG)
+                        tracing::trace!("Select Dormant State (from JTAG)");
+                        interface.swj_sequence(31, 0x33BBBBBA)?;
+
+                        // Leave dormant state
+
+                        // At least 8 cycles SWDIO/TMS HIGH
+                        interface.swj_sequence(8, 0xFF)?;
+
+                        tracing::trace!("Dormant State alert sequence");
+                        // Alert Sequence Bits  0.. 63
+                        interface.swj_sequence(64, 0x86852D956209F392)?;
+
+                        // Alert Sequence Bits 64..127
+                        interface.swj_sequence(64, 0x19BC0EA2E3DDAFE9)?;
+
+                        // 4 cycles SWDIO/TMS LOW + 8-Bit SWD Activation Code (0x1A)
+                        interface.swj_sequence(12, 0x1A0)?;
+
+                        // Enter SWD Line Reset State
+                        interface.swj_sequence(51, 0x0007FFFFFFFFFFFF)?; // &gt; 50 cycles SWDIO/TMS High
+                        interface.swj_sequence(3, 0x00)?; // At least 2 idle cycles (SWDIO/TMS Low)
+                    } else {
+                        // Ensure current debug interface is in reset state.
+                        interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
+
+                        // Execute SWJ-DP Switch Sequence JTAG to SWD (0xE79E).
+                        // Change if SWJ-DP uses deprecated switch code (0xEDB6).
+                        interface.swj_sequence(16, 0xE79E)?;
+
+                        // > 50 cycles SWDIO/TMS High.
+                        interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
+                        // At least 2 idle cycles (SWDIO/TMS Low).
+                        interface.swj_sequence(3, 0x00)?;
+                    }
+                }
+                _ => {
+                    return Err(ArmDebugSequenceError::SequenceSpecific(
+                        "Cannot detect current protocol".into(),
+                    )
+                    .into());
+                }
             }
-            Some(crate::WireProtocol::Swd) => {
-                // Execute SWJ-DP Switch Sequence JTAG to SWD (0xE79E).
-                // Change if SWJ-DP uses deprecated switch code (0xEDB6).
-                interface.swj_sequence(16, 0xE79E)?;
 
-                // > 50 cycles SWDIO/TMS High.
-                interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
-                // At least 2 idle cycles (SWDIO/TMS Low).
-                interface.swj_sequence(3, 0x00)?;
+            // End of atomic block.
+
+            if let DpAddress::Multidrop(targetsel) = dp {
+                tracing::debug!("Writing targetsel {:#x}", targetsel);
+                /*
+                                // TARGETSEL write.
+                                // The TARGETSEL write is not ACKed by design. We can't use a normal register write
+                                // because many probes don't even send the data phase when NAK.
+                                let parity = targetsel.count_ones() % 2;
+                                let data = (parity as u64) << 32 | (targetsel as u64);
+
+                                let req = 0x1ff9;
+                                interface.swd_sequence(8, true, req)?;
+                                interface.swd_sequence(5, false, 0)?;
+
+                                interface.swd_sequence(32 + 1, true, data)?;
+                */
+
+                // TARGETSEL write.
+                // The TARGETSEL write is not ACKed by design. We can't use a normal register write
+                // because many probes don't even send the data phase when NAK.
+                let parity = targetsel.count_ones() % 2;
+                let data = ((parity as u64) << 45 | (targetsel as u64) << 13 | 0x1f99);
+
+                //let request = SequenceRequest::new(data, 6 * 8).map_err(DebugProbeError::from)?;
+
+                interface
+                    .swj_sequence(6 * 8, data)
+                    .map_err(DebugProbeError::from)?;
             }
-            _ => {
-                return Err(ArmDebugSequenceError::SequenceSpecific(
-                    "Cannot detect current protocol".into(),
-                )
-                .into());
+
+            // Read DPIDR to enable SWD interface.
+            let dpidr = interface.raw_read_register(PortType::DebugPort, DPIDR::ADDRESS);
+
+            tracing::debug!("Result of DPIDR read: {:#x?}", dpidr);
+
+            if dpidr.is_ok() {
+                return Ok(());
             }
+
+            // TODO: Figure a way how to do this.
+            // interface.read_dpidr()?;
         }
 
-        // End of atomic block.
-
-        // Read DPIDR to enable SWD interface.
-        let dpidr = interface.raw_read_register(PortType::DebugPort, DPIDR::ADDRESS);
-
-        tracing::debug!("Result of DPIDR read: {:#x?}", dpidr);
-
-        // TODO: Figure a way how to do this.
-        // interface.read_dpidr()?;
-
-        Ok(())
+        Err(ArmError::Other(anyhow::anyhow!(
+            "Failed to connect to debug port."
+        )))
     }
 
     /// Connect to the target debug port and power it up. This is based on the

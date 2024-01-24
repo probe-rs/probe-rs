@@ -408,6 +408,15 @@ impl RawDapAccess for FakeProbe {
     fn core_status_notification(&mut self, _: crate::CoreStatus) -> Result<(), DebugProbeError> {
         Ok(())
     }
+
+    fn swd_sequence(
+        &mut self,
+        cycles: u8,
+        is_output: bool,
+        data: u64,
+    ) -> Result<(), DebugProbeError> {
+        todo!()
+    }
 }
 
 #[derive(Debug)]
