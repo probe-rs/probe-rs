@@ -39,13 +39,43 @@ In addition to being a library, probe-rs also includes a suite of tools which ca
 
 ### Installation
 
-After installing the necessary [prerequisites](#building), the tools can be installed using `cargo install`:
+
+The recommended way to install the tools is to download a precompiled version, using one of the methods below.
+See <https://probe.rs/docs/getting-started/installation/> for a more detailed guide.
+
+
+#### Using a shell script
+
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/probe-rs/probe-rs/releases/latest/download/probe-rs-installer.sh | sh
+```
+
+#### Using a powershell script
+
+
+```sh
+irm https://github.com/probe-rs/probe-rs/releases/latest/download/probe-rs-installer.ps1 | iex
+```
+
+#### Using cargo-binstall
+
+
+```bash
+cargo binstall probe-rs 
+```
+
+See <https://github.com/cargo-bins/cargo-binstall> for more information.
+
+#### From source
+
+The tools can also be installed from source. After installing the necessary [prerequisites](#building), the latest released version can be installed using `cargo install`:
 
 ```bash
 cargo install probe-rs --features cli
 ```
 
-See the [website](https://probe.rs/docs/getting-started/installation/) for a more detailed guide.
+This will compile the tools and place them into the cargo `bin` directory. See the [Cargo book](https://doc.rust-lang.org/cargo/commands/cargo-install.html) for details.
+
 
 ### cargo-flash
 
@@ -143,7 +173,7 @@ Please reach out to [@Yatekii](https://github.com/Yatekii)
 
 ### Building
 
-Building requires Rust and Cargo which can be installed [using rustup](https://rustup.rs/). On linux these can be installed with your package manager:
+Building requires Rust and Cargo which can be installed [using rustup](https://rustup.rs/). On Linux these can be installed with your package manager:
 
 ```console
 # Ubuntu
