@@ -1304,41 +1304,6 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
     fn core_status_notification(&mut self, _: crate::CoreStatus) -> Result<(), DebugProbeError> {
         Ok(())
     }
-
-    fn swd_sequence(
-        &mut self,
-        cycles: u8,
-        is_output: bool,
-        mut data: u64,
-    ) -> Result<(), DebugProbeError> {
-        let protocol = self.active_protocol();
-
-        let mut io_sequence = IoSequence::new();
-
-        if is_output {
-            for _ in 0..cycles {
-                io_sequence.add_output(data & 1 == 1);
-
-                data >>= 1;
-            }
-        } else {
-            io_sequence.add_input_sequence(cycles as usize);
-        }
-
-        match protocol {
-            Some(crate::WireProtocol::Jtag) => {
-                todo!("SWD sequence in JTAG mode");
-            }
-            Some(crate::WireProtocol::Swd) => {
-                self.swd_io(io_sequence.direction_bits(), io_sequence.io_bits())?;
-            }
-            _ => {}
-        }
-
-        // TODO: Return data for input sequences
-
-        Ok(())
-    }
 }
 
 fn send_sequence<P: RawProtocolIo + JTAGAccess>(

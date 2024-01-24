@@ -10,7 +10,6 @@ use crate::{
         communication_interface::{
             ArmDebugState, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,
         },
-        dp::DebugPortError,
         memory::adi_v5_memory_interface::{ADIMemoryInterface, ArmProbe},
         sequences::ArmDebugSequence,
         ApAddress, ArmError, ArmProbeInterface, DapAccess, DpAddress, MemoryApInformation,
@@ -408,15 +407,6 @@ impl RawDapAccess for FakeProbe {
 
     fn core_status_notification(&mut self, _: crate::CoreStatus) -> Result<(), DebugProbeError> {
         Ok(())
-    }
-
-    fn swd_sequence(
-        &mut self,
-        cycles: u8,
-        is_output: bool,
-        data: u64,
-    ) -> Result<(), DebugProbeError> {
-        todo!()
     }
 }
 

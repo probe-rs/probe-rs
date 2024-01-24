@@ -90,10 +90,7 @@ fn try_show_info(
         return (probe, Err(e.into()));
     }
 
-    // TODO: Make this configurable
-    let dp = target_sel
-        .map(|target_sel| DpAddress::Multidrop(target_sel))
-        .unwrap_or_default();
+    let dp = target_sel.map(DpAddress::Multidrop).unwrap_or_default();
 
     let mut probe = probe;
 

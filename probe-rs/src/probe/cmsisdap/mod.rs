@@ -7,8 +7,8 @@ use crate::{
         communication_interface::UninitializedArmProbe,
         dp::{Abort, Ctrl},
         swo::poll_interval_from_buf_size,
-        ArmCommunicationInterface, ArmError, DapError, DpAddress, Pins, PortType, RawDapAccess,
-        Register, SwoAccess, SwoConfig, SwoMode,
+        ArmCommunicationInterface, ArmError, DapError, Pins, PortType, RawDapAccess, Register,
+        SwoAccess, SwoConfig, SwoMode,
     },
     probe::{
         cmsisdap::commands::{
@@ -1067,37 +1067,6 @@ impl RawDapAccess for CmsisDap {
         let Pins(response) = commands::send_command(&mut self.device, request)?;
 
         Ok(response as u32)
-    }
-
-    fn swd_sequence(
-        &mut self,
-        cycles: u8,
-        is_output: bool,
-        data: u64,
-    ) -> Result<(), DebugProbeError> {
-        self.connect_if_needed()?;
-
-        tracing::debug!(
-            "swd_sequence: cycles={}, is_output={}, data={:x}",
-            cycles,
-            is_output,
-            data
-        );
-
-        let data = data.to_le_bytes();
-
-        let sequence = swd::sequence::Sequence::new(cycles, is_output, data)?;
-
-        let request = swd::sequence::SequenceRequest::new(vec![sequence])?;
-
-        let swd::sequence::SequenceResponse(status, _data) =
-            commands::send_command(&mut self.device, request)?;
-
-        if status != Status::DAPOk {
-            return Err(CmsisDapError::ErrorResponse.into());
-        }
-
-        Ok(())
     }
 }
 

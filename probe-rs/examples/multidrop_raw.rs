@@ -13,6 +13,8 @@ fn main() -> Result<()> {
     // Use the first probe found.
     let mut probe: Probe = probes[0].open(&probe_lister)?;
 
+    // Specify the multidrop DP address of the first core,
+    // this is used for the initial connection.
     let core0 = DpAddress::Multidrop(0x01002927);
 
     probe.set_speed(100)?;

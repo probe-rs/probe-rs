@@ -142,13 +142,6 @@ pub trait RawDapAccess {
     /// the initial reset sequence, for example.
     fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError>;
 
-    fn swd_sequence(
-        &mut self,
-        cycles: u8,
-        is_output: bool,
-        data: u64,
-    ) -> Result<(), DebugProbeError>;
-
     /// Set the state of debugger output pins directly.
     ///
     /// The bits have the following meaning:
