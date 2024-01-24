@@ -292,9 +292,10 @@ impl FlashAlgorithm {
 
             // Data buffer 1
             addr_data = addr_stack;
-            offset = header_size + code_size_words + raw.flash_properties.page_size as u64;
+            offset =
+                addr_load + header_size + code_size_words + raw.flash_properties.page_size as u64;
 
-            if offset <= ram_region.range.end - addr_load {
+            if offset <= ram_region.range.end {
                 break;
             }
         }
@@ -304,7 +305,7 @@ impl FlashAlgorithm {
         offset += raw.flash_properties.page_size as u64;
 
         // Determine whether we can use double buffering or not by the remaining RAM region size.
-        let page_buffers = if offset <= ram_region.range.end - addr_load {
+        let page_buffers = if offset <= ram_region.range.end {
             vec![addr_data, addr_data2]
         } else {
             vec![addr_data]
