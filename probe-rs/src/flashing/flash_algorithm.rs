@@ -233,9 +233,6 @@ impl FlashAlgorithm {
 
         let header_size = size_of_val(header) as u64;
 
-        // Try to find a stack size that fits with at least one page of data.
-        let stack_size = raw.stack_size.unwrap_or(Self::FLASH_ALGO_STACK_SIZE) as u64;
-
         // Load address
         let addr_load = match raw.load_address {
             Some(address) => {
@@ -263,7 +260,8 @@ impl FlashAlgorithm {
 
         let remaining_ram = ram_region.range.end - code_end;
 
-        // Reduce stack size if it does not fit.
+        // Try to find a stack size that fits with at least one page of data.
+        let stack_size = raw.stack_size.unwrap_or(Self::FLASH_ALGO_STACK_SIZE) as u64;
         let stack_size = if buffer_page_size + stack_size > remaining_ram {
             if buffer_page_size >= remaining_ram {
                 return Err(FlashError::InvalidFlashAlgorithmLoadAddress { address: addr_load });
