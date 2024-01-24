@@ -273,20 +273,20 @@ impl FlashAlgorithm {
 
         tracing::debug!("The flash algorithm will be configured with {stack_size} bytes of stack");
 
-        let addr_stack = code_end + stack_size;
+        let stack_top_addr = code_end + stack_size;
 
         // Data buffer 1
-        let addr_data = addr_stack;
+        let first_buffer_start = stack_top_addr;
 
         // Data buffer 2
-        let second_buffer_start = addr_data + buffer_page_size;
+        let second_buffer_start = first_buffer_start + buffer_page_size;
         let second_buffer_end = second_buffer_start + buffer_page_size;
 
         // Determine whether we can use double buffering or not by the remaining RAM region size.
         let page_buffers = if second_buffer_end <= ram_region.range.end {
-            vec![addr_data, second_buffer_start]
+            vec![first_buffer_start, second_buffer_start]
         } else {
-            vec![addr_data]
+            vec![first_buffer_start]
         };
 
         let name = raw.name.clone();
@@ -302,7 +302,7 @@ impl FlashAlgorithm {
             pc_erase_sector: code_start + raw.pc_erase_sector,
             pc_erase_all: raw.pc_erase_all.map(|v| code_start + v),
             static_base: code_start + raw.data_section_offset,
-            begin_stack: addr_stack,
+            begin_stack: stack_top_addr,
             page_buffers,
             rtt_control_block: raw.rtt_location,
             flash_properties: raw.flash_properties.clone(),
