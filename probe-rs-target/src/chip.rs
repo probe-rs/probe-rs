@@ -22,6 +22,16 @@ pub enum BinaryFormat {
     Idf,
 }
 
+/// Configuration for JTAG probes.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Jtag {
+    /// Describes the scan chain
+    ///
+    /// ref: `<https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/sdf_pg.html#sdf_element_scanchain>`
+    #[serde(default)]
+    pub scan_chain: Option<Vec<ScanChainElement>>,
+}
+
 /// A single chip variant.
 ///
 /// This describes an exact chip variant, including the cores, flash and memory size. For example,
@@ -66,11 +76,9 @@ pub struct Chip {
     /// executable image that includes the `_SEGGER_RTT` symbol pointing
     /// to the exact address of the RTT header.
     pub rtt_scan_ranges: Option<Vec<std::ops::Range<u64>>>,
-    /// Describes the scan chain
-    ///
-    /// ref: `<https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/sdf_pg.html#sdf_element_scanchain>`
+    /// JTAG-specific options
     #[serde(default)]
-    pub scan_chain: Option<Vec<ScanChainElement>>,
+    pub jtag: Option<Jtag>,
     /// The default binary format for this chip
     pub default_binary_format: Option<BinaryFormat>,
 }
@@ -92,7 +100,7 @@ impl Chip {
             memory_map: vec![],
             flash_algorithms: vec![],
             rtt_scan_ranges: None,
-            scan_chain: None,
+            jtag: None,
             default_binary_format: Some(BinaryFormat::Raw),
         }
     }
@@ -151,16 +159,3 @@ pub struct RiscvCoreAccessOptions {
 /// The data required to access an Xtensa core
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct XtensaCoreAccessOptions {}
-
-/// Helper function that iterates the scan chain and returns a vector of all of
-/// the ir_lengths of the scan chain elements.
-/// If an element does not contain an ir_length, the default value of 4 is used.
-/// The first element of the vector is the first element of the scan chain.
-pub fn get_ir_lengths(scan_chain: &Vec<ScanChainElement>) -> Vec<u8> {
-    let mut ir_lengths = Vec::new();
-    for element in scan_chain {
-        let ir_len = element.ir_len.unwrap_or(4);
-        ir_lengths.push(ir_len);
-    }
-    ir_lengths
-}

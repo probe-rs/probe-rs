@@ -112,7 +112,7 @@ fn add_generic_targets(vec: &mut Vec<ChipFamily>) {
                 memory_map: vec![],
                 flash_algorithms: vec![],
                 rtt_scan_ranges: None,
-                scan_chain: None,
+                jtag: None,
                 default_binary_format: Some(BinaryFormat::Raw),
             }],
             flash_algorithms: vec![],
@@ -447,7 +447,6 @@ fn match_name_prefix(pattern: &str, name: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use probe_rs_target::get_ir_lengths;
     use std::fs::File;
     type TestResult = Result<(), RegistryError>;
 
@@ -525,7 +524,7 @@ mod tests {
 
         // Check that the scan chain can read from a target correctly
         let mut target = get_target_by_name("FULL_SCAN_CHAIN").unwrap();
-        let scan_chain = target.scan_chain.unwrap();
+        let scan_chain = target.jtag.unwrap().scan_chain.unwrap();
         for device in scan_chain {
             if device.name == Some("core0".to_string()) {
                 assert_eq!(device.ir_len, Some(FIRST_IR_LENGTH));
@@ -535,28 +534,18 @@ mod tests {
         }
 
         // Now check that a device without a scan chain is read correctly
+        target = get_target_by_name("NO_JTAG_INFO").unwrap();
+        assert_eq!(target.jtag, None);
+
+        // Now check that a device without a scan chain is read correctly
         target = get_target_by_name("NO_SCAN_CHAIN").unwrap();
-        assert_eq!(target.scan_chain, None);
+        assert_eq!(target.jtag.unwrap().scan_chain, None);
 
         // Check a device with a minimal scan chain
         target = get_target_by_name("PARTIAL_SCAN_CHAIN").unwrap();
-        let scan_chain = target.scan_chain.unwrap();
+        let scan_chain = target.jtag.unwrap().scan_chain.unwrap();
         assert_eq!(scan_chain[0].ir_len, Some(FIRST_IR_LENGTH));
         assert_eq!(scan_chain[1].ir_len, Some(SECOND_IR_LENGTH));
-
-        Ok(())
-    }
-
-    #[test]
-    fn check_get_ir_lengths_helper() -> TestResult {
-        let file = File::open("tests/scan_chain_test.yaml")?;
-        add_target_from_yaml(file)?;
-
-        // Check that the scan chain can read from a target correctly
-        let target = get_target_by_name("FULL_SCAN_CHAIN").unwrap();
-        let scan_chain = target.scan_chain.unwrap();
-        let ir_lengths = get_ir_lengths(&scan_chain);
-        assert_eq!(ir_lengths, vec![FIRST_IR_LENGTH, SECOND_IR_LENGTH]);
 
         Ok(())
     }

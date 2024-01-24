@@ -18,8 +18,7 @@ use super::{
         stm32_armv7::Stm32Armv7,
         stm32h7::Stm32h7,
     },
-    Core, MemoryRegion, RawFlashAlgorithm, RegistryError, ScanChainElement,
-    TargetDescriptionSource,
+    Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource,
 };
 use crate::architecture::{
     arm::{
@@ -31,7 +30,7 @@ use crate::architecture::{
     xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
 };
 use crate::flashing::FlashLoader;
-use probe_rs_target::{Architecture, BinaryFormat, ChipFamily, MemoryRange};
+use probe_rs_target::{Architecture, BinaryFormat, ChipFamily, Jtag, MemoryRange};
 use std::sync::Arc;
 
 /// This describes a complete target with a fixed chip model and variant.
@@ -59,7 +58,7 @@ pub struct Target {
     /// The scan chain can be parsed from the CMSIS-SDF file, or specified
     /// manually in the target.yaml file. It is used by some probes to determine
     /// the number devices in the scan chain and their ir lengths.
-    pub scan_chain: Option<Vec<ScanChainElement>>,
+    pub jtag: Option<Jtag>,
     /// The default executable format for the target.
     pub default_format: BinaryFormat,
 }
@@ -235,7 +234,7 @@ impl Target {
             memory_map: chip.memory_map.clone(),
             debug_sequence,
             rtt_scan_regions,
-            scan_chain: chip.scan_chain.clone(),
+            jtag: chip.jtag.clone(),
             default_format: chip.default_binary_format.clone().unwrap_or_default(),
         })
     }

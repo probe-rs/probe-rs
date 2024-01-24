@@ -164,7 +164,7 @@ where
             memory_map,
             flash_algorithms: flash_algorithm_names,
             rtt_scan_ranges: None,
-            scan_chain: None, // TODO, parse from sdf
+            jtag: None, // TODO, parse scan chain from sdf
             default_binary_format: None,
         });
     }

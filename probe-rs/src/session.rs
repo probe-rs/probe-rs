@@ -171,8 +171,10 @@ impl Session {
             }
         }
 
-        if let Some(scan_chain) = target.scan_chain.clone() {
-            probe.set_scan_chain(scan_chain)?;
+        if let Some(jtag) = target.jtag.as_ref() {
+            if let Some(scan_chain) = jtag.scan_chain.clone() {
+                probe.set_scan_chain(scan_chain)?;
+            }
         }
         probe.attach_to_unspecified()?;
 
@@ -271,8 +273,10 @@ impl Session {
             _ => unreachable!("Mismatch between architecture and sequence type!"),
         };
 
-        if let Some(scan_chain) = target.scan_chain.clone() {
-            probe.set_scan_chain(scan_chain)?;
+        if let Some(jtag) = target.jtag.as_ref() {
+            if let Some(scan_chain) = jtag.scan_chain.clone() {
+                probe.set_scan_chain(scan_chain)?;
+            }
         }
 
         probe.attach_to_unspecified()?;
@@ -305,8 +309,10 @@ impl Session {
             _ => unreachable!("Mismatch between architecture and sequence type!"),
         };
 
-        if let Some(scan_chain) = target.scan_chain.clone() {
-            probe.set_scan_chain(scan_chain)?;
+        if let Some(jtag) = target.jtag.as_ref() {
+            if let Some(scan_chain) = jtag.scan_chain.clone() {
+                probe.set_scan_chain(scan_chain)?;
+            }
         }
 
         probe.attach_to_unspecified()?;
