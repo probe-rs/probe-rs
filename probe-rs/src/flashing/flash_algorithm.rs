@@ -267,7 +267,7 @@ impl FlashAlgorithm {
             // Make sure at least one data page fits into RAM.
             if buffer_page_size + stack_size > remaining_ram {
                 // The configured stack size is too large. Let's not try to be too clever about it.
-                return Err(FlashError::InvalidFlashAlgorithmLoadAddress { address: addr_load });
+                return Err(FlashError::InvalidFlashAlgorithmStackSize);
             }
             stack_size
         } else {
@@ -275,7 +275,7 @@ impl FlashAlgorithm {
             // avoid a panic if the RAM region is too small.
             if buffer_page_size >= remaining_ram {
                 // We don't have any space for a stack
-                return Err(FlashError::InvalidFlashAlgorithmLoadAddress { address: addr_load });
+                return Err(FlashError::InvalidFlashAlgorithmStackSize);
             }
 
             // Use up to 512 bytes of RAM out of the remaining for stack.

@@ -90,6 +90,9 @@ pub enum FlashError {
         /// The address where the algorithm was supposed to be loaded to.
         address: u64,
     },
+    /// Failed to configure a valid stack size for the flash algorithm.
+    #[error("Failed to configure a stack for the flash algorithm.")]
+    InvalidFlashAlgorithmStackSize,
     /// The given page size is not valid. Only page sizes multiples of 4 bytes are allowed.
     #[error("Invalid page size {size:08X?}. Must be a multiple of 4 bytes.")]
     InvalidPageSize {
