@@ -1429,10 +1429,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                 todo!("SWD sequence in JTAG mode");
             }
             Some(crate::WireProtocol::Swd) => {
-                self.swd_io(
-                    io_sequence.direction_bits().to_owned(),
-                    io_sequence.io_bits().to_owned(),
-                )?;
+                self.swd_io(io_sequence.direction_bits(), io_sequence.io_bits())?;
             }
             _ => {}
         }
