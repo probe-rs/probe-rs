@@ -283,18 +283,12 @@ impl FlashAlgorithm {
 
         let remaining_ram = ram_region.range.end - code_end;
 
-        // Reduce stack size until it fits.
-        while buffer_page_size + actual_stack_size > remaining_ram {
-            // Stack does not fit, decrement stack size and try again
-            actual_stack_size = (actual_stack_size
-                .checked_sub(Self::FLASH_ALGO_STACK_DECREMENT as u64)
-                .expect(
-                    "Overflow never happens; decrement multiples are always less than stack size.",
-                )) as u64;
-
-            if actual_stack_size == 0 {
+        // Reduce stack size if it does not fit.
+        if buffer_page_size + actual_stack_size > remaining_ram {
+            if buffer_page_size >= remaining_ram {
                 return Err(FlashError::InvalidFlashAlgorithmLoadAddress { address: addr_load });
             }
+            actual_stack_size = remaining_ram - buffer_page_size;
         }
 
         tracing::debug!(
