@@ -25,12 +25,12 @@ jobs:
             aarch64-unknown-linux-gnu
 
       - name: Install cross 
-        uses: taiki-e/install-action@v2.23.7
+        uses: taiki-e/install-action@v2.26.0
         with:
           tool: cross
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v2.7.1
+        uses: Swatinem/rust-cache@v2.7.3
       
       - name: Build smoke-tester
         run:
