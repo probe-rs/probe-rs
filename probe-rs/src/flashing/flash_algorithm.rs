@@ -283,6 +283,8 @@ impl FlashAlgorithm {
         let buffer_page_size = raw.flash_properties.page_size as u64;
 
         let mut actual_stack_size = stack_size as u64;
+
+        // Place data after stack, reduce stack size until it fits.
         for _ in 0..stack_size / Self::FLASH_ALGO_STACK_DECREMENT {
             // Stack start address
             addr_stack = code_end + actual_stack_size;
