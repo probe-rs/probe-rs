@@ -160,7 +160,7 @@ impl FlashAlgorithm {
         true
     }
 
-    const FLASH_ALGO_STACK_SIZE: u32 = 512;
+    const FLASH_ALGO_STACK_SIZE: u64 = 512;
 
     // Header for RISC-V Flash Algorithms
     const RISCV_FLASH_BLOB_HEADER: [u32; 2] = [riscv::assembly::EBREAK, riscv::assembly::EBREAK];
@@ -261,14 +261,25 @@ impl FlashAlgorithm {
         let remaining_ram = ram_region.range.end - code_end;
 
         // Try to find a stack size that fits with at least one page of data.
-        let stack_size = raw.stack_size.unwrap_or(Self::FLASH_ALGO_STACK_SIZE) as u64;
-        let stack_size = if buffer_page_size + stack_size > remaining_ram {
-            if buffer_page_size >= remaining_ram {
+        let stack_size = if let Some(configured_stack) = raw.stack_size {
+            let stack_size = configured_stack as u64;
+
+            // Make sure at least one data page fits into RAM.
+            if buffer_page_size + stack_size > remaining_ram {
+                // The configured stack size is too large. Let's not try to be too clever about it.
                 return Err(FlashError::InvalidFlashAlgorithmLoadAddress { address: addr_load });
             }
-            remaining_ram - buffer_page_size
-        } else {
             stack_size
+        } else {
+            // Make sure at least one data page fits into RAM, and also
+            // avoid a panic if the RAM region is too small.
+            if buffer_page_size >= remaining_ram {
+                // We don't have any space for a stack
+                return Err(FlashError::InvalidFlashAlgorithmLoadAddress { address: addr_load });
+            }
+
+            // Use up to 512 bytes of RAM out of the remaining for stack.
+            (remaining_ram - buffer_page_size).min(Self::FLASH_ALGO_STACK_SIZE)
         };
 
         tracing::debug!("The flash algorithm will be configured with {stack_size} bytes of stack");
