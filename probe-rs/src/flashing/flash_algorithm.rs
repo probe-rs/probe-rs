@@ -280,7 +280,7 @@ impl FlashAlgorithm {
         }
 
         for i in 0..stack_size / Self::FLASH_ALGO_STACK_DECREMENT {
-            offset += header_size;
+            offset = header_size;
             code_start = addr_load + offset;
             offset += (instructions.len() * size_of::<u32>()) as u64;
 
