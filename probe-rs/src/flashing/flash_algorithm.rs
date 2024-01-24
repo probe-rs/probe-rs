@@ -282,14 +282,8 @@ impl FlashAlgorithm {
         let code_end = code_start + code_size_bytes;
 
         let mut actual_stack_size = stack_size as u64;
-        for i in 0..stack_size / Self::FLASH_ALGO_STACK_DECREMENT {
-            actual_stack_size = (stack_size
-                .checked_sub(Self::FLASH_ALGO_STACK_DECREMENT * i)
-                .expect(
-                    "Overflow never happens; decrement multiples are always less than stack size.",
-                )) as u64;
-
-            // Stack start address (desc)
+        for _ in 0..stack_size / Self::FLASH_ALGO_STACK_DECREMENT {
+            // Stack start address
             addr_stack = code_end + actual_stack_size;
 
             // Data buffer 1
@@ -300,6 +294,13 @@ impl FlashAlgorithm {
             if offset <= ram_region.range.end {
                 break;
             }
+
+            // Stack does not fit, decrement stack size and try again
+            actual_stack_size = (actual_stack_size
+                .checked_sub(Self::FLASH_ALGO_STACK_DECREMENT as u64)
+                .expect(
+                    "Overflow never happens; decrement multiples are always less than stack size.",
+                )) as u64;
         }
 
         tracing::debug!(
