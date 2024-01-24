@@ -283,7 +283,7 @@ impl FlashAlgorithm {
 
         let remaining_ram = ram_region.range.end - code_end;
 
-        // Place data after stack, reduce stack size until it fits.
+        // Reduce stack size until it fits.
         while buffer_page_size + actual_stack_size > remaining_ram {
             // Stack does not fit, decrement stack size and try again
             actual_stack_size = (actual_stack_size
