@@ -30,7 +30,11 @@ pub struct Cmd {
 }
 
 fn parse_hex(src: &str) -> Result<u32, std::num::ParseIntError> {
-    u32::from_str_radix(src.trim_start_matches("0x"), 16)
+    if src.starts_with("0x") {
+        u32::from_str_radix(src.trim_start_matches("0x"), 16)
+    } else {
+        u32::from_str_radix(src, 10)
+    }
 }
 
 impl Cmd {
