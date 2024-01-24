@@ -29,7 +29,7 @@ use self::error::JlinkError;
 use self::interface::{Interface, Interfaces};
 use self::speed::SpeedConfig;
 use self::swo::SwoMode;
-use crate::architecture::arm::ArmError;
+use crate::architecture::arm::{ArmError, Pins};
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
 use crate::probe::common::{JtagDriverState, RawJtagIo};
@@ -963,6 +963,38 @@ impl RawProtocolIo for JLink {
         }
 
         Ok(BitIter::new(&buf[..num_bytes], dir_bit_count).collect())
+    }
+
+    fn swj_pins(
+        &mut self,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
+    ) -> Result<u32, DebugProbeError> {
+        let mut nreset = Pins(0);
+        nreset.set_nreset(true);
+        let nreset_mask = nreset.0 as u32;
+
+        // If only the reset pin is selected we perform the reset.
+        // If something else is selected return an error as this is not supported on J-Links.
+        if pin_select == nreset_mask {
+            if Pins(pin_out as u8).nreset() {
+                self.target_reset_deassert()?;
+            } else {
+                self.target_reset_assert()?;
+            }
+
+            // Normally this would be the timeout we pass to the probe to settle the pins.
+            // The J-Link is not capable of this, so we just wait for this time on the host
+            // and assume it has settled until then.
+            std::thread::sleep(Duration::from_micros(pin_wait as u64));
+
+            // We signal that we cannot read the pin state.
+            Ok(0xFFFF_FFFF)
+        } else {
+            // This is not supported for J-Links, unfortunately.
+            Err(DebugProbeError::CommandNotSupportedByProbe("swj_pins"))
+        }
     }
 
     fn swd_settings(&self) -> &SwdSettings {
