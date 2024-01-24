@@ -283,8 +283,6 @@ impl FlashAlgorithm {
         let code_end = code_start + code_size_bytes;
 
         for i in 0..stack_size / Self::FLASH_ALGO_STACK_DECREMENT {
-            offset = header_size + code_size_bytes;
-
             // Stack start address (desc)
             addr_stack = code_end
                 + (stack_size
@@ -294,7 +292,7 @@ impl FlashAlgorithm {
 
             // Data buffer 1
             addr_data = addr_stack;
-            offset += raw.flash_properties.page_size as u64;
+            offset = header_size + code_size_words + raw.flash_properties.page_size as u64;
 
             if offset <= ram_region.range.end - addr_load {
                 break;
