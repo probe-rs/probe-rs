@@ -890,59 +890,6 @@ impl RawDapAccess for CmsisDap {
         Ok(())
     }
 
-    fn select_dp(&mut self, dp: DpAddress) -> Result<(), ArmError> {
-        match dp {
-            DpAddress::Default => Ok(()), // nop
-            DpAddress::Multidrop(targetsel) => {
-                for _i in 0..5 {
-                    // Flush just in case there were writes queued from before.
-                    self.process_batch()?;
-
-                    let request = SequenceRequest::new(
-                        &[
-                            0xff, 0x92, 0xf3, 0x09, 0x62, 0x95, 0x2d, 0x85, 0x86, 0xe9, 0xaf, 0xdd,
-                            0xe3, 0xa2, 0x0e, 0xbc, 0x19, 0xa0, 0xf1, 0xff, 0xff, 0xff, 0xff, 0xff,
-                            0xff, 0xff, 0xff, 0x00,
-                        ],
-                        28 * 8,
-                    )
-                    .map_err(DebugProbeError::from)?;
-
-                    // dormant-to-swd + line reset
-                    self.send_swj_sequences(request)
-                        .map_err(DebugProbeError::from)?;
-
-                    // TARGETSEL write.
-                    // The TARGETSEL write is not ACKed by design. We can't use a normal register write
-                    // because many probes don't even send the data phase when NAK.
-                    let parity = targetsel.count_ones() % 2;
-                    let data = &((parity as u64) << 45 | (targetsel as u64) << 13 | 0x1f99)
-                        .to_le_bytes()[..6];
-
-                    let request =
-                        SequenceRequest::new(data, 6 * 8).map_err(DebugProbeError::from)?;
-
-                    self.send_swj_sequences(request)
-                        .map_err(DebugProbeError::from)?;
-
-                    // "A write to the TARGETSEL register must always be followed by a read of the DPIDR register or a line reset. If the
-                    // response to the DPIDR read is incorrect, or there is no response, the host must start the sequence again."
-                    match self.raw_read_register(PortType::DebugPort, 0) {
-                        Ok(res) => {
-                            tracing::debug!("DPIDR read {:08x}", res);
-                            return Ok(());
-                        }
-                        Err(e) => {
-                            tracing::debug!("DPIDR read failed, retrying. Error: {:?}", e);
-                        }
-                    }
-                }
-                tracing::warn!("Giving up on TARGETSEL, too many retries.");
-                Err(DapError::NoAcknowledge.into())
-            }
-        }
-    }
-
     /// Reads the DAP register on the specified port and address.
     fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, ArmError> {
         let res = self.batch_add(BatchCommand::Read(port, addr as u16))?;

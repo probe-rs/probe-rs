@@ -6,7 +6,7 @@ use bitvec::{prelude::*, view::BitView};
 use crate::{
     architecture::arm::{
         dp::{Abort, Ctrl, RdBuff, DPIDR},
-        ArmError, DapError, DpAddress, Pins, PortType, RawDapAccess, Register,
+        ArmError, DapError, Pins, PortType, RawDapAccess, Register,
     },
     probe::common::bits_to_byte,
     probe::JTAGAccess,
@@ -882,105 +882,6 @@ fn line_reset<P: RawProtocolIo + JTAGAccess + RawDapAccess>(this: &mut P) -> Res
 }
 
 impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for Probe {
-    fn select_dp(&mut self, dp: DpAddress) -> Result<(), ArmError> {
-        match dp {
-            DpAddress::Default => Ok(()), // nop
-            DpAddress::Multidrop(targetsel) => {
-                let protocol = self.active_protocol().expect("No protocol set");
-                for _i in 0..5 {
-                    tracing::debug!("Starting leave-dormant-sequence");
-
-                    // 0 or 1 selects between JTAG and SWD, while F is part of the following line reset
-                    let activation_code = match protocol {
-                        WireProtocol::Jtag => 0xf0,
-                        WireProtocol::Swd => 0xf1,
-                    };
-
-                    // Dormant-to-swd + line reset
-                    let sequence = &[
-                        0xff,
-                        0x92,
-                        0xf3,
-                        0x09,
-                        0x62,
-                        0x95,
-                        0x2d,
-                        0x85,
-                        0x86,
-                        0xe9,
-                        0xaf,
-                        0xdd,
-                        0xe3,
-                        0xa2,
-                        0x0e,
-                        0xbc,
-                        0x19,
-                        0xa0,
-                        activation_code,
-                        0xff,
-                        0xff,
-                        0xff,
-                        0xff,
-                        0xff,
-                        0xff,
-                        0xff,
-                        0xff,
-                        0x00,
-                    ];
-                    let dormant_sequence = IoSequence::from_bytes(sequence, 28 * 8);
-                    send_sequence(self, protocol, &dormant_sequence)?;
-
-                    // TARGETSEL write.
-                    // The TARGETSEL write is not ACKed by design. We can't use a normal register
-                    // write because many probes don't even send the data phase when NAK.
-                    // To select or deselect the target, a write to TARGETSEL must immediately
-                    // follow a line reset sequence
-
-                    let parity = targetsel.count_ones() % 2 == 1;
-                    let sequence = &((parity as u64) << 45 | (targetsel as u64) << 13 | 0x1f99)
-                        .to_le_bytes()[..6];
-                    let target_sel_sequence = IoSequence::from_bytes(sequence, 6 * 8);
-                    send_sequence(self, protocol, &target_sel_sequence)?;
-
-                    // "A write to the TARGETSEL register must always be followed by a read of the DPIDR register or a line reset. If the
-                    // response to the DPIDR read is incorrect, or there is no response, the host must start the sequence again."
-
-                    // raw_read_register is trying too hard to recover from errors. This is an issue for DPIDR reads
-                    // where the line must not be reset, otherwise the target gets deselected.
-                    let mut dpidr_transfer = DapTransfer::read(PortType::DebugPort, 0);
-                    perform_transfers(self, std::slice::from_mut(&mut dpidr_transfer), 0)?;
-                    match dpidr_transfer.status {
-                        TransferStatus::Ok => {
-                            tracing::debug!("DPIDR read {:08x}", dpidr_transfer.value);
-
-                            // "If overrun detection is enabled, then the line reset sets
-                            // CTRL/STAT.STICKYORUN to 0b1"
-
-                            // Because we use overrun detection, we now have to clear the overrun error.
-                            let mut abort = Abort(0);
-
-                            abort.set_orunerrclr(true);
-
-                            RawDapAccess::raw_write_register(
-                                self,
-                                PortType::DebugPort,
-                                Abort::ADDRESS,
-                                abort.into(),
-                            )?;
-                            return Ok(());
-                        }
-                        status => {
-                            tracing::debug!("DPIDR read failed, retrying. Error: {:?}", status);
-                        }
-                    }
-                }
-
-                tracing::warn!("Giving up on TARGETSEL, too many retries.");
-                Err(DapError::NoAcknowledge.into())
-            }
-        }
-    }
-
     fn raw_read_register(&mut self, port: PortType, address: u8) -> Result<u32, ArmError> {
         let dap_wait_retries = self.swd_settings().num_retries_after_wait;
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);

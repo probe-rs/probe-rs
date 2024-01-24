@@ -501,15 +501,14 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
 
             self.probe.raw_flush()?;
 
-            // TODO: This means that we are not connected to a DP anymore.
-            //       We should prevent use of the communication interface until we are connected again.
-            self.state.sequence.debug_port_setup(&mut *self.probe, dp)?;
+            // Try to switch to the new DP.
+            if let Err(e) = self.state.sequence.debug_port_connect(&mut *self.probe, dp) {
+                tracing::warn!("Failed to switch to DP {:x?}: {}", dp, e);
 
-            //if let Err(e) = self.probe.select_dp(dp) {
-            //    // TODO: This means that we are not connected to a DP anymore.
-            //    //       We should prevent use of the communication interface until we are connected again.
-            //    return Err(e);
-            //}
+                // Try the more involved debug_port_setup sequence, which also handles dormant mode.
+                self.state.sequence.debug_port_setup(&mut *self.probe, dp)?;
+            }
+
             self.state.current_dp = dp;
         }
 

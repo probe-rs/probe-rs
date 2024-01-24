@@ -10,7 +10,9 @@ use std::{
 
 use probe_rs_target::CoreType;
 
-use crate::{architecture::arm::ArmProbeInterface, DebugProbeError, MemoryMappedRegister};
+use crate::{
+    architecture::arm::ArmProbeInterface, DebugProbeError, MemoryMappedRegister, WireProtocol,
+};
 
 use super::{
     ap::{AccessPortError, MemoryAp},
@@ -444,6 +446,10 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// Prepare the target debug port for connection. This is based on the
     /// `DebugPortSetup` function from the [ARM SVD Debug Description].
     ///
+    /// After this function has been executed, it should be possible to read and write registers using SWD requests.
+    ///
+    /// If this function cannot read the DPIDR register, it will retry up to 5 times, and return an error if it still cannot read it.
+    ///
     /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#debugPortSetup
     #[doc(alias = "DebugPortSetup")]
     fn debug_port_setup(
@@ -454,31 +460,44 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         // TODO: Handle this differently for ST-Link?
         tracing::debug!("Setting up debug port {dp:?}");
 
-        // TODO: Use atomic block
-
+        // Assume that multidrop means SWD version 2 and dormant state.
+        // There could also be chips with SWD version 2 that don't use multidrop,
+        // so this will have to be changed in the future.
         let has_dormant = matches!(dp, DpAddress::Multidrop(_));
 
         let num_retries = 5;
+
+        fn alert_sequence(interface: &mut dyn DapProbe) -> Result<(), ArmError> {
+            tracing::trace!("Sending Selection Alert sequence");
+
+            // Ensure target is not in the middle of detecting a selection alert
+            interface.swj_sequence(8, 0xFF)?;
+
+            // Alert Sequence Bits  0.. 63
+            interface.swj_sequence(64, 0x86852D956209F392)?;
+
+            // Alert Sequence Bits 64..127
+            interface.swj_sequence(64, 0x19BC0EA2E3DDAFE9)?;
+
+            Ok(())
+        }
+
+        // TODO: Use atomic block
 
         for _ in 0..num_retries {
             // Make sure the debug port is in the correct mode based on what the probe
             // has selected via active_protocol
             match interface.active_protocol() {
-                Some(crate::WireProtocol::Jtag) => {
+                Some(WireProtocol::Jtag) => {
                     if has_dormant {
                         // Ensure current debug interface is in reset state.
-                        interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
+                        swd_line_reset(interface)?;
 
-                        // Select Dormant State (from SWD).
+                        tracing::trace!("Select Dormant State (from SWD)");
                         interface.swj_sequence(16, 0xE3BC)?;
 
-                        interface.swj_sequence(8, 0xFF)?;
-
-                        // Alert Sequence Bits  0.. 63
-                        interface.swj_sequence(64, 0x86852D956209F392)?;
-
-                        // Alert Sequence Bits 64..127
-                        interface.swj_sequence(64, 0x19BC0EA2E3DDAFE9)?;
+                        // Send alert sequence
+                        alert_sequence(interface)?;
 
                         // 4 cycles SWDIO/TMS LOW + 8-Bit JTAG Activation Code (0x0A)
                         interface.swj_sequence(12, 0x0A0)?;
@@ -487,7 +506,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                         interface.swj_sequence(6, 0x3F)?;
                     } else {
                         // Ensure current debug interface is in reset state.
-                        interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
+                        swd_line_reset(interface)?;
 
                         // Execute SWJ-DP Switch Sequence SWD to JTAG (0xE73C).
                         interface.swj_sequence(16, 0xE73C)?;
@@ -505,45 +524,36 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                     // Configure JTAG IR lengths in probe
                     interface.configure_jtag()?;
                 }
-                Some(crate::WireProtocol::Swd) => {
+                Some(WireProtocol::Swd) => {
                     if has_dormant {
-                        tracing::trace!("SWD Line reset / JTAG TAP into Test-Logic-Reset state");
-                        interface.swj_sequence(51, 0x0007FFFFFFFFFFFF)?;
+                        swd_line_reset(interface)?;
 
                         // Select Dormant State (from JTAG)
                         tracing::trace!("Select Dormant State (from JTAG)");
                         interface.swj_sequence(31, 0x33BBBBBA)?;
 
                         // Leave dormant state
-
-                        // At least 8 cycles SWDIO/TMS HIGH
-                        interface.swj_sequence(8, 0xFF)?;
-
-                        tracing::trace!("Dormant State alert sequence");
-                        // Alert Sequence Bits  0.. 63
-                        interface.swj_sequence(64, 0x86852D956209F392)?;
-
-                        // Alert Sequence Bits 64..127
-                        interface.swj_sequence(64, 0x19BC0EA2E3DDAFE9)?;
+                        alert_sequence(interface)?;
 
                         // 4 cycles SWDIO/TMS LOW + 8-Bit SWD Activation Code (0x1A)
                         interface.swj_sequence(12, 0x1A0)?;
-
-                        // Enter SWD Line Reset State
-                        interface.swj_sequence(51, 0x0007FFFFFFFFFFFF)?; // &gt; 50 cycles SWDIO/TMS High
-                        interface.swj_sequence(3, 0x00)?; // At least 2 idle cycles (SWDIO/TMS Low)
                     } else {
                         // Ensure current debug interface is in reset state.
-                        interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
+                        swd_line_reset(interface)?;
 
                         // Execute SWJ-DP Switch Sequence JTAG to SWD (0xE79E).
                         // Change if SWJ-DP uses deprecated switch code (0xEDB6).
                         interface.swj_sequence(16, 0xE79E)?;
 
                         // > 50 cycles SWDIO/TMS High.
-                        interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
+                        swd_line_reset(interface)?;
                         // At least 2 idle cycles (SWDIO/TMS Low).
                         interface.swj_sequence(3, 0x00)?;
+                    }
+
+                    // SWD should now be activated, so we can try and connect to the debug port
+                    if self.debug_port_connect(interface, dp).is_ok() {
+                        return Ok(());
                     }
                 }
                 _ => {
@@ -555,51 +565,10 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             }
 
             // End of atomic block.
-
-            if let DpAddress::Multidrop(targetsel) = dp {
-                tracing::debug!("Writing targetsel {:#x}", targetsel);
-                /*
-                                // TARGETSEL write.
-                                // The TARGETSEL write is not ACKed by design. We can't use a normal register write
-                                // because many probes don't even send the data phase when NAK.
-                                let parity = targetsel.count_ones() % 2;
-                                let data = (parity as u64) << 32 | (targetsel as u64);
-
-                                let req = 0x1ff9;
-                                interface.swd_sequence(8, true, req)?;
-                                interface.swd_sequence(5, false, 0)?;
-
-                                interface.swd_sequence(32 + 1, true, data)?;
-                */
-
-                // TARGETSEL write.
-                // The TARGETSEL write is not ACKed by design. We can't use a normal register write
-                // because many probes don't even send the data phase when NAK.
-                let parity = targetsel.count_ones() % 2;
-                let data = ((parity as u64) << 45 | (targetsel as u64) << 13 | 0x1f99);
-
-                //let request = SequenceRequest::new(data, 6 * 8).map_err(DebugProbeError::from)?;
-
-                interface
-                    .swj_sequence(6 * 8, data)
-                    .map_err(DebugProbeError::from)?;
-            }
-
-            // Read DPIDR to enable SWD interface.
-            let dpidr = interface.raw_read_register(PortType::DebugPort, DPIDR::ADDRESS);
-
-            tracing::debug!("Result of DPIDR read: {:#x?}", dpidr);
-
-            if dpidr.is_ok() {
-                return Ok(());
-            }
-
-            // TODO: Figure a way how to do this.
-            // interface.read_dpidr()?;
         }
 
         Err(ArmError::Other(anyhow::anyhow!(
-            "Failed to connect to debug port."
+            "Failed to connect to the debug port. Please check the debug cable and target power. If SWD multi-drop is used, ensure the correct TARGETSEL value is used."
         )))
     }
 
@@ -851,6 +820,67 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         Ok(())
     }
 
+    /// Perform a SWD line reset or enter the JTAG Run-Test-Idle state, and then try to connect to a debug port.
+    ///
+    /// This is executed as part of the standard `debug_port_setup` sequence,
+    /// and when switching between debug ports in a SWD multi-drop configuration.
+    ///
+    /// If the `dp` parameter is `DpAddress::Default`, a read of the DPIDR register will be
+    /// performed after the line reset.
+    ///
+    /// If the `dp` parameter is `DpAddress::Multidrop`, a write of the `TARGETSEL` register is
+    /// done after the line reset, followed by a read of the `DPIDR` register.
+    ///
+    /// This is not based on a sequence from the Open-CMSIS-Pack standard.
+    fn debug_port_connect(
+        &self,
+        interface: &mut dyn DapProbe,
+        dp: DpAddress,
+    ) -> Result<(), ArmError> {
+        match interface.active_protocol() {
+            Some(WireProtocol::Jtag) => {
+                tracing::debug!("JTAG: No special sequence needed to connect to debug port");
+                return Ok(());
+            }
+            Some(WireProtocol::Swd) => {
+                tracing::debug!("SWD: Connecting to debug port with address {:?}", dp);
+            }
+            None => {
+                return Err(ArmDebugSequenceError::SequenceSpecific(
+                    "Cannot detect current protocol".into(),
+                )
+                .into())
+            }
+        }
+
+        // Enter SWD Line Reset State
+        swd_line_reset(interface)?;
+        interface.swj_sequence(3, 0x00)?; // At least 2 idle cycles (SWDIO/TMS Low)
+
+        // If multidrop is used, we now have to select a target
+        if let DpAddress::Multidrop(targetsel) = dp {
+            tracing::debug!("Writing targetsel {:#x}", targetsel);
+            // TARGETSEL write.
+            // The TARGETSEL write is not ACKed by design. We can't use a normal register write
+            // because many probes don't even send the data phase when NAK.
+            let parity = targetsel.count_ones() % 2;
+            let data = (parity as u64) << 45 | (targetsel as u64) << 13 | 0x1f99;
+
+            // Should this be a swd_sequence?
+            // Technically we shouldn't drive SWDIO all the time when sending a request.
+            interface
+                .swj_sequence(6 * 8, data)
+                .map_err(DebugProbeError::from)?;
+        }
+
+        // Read DPIDR to enable SWD interface.
+        let dpidr = interface.raw_read_register(PortType::DebugPort, DPIDR::ADDRESS)?;
+
+        tracing::debug!("Result of DPIDR read: {:#x?}", dpidr);
+
+        Ok(())
+    }
+
     /// Return the Debug Erase Sequence implementation if it exists
     fn debug_erase_sequence(&self) -> Option<Arc<dyn DebugEraseSequence>> {
         None
@@ -874,4 +904,11 @@ pub trait DebugEraseSequence: Send + Sync {
                 .into(),
         )
     }
+}
+
+/// Perform a SWD line reset (SWDIO high for 50 clock cycles)
+fn swd_line_reset(interface: &mut dyn DapProbe) -> Result<(), ArmError> {
+    interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
+
+    Ok(())
 }

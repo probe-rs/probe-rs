@@ -19,15 +19,14 @@ fn main() -> Result<()> {
     probe.attach_to_unspecified()?;
     let mut iface = probe
         .try_into_arm_interface()
-        .unwrap()
+        .map_err(|(_probe, err)| err)?
         .initialize_unspecified(core0)
-        .unwrap();
+        .map_err(|(_interface, err)| err)?;
 
     // This is an example on how to do raw DP register access with multidrop.
     // This reads DPIDR and TARGETID of both cores in a RP2040. This chip is
     // unconventional because each core has its own DP.
 
-    let core0 = DpAddress::Multidrop(0x01002927);
     let core1 = DpAddress::Multidrop(0x11002927);
 
     println!(

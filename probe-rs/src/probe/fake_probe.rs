@@ -371,13 +371,6 @@ impl DebugProbe for FakeProbe {
 }
 
 impl RawDapAccess for FakeProbe {
-    fn select_dp(&mut self, _dp: DpAddress) -> Result<(), ArmError> {
-        Err(DebugPortError::Unsupported(
-            "Fake debug probe does not support DP selection.".to_string(),
-        )
-        .into())
-    }
-
     /// Reads the DAP register on the specified port and address
     fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, ArmError> {
         let handler = self.dap_register_read_handler.as_ref().unwrap();

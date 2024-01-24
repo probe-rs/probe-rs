@@ -69,15 +69,6 @@ impl ApAddress {
 /// Almost everything is the responsibility of the caller. For example, the caller must
 /// handle bank switching and AP selection.
 pub trait RawDapAccess {
-    /// Select the debug port to operate on.
-    ///
-    /// If the probe is connected to a system with multiple debug ports,
-    /// this will process all queued commands which haven't been executed yet.
-    ///
-    /// This means that returned errors can also come from these commands,
-    /// not only from changing debug port.
-    fn select_dp(&mut self, dp: DpAddress) -> Result<(), ArmError>;
-
     /// Read a DAP register.
     ///
     /// Only the lowest 4 bits of `addr` are used. Bank switching is the caller's responsibility.
