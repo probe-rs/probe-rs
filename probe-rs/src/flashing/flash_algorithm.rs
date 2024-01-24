@@ -261,13 +261,19 @@ impl FlashAlgorithm {
         tracing::debug!("The flash algorithm will be configured with {stack_size} bytes of stack");
 
         // Load address
-        let addr_load = raw
-            .load_address
-            .map(|a| {
-                a.checked_sub(header_size) // adjust the raw load address to account for the algo header
-                        .ok_or(FlashError::InvalidFlashAlgorithmLoadAddress { address: a })
-            })
-            .unwrap_or(Ok(ram_region.range.start))?;
+        let addr_load = match raw.load_address {
+            Some(address) => {
+                // adjust the raw load address to account for the algo header
+                address
+                    .checked_sub(header_size)
+                    .ok_or(FlashError::InvalidFlashAlgorithmLoadAddress { address })?
+            }
+
+            None => {
+                // assume position independent code
+                ram_region.range.start
+            }
+        };
 
         if addr_load < ram_region.range.start {
             return Err(FlashError::InvalidFlashAlgorithmLoadAddress { address: addr_load });
