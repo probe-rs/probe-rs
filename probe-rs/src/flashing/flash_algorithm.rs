@@ -235,7 +235,6 @@ impl FlashAlgorithm {
         let header_size = size_of_val(header) as u64;
 
         let mut addr_stack = 0;
-        let mut addr_data = 0;
 
         // Try to find a stack size that fits with at least one page of data.
         let stack_size = {
@@ -291,9 +290,6 @@ impl FlashAlgorithm {
             // Stack start address
             addr_stack = code_end + actual_stack_size;
 
-            // Data buffer 1
-            addr_data = addr_stack;
-
             // Stack + data buffer fits, we're done
             if buffer_page_size + actual_stack_size <= remaining_ram {
                 break;
@@ -310,6 +306,9 @@ impl FlashAlgorithm {
         tracing::debug!(
             "The flash algorithm will be configured with {actual_stack_size} bytes of stack"
         );
+
+        // Data buffer 1
+        let addr_data = addr_stack;
 
         // Data buffer 2
         let second_buffer_start = addr_data + buffer_page_size;
