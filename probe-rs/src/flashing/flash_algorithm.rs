@@ -257,7 +257,6 @@ impl FlashAlgorithm {
                 stack_size
             }
         };
-        tracing::debug!("The flash algorithm will be configured with {stack_size} bytes of stack");
 
         // Load address
         let addr_load = match raw.load_address {
@@ -282,8 +281,9 @@ impl FlashAlgorithm {
         let code_size_bytes = (instructions.len() * size_of::<u32>()) as u64;
         let code_end = code_start + code_size_bytes;
 
+        let mut actual_stack_size = stack_size as u64;
         for i in 0..stack_size / Self::FLASH_ALGO_STACK_DECREMENT {
-            let actual_stack_size = (stack_size
+            actual_stack_size = (stack_size
                 .checked_sub(Self::FLASH_ALGO_STACK_DECREMENT * i)
                 .expect(
                     "Overflow never happens; decrement multiples are always less than stack size.",
@@ -301,6 +301,10 @@ impl FlashAlgorithm {
                 break;
             }
         }
+
+        tracing::debug!(
+            "The flash algorithm will be configured with {actual_stack_size} bytes of stack"
+        );
 
         // Data buffer 2
         let addr_data2 = addr_data + raw.flash_properties.page_size as u64;
