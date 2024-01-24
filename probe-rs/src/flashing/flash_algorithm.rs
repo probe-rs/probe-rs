@@ -234,8 +234,6 @@ impl FlashAlgorithm {
 
         let header_size = size_of_val(header) as u64;
 
-        let mut addr_stack = 0;
-
         // Try to find a stack size that fits with at least one page of data.
         let stack_size = {
             let stack_size = raw.stack_size.unwrap_or(Self::FLASH_ALGO_STACK_SIZE);
@@ -287,9 +285,6 @@ impl FlashAlgorithm {
 
         // Place data after stack, reduce stack size until it fits.
         for _ in 0..stack_size / Self::FLASH_ALGO_STACK_DECREMENT {
-            // Stack start address
-            addr_stack = code_end + actual_stack_size;
-
             // Stack + data buffer fits, we're done
             if buffer_page_size + actual_stack_size <= remaining_ram {
                 break;
@@ -306,6 +301,8 @@ impl FlashAlgorithm {
         tracing::debug!(
             "The flash algorithm will be configured with {actual_stack_size} bytes of stack"
         );
+
+        let addr_stack = code_end + actual_stack_size;
 
         // Data buffer 1
         let addr_data = addr_stack;
