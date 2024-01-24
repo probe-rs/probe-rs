@@ -1,354 +1,237 @@
-use crate::architecture::riscv::communication_interface::RiscvError;
-use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
-use crate::architecture::{
-    arm::communication_interface::UninitializedArmProbe,
-    riscv::communication_interface::RiscvCommunicationInterface,
+use crate::{
+    architecture::{
+        arm::communication_interface::UninitializedArmProbe,
+        riscv::communication_interface::{RiscvCommunicationInterface, RiscvError},
+        xtensa::communication_interface::XtensaCommunicationInterface,
+    },
+    probe::{
+        common::{JtagDriverState, RawJtagIo},
+        DebugProbe, JTAGAccess, ProbeCreationError, ProbeDriver, ScanChainElement,
+    },
+    DebugProbeError, DebugProbeInfo, DebugProbeSelector, WireProtocol,
 };
-use crate::probe::common::{common_sequence, extract_idcodes, extract_ir_lengths};
-use crate::probe::{
-    DebugProbe, DeferredResultSet, JTAGAccess, JtagCommandQueue, ProbeCreationError, ProbeDriver,
-    ScanChainElement,
-};
-use crate::{DebugProbeError, DebugProbeInfo, DebugProbeSelector, WireProtocol};
 use anyhow::anyhow;
-use bitvec::{order::Lsb0, slice::BitSlice, vec::BitVec};
+use bitvec::prelude::*;
 use nusb::DeviceInfo;
-use std::io::{self, Read, Write};
-use std::iter;
-use std::time::Duration;
+use std::{
+    io::{Read, Write},
+    time::{Duration, Instant},
+};
 
-mod ftdi_impl;
-use ftdi_impl as ftdi;
+mod command_compacter;
+mod ftdaye;
 
-mod commands;
-
-use self::commands::{JtagCommand, WriteRegisterCommand};
-
-use super::{BatchExecutionError, ChainParams, CommandResult, JtagChainItem};
+use command_compacter::Command;
+use ftdaye::{error::FtdiError, ChipType};
 
 #[derive(Debug)]
-pub struct JtagAdapter {
-    device: ftdi::Device,
-    chain_params: Option<ChainParams>,
+struct JtagAdapter {
+    device: ftdaye::Device,
+    speed_khz: u32,
+
+    command: Command,
+    commands: Vec<u8>,
+    in_bit_counts: Vec<usize>,
+    in_bits: BitVec<u8, Lsb0>,
+    ftdi: FtdiProperties,
 }
 
 impl JtagAdapter {
-    pub fn open(vid: u16, pid: u16) -> Result<Self, ftdi::Error> {
-        let mut builder = ftdi::Builder::new();
-        builder.set_interface(ftdi::Interface::A)?;
-        let device = builder.usb_open(vid, pid)?;
+    fn open(ftdi: FtdiDevice, usb_device: DeviceInfo) -> Result<Self, DebugProbeError> {
+        let device = ftdaye::Builder::new()
+            .with_interface(ftdaye::Interface::A)
+            .with_read_timeout(Duration::from_secs(5))
+            .with_write_timeout(Duration::from_secs(5))
+            .usb_open(usb_device)?;
+
+        let ftdi = FtdiProperties::try_from((ftdi, device.chip_type()))?;
 
         Ok(Self {
             device,
-            chain_params: None,
+            speed_khz: 1000,
+            command: Command::default(),
+            commands: vec![],
+            in_bit_counts: vec![],
+            in_bits: BitVec::new(),
+            ftdi,
         })
     }
 
-    pub fn attach(&mut self) -> Result<(), ftdi::Error> {
+    pub fn attach(&mut self) -> Result<(), FtdiError> {
         self.device.usb_reset()?;
+        // 0x0B configures pins for JTAG
+        self.device.set_bitmode(0x0b, ftdaye::BitMode::Mpsse)?;
         self.device.set_latency_timer(1)?;
-        self.device.set_bitmode(0x0b, ftdi::BitMode::Mpsse)?;
         self.device.usb_purge_buffers()?;
 
         let mut junk = vec![];
         let _ = self.device.read_to_end(&mut junk);
 
-        // Minimal values, may not work with all probes
-        let output: u16 = 0x0008;
-        let direction: u16 = 0x000b;
-        self.device
-            .write_all(&[0x80, output as u8, direction as u8])?;
-        self.device
-            .write_all(&[0x82, (output >> 8) as u8, (direction >> 8) as u8])?;
+        // TMS starts high
+        let output = 0x0008;
 
-        // Disable loopback
-        self.device.write_all(&[0x85])?;
+        // TMS, TDO and TCK are outputs
+        let direction = 0x000b;
+
+        self.device.set_pins(output, direction)?;
+
+        self.apply_clock_speed(self.speed_khz)?;
+
+        self.device.disable_loopback()?;
 
         Ok(())
     }
 
-    fn read_response(&mut self, size: usize) -> Result<Vec<u8>, DebugProbeError> {
-        let timeout = Duration::from_millis(10);
-        let mut result = Vec::new();
+    fn speed_khz(&self) -> u32 {
+        self.speed_khz
+    }
 
-        let t0 = std::time::Instant::now();
-        while result.len() < size {
+    fn set_speed_khz(&mut self, speed_khz: u32) -> u32 {
+        self.speed_khz = speed_khz;
+        self.speed_khz
+    }
+
+    fn apply_clock_speed(&mut self, speed_khz: u32) -> Result<u32, FtdiError> {
+        // Disable divide-by-5 mode if available
+        if self.ftdi.has_divide_by_5 {
+            self.device.disable_divide_by_5()?;
+        } else {
+            // Force enable divide-by-5 mode if not available or unknown
+            self.device.enable_divide_by_5()?;
+        }
+
+        // If `speed_khz` is not a divisor of the maximum supported speed, we need to round up
+        let is_exact = self.ftdi.max_clock % speed_khz == 0;
+
+        // If `speed_khz` is 0, use the maximum supported speed
+        let divisor =
+            (self.ftdi.max_clock.checked_div(speed_khz).unwrap_or(1) - is_exact as u32).min(0xFFFF);
+
+        let actual_speed = self.ftdi.max_clock / (divisor + 1);
+
+        tracing::info!(
+            "Setting speed to {} kHz (divisor: {}, actual speed: {} kHz)",
+            speed_khz,
+            divisor,
+            actual_speed
+        );
+
+        self.device.configure_clock_divider(divisor as u16)?;
+
+        self.speed_khz = actual_speed;
+        Ok(actual_speed)
+    }
+
+    fn read_response(&mut self) -> Result<(), DebugProbeError> {
+        if self.in_bit_counts.is_empty() {
+            return Ok(());
+        }
+
+        let mut t0 = Instant::now();
+        let timeout = Duration::from_millis(10);
+
+        let mut reply = Vec::with_capacity(self.in_bit_counts.len());
+        while reply.len() < self.in_bit_counts.len() {
             if t0.elapsed() > timeout {
+                tracing::warn!(
+                    "Read {} bytes, expected {}",
+                    reply.len(),
+                    self.in_bit_counts.len()
+                );
                 return Err(DebugProbeError::Timeout);
             }
 
-            self.device
-                .read_to_end(&mut result)
-                .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
+            let read = self
+                .device
+                .read_to_end(&mut reply)
+                .map_err(FtdiError::from)?;
+
+            if read > 0 {
+                t0 = Instant::now();
+            }
         }
 
-        if result.len() > size {
+        if reply.len() != self.in_bit_counts.len() {
             return Err(DebugProbeError::Other(anyhow!(
-                "Read more data than expected"
+                "Read more data than expected. Expected {} bytes, got {} bytes",
+                self.in_bit_counts.len(),
+                reply.len()
             )));
         }
 
-        Ok(result)
+        for (byte, count) in reply.into_iter().zip(self.in_bit_counts.drain(..)) {
+            let bits = byte >> (8 - count);
+            self.in_bits
+                .extend_from_bitslice(&bits.view_bits::<Lsb0>()[..count]);
+        }
+
+        Ok(())
     }
 
-    fn shift_tms(&mut self, mut data: &[u8], mut bits: usize) -> Result<(), DebugProbeError> {
-        assert!(bits > 0);
-        assert!((bits + 7) / 8 <= data.len());
-
-        let mut command = vec![];
-
-        while bits > 0 {
-            if bits >= 8 {
-                command.extend_from_slice(&[0x4b, 0x07, data[0]]);
-                data = &data[1..];
-                bits -= 8;
-            } else {
-                command.extend_from_slice(&[0x4b, (bits - 1) as u8, data[0]]);
-                bits = 0;
-            }
-        }
-        self.device
-            .write_all(&command)
-            .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))
-    }
-
-    fn shift_tdi(&mut self, mut data: &[u8], mut bits: usize) -> Result<(), DebugProbeError> {
-        assert!(bits > 0);
-        assert!((bits + 7) / 8 <= data.len());
-
-        let mut command = vec![];
-
-        let full_bytes = (bits - 1) / 8;
-        if full_bytes > 0 {
-            assert!(full_bytes <= 65536);
-
-            command.extend_from_slice(&[0x19]);
-            let n: u16 = (full_bytes - 1) as u16;
-            command.extend_from_slice(&n.to_le_bytes());
-            command.extend_from_slice(&data[..full_bytes]);
-
-            bits -= full_bytes * 8;
-            data = &data[full_bytes..];
-        }
-        assert!(bits <= 8);
-
-        if bits > 0 {
-            let byte = data[0];
-            if bits > 1 {
-                let n = (bits - 2) as u8;
-                command.extend_from_slice(&[0x1b, n, byte]);
-            }
-
-            let last_bit = (byte >> (bits - 1)) & 0x01;
-            let tms_byte = 0x01 | (last_bit << 7);
-            command.extend_from_slice(&[0x4b, 0x00, tms_byte]);
-        }
-
-        self.device
-            .write_all(&command)
-            .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))
-    }
-
-    fn tranfer_tdi(
-        &mut self,
-        mut data: &[u8],
-        mut bits: usize,
-    ) -> Result<Vec<u8>, DebugProbeError> {
-        assert!(bits > 0);
-        assert!((bits + 7) / 8 <= data.len());
-
-        let mut command = vec![];
-
-        let full_bytes = (bits - 1) / 8;
-        if full_bytes > 0 {
-            assert!(full_bytes <= 65536);
-
-            command.extend_from_slice(&[0x39]);
-            let n: u16 = (full_bytes - 1) as u16;
-            command.extend_from_slice(&n.to_le_bytes());
-            command.extend_from_slice(&data[..full_bytes]);
-
-            bits -= full_bytes * 8;
-            data = &data[full_bytes..];
-        }
-        assert!(0 < bits && bits <= 8);
-
-        let byte = data[0];
-        if bits > 1 {
-            let n = (bits - 2) as u8;
-            command.extend_from_slice(&[0x3b, n, byte]);
-        }
-
-        let last_bit = (byte >> (bits - 1)) & 0x01;
-        let tms_byte = 0x01 | (last_bit << 7);
-        command.extend_from_slice(&[0x6b, 0x00, tms_byte]);
-
-        self.device
-            .write_all(&command)
+    fn flush(&mut self) -> Result<(), DebugProbeError> {
+        self.finalize_command()?;
+        self.send_buffer()?;
+        self.read_response()
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
 
-        let mut expect_bytes = full_bytes + 1;
-        if bits > 1 {
-            expect_bytes += 1;
-        }
-
-        let mut reply = self.read_response(expect_bytes)?;
-
-        let mut last_byte = reply[reply.len() - 1] >> 7;
-        if bits > 1 {
-            let byte = reply[reply.len() - 2] >> (8 - (bits - 1));
-            last_byte = byte | (last_byte << (bits - 1));
-        }
-        reply[full_bytes] = last_byte;
-        reply.truncate(full_bytes + 1);
-
-        Ok(reply)
+        Ok(())
     }
 
-    /// Reset and go to RUN-TEST/IDLE
-    pub fn reset(&mut self) -> Result<(), DebugProbeError> {
-        self.shift_tms(&[0xff, 0xff, 0xff, 0xff, 0x7f], 40)
+    fn append_command(&mut self, command: Command) -> Result<(), DebugProbeError> {
+        tracing::debug!("Appending {:?}", command);
+        // 1 byte is reserved for the send immediate command
+        if self.commands.len() + command.len() + 1 >= self.ftdi.buffer_size {
+            self.send_buffer()?;
+            self.read_response()?;
+        }
+
+        command.add_captured_bits(&mut self.in_bit_counts);
+        command.encode(&mut self.commands);
+
+        Ok(())
     }
 
-    /// Execute RUN-TEST/IDLE for a number of cycles
-    pub fn idle(&mut self, cycles: usize) -> Result<(), DebugProbeError> {
-        if cycles == 0 {
+    fn finalize_command(&mut self) -> Result<(), DebugProbeError> {
+        if let Some(command) = self.command.take() {
+            self.append_command(command)?;
+        }
+
+        Ok(())
+    }
+
+    fn shift_bit(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError> {
+        if let Some(command) = self.command.append_jtag_bit(tms, tdi, capture) {
+            self.append_command(command)?;
+        }
+
+        Ok(())
+    }
+
+    fn send_buffer(&mut self) -> Result<(), DebugProbeError> {
+        if self.commands.is_empty() {
             return Ok(());
         }
-        let buf = vec![0; (cycles + 7) / 8];
-        self.shift_tms(&buf, cycles)
-    }
 
-    /// Shift to IR and return to IDLE
-    pub fn shift_ir(&mut self, data: &[u8], bits: usize) -> Result<(), DebugProbeError> {
-        self.shift_tms(&[0b0011], 4)?;
-        self.shift_tdi(data, bits)?;
-        self.shift_tms(&[0b01], 2)?;
+        // Send Immediate: This will make the FTDI chip flush its buffer back to the PC.
+        // See https://www.ftdichip.com/Support/Documents/AppNotes/AN_108_Command_Processor_for_MPSSE_and_MCU_Host_Bus_Emulation_Modes.pdf
+        // section 5.1
+        self.commands.push(0x87);
+
+        tracing::trace!("Sending buffer: {:X?}", self.commands);
+
+        self.device
+            .write_all(&self.commands)
+            .map_err(FtdiError::from)?;
+
+        self.commands.clear();
+
         Ok(())
     }
 
-    /// Shift to IR and return to IDLE
-    pub fn transfer_ir(&mut self, data: &[u8], bits: usize) -> Result<Vec<u8>, DebugProbeError> {
-        self.shift_tms(&[0b0011], 4)?;
-        let r = self.tranfer_tdi(data, bits)?;
-        self.shift_tms(&[0b01], 2)?;
-        Ok(r)
-    }
+    fn read_captured_bits(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
+        self.flush()?;
 
-    /// Shift to DR and return to IDLE
-    pub fn transfer_dr(&mut self, data: &[u8], bits: usize) -> Result<Vec<u8>, DebugProbeError> {
-        self.shift_tms(&[0b001], 3)?;
-        let r = self.tranfer_tdi(data, bits)?;
-        self.shift_tms(&[0b01], 2)?;
-        Ok(r)
-    }
-
-    fn scan(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError> {
-        let max_device_count = 8;
-
-        self.reset()?;
-
-        let cmd = vec![0xff; max_device_count * 4];
-        let r = self.transfer_dr(&cmd, cmd.len() * 8)?;
-
-        let idcodes = extract_idcodes(BitSlice::<u8, Lsb0>::from_slice(&r))
-            .map_err(|e| DebugProbeError::Other(e.into()))?;
-
-        self.reset()?;
-
-        let input = vec![0xff; idcodes.len()];
-        let r = self.transfer_ir(&input, input.len() * 8)?;
-
-        let input = iter::repeat(0)
-            .take(idcodes.len())
-            .chain(input.iter().copied())
-            .collect::<Vec<_>>();
-        let r_zeros = self.transfer_ir(&input, input.len() * 8)?;
-
-        let response = BitSlice::<u8, Lsb0>::from_slice(&r);
-        let response_zeros = BitSlice::<u8, Lsb0>::from_slice(&r_zeros);
-
-        let response = common_sequence(response, response_zeros);
-        tracing::debug!("IR scan: {:?}", response);
-
-        let lengths = extract_ir_lengths(response, idcodes.len(), None).unwrap();
-        tracing::debug!("Detected IR lens: {:?}", lengths);
-
-        Ok(idcodes
-            .into_iter()
-            .zip(lengths)
-            .map(|(idcode, irlen)| JtagChainItem { idcode, irlen })
-            .collect())
-    }
-
-    fn select_target(
-        &mut self,
-        chain: &[JtagChainItem],
-        selected: usize,
-    ) -> Result<(), DebugProbeError> {
-        let Some(params) = ChainParams::from_jtag_chain(chain, selected) else {
-            return Err(DebugProbeError::TargetNotFound);
-        };
-
-        tracing::debug!("Target chain params: {:?}", params);
-        self.chain_params = Some(params);
-        Ok(())
-    }
-
-    fn get_chain_params(&self) -> Result<ChainParams, DebugProbeError> {
-        match &self.chain_params {
-            Some(params) => Ok(*params),
-            None => Err(DebugProbeError::Other(anyhow!("target is not selected"))),
-        }
-    }
-
-    fn target_transfer(
-        &mut self,
-        address: u32,
-        data: Option<&[u8]>,
-        len_bits: usize,
-    ) -> Result<Vec<u8>, DebugProbeError> {
-        let params = self.get_chain_params()?;
-        let max_address = (1 << params.irlen) - 1;
-        if address > max_address {
-            return Err(DebugProbeError::Other(anyhow!("invalid register address")));
-        }
-
-        // Write IR register
-        let irbits = params.irpre + params.irlen + params.irpost;
-        assert!(irbits <= 32);
-        let mut ir: u32 = (1 << params.irpre) - 1;
-        ir |= address << params.irpre;
-        ir |= ((1 << params.irpost) - 1) << (params.irpre + params.irlen);
-        self.shift_ir(&ir.to_le_bytes(), irbits)?;
-
-        let drbits = params.drpre + len_bits + params.drpost;
-        let request = if let Some(data_slice) = data {
-            let data = BitSlice::<u8, Lsb0>::from_slice(data_slice);
-            let mut data = BitVec::<u8, Lsb0>::from_bitslice(data);
-            data.truncate(len_bits);
-
-            let mut buf = BitVec::<u8, Lsb0>::new();
-            buf.resize(params.drpre, false);
-            buf.append(&mut data);
-            buf.resize(buf.len() + params.drpost, false);
-
-            buf.into_vec()
-        } else {
-            vec![0; (drbits + 7) / 8]
-        };
-        let reply = self.transfer_dr(&request, drbits)?;
-
-        // Process the reply
-        let mut reply = BitVec::<u8, Lsb0>::from_vec(reply);
-        if params.drpre > 0 {
-            reply = reply.split_off(params.drpre);
-        }
-        reply.truncate(len_bits);
-        reply.force_align();
-        let reply = reply.into_vec();
-
-        Ok(reply)
+        Ok(std::mem::take(&mut self.in_bits))
     }
 }
 
@@ -363,20 +246,32 @@ impl std::fmt::Debug for FtdiProbeSource {
 impl ProbeDriver for FtdiProbeSource {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         // Only open FTDI-compatible probes
-        if !FTDI_COMPAT_DEVICE_IDS.contains(&(selector.vendor_id, selector.product_id)) {
+        let Some(ftdi) = FTDI_COMPAT_DEVICES
+            .iter()
+            .find(|ftdi| ftdi.id == (selector.vendor_id, selector.product_id))
+            .copied()
+        else {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::NotFound,
             ));
+        };
+
+        let mut probes = nusb::list_devices()
+            .map_err(FtdiError::from)?
+            .filter(|usb_info| selector.matches(usb_info))
+            .collect::<Vec<_>>();
+
+        if probes.is_empty() {
+            return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                ProbeCreationError::NotFound,
+            ));
+        } else if probes.len() > 1 {
+            tracing::warn!("More than one matching FTDI probe was found. Opening the first one.");
         }
 
-        let adapter = JtagAdapter::open(selector.vendor_id, selector.product_id)
-            .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
-
         let probe = FtdiProbe {
-            adapter,
-            speed_khz: 0,
-            idle_cycles: 0,
-            scan_chain: None,
+            adapter: JtagAdapter::open(ftdi, probes.pop().unwrap())?,
+            jtag_state: JtagDriverState::default(),
         };
         tracing::debug!("opened probe: {:?}", probe);
         Ok(Box::new(probe))
@@ -390,9 +285,7 @@ impl ProbeDriver for FtdiProbeSource {
 #[derive(Debug)]
 pub struct FtdiProbe {
     adapter: JtagAdapter,
-    speed_khz: u32,
-    idle_cycles: u8,
-    scan_chain: Option<Vec<ScanChainElement>>,
+    jtag_state: JtagDriverState,
 }
 
 impl DebugProbe for FtdiProbe {
@@ -401,62 +294,34 @@ impl DebugProbe for FtdiProbe {
     }
 
     fn speed_khz(&self) -> u32 {
-        self.speed_khz
+        self.adapter.speed_khz()
     }
 
     fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
-        self.speed_khz = speed_khz;
-        // TODO
-        Ok(speed_khz)
+        Ok(self.adapter.set_speed_khz(speed_khz))
     }
 
     fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
         tracing::info!("Setting scan chain to {:?}", scan_chain);
-        self.scan_chain = Some(scan_chain);
+        self.jtag_state.expected_scan_chain = Some(scan_chain);
         Ok(())
     }
 
     fn attach(&mut self) -> Result<(), DebugProbeError> {
-        tracing::debug!("attaching...");
+        tracing::debug!("Attaching...");
 
         self.adapter
             .attach()
             .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
 
-        let taps = self.adapter.scan()?;
-        if taps.is_empty() {
-            tracing::warn!("no JTAG taps detected");
-            return Err(DebugProbeError::TargetNotFound);
-        }
-        if taps.len() == 1 {
-            self.adapter
-                .select_target(&taps, 0)
-                .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
-        } else {
-            const KNOWN_IDCODES: [u32; 2] = [
-                0x1000563d, // GD32VF103
-                0x120034e5, // Little endian Xtensa core
-            ];
-            let idcode = taps.iter().map(|tap| tap.idcode).position(|idcode| {
-                let Some(idcode) = idcode else {
-                    return false;
-                };
+        let chain = self.scan_chain()?;
+        tracing::info!("Found {} TAPs on reset scan", chain.len());
 
-                let found = KNOWN_IDCODES.contains(&idcode.0);
-                if !found {
-                    tracing::warn!("Unknown IDCODEs: {:x?}", idcode);
-                }
-                found
-            });
-            if let Some(pos) = idcode {
-                self.adapter
-                    .select_target(&taps, pos)
-                    .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
-            } else {
-                return Err(DebugProbeError::TargetNotFound);
-            }
+        if chain.len() > 1 {
+            tracing::warn!("More than one TAP detected, defaulting to tap0");
         }
-        Ok(())
+
+        self.select_target(&chain, 0)
     }
 
     fn detach(&mut self) -> Result<(), crate::Error> {
@@ -464,18 +329,23 @@ impl DebugProbe for FtdiProbe {
     }
 
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        tracing::error!("FTDI target_reset");
-        unimplemented!()
+        // TODO we could add this by using a GPIO. However, different probes may connect
+        // different pins (if any) to the reset line, so we would need to make this configurable.
+        Err(DebugProbeError::NotImplemented(
+            "target_reset is not implemented for FTDI probes",
+        ))
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
-        tracing::error!("FTDI target_reset_assert");
-        unimplemented!()
+        Err(DebugProbeError::NotImplemented(
+            "target_reset_assert is not implemented for FTDI probes",
+        ))
     }
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
-        tracing::error!("FTDI target_reset_deassert");
-        unimplemented!()
+        Err(DebugProbeError::NotImplemented(
+            "target_reset_deassert is not implemented for FTDI probes",
+        ))
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
@@ -494,6 +364,7 @@ impl DebugProbe for FtdiProbe {
     fn try_get_riscv_interface(
         self: Box<Self>,
     ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
+        // TODO: send 0x97 to disable adaptive clocking once ARM support is added
         match RiscvCommunicationInterface::new(self) {
             Ok(interface) => Ok(interface),
             Err((probe, err)) => Err((probe.into_probe(), err)),
@@ -512,13 +383,15 @@ impl DebugProbe for FtdiProbe {
         self: Box<Self>,
     ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
     {
+        // TODO we could implement this. We should enable adaptive clocking by sending 0x96,
+        // which connects RTCK to GPIOL3.
         todo!()
     }
 
     fn try_get_xtensa_interface(
         self: Box<Self>,
     ) -> Result<XtensaCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
-        // This probe is intended for Xtensa.
+        // TODO: send 0x97 to disable adaptive clocking once ARM support is added
         match XtensaCommunicationInterface::new(self) {
             Ok(interface) => Ok(interface),
             Err((probe, err)) => Err((probe.into_probe(), err)),
@@ -530,211 +403,165 @@ impl DebugProbe for FtdiProbe {
     }
 }
 
-impl JTAGAccess for FtdiProbe {
-    fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
-        tracing::debug!("read_register({:#x}, {})", address, len);
-        let r = self
-            .adapter
-            .target_transfer(address, None, len as usize)
-            .map_err(|e| {
-                tracing::debug!("target_transfer error: {:?}", e);
-                DebugProbeError::ProbeSpecific(Box::new(e))
-            })?;
-        self.adapter
-            .idle(self.idle_cycles as usize)
-            .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
-        tracing::debug!("read_register result: {:?})", r);
-        Ok(r)
-    }
-
-    fn set_idle_cycles(&mut self, idle_cycles: u8) {
-        tracing::debug!("set_idle_cycles({})", idle_cycles);
-        self.idle_cycles = idle_cycles;
-    }
-
-    fn write_register(
+impl RawJtagIo for FtdiProbe {
+    fn shift_bit(
         &mut self,
-        address: u32,
-        data: &[u8],
-        len: u32,
-    ) -> Result<Vec<u8>, DebugProbeError> {
-        tracing::debug!("write_register({:#x}, {:?}, {})", address, data, len);
-        let r = self
-            .adapter
-            .target_transfer(address, Some(data), len as usize)
-            .map_err(|e| {
-                tracing::debug!("target_transfer error: {:?}", e);
-                DebugProbeError::ProbeSpecific(Box::new(e))
-            })?;
-        self.adapter
-            .idle(self.idle_cycles as usize)
-            .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
-        tracing::debug!("write_register result: {:?})", r);
-        Ok(r)
+        tms: bool,
+        tdi: bool,
+        capture_tdo: bool,
+    ) -> Result<(), DebugProbeError> {
+        self.jtag_state.state.update(tms);
+        self.adapter.shift_bit(tms, tdi, capture_tdo)?;
+        Ok(())
     }
 
-    fn idle_cycles(&self) -> u8 {
-        self.idle_cycles
+    fn read_captured_bits(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
+        self.adapter.read_captured_bits()
     }
 
-    fn write_register_batch(
-        &mut self,
-        writes: &JtagCommandQueue,
-    ) -> Result<DeferredResultSet, BatchExecutionError> {
-        // this value was determined by experimenting and doesn't match e.g
-        // the libftdi read/write chunk size - it is hopefully useful for every setup
-        // max value seems to be different for different adapters, e.g. for the Sipeed JTAG adapter
-        // 40 works but for the Pine64 adapter it doesn't
-        const CHUNK_SIZE: usize = 30;
+    fn state_mut(&mut self) -> &mut JtagDriverState {
+        &mut self.jtag_state
+    }
 
-        let mut results = DeferredResultSet::new();
+    fn state(&self) -> &JtagDriverState {
+        &self.jtag_state
+    }
 
-        let chain_params = match self.adapter.get_chain_params() {
-            Ok(params) => params,
-            Err(e) => {
-                return Err(BatchExecutionError::new(
-                    crate::Error::Probe(DebugProbeError::ProbeSpecific(Box::new(e))),
-                    results,
-                ));
+    fn flush(&mut self) -> Result<(), DebugProbeError> {
+        self.adapter.flush()
+    }
+}
+/// Known properties associated to particular FTDI chip types.
+#[derive(Debug)]
+struct FtdiProperties {
+    /// The size of the device's RX buffer.
+    ///
+    /// We can push down this many bytes to the device in one batch.
+    buffer_size: usize,
+
+    /// The maximum TCK clock speed supported by the device, in kHz.
+    max_clock: u32,
+
+    /// Whether the device supports the divide-by-5 clock mode for "FT2232D compatibility".
+    ///
+    /// Newer devices have 60MHz internal clocks, instead of 12MHz, however, they still
+    /// fall back to 12MHz by default. This flag indicates whether we can disable the clock divider.
+    has_divide_by_5: bool,
+}
+
+impl TryFrom<(FtdiDevice, Option<ChipType>)> for FtdiProperties {
+    type Error = FtdiError;
+
+    fn try_from((ftdi, chip_type): (FtdiDevice, Option<ChipType>)) -> Result<Self, Self::Error> {
+        let chip_type = match chip_type {
+            Some(ty) => ty,
+            None => {
+                tracing::warn!("Unknown FTDI chip. Assuming {:?}", ftdi.fallback_chip_type);
+                ftdi.fallback_chip_type
             }
         };
 
-        let commands: Result<Vec<_>, _> = writes
-            .iter()
-            .map(|(idx, w)| {
-                WriteRegisterCommand::new(
-                    w.address,
-                    w.data.clone(),
-                    w.len as usize,
-                    self.idle_cycles as usize,
-                    chain_params,
-                )
-                .map(|c| (c, idx, w.transform))
-            })
-            .collect();
-
-        let mut commands = match commands {
-            Ok(cmds) => cmds,
-            Err(e) => {
-                return Err(BatchExecutionError::new(
-                    crate::Error::Probe(DebugProbeError::ProbeSpecific(Box::new(e))),
-                    results,
-                ))
+        let properties = match chip_type {
+            ChipType::FT2232H | ChipType::FT4232H => Self {
+                buffer_size: 4096,
+                max_clock: 30_000,
+                has_divide_by_5: true,
+            },
+            ChipType::FT232H => Self {
+                buffer_size: 1024,
+                max_clock: 6_000,
+                has_divide_by_5: true,
+            },
+            ChipType::FT2232C => Self {
+                buffer_size: 128,
+                max_clock: 6_000,
+                has_divide_by_5: false,
+            },
+            not_mpsse => {
+                tracing::warn!("Unsupported FTDI chip: {:?}", not_mpsse);
+                return Err(FtdiError::UnsupportedChipType(not_mpsse));
             }
         };
 
-        for cmd_chunk in commands.chunks_mut(CHUNK_SIZE) {
-            let mut out_buffer = Vec::<u8>::new();
-            let mut size = 0;
-            for (cmd, _, _) in cmd_chunk.iter_mut() {
-                cmd.add_bytes(&mut out_buffer);
-                size += cmd.bytes_to_read();
-            }
-
-            // Send Immediate: This will make the FTDI chip flush its buffer back to the PC.
-            // See https://www.ftdichip.com/Support/Documents/AppNotes/AN_108_Command_Processor_for_MPSSE_and_MCU_Host_Bus_Emulation_Modes.pdf
-            // section 5.1
-            out_buffer.push(0x87);
-
-            let write_res = self.adapter.device.write_all(&out_buffer);
-            if let Err(e) = write_res {
-                return Err(BatchExecutionError::new(
-                    crate::Error::Probe(DebugProbeError::ProbeSpecific(Box::new(e))),
-                    results,
-                ));
-            }
-
-            let timeout = Duration::from_millis(10);
-            let mut result = Vec::new();
-
-            let t0 = std::time::Instant::now();
-            while result.len() < size {
-                if t0.elapsed() > timeout {
-                    return Err(BatchExecutionError::new(
-                        crate::Error::Probe(DebugProbeError::Timeout),
-                        results,
-                    ));
-                }
-
-                let read_res = self.adapter.device.read_to_end(&mut result);
-                match read_res {
-                    Ok(_) => (),
-                    Err(e) => {
-                        return Err(BatchExecutionError::new(
-                            crate::Error::Probe(DebugProbeError::ProbeSpecific(Box::new(e))),
-                            results,
-                        ));
-                    }
-                }
-            }
-
-            if result.len() > size {
-                return Err(BatchExecutionError::new(
-                    crate::Error::Probe(DebugProbeError::ProbeSpecific(Box::new(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        "Read more data than expected",
-                    )))),
-                    results,
-                ));
-            }
-
-            let mut pos = 0;
-            for (cmd, idx, transformer) in cmd_chunk.iter() {
-                let len = cmd.bytes_to_read();
-                let mut data = Vec::<u8>::new();
-                data.extend_from_slice(&result[pos..][..len]);
-
-                let result = cmd.process_output(&data);
-
-                match result {
-                    Ok(data) => {
-                        let data = match data {
-                            CommandResult::VecU8(data) => data,
-                            _ => panic!("Internal error occurred. Cannot have a transformer function for outputs other than Vec<u8>"),
-                        };
-
-                        match transformer(data) {
-                            Ok(data) => results.push(idx, data),
-                            Err(e) => return Err(BatchExecutionError::new(e, results)),
-                        }
-                    }
-                    Err(e) => {
-                        return Err(BatchExecutionError::new(crate::Error::Probe(e), results))
-                    }
-                }
-
-                pos += len;
-            }
-        }
-
-        Ok(results)
-    }
-
-    fn set_ir_len(&mut self, _len: u32) {
-        // The FTDI implementation automatically sets this, so no need to act on this data
+        Ok(properties)
     }
 }
 
-/// (VendorId, ProductId)
-static FTDI_COMPAT_DEVICE_IDS: &[(u16, u16)] = &[
-    (0x0403, 0x6010), // FTDI Ltd. FT2232C/D/H Dual UART/FIFO IC
-    (0x0403, 0x6011), // FTDI Ltd. FT4232H Quad HS USB-UART/FIFO IC
-    (0x0403, 0x6014), // FTDI Ltd. FT232H Single HS USB-UART/FIFO IC
-    (0x15ba, 0x002a), // Olimex Ltd. ARM-USB-TINY-H JTAG interface
+#[derive(Debug, Clone, Copy)]
+struct FtdiDevice {
+    /// The (VID, PID) pair of this device.
+    id: (u16, u16),
+
+    /// FTDI chip type to use if the device is not recognized.
+    ///
+    /// "FTDI compatible" devices may use the same VID/PID pair as an FTDI device, but
+    /// they may be implemented by a completely third party solution. In this case,
+    /// we still try the same `bcdDevice` based detection, but if it fails, we fall back
+    /// to this chip type.
+    fallback_chip_type: ChipType,
+}
+
+impl FtdiDevice {
+    fn matches(&self, device: &DeviceInfo) -> bool {
+        self.id == (device.vendor_id(), device.product_id())
+    }
+}
+
+/// Known FTDI device variants.
+static FTDI_COMPAT_DEVICES: &[FtdiDevice] = &[
+    //
+    // --- FTDI VID/PID pairs ---
+    //
+    // FTDI Ltd. FT2232C/D/H Dual UART/FIFO IC
+    FtdiDevice {
+        id: (0x0403, 0x6010),
+        fallback_chip_type: ChipType::FT2232C,
+    },
+    // FTDI Ltd. FT4232H Quad HS USB-UART/FIFO IC
+    FtdiDevice {
+        id: (0x0403, 0x6011),
+        fallback_chip_type: ChipType::FT4232H,
+    },
+    // FTDI Ltd. FT232H Single HS USB-UART/FIFO IC
+    FtdiDevice {
+        id: (0x0403, 0x6014),
+        fallback_chip_type: ChipType::FT232H,
+    },
+    //
+    // --- Third-party VID/PID pairs ---
+    //
+    // Olimex Ltd. ARM-USB-OCD
+    FtdiDevice {
+        id: (0x15ba, 0x0003),
+        fallback_chip_type: ChipType::FT2232C,
+    },
+    // Olimex Ltd. ARM-USB-TINY
+    FtdiDevice {
+        id: (0x15ba, 0x0004),
+        fallback_chip_type: ChipType::FT2232C,
+    },
+    // Olimex Ltd. ARM-USB-TINY-H
+    FtdiDevice {
+        id: (0x15ba, 0x002a),
+        fallback_chip_type: ChipType::FT2232H,
+    },
+    // Olimex Ltd. ARM-USB-OCD-H
+    FtdiDevice {
+        id: (0x15ba, 0x002b),
+        fallback_chip_type: ChipType::FT2232H,
+    },
 ];
 
 fn get_device_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
-    if !FTDI_COMPAT_DEVICE_IDS.contains(&(device.vendor_id(), device.product_id())) {
-        return None;
-    }
-
-    Some(DebugProbeInfo {
-        identifier: device.product_string().unwrap_or("FTDI").to_string(),
-        vendor_id: device.vendor_id(),
-        product_id: device.product_id(),
-        serial_number: device.serial_number().map(|s| s.to_string()),
-        probe_type: &FtdiProbeSource,
-        hid_interface: None,
+    FTDI_COMPAT_DEVICES.iter().find_map(|ftdi| {
+        ftdi.matches(device).then(|| DebugProbeInfo {
+            identifier: device.product_string().unwrap_or("FTDI").to_string(),
+            vendor_id: device.vendor_id(),
+            product_id: device.product_id(),
+            serial_number: device.serial_number().map(|s| s.to_string()),
+            probe_type: &FtdiProbeSource,
+            hid_interface: None,
+        })
     })
 }
 

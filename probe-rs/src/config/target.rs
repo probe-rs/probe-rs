@@ -6,6 +6,7 @@ use super::{
         esp32c3::ESP32C3,
         esp32c6::ESP32C6,
         esp32h2::ESP32H2,
+        esp32s2::ESP32S2,
         esp32s3::ESP32S3,
         infineon::XMC4000,
         nrf52::Nrf52,
@@ -17,8 +18,7 @@ use super::{
         stm32_armv7::Stm32Armv7,
         stm32h7::Stm32h7,
     },
-    Core, MemoryRegion, RawFlashAlgorithm, RegistryError, ScanChainElement,
-    TargetDescriptionSource,
+    Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource,
 };
 use crate::architecture::{
     arm::{
@@ -30,7 +30,7 @@ use crate::architecture::{
     xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
 };
 use crate::flashing::FlashLoader;
-use probe_rs_target::{Architecture, BinaryFormat, ChipFamily, MemoryRange};
+use probe_rs_target::{Architecture, BinaryFormat, ChipFamily, Jtag, MemoryRange};
 use std::sync::Arc;
 
 /// This describes a complete target with a fixed chip model and variant.
@@ -58,7 +58,7 @@ pub struct Target {
     /// The scan chain can be parsed from the CMSIS-SDF file, or specified
     /// manually in the target.yaml file. It is used by some probes to determine
     /// the number devices in the scan chain and their ir lengths.
-    pub scan_chain: Option<Vec<ScanChainElement>>,
+    pub jtag: Option<Jtag>,
     /// The default executable format for the target.
     pub default_format: BinaryFormat,
 }
@@ -136,6 +136,8 @@ impl Target {
             || chip.name.starts_with("EFR32ZG2")
         {
             DebugSequence::Arm(EFM32xG2::create())
+        } else if chip.name.eq_ignore_ascii_case("esp32s2") {
+            DebugSequence::Xtensa(ESP32S2::create(chip))
         } else if chip.name.eq_ignore_ascii_case("esp32s3") {
             DebugSequence::Xtensa(ESP32S3::create(chip))
         } else if chip.name.eq_ignore_ascii_case("esp32c2") {
@@ -232,7 +234,7 @@ impl Target {
             memory_map: chip.memory_map.clone(),
             debug_sequence,
             rtt_scan_regions,
-            scan_chain: chip.scan_chain.clone(),
+            jtag: chip.jtag.clone(),
             default_format: chip.default_binary_format.clone().unwrap_or_default(),
         })
     }
@@ -324,6 +326,15 @@ impl From<&String> for TargetSelector {
 impl From<String> for TargetSelector {
     fn from(value: String) -> Self {
         TargetSelector::Unspecified(value)
+    }
+}
+
+impl From<Option<&str>> for TargetSelector {
+    fn from(value: Option<&str>) -> Self {
+        match value {
+            Some(identifier) => identifier.into(),
+            None => TargetSelector::Auto,
+        }
     }
 }
 

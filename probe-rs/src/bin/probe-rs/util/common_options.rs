@@ -35,13 +35,14 @@ use super::ArtifactError;
 
 use std::{fs::File, path::Path, path::PathBuf};
 
-use crate::util::parse_u64;
+use crate::{cmd::dap_server::DebuggerError, util::parse_u64};
 use clap;
 use probe_rs::{
     config::{RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError},
     integration::FakeProbe,
-    DebugProbeError, DebugProbeSelector, Lister, Permissions, Probe, Session, Target, WireProtocol,
+    DebugProbeError, DebugProbeInfo, DebugProbeSelector, Lister, Permissions, Probe, Session,
+    Target, WireProtocol,
 };
 use serde::{Deserialize, Serialize};
 
@@ -243,7 +244,7 @@ impl LoadedProbeOptions {
                     // only a single probe detected.
                     let list = lister.list_all();
                     if list.len() > 1 {
-                        return Err(OperationError::MultipleProbesFound { number: list.len() });
+                        return Err(OperationError::MultipleProbesFound { list });
                     }
 
                     let Some(info) = list.first() else {
@@ -471,8 +472,8 @@ pub enum OperationError {
     FailedToLoadElfData(#[source] FileDownloadError),
     #[error("Failed to open the debug probe.")]
     FailedToOpenProbe(#[source] DebugProbeError),
-    #[error("{number} probes were found.")]
-    MultipleProbesFound { number: usize },
+    #[error("{} probes were found: {}", .list.len(), print_list(.list))]
+    MultipleProbesFound { list: Vec<DebugProbeInfo> },
     #[error("The flashing procedure failed for '{path}'.")]
     FlashingFailed {
         #[source]
@@ -543,9 +544,26 @@ pub enum OperationError {
     CliArgument(#[from] clap::Error),
 }
 
+/// Used in errors it can print a list of items.
+fn print_list(list: &[impl std::fmt::Debug]) -> String {
+    let mut output = String::new();
+
+    for (i, entry) in list.iter().enumerate() {
+        output.push_str(&format!("\n    {}. {:?}", i + 1, entry));
+    }
+
+    output
+}
+
 impl From<std::io::Error> for OperationError {
     fn from(e: std::io::Error) -> Self {
         OperationError::IOError(e)
+    }
+}
+
+impl From<OperationError> for DebuggerError {
+    fn from(e: OperationError) -> Self {
+        DebuggerError::Other(e.into())
     }
 }
 

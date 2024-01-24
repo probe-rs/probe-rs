@@ -79,6 +79,10 @@ impl ArmProbe for &mut MockCore {
         todo!()
     }
 
+    fn read_16(&mut self, _address: u64, _data: &mut [u16]) -> Result<(), ArmError> {
+        todo!()
+    }
+
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
         for (i, val) in data.iter_mut().enumerate() {
             let address = address + (i as u64 * 4);
@@ -115,6 +119,10 @@ impl ArmProbe for &mut MockCore {
     }
 
     fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), ArmError> {
+        todo!()
+    }
+
+    fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), ArmError> {
         todo!()
     }
 

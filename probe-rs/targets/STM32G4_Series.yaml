@@ -137,7 +137,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_128
+  - stm32g4xx_128
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G431CBUx
@@ -164,7 +164,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_128
+  - stm32g4xx_128
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G431CBYx
@@ -191,7 +191,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_128
+  - stm32g4xx_128
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G431K6Tx
@@ -326,7 +326,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_128
+  - stm32g4xx_128
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G431KBUx
@@ -353,7 +353,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_128
+  - stm32g4xx_128
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G431M6Tx
@@ -434,7 +434,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_128
+  - stm32g4xx_128
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G431R6Ix
@@ -569,7 +569,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_128
+  - stm32g4xx_128
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G431RBTx
@@ -596,7 +596,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_128
+  - stm32g4xx_128
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G431V6Tx
@@ -677,7 +677,7 @@ variants:
     cores:
     - main
   flash_algorithms:
-  - stm32g43x-4x_128
+  - stm32g4xx_128
   - stm32g4xx_sb_opt
   - mt25ql512abb_stm32g474e-eval
 - name: STM32G441CBTx
@@ -4413,3 +4413,31 @@ flash_algorithms:
     - size: 0x800
       address: 0x0
   stack_size: 32768
+# The stm32g4xx_128 algorithm is from an older release of the STM32G4 target pack.
+# We re-added it here because it was reported that the latest target pack is broken
+# for STM32G431xB parts.  It's very possible that some other related targets are
+# broken, but for now we are only reverting to the old algorithm for chip series
+# for which we have a confirmed report that the latest flash algorithms are broken.
+- name: stm32g4xx_128
+  description: STM32G4xx 128 Flash
+  cores:
+    - main
+  default: true
+  instructions: ELUDRnZId0ygYHdIoGAgRgBqwLKqKBfQdEjgYHRI4GAgRgBqIPD/ACBiIEYAakDwqgAgYiBGQGlA9AAwYGEgRkBpQPAAYGBhAL9mSABpAPSAMAAo+dEQvQFGYkhAaUDwAEBgSlBhACBwRwNGASBwRwPgTPL7MFtJCGFaSABpAPSAMAAo9dEEIFZJSGEIRkBpQPSAMEhhAL9SSABpAPSAMAAo+dFPSABpRPL6MQhAILEIRkxJCGEBIHBHSkhAaSDwBABISUhhACD25wFGTPL7MERLGGEYRkBpQPACAFhhRUhIRABogUIJ08oKgDoC8H8CGEZAaUD0AGBYYQfgwfPGIjhIQGkg9ABgNktYYTVIQGkg9H5wM0tYYRhGQGlA6sIAWGEYRkBpQPSAMFhhAL8tSABpAPSAMAAo+dEAvylIAGkA9IAwACj50SZIAGlE8vozGEAgsRhGI0sYYQEgcEchSEBpIPACAB9LWGEAIPbnELUDRsgdIPAHAQC/GkgAaQD0gDAAKPnRTPL7MBZMIGEgRkBpQPABAGBhGOAQaBhgUGhYYAC/D0gAaQD0gDAAKPnRCDMIMgg5C0gAaQDwAQAosUTy+jAHTCBhASAQvQAp5NEESEBpIPABAAJMYGEAIPTnIwFnRQAgAkCrie/NOyoZCH9uXUwEAAAAAAAAAAAABAgAAAAAAAAAAA==
+  pc_init: 0x1
+  pc_uninit: 0x59
+  pc_program_page: 0x16f
+  pc_erase_sector: 0xcb
+  pc_erase_all: 0x71
+  data_section_offset: 0x1f8
+  flash_properties:
+    address_range:
+      start: 0x8000000
+      end: 0x8020000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 0x190
+    erase_sector_timeout: 0x190
+    sectors:
+      - size: 0x800
+        address: 0x0

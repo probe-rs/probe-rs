@@ -4,10 +4,10 @@ manufacturer:
   id: 0x12
 variants:
   - name: esp32c6
-    part: null
-    scan_chain:
-      - name: main
-        ir_len: 5
+    jtag:
+      scan_chain:
+        - name: main
+          ir_len: 5
     default_binary_format: idf
     cores:
       - name: main
@@ -32,6 +32,13 @@ variants:
         range:
           start: 0x40800000
           end: 0x4087FFFF
+        is_boot_memory: false
+        cores:
+          - main
+      - !Ram
+        range:
+          start: 0x50000000
+          end: 0x50003FFF
         is_boot_memory: false
         cores:
           - main

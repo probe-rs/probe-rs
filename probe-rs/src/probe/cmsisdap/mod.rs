@@ -51,7 +51,7 @@ use commands::{
     },
     CmsisDapDevice, Status,
 };
-use probe_rs_target::{get_ir_lengths, ScanChainElement};
+use probe_rs_target::ScanChainElement;
 
 use std::{fmt::Write, result::Result, time::Duration};
 
@@ -1048,17 +1048,20 @@ impl RawDapAccess for CmsisDap {
     }
 
     fn configure_jtag(&mut self) -> Result<(), DebugProbeError> {
-        // If the scan chain is populated, use that and skip runtime detection.
-        // We trust the user here and assume the scan chain is right. If its not,
-        // the use of the probe will fail later.
-        // If the scan chain is not populated, we need to do runtime detection.
-        let ir_lengths = if self.scan_chain.is_some() {
-            get_ir_lengths(self.scan_chain.as_ref().unwrap())
-        } else {
-            tracing::info!("No scan chain provided, doing runtime detection");
-            let chain = self.jtag_scan(None)?;
-            chain.iter().map(|item| item.irlen as u8).collect()
-        };
+        let chain = self.jtag_scan(
+            self.scan_chain
+                .as_ref()
+                .map(|chain| {
+                    chain
+                        .iter()
+                        .filter_map(|s| s.ir_len)
+                        .map(|s| s as usize)
+                        .collect::<Vec<usize>>()
+                })
+                .as_deref(),
+        )?;
+        let ir_lengths = chain.iter().map(|item| item.irlen as u8).collect();
+
         tracing::info!("Configuring JTAG with ir lengths: {:?}", ir_lengths);
         self.send_jtag_configure(JtagConfigureRequest::new(ir_lengths)?)?;
 

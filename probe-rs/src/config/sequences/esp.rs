@@ -61,6 +61,8 @@ impl EspFlashSizeDetector {
         &self,
         interface: &mut RiscvCommunicationInterface,
     ) -> Result<Option<usize>, crate::Error> {
+        interface.halt(Duration::from_millis(100))?;
+
         tracing::info!("Detecting flash size");
         attach_flash_riscv(interface, self.stack_pointer, self.attach_fn)?;
         detect_flash_size(interface, self.spiflash_peripheral)

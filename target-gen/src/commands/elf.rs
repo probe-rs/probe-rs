@@ -106,7 +106,7 @@ pub fn cmd_elf(
                 ],
                 flash_algorithms: vec![algorithm_name],
                 rtt_scan_ranges: None,
-                scan_chain: None,
+                jtag: None,
                 default_binary_format: None,
             }],
             flash_algorithms: vec![algorithm],

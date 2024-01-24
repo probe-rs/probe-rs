@@ -69,13 +69,18 @@ pub enum RiscvError {
     /// The target does not support halt after reset.
     #[error("The target does not support halt after reset.")]
     ResetHaltRequestNotSupported,
+    /// The result index of a batched command is not available.
+    #[error("The requested data is not available due to a previous error.")]
+    BatchedResultNotAvailable,
+    /// The hart is unavailable
+    #[error("The requested hart is unavailable.")]
+    HartUnavailable,
 }
 
 impl From<RiscvError> for ProbeRsError {
     fn from(err: RiscvError) -> Self {
         match err {
             RiscvError::DebugProbe(e) => e.into(),
-            RiscvError::Timeout => ProbeRsError::Timeout,
             other => ProbeRsError::Riscv(other),
         }
     }
@@ -313,6 +318,8 @@ pub struct RiscvCommunicationInterface {
     /// communicate with the Debug Module on the target chip.
     dtm: Dtm,
     state: RiscvCommunicationInterfaceState,
+    enabled_harts: u32,
+    last_selected_hart: u32,
 }
 
 impl RiscvCommunicationInterface {
@@ -321,13 +328,40 @@ impl RiscvCommunicationInterface {
         let state = RiscvCommunicationInterfaceState::new();
         let dtm = Dtm::new(probe)?;
 
-        let mut s = Self { dtm, state };
+        let mut s = Self {
+            dtm,
+            state,
+            enabled_harts: 0,
+            last_selected_hart: 0,
+        };
 
         if let Err(err) = s.enter_debug_mode() {
             return Err((s.dtm.probe, err));
         }
 
         Ok(s)
+    }
+
+    /// Select current hart
+    pub fn select_hart(&mut self, hart: u32) -> Result<(), RiscvError> {
+        if self.enabled_harts & (1 << hart) == 0 {
+            return Err(RiscvError::HartUnavailable);
+        }
+
+        if self.last_selected_hart == hart {
+            return Ok(());
+        }
+
+        let mut control: Dmcontrol = self.read_dm_register()?;
+        control.set_hartsel(hart);
+        self.write_dm_register(control)?;
+        self.last_selected_hart = hart;
+        Ok(())
+    }
+
+    /// Check if the given hart is enabled
+    pub fn hart_enabled(&self, hart: u32) -> bool {
+        self.enabled_harts & (1 << hart) != 0
     }
 
     /// Deassert the target reset.
@@ -450,6 +484,7 @@ impl RiscvCommunicationInterface {
 
         // Hart 0 exists on every chip
         let mut num_harts = 1;
+        self.enabled_harts = 1;
 
         // Check if anynonexistent is avaliable.
         // Some chips that have only one hart do not implement anynonexistent and allnonexistent.
@@ -478,6 +513,10 @@ impl RiscvCommunicationInterface {
                     break;
                 }
 
+                if !status.allunavail() {
+                    self.enabled_harts |= 1 << num_harts;
+                }
+
                 num_harts += 1;
             }
         } else {
@@ -488,7 +527,7 @@ impl RiscvCommunicationInterface {
 
         self.state.num_harts = num_harts;
 
-        // Select hart 0 again
+        // Select hart 0 again - assuming all harts are same in regards of discovered features
         let mut control = Dmcontrol(0);
         control.set_hartsel(0);
         control.set_dmactive(true);
@@ -578,6 +617,70 @@ impl RiscvCommunicationInterface {
         Ok(())
     }
 
+    pub(crate) fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, RiscvError> {
+        // write 1 to the haltreq register, which is part
+        // of the dmcontrol register
+
+        let mut dmcontrol: Dmcontrol = self.read_dm_register()?;
+        tracing::debug!(
+            "Before requesting halt, the Dmcontrol register value was: {:?}",
+            dmcontrol
+        );
+
+        dmcontrol.set_haltreq(true);
+
+        self.write_dm_register(dmcontrol)?;
+
+        self.wait_for_core_halted(timeout)?;
+
+        // clear the halt request
+        dmcontrol.set_haltreq(false);
+
+        self.write_dm_register(dmcontrol)?;
+
+        let pc: u64 = self
+            .read_csr(super::registers::PC.id().0)
+            .map(|v| v.into())?;
+
+        Ok(CoreInformation { pc })
+    }
+
+    pub(crate) fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), RiscvError> {
+        let start = Instant::now();
+
+        while start.elapsed() < timeout {
+            let dmstatus: Dmstatus = self.read_dm_register()?;
+
+            tracing::trace!("{:?}", dmstatus);
+
+            if dmstatus.allhalted() {
+                return Ok(());
+            }
+        }
+
+        Err(RiscvError::Timeout)
+    }
+
+    pub(super) fn read_csr(&mut self, address: u16) -> Result<u32, RiscvError> {
+        // We need to use the "Access Register Command",
+        // which has cmdtype 0
+
+        // write needs to be clear
+        // transfer has to be set
+
+        tracing::debug!("Reading CSR {:#x}", address);
+
+        // always try to read register with abstract command, fallback to program buffer,
+        // if not supported
+        match self.abstract_cmd_register_read(address) {
+            Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
+                tracing::debug!("Could not read core register {:#x} with abstract command, falling back to program buffer", address);
+                self.read_csr_progbuf(address)
+            }
+            other => other,
+        }
+    }
+
     /// Schedules a DM register read, flushes the queue and returns the result.
     pub(super) fn read_dm_register<R: MemoryMappedRegister<u32>>(
         &mut self,
@@ -605,7 +708,7 @@ impl RiscvCommunicationInterface {
     /// Use the [`read_dm_register`] function if possible.
     fn read_dm_register_untyped(&mut self, address: u64) -> Result<u32, RiscvError> {
         let read_idx = self.schedule_read_dm_register_untyped(address)?;
-        let register_value = self.dtm.read_deferred_result(read_idx)?.as_u32();
+        let register_value = self.dtm.read_deferred_result(read_idx)?.into_u32();
 
         Ok(register_value)
     }
@@ -718,7 +821,7 @@ impl RiscvCommunicationInterface {
         if sbcs.sberror() != 0 {
             Err(RiscvError::SystemBusAccess)
         } else {
-            let data = V::from_register_value(self.dtm.read_deferred_result(data_idx)?.as_u32());
+            let data = V::from_register_value(self.dtm.read_deferred_result(data_idx)?.into_u32());
 
             Ok(data)
         }
@@ -762,7 +865,8 @@ impl RiscvCommunicationInterface {
         let sbcs = self.read_dm_register::<Sbcs>()?;
 
         for (out_index, idx) in read_results.into_iter().enumerate() {
-            data[out_index] = V::from_register_value(self.dtm.read_deferred_result(idx)?.as_u32());
+            data[out_index] =
+                V::from_register_value(self.dtm.read_deferred_result(idx)?.into_u32());
         }
 
         // Check that the read was succesful
@@ -810,7 +914,7 @@ impl RiscvCommunicationInterface {
         // Read back s0
         let value = self.abstract_cmd_register_read(&registers::S0)?;
 
-        let abstractcs = Abstractcs(self.dtm.read_deferred_result(abstractcs_idx)?.as_u32());
+        let abstractcs = Abstractcs(self.dtm.read_deferred_result(abstractcs_idx)?.into_u32());
         if abstractcs.cmderr() != 0 {
             return Err(RiscvError::AbstractCommand(
                 AbstractCommandErrorKind::parse(abstractcs.cmderr() as u8),
@@ -886,7 +990,7 @@ impl RiscvCommunicationInterface {
         data[data.len() - 1] = V::from_register_value(last_value);
 
         for (out_idx, value_idx) in result_idxs {
-            let value = Data0::from(self.dtm.read_deferred_result(value_idx)?.as_u32());
+            let value = Data0::from(self.dtm.read_deferred_result(value_idx)?.into_u32());
 
             data[out_idx] = V::from_register_value(value.0);
         }
@@ -1067,7 +1171,7 @@ impl RiscvCommunicationInterface {
         // resumereq    = 0
         // ackhavereset = 0
 
-        let mut dmcontrol = Dmcontrol(0);
+        let mut dmcontrol: Dmcontrol = self.read_dm_register()?;
         dmcontrol.set_haltreq(false);
         dmcontrol.set_resumereq(false);
         dmcontrol.set_ackhavereset(false);
@@ -1791,6 +1895,13 @@ impl MemoryInterface for RiscvCommunicationInterface {
 
     fn read_word_32(&mut self, address: u64) -> Result<u32, crate::Error> {
         let address = valid_32bit_address(address)?;
+        tracing::debug!("read_word_32 from {:#08x}", address);
+        self.read_word(address)
+    }
+
+    fn read_word_16(&mut self, address: u64) -> Result<u16, crate::Error> {
+        let address = valid_32bit_address(address)?;
+        tracing::debug!("read_word_16 from {:#08x}", address);
         self.read_word(address)
     }
 
@@ -1814,6 +1925,12 @@ impl MemoryInterface for RiscvCommunicationInterface {
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), crate::Error> {
         let address = valid_32bit_address(address)?;
         tracing::debug!("read_32 from {:#08x}", address);
+        self.read_multiple(address, data)
+    }
+
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), crate::Error> {
+        let address = valid_32bit_address(address)?;
+        tracing::debug!("read_16 from {:#08x}", address);
         self.read_multiple(address, data)
     }
 
@@ -1843,6 +1960,11 @@ impl MemoryInterface for RiscvCommunicationInterface {
         self.write_word(address, data)
     }
 
+    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), crate::Error> {
+        let address = valid_32bit_address(address)?;
+        self.write_word(address, data)
+    }
+
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), crate::Error> {
         let address = valid_32bit_address(address)?;
         self.write_word(address, data)
@@ -1862,6 +1984,13 @@ impl MemoryInterface for RiscvCommunicationInterface {
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), crate::Error> {
         let address = valid_32bit_address(address)?;
         tracing::debug!("write_32 to {:#08x}", address);
+
+        self.write_multiple(address, data)
+    }
+
+    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), crate::Error> {
+        let address = valid_32bit_address(address)?;
+        tracing::debug!("write_16 to {:#08x}", address);
 
         self.write_multiple(address, data)
     }

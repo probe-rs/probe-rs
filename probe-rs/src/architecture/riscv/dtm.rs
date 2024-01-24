@@ -99,21 +99,22 @@ impl Dtm {
         &mut self,
         index: DeferredResultIndex,
     ) -> Result<CommandResult, RiscvError> {
-        let result = match self.jtag_results.take(index) {
-            Ok(result) => result,
+        match self.jtag_results.take(index) {
+            Ok(result) => Ok(result),
             Err(index) => {
                 self.execute()?;
-                self.jtag_results.take(index).expect("This is a bug")
+                // We can lose data if `execute` fails.
+                self.jtag_results
+                    .take(index)
+                    .map_err(|_| RiscvError::BatchedResultNotAvailable)
             }
-        };
-
-        Ok(result)
+        }
     }
 
     pub fn execute(&mut self) -> Result<(), RiscvError> {
         let mut cmds = std::mem::take(&mut self.queued_commands);
 
-        loop {
+        while !cmds.is_empty() {
             match self.probe.write_register_batch(&cmds) {
                 Ok(r) => {
                     self.jtag_results.merge_from(r);
@@ -139,6 +140,8 @@ impl Dtm {
                 },
             }
         }
+
+        Ok(())
     }
 
     fn transform_dmi_result(response_bytes: Vec<u8>) -> Result<u32, DmiOperationStatus> {

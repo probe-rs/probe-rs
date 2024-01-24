@@ -26,7 +26,7 @@ use std::{
 
 /// An error in the communication with an access port or
 /// debug port.
-#[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
+#[derive(Debug, thiserror::Error, Clone, PartialEq, Eq, Copy)]
 pub enum DapError {
     /// An error occurred during SWD communication.
     #[error("An error occurred in the SWD communication between probe and device.")]
