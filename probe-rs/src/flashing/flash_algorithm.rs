@@ -237,7 +237,6 @@ impl FlashAlgorithm {
         let mut offset = 0;
         let mut addr_stack = 0;
         let mut addr_data = 0;
-        let mut code_start = 0;
 
         // Try to find a stack size that fits with at least one page of data.
         let stack_size = {
@@ -279,9 +278,10 @@ impl FlashAlgorithm {
             return Err(FlashError::InvalidFlashAlgorithmLoadAddress { address: addr_load });
         }
 
+        let code_start = addr_load + header_size;
+
         for i in 0..stack_size / Self::FLASH_ALGO_STACK_DECREMENT {
             offset = header_size;
-            code_start = addr_load + offset;
             offset += (instructions.len() * size_of::<u32>()) as u64;
 
             // Stack start address (desc)
