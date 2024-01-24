@@ -292,8 +292,7 @@ impl FlashAlgorithm {
 
             // Data buffer 1
             addr_data = addr_stack;
-            offset =
-                addr_load + header_size + code_size_words + raw.flash_properties.page_size as u64;
+            offset = code_end + raw.flash_properties.page_size as u64;
 
             if offset <= ram_region.range.end {
                 break;
