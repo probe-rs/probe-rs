@@ -236,7 +236,6 @@ impl FlashAlgorithm {
 
         let mut offset = 0;
         let mut addr_stack = 0;
-        let mut addr_load = 0;
         let mut addr_data = 0;
         let mut code_start = 0;
 
@@ -261,18 +260,20 @@ impl FlashAlgorithm {
         };
         tracing::debug!("The flash algorithm will be configured with {stack_size} bytes of stack");
 
-        for i in 0..stack_size / Self::FLASH_ALGO_STACK_DECREMENT {
-            // Load address
-            addr_load = raw
-                .load_address
-                .map(|a| {
-                    a.checked_sub(header_size) // adjust the raw load address to account for the algo header
+        // Load address
+        let addr_load = raw
+            .load_address
+            .map(|a| {
+                a.checked_sub(header_size) // adjust the raw load address to account for the algo header
                         .ok_or(FlashError::InvalidFlashAlgorithmLoadAddress { address: a })
-                })
-                .unwrap_or(Ok(ram_region.range.start))?;
-            if addr_load < ram_region.range.start {
-                return Err(FlashError::InvalidFlashAlgorithmLoadAddress { address: addr_load });
-            }
+            })
+            .unwrap_or(Ok(ram_region.range.start))?;
+
+        if addr_load < ram_region.range.start {
+            return Err(FlashError::InvalidFlashAlgorithmLoadAddress { address: addr_load });
+        }
+
+        for i in 0..stack_size / Self::FLASH_ALGO_STACK_DECREMENT {
             offset += header_size;
             code_start = addr_load + offset;
             offset += (instructions.len() * size_of::<u32>()) as u64;
