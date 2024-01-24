@@ -458,11 +458,21 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         // has selected via active_protocol
         match interface.active_protocol() {
             Some(crate::WireProtocol::Jtag) => {
-                // Execute SWJ-DP Switch Sequence SWD to JTAG (0xE73C).
-                interface.swj_sequence(16, 0xE73C)?;
+                // Execute SWJ-DP Switch Sequence SWD to Dormant (0xE3BC).
+                interface.swj_sequence(16, 0xE3BC)?;
 
-                // Execute at least >5 TCK cycles with TMS high to enter the Test-Logic-Reset state
-                interface.swj_sequence(6, 0x3F)?;
+                // Abort any selection alert sequence
+                interface.swj_sequence(8, 0xFF)?;
+
+                // 128-bit selection alert sequence
+                interface.swj_sequence(64, 0x86852D956209F392)?;
+                interface.swj_sequence(64, 0x19BC0EA2E3DDAFE9)?;
+
+                // 4 cycles with low
+                interface.swj_sequence(4, 0x00)?;
+
+                // JTAG selection code
+                interface.swj_sequence(8, 0x0A)?;
 
                 // Enter Run-Test-Idle state, as required by the DAP_Transfer command when using JTAG
                 interface.jtag_sequence(1, false, 0x01)?;
@@ -471,11 +481,26 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 interface.configure_jtag()?;
             }
             Some(crate::WireProtocol::Swd) => {
-                // Execute SWJ-DP Switch Sequence JTAG to SWD (0xE79E).
-                // Change if SWJ-DP uses deprecated switch code (0xEDB6).
-                interface.swj_sequence(16, 0xE79E)?;
+                // Set JTAG to reset state
+                interface.swj_sequence(8, 0xFF)?;
 
-                // > 50 cycles SWDIO/TMS High.
+                // JTAG to Dormant sequence
+                interface.swj_sequence(31, 0x33BBBBBA)?;
+
+                // Abort any selection alert sequence
+                interface.swj_sequence(8, 0xFF)?;
+
+                // 128-bit selection alert sequence
+                interface.swj_sequence(64, 0x86852D956209F392)?;
+                interface.swj_sequence(64, 0x19BC0EA2E3DDAFE9)?;
+
+                // 4 cycles with low
+                interface.swj_sequence(4, 0x00)?;
+
+                // SWD selection code
+                interface.swj_sequence(8, 0x1A)?;
+
+                // > 50 cycles SWDIO/TMS High. Line reset.
                 interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
                 // At least 2 idle cycles (SWDIO/TMS Low).
                 interface.swj_sequence(3, 0x00)?;
