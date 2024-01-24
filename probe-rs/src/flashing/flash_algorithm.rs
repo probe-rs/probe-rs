@@ -280,13 +280,13 @@ impl FlashAlgorithm {
 
         let code_start = addr_load + header_size;
         let code_size_bytes = (instructions.len() * size_of::<u32>()) as u64;
+        let code_end = code_start + code_size_bytes;
 
         for i in 0..stack_size / Self::FLASH_ALGO_STACK_DECREMENT {
             offset = header_size + code_size_bytes;
 
             // Stack start address (desc)
-            addr_stack = addr_load
-                + offset
+            addr_stack = code_end
                 + (stack_size
                     .checked_sub(Self::FLASH_ALGO_STACK_DECREMENT * i)
                     .expect("Overflow never happens; decrement multiples are always less than stack size."))
