@@ -280,6 +280,8 @@ impl FlashAlgorithm {
         let code_size_bytes = (instructions.len() * size_of::<u32>()) as u64;
         let code_end = code_start + code_size_bytes;
 
+        let buffer_page_size = raw.flash_properties.page_size as u64;
+
         let mut actual_stack_size = stack_size as u64;
         for _ in 0..stack_size / Self::FLASH_ALGO_STACK_DECREMENT {
             // Stack start address
@@ -287,7 +289,7 @@ impl FlashAlgorithm {
 
             // Data buffer 1
             addr_data = addr_stack;
-            let data_end = addr_data + raw.flash_properties.page_size as u64;
+            let data_end = addr_data + buffer_page_size;
 
             // Stack fits, we're done
             if data_end <= ram_region.range.end {
@@ -307,12 +309,12 @@ impl FlashAlgorithm {
         );
 
         // Data buffer 2
-        let dual_buffer_start = addr_data + raw.flash_properties.page_size as u64;
-        let dual_buffer_data_end = dual_buffer_start + raw.flash_properties.page_size as u64;
+        let second_buffer_start = addr_data + buffer_page_size;
+        let second_buffer_end = second_buffer_start + buffer_page_size;
 
         // Determine whether we can use double buffering or not by the remaining RAM region size.
-        let page_buffers = if dual_buffer_data_end <= ram_region.range.end {
-            vec![addr_data, dual_buffer_start]
+        let page_buffers = if second_buffer_end <= ram_region.range.end {
+            vec![addr_data, second_buffer_start]
         } else {
             vec![addr_data]
         };
