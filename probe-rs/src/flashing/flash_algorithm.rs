@@ -288,10 +288,11 @@ impl FlashAlgorithm {
 
             // Data buffer 1
             addr_data = addr_stack;
-            offset = addr_data + raw.flash_properties.page_size as u64;
+            let data_end = addr_data + raw.flash_properties.page_size as u64;
+            offset = data_end;
 
             // Stack fits, we're done
-            if offset <= ram_region.range.end {
+            if data_end <= ram_region.range.end {
                 break;
             }
 
