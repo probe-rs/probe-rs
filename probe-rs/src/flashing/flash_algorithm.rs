@@ -284,6 +284,8 @@ impl FlashAlgorithm {
 
         let mut actual_stack_size = stack_size as u64;
 
+        let remaining_ram = ram_region.range.end - code_end;
+
         // Place data after stack, reduce stack size until it fits.
         for _ in 0..stack_size / Self::FLASH_ALGO_STACK_DECREMENT {
             // Stack start address
@@ -291,10 +293,9 @@ impl FlashAlgorithm {
 
             // Data buffer 1
             addr_data = addr_stack;
-            let data_end = addr_data + buffer_page_size;
 
-            // Stack fits, we're done
-            if data_end <= ram_region.range.end {
+            // Stack + data buffer fits, we're done
+            if buffer_page_size + actual_stack_size <= remaining_ram {
                 break;
             }
 
