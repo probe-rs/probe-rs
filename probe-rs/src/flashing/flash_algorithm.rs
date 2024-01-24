@@ -161,7 +161,6 @@ impl FlashAlgorithm {
     }
 
     const FLASH_ALGO_STACK_SIZE: u32 = 512;
-    const FLASH_ALGO_STACK_DECREMENT: u32 = 64;
 
     // Header for RISC-V Flash Algorithms
     const RISCV_FLASH_BLOB_HEADER: [u32; 2] = [riscv::assembly::EBREAK, riscv::assembly::EBREAK];
@@ -235,24 +234,7 @@ impl FlashAlgorithm {
         let header_size = size_of_val(header) as u64;
 
         // Try to find a stack size that fits with at least one page of data.
-        let stack_size = {
-            let stack_size = raw.stack_size.unwrap_or(Self::FLASH_ALGO_STACK_SIZE);
-            if stack_size < Self::FLASH_ALGO_STACK_DECREMENT {
-                // If the stack size is less than one decrement, we
-                // won't enter the loop (below), and we'll produce a variety
-                // of addresses that all start at zero (above).
-                // Let's make sure we have a chance to compute other addresses
-                // by using a reasonable minimum stack size.
-                tracing::warn!(
-                    "Stack size of {} bytes is too small; overriding to {} bytes",
-                    stack_size,
-                    Self::FLASH_ALGO_STACK_DECREMENT
-                );
-                Self::FLASH_ALGO_STACK_DECREMENT as u64
-            } else {
-                stack_size as u64
-            }
-        };
+        let stack_size = raw.stack_size.unwrap_or(Self::FLASH_ALGO_STACK_SIZE) as u64;
 
         // Load address
         let addr_load = match raw.load_address {
