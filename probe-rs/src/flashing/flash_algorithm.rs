@@ -248,9 +248,9 @@ impl FlashAlgorithm {
                     stack_size,
                     Self::FLASH_ALGO_STACK_DECREMENT
                 );
-                Self::FLASH_ALGO_STACK_DECREMENT
+                Self::FLASH_ALGO_STACK_DECREMENT as u64
             } else {
-                stack_size
+                stack_size as u64
             }
         };
 
@@ -279,7 +279,7 @@ impl FlashAlgorithm {
 
         let buffer_page_size = raw.flash_properties.page_size as u64;
 
-        let mut actual_stack_size = stack_size as u64;
+        let mut actual_stack_size = stack_size;
 
         let remaining_ram = ram_region.range.end - code_end;
 
