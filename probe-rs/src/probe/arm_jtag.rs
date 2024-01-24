@@ -1,12 +1,11 @@
 //! Generic implementation of the SWD and JTAG protocols.
-use std::time::Duration;
 
 use bitvec::{prelude::*, view::BitView};
 
 use crate::{
     architecture::arm::{
         dp::{Abort, Ctrl, RdBuff, DPIDR},
-        ArmError, DapError, DpAddress, Pins, PortType, RawDapAccess, Register,
+        ArmError, DapError, DpAddress, PortType, RawDapAccess, Register,
     },
     probe::common::bits_to_byte,
     probe::JTAGAccess,
@@ -831,6 +830,13 @@ pub trait RawProtocolIo {
         D: IntoIterator<Item = bool>,
         S: IntoIterator<Item = bool>;
 
+    fn swj_pins(
+        &mut self,
+        pin_out: u32,
+        pin_select: u32,
+        pin_wait: u32,
+    ) -> Result<u32, DebugProbeError>;
+
     fn swd_settings(&self) -> &SwdSettings;
 
     fn probe_statistics(&mut self) -> &mut ProbeStatistics;
@@ -1354,30 +1360,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         pin_select: u32,
         pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
-        let mut nreset = Pins(0);
-        nreset.set_nreset(true);
-        let nreset_mask = nreset.0 as u32;
-
-        // If only the reset pin is selected we perform the reset.
-        // If something else is selected return an error as this is not supported on J-Links.
-        if pin_select == nreset_mask {
-            if Pins(pin_out as u8).nreset() {
-                self.target_reset_deassert()?;
-            } else {
-                self.target_reset_assert()?;
-            }
-
-            // Normally this would be the timeout we pass to the probe to settle the pins.
-            // The J-Link is not capable of this, so we just wait for this time on the host
-            // and assume it has settled until then.
-            std::thread::sleep(Duration::from_micros(pin_wait as u64));
-
-            // We signal that we cannot read the pin state.
-            Ok(0xFFFF_FFFF)
-        } else {
-            // This is not supported for J-Links, unfortunately.
-            Err(DebugProbeError::CommandNotSupportedByProbe("swj_pins"))
-        }
+        RawProtocolIo::swj_pins(self, pin_out, pin_select, pin_wait)
     }
 
     fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
@@ -1734,6 +1717,15 @@ mod test {
             self.performed_transfer_count += 1;
 
             Ok(transfer_response)
+        }
+
+        fn swj_pins(
+            &mut self,
+            _pin_out: u32,
+            _pin_select: u32,
+            _pin_wait: u32,
+        ) -> Result<u32, DebugProbeError> {
+            Err(DebugProbeError::CommandNotSupportedByProbe("swj_pins"))
         }
 
         fn swd_settings(&self) -> &SwdSettings {
