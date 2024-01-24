@@ -267,7 +267,7 @@ impl FlashAlgorithm {
                 .load_address
                 .map(|a| {
                     a.checked_sub(header_size) // adjust the raw load address to account for the algo header
-                        .ok_or(FlashError::InvalidFlashAlgorithmLoadAddress { address: addr_load })
+                        .ok_or(FlashError::InvalidFlashAlgorithmLoadAddress { address: a })
                 })
                 .unwrap_or(Ok(ram_region.range.start))?;
             if addr_load < ram_region.range.start {
