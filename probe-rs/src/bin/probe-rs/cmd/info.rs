@@ -29,6 +29,9 @@ pub struct Cmd {
     target_sel: Option<u32>,
 }
 
+// Clippy doesn't like `from_str_radix` with radix 10, but I prefer the symmetry`
+// with the hex case.
+#[allow(clippy::from_str_radix_10)]
 fn parse_hex(src: &str) -> Result<u32, std::num::ParseIntError> {
     if src.starts_with("0x") {
         u32::from_str_radix(src.trim_start_matches("0x"), 16)
