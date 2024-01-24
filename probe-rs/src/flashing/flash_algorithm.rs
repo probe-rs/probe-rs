@@ -282,8 +282,7 @@ impl FlashAlgorithm {
         let code_size_bytes = (instructions.len() * size_of::<u32>()) as u64;
 
         for i in 0..stack_size / Self::FLASH_ALGO_STACK_DECREMENT {
-            offset = header_size;
-            offset += code_size_bytes;
+            offset = header_size + code_size_bytes;
 
             // Stack start address (desc)
             addr_stack = addr_load
