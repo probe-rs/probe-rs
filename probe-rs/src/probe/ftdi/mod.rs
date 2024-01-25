@@ -1,10 +1,14 @@
 use crate::{
     architecture::{
-        arm::communication_interface::UninitializedArmProbe,
+        arm::{
+            communication_interface::{DapProbe, UninitializedArmProbe},
+            ArmCommunicationInterface,
+        },
         riscv::communication_interface::{RiscvCommunicationInterface, RiscvError},
         xtensa::communication_interface::XtensaCommunicationInterface,
     },
     probe::{
+        arm_jtag::{ProbeStatistics, RawProtocolIo, SwdSettings},
         common::{JtagDriverState, RawJtagIo},
         DebugProbe, JTAGAccess, ProbeCreationError, ProbeDriver, ScanChainElement,
     },
@@ -15,6 +19,7 @@ use bitvec::prelude::*;
 use nusb::DeviceInfo;
 use std::{
     io::{Read, Write},
+    iter,
     time::{Duration, Instant},
 };
 
@@ -272,6 +277,8 @@ impl ProbeDriver for FtdiProbeSource {
         let probe = FtdiProbe {
             adapter: JtagAdapter::open(ftdi, probes.pop().unwrap())?,
             jtag_state: JtagDriverState::default(),
+            swd_settings: SwdSettings::default(),
+            probe_statistics: ProbeStatistics::default(),
         };
         tracing::debug!("opened probe: {:?}", probe);
         Ok(Box::new(probe))
@@ -286,6 +293,8 @@ impl ProbeDriver for FtdiProbeSource {
 pub struct FtdiProbe {
     adapter: JtagAdapter,
     jtag_state: JtagDriverState,
+    probe_statistics: ProbeStatistics,
+    swd_settings: SwdSettings,
 }
 
 impl DebugProbe for FtdiProbe {
@@ -364,7 +373,6 @@ impl DebugProbe for FtdiProbe {
     fn try_get_riscv_interface(
         self: Box<Self>,
     ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
-        // TODO: send 0x97 to disable adaptive clocking once ARM support is added
         match RiscvCommunicationInterface::new(self) {
             Ok(interface) => Ok(interface),
             Err((probe, err)) => Err((probe.into_probe(), err)),
@@ -383,15 +391,18 @@ impl DebugProbe for FtdiProbe {
         self: Box<Self>,
     ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
     {
-        // TODO we could implement this. We should enable adaptive clocking by sending 0x96,
-        // which connects RTCK to GPIOL3.
-        todo!()
+        let uninitialized_interface = ArmCommunicationInterface::new(self, true);
+
+        Ok(Box::new(uninitialized_interface))
+    }
+
+    fn has_arm_interface(&self) -> bool {
+        true
     }
 
     fn try_get_xtensa_interface(
         self: Box<Self>,
     ) -> Result<XtensaCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
-        // TODO: send 0x97 to disable adaptive clocking once ARM support is added
         match XtensaCommunicationInterface::new(self) {
             Ok(interface) => Ok(interface),
             Err((probe, err)) => Err((probe.into_probe(), err)),
@@ -400,6 +411,59 @@ impl DebugProbe for FtdiProbe {
 
     fn has_xtensa_interface(&self) -> bool {
         true
+    }
+}
+
+impl DapProbe for FtdiProbe {}
+
+impl RawProtocolIo for FtdiProbe {
+    fn jtag_shift_tms<M>(&mut self, tms: M, tdi: bool) -> Result<(), DebugProbeError>
+    where
+        M: IntoIterator<Item = bool>,
+    {
+        self.probe_statistics.report_io();
+
+        self.shift_bits(tms, iter::repeat(tdi), iter::repeat(false))?;
+
+        Ok(())
+    }
+
+    fn jtag_shift_tdi<I>(&mut self, tms: bool, tdi: I) -> Result<(), DebugProbeError>
+    where
+        I: IntoIterator<Item = bool>,
+    {
+        self.probe_statistics.report_io();
+
+        self.shift_bits(iter::repeat(tms), tdi, iter::repeat(false))?;
+
+        Ok(())
+    }
+
+    fn swd_io<D, S>(&mut self, _dir: D, _swdio: S) -> Result<Vec<bool>, DebugProbeError>
+    where
+        D: IntoIterator<Item = bool>,
+        S: IntoIterator<Item = bool>,
+    {
+        Err(DebugProbeError::NotImplemented(
+            "swd_io is not implemented for FTDI probes",
+        ))
+    }
+
+    fn swj_pins(
+        &mut self,
+        _pin_out: u32,
+        _pin_select: u32,
+        _pin_wait: u32,
+    ) -> Result<u32, DebugProbeError> {
+        Err(DebugProbeError::CommandNotSupportedByProbe("swj_pins"))
+    }
+
+    fn swd_settings(&self) -> &SwdSettings {
+        &self.swd_settings
+    }
+
+    fn probe_statistics(&mut self) -> &mut ProbeStatistics {
+        &mut self.probe_statistics
     }
 }
 
@@ -431,6 +495,7 @@ impl RawJtagIo for FtdiProbe {
         self.adapter.flush()
     }
 }
+
 /// Known properties associated to particular FTDI chip types.
 #[derive(Debug)]
 struct FtdiProperties {
