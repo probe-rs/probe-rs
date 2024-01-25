@@ -151,16 +151,14 @@ fn try_show_info(
                 probe = interface_probe;
             }
         }
-    } else {
-        if protocol == WireProtocol::Swd {
-            println!(
+    } else if protocol == WireProtocol::Swd {
+        println!(
                 "Debugging RISC-V targets over SWD is not supported. For these targets, JTAG is the only supported protocol. RISC-V specific information cannot be printed."
             );
-        } else {
-            println!(
+    } else {
+        println!(
                 "Unable to debug RISC-V targets using the current probe. RISC-V specific information cannot be printed."
             );
-        }
     }
 
     // This check is a bit weird, but `try_into_xtensa_interface` will try to switch the protocol to JTAG.
@@ -180,16 +178,14 @@ fn try_show_info(
                 probe = interface_probe;
             }
         }
-    } else {
-        if protocol == WireProtocol::Swd {
-            println!(
+    } else if protocol == WireProtocol::Swd {
+        println!(
                 "Debugging Xtensa targets over SWD is not supported. For these targets, JTAG is the only supported protocol. Xtensa specific information cannot be printed."
             );
-        } else {
-            println!(
+    } else {
+        println!(
             "Unable to debug Xtensa targets using the current probe. Xtensa specific information cannot be printed."
         );
-        }
     }
 
     (probe, Ok(()))
