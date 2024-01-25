@@ -117,7 +117,7 @@ impl<'session> Flasher<'session> {
         } else {
             ram
         };
-        tracing::info!("Data will be loaded to: {:x?}", ram);
+        tracing::info!("Data will be loaded to: {:x?}", data_ram);
 
         let flash_algorithm = FlashAlgorithm::assemble_from_raw_with_data(
             raw_flash_algorithm,

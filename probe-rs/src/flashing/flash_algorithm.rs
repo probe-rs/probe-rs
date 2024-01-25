@@ -211,7 +211,7 @@ impl FlashAlgorithm {
     pub fn assemble_from_raw_with_data(
         raw: &RawFlashAlgorithm,
         ram_region: &RamRegion,
-        _data_ram_region: &RamRegion,
+        data_ram_region: &RamRegion,
         target: &Target,
     ) -> Result<Self, FlashError> {
         use std::mem::size_of;
@@ -268,8 +268,13 @@ impl FlashAlgorithm {
 
         let buffer_page_size = raw.flash_properties.page_size as u64;
 
-        let buffer_page_size_in_instr_region = buffer_page_size;
         let remaining_ram = ram_region.range.end - code_end;
+
+        let buffer_page_size_in_instr_region = if ram_region == data_ram_region {
+            buffer_page_size
+        } else {
+            0
+        };
 
         // Try to find a stack size that fits with at least one page of data.
         let stack_size = if let Some(configured_stack) = raw.stack_size {
@@ -297,19 +302,35 @@ impl FlashAlgorithm {
 
         let stack_top_addr = code_end + stack_size;
 
+        // Determine the bounds of the data region.
+        let data_start_addr = if let Some(data_load_addr) = raw.data_load_address {
+            // Specified, use what the user gave us
+            data_load_addr
+        } else if ram_region == data_ram_region {
+            // Not specified, same region, place above stack
+            stack_top_addr
+        } else {
+            // Not specified, different region, place at start of data RAM region
+            data_ram_region.range.start
+        };
+
+        let data_region_end_addr = data_ram_region.range.end;
+
         // Data buffer 1
-        let first_buffer_start = stack_top_addr;
+        let first_buffer_start = data_start_addr;
 
         // Data buffer 2
         let second_buffer_start = first_buffer_start + buffer_page_size;
         let second_buffer_end = second_buffer_start + buffer_page_size;
 
         // Determine whether we can use double buffering or not by the remaining RAM region size.
-        let page_buffers = if second_buffer_end <= ram_region.range.end {
+        let page_buffers = if second_buffer_end <= data_region_end_addr {
             vec![first_buffer_start, second_buffer_start]
         } else {
             vec![first_buffer_start]
         };
+
+        tracing::debug!("Page buffers: {:08x?}", page_buffers);
 
         let name = raw.name.clone();
 
