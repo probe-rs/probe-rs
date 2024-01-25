@@ -280,6 +280,7 @@ impl FlashAlgorithm {
 
         let buffer_page_size = raw.flash_properties.page_size as u64;
 
+        let buffer_page_size_in_instr_region = buffer_page_size;
         let remaining_ram = ram_region.range.end - code_end;
 
         // Try to find a stack size that fits with at least one page of data.
@@ -287,7 +288,7 @@ impl FlashAlgorithm {
             let stack_size = configured_stack as u64;
 
             // Make sure at least one data page fits into RAM.
-            if buffer_page_size + stack_size > remaining_ram {
+            if buffer_page_size_in_instr_region + stack_size > remaining_ram {
                 // The configured stack size is too large. Let's not try to be too clever about it.
                 return Err(FlashError::InvalidFlashAlgorithmStackSize);
             }
@@ -295,13 +296,13 @@ impl FlashAlgorithm {
         } else {
             // Make sure at least one data page fits into RAM, and also
             // avoid a panic if the RAM region is too small.
-            if buffer_page_size >= remaining_ram {
+            if buffer_page_size_in_instr_region >= remaining_ram {
                 // We don't have any space for a stack
                 return Err(FlashError::InvalidFlashAlgorithmStackSize);
             }
 
             // Use up to 512 bytes of RAM out of the remaining for stack.
-            (remaining_ram - buffer_page_size).min(Self::FLASH_ALGO_STACK_SIZE)
+            (remaining_ram - buffer_page_size_in_instr_region).min(Self::FLASH_ALGO_STACK_SIZE)
         };
 
         tracing::debug!("The flash algorithm will be configured with {stack_size} bytes of stack");
