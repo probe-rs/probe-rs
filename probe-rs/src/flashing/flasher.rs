@@ -911,7 +911,8 @@ impl<'p> ActiveFlasher<'p, Program> {
         );
 
         // Transfer the bytes to RAM.
-        self.load_data(self.flash_algorithm.begin_data, bytes)?;
+        let begin_data = self.buffer_address(0);
+        self.load_data(begin_data, bytes)?;
 
         let result = self
             .call_function_and_wait(
@@ -919,7 +920,7 @@ impl<'p> ActiveFlasher<'p, Program> {
                     pc: into_reg(self.flash_algorithm.pc_program_page)?,
                     r0: Some(into_reg(address)?),
                     r1: Some(bytes.len() as u32),
-                    r2: Some(into_reg(self.flash_algorithm.begin_data)?),
+                    r2: Some(into_reg(begin_data)?),
                     r3: None,
                 },
                 false,
