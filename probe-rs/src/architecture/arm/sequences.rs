@@ -878,6 +878,19 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
 
         tracing::debug!("Result of DPIDR read: {:#x?}", dpidr);
 
+        let ctrl_stat = Ctrl(interface.raw_read_register(PortType::DebugPort, Ctrl::ADDRESS)?);
+
+        tracing::debug!("Result of CTRL/STAT read: {:?}", ctrl_stat);
+
+        tracing::debug!("Clearing errors using ABORT register");
+        let mut abort = Abort(0);
+        abort.set_orunerrclr(true);
+        abort.set_wderrclr(true);
+        abort.set_stkerrclr(true);
+        abort.set_stkcmpclr(true);
+
+        interface.raw_write_register(PortType::DebugPort, Abort::ADDRESS, abort.0)?;
+
         Ok(())
     }
 
@@ -908,6 +921,7 @@ pub trait DebugEraseSequence: Send + Sync {
 
 /// Perform a SWD line reset (SWDIO high for 50 clock cycles)
 fn swd_line_reset(interface: &mut dyn DapProbe) -> Result<(), ArmError> {
+    tracing::debug!("Performing SWD line reset");
     interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
 
     Ok(())
