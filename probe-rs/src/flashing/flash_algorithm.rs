@@ -204,6 +204,16 @@ impl FlashAlgorithm {
         ram_region: &RamRegion,
         target: &Target,
     ) -> Result<Self, FlashError> {
+        Self::assemble_from_raw_with_data(raw, ram_region, ram_region, target)
+    }
+
+    /// Constructs a complete flash algorithm, tailored to the flash and RAM sizes given.
+    pub fn assemble_from_raw_with_data(
+        raw: &RawFlashAlgorithm,
+        ram_region: &RamRegion,
+        _data_ram_region: &RamRegion,
+        target: &Target,
+    ) -> Result<Self, FlashError> {
         use std::mem::size_of;
 
         if raw.flash_properties.page_size % 4 != 0 {
