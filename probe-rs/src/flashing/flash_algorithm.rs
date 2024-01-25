@@ -36,9 +36,7 @@ pub struct FlashAlgorithm {
     pub static_base: u64,
     /// Initial value of the stack pointer when calling any flash algo API.
     pub begin_stack: u64,
-    /// Base address of the page buffer. Used if `page_buffers` is not provided.
-    pub begin_data: u64,
-    /// An optional list of base addresses for page buffers. The buffers must be at
+    /// A list of base addresses for page buffers. The buffers must be at
     /// least as large as the region's `page_size` attribute. If at least 2 buffers are included in
     /// the list, then double buffered programming will be enabled.
     pub page_buffers: Vec<u64>,
@@ -321,8 +319,7 @@ impl FlashAlgorithm {
             pc_erase_all: raw.pc_erase_all.map(|v| code_start + v),
             static_base: code_start + raw.data_section_offset,
             begin_stack: addr_stack,
-            begin_data: page_buffers[0],
-            page_buffers: page_buffers.clone(),
+            page_buffers,
             rtt_control_block: raw.rtt_location,
             flash_properties: raw.flash_properties.clone(),
             transfer_encoding: raw.transfer_encoding.unwrap_or_default(),
