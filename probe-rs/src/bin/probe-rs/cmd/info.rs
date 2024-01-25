@@ -25,6 +25,10 @@ use crate::util::common_options::ProbeOptions;
 pub struct Cmd {
     #[clap(flatten)]
     common: ProbeOptions,
+    /// SWD Multidrop target selection value
+    ///
+    /// If provided, this value is written into the debug port TARGETSEL register
+    /// when connecting. This is required for targets using SWD multidrop
     #[arg(long, value_parser = parse_hex)]
     target_sel: Option<u32>,
 }
@@ -130,7 +134,9 @@ fn try_show_info(
         println!("No DAP interface was found on the connected probe. ARM-specific information cannot be printed.");
     }
 
-    if probe.has_riscv_interface() {
+    // This check is a bit weird, but `try_into_riscv_interface` will try to switch the protocol to JTAG.
+    // If the current protocol we want to use is SWD, we have avoid this.
+    if probe.has_riscv_interface() && protocol == WireProtocol::Jtag {
         log::debug!("Trying to show RISC-V chip information");
         match probe.try_into_riscv_interface() {
             Ok(mut interface) => {
@@ -146,12 +152,20 @@ fn try_show_info(
             }
         }
     } else {
-        println!(
-            "Unable to debug RISC-V targets using the current probe. RISC-V specific information cannot be printed."
-        );
+        if protocol == WireProtocol::Swd {
+            println!(
+                "Debugging RISC-V targets over SWD is not supported. For these targets, JTAG is the only supported protocol. RISC-V specific information cannot be printed."
+            );
+        } else {
+            println!(
+                "Unable to debug RISC-V targets using the current probe. RISC-V specific information cannot be printed."
+            );
+        }
     }
 
-    if probe.has_xtensa_interface() {
+    // This check is a bit weird, but `try_into_xtensa_interface` will try to switch the protocol to JTAG.
+    // If the current protocol we want to use is SWD, we have avoid this.
+    if probe.has_xtensa_interface() && protocol == WireProtocol::Jtag {
         log::debug!("Trying to show Xtensa chip information");
         match probe.try_into_xtensa_interface() {
             Ok(mut interface) => {
@@ -167,9 +181,15 @@ fn try_show_info(
             }
         }
     } else {
-        println!(
+        if protocol == WireProtocol::Swd {
+            println!(
+                "Debugging Xtensa targets over SWD is not supported. For these targets, JTAG is the only supported protocol. Xtensa specific information cannot be printed."
+            );
+        } else {
+            println!(
             "Unable to debug Xtensa targets using the current probe. Xtensa specific information cannot be printed."
         );
+        }
     }
 
     (probe, Ok(()))
