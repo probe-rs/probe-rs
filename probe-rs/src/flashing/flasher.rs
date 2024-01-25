@@ -169,13 +169,10 @@ impl<'session> Flasher<'session> {
         // TODO: Possible special preparation of the target such as enabling faster clocks for the flash e.g.
 
         // Load flash algorithm code into target RAM.
-        let span = tracing::debug_span!("Loading algorithm into RAM", address = algo.load_address)
-            .entered();
+        tracing::debug!("Downloading algorithm code to {:#08x}", algo.load_address);
 
         core.write_32(algo.load_address, algo.instructions.as_slice())
             .map_err(FlashError::Core)?;
-
-        drop(span);
 
         let mut data = vec![0; algo.instructions.len()];
         core.read_32(algo.load_address, &mut data)
