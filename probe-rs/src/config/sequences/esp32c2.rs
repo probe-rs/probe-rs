@@ -36,20 +36,20 @@ impl RiscvDebugSequence for ESP32C2 {
     fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
         tracing::info!("Disabling esp32c2 watchdogs...");
         // disable super wdt
-        interface.write_word_32(0x600080B0, 0x8F1D312A)?; // write protection off
-        let current = interface.read_word_32(0x600080AC)?;
-        interface.write_word_32(0x600080AC, current | 1 << 31)?; // set RTC_CNTL_SWD_AUTO_FEED_EN
-        interface.write_word_32(0x600080B0, 0x0)?; // write protection on
+        interface.write_word_32(0x600080A4, 0x8F1D312A)?; // write protection off
+        let current = interface.read_word_32(0x600080A0)?;
+        interface.write_word_32(0x600080A0, current | 1 << 31)?; // set RTC_CNTL_SWD_AUTO_FEED_EN
+        interface.write_word_32(0x600080A4, 0x0)?; // write protection on
 
         // tg0 wdg
         interface.write_word_32(0x6001f064, 0x50D83AA1)?; // write protection off
-        interface.write_word_32(0x6001F048, 0x0)?;
+        interface.write_word_32(0x6001f048, 0x0)?;
         interface.write_word_32(0x6001f064, 0x0)?; // write protection on
 
         // rtc wdg
-        interface.write_word_32(0x600080a8, 0x50D83AA1)?; // write protection off
-        interface.write_word_32(0x60008090, 0x0)?;
-        interface.write_word_32(0x600080a8, 0x0)?; // write protection on
+        interface.write_word_32(0x6000809c, 0x50D83AA1)?; // write protection off
+        interface.write_word_32(0x60008084, 0x0)?;
+        interface.write_word_32(0x6000809c, 0x0)?; // write protection on
 
         Ok(())
     }
