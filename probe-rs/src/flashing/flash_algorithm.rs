@@ -310,9 +310,9 @@ impl FlashAlgorithm {
             (remaining_ram - buffer_page_size_in_instr_region).min(Self::FLASH_ALGO_STACK_SIZE)
         };
 
-        tracing::debug!("The flash algorithm will be configured with {stack_size} bytes of stack");
-
         let stack_top_addr = code_end + stack_size;
+
+        tracing::debug!("The flash algorithm will be configured with {stack_size} bytes of stack below {stack_top_addr:08x}");
 
         // Determine the bounds of the data region.
         let data_start_addr = if let Some(data_load_addr) = raw.data_load_address {
