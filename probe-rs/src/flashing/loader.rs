@@ -537,6 +537,7 @@ impl FlashLoader {
 
         match algorithms.len() {
             0 => Err(FlashError::NoFlashLoaderAlgorithmAttached {
+                range: region.range.clone(),
                 name: target.name.clone(),
             }),
             1 => Ok(algorithms[0]),

@@ -103,10 +103,12 @@ pub enum FlashError {
     // TODO: 1 Add information about flash (name, address)
     // TODO: 2 Add source of target definition (built-in, yaml)
     /// No flash algorithm was linked to this target.
-    #[error("Trying to write flash, but no suitable (default) flash loader algorithm is linked to the given target: {name} .")]
+    #[error("Trying to write to flash region 0x{:X}..0x{:X}, but no suitable (default) flash loader algorithm is linked to the given target: {name}.", .range.start, .range.end)]
     NoFlashLoaderAlgorithmAttached {
         /// The name of the chip.
         name: String,
+        /// The memory region that was tried to be written.
+        range: Range<u64>,
     },
     /// More than one matching flash algorithm was found for the given memory range and all of them is marked as default.
     #[error("Trying to write flash, but found more than one suitable flash loader algorithim marked as default for {region:?}.")]
