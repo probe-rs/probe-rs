@@ -1,3 +1,4 @@
+use nusb::DeviceInfo;
 use once_cell::sync::Lazy;
 use std::time::Duration;
 
@@ -5,7 +6,7 @@ use crate::probe::{stlink::StlinkError, usb_util::InterfaceExt};
 
 use std::collections::HashMap;
 
-use super::tools::is_stlink_device;
+use super::tools::{is_stlink_device, read_serial_number};
 use crate::{
     probe::{DebugProbeError, ProbeCreationError},
     DebugProbeSelector,
@@ -97,13 +98,27 @@ pub(crate) trait StLinkUsb: std::fmt::Debug {
     ) -> Result<usize, DebugProbeError>;
 }
 
+// Copy of `Selector::matches` except it uses the stlink-specific read_serial_number
+// to handle the broken stlink-v2 serial numbers that need hex-encoding.
+fn selector_matches(selector: &DebugProbeSelector, info: &DeviceInfo) -> bool {
+    let res = info.vendor_id() == selector.vendor_id
+        && info.product_id() == selector.product_id
+        && selector
+            .serial_number
+            .as_ref()
+            .map(|s| read_serial_number(info).as_ref() == Some(s))
+            .unwrap_or(true);
+
+    res
+}
+
 impl StLinkUsbDevice {
     /// Creates and initializes a new USB device.
     pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, ProbeCreationError> {
         let device = nusb::list_devices()
             .map_err(ProbeCreationError::Usb)?
             .filter(is_stlink_device)
-            .find(|device| selector.matches(device))
+            .find(|device| selector_matches(selector, device))
             .ok_or(ProbeCreationError::NotFound)?;
 
         let info = USB_PID_EP_MAP[&device.product_id()].clone();
