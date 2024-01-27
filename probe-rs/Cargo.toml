@@ -97,6 +97,7 @@ ihex = "3.0"
 jep106 = "0.2"
 kmp = { version = "0.1", optional = true }
 once_cell = "1"
+libftd2xx = "0.32"
 miniz_oxide = "0.7"
 num-traits = "0.2"
 object = { version = "0.32", default-features = false, features = [
