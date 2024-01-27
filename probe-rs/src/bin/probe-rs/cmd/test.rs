@@ -1,15 +1,15 @@
-use std::cell::RefCell;
 use std::ops::Range;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, bail, Result};
 use libtest_mimic::{Failed, Trial};
 use probe_rs::{
     BreakpointCause, Core, CoreStatus, Error, HaltReason, Lister, MemoryInterface,
-    SemihostingCommand, VectorCatchCondition,
+    SemihostingCommand, Session, VectorCatchCondition,
 };
 use probe_rs_target::MemoryRegion;
 use signal_hook::consts::signal;
@@ -44,8 +44,8 @@ pub struct Cmd {
     pub(crate) libtest_args: Vec<String>,
 }
 
-struct Runner<'c> {
-    core: Core<'c>,
+struct Runner {
+    session: Session,
     timestamp_offset: UtcOffset,
     path: String,
     always_print_stacktrace: bool,
@@ -63,7 +63,8 @@ impl Cmd {
         timestamp_offset: UtcOffset,
     ) -> Result<()> {
         let path = self.libtest_args[0].clone();
-        let libtest_args = libtest_mimic::Arguments::from_iter(self.libtest_args);
+        let mut libtest_args = libtest_mimic::Arguments::from_iter(self.libtest_args);
+        libtest_args.test_threads = Some(1); // we can only run one test at a time
 
         let (mut session, probe_options) = self.probe_options.simple_attach(lister)?;
 
@@ -90,8 +91,8 @@ impl Cmd {
             false => Vec::new(),
         };
 
-        let runner = RefCell::new(Runner {
-            core: session.core(0)?,
+        let runner = Arc::new(Mutex::new(Runner {
+            session,
             timestamp_offset,
             path: path.to_owned(),
             always_print_stacktrace: self.run_options.always_print_stacktrace,
@@ -99,9 +100,9 @@ impl Cmd {
             log_format: self.run_options.log_format.clone(),
             memory_map,
             rtt_scan_regions,
-        });
+        }));
 
-        let tests = create_tests(&runner)?;
+        let tests = create_tests(runner)?;
         libtest_mimic::run(&libtest_args, tests).exit()
     }
 }
@@ -261,9 +262,9 @@ struct Test {
 }
 
 /// Asks the target for the tests, and create closures to run the tests later
-fn create_tests<'a>(runner_ref: &'a RefCell<Runner>) -> Result<Vec<Trial<'a>>> {
-    let mut runner = runner_ref.borrow_mut();
-    let core = &mut runner.core;
+fn create_tests(runner_ref: Arc<Mutex<Runner>>) -> Result<Vec<Trial>> {
+    let mut runner = runner_ref.lock().unwrap();
+    let core = &mut runner.session.core(0)?;
 
     enable_vector_catch(core); // we want to catch exceptions and target resets
 
@@ -272,9 +273,10 @@ fn create_tests<'a>(runner_ref: &'a RefCell<Runner>) -> Result<Vec<Trial<'a>>> {
     let mut tests = Vec::<Trial>::new();
     for t in &list.tests {
         let test = t.clone();
+        let runner = runner_ref.clone();
         tests.push(
             Trial::test(&t.name, move || {
-                let mut runner = runner_ref.borrow_mut();
+                let mut runner = runner.lock().unwrap();
                 run_test(test, &mut runner)
             })
             .with_ignored_flag(t.ignored),
@@ -285,7 +287,7 @@ fn create_tests<'a>(runner_ref: &'a RefCell<Runner>) -> Result<Vec<Trial<'a>>> {
 
 // Run a single test on the target
 fn run_test(test: Test, runner: &mut Runner) -> std::result::Result<(), Failed> {
-    let core = &mut runner.core;
+    let core = &mut runner.session.core(0)?;
     tracing::info!("Running test {}", test.name);
     core.reset_and_halt(Duration::from_millis(100))?;
     enable_vector_catch(core); // we want to catch exceptions and target resets
