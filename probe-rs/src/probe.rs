@@ -482,6 +482,13 @@ impl Probe {
     pub fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
         self.inner.get_target_voltage()
     }
+
+    /// Get a GPIO interface from debug probe.
+    ///
+    /// This is not available on all debug probes.
+    pub fn get_gpio_interface_mut(&mut self) -> Option<&mut dyn GpioInterface> {
+        self.inner.get_gpio_interface_mut()
+    }
 }
 
 /// An abstraction over a probe driver type.
@@ -647,6 +654,13 @@ pub trait DebugProbe: Send + fmt::Debug {
     /// if the probe doesn’t support reading the target voltage.
     fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
         Ok(None)
+    }
+
+    /// Get a GPIO interface from debug probe.
+    ///
+    /// This is not available on all debug probes.
+    fn get_gpio_interface_mut(&mut self) -> Option<&mut dyn GpioInterface> {
+        None
     }
 }
 
@@ -1139,4 +1153,81 @@ pub enum AttachMethod {
     ///
     /// This is required on targets that can remap SWD pins or disable the SWD interface in sleep.
     UnderReset,
+}
+
+/// GPIO configuration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GpioConfig {
+    /// Mode to use for GPIO.
+    pub mode: GpioMode,
+    /// Speed to use for GPIO.
+    pub speed: GpioSpeed,
+}
+
+/// GPIO Number.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GpioNumber(pub u8);
+
+/// GPIO mode configuration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GpioMode {
+    /// Configure GPIO as input.
+    Input(GpioPull),
+    /// Configure GPIO as output.
+    Output(GpioOutputType),
+    /// Configure GPIO as analog.
+    Analog,
+}
+
+/// GPIO speed configuration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GpioSpeed {
+    /// Low speed.
+    Low,
+    /// Medium speed.
+    Medium,
+    /// High speed.
+    High,
+    /// Very high speed.
+    VeryHigh,
+}
+
+/// GPIO Input pull configuration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GpioPull {
+    /// No pull up or down.
+    No,
+    /// Internal pull up.
+    Up,
+    /// Internal pull down.
+    Down,
+}
+
+/// GPIO Output type configuration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GpioOutputType {
+    /// Set output as push-pull.
+    PushPull,
+    /// Set output as open drain.
+    OpenDrain,
+}
+
+/// Debugger GPIO interface.
+pub trait GpioInterface {
+    /// Initialize one or multiple GPIOs with configuration.
+    fn init_gpio(&mut self, configs: &[(GpioNumber, GpioConfig)]) -> Result<(), DebugProbeError>;
+
+    /// Set the output state of one or multiple GPIOs.
+    fn write_gpio(&mut self, outputs: &[(GpioNumber, bool)]) -> Result<(), DebugProbeError>;
+
+    /// Read the current state of one or multiple GPIOs.
+    ///
+    /// The result slice must be of same length as input slice.
+    /// And the state of each input is returned in the same order order as they are
+    /// provided in inputs.
+    fn read_gpio(
+        &mut self,
+        inputs: &[GpioNumber],
+        result: &mut [bool],
+    ) -> Result<(), DebugProbeError>;
 }
