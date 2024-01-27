@@ -1,18 +1,14 @@
-use indicatif::ProgressBar;
+use indicatif::MultiProgress;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
-use std::{
-    fs::File,
-    path::Path,
-    sync::{Arc, RwLock},
-};
+use std::{fs::File, path::Path, sync::RwLock};
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{
     fmt::format::FmtSpan, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer,
 };
 
 /// Stores the progress bar for the logging facility.
-static PROGRESS_BAR: Lazy<RwLock<Option<Arc<ProgressBar>>>> = Lazy::new(|| RwLock::new(None));
+static PROGRESS_BAR: Lazy<RwLock<Option<MultiProgress>>> = Lazy::new(|| RwLock::new(None));
 
 pub struct FileLoggerGuard<'a> {
     _append_guard: WorkerGuard,
@@ -62,14 +58,41 @@ impl LevelFilter {
     }
 }
 
+// A custom writer that delegates to indicatif's printing when available.
+struct ProgressBarWriter;
+
+impl std::io::Write for ProgressBarWriter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        let out_str = String::from_utf8_lossy(buf);
+
+        // Extra line endings look wrong, so strip them. We can't just trim all, because that would
+        // also remove intentional newlines, too.
+        let out_str = if let Some(str) = out_str.strip_suffix("\r\n") {
+            str
+        } else if let Some(str) = out_str.strip_suffix("\n") {
+            str
+        } else {
+            out_str.as_ref()
+        };
+
+        eprintln(out_str);
+
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
 pub fn setup_logging(
     log_path: Option<&Path>,
     default: Option<LevelFilter>,
 ) -> anyhow::Result<Option<FileLoggerGuard<'_>>> {
-    // TODO: we need out own layer to play nice with indicatif
     let stdout_subscriber = tracing_subscriber::fmt::layer()
         .compact()
         .without_time()
+        .with_writer(|| ProgressBarWriter)
         .with_filter(
             EnvFilter::builder()
                 .with_default_directive(default.unwrap_or(LevelFilter::Error).into_tracing().into())
@@ -107,7 +130,7 @@ pub fn setup_logging(
 }
 
 /// Sets the currently displayed progress bar of the CLI.
-pub fn set_progress_bar(progress: Arc<ProgressBar>) {
+pub fn set_progress_bar(progress: MultiProgress) {
     let mut guard = PROGRESS_BAR.write().unwrap();
     *guard = Some(progress);
 }
@@ -123,7 +146,9 @@ pub fn clear_progress_bar() {
 pub fn eprintln(message: impl AsRef<str>) {
     if let Ok(guard) = PROGRESS_BAR.try_write() {
         match guard.as_ref() {
-            Some(pb) if !pb.is_finished() => pb.println(message.as_ref()),
+            Some(pb) => {
+                let _ = pb.println(message.as_ref());
+            }
             _ => eprintln!("{}", message.as_ref()),
         }
     } else {
@@ -136,7 +161,9 @@ pub fn eprintln(message: impl AsRef<str>) {
 pub fn println(message: impl AsRef<str>) {
     if let Ok(guard) = PROGRESS_BAR.try_write() {
         match guard.as_ref() {
-            Some(pb) if !pb.is_finished() => pb.println(message.as_ref()),
+            Some(pb) => {
+                let _ = pb.println(message.as_ref());
+            }
             _ => println!("{}", message.as_ref()),
         }
     } else {

@@ -509,9 +509,16 @@ fn flash(
     disable_progressbars: bool,
 ) -> Result<(), anyhow::Error> {
     let instant = Instant::now();
+    let mut options = DownloadOptions::new();
+
+    options.keep_unwritten_bytes = config.flashing.restore_unwritten_bytes;
+    options.do_chip_erase = config.flashing.do_chip_erase;
+
     if !disable_progressbars {
         // Create progress bars.
         let multi_progress = MultiProgress::new();
+        logging::set_progress_bar(multi_progress.clone());
+
         let style = ProgressStyle::default_bar()
             .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
             .progress_chars("##-")
@@ -528,10 +535,7 @@ fn flash(
         };
 
         // Create a new progress bar for the erase progress.
-        let erase_progress = Arc::new(multi_progress.add(ProgressBar::new(0)));
-        {
-            logging::set_progress_bar(erase_progress.clone());
-        }
+        let erase_progress = multi_progress.add(ProgressBar::new(0));
         erase_progress.set_style(style.clone());
         erase_progress.set_message("     Erasing sectors");
 
@@ -615,26 +619,15 @@ fn flash(
             }
         });
 
-        let mut options = DownloadOptions::new();
-
         options.progress = Some(progress);
-        options.keep_unwritten_bytes = config.flashing.restore_unwritten_bytes;
-        options.do_chip_erase = config.flashing.do_chip_erase;
-
-        download_file_with_options(session, path, Format::Elf, options)
-            .with_context(|| format!("failed to flash {}", path.display()))?;
-
-        // If we don't do this, the inactive progress bars will swallow log
-        // messages, so they'll never be printed anywhere.
-        logging::clear_progress_bar();
-    } else {
-        let mut options = DownloadOptions::new();
-        options.keep_unwritten_bytes = config.flashing.restore_unwritten_bytes;
-        options.do_chip_erase = config.flashing.do_chip_erase;
-
-        download_file_with_options(session, path, Format::Elf, options)
-            .with_context(|| format!("failed to flash {}", path.display()))?;
     }
+
+    download_file_with_options(session, path, Format::Elf, options)
+        .with_context(|| format!("failed to flash {}", path.display()))?;
+
+    // If we don't do this, the progress bars disappear.
+    logging::clear_progress_bar();
+
     let elapsed = instant.elapsed();
     logging::println(format!(
         "    {} flashing in {}s",
