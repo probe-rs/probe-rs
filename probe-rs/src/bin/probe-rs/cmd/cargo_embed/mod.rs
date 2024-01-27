@@ -5,14 +5,10 @@ mod rttui;
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use colored::*;
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::rtt::{Rtt, ScanRegion};
 use probe_rs::Lister;
-use probe_rs::{
-    flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
-    DebugProbeSelector, Session,
-};
+use probe_rs::{DebugProbeSelector, Session};
 use std::ffi::OsString;
 use std::{
     fs,
@@ -22,14 +18,18 @@ use std::{
     path::{Path, PathBuf},
     process,
     sync::{Arc, Mutex},
-    time::{Duration, Instant},
+    time::Duration,
 };
 use time::{OffsetDateTime, UtcOffset};
 
 use self::rttui::channel::DataFormat;
-use crate::util::common_options::{OperationError, ProbeOptions};
+use crate::util::common_options::{
+    BinaryDownloadOptions, LoadedProbeOptions, OperationError, ProbeOptions,
+};
+use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::logging::setup_logging;
 use crate::util::{build_artifact, common_options::CargoOptions, logging};
+use crate::FormatOptions;
 
 #[derive(Debug, clap::Parser)]
 #[command(after_long_help = CargoOptions::help_message("cargo-embed"))]
@@ -199,7 +199,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
         allow_erase_all: config.flashing.enabled || config.gdb.enabled,
     };
 
-    let (mut session, _probe_options) = match probe_options.simple_attach(&lister) {
+    let (mut session, probe_options) = match probe_options.simple_attach(&lister) {
         Ok((session, probe_options)) => (session, probe_options),
 
         Err(OperationError::MultipleProbesFound { list }) => {
@@ -232,7 +232,13 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
     };
 
     if config.flashing.enabled {
-        flash(&config, &mut session, path, opt.disable_progressbars)?;
+        flash(
+            &config,
+            &mut session,
+            &probe_options,
+            path,
+            opt.disable_progressbars,
+        )?;
     }
 
     if config.reset.enabled {
@@ -505,134 +511,27 @@ fn rtt_attach(
 fn flash(
     config: &config::Config,
     session: &mut probe_rs::Session,
+    probe_options: &LoadedProbeOptions,
     path: &Path,
     disable_progressbars: bool,
 ) -> Result<(), anyhow::Error> {
-    let instant = Instant::now();
-    let mut options = DownloadOptions::new();
+    let download_options = BinaryDownloadOptions {
+        disable_progressbars,
+        disable_double_buffering: false,
+        restore_unwritten: config.flashing.restore_unwritten_bytes,
+        flash_layout_output_path: None,
+        verify: false,
+    };
+    let format_options = FormatOptions::default();
+    let loader = build_loader(session, path, format_options)?;
+    run_flash_download(
+        session,
+        path,
+        &download_options,
+        &probe_options,
+        loader,
+        config.flashing.do_chip_erase,
+    )?;
 
-    options.keep_unwritten_bytes = config.flashing.restore_unwritten_bytes;
-    options.do_chip_erase = config.flashing.do_chip_erase;
-
-    if !disable_progressbars {
-        // Create progress bars.
-        let multi_progress = MultiProgress::new();
-        logging::set_progress_bar(multi_progress.clone());
-
-        let style = ProgressStyle::default_bar()
-            .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
-            .progress_chars("##-")
-            .template("{msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {bytes:>8}/{total_bytes:>8} @ {bytes_per_sec:>10} (eta {eta:3})")?;
-
-        // Create a new progress bar for the fill progress if filling is enabled.
-        let fill_progress = if config.flashing.restore_unwritten_bytes {
-            let fill_progress = Arc::new(multi_progress.add(ProgressBar::new(0)));
-            fill_progress.set_style(style.clone());
-            fill_progress.set_message("     Reading flash  ");
-            Some(fill_progress)
-        } else {
-            None
-        };
-
-        // Create a new progress bar for the erase progress.
-        let erase_progress = multi_progress.add(ProgressBar::new(0));
-        erase_progress.set_style(style.clone());
-        erase_progress.set_message("     Erasing sectors");
-
-        // Create a new progress bar for the program progress.
-        let program_progress = multi_progress.add(ProgressBar::new(0));
-        program_progress.set_style(style);
-        program_progress.set_message(" Programming pages  ");
-
-        let flash_layout_output_path = config.flashing.flash_layout_output_path.clone();
-        // Register callback to update the progress.
-        let progress = FlashProgress::new(move |event| {
-            use ProgressEvent::*;
-            match event {
-                Initialized { flash_layout } => {
-                    let total_page_size: u32 = flash_layout.pages().iter().map(|s| s.size()).sum();
-                    let total_sector_size: u64 =
-                        flash_layout.sectors().iter().map(|s| s.size()).sum();
-                    let total_fill_size: u64 = flash_layout.fills().iter().map(|s| s.size()).sum();
-                    if let Some(fp) = fill_progress.as_ref() {
-                        fp.set_length(total_fill_size)
-                    }
-                    erase_progress.set_length(total_sector_size);
-                    program_progress.set_length(total_page_size as u64);
-                    let visualizer = flash_layout.visualize();
-                    flash_layout_output_path
-                        .as_ref()
-                        .map(|path| visualizer.write_svg(path));
-                }
-                StartedProgramming { length } => {
-                    program_progress.enable_steady_tick(Duration::from_millis(100));
-                    program_progress.set_length(length);
-                    program_progress.reset_elapsed();
-                }
-                StartedErasing => {
-                    erase_progress.enable_steady_tick(Duration::from_millis(100));
-                    erase_progress.reset_elapsed();
-                }
-                StartedFilling => {
-                    if let Some(fp) = fill_progress.as_ref() {
-                        fp.enable_steady_tick(Duration::from_millis(100))
-                    };
-                    if let Some(fp) = fill_progress.as_ref() {
-                        fp.reset_elapsed()
-                    };
-                }
-                PageProgrammed { size, .. } => {
-                    program_progress.inc(size as u64);
-                }
-                SectorErased { size, .. } => {
-                    erase_progress.inc(size);
-                }
-                PageFilled { size, .. } => {
-                    if let Some(fp) = fill_progress.as_ref() {
-                        fp.inc(size)
-                    };
-                }
-                FailedErasing => {
-                    erase_progress.abandon();
-                    program_progress.abandon();
-                }
-                FinishedErasing => {
-                    erase_progress.finish();
-                }
-                FailedProgramming => {
-                    program_progress.abandon();
-                }
-                FinishedProgramming => {
-                    program_progress.finish();
-                }
-                FailedFilling => {
-                    if let Some(fp) = fill_progress.as_ref() {
-                        fp.abandon()
-                    };
-                }
-                FinishedFilling => {
-                    if let Some(fp) = fill_progress.as_ref() {
-                        fp.finish()
-                    };
-                }
-                DiagnosticMessage { .. } => todo!(),
-            }
-        });
-
-        options.progress = Some(progress);
-    }
-
-    download_file_with_options(session, path, Format::Elf, options)
-        .with_context(|| format!("failed to flash {}", path.display()))?;
-
-    // If we don't do this, the progress bars disappear.
-    logging::clear_progress_bar();
-
-    let elapsed = instant.elapsed();
-    logging::println(format!(
-        "    {} flashing in {}s",
-        "Finished".green().bold(),
-        elapsed.as_millis() as f32 / 1000.0,
-    ));
     Ok(())
 }
