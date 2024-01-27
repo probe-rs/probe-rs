@@ -69,7 +69,7 @@ impl std::io::Write for ProgressBarWriter {
         // also remove intentional newlines, too.
         let out_str = if let Some(str) = out_str.strip_suffix("\r\n") {
             str
-        } else if let Some(str) = out_str.strip_suffix("\n") {
+        } else if let Some(str) = out_str.strip_suffix('\n') {
             str
         } else {
             out_str.as_ref()

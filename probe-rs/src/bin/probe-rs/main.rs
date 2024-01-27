@@ -284,7 +284,7 @@ fn main() -> Result<()> {
 
     let _logger_guard = setup_logging(log_path.as_deref(), None);
 
-    let result = match matches.subcommand {
+    match matches.subcommand {
         Subcommand::DapServer { .. } => unreachable!(), // handled above.
         Subcommand::List(cmd) => cmd.run(&lister),
         Subcommand::Info(cmd) => cmd.run(&lister),
@@ -302,7 +302,5 @@ fn main() -> Result<()> {
         Subcommand::Profile(cmd) => cmd.run(&lister),
         Subcommand::Read(cmd) => cmd.run(&lister),
         Subcommand::Write(cmd) => cmd.run(&lister),
-    };
-
-    result
+    }
 }

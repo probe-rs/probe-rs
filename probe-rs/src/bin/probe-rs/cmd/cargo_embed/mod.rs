@@ -528,7 +528,7 @@ fn flash(
         session,
         path,
         &download_options,
-        &probe_options,
+        probe_options,
         loader,
         config.flashing.do_chip_erase,
     )?;
