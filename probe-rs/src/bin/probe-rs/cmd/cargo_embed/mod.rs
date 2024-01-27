@@ -188,8 +188,14 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
         }
     };
 
+    let chip = opt
+        .chip
+        .as_ref()
+        .or(config.general.chip.as_ref())
+        .map(|chip| chip.into());
+
     let probe_options = ProbeOptions {
-        chip: opt.chip,
+        chip,
         chip_description_path: None,
         protocol: Some(config.probe.protocol),
         probe_selector: selector,
