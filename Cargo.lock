@@ -341,9 +341,6 @@ name = "bitflags"
 version = "2.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed570934406eb16438a4e976b1b4500774099c13b8cb96eec99f620f05090ddf"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "bitmatch"
@@ -571,16 +568,6 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
-]
-
-[[package]]
-name = "cargo_toml"
-version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "802b755090e39835a4b0440fb0bbee0df7495a8b337f63db21e616f7821c7e8c"
-dependencies = [
- "serde",
- "toml",
 ]
 
 [[package]]
@@ -2120,7 +2107,7 @@ dependencies = [
  "supports-color",
  "supports-hyperlinks",
  "supports-unicode",
- "terminal_size 0.1.17",
+ "terminal_size",
  "textwrap 0.15.2",
  "thiserror",
  "unicode-width",
@@ -2549,7 +2536,6 @@ dependencies = [
  "bytesize",
  "capstone",
  "cargo_metadata",
- "cargo_toml",
  "clap",
  "colored",
  "crossterm",
@@ -2588,7 +2574,6 @@ dependencies = [
  "rand",
  "ratatui",
  "rmp-serde",
- "ron",
  "rustyline",
  "sanitize-filename",
  "schemafy",
@@ -2600,7 +2585,6 @@ dependencies = [
  "static_assertions",
  "svd-parser",
  "svg",
- "terminal_size 0.3.0",
  "termtree",
  "test-case",
  "textwrap 0.16.0",
@@ -3002,18 +2986,6 @@ dependencies = [
  "byteorder",
  "rmp",
  "serde",
-]
-
-[[package]]
-name = "ron"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b91f7eff05f748767f183df4320a63d6936e9c6107d97c9e6bdd9784f4289c94"
-dependencies = [
- "base64",
- "bitflags 2.4.2",
- "serde",
- "serde_derive",
 ]
 
 [[package]]
@@ -3803,16 +3775,6 @@ checksum = "633c1a546cee861a1a6d0dc69ebeca693bf4296661ba7852b9d21d159e0506df"
 dependencies = [
  "libc",
  "winapi",
-]
-
-[[package]]
-name = "terminal_size"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21bebf2b7c9e0a515f6e0f8c51dc0f8e4696391e6f1ff30379559f8365fb0df7"
-dependencies = [
- "rustix",
- "windows-sys 0.48.0",
 ]
 
 [[package]]
