@@ -3,12 +3,15 @@
 //! The protocol is mostly undocumented, and is changing between firmware versions.
 //! For more details see: <https://github.com/ch32-rs/wlink>
 
+use crate::architecture::riscv::dtm::jtag_dtm::JtagDtm;
 use core::fmt;
 use std::time::Duration;
 
 use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
 
+use self::{commands::Speed, usb_interface::WchLinkUsbDevice};
+use super::JTAGAccess;
 use crate::{
     architecture::riscv::communication_interface::{RiscvCommunicationInterface, RiscvError},
     probe::{
@@ -16,9 +19,6 @@ use crate::{
         ProbeCreationError, ProbeFactory, WireProtocol,
     },
 };
-
-use self::{commands::Speed, usb_interface::WchLinkUsbDevice};
-use super::JTAGAccess;
 
 mod commands;
 mod usb_interface;
@@ -368,7 +368,11 @@ impl DebugProbe for WchLink {
     fn try_get_riscv_interface(
         self: Box<Self>,
     ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
-        RiscvCommunicationInterface::new(self).map_err(|(probe, err)| (probe.into_probe(), err))
+        let jtag_dtm = match JtagDtm::new(self) {
+            Ok(jtag_dtm) => Box::new(jtag_dtm),
+            Err((access, err)) => return Err((access.into_probe(), err)),
+        };
+        RiscvCommunicationInterface::new(jtag_dtm).map_err(|(probe, err)| (probe.into_probe(), err))
     }
 
     fn set_scan_chain(

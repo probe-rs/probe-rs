@@ -27,6 +27,7 @@ use std::{
 mod command_compacter;
 mod ftdaye;
 
+use crate::architecture::riscv::dtm::jtag_dtm::JtagDtm;
 use command_compacter::Command;
 use ftdaye::{error::FtdiError, ChipType};
 
@@ -376,7 +377,11 @@ impl DebugProbe for FtdiProbe {
     fn try_get_riscv_interface(
         self: Box<Self>,
     ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
-        match RiscvCommunicationInterface::new(self) {
+        let jtag_dtm = match JtagDtm::new(self) {
+            Ok(jtag_dtm) => Box::new(jtag_dtm),
+            Err((access, err)) => return Err((access.into_probe(), err)),
+        };
+        match RiscvCommunicationInterface::new(jtag_dtm) {
             Ok(interface) => Ok(interface),
             Err((probe, err)) => Err((probe.into_probe(), err)),
         }

@@ -21,6 +21,7 @@ use self::protocol::ProtocolHandler;
 
 use super::{common::JtagDriverState, JTAGAccess};
 
+use crate::architecture::riscv::dtm::jtag_dtm::JtagDtm;
 use probe_rs_target::ScanChainElement;
 
 /// Probe factory for USB JTAG interfaces built into certain ESP32 chips.
@@ -154,8 +155,12 @@ impl DebugProbe for EspUsbJtag {
     fn try_get_riscv_interface(
         self: Box<Self>,
     ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
+        let jtag_dtm = match JtagDtm::new(self) {
+            Ok(dtm) => Box::new(dtm),
+            Err((probe, err)) => return Err((probe.into_probe(), err)),
+        };
         // This probe is intended for RISC-V.
-        match RiscvCommunicationInterface::new(self) {
+        match RiscvCommunicationInterface::new(jtag_dtm) {
             Ok(interface) => Ok(interface),
             Err((probe, err)) => Err((probe.into_probe(), err)),
         }
