@@ -1,7 +1,6 @@
 use crate::*;
 use anyhow::{anyhow, Result};
 use defmt_decoder::DecodeError;
-use num_traits::Zero;
 pub use probe_rs::rtt::ChannelMode;
 use probe_rs::rtt::{DownChannel, Rtt, ScanRegion, UpChannel};
 use probe_rs::Core;
@@ -27,7 +26,7 @@ pub fn attach_to_rtt(
     timestamp_offset: UtcOffset,
     log_format: Option<&str>,
 ) -> Result<Option<RttActiveTarget>, anyhow::Error> {
-    log::info!("Initializing RTT");
+    tracing::info!("Initializing RTT");
     let rtt_header_address = if let Ok(mut file) = File::open(elf_file) {
         if let Some(address) = RttActiveTarget::get_rtt_symbol(&mut file) {
             ScanRegion::Exact(address as u32)
@@ -41,14 +40,14 @@ pub fn attach_to_rtt(
     if let ScanRegion::Ranges(rngs) = &rtt_header_address {
         if rngs.is_empty() {
             // We have no regions to scan so we cannot initialize RTT.
-            log::debug!("ELF file has no RTT block symbol, and this target does not support automatic scanning");
+            tracing::debug!("ELF file has no RTT block symbol, and this target does not support automatic scanning");
             return Ok(None);
         }
     }
 
     match Rtt::attach_region(core, memory_map, &rtt_header_address) {
         Ok(rtt) => {
-            log::info!("RTT initialized.");
+            tracing::info!("RTT initialized.");
             let app =
                 RttActiveTarget::new(rtt, elf_file, rtt_config, timestamp_offset, log_format)?;
             Ok(Some(app))
@@ -225,20 +224,14 @@ impl RttActiveChannel {
             // Retry loop, in case the probe is temporarily unavailable, e.g. user pressed the `reset` button.
             for _loop_count in 0..10 {
                 match channel.read(core, self.rtt_buffer.0.as_mut()) {
-                    Ok(count) => {
-                        if count.is_zero() {
-                            return None;
-                        } else {
-                            return Some(count);
-                        }
+                    Ok(0) => return None,
+                    Ok(count) => return Some(count),
+                    Err(probe_rs::rtt::Error::Probe(_)) => {
+                        std::thread::sleep(std::time::Duration::from_millis(50));
                     }
                     Err(err) => {
-                        if matches!(err, probe_rs::rtt::Error::Probe(_)) {
-                            std::thread::sleep(std::time::Duration::from_millis(50));
-                        } else {
-                            log::error!("\nError reading from RTT: {}", err);
-                            return None;
-                        }
+                        tracing::error!("\nError reading from RTT: {}", err);
+                        return None;
                     }
                 }
             }
@@ -477,12 +470,12 @@ impl RttActiveTarget {
                     let locs = table.get_locations(&elf)?;
 
                     if !table.is_empty() && locs.is_empty() {
-                        log::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
+                        tracing::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
                         None
                     } else if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
                         Some(locs)
                     } else {
-                        log::warn!(
+                        tracing::warn!(
                             "Location info is incomplete; it will be omitted from the output."
                         );
                         None
@@ -494,7 +487,7 @@ impl RttActiveTarget {
                     formatter,
                 })
             } else {
-                log::warn!("No `Table` definition in DWARF info; compile your program with `debug = 2` to enable location info.");
+                tracing::warn!("No `Table` definition in DWARF info; compile your program with `debug = 2` to enable location info.");
                 None
             }
         } else {
@@ -521,7 +514,9 @@ impl RttActiveTarget {
             }
         }
 
-        log::warn!("No RTT header info was present in the ELF file. Does your firmware run RTT?");
+        tracing::warn!(
+            "No RTT header info was present in the ELF file. Does your firmware run RTT?"
+        );
         None
     }
 

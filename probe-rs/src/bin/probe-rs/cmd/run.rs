@@ -231,7 +231,7 @@ fn run_loop(
 /// Prints the stacktrace of the current execution state.
 fn print_stacktrace(core: &mut impl CoreInterface, path: &Path) -> Result<(), anyhow::Error> {
     let Some(debug_info) = DebugInfo::from_file(path).ok() else {
-        log::error!("No debug info found.");
+        tracing::error!("No debug info found.");
         return Ok(());
     };
     let initial_registers = DebugRegisters::from_core(core);
@@ -326,10 +326,10 @@ fn attach_to_rtt(
             log_format,
         ) {
             Ok(target_rtt) => return target_rtt,
-            Err(error) => log::debug!("{:?} RTT attach error", error),
+            Err(error) => tracing::debug!("{:?} RTT attach error", error),
         }
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
-    log::error!("Failed to attach to RTT continuing...");
+    tracing::error!("Failed to attach to RTT continuing...");
     None
 }

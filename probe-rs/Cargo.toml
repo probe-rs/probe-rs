@@ -36,7 +36,6 @@ rtt = ["dep:kmp"]
 cli = [
     "gdb-server",
 
-    "dep:log",
     "dep:byte-unit",
     "dep:capstone",
     "dep:cargo_metadata",
@@ -155,7 +154,6 @@ indicatif = { version = "0.17", optional = true }
 insta = { version = "1", features = ["yaml", "filters"] }
 is-terminal = { version = "0.4", optional = true }
 itm = { version = "0.9.0-rc.1", default-features = false, optional = true }
-log = { version = "0.4", optional = true }
 parse_int = { version = "0.6", optional = true }
 pretty_env_logger = { workspace = true, optional = true }
 rand = { version = "0.8", optional = true }

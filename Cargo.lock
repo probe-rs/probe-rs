@@ -2575,7 +2575,6 @@ dependencies = [
  "itm",
  "jep106",
  "kmp",
- "log",
  "miniz_oxide",
  "num-traits",
  "nusb",

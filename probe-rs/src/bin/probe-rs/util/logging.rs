@@ -1,155 +1,109 @@
-use colored::*;
 use indicatif::ProgressBar;
-use is_terminal::IsTerminal;
-use log::{Level, LevelFilter, Log, Record};
 use once_cell::sync::Lazy;
-use pretty_env_logger::env_logger::{Builder, Logger};
+use serde::{Deserialize, Serialize};
 use std::{
-    fmt::{self},
-    io::Write,
-    sync::{
-        atomic::{AtomicUsize, Ordering},
-        Arc, RwLock,
-    },
+    fs::File,
+    path::Path,
+    sync::{Arc, RwLock},
 };
-
-/// The maximum window width of the terminal, given in characters possible.
-static MAX_WINDOW_WIDTH: AtomicUsize = AtomicUsize::new(0);
+use tracing_appender::non_blocking::WorkerGuard;
+use tracing_subscriber::{
+    fmt::format::FmtSpan, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter, Layer,
+};
 
 /// Stores the progress bar for the logging facility.
 static PROGRESS_BAR: Lazy<RwLock<Option<Arc<ProgressBar>>>> = Lazy::new(|| RwLock::new(None));
 
-/// A structure to hold a string with a padding attached to the start of it.
-struct Padded<T> {
-    value: T,
-    width: usize,
+pub struct FileLoggerGuard<'a> {
+    _append_guard: WorkerGuard,
+    log_path: &'a Path,
 }
 
-impl<T: fmt::Display> fmt::Display for Padded<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{: <width$}", self.value, width = self.width)
-    }
-}
+impl<'a> FileLoggerGuard<'a> {
+    fn new(_append_guard: WorkerGuard, log_path: &'a Path) -> Self {
+        // Log after initializing the logger, so we can see the log path.
+        tracing::info!("Writing log to {:?}", log_path);
 
-/// Get the maximum between the window width and the length of the given string.
-fn max_target_width(target: &str) -> usize {
-    let max_width = MAX_WINDOW_WIDTH.load(Ordering::Relaxed);
-    if max_width < target.len() {
-        MAX_WINDOW_WIDTH.store(target.len(), Ordering::Relaxed);
-        target.len()
-    } else {
-        max_width
-    }
-}
-
-/// Helper to receive a color for a given level.
-fn colored_level(level: Level) -> ColoredString {
-    match level {
-        Level::Trace => "TRACE".magenta().bold(),
-        Level::Debug => "DEBUG".blue().bold(),
-        Level::Info => " INFO".green().bold(),
-        Level::Warn => " WARN".yellow().bold(),
-        Level::Error => "ERROR".red().bold(),
-    }
-}
-
-/// Logger wrapper that can coexist peacefully with indicative progress bars.
-struct CliLogger {
-    env_logger: Logger,
-    output_is_terminal: bool,
-}
-
-impl Log for CliLogger {
-    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
-        metadata.level() <= self.env_logger.filter()
-    }
-
-    fn log(&self, record: &Record<'_>) {
-        if self.enabled(record.metadata()) {
-            // If the output is not an interactive terminal,
-            // indicatif will not display anything, so messages
-            // forwared to it would be swallowed.
-            if !self.output_is_terminal {
-                self.env_logger.log(record);
-            } else {
-                let guard = PROGRESS_BAR.write().unwrap();
-
-                // Print the log message above the progress bar, if one is present.
-                if let Some(pb) = &*guard {
-                    let target = record.target();
-                    let max_width = max_target_width(target);
-
-                    let level = colored_level(record.level());
-
-                    let target = Padded {
-                        value: target.bold(),
-                        width: max_width,
-                    };
-
-                    pb.println(format!("       {} {} > {}", level, target, record.args()));
-                } else {
-                    self.env_logger.log(record);
-                }
-            }
+        Self {
+            _append_guard,
+            log_path,
         }
     }
+}
 
-    fn flush(&self) {
-        self.env_logger.flush();
+impl Drop for FileLoggerGuard<'_> {
+    fn drop(&mut self) {
+        tracing::info!("Wrote log to {:?}", self.log_path);
     }
 }
 
-/// Initialize the logger.
-///
-/// There are two sources for log level configuration:
-///
-/// - The log level value passed to this function
-/// - The user can set the `RUST_LOG` env var, which overrides the log level passed to this function.
-///
-/// The config file only accepts a log level, while the `RUST_LOG` variable
-/// supports the full `env_logger` syntax, including filtering by crate and
-/// module.
-pub fn init(level: Option<Level>) {
-    // User visible logging.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, clap::ValueEnum)]
+#[clap(rename_all = "UPPER")]
+#[serde(rename_all = "UPPERCASE")]
+pub enum LevelFilter {
+    Off,
+    Error,
+    Warn,
+    Info,
+    Debug,
+    Trace,
+}
 
-    let mut log_builder = Builder::new();
-
-    // First, apply the log level given to this function.
-    if let Some(level) = level {
-        log_builder.filter_level(level.to_level_filter());
-    } else {
-        log_builder.filter_level(LevelFilter::Warn);
+impl LevelFilter {
+    fn into_tracing(self) -> tracing::level_filters::LevelFilter {
+        match self {
+            Self::Off => tracing::level_filters::LevelFilter::OFF,
+            Self::Error => tracing::level_filters::LevelFilter::ERROR,
+            Self::Warn => tracing::level_filters::LevelFilter::WARN,
+            Self::Info => tracing::level_filters::LevelFilter::INFO,
+            Self::Debug => tracing::level_filters::LevelFilter::DEBUG,
+            Self::Trace => tracing::level_filters::LevelFilter::TRACE,
+        }
     }
+}
 
-    // Then override that with the `RUST_LOG` env var, if set.
-    if let Ok(s) = ::std::env::var("RUST_LOG") {
-        log_builder.parse_filters(&s);
-    }
+pub fn setup_logging(
+    log_path: Option<&Path>,
+    default: Option<LevelFilter>,
+) -> anyhow::Result<Option<FileLoggerGuard<'_>>> {
+    // TODO: we need out own layer to play nice with indicatif
+    let stdout_subscriber = tracing_subscriber::fmt::layer()
+        .compact()
+        .without_time()
+        .with_filter(
+            EnvFilter::builder()
+                .with_default_directive(default.unwrap_or(LevelFilter::Error).into_tracing().into())
+                .from_env_lossy(),
+        );
 
-    // Define our custom log format.
-    log_builder.format(move |f, record| {
-        let target = record.target();
-        let max_width = max_target_width(target);
+    let Some(log_path) = log_path else {
+        tracing_subscriber::registry()
+            .with(stdout_subscriber)
+            .init();
 
-        let level = colored_level(record.level());
+        return Ok(None);
+    };
 
-        let mut style = f.style();
-        let target = style.set_bold(true).value(Padded {
-            value: target,
-            width: max_width,
-        });
+    let log_file = File::create(log_path)?;
 
-        writeln!(f, "       {} {} > {}", level, target, record.args())
-    });
+    let (file_appender, guard) = tracing_appender::non_blocking::NonBlockingBuilder::default()
+        .lossy(false)
+        .buffered_lines_limit(128 * 1024)
+        .finish(log_file);
 
-    let output_is_terminal = std::io::stderr().is_terminal();
+    let file_subscriber = tracing_subscriber::fmt::layer()
+        .json()
+        .with_file(true)
+        .with_line_number(true)
+        .with_span_events(FmtSpan::FULL)
+        .with_writer(file_appender);
 
-    let logger = Box::new(CliLogger {
-        env_logger: log_builder.build(),
-        output_is_terminal,
-    });
-    log::set_max_level(logger.env_logger.filter());
-    log::set_boxed_logger(logger).unwrap();
+    tracing_subscriber::registry()
+        .with(stdout_subscriber)
+        .with(file_subscriber)
+        .init();
+
+    Ok(Some(FileLoggerGuard::new(guard, log_path)))
 }
 
 /// Sets the currently displayed progress bar of the CLI.
@@ -169,12 +123,8 @@ pub fn clear_progress_bar() {
 pub fn eprintln(message: impl AsRef<str>) {
     if let Ok(guard) = PROGRESS_BAR.try_write() {
         match guard.as_ref() {
-            Some(pb) if !pb.is_finished() => {
-                pb.println(message.as_ref());
-            }
-            _ => {
-                eprintln!("{}", message.as_ref());
-            }
+            Some(pb) if !pb.is_finished() => pb.println(message.as_ref()),
+            _ => eprintln!("{}", message.as_ref()),
         }
     } else {
         eprintln!("{}", message.as_ref());
@@ -186,12 +136,8 @@ pub fn eprintln(message: impl AsRef<str>) {
 pub fn println(message: impl AsRef<str>) {
     if let Ok(guard) = PROGRESS_BAR.try_write() {
         match guard.as_ref() {
-            Some(pb) if !pb.is_finished() => {
-                pb.println(message.as_ref());
-            }
-            _ => {
-                println!("{}", message.as_ref());
-            }
+            Some(pb) if !pb.is_finished() => pb.println(message.as_ref()),
+            _ => println!("{}", message.as_ref()),
         }
     } else {
         println!("{}", message.as_ref());

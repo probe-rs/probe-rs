@@ -8,6 +8,7 @@ use std::{path::PathBuf, process};
 
 use crate::util::common_options::{CargoOptions, FlashOptions, OperationError};
 use crate::util::flash;
+use crate::util::logging::setup_logging;
 use clap::{CommandFactory, FromArgMatches};
 
 use crate::util::{build_artifact, logging};
@@ -51,7 +52,7 @@ fn main_try(mut args: Vec<OsString>, lister: &Lister) -> Result<(), OperationErr
     };
 
     // Initialize the logger with the loglevel given on the commandline.
-    logging::init(opt.log);
+    let _log_guard = setup_logging(None, opt.log);
 
     // Get the current working dir. Make sure we have a proper default if it cannot be determined.
     let work_dir = opt.work_dir.clone().unwrap_or_else(|| PathBuf::from("."));
@@ -63,7 +64,7 @@ fn main_try(mut args: Vec<OsString>, lister: &Lister) -> Result<(), OperationErr
             path: work_dir.clone(),
         }
     })?;
-    log::debug!("Changed working directory to {}", work_dir.display());
+    tracing::debug!("Changed working directory to {}", work_dir.display());
 
     // Get the path to the binary we want to flash.
     // This can either be give from the arguments or can be a cargo build artifact.
