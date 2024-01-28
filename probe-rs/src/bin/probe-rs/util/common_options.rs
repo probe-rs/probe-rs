@@ -35,7 +35,10 @@ use super::ArtifactError;
 
 use std::{fs::File, path::Path, path::PathBuf};
 
-use crate::{cmd::dap_server::DebuggerError, util::parse_u64};
+use crate::{
+    cmd::dap_server::DebuggerError,
+    util::{logging::LevelFilter, parse_u64},
+};
 use clap;
 use probe_rs::{
     config::{RegistryError, TargetSelector},
@@ -54,9 +57,10 @@ pub struct FlashOptions {
     pub reset_halt: bool,
     /// Use this flag to set the log level.
     ///
-    /// Default is `warning`. Possible choices are [error, warning, info, debug, trace].
+    /// Configurable via the `RUST_LOG` environment variable.
+    /// Default is `warn`. Possible choices are [error, warn, info, debug, trace].
     #[arg(value_name = "level", long)]
-    pub log: Option<log::Level>,
+    pub log: Option<LevelFilter>,
     /// The path to the file to be flashed.
     #[arg(value_name = "path", long)]
     pub path: Option<PathBuf>,
@@ -281,7 +285,7 @@ impl LoadedProbeOptions {
             let protocol_speed = probe.speed_khz();
             if let Some(speed) = self.0.speed {
                 if protocol_speed < speed {
-                    log::warn!(
+                    tracing::warn!(
                         "Unable to use specified speed of {} kHz, actual speed used is {} kHz",
                         speed,
                         protocol_speed
@@ -289,7 +293,7 @@ impl LoadedProbeOptions {
                 }
             }
 
-            log::info!("Protocol speed {} kHz", protocol_speed);
+            tracing::info!("Protocol speed {} kHz", protocol_speed);
         }
 
         Ok(probe)

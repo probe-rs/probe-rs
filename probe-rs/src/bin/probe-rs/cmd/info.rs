@@ -82,7 +82,7 @@ fn try_show_info(
     let mut probe = probe;
 
     if probe.has_arm_interface() {
-        log::debug!("Trying to show ARM chip information");
+        tracing::debug!("Trying to show ARM chip information");
         match probe.try_into_arm_interface() {
             Ok(interface) => {
                 match interface.initialize(DefaultArmSequence::create()) {
@@ -111,7 +111,7 @@ fn try_show_info(
     }
 
     if probe.has_riscv_interface() {
-        log::debug!("Trying to show RISC-V chip information");
+        tracing::debug!("Trying to show RISC-V chip information");
         match probe.try_into_riscv_interface() {
             Ok(mut interface) => {
                 if let Err(e) = show_riscv_info(&mut interface) {
@@ -132,7 +132,7 @@ fn try_show_info(
     }
 
     if probe.has_xtensa_interface() {
-        log::debug!("Trying to show Xtensa chip information");
+        tracing::debug!("Trying to show Xtensa chip information");
         match probe.try_into_xtensa_interface() {
             Ok(mut interface) => {
                 if let Err(e) = show_xtensa_info(&mut interface) {

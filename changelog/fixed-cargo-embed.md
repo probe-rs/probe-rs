@@ -1,0 +1,1 @@
+Fixed cargo-embed not respecting the target's preferred image format.
