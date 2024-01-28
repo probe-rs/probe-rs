@@ -276,6 +276,10 @@ impl Probe {
         attach_method: AttachMethod,
         config: ProbeConfiguration,
     ) -> Result<(), Error> {
+        if self.attached {
+            return Err(DebugProbeError::Attached.into());
+        }
+
         if attach_method == AttachMethod::UnderReset {
             if let Some(dap_probe) = self.try_as_dap_probe() {
                 DefaultArmSequence(()).reset_hardware_assert(dap_probe)?;
