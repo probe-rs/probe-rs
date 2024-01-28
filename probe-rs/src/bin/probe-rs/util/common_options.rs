@@ -485,12 +485,6 @@ pub enum OperationError {
         source: RegistryError,
         name: String,
     },
-    #[error("The protocol '{protocol}' could not be selected.")]
-    FailedToSelectProtocol {
-        #[source]
-        source: DebugProbeError,
-        protocol: WireProtocol,
-    },
     #[error("Connecting to the chip was unsuccessful.")]
     AttachingFailed {
         #[source]

@@ -157,10 +157,6 @@ pub(crate) fn render_diagnostics(error: OperationError) {
                 vec![],
             ),
         },
-        OperationError::FailedToSelectProtocol { .. } => (
-            error.to_string(),
-            vec![],
-        ),
         OperationError::AttachingFailed { source, connect_under_reset } => match source {
             ProbeRsError::ChipNotFound(RegistryError::ChipAutodetectFailed) => (
                 error.to_string(),

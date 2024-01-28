@@ -10,6 +10,7 @@ variants:
           ir_len: 5
         - name: cpu1
           ir_len: 5
+      default_speed_khz: 15000 # 15 MHz - tested with an FT2232H which fails at 30 MHz
     default_binary_format: idf
     cores:
       - name: cpu0

@@ -4,11 +4,13 @@ manufacturer:
   id: 0x12
 variants:
   - name: esp32-3.3v
-    scan_chain:
-      - name: main
-        ir_len: 5
-      - name: app
-        ir_len: 5
+    jtag:
+      scan_chain:
+        - name: main
+          ir_len: 5
+        - name: app
+          ir_len: 5
+      default_speed_khz: 15000 # 15 MHz - 30 MHz causes problems for some users
     default_binary_format: idf
     cores:
       - name: main
