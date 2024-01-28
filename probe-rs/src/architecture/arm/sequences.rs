@@ -878,10 +878,6 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
 
         tracing::debug!("Result of DPIDR read: {:#x?}", dpidr);
 
-        let ctrl_stat = Ctrl(interface.raw_read_register(PortType::DebugPort, Ctrl::ADDRESS)?);
-
-        tracing::debug!("Result of CTRL/STAT read: {:?}", ctrl_stat);
-
         tracing::debug!("Clearing errors using ABORT register");
         let mut abort = Abort(0);
         abort.set_orunerrclr(true);
@@ -890,6 +886,21 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         abort.set_stkcmpclr(true);
 
         interface.raw_write_register(PortType::DebugPort, Abort::ADDRESS, abort.0)?;
+
+        let ctrl_stat = interface
+            .raw_read_register(PortType::DebugPort, Ctrl::ADDRESS)
+            .map(Ctrl);
+
+        match ctrl_stat {
+            Ok(ctrl_stat) => {
+                tracing::debug!("Result of CTRL/STAT read: {:?}", ctrl_stat);
+            }
+            Err(e) => {
+                // According to the SPEC, reading from CTRL/STAT should never fail. In practice,
+                // it seems to fail sometimes.
+                tracing::debug!("Failed to read CTRL/STAT: {:?}", e);
+            }
+        }
 
         Ok(())
     }
