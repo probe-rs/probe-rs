@@ -18,7 +18,7 @@ use crate::{
     },
     config::DebugSequence,
 };
-use crate::{AttachMethod, Core, CoreType, Error, Lister, Probe};
+use crate::{AttachMethod, Core, CoreType, Error, Lister, Probe, WireProtocol};
 use anyhow::anyhow;
 use probe_rs_target::ScanChainElement;
 use std::ops::DerefMut;
@@ -98,6 +98,9 @@ impl ArchitectureInterface {
 /// Probe configuration.
 #[derive(Default)]
 pub struct ProbeConfiguration {
+    /// The protocol to use for communication.
+    pub protocol: Option<WireProtocol>,
+
     /// JTAG scan chain configuration.
     pub scan_chain: Option<Vec<ScanChainElement>>,
 

@@ -232,12 +232,12 @@ impl LoadedProbeOptions {
 
     /// Attaches to specified probe and configures it.
     pub fn attach_probe(&self, lister: &Lister) -> Result<Probe, OperationError> {
-        let mut probe = if self.0.dry_run {
-            Probe::from_specific_probe(Box::new(FakeProbe::new()))
+        let probe = if self.0.dry_run {
+            Ok(Probe::from_specific_probe(Box::new(FakeProbe::new())))
         } else {
             // If we got a probe selector as an argument, open the probe
             // matching the selector if possible.
-            let probe = match &self.0.probe_selector {
+            match &self.0.probe_selector {
                 Some(selector) => lister.open(selector),
                 None => {
                     // Only automatically select a probe if there is
@@ -253,22 +253,10 @@ impl LoadedProbeOptions {
 
                     lister.open(info)
                 }
-            };
-
-            probe.map_err(OperationError::FailedToOpenProbe)?
+            }
         };
 
-        if let Some(protocol) = self.0.protocol {
-            // Select protocol and speed
-            probe.select_protocol(protocol).map_err(|error| {
-                OperationError::FailedToSelectProtocol {
-                    source: error,
-                    protocol,
-                }
-            })?;
-        }
-
-        Ok(probe)
+        probe.map_err(OperationError::FailedToOpenProbe)
     }
 
     /// Attaches to target device session. Attaches under reset if
@@ -291,6 +279,7 @@ impl LoadedProbeOptions {
             ProbeConfiguration {
                 scan_chain: None,
                 speed_khz: self.0.speed,
+                protocol: self.0.protocol,
             },
         );
 

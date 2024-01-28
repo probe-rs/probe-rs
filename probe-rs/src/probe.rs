@@ -427,12 +427,18 @@ impl Probe {
     }
 
     fn apply_config(&mut self, config: ProbeConfiguration) -> Result<(), DebugProbeError> {
+        if let Some(protocol) = config.protocol {
+            self.select_protocol(protocol)?;
+        }
+
         if let Some(scan_chain) = config.scan_chain.clone() {
             self.set_scan_chain(scan_chain)?;
         }
+
         if let Some(speed) = config.speed_khz {
             self.set_speed(speed)?;
         }
+
         Ok(())
     }
 
