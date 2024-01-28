@@ -57,6 +57,7 @@ pub struct FlashOptions {
     pub reset_halt: bool,
     /// Use this flag to set the log level.
     ///
+    /// Configurable via the `RUST_LOG` environment variable.
     /// Default is `warn`. Possible choices are [error, warn, info, debug, trace].
     #[arg(value_name = "level", long)]
     pub log: Option<LevelFilter>,

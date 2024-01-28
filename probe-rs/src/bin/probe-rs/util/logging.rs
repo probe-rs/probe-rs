@@ -85,6 +85,12 @@ impl std::io::Write for ProgressBarWriter {
     }
 }
 
+/// Configures tracing and sets up the logging facility.
+///
+/// # Arguments
+///
+/// * `log_path` - The path to the log file. If `None`, log messages will not be stored in a file.
+/// * `default` - The default log level to use. If `None`, falls back to `RUST_LOG` in the environment.
 pub fn setup_logging(
     log_path: Option<&Path>,
     default: Option<LevelFilter>,
@@ -93,11 +99,20 @@ pub fn setup_logging(
         .compact()
         .without_time()
         .with_writer(|| ProgressBarWriter)
-        .with_filter(
-            EnvFilter::builder()
-                .with_default_directive(default.unwrap_or(LevelFilter::Error).into_tracing().into())
-                .from_env_lossy(),
-        );
+        .with_filter(match default {
+            Some(filter) => {
+                // We have a default (from config or command argument), ignore RUST_LOG.
+                EnvFilter::builder()
+                    .with_default_directive(filter.into_tracing().into())
+                    .parse_lossy("")
+            }
+            None => {
+                // No default, use RUST_LOG or fall back to ERROR.
+                EnvFilter::builder()
+                    .with_default_directive(tracing::level_filters::LevelFilter::ERROR.into())
+                    .from_env_lossy()
+            }
+        });
 
     let Some(log_path) = log_path else {
         tracing_subscriber::registry()
