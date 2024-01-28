@@ -337,12 +337,6 @@ impl LoadedProbeOptions {
     }
 }
 
-impl AsRef<ProbeOptions> for LoadedProbeOptions {
-    fn as_ref(&self) -> &ProbeOptions {
-        &self.0
-    }
-}
-
 #[derive(clap::Parser, Debug, Default)]
 pub struct CargoOptions {
     #[arg(value_name = "binary", long, hide = true)]
