@@ -120,6 +120,7 @@ fn open_trace_interface(device: &DeviceInfo) -> Result<TraceInterface, OpenError
                         interface_number: interface.interface_number(),
                         endpoint: ep.address(),
                         max_packet_size: ep.max_packet_size(),
+                        tracing_active: false,
                     });
                 }
             }

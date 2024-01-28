@@ -239,6 +239,7 @@ struct TraceInterface {
     interface_number: u8,
     endpoint: u8,
     max_packet_size: usize,
+    tracing_active: bool,
 }
 
 impl TraceInterface {
@@ -283,31 +284,49 @@ impl SwoAccess for TraceInterface {
 
         self.set_swo_speed(config.baud()).map_err(ArmError::Probe)?;
 
+        self.tracing_active = true;
+
         Ok(())
     }
 
     fn disable_swo(&mut self) -> Result<(), ArmError> {
         self.set_trace_input_format(TraceInputFormat::Disabled)
-            .map_err(ArmError::Probe)
+            .map_err(ArmError::Probe)?;
+
+        self.tracing_active = false;
+
+        Ok(())
     }
 
     fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ArmError> {
-        let mut buf = vec![0u8; self.max_packet_size];
-        match self.handle.read_bulk(self.endpoint, &mut buf, timeout) {
-            Ok(n) => {
-                buf.truncate(n);
-                Ok(buf)
+        if self.tracing_active {
+            let mut buf = vec![0u8; self.max_packet_size];
+            match self.handle.read_bulk(self.endpoint, &mut buf, timeout) {
+                Ok(n) => {
+                    buf.truncate(n);
+                    Ok(buf)
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::TimedOut => {
+                    buf.truncate(0);
+                    Ok(buf)
+                }
+                Err(e) => Err(ArmError::Probe(DebugProbeError::Usb(e))),
             }
-            Err(e) if e.kind() == std::io::ErrorKind::TimedOut => {
-                buf.truncate(0);
-                Ok(buf)
-            }
-            Err(e) => Err(ArmError::Probe(DebugProbeError::Usb(e))),
+        } else {
+            Ok(Vec::new())
         }
     }
 
     fn swo_poll_interval_hint(&mut self, _config: &SwoConfig) -> Option<Duration> {
         Some(Duration::from_secs(0))
+    }
+}
+
+impl Drop for TraceInterface {
+    fn drop(&mut self) {
+        if self.tracing_active {
+            let _ = self.set_trace_input_format(TraceInputFormat::Disabled);
+        }
     }
 }
 
