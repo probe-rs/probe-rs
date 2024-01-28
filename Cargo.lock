@@ -1287,6 +1287,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ftdi-mpsse"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa7cfcda69930a8d2fdcdd7ffb9234fe4c79a8c73934ed4904327d77bfb5078a"
+dependencies = [
+ "static_assertions",
+]
+
+[[package]]
 name = "funty"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1946,6 +1955,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13e3bf6590cbc649f4d1a3eefc9d5d6eb746f5200ffb04e5e142700b8faa56e7"
 
 [[package]]
+name = "libftd2xx"
+version = "0.32.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eb8ccefefda61630a66a012d32e8127d14b135ef248db7aab868b068c4162acc"
+dependencies = [
+ "ftdi-mpsse",
+ "libftd2xx-ffi",
+ "log",
+ "paste",
+ "static_assertions",
+]
+
+[[package]]
+name = "libftd2xx-ffi"
+version = "0.8.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "40bed7f53ea45282e0e4f1361d1a8094e62abe0ccfd9a6dbf7e3db932b2789ce"
+dependencies = [
+ "cfg-if",
+]
+
+[[package]]
 name = "libredox"
 version = "0.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2575,6 +2606,7 @@ dependencies = [
  "itm",
  "jep106",
  "kmp",
+ "libftd2xx",
  "log",
  "miniz_oxide",
  "num-traits",

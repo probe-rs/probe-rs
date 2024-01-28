@@ -1,17 +1,16 @@
+mod d2xx;
 pub mod error;
+mod raw;
 
-use std::collections::VecDeque;
-use std::convert::TryInto;
 use std::io::{self, Read, Write};
 use std::time::Duration;
 
 use nusb::DeviceInfo;
 
+use d2xx::FtdiD2xx;
 use error::FtdiError;
-use nusb::transfer::{Control, ControlType, Direction, EndpointType, Recipient};
-use tracing::{debug, trace, warn};
+use raw::FtdiRaw;
 
-use crate::probe::usb_util::InterfaceExt;
 use crate::DebugProbeError;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -52,186 +51,19 @@ pub enum Interface {
 }
 
 impl Interface {
-    fn read_ep(self) -> u8 {
-        match self {
-            Interface::A => 0x81,
-            Interface::B => 0x83,
-            Interface::C => 0x85,
-            Interface::D => 0x87,
-        }
-    }
-
-    fn write_ep(self) -> u8 {
-        match self {
-            Interface::A => 0x02,
-            Interface::B => 0x04,
-            Interface::C => 0x06,
-            Interface::D => 0x08,
-        }
-    }
-
     fn index(&self) -> u16 {
         *self as u16
     }
 }
 
-struct FtdiContext {
-    /// USB device handle
-    handle: nusb::Interface,
-
-    /// FTDI device interface
-    interface: Interface,
-
-    usb_read_timeout: Duration,
-    usb_write_timeout: Duration,
-
-    read_queue: VecDeque<u8>,
-    read_buffer: Box<[u8]>,
-    max_packet_size: usize,
-
-    bitbang: Option<BitMode>,
-}
-
-impl FtdiContext {
-    fn sio_write(&mut self, request: u8, value: u16) -> Result<()> {
-        let result = self
-            .handle
-            .control_out_blocking(
-                Control {
-                    control_type: ControlType::Vendor,
-                    recipient: Recipient::Device,
-                    request,
-                    value,
-                    index: self.interface.index(),
-                },
-                &[],
-                self.usb_write_timeout,
-            )
-            .map_err(std::io::Error::from)?;
-
-        tracing::debug!("Response to {:02X}/{:04X}: {:?}", request, value, result);
-
-        Ok(())
-    }
-
-    fn usb_reset(&mut self) -> Result<()> {
-        const SIO_RESET_REQUEST: u8 = 0;
-        const SIO_RESET_SIO: u16 = 0;
-
-        self.sio_write(SIO_RESET_REQUEST, SIO_RESET_SIO)
-    }
-
-    /// Clears the write buffer on the chip.
-    fn usb_purge_tx_buffer(&mut self) -> Result<()> {
-        const SIO_RESET_REQUEST: u8 = 0;
-        const SIO_RESET_PURGE_TX: u16 = 2;
-
-        self.sio_write(SIO_RESET_REQUEST, SIO_RESET_PURGE_TX)
-    }
-
-    fn usb_purge_rx_buffer(&mut self) -> Result<()> {
-        const SIO_RESET_REQUEST: u8 = 0;
-        const SIO_RESET_PURGE_RX: u16 = 1;
-
-        self.sio_write(SIO_RESET_REQUEST, SIO_RESET_PURGE_RX)?;
-
-        self.read_queue.clear();
-
-        Ok(())
-    }
-
-    fn usb_purge_buffers(&mut self) -> Result<()> {
-        self.usb_purge_tx_buffer()?;
-        self.usb_purge_rx_buffer()?;
-
-        Ok(())
-    }
-
-    fn set_latency_timer(&mut self, value: u8) -> Result<()> {
-        const SIO_SET_LATENCY_TIMER_REQUEST: u8 = 0x09;
-
-        self.sio_write(SIO_SET_LATENCY_TIMER_REQUEST, value as u16)
-    }
-
-    fn set_bitmode(&mut self, bitmask: u8, mode: BitMode) -> Result<()> {
-        const SIO_SET_BITMODE_REQUEST: u8 = 0x0B;
-
-        self.sio_write(
-            SIO_SET_BITMODE_REQUEST,
-            u16::from_le_bytes([bitmask, mode as u8]),
-        )?;
-
-        self.bitbang = (mode != BitMode::Reset).then_some(mode);
-
-        Ok(())
-    }
-
-    fn read_data(&mut self, mut data: &mut [u8]) -> io::Result<usize> {
-        let mut total = 0;
-        while !data.is_empty() {
-            // Move data out of the read queue
-            if !self.read_queue.is_empty() {
-                let read = self.read_queue.read(data).unwrap();
-                tracing::debug!("Copied {} bytes from queue", read);
-
-                data = &mut data[read..];
-                total += read;
-            }
-
-            // Read from USB
-            if !data.is_empty() {
-                let read = self.handle.read_bulk(
-                    self.interface.read_ep(),
-                    &mut self.read_buffer,
-                    self.usb_read_timeout,
-                )?;
-
-                tracing::debug!("Read {:02x?} bytes from USB", &self.read_buffer[..read]);
-
-                if read <= 2 {
-                    // No more data to read.
-                    break;
-                }
-
-                let (status, read_data) = self.read_buffer[..read].split_at(2);
-
-                tracing::debug!("Status: {:02X?} [{} data]", status, read);
-
-                let copy = read_data.len().min(data.len());
-                let (to_buffer, to_save) = read_data.split_at(copy);
-
-                if copy > 0 {
-                    data[..copy].copy_from_slice(to_buffer);
-                    data = &mut data[copy..];
-                    tracing::debug!("Copied {} bytes from USB", copy);
-                    total += copy;
-                }
-
-                if !to_save.is_empty() {
-                    tracing::debug!("Queued {} bytes from USB", to_save.len());
-                    self.read_queue.extend(to_save);
-                    break;
-                }
-            }
-        }
-
-        tracing::debug!("read {} bytes", total);
-
-        Ok(total)
-    }
-
-    fn write_data(&mut self, data: &[u8]) -> io::Result<usize> {
-        let mut total = 0;
-        for chunk in data.chunks(self.max_packet_size) {
-            total +=
-                self.handle
-                    .write_bulk(self.interface.write_ep(), chunk, self.usb_write_timeout)?;
-        }
-
-        tracing::debug!("wrote {} bytes", total);
-
-        Ok(total)
-    }
+trait FtdiDriver: Send {
+    fn usb_reset(&mut self) -> Result<()>;
+    fn usb_purge_buffers(&mut self) -> Result<()>;
+    fn set_usb_timeouts(&mut self, read_timeout: Duration, write_timeout: Duration) -> Result<()>;
+    fn set_latency_timer(&mut self, value: u8) -> Result<()>;
+    fn set_bitmode(&mut self, bitmask: u8, mode: BitMode) -> Result<()>;
+    fn read_data(&mut self, data: &mut [u8]) -> io::Result<usize>;
+    fn write_data(&mut self, data: &[u8]) -> io::Result<usize>;
 }
 
 pub struct Builder {
@@ -267,15 +99,17 @@ impl Builder {
     pub fn usb_open(self, usb_device: DeviceInfo) -> Result<Device, DebugProbeError> {
         let mut device = Device::open(usb_device, self.interface)?;
 
-        device.context.usb_read_timeout = self.read_timeout;
-        device.context.usb_write_timeout = self.write_timeout;
+        device
+            .context
+            .set_usb_timeouts(self.read_timeout, self.write_timeout)?;
 
         Ok(device)
     }
 }
 
 pub struct Device {
-    context: FtdiContext,
+    context: Box<dyn FtdiDriver>,
+
     chip_type: Option<ChipType>,
 }
 
@@ -290,109 +124,14 @@ impl std::fmt::Debug for Device {
 
 impl Device {
     fn open(usb_device: DeviceInfo, interface: Interface) -> Result<Self, DebugProbeError> {
-        fn open_error(e: std::io::Error, while_: &'static str) -> DebugProbeError {
-            let help = if cfg!(windows) {
-                "(this error may be caused by not having the WinUSB driver installed; use Zadig (https://zadig.akeo.ie/) to install it for the FTDI device; this will replace the FTDI driver)"
-            } else {
-                ""
-            };
-
-            DebugProbeError::Usb(std::io::Error::other(format!(
-                "error while {while_}: {e}{help}",
-            )))
-        }
-
-        let handle = usb_device
-            .open()
-            .map_err(|e| open_error(e, "opening the USB device"))?;
-
-        let configs: Vec<_> = handle.configurations().collect();
-
-        let conf = &configs[0];
-        if configs.len() != 1 {
-            warn!("device has {} configurations, expected 1", configs.len());
-
-            if configs.len() > 1 {
-                let configuration = handle
-                    .active_configuration()
-                    .map_err(FtdiError::ActiveConfigurationError)?
-                    .configuration_value();
-
-                if configuration != conf.configuration_value() {
-                    handle
-                        .set_configuration(conf.configuration_value())
-                        .map_err(FtdiError::Usb)?;
-                }
-            }
-        }
-
-        debug!("scanning {} interfaces", conf.interfaces().count());
-        trace!("active configuration descriptor: {:#x?}", conf);
-
-        let mut usb_interface = None;
-
-        // Try to find the specified interface
-        for intf in conf.interfaces() {
-            trace!("interface #{} descriptors:", intf.interface_number());
-
-            for descr in intf.alt_settings() {
-                trace!("{:#x?}", descr);
-
-                let endpoints: Vec<_> = descr.endpoints().collect();
-                trace!("endpoint descriptors: {:#x?}", endpoints);
-
-                if endpoints
-                    .iter()
-                    .any(|ep| ep.transfer_type() != EndpointType::Bulk)
-                {
-                    warn!(
-                        "encountered non-bulk endpoints, skipping interface: {:#x?}",
-                        endpoints
-                    );
-                    continue;
-                }
-
-                let endpoint_count = endpoints.len();
-                let Ok::<[_; 2], _>([read_ep, write_ep]) = endpoints.try_into() else {
-                    warn!(
-                        "skipping interface with {} endpoints, expected 2",
-                        endpoint_count
-                    );
-                    continue;
-                };
-
-                let (read_ep, write_ep) = if read_ep.direction() == Direction::In {
-                    (read_ep, write_ep)
-                } else {
-                    (write_ep, read_ep)
-                };
-
-                if read_ep.address() != interface.read_ep()
-                    || write_ep.address() != interface.write_ep()
-                {
-                    warn!(
-                        "interface {} does not match requested interface {:?}",
-                        descr.interface_number(),
-                        interface
-                    );
-                    continue;
-                }
-
-                if let Some((intf, _)) = usb_interface {
-                    Err(FtdiError::Other(format!(
-                        "found multiple matching USB interfaces ({} and {})",
-                        intf,
-                        descr.interface_number()
-                    )))?
-                }
-
-                usb_interface = Some((descr.interface_number(), write_ep.max_packet_size()));
-                debug!("Interface is #{}", descr.interface_number());
-            }
-        }
-
-        let Some((intf, max_packet_size)) = usb_interface else {
-            Err(FtdiError::Other("device is not a FTDI device".to_string()))?
+        // let context = Box::new(FtdiRaw::open(&usb_device, interface)?);
+        let context: Box<dyn FtdiDriver> = if let Ok(d2xx) = FtdiD2xx::open(&usb_device, interface)
+        {
+            // note: fine with letting d2xx fail silently and Raw to provide the
+            // traceback
+            Box::new(d2xx)
+        } else {
+            Box::new(FtdiRaw::open(&usb_device, interface)?)
         };
 
         let chip_type = match (
@@ -414,25 +153,9 @@ impl Device {
             }
         };
 
-        let handle = handle
-            .claim_interface(intf)
-            .map_err(|e| open_error(e, "taking control over USB device"))?;
-
         tracing::debug!("Opened FTDI device: {:?}", chip_type);
 
-        Ok(Self {
-            context: FtdiContext {
-                handle,
-                interface,
-                usb_read_timeout: Duration::from_secs(5),
-                usb_write_timeout: Duration::from_secs(5),
-                read_queue: VecDeque::new(),
-                read_buffer: vec![0; max_packet_size].into_boxed_slice(),
-                max_packet_size,
-                bitbang: None,
-            },
-            chip_type,
-        })
+        Ok(Self { context, chip_type })
     }
 
     pub fn usb_reset(&mut self) -> Result<()> {
@@ -456,27 +179,33 @@ impl Device {
     }
 
     pub fn set_pins(&mut self, level: u16, direction: u16) -> Result<()> {
-        self.write_all(&[0x80, level as u8, direction as u8])?;
-        self.write_all(&[0x82, (level >> 8) as u8, (direction >> 8) as u8])?;
+        self.context
+            .write_data(&[0x80, level as u8, direction as u8])?;
+        self.context
+            .write_data(&[0x82, (level >> 8) as u8, (direction >> 8) as u8])?;
 
         Ok(())
     }
 
     pub fn disable_loopback(&mut self) -> Result<()> {
-        Ok(self.write_all(&[0x85])?)
+        self.context.write_data(&[0x85])?;
+        Ok(())
     }
 
     pub fn disable_divide_by_5(&mut self) -> Result<()> {
-        Ok(self.write_all(&[0x8A])?)
+        self.context.write_data(&[0x8A])?;
+        Ok(())
     }
 
     pub fn enable_divide_by_5(&mut self) -> Result<()> {
-        Ok(self.write_all(&[0x8B])?)
+        self.context.write_data(&[0x8B])?;
+        Ok(())
     }
 
     pub fn configure_clock_divider(&mut self, divisor: u16) -> Result<()> {
         let [l, h] = divisor.to_le_bytes();
-        Ok(self.write_all(&[0x86, l, h])?)
+        self.context.write_data(&[0x86, l, h])?;
+        Ok(())
     }
 }
 
