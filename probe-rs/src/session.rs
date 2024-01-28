@@ -95,9 +95,13 @@ impl ArchitectureInterface {
     }
 }
 
+/// Probe configuration.
 #[derive(Default)]
 pub struct ProbeConfiguration {
+    /// JTAG scan chain configuration.
     pub scan_chain: Option<Vec<ScanChainElement>>,
+
+    /// Probe speed in kHz.
     pub speed_khz: Option<u32>,
 }
 impl ProbeConfiguration {

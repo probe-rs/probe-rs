@@ -41,8 +41,8 @@ use probe_rs::{
     config::{RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError},
     integration::FakeProbe,
-    DebugProbeError, DebugProbeInfo, DebugProbeSelector, Lister, Permissions, Probe, Session,
-    Target, WireProtocol,
+    AttachMethod, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Lister, Permissions, Probe,
+    ProbeConfiguration, Session, Target, WireProtocol,
 };
 use serde::{Deserialize, Serialize};
 
@@ -268,30 +268,6 @@ impl LoadedProbeOptions {
             })?;
         }
 
-        if let Some(speed) = self.0.speed {
-            let _actual_speed = probe.set_speed(speed).map_err(|error| {
-                OperationError::FailedToSelectProtocolSpeed {
-                    source: error,
-                    speed,
-                }
-            })?;
-
-            // Warn the user if they specified a speed the debug probe does not support
-            // and a fitting speed was automatically selected.
-            let protocol_speed = probe.speed_khz();
-            if let Some(speed) = self.0.speed {
-                if protocol_speed < speed {
-                    log::warn!(
-                        "Unable to use specified speed of {} kHz, actual speed used is {} kHz",
-                        speed,
-                        protocol_speed
-                    );
-                }
-            }
-
-            log::info!("Protocol speed {} kHz", protocol_speed);
-        }
-
         Ok(probe)
     }
 
@@ -304,17 +280,24 @@ impl LoadedProbeOptions {
     ) -> Result<Session, OperationError> {
         let permissions = self.permissions();
 
-        let session = if self.0.connect_under_reset {
-            probe.attach_under_reset(target, permissions)
-        } else {
-            probe.attach(target, permissions)
-        }
-        .map_err(|error| OperationError::AttachingFailed {
+        let session_result = probe.attach_with_config(
+            target,
+            permissions,
+            if self.0.connect_under_reset {
+                AttachMethod::UnderReset
+            } else {
+                AttachMethod::Normal
+            },
+            ProbeConfiguration {
+                scan_chain: None,
+                speed_khz: self.0.speed,
+            },
+        );
+
+        session_result.map_err(|error| OperationError::AttachingFailed {
             source: error,
             connect_under_reset: self.0.connect_under_reset,
-        })?;
-
-        Ok(session)
+        })
     }
 
     pub(crate) fn permissions(&self) -> Permissions {
@@ -518,12 +501,6 @@ pub enum OperationError {
         #[source]
         source: DebugProbeError,
         protocol: WireProtocol,
-    },
-    #[error("The protocol speed could not be set to '{speed}' kHz.")]
-    FailedToSelectProtocolSpeed {
-        #[source]
-        source: DebugProbeError,
-        speed: u32,
     },
     #[error("Connecting to the chip was unsuccessful.")]
     AttachingFailed {
