@@ -102,7 +102,7 @@ impl Session {
         attach_method: AttachMethod,
         permissions: Permissions,
     ) -> Result<Self, Error> {
-        let (probe, target) = get_target_from_selector(target, attach_method, probe)?;
+        let (mut probe, target) = get_target_from_selector(target, attach_method, probe)?;
 
         let cores = target
             .cores
@@ -117,6 +117,12 @@ impl Session {
                 )
             })
             .collect();
+
+        if let Some(jtag) = target.jtag.as_ref() {
+            if let Some(scan_chain) = jtag.scan_chain.clone() {
+                probe.set_scan_chain(scan_chain)?;
+            }
+        }
 
         let mut session = match target.architecture() {
             Architecture::Arm => {
@@ -171,11 +177,6 @@ impl Session {
             }
         }
 
-        if let Some(jtag) = target.jtag.as_ref() {
-            if let Some(scan_chain) = jtag.scan_chain.clone() {
-                probe.set_scan_chain(scan_chain)?;
-            }
-        }
         probe.attach_to_unspecified()?;
 
         let interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
@@ -273,12 +274,6 @@ impl Session {
             _ => unreachable!("Mismatch between architecture and sequence type!"),
         };
 
-        if let Some(jtag) = target.jtag.as_ref() {
-            if let Some(scan_chain) = jtag.scan_chain.clone() {
-                probe.set_scan_chain(scan_chain)?;
-            }
-        }
-
         probe.attach_to_unspecified()?;
 
         let interface = probe
@@ -308,12 +303,6 @@ impl Session {
             DebugSequence::Xtensa(sequence) => sequence.clone(),
             _ => unreachable!("Mismatch between architecture and sequence type!"),
         };
-
-        if let Some(jtag) = target.jtag.as_ref() {
-            if let Some(scan_chain) = jtag.scan_chain.clone() {
-                probe.set_scan_chain(scan_chain)?;
-            }
-        }
 
         probe.attach_to_unspecified()?;
 
