@@ -57,7 +57,7 @@ pub struct FlashOptions {
     pub reset_halt: bool,
     /// Use this flag to set the log level.
     ///
-    /// Default is `error`. Possible choices are [error, warning, info, debug, trace].
+    /// Default is `warn`. Possible choices are [error, warn, info, debug, trace].
     #[arg(value_name = "level", long)]
     pub log: Option<LevelFilter>,
     /// The path to the file to be flashed.
