@@ -232,27 +232,27 @@ impl LoadedProbeOptions {
 
     /// Attaches to specified probe and configures it.
     pub fn attach_probe(&self, lister: &Lister) -> Result<Probe, OperationError> {
-        let probe = if self.0.dry_run {
-            Ok(Probe::from_specific_probe(Box::new(FakeProbe::new())))
-        } else {
-            // If we got a probe selector as an argument, open the probe
-            // matching the selector if possible.
-            match &self.0.probe_selector {
-                Some(selector) => lister.open(selector),
-                None => {
-                    // Only automatically select a probe if there is
-                    // only a single probe detected.
-                    let list = lister.list_all();
-                    if list.len() > 1 {
-                        return Err(OperationError::MultipleProbesFound { list });
-                    }
+        if self.0.dry_run {
+            return Ok(Probe::from_specific_probe(Box::new(FakeProbe::new())));
+        }
 
-                    let Some(info) = list.first() else {
-                        return Err(OperationError::NoProbesFound);
-                    };
-
-                    lister.open(info)
+        // If we got a probe selector as an argument, open the probe
+        // matching the selector if possible.
+        let probe = match &self.0.probe_selector {
+            Some(selector) => lister.open(selector),
+            None => {
+                // Only automatically select a probe if there is
+                // only a single probe detected.
+                let list = lister.list_all();
+                if list.len() > 1 {
+                    return Err(OperationError::MultipleProbesFound { list });
                 }
+
+                let Some(info) = list.first() else {
+                    return Err(OperationError::NoProbesFound);
+                };
+
+                lister.open(info)
             }
         };
 
