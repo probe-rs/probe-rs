@@ -3,7 +3,7 @@ use crate::{
     ProbeCreationError,
 };
 
-use super::{cmsisdap, espusbjtag, ftdi, jlink, stlink, wlink};
+use super::{cmsisdap, espusbjtag, ftdi, jlink, orbtrace, stlink, wlink};
 
 /// Struct to list all attached debug probes
 #[derive(Debug)]
@@ -73,6 +73,7 @@ impl Default for AllProbesLister {
 
 impl AllProbesLister {
     const DRIVERS: &'static [&'static dyn ProbeDriver] = &[
+        &orbtrace::OrbTraceSource, // Should go before CmsisDapSource, as it is also a CMSIS-DAP probe
         &cmsisdap::CmsisDapSource,
         &ftdi::FtdiProbeSource,
         &stlink::StLinkSource,

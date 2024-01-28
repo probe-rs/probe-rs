@@ -8,6 +8,7 @@ pub(crate) mod fake_probe;
 pub(crate) mod ftdi;
 pub(crate) mod jlink;
 pub(crate) mod list;
+pub(crate) mod orbtrace;
 pub(crate) mod stlink;
 pub(crate) mod wlink;
 
