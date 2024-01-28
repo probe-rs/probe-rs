@@ -107,6 +107,7 @@ pub struct ProbeConfiguration {
     /// Probe speed in kHz.
     pub speed_khz: Option<u32>,
 }
+
 impl ProbeConfiguration {
     fn set_defaults(&mut self, target: &Target) {
         if let Some(ref jtag) = target.jtag {
@@ -116,6 +117,7 @@ impl ProbeConfiguration {
             if self.speed_khz.is_none() {
                 self.speed_khz = jtag.default_speed_khz;
             }
+            // Protocol can't be set in the target description yet.
         }
     }
 }
