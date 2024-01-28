@@ -430,6 +430,9 @@ impl Probe {
         if let Some(scan_chain) = config.scan_chain.clone() {
             self.set_scan_chain(scan_chain)?;
         }
+        if let Some(speed) = config.speed_khz {
+            self.set_speed(speed)?;
+        }
         Ok(())
     }
 

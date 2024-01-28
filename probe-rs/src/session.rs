@@ -98,12 +98,16 @@ impl ArchitectureInterface {
 #[derive(Default)]
 pub struct ProbeConfiguration {
     pub scan_chain: Option<Vec<ScanChainElement>>,
+    pub speed_khz: Option<u32>,
 }
 impl ProbeConfiguration {
     fn set_defaults(&mut self, target: &Target) {
         if let Some(ref jtag) = target.jtag {
             if self.scan_chain.is_none() {
                 self.scan_chain = jtag.scan_chain.clone();
+            }
+            if self.speed_khz.is_none() {
+                self.speed_khz = jtag.default_speed_khz;
             }
         }
     }

@@ -30,6 +30,10 @@ pub struct Jtag {
     /// ref: `<https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/sdf_pg.html#sdf_element_scanchain>`
     #[serde(default)]
     pub scan_chain: Option<Vec<ScanChainElement>>,
+
+    /// The default JTAG TCK frequency in kHz.
+    #[serde(default)]
+    pub default_speed_khz: Option<u32>,
 }
 
 /// A single chip variant.

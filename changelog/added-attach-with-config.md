@@ -1,0 +1,1 @@
+Added `Probe::attach_with_config` and `Probe::attach_to_unspecified_with_config`
