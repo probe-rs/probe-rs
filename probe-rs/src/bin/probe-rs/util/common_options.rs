@@ -302,10 +302,7 @@ impl LoadedProbeOptions {
         probe: Probe,
         target: TargetSelector,
     ) -> Result<Session, OperationError> {
-        let mut permissions = Permissions::new();
-        if self.0.allow_erase_all {
-            permissions = permissions.allow_erase_all();
-        }
+        let permissions = self.permissions();
 
         let session = if self.0.connect_under_reset {
             probe.attach_under_reset(target, permissions)
@@ -318,6 +315,14 @@ impl LoadedProbeOptions {
         })?;
 
         Ok(session)
+    }
+
+    pub(crate) fn permissions(&self) -> Permissions {
+        let mut permissions = Permissions::new();
+        if self.0.allow_erase_all {
+            permissions = permissions.allow_erase_all();
+        }
+        permissions
     }
 
     pub(crate) fn protocol(&self) -> Option<WireProtocol> {
