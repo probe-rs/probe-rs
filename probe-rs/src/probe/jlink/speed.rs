@@ -14,9 +14,9 @@ type Result<T> = std::result::Result<T, JlinkError>;
 
 /// J-Link communication speed info.
 #[derive(Debug)]
-pub struct SpeedInfo {
-    base_freq: u32,
-    min_div: u16,
+pub(super) struct SpeedInfo {
+    pub base_freq: u32,
+    pub min_div: u16,
 }
 
 impl SpeedInfo {
@@ -78,7 +78,7 @@ impl JLink {
     /// selected for the returned value to make sense.
     ///
     /// This requires the probe to support [`Capability::SpeedInfo`].
-    pub(crate) fn read_speeds(&self) -> Result<SpeedInfo> {
+    pub(super) fn read_interface_speeds(&self) -> Result<SpeedInfo> {
         self.require_capability(Capability::SpeedInfo)?;
 
         self.write_cmd(&[Command::GetSpeeds as u8])?;
@@ -99,17 +99,16 @@ impl JLink {
     /// [`Capability::AdaptiveClocking`]. Note that adaptive clocking may not work for all target
     /// interfaces (eg. SWD).
     ///
-    /// When the selected target interface is switched (by calling [`JayLink::select_interface`], or
+    /// When the selected target interface is switched (by calling [`JLink::select_interface`], or
     /// any API method that automatically selects an interface), the communication speed is reset to
     /// some unspecified default value.
-    pub(crate) fn set_speed(&mut self, speed: SpeedConfig) -> Result<()> {
+    pub(super) fn set_interface_clock_speed(&mut self, speed: SpeedConfig) -> Result<()> {
         if speed.raw == SpeedConfig::ADAPTIVE.raw {
             self.require_capability(Capability::AdaptiveClocking)?;
         }
 
-        let mut buf = [Command::SetSpeed as u8, 0, 0];
-        buf[1..3].copy_from_slice(&speed.raw.to_le_bytes());
-        self.write_cmd(&buf)?;
+        let [low, high] = speed.raw.to_le_bytes();
+        self.write_cmd(&[Command::SetSpeed as u8, low, high])?;
 
         Ok(())
     }
