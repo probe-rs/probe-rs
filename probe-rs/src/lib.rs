@@ -105,4 +105,4 @@ pub use crate::probe::{
     list::Lister, AttachMethod, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
     Probe, ProbeCreationError, ProbeDriver, WireProtocol,
 };
-pub use crate::session::{Permissions, Session};
+pub use crate::session::{Permissions, ProbeConfiguration, Session};

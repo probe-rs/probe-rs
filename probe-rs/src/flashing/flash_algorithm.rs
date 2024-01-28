@@ -160,8 +160,7 @@ impl FlashAlgorithm {
         true
     }
 
-    const FLASH_ALGO_STACK_SIZE: u32 = 512;
-    const FLASH_ALGO_STACK_DECREMENT: u32 = 64;
+    const FLASH_ALGO_STACK_SIZE: u64 = 512;
 
     // Header for RISC-V Flash Algorithms
     const RISCV_FLASH_BLOB_HEADER: [u32; 2] = [riscv::assembly::EBREAK, riscv::assembly::EBREAK];
@@ -205,6 +204,16 @@ impl FlashAlgorithm {
         ram_region: &RamRegion,
         target: &Target,
     ) -> Result<Self, FlashError> {
+        Self::assemble_from_raw_with_data(raw, ram_region, ram_region, target)
+    }
+
+    /// Constructs a complete flash algorithm, tailored to the flash and RAM sizes given.
+    pub fn assemble_from_raw_with_data(
+        raw: &RawFlashAlgorithm,
+        ram_region: &RamRegion,
+        data_ram_region: &RamRegion,
+        target: &Target,
+    ) -> Result<Self, FlashError> {
         use std::mem::size_of;
 
         if raw.flash_properties.page_size % 4 != 0 {
@@ -234,76 +243,94 @@ impl FlashAlgorithm {
 
         let header_size = size_of_val(header) as u64;
 
-        let mut offset = 0;
-        let mut addr_stack = 0;
-        let mut addr_load = 0;
-        let mut addr_data = 0;
-        let mut code_start = 0;
+        // The start address where we try to load the flash algorithm.
+        let addr_load = match raw.load_address {
+            Some(address) => {
+                // adjust the raw load address to account for the algo header
+                address
+                    .checked_sub(header_size)
+                    .ok_or(FlashError::InvalidFlashAlgorithmLoadAddress { address })?
+            }
 
-        // Try to find a stack size that fits with at least one page of data.
-        let stack_size = {
-            let stack_size = raw.stack_size.unwrap_or(Self::FLASH_ALGO_STACK_SIZE);
-            if stack_size < Self::FLASH_ALGO_STACK_DECREMENT {
-                // If the stack size is less than one decrement, we
-                // won't enter the loop (below), and we'll produce a variety
-                // of addresses that all start at zero (above).
-                // Let's make sure we have a chance to compute other addresses
-                // by using a reasonable minimum stack size.
-                tracing::warn!(
-                    "Stack size of {} bytes is too small; overriding to {} bytes",
-                    stack_size,
-                    Self::FLASH_ALGO_STACK_DECREMENT
-                );
-                Self::FLASH_ALGO_STACK_DECREMENT
-            } else {
-                stack_size
+            None => {
+                // assume position independent code
+                ram_region.range.start
             }
         };
-        tracing::debug!("The flash algorithm will be configured with {stack_size} bytes of stack");
 
-        for i in 0..stack_size / Self::FLASH_ALGO_STACK_DECREMENT {
-            // Load address
-            addr_load = raw
-                .load_address
-                .map(|a| {
-                    a.checked_sub(header_size) // adjust the raw load address to account for the algo header
-                        .ok_or(FlashError::InvalidFlashAlgorithmLoadAddress { address: addr_load })
-                })
-                .unwrap_or(Ok(ram_region.range.start))?;
-            if addr_load < ram_region.range.start {
-                return Err(FlashError::InvalidFlashAlgorithmLoadAddress { address: addr_load });
-            }
-            offset += header_size;
-            code_start = addr_load + offset;
-            offset += (instructions.len() * size_of::<u32>()) as u64;
-
-            // Stack start address (desc)
-            addr_stack = addr_load
-                + offset
-                + (stack_size
-                    .checked_sub(Self::FLASH_ALGO_STACK_DECREMENT * i)
-                    .expect("Overflow never happens; decrement multiples are always less than stack size."))
-                    as u64;
-
-            // Data buffer 1
-            addr_data = addr_stack;
-            offset += raw.flash_properties.page_size as u64;
-
-            if offset <= ram_region.range.end - addr_load {
-                break;
-            }
+        if addr_load < ram_region.range.start {
+            return Err(FlashError::InvalidFlashAlgorithmLoadAddress { address: addr_load });
         }
 
+        let code_start = addr_load + header_size;
+        let code_size_bytes = (instructions.len() * size_of::<u32>()) as u64;
+        let code_end = code_start + code_size_bytes;
+
+        let buffer_page_size = raw.flash_properties.page_size as u64;
+
+        let remaining_ram = ram_region.range.end - code_end;
+
+        let buffer_page_size_in_instr_region = if ram_region == data_ram_region {
+            buffer_page_size
+        } else {
+            0
+        };
+
+        // Try to find a stack size that fits with at least one page of data.
+        let stack_size = if let Some(configured_stack) = raw.stack_size {
+            let stack_size = configured_stack as u64;
+
+            // Make sure at least one data page fits into RAM.
+            if buffer_page_size_in_instr_region + stack_size > remaining_ram {
+                // The configured stack size is too large. Let's not try to be too clever about it.
+                return Err(FlashError::InvalidFlashAlgorithmStackSize);
+            }
+            stack_size
+        } else {
+            // Make sure at least one data page fits into RAM, and also
+            // avoid a panic if the RAM region is too small.
+            if buffer_page_size_in_instr_region >= remaining_ram {
+                // We don't have any space for a stack
+                return Err(FlashError::InvalidFlashAlgorithmStackSize);
+            }
+
+            // Use up to 512 bytes of RAM out of the remaining for stack.
+            (remaining_ram - buffer_page_size_in_instr_region).min(Self::FLASH_ALGO_STACK_SIZE)
+        };
+
+        let stack_top_addr = code_end + stack_size;
+
+        tracing::debug!("The flash algorithm will be configured with {stack_size} bytes of stack below {stack_top_addr:08x}");
+
+        // Determine the bounds of the data region.
+        let data_start_addr = if let Some(data_load_addr) = raw.data_load_address {
+            // Specified, use what the user gave us
+            data_load_addr
+        } else if ram_region == data_ram_region {
+            // Not specified, same region, place above stack
+            stack_top_addr
+        } else {
+            // Not specified, different region, place at start of data RAM region
+            data_ram_region.range.start
+        };
+
+        let data_region_end_addr = data_ram_region.range.end;
+
+        // Data buffer 1
+        let first_buffer_start = data_start_addr;
+
         // Data buffer 2
-        let addr_data2 = addr_data + raw.flash_properties.page_size as u64;
-        offset += raw.flash_properties.page_size as u64;
+        let second_buffer_start = first_buffer_start + buffer_page_size;
+        let second_buffer_end = second_buffer_start + buffer_page_size;
 
         // Determine whether we can use double buffering or not by the remaining RAM region size.
-        let page_buffers = if offset <= ram_region.range.end - addr_load {
-            vec![addr_data, addr_data2]
+        let page_buffers = if second_buffer_end <= data_region_end_addr {
+            vec![first_buffer_start, second_buffer_start]
         } else {
-            vec![addr_data]
+            vec![first_buffer_start]
         };
+
+        tracing::debug!("Page buffers: {:08x?}", page_buffers);
 
         let name = raw.name.clone();
 
@@ -318,7 +345,7 @@ impl FlashAlgorithm {
             pc_erase_sector: code_start + raw.pc_erase_sector,
             pc_erase_all: raw.pc_erase_all.map(|v| code_start + v),
             static_base: code_start + raw.data_section_offset,
-            begin_stack: addr_stack,
+            begin_stack: stack_top_addr,
             page_buffers,
             rtt_control_block: raw.rtt_location,
             flash_properties: raw.flash_properties.clone(),

@@ -16,6 +16,7 @@ use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
 use crate::error::Error;
 use crate::probe::common::IdCode;
+use crate::session::ProbeConfiguration;
 use crate::{
     architecture::arm::communication_interface::UninitializedArmProbe,
     config::{RegistryError, TargetSelector},
@@ -251,7 +252,55 @@ impl Probe {
         self.inner.get_name().to_string()
     }
 
-    /// Attach to the chip.
+    /// Attach to a target without knowing what target you have at hand.
+    ///
+    /// This can be used for automatic device discovery or performing operations on an unspecified target.
+    pub fn attach_to_unspecified(&mut self) -> Result<(), Error> {
+        self.attach_to_unspecified_with_config(AttachMethod::Normal, ProbeConfiguration::default())
+    }
+
+    /// A combination of [`Probe::attach_to_unspecified`] and [`Probe::attach_under_reset`].
+    pub fn attach_to_unspecified_under_reset(&mut self) -> Result<(), Error> {
+        self.attach_to_unspecified_with_config(
+            AttachMethod::UnderReset,
+            ProbeConfiguration::default(),
+        )
+    }
+
+    /// Attach to a target without knowing what target you have at hand.
+    ///
+    /// This can be used for automatic device discovery or performing operations on an unspecified target.
+    // This is where every attach call ends up eventually.
+    pub fn attach_to_unspecified_with_config(
+        &mut self,
+        attach_method: AttachMethod,
+        config: ProbeConfiguration,
+    ) -> Result<(), Error> {
+        if self.attached {
+            return Err(DebugProbeError::Attached.into());
+        }
+
+        if attach_method == AttachMethod::UnderReset {
+            if let Some(dap_probe) = self.try_as_dap_probe() {
+                DefaultArmSequence(()).reset_hardware_assert(dap_probe)?;
+            } else {
+                tracing::info!(
+                    "Custom reset sequences are not supported on {}.",
+                    self.get_name()
+                );
+                tracing::info!("Falling back to standard probe reset.");
+                self.target_reset_assert()?;
+            }
+        }
+
+        self.apply_config(config)?;
+
+        self.inner.attach()?;
+        self.attached = true;
+        Ok(())
+    }
+
+    /// Attach to the chip and create a [`Session`].
     ///
     /// This runs all the necessary protocol init routines.
     ///
@@ -261,34 +310,45 @@ impl Probe {
         target: impl Into<TargetSelector>,
         permissions: Permissions,
     ) -> Result<Session, Error> {
-        Session::new(self, target.into(), AttachMethod::Normal, permissions)
+        self.attach_with_config(
+            target,
+            permissions,
+            AttachMethod::Normal,
+            ProbeConfiguration::default(),
+        )
     }
 
-    /// Attach to a target without knowing what target you have at hand.
-    /// This can be used for automatic device discovery or performing operations on an unspecified target.
-    pub fn attach_to_unspecified(&mut self) -> Result<(), Error> {
-        self.inner.attach()?;
-        self.attached = true;
-        Ok(())
-    }
+    /// Attach to the chip and create a [`Session`].
+    ///
+    /// This runs all the necessary protocol init routines.
+    ///
+    /// If this doesn't work, you might want to try [`Probe::attach_under_reset`]
+    pub fn attach_with_config(
+        self,
+        target: impl Into<TargetSelector>,
+        permissions: Permissions,
+        attach_method: AttachMethod,
+        config: ProbeConfiguration,
+    ) -> Result<Session, Error> {
+        // The session will de-assert reset after connecting to the debug interface.
+        let session = Session::new(self, target.into(), attach_method, permissions, config);
 
-    /// A combination of [`Probe::attach_to_unspecified`] and [`Probe::attach_under_reset`].
-    pub fn attach_to_unspecified_under_reset(&mut self) -> Result<(), Error> {
-        if let Some(dap_probe) = self.try_as_dap_probe() {
-            DefaultArmSequence(()).reset_hardware_assert(dap_probe)?;
+        if attach_method == AttachMethod::UnderReset {
+            session.map_err(|e| {
+                if matches!(e, Error::Arm(ArmError::Timeout) | Error::Riscv(RiscvError::Timeout)) {
+                    Error::Other(
+                        anyhow::anyhow!("Timeout while attaching to target under reset. This can happen if the target is not responding to the reset sequence. Ensure the chip's reset pin is connected, or try attaching without reset (`connectUnderReset = false` for DAP Clients, or remove `connect-under-reset` option from CLI options.).")
+                    )
+                } else {
+                    e
+                }
+            })
         } else {
-            tracing::info!(
-                "Custom reset sequences are not supported on {}.",
-                self.get_name()
-            );
-            tracing::info!("Falling back to standard probe reset.");
-            self.target_reset_assert()?;
+            session
         }
-        self.attach_to_unspecified()?;
-        Ok(())
     }
 
-    /// Attach to the chip under hard-reset.
+    /// Attach to the chip under reset and create a [`Session`].
     ///
     /// This asserts the reset pin via the probe, plays the protocol init routines and deasserts the pin.
     /// This is necessary if the chip is not responding to the SWD reset sequence.
@@ -298,15 +358,26 @@ impl Probe {
         target: impl Into<TargetSelector>,
         permissions: Permissions,
     ) -> Result<Session, Error> {
-        // The session will de-assert reset after connecting to the debug interface.
-        Session::new(self, target.into(), AttachMethod::UnderReset, permissions).map_err(|e| {
-            if matches!(e, Error::Arm(ArmError::Timeout) | Error::Riscv(RiscvError::Timeout)) {
-                Error::Other(
-                anyhow::anyhow!("Timeout while attaching to target under reset. This can happen if the target is not responding to the reset sequence. Ensure the chip's reset pin is connected, or try attaching without reset (`connectUnderReset = false` for DAP Clients, or remove `connect-under-reset` option from CLI options.)."))
-            } else {
-                e
-            }
-        })
+        self.attach_with_config(
+            target,
+            permissions,
+            AttachMethod::UnderReset,
+            ProbeConfiguration::default(),
+        )
+    }
+
+    /// Attach to the chip under reset and create a [`Session`].
+    ///
+    /// This asserts the reset pin via the probe, plays the protocol init routines and deasserts the pin.
+    /// This is necessary if the chip is not responding to the SWD reset sequence.
+    /// For example this can happen if the chip has the SWDIO pin remapped.
+    pub fn attach_under_reset_with_config(
+        self,
+        target: impl Into<TargetSelector>,
+        permissions: Permissions,
+        config: ProbeConfiguration,
+    ) -> Result<Session, Error> {
+        self.attach_with_config(target, permissions, AttachMethod::UnderReset, config)
     }
 
     /// Selects the transport protocol to be used by the debug probe.
@@ -355,10 +426,34 @@ impl Probe {
         self.inner.target_reset_deassert()
     }
 
+    fn apply_config(&mut self, config: ProbeConfiguration) -> Result<(), DebugProbeError> {
+        if let Some(protocol) = config.protocol {
+            self.select_protocol(protocol)?;
+        }
+
+        if let Some(scan_chain) = config.scan_chain.clone() {
+            self.set_scan_chain(scan_chain)?;
+        }
+
+        if let Some(speed) = config.speed_khz {
+            self.set_speed(speed)?;
+        }
+
+        Ok(())
+    }
+
     /// Configure protocol speed to use in kHz
     pub fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
         if !self.attached {
-            self.inner.set_speed(speed_khz)
+            let actual_speed = self.inner.set_speed(speed_khz)?;
+
+            tracing::debug!(
+                "Speed set to {} kHz (Requested: {} kHz)",
+                actual_speed,
+                speed_khz
+            );
+
+            Ok(actual_speed)
         } else {
             Err(DebugProbeError::Attached)
         }

@@ -41,8 +41,8 @@ use probe_rs::{
     config::{RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError},
     integration::FakeProbe,
-    DebugProbeError, DebugProbeInfo, DebugProbeSelector, Lister, Permissions, Probe, Session,
-    Target, WireProtocol,
+    AttachMethod, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Lister, Permissions, Probe,
+    ProbeConfiguration, Session, Target, WireProtocol,
 };
 use serde::{Deserialize, Serialize};
 
@@ -232,67 +232,31 @@ impl LoadedProbeOptions {
 
     /// Attaches to specified probe and configures it.
     pub fn attach_probe(&self, lister: &Lister) -> Result<Probe, OperationError> {
-        let mut probe = if self.0.dry_run {
-            Probe::from_specific_probe(Box::new(FakeProbe::new()))
-        } else {
-            // If we got a probe selector as an argument, open the probe
-            // matching the selector if possible.
-            let probe = match &self.0.probe_selector {
-                Some(selector) => lister.open(selector),
-                None => {
-                    // Only automatically select a probe if there is
-                    // only a single probe detected.
-                    let list = lister.list_all();
-                    if list.len() > 1 {
-                        return Err(OperationError::MultipleProbesFound { list });
-                    }
+        if self.0.dry_run {
+            return Ok(Probe::from_specific_probe(Box::new(FakeProbe::new())));
+        }
 
-                    let Some(info) = list.first() else {
-                        return Err(OperationError::NoProbesFound);
-                    };
-
-                    lister.open(info)
+        // If we got a probe selector as an argument, open the probe
+        // matching the selector if possible.
+        let probe = match &self.0.probe_selector {
+            Some(selector) => lister.open(selector),
+            None => {
+                // Only automatically select a probe if there is
+                // only a single probe detected.
+                let list = lister.list_all();
+                if list.len() > 1 {
+                    return Err(OperationError::MultipleProbesFound { list });
                 }
-            };
 
-            probe.map_err(OperationError::FailedToOpenProbe)?
+                let Some(info) = list.first() else {
+                    return Err(OperationError::NoProbesFound);
+                };
+
+                lister.open(info)
+            }
         };
 
-        if let Some(protocol) = self.0.protocol {
-            // Select protocol and speed
-            probe.select_protocol(protocol).map_err(|error| {
-                OperationError::FailedToSelectProtocol {
-                    source: error,
-                    protocol,
-                }
-            })?;
-        }
-
-        if let Some(speed) = self.0.speed {
-            let _actual_speed = probe.set_speed(speed).map_err(|error| {
-                OperationError::FailedToSelectProtocolSpeed {
-                    source: error,
-                    speed,
-                }
-            })?;
-
-            // Warn the user if they specified a speed the debug probe does not support
-            // and a fitting speed was automatically selected.
-            let protocol_speed = probe.speed_khz();
-            if let Some(speed) = self.0.speed {
-                if protocol_speed < speed {
-                    log::warn!(
-                        "Unable to use specified speed of {} kHz, actual speed used is {} kHz",
-                        speed,
-                        protocol_speed
-                    );
-                }
-            }
-
-            log::info!("Protocol speed {} kHz", protocol_speed);
-        }
-
-        Ok(probe)
+        probe.map_err(OperationError::FailedToOpenProbe)
     }
 
     /// Attaches to target device session. Attaches under reset if
@@ -302,22 +266,35 @@ impl LoadedProbeOptions {
         probe: Probe,
         target: TargetSelector,
     ) -> Result<Session, OperationError> {
+        let permissions = self.permissions();
+
+        let session_result = probe.attach_with_config(
+            target,
+            permissions,
+            if self.0.connect_under_reset {
+                AttachMethod::UnderReset
+            } else {
+                AttachMethod::Normal
+            },
+            ProbeConfiguration {
+                scan_chain: None,
+                speed_khz: self.0.speed,
+                protocol: self.0.protocol,
+            },
+        );
+
+        session_result.map_err(|error| OperationError::AttachingFailed {
+            source: error,
+            connect_under_reset: self.0.connect_under_reset,
+        })
+    }
+
+    pub(crate) fn permissions(&self) -> Permissions {
         let mut permissions = Permissions::new();
         if self.0.allow_erase_all {
             permissions = permissions.allow_erase_all();
         }
-
-        let session = if self.0.connect_under_reset {
-            probe.attach_under_reset(target, permissions)
-        } else {
-            probe.attach(target, permissions)
-        }
-        .map_err(|error| OperationError::AttachingFailed {
-            source: error,
-            connect_under_reset: self.0.connect_under_reset,
-        })?;
-
-        Ok(session)
+        permissions
     }
 
     pub(crate) fn protocol(&self) -> Option<WireProtocol> {
@@ -334,12 +311,6 @@ impl LoadedProbeOptions {
 
     pub(crate) fn chip(&self) -> Option<String> {
         self.0.chip.clone()
-    }
-}
-
-impl AsRef<ProbeOptions> for LoadedProbeOptions {
-    fn as_ref(&self) -> &ProbeOptions {
-        &self.0
     }
 }
 
@@ -513,18 +484,6 @@ pub enum OperationError {
         #[source]
         source: RegistryError,
         name: String,
-    },
-    #[error("The protocol '{protocol}' could not be selected.")]
-    FailedToSelectProtocol {
-        #[source]
-        source: DebugProbeError,
-        protocol: WireProtocol,
-    },
-    #[error("The protocol speed could not be set to '{speed}' kHz.")]
-    FailedToSelectProtocolSpeed {
-        #[source]
-        source: DebugProbeError,
-        speed: u32,
     },
     #[error("Connecting to the chip was unsuccessful.")]
     AttachingFailed {

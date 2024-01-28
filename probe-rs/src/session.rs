@@ -18,8 +18,9 @@ use crate::{
     },
     config::DebugSequence,
 };
-use crate::{AttachMethod, Core, CoreType, Error, Lister, Probe};
+use crate::{AttachMethod, Core, CoreType, Error, Lister, Probe, WireProtocol};
 use anyhow::anyhow;
+use probe_rs_target::ScanChainElement;
 use std::ops::DerefMut;
 use std::{fmt, sync::Arc, time::Duration};
 
@@ -94,6 +95,33 @@ impl ArchitectureInterface {
     }
 }
 
+/// Probe configuration.
+#[derive(Default)]
+pub struct ProbeConfiguration {
+    /// The protocol to use for communication.
+    pub protocol: Option<WireProtocol>,
+
+    /// JTAG scan chain configuration.
+    pub scan_chain: Option<Vec<ScanChainElement>>,
+
+    /// Probe speed in kHz.
+    pub speed_khz: Option<u32>,
+}
+
+impl ProbeConfiguration {
+    fn set_defaults(&mut self, target: &Target) {
+        if let Some(ref jtag) = target.jtag {
+            if self.scan_chain.is_none() {
+                self.scan_chain = jtag.scan_chain.clone();
+            }
+            if self.speed_khz.is_none() {
+                self.speed_khz = jtag.default_speed_khz;
+            }
+            // Protocol can't be set in the target description yet.
+        }
+    }
+}
+
 impl Session {
     /// Open a new session with a given debug target.
     pub(crate) fn new(
@@ -101,6 +129,7 @@ impl Session {
         target: TargetSelector,
         attach_method: AttachMethod,
         permissions: Permissions,
+        mut probe_config: ProbeConfiguration,
     ) -> Result<Self, Error> {
         let (probe, target) = get_target_from_selector(target, attach_method, probe)?;
 
@@ -118,16 +147,34 @@ impl Session {
             })
             .collect();
 
+        // Assemble final probe configuration
+        probe_config.set_defaults(&target);
+
         let mut session = match target.architecture() {
-            Architecture::Arm => {
-                Self::attach_arm(probe, target, attach_method, permissions, cores)?
-            }
-            Architecture::Riscv => {
-                Self::attach_riscv(probe, target, attach_method, permissions, cores)?
-            }
-            Architecture::Xtensa => {
-                Self::attach_xtensa(probe, target, attach_method, permissions, cores)?
-            }
+            Architecture::Arm => Self::attach_arm(
+                probe,
+                target,
+                attach_method,
+                permissions,
+                cores,
+                probe_config,
+            )?,
+            Architecture::Riscv => Self::attach_riscv(
+                probe,
+                target,
+                attach_method,
+                permissions,
+                cores,
+                probe_config,
+            )?,
+            Architecture::Xtensa => Self::attach_xtensa(
+                probe,
+                target,
+                attach_method,
+                permissions,
+                cores,
+                probe_config,
+            )?,
         };
 
         session.clear_all_hw_breakpoints()?;
@@ -141,6 +188,7 @@ impl Session {
         attach_method: AttachMethod,
         permissions: Permissions,
         cores: Vec<CombinedCoreState>,
+        probe_config: ProbeConfiguration,
     ) -> Result<Self, Error> {
         let default_core = target.default_core();
 
@@ -171,12 +219,7 @@ impl Session {
             }
         }
 
-        if let Some(jtag) = target.jtag.as_ref() {
-            if let Some(scan_chain) = jtag.scan_chain.clone() {
-                probe.set_scan_chain(scan_chain)?;
-            }
-        }
-        probe.attach_to_unspecified()?;
+        probe.attach_to_unspecified_with_config(AttachMethod::Normal, probe_config)?;
 
         let interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
 
@@ -262,24 +305,23 @@ impl Session {
     fn attach_riscv(
         mut probe: Probe,
         target: Target,
-        _attach_method: AttachMethod,
+        attach_method: AttachMethod,
         _permissions: Permissions,
         cores: Vec<CombinedCoreState>,
+        probe_config: ProbeConfiguration,
     ) -> Result<Self, Error> {
-        // TODO: Handle attach under reset
-
         let sequence_handle = match &target.debug_sequence {
             DebugSequence::Riscv(sequence) => sequence.clone(),
             _ => unreachable!("Mismatch between architecture and sequence type!"),
         };
 
-        if let Some(jtag) = target.jtag.as_ref() {
-            if let Some(scan_chain) = jtag.scan_chain.clone() {
-                probe.set_scan_chain(scan_chain)?;
-            }
+        if attach_method == AttachMethod::UnderReset {
+            return Err(Error::NotImplemented(
+                "Reset under attach method for RISC-V is not implemented",
+            ));
         }
 
-        probe.attach_to_unspecified()?;
+        probe.attach_to_unspecified_with_config(attach_method, probe_config)?;
 
         let interface = probe
             .try_into_riscv_interface()
@@ -300,22 +342,23 @@ impl Session {
     fn attach_xtensa(
         mut probe: Probe,
         target: Target,
-        _attach_method: AttachMethod,
+        attach_method: AttachMethod,
         _permissions: Permissions,
         cores: Vec<CombinedCoreState>,
+        probe_config: ProbeConfiguration,
     ) -> Result<Self, Error> {
         let sequence_handle = match &target.debug_sequence {
             DebugSequence::Xtensa(sequence) => sequence.clone(),
             _ => unreachable!("Mismatch between architecture and sequence type!"),
         };
 
-        if let Some(jtag) = target.jtag.as_ref() {
-            if let Some(scan_chain) = jtag.scan_chain.clone() {
-                probe.set_scan_chain(scan_chain)?;
-            }
+        if attach_method == AttachMethod::UnderReset {
+            return Err(Error::NotImplemented(
+                "Reset under attach method for Xtensa is not implemented",
+            ));
         }
 
-        probe.attach_to_unspecified()?;
+        probe.attach_to_unspecified_with_config(attach_method, probe_config)?;
 
         let interface = probe
             .try_into_xtensa_interface()

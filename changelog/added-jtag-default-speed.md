@@ -1,0 +1,1 @@
+Added `default_speed_khz` to per-target JTAG settings

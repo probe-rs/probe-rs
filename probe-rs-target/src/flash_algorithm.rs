@@ -41,6 +41,9 @@ pub struct RawFlashAlgorithm {
     /// Address to load algo into RAM. Optional.
     #[serde(serialize_with = "hex_option")]
     pub load_address: Option<u64>,
+    /// Address to load data into RAM. Optional.
+    #[serde(serialize_with = "hex_option")]
+    pub data_load_address: Option<u64>,
     /// Address of the `Init()` entry point. Optional.
     #[serde(serialize_with = "hex_option")]
     pub pc_init: Option<u64>,
