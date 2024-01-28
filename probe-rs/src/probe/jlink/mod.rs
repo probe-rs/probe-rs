@@ -699,7 +699,7 @@ impl DebugProbe for JLink {
         Ok(())
     }
 
-    fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
+    fn set_speed(&mut self, mut speed_khz: u32) -> Result<u32, DebugProbeError> {
         if speed_khz == 0 || speed_khz >= 0xffff {
             return Err(DebugProbeError::UnsupportedSpeed(speed_khz));
         }
@@ -710,7 +710,12 @@ impl DebugProbe for JLink {
             let max_speed_khz = speeds.max_speed_hz() / 1000;
 
             if max_speed_khz < speed_khz {
-                return Err(DebugProbeError::UnsupportedSpeed(speed_khz));
+                tracing::warn!(
+                    "Speed {} kHz is too high, using maximum speed {} kHz instead",
+                    speed_khz,
+                    max_speed_khz
+                );
+                speed_khz = max_speed_khz;
             }
         };
 
