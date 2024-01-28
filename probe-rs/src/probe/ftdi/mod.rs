@@ -1,3 +1,4 @@
+//! FTDI-based debug probes.
 use crate::{
     architecture::{
         arm::{
@@ -10,9 +11,9 @@ use crate::{
     probe::{
         arm_jtag::{ProbeStatistics, RawProtocolIo, SwdSettings},
         common::{JtagDriverState, RawJtagIo},
-        DebugProbe, JTAGAccess, ProbeCreationError, ProbeDriver, ScanChainElement,
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JTAGAccess,
+        ProbeCreationError, ProbeFactory, ScanChainElement, WireProtocol,
     },
-    DebugProbeError, DebugProbeInfo, DebugProbeSelector, WireProtocol,
 };
 use anyhow::anyhow;
 use bitvec::prelude::*;
@@ -240,15 +241,16 @@ impl JtagAdapter {
     }
 }
 
-pub struct FtdiProbeSource;
+/// A factory for creating [`FtdiProbe`] instances.
+pub struct FtdiProbeFactory;
 
-impl std::fmt::Debug for FtdiProbeSource {
+impl std::fmt::Debug for FtdiProbeFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("FTDI").finish()
     }
 }
 
-impl ProbeDriver for FtdiProbeSource {
+impl ProbeFactory for FtdiProbeFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         // Only open FTDI-compatible probes
         let Some(ftdi) = FTDI_COMPAT_DEVICES
@@ -289,6 +291,7 @@ impl ProbeDriver for FtdiProbeSource {
     }
 }
 
+/// An FTDI-based debug probe.
 #[derive(Debug)]
 pub struct FtdiProbe {
     adapter: JtagAdapter,
@@ -624,7 +627,7 @@ fn get_device_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
             vendor_id: device.vendor_id(),
             product_id: device.product_id(),
             serial_number: device.serial_number().map(|s| s.to_string()),
-            probe_type: &FtdiProbeSource,
+            probe_type: &FtdiProbeFactory,
             hid_interface: None,
         })
     })

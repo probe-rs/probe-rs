@@ -11,7 +11,8 @@
 //! ## Halting the attached chip
 //! ```no_run
 //! # use probe_rs::Error;
-//! use probe_rs::{Lister, Probe, Permissions};
+//! use probe_rs::probe::{list::Lister, Probe};
+//! use probe_rs::Permissions;
 //!
 //! // Get a list of all available debug probes.
 //! let lister = Lister::new();
@@ -61,7 +62,9 @@
 //!
 //! probe-rs is built around 4 main interfaces: the [Probe],
 //! [Target], [Session]  and [Core] structs.
-
+//!
+//! [Probe]: probe::Probe
+#![warn(missing_docs)]
 #![recursion_limit = "256"]
 
 #[macro_use]
@@ -71,23 +74,17 @@ extern crate serde;
 pub mod architecture;
 pub mod config;
 
-#[warn(missing_docs)]
 mod core;
 pub mod debug;
 mod error;
-#[warn(missing_docs)]
 pub mod flashing;
 #[cfg(feature = "gdb-server")]
 pub mod gdb_server;
 pub mod integration;
-#[warn(missing_docs)]
 mod memory;
-#[warn(missing_docs)]
-mod probe;
-#[warn(missing_docs)]
+pub mod probe;
 #[cfg(feature = "rtt")]
 pub mod rtt;
-#[warn(missing_docs)]
 mod session;
 #[cfg(test)]
 mod test;
@@ -101,8 +98,4 @@ pub use crate::core::{
 };
 pub use crate::error::Error;
 pub use crate::memory::MemoryInterface;
-pub use crate::probe::{
-    list::Lister, AttachMethod, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-    Probe, ProbeCreationError, ProbeDriver, WireProtocol,
-};
 pub use crate::session::{Permissions, Session};

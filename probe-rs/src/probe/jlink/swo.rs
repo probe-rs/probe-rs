@@ -1,3 +1,5 @@
+//! SWO capture support for J-Link probes.
+
 #![allow(unused)]
 
 use super::Command;
@@ -37,6 +39,7 @@ enum SwoParam {
 #[repr(u32)]
 #[non_exhaustive]
 pub enum SwoMode {
+    /// UART mode.
     Uart = 0x00000000,
     // FIXME: Manchester encoding?
 }
@@ -60,7 +63,7 @@ impl SwoStatus {
     }
 }
 
-/// SWO data that was read via [`JayLink::swo_read`].
+/// SWO data that was read via [`super::JLink::swo_read`].
 #[derive(Debug)]
 pub struct SwoData<'a> {
     data: &'a [u8],
@@ -163,9 +166,7 @@ impl JLink {
     /// - `mode`: The SWO data encoding mode to use.
     /// - `speed`: The data rate to capture at (when using [`SwoMode::Uart`], this is the UART baud
     ///   rate).
-    /// - `buf_size`: The size (in Bytes) of the on-device buffer to allocate for the SWO data. You
-    ///   can call [`JayLink::read_max_mem_block`] to get an approximation of the available memory
-    ///   on the probe.
+    /// - `buf_size`: The size (in Bytes) of the on-device buffer to allocate for the SWO data.
     pub fn swo_start(&mut self, mode: SwoMode, speed: u32, buf_size: u32) -> Result<()> {
         self.require_capability(Capability::Swo)?;
 

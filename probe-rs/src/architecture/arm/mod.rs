@@ -19,7 +19,7 @@ use self::{
     sequences::ArmDebugSequenceError,
     {armv7a::Armv7aError, armv8a::Armv8aError},
 };
-use crate::DebugProbeError;
+use crate::probe::DebugProbeError;
 pub use communication_interface::{
     ApInformation, ArmChipInfo, ArmCommunicationInterface, ArmProbeInterface, DapError,
     MemoryApInformation, Register,

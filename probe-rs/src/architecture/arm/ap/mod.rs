@@ -6,7 +6,7 @@ pub(crate) mod generic_ap;
 pub(crate) mod memory_ap;
 
 use crate::architecture::arm::dp::DebugPortError;
-use crate::DebugProbeError;
+use crate::probe::DebugProbeError;
 
 pub use generic_ap::{ApClass, ApType, GenericAp, IDR};
 pub use memory_ap::{

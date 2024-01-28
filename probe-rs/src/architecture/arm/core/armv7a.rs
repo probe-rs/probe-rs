@@ -1002,7 +1002,7 @@ mod test {
             ap::MemoryAp, communication_interface::SwdSequence,
             memory::adi_v5_memory_interface::ArmProbe, sequences::DefaultArmSequence, ArmError,
         },
-        DebugProbeError,
+        probe::DebugProbeError,
     };
 
     use super::*;

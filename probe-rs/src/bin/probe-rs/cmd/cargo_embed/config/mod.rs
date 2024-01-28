@@ -3,8 +3,8 @@ use figment::{
     providers::{Format, Json, Toml, Yaml},
     Figment,
 };
+use probe_rs::probe::WireProtocol;
 use probe_rs::rtt::ChannelMode;
-use probe_rs::WireProtocol;
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, time::Duration};
 

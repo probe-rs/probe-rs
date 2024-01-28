@@ -18,7 +18,8 @@ use crate::{
     },
     error::Error,
     memory::valid_32bit_address,
-    CoreRegister, CoreType, DebugProbeError, InstructionSet, MemoryInterface,
+    probe::DebugProbeError,
+    CoreRegister, CoreType, InstructionSet, MemoryInterface,
 };
 use anyhow::{anyhow, Result};
 use bitfield::bitfield;

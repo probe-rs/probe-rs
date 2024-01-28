@@ -8,8 +8,8 @@ use std::time::Duration;
 use anyhow::{anyhow, Result};
 use probe_rs::debug::{DebugInfo, DebugRegisters};
 use probe_rs::{
-    exception_handler_for_core, BreakpointCause, Core, CoreInterface, Error, HaltReason, Lister,
-    SemihostingCommand, VectorCatchCondition,
+    exception_handler_for_core, probe::list::Lister, BreakpointCause, Core, CoreInterface, Error,
+    HaltReason, SemihostingCommand, VectorCatchCondition,
 };
 use probe_rs_target::MemoryRegion;
 use signal_hook::consts::signal;

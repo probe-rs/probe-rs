@@ -1,7 +1,7 @@
 use super::debugger::{DebugSessionStatus, Debugger};
 use crate::cmd::dap_server::debug_adapter::{dap::adapter::*, protocol::DapAdapter};
 use anyhow::{Context, Result};
-use probe_rs::Lister;
+use probe_rs::probe::list::Lister;
 use serde::Deserialize;
 use std::{
     fs,

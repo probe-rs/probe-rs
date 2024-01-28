@@ -9,7 +9,7 @@ use probe_rs::{
         memory::PeripheralType,
         DpAddress, SwoConfig,
     },
-    Lister,
+    probe::list::Lister,
 };
 use time::Instant;
 

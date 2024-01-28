@@ -1,12 +1,13 @@
-pub mod constants;
-pub mod tools;
+//! ST-Link probe implementation.
+
+mod constants;
+mod tools;
 mod usb_interface;
 
 use self::usb_interface::{StLinkUsb, StLinkUsbDevice};
 use super::{DebugProbe, DebugProbeError, ProbeCreationError, WireProtocol};
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
 use crate::architecture::arm::{valid_32bit_arm_address, ArmError};
-use crate::probe::ProbeDriver;
 use crate::{
     architecture::arm::{
         ap::{valid_access_ports, AccessPort, ApAccess, ApClass, MemoryAp, IDR},
@@ -18,7 +19,8 @@ use crate::{
         ApAddress, ApInformation, ArmChipInfo, DapAccess, DpAddress, Pins, SwoAccess, SwoConfig,
         SwoMode,
     },
-    DebugProbeSelector, Error as ProbeRsError, Probe,
+    probe::{DebugProbeInfo, DebugProbeSelector, Probe, ProbeFactory},
+    Error as ProbeRsError,
 };
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use probe_rs_target::ScanChainElement;
@@ -39,15 +41,16 @@ const STLINK_MAX_WRITE_LEN: usize = 0xFFFC;
 
 const DP_PORT: u16 = 0xFFFF;
 
-pub struct StLinkSource;
+/// A factory for creating [`StLink`] probes.
+pub struct StLinkFactory;
 
-impl std::fmt::Debug for StLinkSource {
+impl std::fmt::Debug for StLinkFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("StLink").finish()
     }
 }
 
-impl ProbeDriver for StLinkSource {
+impl ProbeFactory for StLinkFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         let device = StLinkUsbDevice::new_from_selector(selector)?;
         let mut stlink = StLink {
@@ -69,13 +72,14 @@ impl ProbeDriver for StLinkSource {
         Ok(Box::new(stlink))
     }
 
-    fn list_probes(&self) -> Vec<crate::DebugProbeInfo> {
+    fn list_probes(&self) -> Vec<DebugProbeInfo> {
         tools::list_stlink_devices()
     }
 }
 
+/// An ST-Link debugger and programmer.
 #[derive(Debug)]
-pub(crate) struct StLink<D: StLinkUsb> {
+pub struct StLink<D: StLinkUsb> {
     device: D,
     name: String,
     hw_version: u8,
@@ -732,6 +736,7 @@ impl<D: StLinkUsb> StLink<D> {
         }
     }
 
+    /// Starts reading SWO trace data.
     pub fn start_trace_reception(&mut self, config: &SwoConfig) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
         let bufsize = 4096u16.to_le_bytes();
@@ -747,6 +752,7 @@ impl<D: StLinkUsb> StLink<D> {
         Ok(())
     }
 
+    /// Stops reading SWO trace data.
     pub fn stop_trace_reception(&mut self) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
 
@@ -1242,31 +1248,58 @@ impl<D: StLinkUsb> SwoAccess for StLink<D> {
     }
 }
 
+/// ST-Link specific errors.
 #[derive(thiserror::Error, Debug)]
-pub(crate) enum StlinkError {
+pub enum StlinkError {
+    /// Invalid voltage values returned by probe.
     #[error("Invalid voltage values returned by probe.")]
     VoltageDivisionByZero,
+
+    /// Probe is in an unknown mode.
     #[error("Probe is in an unknown mode.")]
     UnknownMode,
+
+    /// Banks not allowed on DP register.
     #[error(
         "Current version of the STLink firmware does not support accessing banked DP registers. \
          Upgrading the firmware to the newest version might fix this."
     )]
     BanksNotAllowedOnDPRegister,
+
+    /// Not enough bytes were written.
     #[error("Not enough bytes written.")]
-    NotEnoughBytesWritten { is: usize, should: usize },
+    NotEnoughBytesWritten {
+        /// The number of bytes actually written
+        is: usize,
+        /// The number of bytes that should have been written
+        should: usize,
+    },
+
+    /// USB endpoint not found.
     #[error("Usb endpoint not found.")]
     EndpointNotFound,
+
+    /// Command failed.
     #[error("Command failed with status {0:?}")]
     CommandFailed(Status),
+
+    /// The probe does not support JTAG.
     #[error("JTAG not supported on Probe")]
     JTAGNotSupportedOnProbe,
+
+    /// The probe does not support SWO with Manchester encoding.
     #[error("Manchester-coded SWO mode not supported")]
     ManchesterSwoNotSupported,
+
+    /// The probe does not support multidrop SWD.
     #[error("Multidrop SWD not supported")]
     MultidropNotSupported,
+
+    /// Attempted unaligned access.
     #[error("Unaligned")]
     UnalignedAddress,
+
+    /// USB error.
     #[error("USB")]
     Usb(Box<dyn std::error::Error + Sync + Send>),
 }
@@ -1944,7 +1977,7 @@ mod test {
                 _ => Ok(()),
             }
         }
-        fn reset(&mut self) -> Result<(), crate::DebugProbeError> {
+        fn reset(&mut self) -> Result<(), DebugProbeError> {
             Ok(())
         }
 

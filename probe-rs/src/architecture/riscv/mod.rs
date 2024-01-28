@@ -8,8 +8,10 @@ use crate::{
         Architecture, BreakpointCause, CoreInformation, CoreRegisters, RegisterId, RegisterValue,
     },
     memory::valid_32bit_address,
-    memory_mapped_bitfield_register, CoreInterface, CoreRegister, CoreStatus, CoreType, Error,
-    HaltReason, InstructionSet, MemoryInterface, MemoryMappedRegister,
+    memory_mapped_bitfield_register,
+    probe::DebugProbeError,
+    CoreInterface, CoreRegister, CoreStatus, CoreType, Error, HaltReason, InstructionSet,
+    MemoryInterface, MemoryMappedRegister,
 };
 use anyhow::{anyhow, Result};
 use bitfield::bitfield;
@@ -242,7 +244,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         match self.reset_and_halt(Duration::from_millis(500)) {
             Ok(_) => self.resume_core()?,
             Err(error) => {
-                return Err(RiscvError::DebugProbe(crate::DebugProbeError::Other(
+                return Err(RiscvError::DebugProbe(DebugProbeError::Other(
                     anyhow::anyhow!("Error during reset").context(error),
                 ))
                 .into());

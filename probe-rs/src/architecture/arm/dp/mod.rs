@@ -9,7 +9,7 @@ use super::{
 use bitfield::bitfield;
 use jep106::JEP106Code;
 
-use crate::DebugProbeError;
+use crate::probe::DebugProbeError;
 use std::fmt::Display;
 
 /// An error occurred when interacting with the debug port.

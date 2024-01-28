@@ -6,7 +6,7 @@ use crate::architecture::arm::{
     dp::{DpAccess, DpRegister},
     ArmError, DpAddress,
 };
-use crate::DebugProbeError;
+use crate::probe::DebugProbeError;
 use std::collections::HashMap;
 use std::convert::TryInto;
 

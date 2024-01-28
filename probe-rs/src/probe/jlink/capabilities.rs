@@ -1,3 +1,5 @@
+//! Probe capabilities.
+
 #![allow(non_upper_case_globals)]
 
 use std::fmt;

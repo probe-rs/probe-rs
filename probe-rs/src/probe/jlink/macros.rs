@@ -13,6 +13,7 @@ macro_rules! enum_and_set {
         $( #[$enum_attr] )*
         $enum_vis enum $enum_name {
             $(
+                #[allow(missing_docs)] // TODO the capabilities should be documented
                 $( #[$attr] )*
                 $name = $id,
             )+

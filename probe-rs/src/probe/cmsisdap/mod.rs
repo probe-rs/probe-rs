@@ -1,5 +1,6 @@
-pub mod commands;
-pub mod tools;
+//! CMSIS-DAP probe implementation.
+mod commands;
+mod tools;
 
 use crate::{
     architecture::arm::{
@@ -15,9 +16,10 @@ use crate::{
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
             CmsisDapError,
         },
-        BatchCommand, JtagChainItem, ProbeDriver,
+        BatchCommand, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+        JtagChainItem, ProbeFactory, WireProtocol,
     },
-    CoreStatus, DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
+    CoreStatus,
 };
 
 use commands::{
@@ -59,28 +61,30 @@ use bitvec::prelude::*;
 
 use super::common::{extract_idcodes, extract_ir_lengths, ScanChainError};
 
-pub struct CmsisDapSource;
+/// A factory for creating [`CmsisDap`] probes.
+pub struct CmsisDapFactory;
 
-impl std::fmt::Debug for CmsisDapSource {
+impl std::fmt::Debug for CmsisDapFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("CmsisDap").finish()
     }
 }
 
-impl ProbeDriver for CmsisDapSource {
+impl ProbeFactory for CmsisDapFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         Ok(Box::new(CmsisDap::new_from_device(
             tools::open_device_from_selector(selector)?,
         )?))
     }
 
-    fn list_probes(&self) -> Vec<crate::DebugProbeInfo> {
+    fn list_probes(&self) -> Vec<DebugProbeInfo> {
         tools::list_cmsisdap_devices()
     }
 }
 
+/// A CMSIS-DAP probe.
 pub struct CmsisDap {
-    pub device: CmsisDapDevice,
+    device: CmsisDapDevice,
     _hw_version: u8,
     _jtag_version: u8,
     protocol: Option<WireProtocol>,
@@ -116,7 +120,7 @@ impl std::fmt::Debug for CmsisDap {
 }
 
 impl CmsisDap {
-    pub fn new_from_device(mut device: CmsisDapDevice) -> Result<Self, DebugProbeError> {
+    fn new_from_device(mut device: CmsisDapDevice) -> Result<Self, DebugProbeError> {
         // Discard anything left in buffer, as otherwise
         // we'll get out of sync between requests and responses.
         device.drain();

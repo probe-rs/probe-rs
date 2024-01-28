@@ -10,7 +10,11 @@ use std::{
 
 use probe_rs_target::CoreType;
 
-use crate::{architecture::arm::ArmProbeInterface, DebugProbeError, MemoryMappedRegister};
+use crate::{
+    architecture::arm::ArmProbeInterface,
+    probe::{DebugProbeError, WireProtocol},
+    MemoryMappedRegister,
+};
 
 use super::{
     ap::{AccessPortError, MemoryAp},
@@ -457,7 +461,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         // Make sure the debug port is in the correct mode based on what the probe
         // has selected via active_protocol
         match interface.active_protocol() {
-            Some(crate::WireProtocol::Jtag) => {
+            Some(WireProtocol::Jtag) => {
                 // Execute SWJ-DP Switch Sequence SWD to JTAG (0xE73C).
                 interface.swj_sequence(16, 0xE73C)?;
 
@@ -470,7 +474,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 // Configure JTAG IR lengths in probe
                 interface.configure_jtag()?;
             }
-            Some(crate::WireProtocol::Swd) => {
+            Some(WireProtocol::Swd) => {
                 // Execute SWJ-DP Switch Sequence JTAG to SWD (0xE79E).
                 // Change if SWJ-DP uses deprecated switch code (0xEDB6).
                 interface.swj_sequence(16, 0xE79E)?;

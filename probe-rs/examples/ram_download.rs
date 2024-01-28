@@ -1,5 +1,5 @@
-use probe_rs::Lister;
-use probe_rs::{config::TargetSelector, MemoryInterface, Permissions, Probe, WireProtocol};
+use probe_rs::probe::{list::Lister, Probe};
+use probe_rs::{config::TargetSelector, probe::WireProtocol, MemoryInterface, Permissions};
 
 use clap::Parser;
 use std::num::ParseIntError;

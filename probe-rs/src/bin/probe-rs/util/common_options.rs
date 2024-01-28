@@ -44,8 +44,10 @@ use probe_rs::{
     config::{RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError},
     integration::FakeProbe,
-    DebugProbeError, DebugProbeInfo, DebugProbeSelector, Lister, Permissions, Probe, Session,
-    Target, WireProtocol,
+    probe::{
+        list::Lister, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, WireProtocol,
+    },
+    Permissions, Session, Target,
 };
 use serde::{Deserialize, Serialize};
 

@@ -11,9 +11,10 @@ use probe_rs_target::ScanChainElement;
 
 use crate::{
     architecture::riscv::communication_interface::{RiscvCommunicationInterface, RiscvError},
-    probe::{JtagChainItem, ProbeDriver},
-    DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
-    WireProtocol,
+    probe::{
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JtagChainItem,
+        ProbeCreationError, ProbeFactory, WireProtocol,
+    },
 };
 
 use self::{commands::Speed, usb_interface::WchLinkUsbDevice};
@@ -132,7 +133,7 @@ impl RiscvChip {
         }
     }
 
-    pub fn support_flash_protect(&self) -> bool {
+    fn support_flash_protect(&self) -> bool {
         matches!(
             self,
             RiscvChip::CH32V103
@@ -147,15 +148,16 @@ impl RiscvChip {
     }
 }
 
-pub struct WchLinkSource;
+/// Factory for creating [`WchLink`] probes.
+pub struct WchLinkFactory;
 
-impl std::fmt::Debug for WchLinkSource {
+impl std::fmt::Debug for WchLinkFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("WchLink").finish()
     }
 }
 
-impl ProbeDriver for WchLinkSource {
+impl ProbeFactory for WchLinkFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         let device = WchLinkUsbDevice::new_from_selector(selector)?;
         let mut wlink = WchLink {
@@ -181,8 +183,8 @@ impl ProbeDriver for WchLinkSource {
     }
 }
 
-/// WCH-Link device (mod:RV)
-pub(crate) struct WchLink {
+/// A WCH-Link device (mod:RV)
+pub struct WchLink {
     device: WchLinkUsbDevice,
     name: String,
     variant: WchLinkVariant,
@@ -503,7 +505,7 @@ fn get_wlink_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
             VENDOR_ID,
             PRODUCT_ID,
             device.serial_number().map(|s| s.to_string()),
-            &WchLinkSource,
+            &WchLinkFactory,
             None,
         ))
     } else {

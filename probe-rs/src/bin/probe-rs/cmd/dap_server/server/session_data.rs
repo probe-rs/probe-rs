@@ -12,7 +12,9 @@ use anyhow::{anyhow, Result};
 use probe_rs::{
     config::TargetSelector,
     debug::{debug_info::DebugInfo, DebugRegisters, SourceLocation},
-    exception_handler_for_core, CoreStatus, Lister, Session,
+    exception_handler_for_core,
+    probe::list::Lister,
+    CoreStatus, Session,
 };
 use std::env::set_current_dir;
 use time::UtcOffset;

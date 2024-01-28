@@ -12,9 +12,9 @@ use parse_int::parse;
 use probe_rs::architecture::arm::ap::AccessPortError;
 use probe_rs::exception_handler_for_core;
 use probe_rs::flashing::FileDownloadError;
+use probe_rs::probe::list::Lister;
+use probe_rs::probe::DebugProbeError;
 use probe_rs::CoreDumpError;
-use probe_rs::DebugProbeError;
-use probe_rs::Lister;
 use probe_rs::{
     debug::{debug_info::DebugInfo, registers::DebugRegisters, stack_frame::StackFrame},
     Core, CoreType, InstructionSet, MemoryInterface, RegisterValue,

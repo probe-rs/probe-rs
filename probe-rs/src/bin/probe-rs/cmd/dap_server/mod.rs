@@ -10,8 +10,8 @@ mod test;
 
 use anyhow::{Context, Result};
 use probe_rs::{
-    architecture::arm::ap::AccessPortError, flashing::FileDownloadError, CoreDumpError,
-    DebugProbeError, Error, Lister,
+    architecture::arm::ap::AccessPortError, flashing::FileDownloadError, probe::list::Lister,
+    probe::DebugProbeError, CoreDumpError, Error,
 };
 use server::startup::debug;
 use std::{env::var, fs::File, io::stderr};

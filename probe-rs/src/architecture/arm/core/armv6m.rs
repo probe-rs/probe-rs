@@ -8,8 +8,9 @@ use crate::{
     core::{CoreRegisters, RegisterId, RegisterValue, VectorCatchCondition},
     error::Error,
     memory::valid_32bit_address,
-    Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType,
-    DebugProbeError, HaltReason, InstructionSet, MemoryInterface, MemoryMappedRegister,
+    probe::DebugProbeError,
+    Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType, HaltReason,
+    InstructionSet, MemoryInterface, MemoryMappedRegister,
 };
 use anyhow::Result;
 use bitfield::bitfield;

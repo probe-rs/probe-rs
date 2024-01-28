@@ -7,9 +7,7 @@ use crate::{
         dp::{Abort, Ctrl, RdBuff, DPIDR},
         ArmError, DapError, DpAddress, PortType, RawDapAccess, Register,
     },
-    probe::common::bits_to_byte,
-    probe::JTAGAccess,
-    DebugProbe, DebugProbeError, WireProtocol,
+    probe::{common::bits_to_byte, DebugProbe, DebugProbeError, JTAGAccess, WireProtocol},
 };
 
 #[derive(Debug)]
@@ -1414,8 +1412,10 @@ mod test {
 
     use crate::{
         architecture::arm::{PortType, RawDapAccess},
-        probe::{JTAGAccess, JtagChainItem, ScanChainElement},
-        DebugProbe, DebugProbeError, WireProtocol,
+        error::Error,
+        probe::{
+            DebugProbe, DebugProbeError, JTAGAccess, JtagChainItem, ScanChainElement, WireProtocol,
+        },
     };
 
     use super::{
@@ -1691,7 +1691,7 @@ mod test {
             Ok(())
         }
 
-        fn swd_io<D, S>(&mut self, dir: D, swdio: S) -> Result<Vec<bool>, crate::DebugProbeError>
+        fn swd_io<D, S>(&mut self, dir: D, swdio: S) -> Result<Vec<bool>, DebugProbeError>
         where
             D: IntoIterator<Item = bool>,
             S: IntoIterator<Item = bool>,
@@ -1748,7 +1748,7 @@ mod test {
             todo!()
         }
 
-        fn set_speed(&mut self, _speed_khz: u32) -> Result<u32, crate::DebugProbeError> {
+        fn set_speed(&mut self, _speed_khz: u32) -> Result<u32, DebugProbeError> {
             todo!()
         }
 
@@ -1759,30 +1759,27 @@ mod test {
             todo!()
         }
 
-        fn attach(&mut self) -> Result<(), crate::DebugProbeError> {
+        fn attach(&mut self) -> Result<(), DebugProbeError> {
             todo!()
         }
 
-        fn detach(&mut self) -> Result<(), crate::Error> {
+        fn detach(&mut self) -> Result<(), Error> {
             todo!()
         }
 
-        fn target_reset(&mut self) -> Result<(), crate::DebugProbeError> {
+        fn target_reset(&mut self) -> Result<(), DebugProbeError> {
             todo!()
         }
 
-        fn target_reset_assert(&mut self) -> Result<(), crate::DebugProbeError> {
+        fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
             todo!()
         }
 
-        fn target_reset_deassert(&mut self) -> Result<(), crate::DebugProbeError> {
+        fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
             todo!()
         }
 
-        fn select_protocol(
-            &mut self,
-            protocol: WireProtocol,
-        ) -> Result<(), crate::DebugProbeError> {
+        fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
             self.protocol = protocol;
 
             Ok(())
