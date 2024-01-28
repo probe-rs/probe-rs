@@ -445,7 +445,15 @@ impl Probe {
     /// Configure protocol speed to use in kHz
     pub fn set_speed(&mut self, speed_khz: u32) -> Result<u32, DebugProbeError> {
         if !self.attached {
-            self.inner.set_speed(speed_khz)
+            let actual_speed = self.inner.set_speed(speed_khz)?;
+
+            tracing::debug!(
+                "Speed set to {} kHz (Requested: {} kHz)",
+                actual_speed,
+                speed_khz
+            );
+
+            Ok(actual_speed)
         } else {
             Err(DebugProbeError::Attached)
         }
