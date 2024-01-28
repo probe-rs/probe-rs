@@ -8,11 +8,7 @@ use colored::*;
 use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::probe::list::Lister;
 use probe_rs::rtt::{Rtt, ScanRegion};
-use probe_rs::{
-    flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
-    probe::DebugProbeSelector,
-    Session,
-};
+use probe_rs::{probe::DebugProbeSelector, Session};
 use std::ffi::OsString;
 use std::{
     fs,
