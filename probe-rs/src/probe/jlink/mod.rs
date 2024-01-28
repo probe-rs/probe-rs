@@ -894,7 +894,7 @@ impl RawProtocolIo for JLink {
     where
         M: IntoIterator<Item = bool>,
     {
-        if self.protocol == crate::WireProtocol::Swd {
+        if self.protocol == WireProtocol::Swd {
             panic!("Logic error, requested jtag_io when in SWD mode");
         }
 
@@ -909,7 +909,7 @@ impl RawProtocolIo for JLink {
     where
         I: IntoIterator<Item = bool>,
     {
-        if self.protocol == crate::WireProtocol::Swd {
+        if self.protocol == WireProtocol::Swd {
             panic!("Logic error, requested jtag_io when in SWD mode");
         }
 
@@ -925,7 +925,7 @@ impl RawProtocolIo for JLink {
         D: IntoIterator<Item = bool>,
         S: IntoIterator<Item = bool>,
     {
-        if self.protocol == crate::WireProtocol::Jtag {
+        if self.protocol == WireProtocol::Jtag {
             panic!("Logic error, requested swd_io when in JTAG mode");
         }
 

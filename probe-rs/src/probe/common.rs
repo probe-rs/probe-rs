@@ -7,12 +7,9 @@ use bitfield::bitfield;
 use bitvec::prelude::*;
 use probe_rs_target::ScanChainElement;
 
-use crate::{
-    probe::{
-        BatchExecutionError, ChainParams, DeferredResultSet, JTAGAccess, JtagChainItem,
-        JtagCommandQueue,
-    },
-    DebugProbe, DebugProbeError,
+use crate::probe::{
+    BatchExecutionError, ChainParams, DebugProbe, DebugProbeError, DeferredResultSet, JTAGAccess,
+    JtagChainItem, JtagCommandQueue,
 };
 
 pub(crate) fn bits_to_byte(bits: impl IntoIterator<Item = bool>) -> u32 {

@@ -1,6 +1,6 @@
 use nusb::descriptors::ActiveConfigurationError;
 
-use crate::{probe::ftdi::ftdaye::ChipType, DebugProbeError};
+use crate::probe::{ftdi::ftdaye::ChipType, DebugProbeError};
 
 #[derive(Debug, thiserror::Error)]
 pub enum FtdiError {

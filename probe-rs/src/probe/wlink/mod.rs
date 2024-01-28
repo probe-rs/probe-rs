@@ -11,8 +11,10 @@ use probe_rs_target::ScanChainElement;
 
 use crate::{
     architecture::riscv::communication_interface::{RiscvCommunicationInterface, RiscvError},
-    probe::{DebugProbeInfo, DebugProbeSelector, JtagChainItem, ProbeCreationError, ProbeFactory},
-    DebugProbe, DebugProbeError, WireProtocol,
+    probe::{
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JtagChainItem,
+        ProbeCreationError, ProbeFactory, WireProtocol,
+    },
 };
 
 use self::{commands::Speed, usb_interface::WchLinkUsbDevice};

@@ -6,8 +6,8 @@
 use anyhow::{bail, ensure, Context, Result};
 use probe_rs::{
     config::{get_target_by_name, search_chips},
-    probe::{list::Lister, DebugProbeSelector},
-    Probe, Target,
+    probe::{list::Lister, DebugProbeSelector, Probe},
+    Target,
 };
 use serde::Deserialize;
 use std::{

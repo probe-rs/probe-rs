@@ -2,8 +2,7 @@ use std::cell::RefCell;
 
 use probe_rs::{
     integration::{FakeProbe, ProbeLister},
-    probe::{DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError},
-    Probe,
+    probe::{DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError},
 };
 
 #[derive(Debug)]

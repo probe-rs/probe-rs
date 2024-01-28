@@ -7,7 +7,7 @@ use crate::architecture::arm::{
     communication_interface::Initialized, dp::DpAccess, MemoryApInformation,
 };
 use crate::architecture::arm::{ArmCommunicationInterface, ArmError};
-use crate::{CoreStatus, DebugProbeError};
+use crate::{probe::DebugProbeError, CoreStatus};
 
 pub trait ArmProbe: SwdSequence {
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError>;

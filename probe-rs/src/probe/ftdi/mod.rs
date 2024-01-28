@@ -12,9 +12,8 @@ use crate::{
         arm_jtag::{ProbeStatistics, RawProtocolIo, SwdSettings},
         common::{JtagDriverState, RawJtagIo},
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JTAGAccess,
-        ProbeCreationError, ProbeFactory, ScanChainElement,
+        ProbeCreationError, ProbeFactory, ScanChainElement, WireProtocol,
     },
-    WireProtocol,
 };
 use anyhow::anyhow;
 use bitvec::prelude::*;

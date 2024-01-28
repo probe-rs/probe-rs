@@ -1,5 +1,8 @@
 use anyhow::Result;
-use probe_rs::{architecture::arm::DpAddress, probe::list::Lister, Probe};
+use probe_rs::{
+    architecture::arm::DpAddress,
+    probe::{list::Lister, Probe},
+};
 
 fn main() -> Result<()> {
     pretty_env_logger::init();

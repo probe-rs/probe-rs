@@ -19,8 +19,8 @@ use crate::{
         ApAddress, ApInformation, ArmChipInfo, DapAccess, DpAddress, Pins, SwoAccess, SwoConfig,
         SwoMode,
     },
-    probe::{DebugProbeInfo, DebugProbeSelector, ProbeFactory},
-    Error as ProbeRsError, Probe,
+    probe::{DebugProbeInfo, DebugProbeSelector, Probe, ProbeFactory},
+    Error as ProbeRsError,
 };
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use probe_rs_target::ScanChainElement;
@@ -1977,7 +1977,7 @@ mod test {
                 _ => Ok(()),
             }
         }
-        fn reset(&mut self) -> Result<(), crate::DebugProbeError> {
+        fn reset(&mut self) -> Result<(), DebugProbeError> {
             Ok(())
         }
 

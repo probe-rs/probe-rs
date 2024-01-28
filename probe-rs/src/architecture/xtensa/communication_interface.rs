@@ -9,8 +9,8 @@ use crate::{
     architecture::xtensa::arch::{
         instruction::Instruction, CpuRegister, Register, SpecialRegister,
     },
-    probe::{DebugProbeError, DeferredResultIndex, JTAGAccess},
-    BreakpointCause, Error as ProbeRsError, HaltReason, MemoryInterface, Probe,
+    probe::{DebugProbeError, DeferredResultIndex, JTAGAccess, Probe},
+    BreakpointCause, Error as ProbeRsError, HaltReason, MemoryInterface,
 };
 
 use super::xdm::{Error as XdmError, Xdm};

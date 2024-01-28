@@ -17,9 +17,9 @@ use crate::{
             CmsisDapError,
         },
         BatchCommand, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
-        JtagChainItem, ProbeFactory,
+        JtagChainItem, ProbeFactory, WireProtocol,
     },
-    CoreStatus, WireProtocol,
+    CoreStatus,
 };
 
 use commands::{
