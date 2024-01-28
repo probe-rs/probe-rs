@@ -177,7 +177,7 @@ impl ProbeDriver for JLinkSource {
             protocol: WireProtocol::Jtag, // dummy value
 
             swo_config: None,
-            speed_khz: 0,
+            speed_khz: 0, // default is unknown
             swd_settings: SwdSettings::default(),
             probe_statistics: ProbeStatistics::default(),
             jtag_state: JtagDriverState::default(),
@@ -517,6 +517,11 @@ impl JLink {
 
         self.interface = intf;
 
+        if self.speed_khz != 0 {
+            // SelectIf resets the configured speed. Let's restore it.
+            self.set_jtag_speed(SpeedConfig::khz(self.speed_khz as u16).unwrap())?;
+        }
+
         Ok(())
     }
 
@@ -586,7 +591,6 @@ impl JLink {
         // 1.0.0, but still support SWD, so we use the `SELECT_IF` capability instead.
         let cmd = if self.caps.contains(Capability::SelectIf) {
             // Use the new JTAG3 command, make sure to select the JTAG interface mode
-            self.select_interface(Interface::Jtag)?;
             has_status_byte = true;
             Command::HwJtag3
         } else {
@@ -720,7 +724,7 @@ impl DebugProbe for JLink {
         };
 
         if let Some(expected_speed) = SpeedConfig::khz(speed_khz as u16) {
-            self.set_speed(expected_speed)?;
+            self.set_jtag_speed(expected_speed)?;
             self.speed_khz = speed_khz;
         } else {
             return Err(DebugProbeError::UnsupportedSpeed(speed_khz));
