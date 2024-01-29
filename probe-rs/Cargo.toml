@@ -107,7 +107,7 @@ scroll = "0.12"
 serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
 static_assertions = "1"
-svg = "0.14"
+svg = "0.15"
 thiserror = { workspace = true }
 tracing = { version = "0.1", features = ["log"] }
 uf2-decode = "0.2"
