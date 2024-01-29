@@ -9,7 +9,7 @@ use crate::{
         xtensa::communication_interface::XtensaCommunicationInterface,
     },
     probe::{
-        arm_jtag::{ProbeStatistics, RawProtocolIo, SwdSettings},
+        arm_debug_interface::{ProbeStatistics, RawProtocolIo, SwdSettings},
         common::{JtagDriverState, RawJtagIo},
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, JTAGAccess,
         ProbeCreationError, ProbeFactory, ScanChainElement, WireProtocol,

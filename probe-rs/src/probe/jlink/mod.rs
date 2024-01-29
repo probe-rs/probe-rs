@@ -46,7 +46,7 @@ use crate::{
         riscv::communication_interface::RiscvCommunicationInterface,
     },
     probe::{
-        arm_jtag::{ProbeStatistics, RawProtocolIo, SwdSettings},
+        arm_debug_interface::{ProbeStatistics, RawProtocolIo, SwdSettings},
         DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, WireProtocol,
     },
 };

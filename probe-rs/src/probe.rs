@@ -1,5 +1,5 @@
 //! Probe drivers
-pub(crate) mod arm_jtag;
+pub(crate) mod arm_debug_interface;
 pub(crate) mod common;
 pub(crate) mod usb_util;
 
