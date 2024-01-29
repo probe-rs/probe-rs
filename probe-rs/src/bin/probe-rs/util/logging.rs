@@ -107,9 +107,9 @@ pub fn setup_logging(
                     .parse_lossy("")
             }
             None => {
-                // No default, use RUST_LOG or fall back to ERROR.
+                // No default, use RUST_LOG or fall back to WARN.
                 EnvFilter::builder()
-                    .with_default_directive(tracing::level_filters::LevelFilter::ERROR.into())
+                    .with_default_directive(tracing::level_filters::LevelFilter::WARN.into())
                     .from_env_lossy()
             }
         });
