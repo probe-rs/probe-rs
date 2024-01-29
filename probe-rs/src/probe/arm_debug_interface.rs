@@ -1,4 +1,8 @@
-//! Generic implementation of the SWD and JTAG protocols.
+//! Implementation of the ARM Debug Interface
+//!
+//! This module implements functions to work with chips implementing the ARM Debug version v5.
+//!
+//! See <https://developer.arm.com/documentation/ihi0031/f/?lang=en> for the ADIv5 specification.
 
 use bitvec::{prelude::*, view::BitView};
 
