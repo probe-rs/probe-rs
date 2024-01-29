@@ -54,6 +54,9 @@ impl FtdiDriver for FtdiD2xx {
     }
 
     fn read_data(&mut self, data: &mut [u8]) -> std::io::Result<usize> {
+        if self.ft.queue_status().map_err(ft_status_to_io_err)? == 0 {
+            return Ok(0);
+        }
         self.ft.read(data).map_err(ft_status_to_io_err)
     }
 
@@ -63,20 +66,17 @@ impl FtdiDriver for FtdiD2xx {
 }
 
 impl FtdiD2xx {
-    pub fn open(usb_device: &DeviceInfo, interface: Interface) -> Result<Self, DebugProbeError> {
+    pub fn open(_usb_device: &DeviceInfo, interface: Interface) -> Result<Self, DebugProbeError> {
         if interface != Interface::A {
             return Err(DebugProbeError::NotImplemented(
                 "Non-default FTDI interfaces",
             ));
         }
-        let Some(serial) = usb_device.serial_number() else {
-            // todo: this is probably overly strict
-            return Err(DebugProbeError::Usb(std::io::Error::other(format!(
-                "cannot open FTDI D2XX device with no serial",
-            ))));
-        };
 
-        let ft = Ftdi::with_serial_number(serial).map_err(|e| {
+        // TODO: this just opens the first device, with no care to what
+        // `usb_device` actually is. FT_Open is very limited in its filter
+        // functionality.
+        let ft = Ftdi::new().map_err(|e| {
             DebugProbeError::Usb(std::io::Error::other(format!(
                 "error opening FTDI D2XX device: {e}",
             )))
