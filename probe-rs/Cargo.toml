@@ -114,7 +114,7 @@ rmp-serde = "1"
 typed-path = "0.7"
 bitflags = "2"
 byteorder = "1"
-espflash = { version = "2", default-features = false }
+espflash = { git = "https://github.com/esp-rs/espflash.git", default-features = false }
 esp-idf-part = "0.4"
 # optional
 hexdump = { version = "0.1", optional = true }

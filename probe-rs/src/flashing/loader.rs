@@ -1,3 +1,5 @@
+use espflash::flasher::{FlashData, FlashSettings};
+use espflash::targets::XtalFrequency;
 use ihex::Record;
 use probe_rs_target::{
     MemoryRange, MemoryRegion, NvmRegion, RawFlashAlgorithm, TargetDescriptionSource,
@@ -163,19 +165,28 @@ impl FlashLoader {
         };
 
         let firmware = espflash::elf::ElfFirmwareImage::try_from(&buf[..])?;
-        let image = chip.get_flash_image(
-            &firmware,
-            options.bootloader,
-            options.partition_table,
-            None,
-            None,
-            None,
-            flash_size,
-            None,
-        )?;
-        let parts: Vec<_> = image.flash_segments().collect();
 
-        for data in parts {
+        let flash_data = FlashData::new(
+            options.bootloader.as_deref(),
+            options.partition_table.as_deref(),
+            None,
+            None,
+            None,
+            {
+                let mut settings = FlashSettings::default();
+
+                settings.size = flash_size;
+
+                settings
+            },
+            0,
+        )
+        .unwrap(); // Hopefully temporary
+
+        // TODO: we should try and detect xtal freq
+        let image = chip.get_flash_image(&firmware, flash_data, None, XtalFrequency::_40Mhz)?;
+
+        for data in image.flash_segments() {
             self.add_data(data.addr.into(), &data.data)?;
         }
 

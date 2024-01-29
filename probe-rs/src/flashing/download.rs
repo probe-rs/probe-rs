@@ -4,7 +4,11 @@ use object::{
 };
 use probe_rs_target::MemoryRange;
 
-use std::{fs::File, path::Path, str::FromStr};
+use std::{
+    fs::File,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 use super::*;
 use crate::session::Session;
@@ -22,9 +26,9 @@ pub struct BinOptions {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]
 pub struct IdfOptions {
     /// The bootloader
-    pub bootloader: Option<Vec<u8>>,
+    pub bootloader: Option<PathBuf>,
     /// The partition table
-    pub partition_table: Option<esp_idf_part::PartitionTable>,
+    pub partition_table: Option<PathBuf>,
 }
 
 /// A finite list of all the available binary formats probe-rs understands.
