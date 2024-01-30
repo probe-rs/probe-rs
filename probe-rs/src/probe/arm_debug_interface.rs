@@ -1527,7 +1527,11 @@ mod test {
     }
 
     impl JTAGAccess for MockJaylink {
-        fn scan_chain(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError> {
+        fn scan_chain(&mut self) -> Result<&[JtagChainItem], DebugProbeError> {
+            todo!()
+        }
+
+        fn select_target(&mut self, _target: usize) -> Result<(), DebugProbeError> {
             todo!()
         }
 
