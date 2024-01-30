@@ -377,8 +377,6 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
     }
     let mut result_indices = Vec::with_capacity(transfers.len());
 
-    let mut num_transfers = 0;
-
     let mut need_ap_read = false;
     let mut buffered_write = false;
     let mut write_response_pending = false;
@@ -387,7 +385,6 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
         // Check if we need to insert an additional read from the RDBUFF register
         if !transfer.is_ap_read() && need_ap_read {
             final_transfers.push(DapTransfer::read(PortType::DebugPort, RdBuff::ADDRESS));
-            num_transfers += 1;
 
             // This is an extra transfer, which doesn't have a reponse on it's own.
             probe.probe_statistics().record_extra_transfer();
@@ -418,8 +415,6 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
                 // is not empty.
                 final_transfers.push(DapTransfer::read(PortType::DebugPort, RdBuff::ADDRESS));
 
-                num_transfers += 1;
-
                 // This is an extra transfer, which doesn't have a reponse on it's own.
                 probe.probe_statistics().record_extra_transfer();
             }
@@ -444,7 +439,7 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
         // SWD only, with JTAG we always get responses in a predictable fashion so it's
         // handled by perform_jtag_transfers
         result_indices.push(OriginalTransfer {
-            index: num_transfers,
+            index: final_transfers.len() - 1,
             response_in_next: probe.active_protocol().unwrap() == WireProtocol::Swd
                 && (need_ap_read || write_response_pending),
         });
@@ -454,8 +449,6 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
 
             final_transfers.last_mut().unwrap().idle_cycles_after = idle_cycles;
         }
-
-        num_transfers += 1;
     }
 
     if need_ap_read || write_response_pending {
@@ -467,7 +460,6 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
 
         final_transfers.push(DapTransfer::read(PortType::DebugPort, RdBuff::ADDRESS));
 
-        num_transfers += 1;
         probe.probe_statistics().record_extra_transfer();
     }
 
@@ -479,11 +471,13 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
 
     tracing::debug!(
         "Performing {} transfers ({} additional transfers)",
-        num_transfers,
-        num_transfers - transfers.len()
+        final_transfers.len(),
+        final_transfers.len() - transfers.len()
     );
 
-    probe.probe_statistics().record_transfers(num_transfers);
+    probe
+        .probe_statistics()
+        .record_transfers(final_transfers.len());
 
     match probe.active_protocol().unwrap() {
         WireProtocol::Swd => perform_swd_transfers(probe, &mut final_transfers[..])?,
