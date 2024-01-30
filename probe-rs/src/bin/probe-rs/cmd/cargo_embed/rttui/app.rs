@@ -138,7 +138,7 @@ impl<'defmt> App<'defmt> {
                 match std::fs::create_dir_all(&config.rtt.log_path) {
                     Ok(_) => Some(config.rtt.log_path.clone()),
                     Err(_) => {
-                        log::warn!("Could not create log directory");
+                        tracing::warn!("Could not create log directory");
                         None
                     }
                 }
@@ -169,7 +169,9 @@ impl<'defmt> App<'defmt> {
             }
         }
 
-        log::warn!("No RTT header info was present in the ELF file. Does your firmware run RTT?");
+        tracing::warn!(
+            "No RTT header info was present in the ELF file. Does your firmware run RTT?"
+        );
         None
     }
 
@@ -375,7 +377,9 @@ impl<'defmt> App<'defmt> {
                 _ => false,
             },
             Err(RecvTimeoutError::Disconnected) => {
-                log::warn!("Unable to receive anymore input events from terminal, shutting down.");
+                tracing::warn!(
+                    "Unable to receive anymore input events from terminal, shutting down."
+                );
                 true
             }
             // Timeout just means no input received.

@@ -10,7 +10,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use crate::architecture::arm::communication_interface::DapProbe;
-use crate::{DebugProbeError, MemoryMappedRegister};
+use crate::{probe::DebugProbeError, MemoryMappedRegister};
 
 /// An Infineon XMC4xxx MCU.
 #[derive(Debug)]

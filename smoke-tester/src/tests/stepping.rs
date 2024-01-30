@@ -3,8 +3,8 @@ use std::time::Duration;
 use anyhow::Result;
 use linkme::distributed_slice;
 use probe_rs::{
-    config::MemoryRegion, Architecture, BreakpointCause, Core, CoreStatus, DebugProbeError, Error,
-    HaltReason, MemoryInterface,
+    config::MemoryRegion, probe::DebugProbeError, Architecture, BreakpointCause, Core, CoreStatus,
+    Error, HaltReason, MemoryInterface,
 };
 
 use crate::{TestTracker, CORE_TESTS};

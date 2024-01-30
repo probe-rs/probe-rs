@@ -1,4 +1,7 @@
-use crate::{CoreStatus, DebugProbe, DebugProbeError};
+use crate::{
+    probe::{DebugProbe, DebugProbeError},
+    CoreStatus,
+};
 
 use super::ArmError;
 

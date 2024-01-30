@@ -3,10 +3,12 @@ use figment::{
     providers::{Format, Json, Toml, Yaml},
     Figment,
 };
+use probe_rs::probe::WireProtocol;
 use probe_rs::rtt::ChannelMode;
-use probe_rs::WireProtocol;
 use serde::{Deserialize, Serialize};
 use std::{path::PathBuf, time::Duration};
+
+use crate::util::logging::LevelFilter;
 
 use super::rttui::channel::ChannelConfig;
 
@@ -68,7 +70,7 @@ pub struct Reset {
 pub struct General {
     pub chip: Option<String>,
     pub chip_descriptions: Vec<String>,
-    pub log_level: log::LevelFilter,
+    pub log_level: Option<LevelFilter>,
     pub derives: Option<String>,
     /// Use this flag to assert the nreset & ntrst pins during attaching the probe to the chip.
     pub connect_under_reset: bool,

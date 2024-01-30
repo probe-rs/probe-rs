@@ -1,3 +1,4 @@
+//! ESP USB JTAG probe implementation.
 mod protocol;
 
 use crate::{
@@ -9,8 +10,10 @@ use crate::{
         riscv::communication_interface::{RiscvCommunicationInterface, RiscvError},
         xtensa::communication_interface::XtensaCommunicationInterface,
     },
-    probe::{common::RawJtagIo, ProbeDriver},
-    DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
+    probe::{
+        common::RawJtagIo, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+        ProbeFactory, WireProtocol,
+    },
 };
 use bitvec::prelude::*;
 
@@ -20,15 +23,16 @@ use super::{common::JtagDriverState, JTAGAccess};
 
 use probe_rs_target::ScanChainElement;
 
-pub struct EspUsbJtagSource;
+/// Probe factory for USB JTAG interfaces built into certain ESP32 chips.
+pub struct EspUsbJtagFactory;
 
-impl std::fmt::Debug for EspUsbJtagSource {
+impl std::fmt::Debug for EspUsbJtagFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("EspJtag").finish()
     }
 }
 
-impl ProbeDriver for EspUsbJtagSource {
+impl ProbeFactory for EspUsbJtagFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         let protocol = ProtocolHandler::new_from_selector(selector)?;
 
@@ -38,13 +42,14 @@ impl ProbeDriver for EspUsbJtagSource {
         }))
     }
 
-    fn list_probes(&self) -> Vec<crate::DebugProbeInfo> {
+    fn list_probes(&self) -> Vec<DebugProbeInfo> {
         protocol::list_espjtag_devices()
     }
 }
 
+/// A USB JTAG interface built into certain ESP32 chips.
 #[derive(Debug)]
-pub(crate) struct EspUsbJtag {
+pub struct EspUsbJtag {
     protocol: ProtocolHandler,
 
     jtag_state: JtagDriverState,

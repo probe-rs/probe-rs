@@ -15,7 +15,8 @@ use crate::{
         ApAddress, ArmError, ArmProbeInterface, DapAccess, DpAddress, MemoryApInformation,
         PortType, RawDapAccess, SwoAccess,
     },
-    DebugProbe, DebugProbeError, Error, MemoryMappedRegister, Probe, WireProtocol,
+    probe::{DebugProbe, DebugProbeError, Probe, WireProtocol},
+    Error, MemoryMappedRegister,
 };
 
 /// This is a mock probe which can be used for mocking things in tests or for dry runs.

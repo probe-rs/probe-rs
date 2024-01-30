@@ -19,7 +19,10 @@ use crate::{
     },
     config::DebugSequence,
 };
-use crate::{AttachMethod, Core, CoreType, Error, Lister, Probe};
+use crate::{
+    probe::{list::Lister, AttachMethod, DebugProbeError, Probe},
+    Core, CoreType, Error,
+};
 use anyhow::anyhow;
 use std::ops::DerefMut;
 use std::{fmt, sync::Arc, time::Duration};
@@ -472,7 +475,7 @@ impl Session {
         interface: &mut Box<dyn ArmProbeInterface>,
         debug_sequence: &Arc<dyn ArmDebugSequence>,
     ) -> Result<(), Error> {
-        use crate::DebugProbe;
+        use crate::probe::DebugProbe;
 
         let current_dp = interface.current_debug_port();
 
@@ -523,7 +526,7 @@ impl Session {
     /// Err(e) if the custom erase sequence failed
     pub fn sequence_erase_all(&mut self) -> Result<(), Error> {
         let ArchitectureInterface::Arm(ref mut interface) = self.interface else {
-            return Err(Error::Probe(crate::DebugProbeError::NotImplemented(
+            return Err(Error::Probe(DebugProbeError::NotImplemented(
                 "Debug Erase Sequence",
             )));
         };
@@ -533,7 +536,7 @@ impl Session {
         };
 
         let Some(erase_sequence) = debug_sequence.debug_erase_sequence() else {
-            return Err(Error::Probe(crate::DebugProbeError::NotImplemented(
+            return Err(Error::Probe(DebugProbeError::NotImplemented(
                 "Debug Erase Sequence",
             )));
         };

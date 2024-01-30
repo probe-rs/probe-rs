@@ -12,8 +12,9 @@ use super::{
     ApAddress, ArmError, DapAccess, DpAddress, PortType, RawDapAccess, SwoAccess, SwoConfig,
 };
 use crate::{
-    architecture::arm::ap::DataSize, CoreStatus, DebugProbe, DebugProbeError,
-    Error as ProbeRsError, Probe,
+    architecture::arm::ap::DataSize,
+    probe::{DebugProbe, DebugProbeError, Probe},
+    CoreStatus, Error as ProbeRsError,
 };
 use jep106::JEP106Code;
 

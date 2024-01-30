@@ -5,9 +5,9 @@ use nusb::{
 };
 use std::{fmt::Debug, time::Duration};
 
-use crate::{
-    probe::espusbjtag::EspUsbJtagSource, probe::usb_util::InterfaceExt, DebugProbeError,
-    DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
+use crate::probe::{
+    espusbjtag::EspUsbJtagFactory, usb_util::InterfaceExt, DebugProbeError, DebugProbeInfo,
+    DebugProbeSelector, ProbeCreationError,
 };
 
 const JTAG_PROTOCOL_CAPABILITIES_VERSION: u8 = 1;
@@ -469,7 +469,7 @@ pub(super) fn list_espjtag_devices() -> Vec<DebugProbeInfo> {
                 device.vendor_id(),
                 device.product_id(),
                 device.serial_number().map(Into::into),
-                &EspUsbJtagSource,
+                &EspUsbJtagFactory,
                 None,
             )
         })

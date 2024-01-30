@@ -1,6 +1,7 @@
-use crate::{
-    probe::ProbeDriver, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe,
-    ProbeCreationError,
+//! Listing probes of various types.
+
+use crate::probe::{
+    DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError, ProbeFactory,
 };
 
 use super::{cmsisdap, espusbjtag, ftdi, jlink, stlink, wlink};
@@ -52,6 +53,7 @@ pub trait ProbeLister: std::fmt::Debug {
     fn list_all(&self) -> Vec<DebugProbeInfo>;
 }
 
+/// Default lister implementation that includes all built-in probe drivers.
 #[derive(Debug, PartialEq, Eq)]
 pub struct AllProbesLister;
 
@@ -72,15 +74,16 @@ impl Default for AllProbesLister {
 }
 
 impl AllProbesLister {
-    const DRIVERS: &'static [&'static dyn ProbeDriver] = &[
-        &cmsisdap::CmsisDapSource,
-        &ftdi::FtdiProbeSource,
-        &stlink::StLinkSource,
-        &jlink::JLinkSource,
-        &espusbjtag::EspUsbJtagSource,
-        &wlink::WchLinkSource,
+    const DRIVERS: &'static [&'static dyn ProbeFactory] = &[
+        &cmsisdap::CmsisDapFactory,
+        &ftdi::FtdiProbeFactory,
+        &stlink::StLinkFactory,
+        &jlink::JLinkFactory,
+        &espusbjtag::EspUsbJtagFactory,
+        &wlink::WchLinkFactory,
     ];
 
+    /// Create a new lister with all built-in probe drivers.
     pub const fn new() -> Self {
         Self
     }

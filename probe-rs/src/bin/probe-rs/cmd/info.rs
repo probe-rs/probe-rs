@@ -15,7 +15,8 @@ use probe_rs::{
         riscv::communication_interface::RiscvCommunicationInterface,
         xtensa::communication_interface::XtensaCommunicationInterface,
     },
-    Lister, MemoryMappedRegister, Probe, WireProtocol,
+    probe::{list::Lister, Probe, WireProtocol},
+    MemoryMappedRegister,
 };
 use termtree::Tree;
 
@@ -106,7 +107,7 @@ fn try_show_info(
     let mut probe = probe;
 
     if probe.has_arm_interface() {
-        log::debug!("Trying to show ARM chip information");
+        tracing::debug!("Trying to show ARM chip information");
         match probe.try_into_arm_interface() {
             Ok(interface) => {
                 match interface.initialize(DefaultArmSequence::create(), dp) {
@@ -137,7 +138,7 @@ fn try_show_info(
     // This check is a bit weird, but `try_into_riscv_interface` will try to switch the protocol to JTAG.
     // If the current protocol we want to use is SWD, we have avoid this.
     if probe.has_riscv_interface() && protocol == WireProtocol::Jtag {
-        log::debug!("Trying to show RISC-V chip information");
+        tracing::debug!("Trying to show RISC-V chip information");
         match probe.try_into_riscv_interface() {
             Ok(mut interface) => {
                 if let Err(e) = show_riscv_info(&mut interface) {
@@ -164,7 +165,7 @@ fn try_show_info(
     // This check is a bit weird, but `try_into_xtensa_interface` will try to switch the protocol to JTAG.
     // If the current protocol we want to use is SWD, we have avoid this.
     if probe.has_xtensa_interface() && protocol == WireProtocol::Jtag {
-        log::debug!("Trying to show Xtensa chip information");
+        tracing::debug!("Trying to show Xtensa chip information");
         match probe.try_into_xtensa_interface() {
             Ok(mut interface) => {
                 if let Err(e) = show_xtensa_info(&mut interface) {

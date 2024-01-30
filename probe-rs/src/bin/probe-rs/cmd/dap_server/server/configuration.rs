@@ -2,7 +2,7 @@ use crate::util::common_options::ProbeOptions;
 use crate::util::rtt;
 use crate::{cmd::dap_server::DebuggerError, FormatOptions};
 use anyhow::{anyhow, Result};
-use probe_rs::{DebugProbeSelector, WireProtocol};
+use probe_rs::probe::{DebugProbeSelector, WireProtocol};
 use serde::{Deserialize, Serialize};
 use std::{env::current_dir, path::PathBuf};
 

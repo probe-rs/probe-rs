@@ -7,7 +7,7 @@ pub mod transfer;
 
 use crate::probe::cmsisdap::commands::general::info::PacketSizeCommand;
 use crate::probe::usb_util::InterfaceExt;
-use crate::DebugProbeError;
+use crate::probe::DebugProbeError;
 use std::io::ErrorKind;
 use std::str::Utf8Error;
 use std::time::Duration;

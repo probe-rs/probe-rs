@@ -192,7 +192,7 @@ impl<'defmt> ChannelState<'defmt> {
             match channel.read(core, self.rtt_buffer.0.as_mut()) {
                 Ok(count) => count,
                 Err(err) => {
-                    log::error!("\nError reading from RTT: {}", err);
+                    tracing::error!("\nError reading from RTT: {}", err);
                     return Ok(());
                 }
             }

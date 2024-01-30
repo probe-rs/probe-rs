@@ -11,7 +11,9 @@ use std::{
 use probe_rs_target::CoreType;
 
 use crate::{
-    architecture::arm::ArmProbeInterface, DebugProbeError, MemoryMappedRegister, WireProtocol,
+    architecture::arm::ArmProbeInterface,
+    probe::{DebugProbeError, WireProtocol},
+    MemoryMappedRegister,
 };
 
 use super::{

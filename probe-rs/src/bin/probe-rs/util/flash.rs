@@ -5,7 +5,7 @@ use super::logging;
 
 use std::fs::File;
 use std::time::Duration;
-use std::{path::Path, sync::Arc, time::Instant};
+use std::{path::Path, time::Instant};
 
 use colored::Colorize;
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
@@ -48,6 +48,8 @@ pub fn run_flash_download(
     if !download_options.disable_progressbars {
         // Create progress bars.
         let multi_progress = MultiProgress::new();
+        logging::set_progress_bar(multi_progress.clone());
+
         let style = ProgressStyle::default_bar()
                     .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
                     .progress_chars("--")
@@ -64,10 +66,7 @@ pub fn run_flash_download(
         };
 
         // Create a new progress bar for the erase progress.
-        let erase_progress = Arc::new(multi_progress.add(ProgressBar::new(0)));
-        {
-            logging::set_progress_bar(erase_progress.clone());
-        }
+        let erase_progress = multi_progress.add(ProgressBar::new(0));
         erase_progress.set_style(style.clone());
         erase_progress.set_message("      Erasing");
 
@@ -153,6 +152,9 @@ pub fn run_flash_download(
             target_spec: probe_options.chip(),
             path: path.to_path_buf(),
         })?;
+
+    // If we don't do this, the progress bars disappear.
+    logging::clear_progress_bar();
 
     // Stop timer.
     let elapsed = instant.elapsed();

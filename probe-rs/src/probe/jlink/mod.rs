@@ -3,11 +3,11 @@
 #[macro_use]
 mod macros;
 mod bits;
-mod capabilities;
+pub mod capabilities;
 mod error;
 mod interface;
 mod speed;
-mod swo;
+pub mod swo;
 
 use std::convert::TryFrom;
 use std::iter;
@@ -36,7 +36,7 @@ use crate::probe::common::{JtagDriverState, RawJtagIo};
 use crate::probe::jlink::bits::IteratorExt;
 use crate::probe::usb_util::InterfaceExt;
 use crate::probe::JTAGAccess;
-use crate::probe::ProbeDriver;
+use crate::probe::ProbeFactory;
 use crate::{
     architecture::{
         arm::{
@@ -46,24 +46,24 @@ use crate::{
         riscv::communication_interface::RiscvCommunicationInterface,
     },
     probe::{
-        arm_jtag::{ProbeStatistics, RawProtocolIo, SwdSettings},
-        DebugProbe, DebugProbeError, DebugProbeInfo, WireProtocol,
+        arm_debug_interface::{ProbeStatistics, RawProtocolIo, SwdSettings},
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, WireProtocol,
     },
-    DebugProbeSelector,
 };
 
 const SWO_BUFFER_SIZE: u16 = 128;
 const TIMEOUT_DEFAULT: Duration = Duration::from_millis(500);
 
-pub struct JLinkSource;
+/// Factory to create [`JLink`] probes.
+pub struct JLinkFactory;
 
-impl std::fmt::Debug for JLinkSource {
+impl std::fmt::Debug for JLinkFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("JLink").finish()
     }
 }
 
-impl ProbeDriver for JLinkSource {
+impl ProbeFactory for JLinkFactory {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         fn open_error(e: std::io::Error, while_: &'static str) -> DebugProbeError {
             let help = if cfg!(windows) {
@@ -177,7 +177,7 @@ impl ProbeDriver for JLinkSource {
             protocol: WireProtocol::Jtag, // dummy value
 
             swo_config: None,
-            speed_khz: 0,
+            speed_khz: 0, // default is unknown
             swd_settings: SwdSettings::default(),
             probe_statistics: ProbeStatistics::default(),
             jtag_state: JtagDriverState::default(),
@@ -300,7 +300,8 @@ enum Command {
     WriteConfig = 0xF3,
 }
 
-pub(crate) struct JLink {
+/// A J-Link probe.
+pub struct JLink {
     handle: nusb::Interface,
 
     read_ep: u8,
@@ -345,6 +346,11 @@ impl fmt::Debug for JLink {
 }
 
 impl JLink {
+    /// Returns the supported J-Link capabilities.
+    pub fn capabilites(&self) -> Capabilities {
+        self.caps
+    }
+
     /// Reads the advertised capabilities from the device.
     fn fill_capabilities(&mut self) -> Result<(), JlinkError> {
         self.write_cmd(&[Command::GetCaps as u8])?;
@@ -517,6 +523,11 @@ impl JLink {
 
         self.interface = intf;
 
+        if self.speed_khz != 0 {
+            // SelectIf resets the configured speed. Let's restore it.
+            self.set_interface_clock_speed(SpeedConfig::khz(self.speed_khz as u16).unwrap())?;
+        }
+
         Ok(())
     }
 
@@ -586,7 +597,6 @@ impl JLink {
         // 1.0.0, but still support SWD, so we use the `SELECT_IF` capability instead.
         let cmd = if self.caps.contains(Capability::SelectIf) {
             // Use the new JTAG3 command, make sure to select the JTAG interface mode
-            self.select_interface(Interface::Jtag)?;
             has_status_byte = true;
             Command::HwJtag3
         } else {
@@ -704,7 +714,7 @@ impl DebugProbe for JLink {
             return Err(DebugProbeError::UnsupportedSpeed(speed_khz));
         }
 
-        if let Ok(speeds) = self.read_speeds() {
+        if let Ok(speeds) = self.read_interface_speeds() {
             tracing::debug!("Supported speeds: {:?}", speeds);
 
             let max_speed_khz = speeds.max_speed_hz() / 1000;
@@ -715,7 +725,7 @@ impl DebugProbe for JLink {
         };
 
         if let Some(expected_speed) = SpeedConfig::khz(speed_khz as u16) {
-            self.set_speed(expected_speed)?;
+            self.set_interface_clock_speed(expected_speed)?;
             self.speed_khz = speed_khz;
         } else {
             return Err(DebugProbeError::UnsupportedSpeed(speed_khz));
@@ -884,7 +894,7 @@ impl RawProtocolIo for JLink {
     where
         M: IntoIterator<Item = bool>,
     {
-        if self.protocol == crate::WireProtocol::Swd {
+        if self.protocol == WireProtocol::Swd {
             panic!("Logic error, requested jtag_io when in SWD mode");
         }
 
@@ -899,7 +909,7 @@ impl RawProtocolIo for JLink {
     where
         I: IntoIterator<Item = bool>,
     {
-        if self.protocol == crate::WireProtocol::Swd {
+        if self.protocol == WireProtocol::Swd {
             panic!("Logic error, requested jtag_io when in SWD mode");
         }
 
@@ -915,7 +925,7 @@ impl RawProtocolIo for JLink {
         D: IntoIterator<Item = bool>,
         S: IntoIterator<Item = bool>,
     {
-        if self.protocol == crate::WireProtocol::Jtag {
+        if self.protocol == WireProtocol::Jtag {
             panic!("Logic error, requested swd_io when in JTAG mode");
         }
 
@@ -1094,7 +1104,7 @@ fn list_jlink_devices() -> Vec<DebugProbeInfo> {
                 info.vendor_id(),
                 info.product_id(),
                 info.serial_number().map(|s| s.to_string()),
-                &JLinkSource,
+                &JLinkFactory,
                 None,
             )
         })
@@ -1113,13 +1123,13 @@ impl TryFrom<Interface> for WireProtocol {
     }
 }
 
-/// A hardware version returned by [`JayLink::read_hardware_version`].
+/// A hardware version returned by [`JLink::read_hardware_version`].
 ///
 /// Note that the reported hardware version does not allow reliable feature detection, since
 /// embedded J-Link probes might return a hardware version of 1.0.0 despite supporting SWD and other
 /// much newer features.
 #[derive(Debug)]
-pub struct HardwareVersion(u32);
+struct HardwareVersion(u32);
 
 impl HardwareVersion {
     fn from_u32(raw: u32) -> Self {
@@ -1166,7 +1176,7 @@ impl fmt::Display for HardwareVersion {
 /// The hardware/product type of the device.
 #[non_exhaustive]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum HardwareType {
+enum HardwareType {
     JLink,
     JTrace,
     Flasher,

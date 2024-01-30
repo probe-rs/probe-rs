@@ -1,4 +1,4 @@
-use crate::probe::stlink::StLinkSource;
+use crate::probe::stlink::StLinkFactory;
 use crate::probe::DebugProbeInfo;
 
 use super::usb_interface::USB_PID_EP_MAP;
@@ -11,7 +11,7 @@ pub(super) fn is_stlink_device(device: &nusb::DeviceInfo) -> bool {
 }
 
 #[tracing::instrument(skip_all)]
-pub fn list_stlink_devices() -> Vec<DebugProbeInfo> {
+pub(super) fn list_stlink_devices() -> Vec<DebugProbeInfo> {
     let devices = match nusb::list_devices() {
         Ok(d) => d,
         Err(e) => {
@@ -31,7 +31,7 @@ pub fn list_stlink_devices() -> Vec<DebugProbeInfo> {
                 device.vendor_id(),
                 device.product_id(),
                 read_serial_number(&device),
-                &StLinkSource,
+                &StLinkFactory,
                 None,
             )
         })

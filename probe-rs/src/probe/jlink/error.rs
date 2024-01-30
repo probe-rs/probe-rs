@@ -1,4 +1,4 @@
-use crate::DebugProbeError;
+use crate::probe::DebugProbeError;
 
 use super::{capabilities::Capability, interface::Interface};
 

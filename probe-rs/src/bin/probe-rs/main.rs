@@ -8,23 +8,19 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
 use std::str::FromStr;
-use std::{ffi::OsString, fs::File, path::PathBuf};
+use std::{ffi::OsString, path::PathBuf};
 
 use anyhow::{Context, Result};
 use clap::Parser;
 use itertools::Itertools;
 use probe_rs::flashing::{BinOptions, Format, IdfOptions};
-use probe_rs::{Lister, Target};
+use probe_rs::{probe::list::Lister, Target};
 use serde::Serialize;
 use serde::{de::Error, Deserialize, Deserializer};
 use serde_json::Value;
 use time::{OffsetDateTime, UtcOffset};
-use tracing::metadata::LevelFilter;
-use tracing_subscriber::{
-    fmt::format::FmtSpan, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt,
-    EnvFilter, Layer,
-};
 
+use crate::util::logging::setup_logging;
 use crate::util::parse_u32;
 use crate::util::parse_u64;
 
@@ -286,49 +282,9 @@ fn main() -> Result<()> {
         None
     };
 
-    let stdout_subscriber = tracing_subscriber::fmt::layer()
-        .compact()
-        .without_time()
-        .with_filter(
-            EnvFilter::builder()
-                .with_default_directive(LevelFilter::ERROR.into())
-                .from_env_lossy(),
-        );
+    let _logger_guard = setup_logging(log_path.as_deref(), None);
 
-    let _append_guard = if let Some(ref log_path) = log_path {
-        let log_file = File::create(log_path)?;
-
-        let (file_appender, guard) = tracing_appender::non_blocking::NonBlockingBuilder::default()
-            .lossy(false)
-            .buffered_lines_limit(128 * 1024)
-            .finish(log_file);
-
-        let file_subscriber = tracing_subscriber::fmt::layer()
-            .json()
-            .with_file(true)
-            .with_line_number(true)
-            .with_span_events(FmtSpan::FULL)
-            .with_writer(file_appender);
-
-        tracing_subscriber::registry()
-            .with(stdout_subscriber)
-            .with(file_subscriber)
-            .init();
-
-        Some(guard)
-    } else {
-        tracing_subscriber::registry()
-            .with(stdout_subscriber)
-            .init();
-
-        None
-    };
-
-    if let Some(ref log_path) = log_path {
-        tracing::info!("Writing log to {:?}", log_path);
-    }
-
-    let result = match matches.subcommand {
+    match matches.subcommand {
         Subcommand::DapServer { .. } => unreachable!(), // handled above.
         Subcommand::List(cmd) => cmd.run(&lister),
         Subcommand::Info(cmd) => cmd.run(&lister),
@@ -346,11 +302,5 @@ fn main() -> Result<()> {
         Subcommand::Profile(cmd) => cmd.run(&lister),
         Subcommand::Read(cmd) => cmd.run(&lister),
         Subcommand::Write(cmd) => cmd.run(&lister),
-    };
-
-    if let Some(ref log_path) = log_path {
-        tracing::info!("Wrote log to {:?}", log_path);
     }
-
-    result
 }

@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use probe_rs::Lister;
+use probe_rs::probe::list::Lister;
 
 use crate::util::common_options::BinaryDownloadOptions;
 use crate::util::common_options::ProbeOptions;
