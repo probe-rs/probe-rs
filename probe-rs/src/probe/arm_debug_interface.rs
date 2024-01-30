@@ -354,11 +354,12 @@ fn perform_swd_transfers<P: RawProtocolIo>(
 ///
 /// Certain transfers require additional transfers to
 /// get the result. This is handled by this function.
+///
+/// Retries on WAIT responses are automatically handled.
 fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
     probe: &mut P,
     transfers: &mut [DapTransfer],
-    idle_cycles: usize,
-) -> Result<(), DebugProbeError> {
+) -> Result<(), ArmError> {
     assert!(!transfers.is_empty());
 
     // Read from DebugPort  -> Nothing special needed
@@ -398,17 +399,7 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
             response_in_next: wire_protocol == WireProtocol::Swd
                 && (need_ap_read || write_response_pending),
         });
-
-        let transfer_to_push = if transfer.is_write() {
-            tracing::trace!("Adding {} idle cycles after transfer!", idle_cycles);
-
-            let mut transfer = transfer.clone();
-            transfer.idle_cycles_after = idle_cycles;
-            transfer
-        } else {
-            transfer.clone()
-        };
-        final_transfers.push(transfer_to_push);
+        final_transfers.push(transfer.clone());
 
         // Now process the extra transfers needed
         let Some(next) = transfers.get(i + 1) else {
@@ -473,10 +464,7 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
 
     probe.probe_statistics().record_transfers(num_transfers);
 
-    match wire_protocol {
-        WireProtocol::Swd => perform_swd_transfers(probe, &mut final_transfers[..])?,
-        WireProtocol::Jtag => perform_jtag_transfers(probe, &mut final_transfers[..])?,
-    }
+    perform_raw_transfers_retry(probe, &mut final_transfers)?;
 
     // Retrieve the results
     for (transfer, orig) in transfers.iter_mut().zip(result_indices) {
@@ -494,6 +482,93 @@ fn perform_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
     }
 
     Ok(())
+}
+
+/// Perform a batch of raw transfers, retrying on WAIT responses.
+///
+/// Other than that, the transfers are sent as-is. You might want to use `perform_transfers` instead, which
+/// does correction for delayed FAULT responses and other helpful stuff.
+fn perform_raw_transfers_retry<P: DebugProbe + RawProtocolIo + JTAGAccess>(
+    probe: &mut P,
+    transfers: &mut [DapTransfer],
+) -> Result<(), ArmError> {
+    let mut successful_transfers = 0;
+    let mut idle_cycles = std::cmp::max(1, probe.swd_settings().num_idle_cycles_between_writes);
+
+    'transfer: for _ in 0..probe.swd_settings().num_retries_after_wait {
+        let chunk = &mut transfers[successful_transfers..];
+        assert!(!chunk.is_empty());
+
+        // Set idle cycles
+        for transfer in &mut chunk[..] {
+            if transfer.is_write() {
+                // TODO this doesn't quite match the old behavior, is that OK?
+                transfer.idle_cycles_after = transfer.idle_cycles_after.max(idle_cycles);
+            }
+        }
+
+        perform_raw_transfers(probe, chunk)?;
+
+        for result in chunk.iter() {
+            match result.status {
+                TransferStatus::Ok => {
+                    successful_transfers += 1;
+                }
+                TransferStatus::Failed(DapError::WaitResponse) => {
+                    tracing::debug!("got WAIT on transfer {}, retrying...", successful_transfers);
+
+                    clear_overrun(probe)?;
+
+                    idle_cycles = std::cmp::min(
+                        probe.swd_settings().max_retry_idle_cycles_after_wait,
+                        idle_cycles * 2,
+                    );
+
+                    continue 'transfer;
+                }
+                _ => break, // on any other error, we're done.
+            }
+        }
+
+        if successful_transfers == transfers.len() {
+            break;
+        }
+    }
+
+    Ok(())
+}
+
+fn clear_overrun<P: DebugProbe + RawProtocolIo + JTAGAccess>(
+    probe: &mut P,
+) -> Result<(), ArmError> {
+    // Build ABORT transfer.
+    let mut abort = Abort(0);
+    abort.set_orunerrclr(true);
+    let transfer = DapTransfer::write(PortType::DebugPort, Abort::ADDRESS, abort.into());
+    let mut transfers = [transfer];
+
+    // Do it
+    perform_raw_transfers(probe, &mut transfers)?;
+
+    if let TransferStatus::Failed(e) = transfers[0].status {
+        Err(e)?
+    }
+
+    Ok(())
+}
+
+/// Perform a batch of raw transfers, retrying on WAIT responses.
+///
+/// Other than that, the transfers are sent as-is. You might want to use `perform_transfers` instead, which
+/// does correction for delayed FAULT responses and other helpful stuff.
+fn perform_raw_transfers<P: DebugProbe + RawProtocolIo + JTAGAccess>(
+    probe: &mut P,
+    transfers: &mut [DapTransfer],
+) -> Result<(), DebugProbeError> {
+    match probe.active_protocol().unwrap() {
+        WireProtocol::Swd => perform_swd_transfers(probe, transfers),
+        WireProtocol::Jtag => perform_jtag_transfers(probe, transfers),
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -829,304 +904,32 @@ pub trait RawProtocolIo {
     fn probe_statistics(&mut self) -> &mut ProbeStatistics;
 }
 
-fn line_reset<P: RawProtocolIo + JTAGAccess + RawDapAccess>(this: &mut P) -> Result<(), ArmError> {
-    tracing::debug!("Performing line reset!");
-
-    const NUM_RESET_BITS: u8 = 50;
-
-    let idle_cycles = std::cmp::max(1, this.swd_settings().num_idle_cycles_between_writes);
-
-    let mut result = Ok(());
-
-    for _ in 0..2 {
-        this.probe_statistics().report_line_reset();
-
-        this.swj_sequence(NUM_RESET_BITS, 0x7FFFFFFFFFFFF)?;
-
-        // TODO: there are two unhandled implications:
-        // - A line reset deselects the current multidrop target
-        // - A line reset sets CTRL/STAT.STICKYORUN to 0b1
-        // ^ both of these are handled in select_dp. We should reuse it, but carefully to avoid
-        //   an endless loop.
-
-        // Read DPIDR register
-        //
-        // The `raw_read_register` function cannot be called here, because that function can call `line_reset` again,
-        // resulting in an endless loop.
-        let mut transfers = [DapTransfer::read(PortType::DebugPort, DPIDR::ADDRESS)];
-
-        perform_transfers(this, &mut transfers, idle_cycles)?;
-
-        match transfers[0].status {
-            TransferStatus::Ok => return Ok(()),
-            TransferStatus::Pending => {
-                tracing::debug!("Unexpected pending status in line reset.");
-                // Transfer will be retried.
-            }
-            TransferStatus::Failed(e) => {
-                tracing::debug!("Error reading DPIDR register after line reset: {e:?}");
-                result = Err(ArmError::from(e));
-            }
-        }
-    }
-
-    // No acknowledge from the target, even if after line reset
-    result
-}
-
 impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for Probe {
     fn raw_read_register(&mut self, port: PortType, address: u8) -> Result<u32, ArmError> {
-        assert!(address < 0x10, "Invalid register address {:#x}", address);
+        let mut transfers = [DapTransfer::read(port, address)];
+        perform_transfers(self, &mut transfers)?;
 
-        let dap_wait_retries = self.swd_settings().num_retries_after_wait;
-        let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
-
-        // Now we try to issue the request until it fails or succeeds.
-        // If we timeout we retry a maximum of 5 times.
-        for retry in 0..dap_wait_retries {
-            let mut transfers = [DapTransfer::read(port, address)];
-
-            perform_transfers(self, &mut transfers, idle_cycles)?;
-
-            match transfers[0].status {
-                TransferStatus::Ok => return Ok(transfers[0].value),
-                TransferStatus::Pending => {
-                    panic!("Unexpected transfer state after reading register. This is a bug!");
-                }
-                TransferStatus::Failed(DapError::WaitResponse) => {
-                    // If ack[1] is set the host must retry the request. So let's do that right away!
-                    tracing::debug!(
-                        "DAP WAIT (read), retries remaining {}.",
-                        dap_wait_retries - retry
-                    );
-
-                    // Because we use overrun detection, we now have to clear the overrun error
-                    let mut abort = Abort(0);
-
-                    abort.set_orunerrclr(true);
-
-                    RawDapAccess::raw_write_register(
-                        self,
-                        PortType::DebugPort,
-                        Abort::ADDRESS,
-                        abort.into(),
-                    )?;
-
-                    tracing::debug!("Cleared sticky overrun bit");
-
-                    idle_cycles = std::cmp::min(
-                        self.swd_settings().max_retry_idle_cycles_after_wait,
-                        idle_cycles * 2,
-                    );
-
-                    continue;
-                }
-                TransferStatus::Failed(DapError::FaultResponse) => {
-                    tracing::debug!("DAP FAULT");
-
-                    // A fault happened during operation.
-
-                    // To get a clue about the actual fault we want to read the ctrl register,
-                    // which will have the fault status flags set. But we only do this
-                    // if we are *not* currently reading the ctrl register, otherwise
-                    // this could end up being an endless recursion.
-
-                    if address != Ctrl::ADDRESS {
-                        // TODO: This should write SELECT first
-                        let response = RawDapAccess::raw_read_register(
-                            self,
-                            PortType::DebugPort,
-                            Ctrl::ADDRESS,
-                        )?;
-                        let ctrl = Ctrl::try_from(response)?;
-                        tracing::warn!(
-                            "Reading DAP register {address:#X} failed. Ctrl/Stat register value is: {:#?}",
-                            ctrl
-                        );
-
-                        // Check the reason for the fault
-                        // Other fault reasons than overrun or write error are not handled yet.
-                        if ctrl.sticky_orun() || ctrl.sticky_err() {
-                            // We did not handle a WAIT state properly
-
-                            // Because we use overrun detection, we now have to clear the overrun error
-                            let mut abort = Abort(0);
-
-                            // Clear sticky error flags
-                            abort.set_orunerrclr(ctrl.sticky_orun());
-                            abort.set_stkerrclr(ctrl.sticky_err());
-
-                            RawDapAccess::raw_write_register(
-                                self,
-                                PortType::DebugPort,
-                                Abort::ADDRESS,
-                                abort.into(),
-                            )?;
-                        }
-                    } else {
-                        tracing::warn!(
-                            "Error reading CTRL/STAT register. This should not happen..."
-                        );
-                    }
-
-                    return Err(DapError::FaultResponse.into());
-                }
-                // The other errors mean that something went wrong with the protocol itself,
-                // so we try to perform a line reset, and recover.
-                TransferStatus::Failed(_) => {
-                    tracing::debug!("DAP NACK");
-
-                    // Because we clock the SWDCLK line after receving the WAIT response,
-                    // the target might be in weird state. If we perform a line reset,
-                    // we should be able to recover from this.
-                    // line_reset(self, dp)?;
-
-                    // Retry operation again
-                    continue;
-                }
+        match transfers[0].status {
+            TransferStatus::Ok => Ok(transfers[0].value),
+            TransferStatus::Pending => {
+                panic!("Unexpected transfer state after reading register. This is a bug!");
             }
-        }
+            TransferStatus::Failed(DapError::FaultResponse) => {
+                tracing::debug!("DAP FAULT");
 
-        // If we land here, the DAP operation timed out.
-        tracing::error!("DAP read timeout.");
-        Err(ArmError::Timeout)
-    }
+                // A fault happened during operation.
 
-    fn raw_read_block(
-        &mut self,
-        port: PortType,
-        address: u8,
-        values: &mut [u32],
-    ) -> Result<(), ArmError> {
-        let mut successful_transfers = 0;
+                // To get a clue about the actual fault we want to read the ctrl register,
+                // which will have the fault status flags set. But we only do this
+                // if we are *not* currently reading the ctrl register, otherwise
+                // this could end up being an endless recursion.
 
-        let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
-
-        let mut transfers = vec![DapTransfer::read(port, address); values.len()];
-
-        'transfer: for _ in 0..self.swd_settings().num_retries_after_wait {
-            let transfers = &mut transfers[successful_transfers..];
-            if transfers.is_empty() {
-                break;
-            }
-
-            perform_transfers(self, transfers, idle_cycles)?;
-
-            for result in transfers.iter() {
-                match result.status {
-                    TransferStatus::Ok => {
-                        values[successful_transfers] = result.value;
-                        successful_transfers += 1;
-                    }
-                    TransferStatus::Failed(err) => {
-                        tracing::warn!(
-                            "Error in access {}/{} of block access: {:?}",
-                            successful_transfers + 1,
-                            values.len(),
-                            anyhow::anyhow!(err)
-                        );
-
-                        if err == DapError::WaitResponse {
-                            // Clear STICKORRUN flag.
-
-                            // Because we use overrun detection, we now have to clear the overrun error.
-                            let mut abort = Abort(0);
-
-                            abort.set_orunerrclr(true);
-
-                            RawDapAccess::raw_write_register(
-                                self,
-                                PortType::DebugPort,
-                                Abort::ADDRESS,
-                                abort.into(),
-                            )?;
-
-                            idle_cycles = std::cmp::min(
-                                self.swd_settings().max_retry_idle_cycles_after_wait,
-                                idle_cycles * 2,
-                            );
-
-                            tracing::debug!("Retrying access {}", successful_transfers + 1);
-
-                            continue 'transfer;
-                        }
-                        return Err(err.into());
-                    }
-                    TransferStatus::Pending => {
-                        // This should not happen...
-                        panic!("Error performing transfers. This is a bug, please report it.")
-                    }
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    #[tracing::instrument(level = "debug", skip(self))]
-    fn raw_write_register(
-        &mut self,
-        port: PortType,
-        address: u8,
-        value: u32,
-    ) -> Result<(), ArmError> {
-        assert!(address < 0x10, "Invalid register address {:#x}", address);
-        let dap_wait_retries = self.swd_settings().num_retries_after_wait;
-        let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
-
-        // Now we try to issue the request until it fails or succeeds.
-        // If we timeout we retry a maximum of 5 times.
-        for retry in 0..dap_wait_retries {
-            let mut transfers = [DapTransfer::write(port, address, value)];
-
-            perform_transfers(self, &mut transfers, idle_cycles)?;
-
-            match transfers[0].status {
-                TransferStatus::Ok => return Ok(()),
-                TransferStatus::Pending => {
-                    panic!("Unexpected transfer state after writing register. This is a bug!");
-                }
-                TransferStatus::Failed(DapError::WaitResponse) => {
-                    // If ack[1] is set the host must retry the request. So let's do that right away!
-                    tracing::debug!(
-                        "DAP WAIT, (write), retries remaining {}.",
-                        dap_wait_retries - retry
-                    );
-
-                    let mut abort = Abort(0);
-
-                    abort.set_orunerrclr(true);
-
-                    // Because we use overrun detection, we now have to clear the overrun error
-                    RawDapAccess::raw_write_register(
-                        self,
-                        PortType::DebugPort,
-                        Abort::ADDRESS,
-                        abort.into(),
-                    )?;
-
-                    tracing::debug!("Cleared sticky overrun bit");
-
-                    idle_cycles = std::cmp::min(
-                        self.swd_settings().max_retry_idle_cycles_after_wait,
-                        idle_cycles * 2,
-                    );
-
-                    continue;
-                }
-                TransferStatus::Failed(DapError::FaultResponse) => {
-                    tracing::warn!("DAP FAULT");
-                    // A fault happened during operation.
-
-                    // To get a clue about the actual fault we read the ctrl register,
-                    // which will have the fault status flags set.
-
+                if address != Ctrl::ADDRESS {
                     let response =
                         RawDapAccess::raw_read_register(self, PortType::DebugPort, Ctrl::ADDRESS)?;
-
                     let ctrl = Ctrl::try_from(response)?;
                     tracing::warn!(
-                        "Writing DAP register {address:#X} failed. Ctrl/Stat register value is: {:#?}",
+                        "Reading DAP register failed. Ctrl/Stat register value is: {:#?}",
                         ctrl
                     );
 
@@ -1149,28 +952,109 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
                             abort.into(),
                         )?;
                     }
-
-                    return Err(DapError::FaultResponse.into());
+                } else {
+                    tracing::warn!("Error reading CTRL/STAT register. This should not happen...");
                 }
-                // The other errors mean that something went wrong with the protocol itself,
-                // so we try to perform a line reset, and recover.
-                TransferStatus::Failed(_) => {
-                    tracing::debug!("DAP NACK");
 
-                    // Because we clock the SWDCLK line after receving the WAIT response,
-                    // the target might be in weird state. If we perform a line reset,
-                    // we should be able to recover from this.
-                    line_reset(self)?;
+                Err(DapError::FaultResponse.into())
+            }
+            // The other errors mean that something went wrong with the protocol itself.
+            // There's no guaranteed correct way to recover, so don't.
+            TransferStatus::Failed(e) => Err(e.into()),
+        }
+    }
 
-                    // Retry operation
-                    continue;
+    fn raw_read_block(
+        &mut self,
+        port: PortType,
+        address: u8,
+        values: &mut [u32],
+    ) -> Result<(), ArmError> {
+        let mut transfers = vec![DapTransfer::read(port, address); values.len()];
+
+        perform_transfers(self, &mut transfers)?;
+
+        for (i, result) in transfers.iter().enumerate() {
+            match result.status {
+                TransferStatus::Ok => {
+                    values[i] = result.value;
+                }
+                TransferStatus::Failed(err) => {
+                    tracing::warn!(
+                        "Error in access {}/{} of block access: {:?}",
+                        i + 1,
+                        values.len(),
+                        anyhow::anyhow!(err)
+                    );
+                    return Err(err.into());
+                }
+                TransferStatus::Pending => {
+                    // This should not happen...
+                    panic!("Error performing transfers. This is a bug, please report it.")
                 }
             }
         }
 
-        // If we land here, the DAP operation timed out.
-        tracing::error!("DAP write timeout.");
-        Err(ArmError::Timeout)
+        Ok(())
+    }
+
+    fn raw_write_register(
+        &mut self,
+        port: PortType,
+        address: u8,
+        value: u32,
+    ) -> Result<(), ArmError> {
+        let mut transfers = [DapTransfer::write(port, address, value)];
+
+        perform_transfers(self, &mut transfers)?;
+
+        match transfers[0].status {
+            TransferStatus::Ok => Ok(()),
+            TransferStatus::Pending => {
+                panic!("Unexpected transfer state after writing register. This is a bug!");
+            }
+            TransferStatus::Failed(DapError::FaultResponse) => {
+                tracing::warn!("DAP FAULT");
+                // A fault happened during operation.
+
+                // To get a clue about the actual fault we read the ctrl register,
+                // which will have the fault status flags set.
+
+                let response =
+                    RawDapAccess::raw_read_register(self, PortType::DebugPort, Ctrl::ADDRESS)?;
+
+                let ctrl = Ctrl::try_from(response)?;
+                tracing::warn!(
+                    "Writing DAP register failed. Ctrl/Stat register value is: {:#?}",
+                    ctrl
+                );
+
+                // Check the reason for the fault
+                // Other fault reasons than overrun or write error are not handled yet.
+                if ctrl.sticky_orun() || ctrl.sticky_err() {
+                    // We did not handle a WAIT state properly
+
+                    // Because we use overrun detection, we now have to clear the overrun error
+                    let mut abort = Abort(0);
+
+                    // Clear sticky error flags
+                    abort.set_orunerrclr(ctrl.sticky_orun());
+                    abort.set_stkerrclr(ctrl.sticky_err());
+
+                    RawDapAccess::raw_write_register(
+                        self,
+                        PortType::DebugPort,
+                        Abort::ADDRESS,
+                        abort.into(),
+                    )?;
+                }
+
+                Err(DapError::FaultResponse.into())
+            }
+            // The other errors mean that something went wrong with the protocol itself.
+            // There's no guaranteed correct way to recover, so don't.
+            TransferStatus::Failed(e) => Err(e.into()),
+        }
     }
 
     fn raw_write_block(
@@ -1179,69 +1063,31 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
         address: u8,
         values: &[u32],
     ) -> Result<(), ArmError> {
-        let mut successful_transfers = 0;
-
-        let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
-
         let mut transfers = values
             .iter()
             .map(|v| DapTransfer::write(port, address, *v))
             .collect::<Vec<_>>();
 
-        'transfer: for _ in 0..self.swd_settings().num_retries_after_wait {
-            let transfers = &mut transfers[successful_transfers..];
-            if transfers.is_empty() {
-                break;
-            }
+        perform_transfers(self, &mut transfers)?;
 
-            perform_transfers(self, transfers, idle_cycles)?;
+        for (i, result) in transfers.iter().enumerate() {
+            match result.status {
+                TransferStatus::Ok => {}
+                TransferStatus::Failed(err) => {
+                    tracing::debug!(
+                        "Error in access {}/{} of block access: {}",
+                        i + 1,
+                        values.len(),
+                        err
+                    );
 
-            for result in transfers.iter() {
-                match result.status {
-                    TransferStatus::Ok => successful_transfers += 1,
-                    TransferStatus::Failed(err) => {
-                        tracing::debug!(
-                            "Error in access {}/{} of block access: {}",
-                            successful_transfers + 1,
-                            values.len(),
-                            err
-                        );
-
-                        if err == DapError::WaitResponse {
-                            // Clear STICKORRUN flag.
-
-                            // Because we use overrun detection, we now have to clear the overrun error.
-                            let mut abort = Abort(0);
-
-                            abort.set_orunerrclr(true);
-
-                            RawDapAccess::raw_write_register(
-                                self,
-                                PortType::DebugPort,
-                                Abort::ADDRESS,
-                                abort.into(),
-                            )?;
-
-                            idle_cycles = std::cmp::min(
-                                self.swd_settings().max_retry_idle_cycles_after_wait,
-                                idle_cycles * 2,
-                            );
-
-                            tracing::debug!("Retrying access {}", successful_transfers + 1);
-
-                            continue 'transfer;
-                        }
-
-                        return Err(err.into());
-                    }
-                    TransferStatus::Pending => {
-                        // This should not happen...
-                        panic!("Error performing transfers. This is a bug, please report it.")
-                    }
+                    return Err(err.into());
+                }
+                TransferStatus::Pending => {
+                    // This should not happen...
+                    panic!("Error performing transfers. This is a bug, please report it.")
                 }
             }
-
-            return Ok(());
         }
 
         Ok(())
@@ -1951,7 +1797,7 @@ mod test {
             mock.add_read_response(DapAcknowledge::Ok, register_value);
             mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-            perform_transfers(&mut mock, &mut transfers, 16).expect("Failed to perform transfer");
+            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
 
             let transfer_result = &transfers[0];
 
@@ -1971,7 +1817,7 @@ mod test {
             mock.add_read_response(DapAcknowledge::Ok, register_value);
             mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-            perform_transfers(&mut mock, &mut transfers, 16).expect("Failed to perform transfer");
+            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
 
             let transfer_result = &transfers[0];
 
@@ -2000,7 +1846,7 @@ mod test {
             mock.add_read_response(DapAcknowledge::Ok, dp_read_value);
             mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-            perform_transfers(&mut mock, &mut transfers, 16).expect("Failed to perform transfer");
+            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
 
             assert_eq!(transfers[0].status, TransferStatus::Ok);
             assert_eq!(transfers[0].value, ap_read_value);
@@ -2030,7 +1876,7 @@ mod test {
             mock.add_read_response(DapAcknowledge::Ok, ap_read_value);
             mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-            perform_transfers(&mut mock, &mut transfers, 16).expect("Failed to perform transfer");
+            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
 
             assert_eq!(transfers[0].status, TransferStatus::Ok);
             assert_eq!(transfers[0].value, dp_read_value);
@@ -2058,7 +1904,7 @@ mod test {
             mock.add_read_response(DapAcknowledge::Ok, ap_read_values[1]);
             mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-            perform_transfers(&mut mock, &mut transfers, 16).expect("Failed to perform transfer");
+            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
 
             assert_eq!(transfers[0].status, TransferStatus::Ok);
             assert_eq!(transfers[0].value, ap_read_values[0]);
@@ -2084,7 +1930,7 @@ mod test {
             mock.add_read_response(DapAcknowledge::Ok, dp_read_values[1]);
             mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-            perform_transfers(&mut mock, &mut transfers, 16).expect("Failed to perform transfer");
+            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
 
             assert_eq!(transfers[0].status, TransferStatus::Ok);
             assert_eq!(transfers[0].value, dp_read_values[0]);
@@ -2098,7 +1944,6 @@ mod test {
             let mut transfers = vec![DapTransfer::write(PortType::DebugPort, 0, 0x1234_5678)];
 
             let mut mock = MockJaylink::new();
-            let idle_cycles = mock.swd_settings.num_idle_cycles_between_writes;
 
             mock.add_write_response(
                 DapAcknowledge::Ok,
@@ -2108,8 +1953,7 @@ mod test {
             // To verify that the write was successful, an additional read is performed.
             mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-            perform_transfers(&mut mock, &mut transfers, idle_cycles)
-                .expect("Failed to perform transfer");
+            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
 
             let transfer_result = &transfers[0];
 
@@ -2122,8 +1966,6 @@ mod test {
 
             let mut mock = MockJaylink::new();
 
-            let idle_cycles = mock.swd_settings.num_idle_cycles_between_writes;
-
             mock.add_write_response(
                 DapAcknowledge::Ok,
                 mock.swd_settings.num_idle_cycles_between_writes,
@@ -2134,8 +1976,7 @@ mod test {
             mock.add_read_response(DapAcknowledge::Ok, 0);
             mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-            perform_transfers(&mut mock, &mut transfers, idle_cycles)
-                .expect("Failed to perform transfer");
+            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
 
             let transfer_result = &transfers[0];
 
@@ -2151,8 +1992,6 @@ mod test {
 
             let mut mock = MockJaylink::new();
 
-            let idle_cycles = mock.swd_settings.num_idle_cycles_between_writes;
-
             mock.add_write_response(
                 DapAcknowledge::Ok,
                 mock.swd_settings.num_idle_cycles_between_writes,
@@ -2166,8 +2005,7 @@ mod test {
             mock.add_read_response(DapAcknowledge::Ok, 0);
             mock.add_idle_cycles(mock.swd_settings.idle_cycles_after_transfer);
 
-            perform_transfers(&mut mock, &mut transfers, idle_cycles)
-                .expect("Failed to perform transfer");
+            perform_transfers(&mut mock, &mut transfers).expect("Failed to perform transfer");
 
             assert_eq!(transfers[0].status, TransferStatus::Ok);
             assert_eq!(transfers[1].status, TransferStatus::Ok);
