@@ -26,6 +26,23 @@ use crate::util::common_options::ProbeOptions;
 pub struct Cmd {
     #[clap(flatten)]
     common: ProbeOptions,
+    /// SWD Multidrop target selection value
+    ///
+    /// If provided, this value is written into the debug port TARGETSEL register
+    /// when connecting. This is required for targets using SWD multidrop
+    #[arg(long, value_parser = parse_hex)]
+    target_sel: Option<u32>,
+}
+
+// Clippy doesn't like `from_str_radix` with radix 10, but I prefer the symmetry`
+// with the hex case.
+#[allow(clippy::from_str_radix_10)]
+fn parse_hex(src: &str) -> Result<u32, std::num::ParseIntError> {
+    if src.starts_with("0x") {
+        u32::from_str_radix(src.trim_start_matches("0x"), 16)
+    } else {
+        u32::from_str_radix(src, 10)
+    }
 }
 
 impl Cmd {
@@ -43,8 +60,12 @@ impl Cmd {
             println!("Probing target via {protocol}");
             println!();
 
-            let (new_probe, result) =
-                try_show_info(probe, protocol, probe_options.connect_under_reset());
+            let (new_probe, result) = try_show_info(
+                probe,
+                protocol,
+                probe_options.connect_under_reset(),
+                self.target_sel,
+            );
 
             probe = new_probe;
 
@@ -65,6 +86,7 @@ fn try_show_info(
     mut probe: Probe,
     protocol: WireProtocol,
     connect_under_reset: bool,
+    target_sel: Option<u32>,
 ) -> (Probe, Result<()>) {
     if let Err(e) = probe.select_protocol(protocol) {
         return (probe, Err(e.into()));
@@ -80,15 +102,17 @@ fn try_show_info(
         return (probe, Err(e.into()));
     }
 
+    let dp = target_sel.map(DpAddress::Multidrop).unwrap_or_default();
+
     let mut probe = probe;
 
     if probe.has_arm_interface() {
         tracing::debug!("Trying to show ARM chip information");
         match probe.try_into_arm_interface() {
             Ok(interface) => {
-                match interface.initialize(DefaultArmSequence::create()) {
+                match interface.initialize(DefaultArmSequence::create(), dp) {
                     Ok(mut interface) => {
-                        if let Err(e) = show_arm_info(&mut *interface) {
+                        if let Err(e) = show_arm_info(&mut *interface, dp) {
                             // Log error?
                             println!("Error showing ARM chip information: {:?}", anyhow!(e));
                         }
@@ -111,7 +135,9 @@ fn try_show_info(
         println!("No DAP interface was found on the connected probe. ARM-specific information cannot be printed.");
     }
 
-    if probe.has_riscv_interface() {
+    // This check is a bit weird, but `try_into_riscv_interface` will try to switch the protocol to JTAG.
+    // If the current protocol we want to use is SWD, we have avoid this.
+    if probe.has_riscv_interface() && protocol == WireProtocol::Jtag {
         tracing::debug!("Trying to show RISC-V chip information");
         match probe.try_into_riscv_interface() {
             Ok(mut interface) => {
@@ -126,13 +152,19 @@ fn try_show_info(
                 probe = interface_probe;
             }
         }
+    } else if protocol == WireProtocol::Swd {
+        println!(
+                "Debugging RISC-V targets over SWD is not supported. For these targets, JTAG is the only supported protocol. RISC-V specific information cannot be printed."
+            );
     } else {
         println!(
-            "Unable to debug RISC-V targets using the current probe. RISC-V specific information cannot be printed."
-        );
+                "Unable to debug RISC-V targets using the current probe. RISC-V specific information cannot be printed."
+            );
     }
 
-    if probe.has_xtensa_interface() {
+    // This check is a bit weird, but `try_into_xtensa_interface` will try to switch the protocol to JTAG.
+    // If the current protocol we want to use is SWD, we have avoid this.
+    if probe.has_xtensa_interface() && protocol == WireProtocol::Jtag {
         tracing::debug!("Trying to show Xtensa chip information");
         match probe.try_into_xtensa_interface() {
             Ok(mut interface) => {
@@ -147,6 +179,10 @@ fn try_show_info(
                 probe = interface_probe;
             }
         }
+    } else if protocol == WireProtocol::Swd {
+        println!(
+                "Debugging Xtensa targets over SWD is not supported. For these targets, JTAG is the only supported protocol. Xtensa specific information cannot be printed."
+            );
     } else {
         println!(
             "Unable to debug Xtensa targets using the current probe. Xtensa specific information cannot be printed."
@@ -156,8 +192,8 @@ fn try_show_info(
     (probe, Ok(()))
 }
 
-fn show_arm_info(interface: &mut dyn ArmProbeInterface) -> Result<()> {
-    let dp_info = interface.read_raw_dp_register(DpAddress::Default, DPIDR::ADDRESS)?;
+fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result<()> {
+    let dp_info = interface.read_raw_dp_register(dp, DPIDR::ADDRESS)?;
     let dp_info = DPIDR(dp_info);
 
     let mut dp_node = String::new();
@@ -171,7 +207,7 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface) -> Result<()> {
     let jep_code = jep106::JEP106Code::new(dp_info.jep_cc(), dp_info.jep_id());
 
     if dp_info.version() == 2 {
-        let target_id = interface.read_raw_dp_register(DpAddress::Default, TARGETID::ADDRESS)?;
+        let target_id = interface.read_raw_dp_register(dp, TARGETID::ADDRESS)?;
 
         let target_id = TARGETID(target_id);
 
@@ -202,7 +238,6 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface) -> Result<()> {
 
     let mut tree = Tree::new(dp_node);
 
-    let dp = DpAddress::Default;
     let num_access_ports = interface.num_access_ports(dp)?;
 
     for ap_index in 0..num_access_ports {

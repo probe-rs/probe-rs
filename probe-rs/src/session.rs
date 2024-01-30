@@ -1,3 +1,4 @@
+use crate::architecture::arm::ap::AccessPort;
 use crate::architecture::arm::component::get_arm_components;
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
 use crate::architecture::arm::{ArmError, DpAddress};
@@ -153,6 +154,8 @@ impl Session {
             ))
         })?;
 
+        let default_dp = default_memory_ap.ap_address().dp;
+
         let sequence_handle = match &target.debug_sequence {
             DebugSequence::Arm(sequence) => sequence.clone(),
             _ => unreachable!("Mismatch between architecture and sequence type!"),
@@ -184,7 +187,7 @@ impl Session {
         let interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
 
         let mut interface = interface
-            .initialize(sequence_handle.clone())
+            .initialize(sequence_handle.clone(), default_dp)
             .map_err(|(_interface, e)| e)?;
         let unlock_span = tracing::debug_span!("debug_device_unlock").entered();
 
@@ -474,13 +477,15 @@ impl Session {
     ) -> Result<(), Error> {
         use crate::probe::DebugProbe;
 
+        let current_dp = interface.current_debug_port();
+
         // In order to re-attach we need an owned instance to the interface
         // but we only have &mut. We can work around that by first creating
         // an instance of a Dummy and then swapping it out for the real one.
         // perform the re-attach and then swap it back.
         let tmp_interface = Box::<FakeProbe>::default().try_get_arm_interface().unwrap();
         let mut tmp_interface = tmp_interface
-            .initialize(DefaultArmSequence::create())
+            .initialize(DefaultArmSequence::create(), DpAddress::Default)
             .unwrap();
 
         std::mem::swap(interface, &mut tmp_interface);
@@ -493,7 +498,7 @@ impl Session {
         let new_interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
 
         tmp_interface = new_interface
-            .initialize(debug_sequence.clone())
+            .initialize(debug_sequence.clone(), current_dp)
             .map_err(|(_interface, e)| e)?;
         // swap it back
         std::mem::swap(interface, &mut tmp_interface);
@@ -699,6 +704,10 @@ fn get_target_from_selector(
         TargetSelector::Auto => {
             let mut found_chip = None;
 
+            // We have no information about the target, so we must assume it's using the default DP.
+            // We cannot automatically detect DPs if SWD multi-drop is used.
+            let dp_address = DpAddress::Default;
+
             // At this point we do not know what the target is, so we cannot use the chip specific reset sequence.
             // Thus, we try just using a normal reset for target detection if we want to do so under reset.
             // This can of course fail, but target detection is a best effort, not a guarantee!
@@ -711,7 +720,7 @@ fn get_target_from_selector(
                 match probe.try_into_arm_interface() {
                     Ok(interface) => {
                         let mut interface = interface
-                            .initialize(DefaultArmSequence::create())
+                            .initialize(DefaultArmSequence::create(), dp_address)
                             .map_err(|(_probe, err)| err)?;
 
                         // TODO:

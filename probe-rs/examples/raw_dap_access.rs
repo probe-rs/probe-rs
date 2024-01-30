@@ -19,7 +19,7 @@ fn main() -> Result<()> {
     let iface = probe.try_into_arm_interface().unwrap();
 
     let mut iface = iface
-        .initialize(DefaultArmSequence::create())
+        .initialize(DefaultArmSequence::create(), DpAddress::Default)
         .map_err(|(_interface, e)| e)?;
 
     // This is an example on how to do a "recover" operation (erase+unlock a locked chip)
