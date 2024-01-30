@@ -305,63 +305,20 @@ fn detect_flash_size_esp32(
 }
 
 fn decode_flash_size(value: u32) -> Option<FlashSize> {
-    let [manufacturer, memory_type, capacity, _] = value.to_le_bytes();
+    let [manufacturer, memory_type, raw_capacity, _] = value.to_le_bytes();
 
     tracing::debug!(
         "Detected manufacturer = {:x} memory_type = {:x} capacity = {:x}",
         manufacturer,
         memory_type,
-        capacity
+        raw_capacity
     );
 
-    const KB: usize = 1024;
-    const MB: usize = 1024 * KB;
-
-    // TODO: replace with `espflash::flasher::FlashSize::from_detected` when
-    // https://github.com/esp-rs/espflash/pull/530 gets released.
-    let capacity = match (manufacturer, memory_type, capacity) {
-        (_, _, 0x12) => 256 * KB,
-        (_, _, 0x13) => 512 * KB,
-        (_, _, 0x14) => MB,
-        (_, _, 0x15) => 2 * MB,
-        (_, _, 0x16) => 4 * MB,
-        (_, _, 0x17) => 8 * MB,
-        (_, _, 0x18) => 16 * MB,
-        (_, _, 0x19) => 32 * MB,
-        (_, _, 0x1A) => 64 * MB,
-        (_, _, 0x1B) => 128 * MB,
-        (_, _, 0x1C) => 256 * MB,
-        (_, _, 0x20) => 64 * MB,
-        (_, _, 0x21) => 128 * MB,
-        (_, _, 0x22) => 256 * MB,
-        (_, _, 0x32) => 256 * KB,
-        (_, _, 0x33) => 512 * KB,
-        (_, _, 0x34) => MB,
-        (_, _, 0x35) => 2 * MB,
-        (_, _, 0x36) => 4 * MB,
-        (_, _, 0x37) => 8 * MB,
-        (_, _, 0x38) => 16 * MB,
-        (_, _, 0x39) => 32 * MB,
-        (_, _, 0x3A) => 64 * MB,
+    match FlashSize::from_detected(raw_capacity) {
+        Ok(capacity) => Some(capacity),
         _ => {
-            tracing::warn!("Unknown flash capacity byte: {:x}", capacity);
+            tracing::warn!("Unknown raw flash capacity byte: {:x}", raw_capacity);
             return None;
         }
-    };
-    tracing::info!("Detected flash capacity: {:x}", capacity);
-
-    match capacity {
-        0x40000 => Some(FlashSize::_256Kb),
-        0x80000 => Some(FlashSize::_512Kb),
-        0x100000 => Some(FlashSize::_1Mb),
-        0x200000 => Some(FlashSize::_2Mb),
-        0x400000 => Some(FlashSize::_4Mb),
-        0x800000 => Some(FlashSize::_8Mb),
-        0x1000000 => Some(FlashSize::_16Mb),
-        0x2000000 => Some(FlashSize::_32Mb),
-        0x4000000 => Some(FlashSize::_64Mb),
-        0x8000000 => Some(FlashSize::_128Mb),
-        0x10000000 => Some(FlashSize::_256Mb),
-        _ => None,
     }
 }
