@@ -1,5 +1,4 @@
 use espflash::flasher::{FlashData, FlashSettings};
-use espflash::targets::XtalFrequency;
 use ihex::Record;
 use probe_rs_target::{
     MemoryRange, MemoryRegion, NvmRegion, RawFlashAlgorithm, TargetDescriptionSource,
@@ -131,38 +130,63 @@ impl FlashLoader {
         file: &mut T,
         options: IdfOptions,
     ) -> Result<(), FileDownloadError> {
-        let target = session.target().clone();
+        trait PropertyResultExt<T> {
+            fn property(self, property: &'static str) -> Result<T, FileDownloadError>;
+        }
+
+        impl<T> PropertyResultExt<T> for Result<T, crate::Error> {
+            fn property(self, property: &'static str) -> Result<T, FileDownloadError> {
+                self.map_err(|err| FileDownloadError::PropertyDetection {
+                    property,
+                    source: err,
+                })
+            }
+        }
+
+        let target = session.target();
         let target_name = target
             .name
             .split_once('-')
             .map(|(name, _)| name)
             .unwrap_or(target.name.as_str());
         let chip = espflash::targets::Chip::from_str(target_name)
-            .map_err(|_| FileDownloadError::IdfUnsupported(target.name.clone()))?
+            .map_err(|_| FileDownloadError::IdfUnsupported(target_name.clone()))?
             .into_target();
 
         let mut buf = Vec::new();
         file.read_to_end(&mut buf)?;
 
-        let flash_size_result = session.halted_access(|sess| {
+        // We need a different bootloader for each flash size and crystal frequency.
+        let (flash_size, xtal_frequency) = session.halted_access(|sess| {
             // Figure out flash size from the memory map. We need a different bootloader for each size.
             Ok(match target.debug_sequence.clone() {
                 DebugSequence::Riscv(sequence) => {
                     let esp_sequence = sequence.as_esp_sequence().unwrap();
-                    esp_sequence.detect_flash_size(sess.get_riscv_interface()?)
+                    let flash_size = esp_sequence
+                        .detect_flash_size(sess.get_riscv_interface()?)
+                        .property("flash size")?;
+
+                    let xtal_frequency = esp_sequence
+                        .detect_xtal_frequency(interface)
+                        .property("crystal frequency")?;
+
+                    (flash_size, xtal_frequency)
                 }
                 DebugSequence::Xtensa(sequence) => {
                     let esp_sequence = sequence.as_esp_sequence().unwrap();
-                    esp_sequence.detect_flash_size(sess.get_xtensa_interface()?)
+                    let flash_size = esp_sequence
+                        .detect_flash_size(sess.get_xtensa_interface()?)
+                        .property("flash size")?;
+
+                    let xtal_frequency = esp_sequence
+                        .detect_xtal_frequency(interface)
+                        .property("crystal frequency")?;
+
+                    (flash_size, xtal_frequency)
                 }
                 DebugSequence::Arm(_) => panic!("There are no ARM ESP targets."),
             })
         })?;
-
-        let flash_size = match flash_size_result {
-            Ok(size) => size,
-            Err(err) => return Err(FileDownloadError::FlashSizeDetection(err)),
-        };
 
         let firmware = espflash::elf::ElfFirmwareImage::try_from(&buf[..])?;
 
@@ -183,8 +207,7 @@ impl FlashLoader {
         )
         .unwrap(); // Hopefully temporary
 
-        // TODO: we should try and detect xtal freq
-        let image = chip.get_flash_image(&firmware, flash_data, None, XtalFrequency::_40Mhz)?;
+        let image = chip.get_flash_image(&firmware, flash_data, None, xtal_frequency)?;
 
         for data in image.flash_segments() {
             self.add_data(data.addr.into(), &data.data)?;

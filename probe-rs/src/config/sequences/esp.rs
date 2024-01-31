@@ -318,7 +318,7 @@ fn decode_flash_size(value: u32) -> Option<FlashSize> {
         Ok(capacity) => Some(capacity),
         _ => {
             tracing::warn!("Unknown raw flash capacity byte: {:x}", raw_capacity);
-            return None;
+            None
         }
     }
 }

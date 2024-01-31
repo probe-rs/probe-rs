@@ -103,8 +103,14 @@ pub enum FileDownloadError {
     #[error("No loadable ELF sections were found.")]
     NoLoadableSegments,
     /// Some error returned by the flash size detection.
-    #[error("Could not determine flash size.")]
-    FlashSizeDetection(#[from] crate::Error),
+    #[error("Could not determine target device property: {property}.")]
+    PropertyDetection {
+        /// The name of the property which could not be determined.
+        property: &'static str,
+
+        /// The error which occurred while trying to determine the property.
+        source: crate::Error,
+    },
 }
 
 /// Options for downloading a file onto a target chip.
