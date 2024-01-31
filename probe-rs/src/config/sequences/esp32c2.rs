@@ -2,14 +2,18 @@
 
 use std::sync::Arc;
 
+use espflash::flasher::FlashSize;
 use probe_rs_target::Chip;
 
 use crate::{
-    architecture::riscv::{
-        communication_interface::RiscvCommunicationInterface, sequences::RiscvDebugSequence,
+    architecture::{
+        esp32::EspDebugSequence,
+        riscv::{
+            communication_interface::RiscvCommunicationInterface, sequences::RiscvDebugSequence,
+        },
     },
     config::sequences::esp::EspFlashSizeDetector,
-    MemoryInterface,
+    Error, MemoryInterface,
 };
 
 /// The debug sequence implementation for the ESP32C2.
@@ -54,10 +58,20 @@ impl RiscvDebugSequence for ESP32C2 {
         Ok(())
     }
 
+    fn as_esp_sequence(
+        &self,
+    ) -> Option<&dyn EspDebugSequence<Interface = RiscvCommunicationInterface>> {
+        Some(self)
+    }
+}
+
+impl EspDebugSequence for ESP32C2 {
+    type Interface = RiscvCommunicationInterface;
+
     fn detect_flash_size(
         &self,
         interface: &mut RiscvCommunicationInterface,
-    ) -> Result<Option<usize>, crate::Error> {
+    ) -> Result<Option<FlashSize>, Error> {
         self.inner.detect_flash_size_riscv(interface)
     }
 }

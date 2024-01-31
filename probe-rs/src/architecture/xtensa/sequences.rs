@@ -1,6 +1,8 @@
 use std::{fmt::Debug, sync::Arc};
 
-use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
+use crate::architecture::{
+    esp32::EspDebugSequence, xtensa::communication_interface::XtensaCommunicationInterface,
+};
 
 /// A interface to operate debug sequences for Xtensa targets.
 ///
@@ -14,12 +16,11 @@ pub trait XtensaDebugSequence: Send + Sync + Debug {
         Ok(())
     }
 
-    /// Detects the flash size of the target.
-    fn detect_flash_size(
+    /// Returns the ESP-specific debug sequences if available.
+    fn as_esp_sequence(
         &self,
-        _interface: &mut XtensaCommunicationInterface,
-    ) -> Result<Option<usize>, crate::Error> {
-        Ok(None)
+    ) -> Option<&dyn EspDebugSequence<Interface = XtensaCommunicationInterface>> {
+        None
     }
 }
 

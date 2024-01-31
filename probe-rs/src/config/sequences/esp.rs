@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use espflash::flasher::FlashSize;
 use probe_rs_target::{Chip, MemoryRegion};
 
 use crate::{
@@ -10,7 +11,7 @@ use crate::{
             communication_interface::XtensaCommunicationInterface,
         },
     },
-    MemoryInterface,
+    Error, MemoryInterface,
 };
 
 #[derive(Debug)]
@@ -45,7 +46,7 @@ impl EspFlashSizeDetector {
     pub fn detect_flash_size_xtensa(
         &self,
         interface: &mut XtensaCommunicationInterface,
-    ) -> Result<Option<usize>, crate::Error> {
+    ) -> Result<Option<FlashSize>, Error> {
         tracing::info!("Detecting flash size");
         attach_flash_xtensa(
             interface,
@@ -60,7 +61,7 @@ impl EspFlashSizeDetector {
     pub fn detect_flash_size_riscv(
         &self,
         interface: &mut RiscvCommunicationInterface,
-    ) -> Result<Option<usize>, crate::Error> {
+    ) -> Result<Option<FlashSize>, Error> {
         interface.halt(Duration::from_millis(100))?;
 
         tracing::info!("Detecting flash size");
@@ -73,7 +74,7 @@ fn attach_flash_riscv(
     interface: &mut RiscvCommunicationInterface,
     stack_pointer: u32,
     attach_fn: u32,
-) -> Result<(), crate::Error> {
+) -> Result<(), Error> {
     use crate::architecture::riscv::{
         assembly,
         communication_interface::{AccessRegisterCommand, RiscvBusAccess},
@@ -111,7 +112,7 @@ fn attach_flash_xtensa(
     stack_pointer: u32,
     load_addr: u32,
     attach_fn: u32,
-) -> Result<(), crate::Error> {
+) -> Result<(), Error> {
     // We're very intrusive here but the flashing process should reset the MCU again anyway
     interface.reset_and_halt(Duration::from_millis(500))?;
 
@@ -189,7 +190,7 @@ fn execute_flash_command_generic(
     regs: &SpiRegisters,
     command: u8,
     miso_bits: u32,
-) -> Result<u32, crate::Error> {
+) -> Result<u32, Error> {
     // Save registers
     let old_ctrl_reg = interface.read_word_32(regs.ctrl())?;
     let old_user_reg = interface.read_word_32(regs.user())?;
@@ -240,7 +241,7 @@ fn execute_flash_command_generic(
 fn detect_flash_size(
     interface: &mut impl MemoryInterface,
     spiflash_addr: u32,
-) -> Result<Option<usize>, crate::Error> {
+) -> Result<Option<FlashSize>, Error> {
     const RDID: u8 = 0x9F;
 
     let value = execute_flash_command_generic(
@@ -263,7 +264,7 @@ fn detect_flash_size(
     Ok(decode_flash_size(value))
 }
 
-fn decode_flash_size(value: u32) -> Option<usize> {
+fn decode_flash_size(value: u32) -> Option<FlashSize> {
     let [manufacturer, memory_type, capacity, _] = value.to_le_bytes();
 
     tracing::debug!(
@@ -309,5 +310,18 @@ fn decode_flash_size(value: u32) -> Option<usize> {
     };
     tracing::info!("Detected flash capacity: {:x}", capacity);
 
-    Some(capacity)
+    match capacity {
+        0x40000 => Some(FlashSize::_256Kb),
+        0x80000 => Some(FlashSize::_512Kb),
+        0x100000 => Some(FlashSize::_1Mb),
+        0x200000 => Some(FlashSize::_2Mb),
+        0x400000 => Some(FlashSize::_4Mb),
+        0x800000 => Some(FlashSize::_8Mb),
+        0x1000000 => Some(FlashSize::_16Mb),
+        0x2000000 => Some(FlashSize::_32Mb),
+        0x4000000 => Some(FlashSize::_64Mb),
+        0x8000000 => Some(FlashSize::_128Mb),
+        0x10000000 => Some(FlashSize::_256Mb),
+        _ => None,
+    }
 }
