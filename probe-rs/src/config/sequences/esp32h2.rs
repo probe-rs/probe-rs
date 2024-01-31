@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 use espflash::flasher::FlashSize;
+use espflash::targets::XtalFrequency;
 use probe_rs_target::Chip;
 
 use crate::{
@@ -78,5 +79,12 @@ impl EspDebugSequence for ESP32H2 {
         interface: &mut RiscvCommunicationInterface,
     ) -> Result<Option<FlashSize>, Error> {
         self.inner.detect_flash_size_riscv(interface)
+    }
+
+    fn detect_xtal_frequency(
+        &self,
+        _interface: &mut Self::Interface,
+    ) -> Result<XtalFrequency, Error> {
+        Ok(XtalFrequency::_32Mhz)
     }
 }
