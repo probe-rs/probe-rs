@@ -517,9 +517,6 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                         interface.swj_sequence(6, 0x3F)?;
                     }
 
-                    // JTAG "Soft" reset
-                    interface.jtag_sequence(6, true, 0x3F)?;
-
                     // Enter Run-Test-Idle state, as required by the DAP_Transfer command when using JTAG
                     interface.jtag_sequence(1, false, 0x01)?;
 
@@ -552,11 +549,6 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                         // At least 2 idle cycles (SWDIO/TMS Low).
                         interface.swj_sequence(3, 0x00)?;
                     }
-
-                    // SWD should now be activated, so we can try and connect to the debug port
-                    if self.debug_port_connect(interface, dp).is_ok() {
-                        return Ok(());
-                    }
                 }
                 _ => {
                     return Err(ArmDebugSequenceError::SequenceSpecific(
@@ -567,6 +559,11 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             }
 
             // End of atomic block.
+
+            // SWD or JTAG should now be activated, so we can try and connect to the debug port.
+            if self.debug_port_connect(interface, dp).is_ok() {
+                return Ok(());
+            }
         }
 
         Err(ArmError::Other(anyhow::anyhow!(
