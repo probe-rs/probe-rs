@@ -122,7 +122,7 @@ impl FlashLoader {
     /// Loads an esp-idf application into the loader by converting the main application to the esp-idf bootloader format,
     /// appending it to the loader along with the bootloader and partition table.
     ///
-    /// This does not create and flash loader instructions yet.
+    /// This does not create any flash loader instructions yet.
     pub fn load_idf_data<T: Read>(
         &mut self,
         session: &mut Session,
@@ -189,31 +189,30 @@ impl FlashLoader {
     }
 
     /// Reads the HEX data segments and adds them as loadable data blocks to the loader.
-    /// This does not create and flash loader instructions yet.
-    pub fn load_hex_data<T: Read + Seek>(&mut self, file: &mut T) -> Result<(), FileDownloadError> {
+    /// This does not create any flash loader instructions yet.
+    pub fn load_hex_data<T: Read>(&mut self, file: &mut T) -> Result<(), FileDownloadError> {
         let mut base_address = 0;
 
         let mut data = String::new();
         file.read_to_string(&mut data)?;
 
         for record in ihex::Reader::new(&data) {
-            let record = record?;
-            use Record::*;
-            match record {
-                Data { offset, value } => {
+            match record? {
+                Record::Data { offset, value } => {
                     let offset = base_address + offset as u64;
                     self.add_data(offset, &value)?;
                 }
-                EndOfFile => (),
-                ExtendedSegmentAddress(address) => {
+                Record::ExtendedSegmentAddress(address) => {
                     base_address = (address as u64) * 16;
                 }
-                StartSegmentAddress { .. } => (),
-                ExtendedLinearAddress(address) => {
+                Record::ExtendedLinearAddress(address) => {
                     base_address = (address as u64) << 16;
                 }
-                StartLinearAddress(_) => (),
-            };
+
+                Record::EndOfFile
+                | Record::StartSegmentAddress { .. }
+                | Record::StartLinearAddress(_) => {}
+            }
         }
         Ok(())
     }
@@ -287,14 +286,12 @@ impl FlashLoader {
     /// Writes all the stored data chunks to flash.
     ///
     /// Requires a session with an attached target that has a known flash algorithm.
-    ///
-    /// If `do_chip_erase` is `true` the entire flash will be erased.
     pub fn commit(
         &self,
         session: &mut Session,
         options: DownloadOptions,
     ) -> Result<(), FlashError> {
-        tracing::debug!("committing FlashLoader!");
+        tracing::debug!("Committing FlashLoader!");
 
         tracing::debug!("Contents of builder:");
         for (&address, data) in &self.builder.data {
