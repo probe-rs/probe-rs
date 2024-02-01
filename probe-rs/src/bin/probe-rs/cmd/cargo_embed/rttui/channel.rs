@@ -133,11 +133,7 @@ impl<'defmt> ChannelState<'defmt> {
             })
             .unwrap_or_else(|| "Unnamed channel".to_owned());
 
-        let tcp_socket = if let Some(tcp_address) = tcp_socket {
-            Some(TcpPublisher::new(tcp_address))
-        } else {
-            None
-        };
+        let tcp_socket = tcp_socket.map(TcpPublisher::new);
 
         Self {
             up_channel,
