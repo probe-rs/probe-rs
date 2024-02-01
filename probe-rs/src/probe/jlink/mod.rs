@@ -31,6 +31,7 @@ use self::speed::SpeedConfig;
 use self::swo::SwoMode;
 use crate::architecture::arm::{ArmError, Pins};
 use crate::architecture::riscv::communication_interface::RiscvError;
+use crate::architecture::riscv::dtm::jtag_dtm::JtagDtm;
 use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
 use crate::probe::common::{JtagDriverState, RawJtagIo};
 use crate::probe::jlink::bits::IteratorExt;
@@ -821,7 +822,11 @@ impl DebugProbe for JLink {
             if let Err(e) = self.select_protocol(WireProtocol::Jtag) {
                 return Err((self, e.into()));
             }
-            match RiscvCommunicationInterface::new(self) {
+            let jtag_dtm = match JtagDtm::new(self) {
+                Ok(jtag_dtm) => Box::new(jtag_dtm),
+                Err((access, err)) => return Err((access.into_probe(), err)),
+            };
+            match RiscvCommunicationInterface::new(jtag_dtm) {
                 Ok(interface) => Ok(interface),
                 Err((probe, err)) => Err((probe.into_probe(), err)),
             }

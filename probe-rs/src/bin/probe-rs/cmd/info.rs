@@ -411,9 +411,11 @@ fn cpu_info_tree(scs: &mut Scs) -> Result<Tree<String>> {
 }
 
 fn show_riscv_info(interface: &mut RiscvCommunicationInterface) -> Result<()> {
-    let idcode = interface.read_idcode()?;
-
-    print_idcode_info("RISC-V", idcode);
+    if let Some(idcode) = interface.read_idcode()? {
+        print_idcode_info("RISC-V", idcode);
+    } else {
+        println!("No IDCODE info for this RISC-V chip.")
+    }
 
     Ok(())
 }
