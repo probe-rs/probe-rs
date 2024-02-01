@@ -53,18 +53,7 @@ struct Opt {
     cargo_options: CargoOptions,
 }
 
-pub fn main(args: Vec<OsString>) {
-    // Determine the local offset as early as possible to avoid potential
-    // issues with multiple threads and getting the offset.
-    let offset = match UtcOffset::current_local_offset() {
-        Ok(offset) => offset,
-        Err(e) => {
-            tracing::debug!("Error getting local offset: {e}");
-            tracing::warn!("Unable to determine local time. All timestamps will be in UTC.");
-            UtcOffset::UTC
-        }
-    };
-
+pub fn main(args: Vec<OsString>, offset: UtcOffset) {
     match main_try(args, offset) {
         Ok(_) => (),
         Err(e) => {
