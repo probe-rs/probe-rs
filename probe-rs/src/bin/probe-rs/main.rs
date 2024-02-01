@@ -242,18 +242,21 @@ fn multicall_check(args: &[OsString], want: &str) -> Option<Vec<OsString>> {
 }
 
 fn main() -> Result<()> {
+    // Determine the local offset as early as possible to avoid potential
+    // issues with multiple threads and getting the offset.
+    // FIXME: we should probably let the user know if we can't determine the offset. However,
+    //        at this point we don't have a logger yet.
+    let utc_offset = UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC);
+
     let args: Vec<_> = std::env::args_os().collect();
     if let Some(args) = multicall_check(&args, "cargo-flash") {
         cmd::cargo_flash::main(args);
         return Ok(());
     }
     if let Some(args) = multicall_check(&args, "cargo-embed") {
-        cmd::cargo_embed::main(args);
+        cmd::cargo_embed::main(args, utc_offset);
         return Ok(());
     }
-
-    let utc_offset = UtcOffset::current_local_offset()
-        .context("Failed to determine local time for timestamps")?;
 
     // Parse the commandline options.
     let matches = Cli::parse_from(args);
