@@ -190,7 +190,7 @@ impl FlashLoader {
 
     /// Reads the HEX data segments and adds them as loadable data blocks to the loader.
     /// This does not create and flash loader instructions yet.
-    pub fn load_hex_data<T: Read + Seek>(&mut self, file: &mut T) -> Result<(), FileDownloadError> {
+    pub fn load_hex_data<T: Read>(&mut self, file: &mut T) -> Result<(), FileDownloadError> {
         let mut base_address = 0;
 
         let mut data = String::new();
