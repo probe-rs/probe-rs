@@ -197,7 +197,7 @@ impl Registry {
                     }
                 }
             }
-            if partial_matches.len() > 1 {
+            if exact_matches == 0 && partial_matches.len() > 1 {
                 tracing::warn!(
                     "Ignoring ambiguous matches for specified chip name {}",
                     name,
