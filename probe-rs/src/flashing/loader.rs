@@ -197,23 +197,22 @@ impl FlashLoader {
         file.read_to_string(&mut data)?;
 
         for record in ihex::Reader::new(&data) {
-            let record = record?;
-            use Record::*;
-            match record {
-                Data { offset, value } => {
+            match record? {
+                Record::Data { offset, value } => {
                     let offset = base_address + offset as u64;
                     self.add_data(offset, &value)?;
                 }
-                EndOfFile => (),
-                ExtendedSegmentAddress(address) => {
+                Record::ExtendedSegmentAddress(address) => {
                     base_address = (address as u64) * 16;
                 }
-                StartSegmentAddress { .. } => (),
-                ExtendedLinearAddress(address) => {
+                Record::ExtendedLinearAddress(address) => {
                     base_address = (address as u64) << 16;
                 }
-                StartLinearAddress(_) => (),
-            };
+
+                Record::EndOfFile
+                | Record::StartSegmentAddress { .. }
+                | Record::StartLinearAddress(_) => {}
+            }
         }
         Ok(())
     }
