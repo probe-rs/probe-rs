@@ -28,18 +28,15 @@ use std::{
 };
 
 /// Errors for the ARMv8-A state machine
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, displaydoc::Display, Debug)]
 pub enum Armv8aError {
-    /// Invalid register number
-    #[error("Register number {0} is not valid for ARMv8-A in {1}-bit mode")]
+    /// Register number {0} is not valid for ARMv8-A in {1}-bit mode.
     InvalidRegisterNumber(u16, u16),
 
-    /// Not halted
-    #[error("Core is running but operation requires it to be halted")]
+    /// Core is running but operation requires it to be halted.
     NotHalted,
 
-    /// Data Abort occurred
-    #[error("A data abort occurred")]
+    /// A data abort occurred.
     DataAbort,
 }
 

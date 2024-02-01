@@ -12,14 +12,12 @@ use crate::architecture::arm::{
 use crate::session::MissingPermissions;
 
 /// An error when operating a core ROM table component occurred.
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, displaydoc::Display, Debug)]
 pub enum ComponentError {
-    /// Nordic chips do not support setting all TPIU clocks. Try choosing another clock speed.
-    #[error("Nordic does not support TPIU CLK value of {0}")]
+    /// Nordic chips do not support TPIU CLK value of {0}. Try choosing another clock speed.
     NordicUnsupportedTPUICLKValue(u32),
 
-    /// Nordic chips do not have an embedded trace buffer.
-    #[error("nRF52 devices do not have a trace buffer")]
+    /// nRF52 devices do not have a trace buffer.
     NordicNoTraceMem,
 }
 

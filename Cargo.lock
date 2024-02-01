@@ -1036,6 +1036,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "displaydoc"
+version = "0.2.4"
+source = "git+https://github.com/bugadani/displaydoc.git?branch=core#f9dc8d05bc50f7dc26696a0f44c602cf1105c116"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.48",
+]
+
+[[package]]
 name = "dissimilar"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2541,6 +2551,7 @@ dependencies = [
  "crossterm",
  "defmt-decoder",
  "directories",
+ "displaydoc",
  "dunce",
  "enum-primitive-derive",
  "esp-idf-part",

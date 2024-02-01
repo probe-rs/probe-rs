@@ -2,12 +2,13 @@ use crate::probe::DebugProbeError;
 
 use super::{capabilities::Capability, interface::Interface};
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, displaydoc::Display, thiserror::Error)]
+#[ignore_extra_doc_attributes]
 pub enum JlinkError {
-    #[error("Unknown interface reported by J-Link: {0:?}")]
+    /// Unknown interface reported by J-Link: {0:?}.
     UnknownInterface(Interface),
 
-    #[error("A USB transport error occurred.")]
+    /// A USB transport error occurred.
     ///
     /// This variant is used for all errors reported by the operating system when performing a USB
     /// operation. It may indicate that the USB device was unplugged, that another application or an
@@ -15,8 +16,7 @@ pub enum JlinkError {
     /// permission to access it.
     Usb(#[from] nusb::Error),
 
-    #[error("device is missing capabilities ({0:?}) for operation")]
-    /// An operation was attempted that is not supported by the probe.
+    /// An operation was attempted that is not supported by the probe. Device is missing capabilities ({0:?}) for operation
     ///
     /// Some operations are not supported by all firmware/hardware versions, and are instead
     /// advertised as optional *capability* bits. This error occurs when the capability bit for an
@@ -26,16 +26,16 @@ pub enum JlinkError {
     /// [`Capabilities`] bitflags struct.
     MissingCapability(Capability),
 
-    #[error("probe does not support target interface {0:?}")]
+    /// The probe does not support target interface {0:?}.
     InterfaceNotSupported(Interface),
 
-    #[error("interface {needed:?} must be selected for this operation (currently using interface {selected:?})")]
+    /// Interface {needed:?} must be selected for this operation (currently using interface {selected:?}.
     WrongInterfaceSelected {
         selected: Interface,
         needed: Interface,
     },
 
-    #[error("{0}")]
+    /// {0}
     Other(String),
 }
 

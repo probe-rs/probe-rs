@@ -19,39 +19,35 @@ use super::{
 };
 
 /// Some error during AP handling occurred.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, displaydoc::Display, thiserror::Error)]
 pub enum AccessPortError {
-    /// An error occurred when trying to read a register.
-    #[error("Failed to read register {name} at address 0x{address:08x}")]
+    /// Failed to read register {name} at address 0x{address:08x}.
     RegisterRead {
         /// The address of the register.
         address: u8,
         /// The name if the register.
         name: &'static str,
         /// The underlying root error of this access error.
-        #[source]
         source: Box<dyn std::error::Error + Send + Sync>,
     },
-    /// An error occurred when trying to write a register.
-    #[error("Failed to write register {name} at address 0x{address:08x}")]
+
+    /// Failed to write register {name} at address 0x{address:08x}.
     RegisterWrite {
         /// The address of the register.
         address: u8,
         /// The name if the register.
         name: &'static str,
         /// The underlying root error of this access error.
-        #[source]
         source: Box<dyn std::error::Error + Send + Sync>,
     },
-    /// Some error with the operation of the APs DP occurred.
-    #[error("Error while communicating with debug port")]
+
+    /// Error while communicating with debug port.
     DebugPort(#[from] DebugPortError),
-    /// An error occurred when trying to flush batched writes of to the AP.
-    #[error("Failed to flush batched writes")]
+
+    /// Failed to flush batched writes.
     Flush(#[from] DebugProbeError),
 
-    /// Error while parsing a register
-    #[error("Error parsing a register")]
+    /// Error parsing a register.
     RegisterParse(#[from] RegisterParseError),
 }
 

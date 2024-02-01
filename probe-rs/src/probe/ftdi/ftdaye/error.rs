@@ -2,9 +2,10 @@ use nusb::descriptors::ActiveConfigurationError;
 
 use crate::probe::{ftdi::ftdaye::ChipType, DebugProbeError};
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, displaydoc::Display, thiserror::Error)]
+#[ignore_extra_doc_attributes]
 pub enum FtdiError {
-    #[error("A USB transport error occurred.")]
+    /// A USB transport error occurred.
     ///
     /// This variant is used for all errors reported by the operating system when performing a USB
     /// operation. It may indicate that the USB device was unplugged, that another application or an
@@ -12,15 +13,14 @@ pub enum FtdiError {
     /// permission to access it.
     Usb(#[from] nusb::Error),
 
-    #[error("Unsupported chip type: {0:?}")]
+    /// Unsupported chip type: {0:?}.
     /// The connected device is not supported by the driver.
     UnsupportedChipType(ChipType),
 
-    #[error("Failed to get active configuration")]
+    /// Failed to get active configuration.
     ActiveConfigurationError(#[source] ActiveConfigurationError),
 
-    #[error("{0}")]
-    /// An unspecified error occurred.
+    /// An uncategorized error occurred: {0}
     Other(String),
 }
 

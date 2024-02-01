@@ -532,25 +532,33 @@ fn list_wlink_devices() -> Vec<DebugProbeInfo> {
     probes
 }
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, displaydoc::Display, Debug)]
 pub(crate) enum WchLinkError {
-    #[error("Unknown WCH-Link device(new variant?)")]
+    /// Unknown WCH-Link device (new variant?)
     UnknownDevice,
-    #[error("Firmware version is not supported.")]
+
+    /// Firmware version is not supported.
     UnsupportedFirmwareVersion,
-    #[error("Not enough bytes written.")]
+
+    /// Only wrote {is} bytes instead of {should}.
     NotEnoughBytesWritten { is: usize, should: usize },
-    #[error("Not enough bytes read.")]
+
+    /// Only read {is} bytes instead of {should}.
     NotEnoughBytesRead { is: usize, should: usize },
-    #[error("Usb endpoint not found.")]
+
+    /// Usb endpoint not found.
     EndpointNotFound,
-    #[error("Invalid payload.")]
+
+    /// Invalid payload.
     InvalidPayload,
-    #[error("Protocol error.")]
+
+    /// Protocol error.
     Protocol(u8, Vec<u8>),
-    #[error("Unknown chip 0x{0:02x}")]
+
+    /// Unknown chip 0x{0:02x}.
     UnknownChip(u8),
-    #[error("Unsupported operation.")]
+
+    /// Unsupported operation.
     UnsupportedOperation,
 }
 

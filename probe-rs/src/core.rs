@@ -448,19 +448,15 @@ impl MemoryInterface for CoreDump {
 }
 
 /// The overarching error type which contains all possible errors as variants.
-#[derive(thiserror::Error, Debug)]
+#[derive(displaydoc::Display, thiserror::Error, Debug)]
 pub enum CoreDumpError {
-    /// Opening the file for writing the core dump failed.
-    #[error("Opening {1} for writing the core dump failed.")]
+    /// Opening {1} for writing the core dump failed.
     CoreDumpFileWrite(std::io::Error, PathBuf),
-    /// Opening the file for reading the core dump failed.
-    #[error("Opening {1} for reading the core dump failed.")]
+    /// Opening {1} for reading the core dump failed.
     CoreDumpFileRead(std::io::Error, PathBuf),
     /// Encoding the coredump MessagePack failed.
-    #[error("Encoding the coredump MessagePack failed.")]
     EncodingCoreDump(rmp_serde::encode::Error),
     /// Decoding the coredump MessagePack failed.
-    #[error("Decoding the coredump MessagePack failed.")]
     DecodingCoreDump(rmp_serde::decode::Error),
 }
 

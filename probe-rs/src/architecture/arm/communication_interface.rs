@@ -27,22 +27,17 @@ use std::{
 
 /// An error in the communication with an access port or
 /// debug port.
-#[derive(Debug, thiserror::Error, Clone, PartialEq, Eq, Copy)]
+#[derive(Debug, displaydoc::Display, thiserror::Error, Clone, PartialEq, Eq, Copy)]
 pub enum DapError {
-    /// An error occurred during SWD communication.
-    #[error("An error occurred in the SWD communication between probe and device.")]
+    /// "An error occurred in the SWD communication between probe and device.
     SwdProtocol,
-    /// The target device did not respond to the request.
-    #[error("Target device did not respond to request.")]
+    /// "Target device did not respond to request.
     NoAcknowledge,
-    /// The target device responded with a FAULT response to the request.
-    #[error("Target device responded with a FAULT response to the request.")]
+    /// "Target device responded with a FAULT response to the request.
     FaultResponse,
-    /// Target device responded with a WAIT response to the request.
-    #[error("Target device responded with a WAIT response to the request.")]
+    /// "Target device responded with a WAIT response to the request.
     WaitResponse,
-    /// The parity bit on the read request was incorrect.
-    #[error("Incorrect parity on READ request.")]
+    /// "Incorrect parity on READ request.
     IncorrectParity,
 }
 

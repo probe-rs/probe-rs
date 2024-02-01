@@ -34,18 +34,15 @@ use std::{
 };
 
 /// Errors for the ARMv7-A state machine
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, displaydoc::Display, Debug)]
 pub enum Armv7aError {
-    /// Invalid register number
-    #[error("Register number {0} is not valid for ARMv7-A")]
+    /// Register number {0} is not valid for ARMv7-A.
     InvalidRegisterNumber(u16),
 
-    /// Not halted
-    #[error("Core is running but operation requires it to be halted")]
+    /// Core is running but operation requires it to be halted.
     NotHalted,
 
-    /// Data Abort occurred
-    #[error("A data abort occurred")]
+    /// A data abort occurred.
     DataAbort,
 }
 

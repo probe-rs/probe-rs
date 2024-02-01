@@ -31,18 +31,15 @@ use super::{
 };
 
 /// An error occurred when executing an ARM debug sequence
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, displaydoc::Display, Debug)]
 pub enum ArmDebugSequenceError {
-    /// Debug base address is required but not specified
-    #[error("Core access requries debug_base to be specified, but it is not")]
+    /// Core access requries debug_base to be specified, but it is not.
     DebugBaseNotSpecified,
 
-    /// CTI base address is required but not specified
-    #[error("Core access requries cti_base to be specified, but it is not")]
+    /// Core access requries cti_base to be specified, but it is not.
     CtiBaseNotSpecified,
 
-    /// An error occurred in a debug sequence.
-    #[error("An error occurred in a debug sequnce: {0}")]
+    /// An error occurred in a debug sequnce.
     SequenceSpecific(#[from] Box<dyn Error + Send + Sync + 'static>),
 }
 

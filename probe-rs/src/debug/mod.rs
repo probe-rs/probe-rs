@@ -46,48 +46,52 @@ use std::{
 pub type EndianReader = gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>;
 
 /// An error occurred while debugging the target.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, displaydoc::Display, thiserror::Error)]
+#[ignore_extra_doc_attributes]
 pub enum DebugError {
     /// An IO error occurred when accessing debug data.
-    #[error("IO Error while accessing debug data")]
     Io(#[from] io::Error),
+
     /// An error occurred while accessing debug data.
-    #[error("Error accessing debug data")]
     DebugData(#[from] object::read::Error),
-    /// Something failed while parsing debug data.
-    #[error("Error parsing debug data")]
+
+    /// Could not parse debug data.
     Parse(#[from] gimli::read::Error),
+
     /// Non-UTF8 data was found in the debug data.
-    #[error("Non-UTF8 data found in debug data")]
     NonUtf8(#[from] Utf8Error),
-    /// A probe-rs error occurred.
-    #[error("Error using the probe")]
+
+    /// Error using the probe.
     Probe(#[from] crate::Error),
+
     /// A char could not be created from the given string.
-    #[error(transparent)]
     CharConversion(#[from] std::char::CharTryFromError),
+
     /// An int could not be created from the given string.
-    #[error(transparent)]
     IntConversion(#[from] std::num::TryFromIntError),
+
+    /// {message}  @program_counter={pc_at_error:#010X}.
+    ///
     /// Errors encountered while determining valid halt locations for breakpoints and stepping.
     /// These are distinct from other errors because they terminate the current step, and result in a user message, but they do not interrupt the rest of the debug session.
-    #[error("{message}  @program_counter={:#010X}.", pc_at_error)]
     NoValidHaltLocation {
         /// A message that can be displayed to the user to help them make an informed recovery choice.
         message: String,
         /// The value of the program counter for which a halt was requested.
         pc_at_error: u64,
     },
+
+    /// {message}
+    ///
     /// Non-terminal Errors encountered while unwinding the stack, e.g. Could not resolve the value of a variable in the stack.
     /// These are distinct from other errors because they do not interrupt processing.
     /// Instead, the cause of incomplete results are reported back/explained to the user, and the stack continues to unwind.
-    #[error("{message}")]
     UnwindIncompleteResults {
         /// A message that can be displayed to the user to help them understand the reason for the incomplete results.
         message: String,
     },
-    /// Some other error occurred.
-    #[error(transparent)]
+
+    /// {0}
     Other(#[from] anyhow::Error),
 }
 

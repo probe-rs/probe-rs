@@ -80,11 +80,12 @@ impl IdCode {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, displaydoc::Display, thiserror::Error)]
 pub enum ScanChainError {
-    #[error("Invalid IDCODE")]
+    /// Invalid IDCODE.
     InvalidIdCode,
-    #[error("Invalid IR scan chain")]
+
+    /// Invalid IR scan chain.
     InvalidIR,
 }
 

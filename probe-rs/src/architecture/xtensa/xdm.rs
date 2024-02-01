@@ -85,36 +85,36 @@ impl From<PowerDevice> for TapInstruction {
     }
 }
 
-#[derive(thiserror::Error, Debug, Copy, Clone)]
+#[derive(thiserror::Error, displaydoc::Display, Debug, Copy, Clone)]
 pub enum DebugRegisterError {
-    #[error("Register is busy")]
+    /// Register is busy.
     Busy,
 
-    #[error("Register-specific error")]
+    /// Register-specific error.
     Error,
 
-    #[error("Unexpected value")]
+    /// Read a register status that is neither Ok, Busy or Error. Maybe your device restarted unexpectedly?
     Unexpected,
 }
 
-#[derive(thiserror::Error, Debug, Clone, Copy)]
+#[derive(thiserror::Error, displaydoc::Display, Debug, Clone, Copy)]
 pub enum Error {
-    #[error("Error while accessing register")]
+    /// Error while accessing register.
     Xdm(#[from] DebugRegisterError),
 
-    #[error("ExecExeception")]
+    /// Instruction execution exeception.
     ExecExeception,
 
-    #[error("ExecBusy")]
+    /// Instruction execution busy.
     ExecBusy,
 
-    #[error("ExecOverrun")]
+    /// Instruction execution overrun.
     ExecOverrun,
 
-    #[error("Instruction ignored")]
+    /// Instruction ignored.
     InstructionIgnored,
 
-    #[error("XdmPoweredOff")]
+    /// The Xtensa Debug Module is powered off.
     XdmPoweredOff,
 }
 

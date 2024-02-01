@@ -6,23 +6,28 @@ use enum_primitive_derive::Primitive;
 use num_traits::cast::FromPrimitive;
 
 /// An error to report any errors that are romtable discovery specific.
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, displaydoc::Display, Debug)]
 pub enum RomTableError {
-    #[error("Component is not a valid romtable")]
+    /// Component is not a valid romtable.
     NotARomtable,
-    #[error("An error with the access port occurred during runtime")]
+
+    /// An error with the access port occurred during runtime.
     AccessPort(
         #[from]
         #[source]
         AccessPortError,
     ),
-    #[error("The CoreSight Component could not be identified")]
+
+    /// The CoreSight Component could not be identified.
     CSComponentIdentification,
-    #[error("Could not access romtable")]
+
+    /// Could not access romtable.
     Memory(#[source] Box<ArmError>),
-    #[error("The requested component '{0}' was not found")]
+
+    /// The requested component '{0}' was not found.
     ComponentNotFound(PeripheralType),
-    #[error("There are no components to operate on")]
+
+    /// There are no components to operate on.
     NoComponents,
 }
 
