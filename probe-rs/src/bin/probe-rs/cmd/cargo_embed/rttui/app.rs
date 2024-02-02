@@ -273,12 +273,9 @@ impl<'defmt> App<'defmt> {
                                 }
                             };
                             for line in data {
-                                match writeln!(file, "{line}") {
-                                    Ok(_) => {}
-                                    Err(e) => {
-                                        eprintln!("\nError writing log channel {i}: {e}");
-                                        continue;
-                                    }
+                                if let Err(e) = writeln!(file, "{line}") {
+                                    eprintln!("\nError writing log channel {i}: {e}");
+                                    continue;
                                 }
                             }
                             // Flush file
