@@ -544,15 +544,11 @@ impl RttActiveTarget {
     // }
 }
 
-struct RttBuffer(Vec<u8>);
+pub(crate) struct RttBuffer(pub Vec<u8>);
 impl RttBuffer {
     /// Initialize the buffer and ensure it has enough capacity to match the size of the RTT channel on the target at the time of instantiation. Doing this now prevents later performance impact if the buffer capacity has to be grown dynamically.
-    pub fn new(mut buffer_size: usize) -> RttBuffer {
-        let mut rtt_buffer = vec![0u8; 1];
-        while buffer_size > 0 {
-            buffer_size -= 1;
-            rtt_buffer.push(0u8);
-        }
+    pub fn new(buffer_size: usize) -> RttBuffer {
+        let rtt_buffer = vec![0u8; buffer_size.max(1)];
         RttBuffer(rtt_buffer)
     }
 }
