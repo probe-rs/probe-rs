@@ -55,6 +55,25 @@ pub fn erase_all(session: &mut Session, progress: Option<FlashProgress>) -> Resu
         if flasher.is_chip_erase_supported() {
             tracing::debug!("     -- chip erase supported, doing it.");
             flasher.run_erase_all()?;
+        } else if flasher.flash_algorithm().pc_erase_sectors.is_some() {
+            tracing::debug!("     -- chip erase not supported, erasing by bulk sector erase");
+            let sectors = flasher
+                .flash_algorithm()
+                .iter_sectors()
+                .filter(|info| {
+                    let range = info.base_address..info.base_address + info.size;
+                    regions.iter().any(|r| r.range.contains_range(&range))
+                })
+                .collect::<Vec<_>>();
+            let qty = sectors.len();
+            let first = sectors.first().unwrap();
+            flasher.run_erase(|active| {
+                active.erase_sectors(
+                    first.base_address.try_into().unwrap(),
+                    qty.try_into().unwrap(),
+                )?;
+                Ok(())
+            })?;
         } else {
             tracing::debug!("     -- chip erase not supported, erasing by sector.");
 
@@ -96,7 +115,7 @@ pub fn erase_sectors(
     sectors: usize,
 ) -> Result<(), FlashError> {
     tracing::debug!(
-        "Erasing sectors {start_sector} trough {}",
+        "Erasing sectors {start_sector} through {}",
         start_sector + sectors
     );
 

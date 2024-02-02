@@ -29,6 +29,8 @@ pub struct FlashAlgorithm {
     pub pc_program_page: u64,
     /// Address of the `EraseSector()` entry point.
     pub pc_erase_sector: u64,
+    /// Address of the `EraseSectors()` entry point. Optional
+    pub pc_erase_sectors: Option<u64>,
     /// Address of the `EraseAll()` entry point. Optional.
     pub pc_erase_all: Option<u64>,
     /// Initial value of the R9 register for calling flash algo entry points, which
@@ -316,6 +318,7 @@ impl FlashAlgorithm {
             pc_uninit: raw.pc_uninit.map(|v| code_start + v),
             pc_program_page: code_start + raw.pc_program_page,
             pc_erase_sector: code_start + raw.pc_erase_sector,
+            pc_erase_sectors: raw.pc_erase_sectors.map(|v| code_start + v),
             pc_erase_all: raw.pc_erase_all.map(|v| code_start + v),
             static_base: code_start + raw.data_section_offset,
             begin_stack: addr_stack,
