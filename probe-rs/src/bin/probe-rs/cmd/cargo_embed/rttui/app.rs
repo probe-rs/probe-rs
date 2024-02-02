@@ -223,136 +223,8 @@ impl<'defmt> App<'defmt> {
 
     /// Returns true if the application should exit.
     pub fn handle_event(&mut self, core: &mut Core) -> bool {
-        match self.events.next() {
-            Ok(event) => match event.code {
-                KeyCode::Char('c') if event.modifiers.contains(KeyModifiers::CONTROL) => {
-                    clean_up_terminal();
-                    let _ = self.terminal.show_cursor();
-
-                    if let Some(path) = &self.history_path {
-                        for (i, tab) in self.tabs.iter().enumerate() {
-                            match tab.data() {
-                                ChannelData::Defmt { .. } => {
-                                    eprintln!("Not saving tab {} as saving defmt logs is currently unsupported.", i + 1);
-                                    continue;
-                                }
-                                ChannelData::String {
-                                    data,
-                                    last_line_done: _,
-                                    show_timestamps: _,
-                                } => {
-                                    let extension = "txt";
-                                    let name =
-                                        format!("{}_channel{}.{}", self.logname, i, extension);
-                                    let sanitize_options = sanitize_filename::Options {
-                                        replacement: "_",
-                                        ..Default::default()
-                                    };
-                                    let sanitized_name = sanitize_filename::sanitize_with_options(
-                                        name,
-                                        sanitize_options,
-                                    );
-                                    let final_path = path.join(sanitized_name);
-                                    let mut file = match std::fs::File::create(&final_path) {
-                                        Ok(file) => file,
-                                        Err(e) => {
-                                            eprintln!(
-                                                "\nCould not create log file {}: {}",
-                                                final_path.display(),
-                                                e
-                                            );
-                                            continue;
-                                        }
-                                    };
-                                    for line in data {
-                                        match writeln!(file, "{line}") {
-                                            Ok(_) => {}
-                                            Err(e) => {
-                                                eprintln!("\nError writing log channel {i}: {e}");
-                                                continue;
-                                            }
-                                        }
-                                    }
-                                    // Flush file
-                                    if let Err(e) = file.flush() {
-                                        eprintln!("Error writing log channel {i}: {e}")
-                                    }
-                                }
-
-                                ChannelData::Binary { data, .. } => {
-                                    let extension = "dat";
-                                    let name =
-                                        format!("{}_channel{}.{}", self.logname, i, extension);
-                                    let sanitize_options = sanitize_filename::Options {
-                                        replacement: "_",
-                                        ..Default::default()
-                                    };
-                                    let sanitized_name = sanitize_filename::sanitize_with_options(
-                                        name,
-                                        sanitize_options,
-                                    );
-                                    let final_path = path.join(sanitized_name);
-                                    let mut file = match std::fs::File::create(&final_path) {
-                                        Ok(file) => file,
-                                        Err(e) => {
-                                            eprintln!(
-                                                "\nCould not create log file {}: {}",
-                                                final_path.display(),
-                                                e
-                                            );
-                                            continue;
-                                        }
-                                    };
-                                    match file.write(data) {
-                                        Ok(_) => {}
-                                        Err(e) => {
-                                            eprintln!("\nError writing log channel {i}: {e}");
-                                            continue;
-                                        }
-                                    }
-                                    // Flush file
-                                    if let Err(e) = file.flush() {
-                                        eprintln!("Error writing log channel {i}: {e}")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    true
-                }
-                KeyCode::Char('l') if event.modifiers.contains(KeyModifiers::CONTROL) => {
-                    self.current_tab_mut().clear();
-                    false
-                }
-                KeyCode::F(n) => {
-                    let n = n as usize - 1;
-                    if n < self.tabs.len() {
-                        self.current_tab = n;
-                    }
-                    false
-                }
-                KeyCode::Enter => {
-                    self.push_rtt(core);
-                    false
-                }
-                KeyCode::Char(c) => {
-                    self.current_tab_mut().input_mut().push(c);
-                    false
-                }
-                KeyCode::Backspace => {
-                    self.current_tab_mut().input_mut().pop();
-                    false
-                }
-                KeyCode::PageUp => {
-                    self.current_tab_mut().scroll_up();
-                    false
-                }
-                KeyCode::PageDown => {
-                    self.current_tab_mut().scroll_down();
-                    false
-                }
-                _ => false,
-            },
+        let event = match self.events.next() {
+            Ok(event) => event,
             Err(TryRecvError::Empty) => return false,
             Err(TryRecvError::Disconnected) => {
                 tracing::warn!(
@@ -361,6 +233,127 @@ impl<'defmt> App<'defmt> {
                 return true;
             }
         };
+
+        match event.code {
+            KeyCode::Char('c') if event.modifiers.contains(KeyModifiers::CONTROL) => {
+                clean_up_terminal();
+                let _ = self.terminal.show_cursor();
+
+                let Some(path) = &self.history_path else {
+                    return true;
+                };
+
+                for (i, tab) in self.tabs.iter().enumerate() {
+                    match tab.data() {
+                        ChannelData::Defmt { .. } => {
+                            eprintln!(
+                                "Not saving tab {} as saving defmt logs is currently unsupported.",
+                                i + 1
+                            );
+                            continue;
+                        }
+                        ChannelData::String { data, .. } => {
+                            let extension = "txt";
+                            let name = format!("{}_channel{}.{}", self.logname, i, extension);
+                            let sanitize_options = sanitize_filename::Options {
+                                replacement: "_",
+                                ..Default::default()
+                            };
+                            let sanitized_name =
+                                sanitize_filename::sanitize_with_options(name, sanitize_options);
+                            let final_path = path.join(sanitized_name);
+                            let mut file = match std::fs::File::create(&final_path) {
+                                Ok(file) => file,
+                                Err(e) => {
+                                    eprintln!(
+                                        "\nCould not create log file {}: {}",
+                                        final_path.display(),
+                                        e
+                                    );
+                                    continue;
+                                }
+                            };
+                            for line in data {
+                                match writeln!(file, "{line}") {
+                                    Ok(_) => {}
+                                    Err(e) => {
+                                        eprintln!("\nError writing log channel {i}: {e}");
+                                        continue;
+                                    }
+                                }
+                            }
+                            // Flush file
+                            if let Err(e) = file.flush() {
+                                eprintln!("Error writing log channel {i}: {e}")
+                            }
+                        }
+
+                        ChannelData::Binary { data, .. } => {
+                            let extension = "dat";
+                            let name = format!("{}_channel{}.{}", self.logname, i, extension);
+                            let sanitize_options = sanitize_filename::Options {
+                                replacement: "_",
+                                ..Default::default()
+                            };
+                            let sanitized_name =
+                                sanitize_filename::sanitize_with_options(name, sanitize_options);
+                            let final_path = path.join(sanitized_name);
+                            let mut file = match std::fs::File::create(&final_path) {
+                                Ok(file) => file,
+                                Err(e) => {
+                                    eprintln!(
+                                        "\nCould not create log file {}: {}",
+                                        final_path.display(),
+                                        e
+                                    );
+                                    continue;
+                                }
+                            };
+                            match file.write(data) {
+                                Ok(_) => {}
+                                Err(e) => {
+                                    eprintln!("\nError writing log channel {i}: {e}");
+                                    continue;
+                                }
+                            }
+                            // Flush file
+                            if let Err(e) = file.flush() {
+                                eprintln!("Error writing log channel {i}: {e}")
+                            }
+                        }
+                    }
+                }
+
+                return true;
+            }
+            KeyCode::Char('l') if event.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.current_tab_mut().clear();
+            }
+            KeyCode::F(n) => {
+                let n = n as usize - 1;
+                if n < self.tabs.len() {
+                    self.current_tab = n;
+                }
+            }
+            KeyCode::Enter => {
+                self.push_rtt(core);
+            }
+            KeyCode::Char(c) => {
+                self.current_tab_mut().input_mut().push(c);
+            }
+            KeyCode::Backspace => {
+                self.current_tab_mut().input_mut().pop();
+            }
+            KeyCode::PageUp => {
+                self.current_tab_mut().scroll_up();
+            }
+            KeyCode::PageDown => {
+                self.current_tab_mut().scroll_down();
+            }
+            _ => {}
+        }
+
+        false
     }
 
     pub fn current_tab(&self) -> &ChannelState<'defmt> {
