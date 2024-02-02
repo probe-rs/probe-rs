@@ -1,4 +1,4 @@
-use crate::MemoryInterface;
+use crate::{debug::stack_frame::StackFrameInfo, MemoryInterface};
 
 use super::{
     debug_info, extract_file,
@@ -187,9 +187,11 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info> FunctionDie<'abbrev, 'u
             &self.function_die,
             &VariableLocation::Unknown,
             memory,
-            stackframe_registers,
-            None,
-            None,
+            StackFrameInfo {
+                registers: stackframe_registers,
+                frame_base: None,
+                canonical_frame_address: None,
+            },
         )? {
             ExpressionResult::Location(VariableLocation::Address(address)) => Ok(Some(address)),
             _ => Ok(None),

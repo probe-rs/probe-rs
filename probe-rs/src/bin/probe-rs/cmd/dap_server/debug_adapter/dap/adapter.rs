@@ -25,8 +25,8 @@ use parse_int::parse;
 use probe_rs::{
     architecture::{arm::ArmError, riscv::communication_interface::RiscvError},
     debug::{
-        ColumnType, DebugRegisters, ObjectRef, SourceLocation, SteppingMode, VariableName,
-        VariableNodeType, VerifiedBreakpoint,
+        stack_frame::StackFrameInfo, ColumnType, ObjectRef, SourceLocation, SteppingMode,
+        VariableName, VariableNodeType, VerifiedBreakpoint,
     },
     Architecture::Riscv,
     CoreStatus, Error, HaltReason, MemoryInterface, RegisterValue,
@@ -461,9 +461,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                         search_cache,
                                         &mut target_core.core,
                                         &mut search_cache.root_variable(),
-                                        &stack_frame.registers,
-                                        stack_frame.frame_base,
-                                        stack_frame.canonical_frame_address,
+                                        StackFrameInfo {
+                                            registers: &stack_frame.registers,
+                                            frame_base: stack_frame.frame_base,
+                                            canonical_frame_address: stack_frame
+                                                .canonical_frame_address,
+                                        },
                                     )?;
                                 }
 
@@ -1393,18 +1396,18 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
         let mut parent_variable: Option<probe_rs::debug::Variable> = None;
         let mut variable_cache: Option<&mut probe_rs::debug::VariableCache> = None;
-        let mut stack_frame_registers: Option<&DebugRegisters> = None;
-        let mut frame_base: Option<u64> = None;
-        let mut cfa: Option<u64> = None;
+        let mut frame_info: Option<StackFrameInfo<'_>> = None;
 
         for stack_frame in target_core.core_data.stack_frames.iter_mut() {
             if let Some(search_cache) = &mut stack_frame.local_variables {
                 if let Some(search_variable) = search_cache.get_variable_by_key(variable_ref) {
                     parent_variable = Some(search_variable);
                     variable_cache = Some(search_cache);
-                    stack_frame_registers = Some(&stack_frame.registers);
-                    cfa = stack_frame.canonical_frame_address;
-                    frame_base = stack_frame.frame_base;
+                    frame_info = Some(StackFrameInfo {
+                        registers: &stack_frame.registers,
+                        frame_base: stack_frame.frame_base,
+                        canonical_frame_address: stack_frame.canonical_frame_address,
+                    });
                     break;
                 }
             }
@@ -1412,9 +1415,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 if let Some(search_variable) = search_cache.get_variable_by_key(variable_ref) {
                     parent_variable = Some(search_variable);
                     variable_cache = Some(search_cache);
-                    stack_frame_registers = Some(&stack_frame.registers);
-                    cfa = stack_frame.canonical_frame_address;
-                    frame_base = stack_frame.frame_base;
+                    frame_info = Some(StackFrameInfo {
+                        registers: &stack_frame.registers,
+                        frame_base: stack_frame.frame_base,
+                        canonical_frame_address: stack_frame.canonical_frame_address,
+                    });
                     break;
                 }
             }
@@ -1454,14 +1459,12 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 if parent_variable.variable_node_type.is_deferred()
                     && !variable_cache.has_children(parent_variable)?
                 {
-                    if let Some(stack_frame_registers) = stack_frame_registers {
+                    if let Some(frame_info) = frame_info {
                         target_core.core_data.debug_info.cache_deferred_variables(
                             variable_cache,
                             &mut target_core.core,
                             parent_variable,
-                            stack_frame_registers,
-                            frame_base,
-                            cfa,
+                            frame_info,
                         )?;
                     } else {
                         tracing::error!("Could not cache deferred child variables for variable: {}. No register data available.", parent_variable.name);

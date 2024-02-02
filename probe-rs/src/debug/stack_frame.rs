@@ -5,6 +5,22 @@ use std;
 #[cfg(test)]
 pub use test::TestFormatter;
 
+/// Helper struct to pass around multiple pieces of `StackFrame` related information.
+#[derive(Clone, Copy)]
+pub struct StackFrameInfo<'a> {
+    /// The current register state represented in this stackframe.
+    pub registers: &'a registers::DebugRegisters,
+
+    /// The DWARF debug info defines a `DW_AT_frame_base` attribute which can be used to calculate the memory location of variables in a stack frame.
+    /// The rustc compiler, has a compile flag, `-C force-frame-pointers`, which when set to `on`, will usually result in this being a pointer to the register value of the platform frame pointer.
+    /// However, some isa's (e.g. RISC-V) uses a default of `-C force-frame-pointers off` and will then use the stack pointer as the frame base address.
+    /// We store the frame_base of the relevant non-inlined parent function, to ensure correct calculation of the [`Variable::memory_location`] values.
+    pub frame_base: Option<u64>,
+
+    /// The value of the stack pointer just before the CALL instruction in the parent function.
+    pub canonical_frame_address: Option<u64>,
+}
+
 /// A full stack frame with all its information contained.
 #[derive(PartialEq, Serialize)]
 pub struct StackFrame {

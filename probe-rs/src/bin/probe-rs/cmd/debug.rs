@@ -10,6 +10,7 @@ use capstone::{
 use num_traits::Num;
 use parse_int::parse;
 use probe_rs::architecture::arm::ap::AccessPortError;
+use probe_rs::debug::stack_frame::StackFrameInfo;
 use probe_rs::exception_handler_for_core;
 use probe_rs::flashing::FileDownloadError;
 use probe_rs::probe::list::Lister;
@@ -754,9 +755,12 @@ impl DebugCli {
                                     local_variable_cache,
                                     &mut cli_data.core,
                                     &mut locals,
-                                    &current_frame.registers,
-                                    current_frame.frame_base,
-                                    current_frame.canonical_frame_address,
+                                    StackFrameInfo {
+                                        registers: &current_frame.registers,
+                                        frame_base: current_frame.frame_base,
+                                        canonical_frame_address: current_frame
+                                            .canonical_frame_address,
+                                    },
                                 )
                             {
                                 println!("Failed to cache local variables: {error}");

@@ -1,5 +1,5 @@
 use super::*;
-use crate::Error;
+use crate::{debug::stack_frame::StackFrameInfo, Error};
 use anyhow::anyhow;
 use gimli::{DebugInfoOffset, UnitOffset, UnitSectionOffset};
 use probe_rs_target::MemoryRange;
@@ -447,11 +447,9 @@ impl VariableCache {
         debug_info: &DebugInfo,
         memory: &mut dyn MemoryInterface,
         parent_variable: Option<&mut Variable>,
-        registers: &DebugRegisters,
-        frame_base: Option<u64>,
         max_recursion_depth: usize,
         current_recursion_depth: usize,
-        cfa: Option<u64>,
+        frame_info: StackFrameInfo<'_>,
     ) {
         if current_recursion_depth >= max_recursion_depth {
             return;
@@ -468,14 +466,7 @@ impl VariableCache {
         .clone();
 
         if debug_info
-            .cache_deferred_variables(
-                self,
-                memory,
-                &mut variable_to_recurse,
-                registers,
-                frame_base,
-                cfa,
-            )
+            .cache_deferred_variables(self, memory, &mut variable_to_recurse, frame_info)
             .is_err()
         {
             return;
@@ -485,11 +476,9 @@ impl VariableCache {
                 debug_info,
                 memory,
                 Some(&mut child),
-                registers,
-                frame_base,
                 max_recursion_depth,
                 current_recursion_depth + 1,
-                cfa,
+                frame_info,
             );
         }
     }

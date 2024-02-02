@@ -17,7 +17,10 @@ use crate::cmd::dap_server::{
 use crate::util::rtt::{self, ChannelMode, DataFormat, RttActiveTarget};
 use anyhow::{anyhow, Result};
 use probe_rs::{
-    debug::{debug_info::DebugInfo, ColumnType, ObjectRef, VerifiedBreakpoint},
+    debug::{
+        debug_info::DebugInfo, stack_frame::StackFrameInfo, ColumnType, ObjectRef,
+        VerifiedBreakpoint,
+    },
     rtt::{Rtt, ScanRegion},
     Core, CoreStatus, Error, HaltReason,
 };
@@ -404,11 +407,13 @@ impl<'p> CoreHandle<'p> {
                     &self.core_data.debug_info,
                     &mut self.core,
                     None,
-                    &frame.registers,
-                    frame.frame_base,
                     10,
                     0,
-                    frame.canonical_frame_address,
+                    StackFrameInfo {
+                        registers: &frame.registers,
+                        frame_base: frame.frame_base,
+                        canonical_frame_address: frame.canonical_frame_address,
+                    },
                 );
                 all_discrete_memory_ranges.append(&mut variable_cache.get_discrete_memory_ranges());
             }

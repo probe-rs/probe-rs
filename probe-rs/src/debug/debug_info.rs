@@ -5,6 +5,7 @@ use super::{
 };
 use crate::core::UnwindRule;
 use crate::debug::source_statement::SourceStatement;
+use crate::debug::stack_frame::StackFrameInfo;
 use crate::{
     core::{ExceptionInterface, RegisterRole, RegisterValue},
     debug::{registers, source_statement::SourceStatements},
@@ -296,9 +297,7 @@ impl DebugInfo {
         cache: &mut VariableCache,
         memory: &mut dyn MemoryInterface,
         parent_variable: &mut Variable,
-        stack_frame_registers: &DebugRegisters,
-        frame_base: Option<u64>,
-        cfa: Option<u64>,
+        frame_info: StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         if !parent_variable.is_valid() {
             // Do nothing. The parent_variable.get_value() will already report back the debug_error value.
@@ -345,10 +344,8 @@ impl DebugInfo {
                     parent_variable,
                     referenced_variable,
                     memory,
-                    stack_frame_registers,
-                    frame_base,
                     cache,
-                    cfa,
+                    frame_info,
                 )?;
 
                 if referenced_variable.type_name == VariableType::Base("()".to_owned()) {
@@ -376,10 +373,8 @@ impl DebugInfo {
                     parent_node,
                     temporary_variable,
                     memory,
-                    stack_frame_registers,
-                    frame_base,
                     cache,
-                    cfa,
+                    frame_info,
                 )?;
 
                 cache.adopt_grand_children(parent_variable, &temporary_variable)?;
@@ -405,10 +400,8 @@ impl DebugInfo {
                     parent_node,
                     temporary_variable,
                     memory,
-                    stack_frame_registers,
-                    frame_base,
                     cache,
-                    cfa,
+                    frame_info,
                 )?;
 
                 cache.adopt_grand_children(parent_variable, &temporary_variable)?;
@@ -1467,7 +1460,10 @@ mod test {
             registers::cortex_m::CORTEX_M_CORE_REGISTERS,
         },
         core::exception_handler_for_core,
-        debug::{stack_frame::TestFormatter, DebugInfo, DebugRegister, DebugRegisters},
+        debug::{
+            stack_frame::{StackFrameInfo, TestFormatter},
+            DebugInfo, DebugRegister, DebugRegisters,
+        },
         test::MockMemory,
         CoreDump, RegisterValue,
     };
@@ -2030,11 +2026,13 @@ mod test {
                     &debug_info,
                     &mut adapter,
                     None,
-                    &frame.registers,
-                    frame.frame_base,
                     10,
                     0,
-                    frame.canonical_frame_address,
+                    StackFrameInfo {
+                        registers: &frame.registers,
+                        frame_base: frame.frame_base,
+                        canonical_frame_address: frame.canonical_frame_address,
+                    },
                 );
             }
         }
