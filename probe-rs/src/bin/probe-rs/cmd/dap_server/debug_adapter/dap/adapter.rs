@@ -457,13 +457,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                     // This is a special case where we have a single variable in the cache, and it is the root of a scope.
                                     // These variables don't have cached children by default, so we need to resolve them before we proceed.
                                     // We check for len() == 1, so unwrap() on first_mut() is safe.
-                                    #[allow(clippy::unwrap_used)]
                                     target_core.core_data.debug_info.cache_deferred_variables(
                                         search_cache,
                                         &mut target_core.core,
                                         &mut search_cache.root_variable(),
                                         &stack_frame.registers,
                                         stack_frame.frame_base,
+                                        stack_frame.canonical_frame_address,
                                     )?;
                                 }
 
@@ -1395,6 +1395,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let mut variable_cache: Option<&mut probe_rs::debug::VariableCache> = None;
         let mut stack_frame_registers: Option<&DebugRegisters> = None;
         let mut frame_base: Option<u64> = None;
+        let mut cfa: Option<u64> = None;
 
         for stack_frame in target_core.core_data.stack_frames.iter_mut() {
             if let Some(search_cache) = &mut stack_frame.local_variables {
@@ -1402,6 +1403,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     parent_variable = Some(search_variable);
                     variable_cache = Some(search_cache);
                     stack_frame_registers = Some(&stack_frame.registers);
+                    cfa = stack_frame.canonical_frame_address;
                     frame_base = stack_frame.frame_base;
                     break;
                 }
@@ -1411,6 +1413,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     parent_variable = Some(search_variable);
                     variable_cache = Some(search_cache);
                     stack_frame_registers = Some(&stack_frame.registers);
+                    cfa = stack_frame.canonical_frame_address;
                     frame_base = stack_frame.frame_base;
                     break;
                 }
@@ -1458,6 +1461,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             parent_variable,
                             stack_frame_registers,
                             frame_base,
+                            cfa,
                         )?;
                     } else {
                         tracing::error!("Could not cache deferred child variables for variable: {}. No register data available.", parent_variable.name);

@@ -189,6 +189,7 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info> FunctionDie<'abbrev, 'u
             memory,
             stackframe_registers,
             None,
+            None,
         )? {
             ExpressionResult::Location(VariableLocation::Address(address)) => Ok(Some(address)),
             _ => Ok(None),

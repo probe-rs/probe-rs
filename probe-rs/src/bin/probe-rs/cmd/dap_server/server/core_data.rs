@@ -408,6 +408,7 @@ impl<'p> CoreHandle<'p> {
                     frame.frame_base,
                     10,
                     0,
+                    frame.canonical_frame_address,
                 );
                 all_discrete_memory_ranges.append(&mut variable_cache.get_discrete_memory_ranges());
             }

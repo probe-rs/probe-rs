@@ -298,6 +298,7 @@ impl DebugInfo {
         parent_variable: &mut Variable,
         stack_frame_registers: &DebugRegisters,
         frame_base: Option<u64>,
+        cfa: Option<u64>,
     ) -> Result<(), DebugError> {
         if !parent_variable.is_valid() {
             // Do nothing. The parent_variable.get_value() will already report back the debug_error value.
@@ -347,6 +348,7 @@ impl DebugInfo {
                     stack_frame_registers,
                     frame_base,
                     cache,
+                    cfa,
                 )?;
 
                 if referenced_variable.type_name == VariableType::Base("()".to_owned()) {
@@ -377,6 +379,7 @@ impl DebugInfo {
                     stack_frame_registers,
                     frame_base,
                     cache,
+                    cfa,
                 )?;
 
                 cache.adopt_grand_children(parent_variable, &temporary_variable)?;
@@ -405,6 +408,7 @@ impl DebugInfo {
                     stack_frame_registers,
                     frame_base,
                     cache,
+                    cfa,
                 )?;
 
                 cache.adopt_grand_children(parent_variable, &temporary_variable)?;
@@ -2030,6 +2034,7 @@ mod test {
                     frame.frame_base,
                     10,
                     0,
+                    frame.canonical_frame_address,
                 );
             }
         }

@@ -451,6 +451,7 @@ impl VariableCache {
         frame_base: Option<u64>,
         max_recursion_depth: usize,
         current_recursion_depth: usize,
+        cfa: Option<u64>,
     ) {
         if current_recursion_depth >= max_recursion_depth {
             return;
@@ -465,6 +466,7 @@ impl VariableCache {
             return;
         }
         .clone();
+
         if debug_info
             .cache_deferred_variables(
                 self,
@@ -472,6 +474,7 @@ impl VariableCache {
                 &mut variable_to_recurse,
                 registers,
                 frame_base,
+                cfa,
             )
             .is_err()
         {
@@ -486,6 +489,7 @@ impl VariableCache {
                 frame_base,
                 max_recursion_depth,
                 current_recursion_depth + 1,
+                cfa,
             );
         }
     }
