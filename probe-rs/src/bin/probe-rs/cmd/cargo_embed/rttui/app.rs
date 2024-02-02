@@ -85,7 +85,7 @@ impl<'defmt> App<'defmt> {
                         .and_then(|down| pull_channel(&mut down_channels, down)),
                     channel.name.clone(),
                     data,
-                    channel.socket.clone(),
+                    channel.socket,
                 ))
             }
         } else {

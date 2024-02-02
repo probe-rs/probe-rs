@@ -10,7 +10,7 @@ pub struct TcpPublisher {
 impl TcpPublisher {
     pub fn new(address: SocketAddr) -> Self {
         Self {
-            address: address.into(),
+            address,
             socket: None,
         }
     }
@@ -18,7 +18,7 @@ impl TcpPublisher {
     pub fn send(&mut self, bytes: &[u8]) {
         if self.socket.is_none() {
             // Try to connect if there is no socket
-            if let Ok(stream) = TcpStream::connect(self.address.clone()) {
+            if let Ok(stream) = TcpStream::connect(self.address) {
                 self.socket = Some(stream);
             }
         }
