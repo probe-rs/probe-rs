@@ -284,71 +284,79 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
     }
 
     if config.rtt.enabled {
-        let defmt_enable = config
-            .rtt
-            .channels
-            .iter()
-            .any(|elem| elem.format == DataFormat::Defmt);
+        // GDB is also using the session, so we do not lock on the outside.
+        if let Some(mut rtt) =
+            rtt_attach(session.clone(), config.rtt.timeout, &ScanRegion::Ram, path)
+                .context("Failed to attach to RTT")?
+        {
+            let defmt_enable = config
+                .rtt
+                .channels
+                .iter()
+                .any(|elem| elem.format == DataFormat::Defmt);
 
-        let defmt_state = if defmt_enable {
-            tracing::debug!(
-                "Found RTT channels with format = defmt, trying to intialize defmt parsing."
-            );
-            DefmtInformation::try_read_from_elf(path)?
-        } else {
-            None
-        };
+            let defmt_state = if defmt_enable {
+                tracing::debug!(
+                    "Found RTT channels with format = defmt, trying to intialize defmt parsing."
+                );
+                DefmtInformation::try_read_from_elf(path)?
+            } else {
+                None
+            };
 
-        let mut rtt = rtt_attach(session.clone(), config.rtt.timeout, &ScanRegion::Ram, path)
-            .context("Failed to attach to RTT")?;
+            // Configure rtt channels according to configuration
+            rtt_config(session.clone(), &config, &mut rtt)?;
 
-        // Configure rtt channels according to configuration
-        rtt_config(session.clone(), &config, &mut rtt)?;
+            tracing::info!("RTT initialized.");
 
-        tracing::info!("RTT initialized.");
+            // Check if the terminal supports x
 
-        // Check if the terminal supports x
+            // `App` puts the terminal into a special state, as required
+            // by the text-based UI. If a panic happens while the
+            // terminal is in that state, this will completely mess up
+            // the user's terminal (misformatted panic message, newlines
+            // being ignored, input characters not being echoed, ...).
+            //
+            // The following panic hook cleans up the terminal, while
+            // otherwise preserving the behavior of the default panic
+            // hook (or whichever custom hook might have been registered
+            // before).
+            let previous_panic_hook = panic::take_hook();
+            panic::set_hook(Box::new(move |panic_info| {
+                rttui::app::clean_up_terminal();
+                previous_panic_hook(panic_info);
+            }));
 
-        // `App` puts the terminal into a special state, as required
-        // by the text-based UI. If a panic happens while the
-        // terminal is in that state, this will completely mess up
-        // the user's terminal (misformatted panic message, newlines
-        // being ignored, input characters not being echoed, ...).
-        //
-        // The following panic hook cleans up the terminal, while
-        // otherwise preserving the behavior of the default panic
-        // hook (or whichever custom hook might have been registered
-        // before).
-        let previous_panic_hook = panic::take_hook();
-        panic::set_hook(Box::new(move |panic_info| {
-            rttui::app::clean_up_terminal();
-            previous_panic_hook(panic_info);
-        }));
+            let chip_name = config.general.chip.as_deref().unwrap_or_default();
 
-        let chip_name = config.general.chip.as_deref().unwrap_or_default();
+            let timestamp_millis = OffsetDateTime::now_utc()
+                .to_offset(offset)
+                .unix_timestamp_nanos()
+                / 1_000_000;
 
-        let timestamp_millis = OffsetDateTime::now_utc()
-            .to_offset(offset)
-            .unix_timestamp_nanos()
-            / 1_000_000;
+            let logname = format!("{name}_{chip_name}_{timestamp_millis}");
+            let mut app = rttui::app::App::new(rtt, &config, logname, defmt_state.as_ref())?;
+            loop {
+                {
+                    let mut session_handle = session.lock().unwrap();
+                    let mut core = session_handle.core(0)?;
 
-        let logname = format!("{name}_{chip_name}_{timestamp_millis}");
-        let mut app = rttui::app::App::new(rtt, &config, logname, defmt_state.as_ref())?;
-        loop {
-            {
-                let mut session_handle = session.lock().unwrap();
-                let mut core = session_handle.core(0)?;
+                    app.poll_rtt(&mut core, offset)?;
 
-                app.poll_rtt(&mut core, offset)?;
+                    app.render();
+                    if app.handle_event(&mut core) {
+                        logging::println("Shutting down.");
+                        return Ok(());
+                    };
+                }
 
-                app.render();
-                if app.handle_event(&mut core) {
-                    logging::println("Shutting down.");
-                    return Ok(());
-                };
+                std::thread::sleep(Duration::from_millis(10));
             }
-
-            std::thread::sleep(Duration::from_millis(10));
+        } else {
+            // Because we pass `ScanRegion::Ram` to `rtt_attach`, this branch should never be
+            // reached. However, we might change how we attach to RTT in the future, so let's try
+            // and stay friendly and not panic.
+            tracing::info!("RTT not found, skipping RTT initialization.");
         }
     }
 
@@ -457,7 +465,7 @@ fn rtt_attach(
     timeout: Duration,
     rtt_region: &ScanRegion,
     elf_file: &Path,
-) -> Result<Rtt> {
+) -> Result<Option<Rtt>> {
     let t = std::time::Instant::now();
 
     let mut rtt_init_attempt = 1;
@@ -477,8 +485,7 @@ fn rtt_attach(
             let mut core = session_handle.core(0)?;
 
             match crate::util::rtt::attach_to_rtt(&mut core, &memory_map, rtt_region, elf_file) {
-                Ok(Some(rtt)) => return Ok(rtt),
-                Ok(None) => {}
+                Ok(rtt) => return Ok(rtt),
                 Err(e) => last_error = Some(e),
             }
         }
