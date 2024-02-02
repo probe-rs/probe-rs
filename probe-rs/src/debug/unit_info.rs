@@ -1462,8 +1462,8 @@ impl UnitInfo {
                             Ok(result) => Ok(result),
                             Err(DebugError::UnwindIncompleteResults { message }) => {
                                 tracing::warn!("UnwindIncompleteResults: {:?}", message);
-                                    Ok(ExpressionResult::Location(VariableLocation::Unavailable))
-                                }
+                                Ok(ExpressionResult::Location(VariableLocation::Unavailable))
+                            }
                             e => e
                         };
                     }
@@ -1524,8 +1524,8 @@ impl UnitInfo {
                                             Ok(result) => Ok(result),
                                             Err(DebugError::UnwindIncompleteResults { message }) => {
                                                 tracing::warn!("UnwindIncompleteResults: {:?}", message);
-                                                    Ok(ExpressionResult::Location(VariableLocation::Unavailable))
-                                                }
+                                                Ok(ExpressionResult::Location(VariableLocation::Unavailable))
+                                            }
                                             e => e
                                         };
                                     } else {

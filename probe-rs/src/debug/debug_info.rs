@@ -511,6 +511,7 @@ impl DebugInfo {
                         is_inlined: function_die.is_inline(),
                         static_variables,
                         local_variables,
+                        canonical_frame_address: None,
                     });
                 } else {
                     tracing::warn!(
@@ -572,6 +573,7 @@ impl DebugInfo {
                 is_inlined: last_function.is_inline(),
                 static_variables,
                 local_variables,
+                canonical_frame_address: None,
             });
 
             break;
@@ -707,6 +709,7 @@ impl DebugInfo {
                             is_inlined: false,
                             static_variables: None,
                             local_variables: None,
+                            canonical_frame_address: None,
                         }
                     } else {
                         let address = frame_pc;
@@ -733,6 +736,7 @@ impl DebugInfo {
                             is_inlined: false,
                             static_variables: None,
                             local_variables: None,
+                            canonical_frame_address: None,
                         }
                     }
                 }
@@ -877,6 +881,8 @@ impl DebugInfo {
                 gimli::CfaRule::Expression(_) => unimplemented!(),
             };
 
+            return_frame.canonical_frame_address = unwind_cfa;
+
             // PART 2-c: Unwind registers for the "previous/calling" frame.
             // We sometimes need to keep a copy of the LR value to calculate the PC. For both ARM, and RISC-V, The LR will be unwound before the PC, so we can reference it safely.
             let mut unwound_return_address: Option<RegisterValue> = None;
@@ -931,6 +937,7 @@ impl DebugInfo {
                             is_inlined: false,
                             static_variables: None,
                             local_variables: None,
+                            canonical_frame_address: None,
                         };
 
                         stack_frames.push(exception_frame);
