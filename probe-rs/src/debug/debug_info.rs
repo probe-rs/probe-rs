@@ -792,50 +792,47 @@ impl DebugInfo {
                 frame_pc,
             ) {
                 Ok(unwind_info) => unwind_info,
-                Err(error) => {
-                    // We cannot do stack unwinding if we do not have debug info. However, there is one case where we can continue. When the following conditions are met:
-                    // 1. The current frame is the first frame in the stack, AND ...
-                    // 2. The frame registers have a valid return address/LR value.
-                    // If both these conditions are met, we can push the 'unknown function' to the list of stack frames, and use the LR value to calculate the PC for the calling frame.
-                    // The current logic will then use that PC to get the next frame's unwind info, and if that exists, will be able to continue unwinding.
-                    // If the calling frame has no debug info, then the unwindindg will end with that frame.
-                    if stack_frames.is_empty() {
-                        let callee_frame_registers = unwind_registers.clone();
-                        let mut unwound_return_address: Option<RegisterValue> =
-                            callee_frame_registers
-                                .get_return_address()
-                                .and_then(|lr| lr.value);
 
-                        if let Some(calling_pc) = unwind_registers.get_program_counter_mut() {
-                            if let ControlFlow::Break(error) = unwind_register(
-                                calling_pc,
-                                &callee_frame_registers,
-                                None,
-                                None,
-                                &mut unwound_return_address,
-                                memory,
-                                instruction_set,
-                            ) {
-                                // This is not fatal, but we cannot continue unwinding beyond the current frame.
-                                tracing::error!("{:?}", &error);
-                                return_frame.function_name =
-                                    format!("{} : ERROR : {error}", &return_frame.function_name);
-                                stack_frames.push(return_frame);
-                                break 'unwind;
-                            } else {
-                                // The unwind registers were updated with the calling frame's PC, so we can continue unwinding.
-                                stack_frames.push(return_frame);
-                                continue 'unwind;
-                            };
-                        } else {
+                // We cannot do stack unwinding if we do not have debug info. However, there is one case where we can continue. When the following conditions are met:
+                // 1. The current frame is the first frame in the stack, AND ...
+                // 2. The frame registers have a valid return address/LR value.
+                // If both these conditions are met, we can push the 'unknown function' to the list of stack frames, and use the LR value to calculate the PC for the calling frame.
+                // The current logic will then use that PC to get the next frame's unwind info, and if that exists, will be able to continue unwinding.
+                // If the calling frame has no debug info, then the unwinding will end with that frame.
+                Err(_) if stack_frames.is_empty() => {
+                    let callee_frame_registers = unwind_registers.clone();
+                    let mut unwound_return_address: Option<RegisterValue> = callee_frame_registers
+                        .get_return_address()
+                        .and_then(|lr| lr.value);
+
+                    if let Some(calling_pc) = unwind_registers.get_program_counter_mut() {
+                        if let ControlFlow::Break(error) = unwind_register(
+                            calling_pc,
+                            &callee_frame_registers,
+                            None,
+                            None,
+                            &mut unwound_return_address,
+                            memory,
+                            instruction_set,
+                        ) {
+                            // This is not fatal, but we cannot continue unwinding beyond the current frame.
+                            tracing::error!("{:?}", &error);
+                            return_frame.function_name =
+                                format!("{} : ERROR : {error}", &return_frame.function_name);
                             stack_frames.push(return_frame);
-                            continue 'unwind;
+                            break 'unwind;
                         }
-                    } else {
-                        stack_frames.push(return_frame);
-                        tracing::trace!("UNWIND: Stack unwind complete. No available debug info for program counter {}: {}", frame_pc, error);
-                        break;
+
+                        // The unwind registers were updated with the calling frame's PC, so we can continue unwinding.
                     }
+
+                    stack_frames.push(return_frame);
+                    continue 'unwind;
+                }
+                Err(error) => {
+                    stack_frames.push(return_frame);
+                    tracing::trace!("UNWIND: Stack unwind complete. No available debug info for program counter {}: {}", frame_pc, error);
+                    break;
                 }
             };
 
