@@ -22,13 +22,12 @@ use std::{
 };
 use time::{OffsetDateTime, UtcOffset};
 
-use self::rttui::channel::DataFormat;
 use crate::util::common_options::{
     BinaryDownloadOptions, LoadedProbeOptions, OperationError, ProbeOptions,
 };
 use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::logging::setup_logging;
-use crate::util::{build_artifact, common_options::CargoOptions, logging};
+use crate::util::{build_artifact, common_options::CargoOptions, logging, rtt::DataFormat};
 use crate::FormatOptions;
 
 #[derive(Debug, clap::Parser)]

@@ -17,15 +17,14 @@ use ratatui::{
 use std::io::Write;
 use std::{fmt::write, path::PathBuf, sync::mpsc::TryRecvError};
 
+use crate::util::rtt::DataFormat;
+
 use super::{
     super::{config, DefmtInformation},
     channel::ChannelData,
 };
 
-use super::{
-    channel::{ChannelState, DataFormat},
-    event::Events,
-};
+use super::{channel::ChannelState, event::Events};
 
 use event::KeyModifiers;
 

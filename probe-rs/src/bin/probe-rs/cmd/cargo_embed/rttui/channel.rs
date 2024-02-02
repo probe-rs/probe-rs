@@ -7,13 +7,7 @@ use time::UtcOffset;
 use time::{macros::format_description, OffsetDateTime};
 
 use crate::cmd::cargo_embed::DefmtInformation;
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum DataFormat {
-    String,
-    BinaryLE,
-    Defmt,
-}
+use crate::util::rtt::DataFormat;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ChannelConfig {
