@@ -507,7 +507,7 @@ fn rtt_attach(
 
     // Timeout
     if let Some(err) = last_error {
-        Err(err.into())
+        Err(err)
     } else {
         Err(anyhow!("Error setting up RTT"))
     }
