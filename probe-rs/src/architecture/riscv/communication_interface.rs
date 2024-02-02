@@ -18,61 +18,43 @@ use std::{
 };
 
 /// Some error occurred when working with the RISC-V core.
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, displaydoc::Display, Debug)]
 pub enum RiscvError {
     /// An error occurred during transport
-    #[error("Error during transport")]
     DtmOperationFailed,
-    /// DMI operation is in progress
-    #[error("Transport operation in progress")]
+    /// Transport operation in progress
     DtmOperationInProcess,
     /// An error with operating the debug probe occurred.
-    #[error("Debug Probe Error")]
     DebugProbe(#[from] DebugProbeError),
     /// A timeout occurred during DMI access.
-    #[error("Timeout during DMI access.")]
     Timeout,
-    /// An error occurred during the execution of an abstract command.
-    #[error("Error occurred during execution of an abstract command: {0:?}")]
+    /// Error occurred during execution of an abstract command: {0:?}.
     AbstractCommand(AbstractCommandErrorKind),
-    /// The request for reset, resume or halt was not acknowledged.
-    #[error("The core did not acknowledge a request for reset, resume or halt")]
+    /// The core did not acknowledge a request for reset, resume or halt.
     RequestNotAcknowledged,
-    /// This debug transport module (DTM) version is currently not supported.
-    #[error("The version '{0}' of the debug transport module (DTM) is currently not supported.")]
+    /// The version '{0}' of the debug transport module (DTM) is currently not supported.
     UnsupportedDebugTransportModuleVersion(u8),
-    /// This version of the debug module is not supported.
-    #[error("The version '{0:?}' of the debug module is currently not supported.")]
+    /// The version '{0:?}' of the debug module is currently not supported.
     UnsupportedDebugModuleVersion(DebugModuleVersion),
-    /// The provided csr address was invalid/unsupported
-    #[error("CSR at address '{0:x}' is unsupported.")]
+    /// CSR at address '{0:x}' is unsupported.
     UnsupportedCsrAddress(u16),
-    /// The given program buffer register is not supported.
-    #[error("Program buffer register '{0}' is currently not supported.")]
+    /// Program buffer register '{0}' is currently not supported.
     UnsupportedProgramBufferRegister(usize),
     /// The program buffer is too small for the supplied program.
-    #[error("Program buffer is too small for supplied program.")]
     ProgramBufferTooSmall,
     /// Memory width larger than 32 bits is not supported yet.
-    #[error("Memory width larger than 32 bits is not supported yet.")]
     UnsupportedBusAccessWidth(RiscvBusAccess),
-    /// An error during system bus access occurred.
-    #[error("Error using system bus")]
+    /// An error occurred during accessing the system bus.
     SystemBusAccess,
-    /// The given trigger type is not available for the address breakpoint.
-    #[error("Unexpected trigger type {0} for address breakpoint.")]
+    /// Unexpected trigger type {0} for address breakpoint.
     UnexpectedTriggerType(u32),
     /// The connected target is not a RISC-V device.
-    #[error("Connected target is not a RISC-V device.")]
     NoRiscvTarget,
     /// The target does not support halt after reset.
-    #[error("The target does not support halt after reset.")]
     ResetHaltRequestNotSupported,
-    /// The result index of a batched command is not available.
-    #[error("The requested data is not available due to a previous error.")]
+    /// The requested data is not available due to a previous error.
     BatchedResultNotAvailable,
-    /// The hart is unavailable
-    #[error("The requested hart is unavailable.")]
+    /// The requested hart is unavailable.
     HartUnavailable,
 }
 
@@ -115,17 +97,15 @@ pub enum AbstractCommandErrorKind {
 
 impl AbstractCommandErrorKind {
     fn parse(value: u8) -> Self {
-        use AbstractCommandErrorKind::*;
-
         match value {
-            0 => None,
-            1 => Busy,
-            2 => NotSupported,
-            3 => Exception,
-            4 => HaltResume,
-            5 => Bus,
-            6 => _Reserved,
-            7 => Other,
+            0 => Self::None,
+            1 => Self::Busy,
+            2 => Self::NotSupported,
+            3 => Self::Exception,
+            4 => Self::HaltResume,
+            5 => Self::Bus,
+            6 => Self::_Reserved,
+            7 => Self::Other,
             _ => panic!("cmderr is a 3 bit value, values higher than 7 should not occur."),
         }
     }

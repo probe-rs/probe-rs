@@ -41,14 +41,6 @@ pub enum TraceSink {
     TraceMemory,
 }
 
-/// An error when operating a core ROM table component occurred.
-#[derive(thiserror::Error, Debug)]
-pub enum ComponentError {
-    /// Nordic chips do not support setting all TPIU clocks. Try choosing another clock speed.
-    #[error("Nordic does not support TPIU CLK value of {0}")]
-    NordicUnsupportedTPUICLKValue(u32),
-}
-
 /// A trait to be implemented on memory mapped register types for debug component interfaces.
 pub trait DebugComponentInterface:
     MemoryMappedRegister<u32> + Clone + From<u32> + Into<u32> + Sized + std::fmt::Debug

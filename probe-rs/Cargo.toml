@@ -79,6 +79,7 @@ base64 = "0.21"
 bincode = "1.3"
 bitfield = "0.14"
 bitvec = "1"
+displaydoc = { version ="0.2", git = "https://github.com/bugadani/displaydoc.git", branch = "core" }
 enum-primitive-derive = "0.3"
 gimli = { version = "0.28", default-features = false, features = [
     "endian-reader",

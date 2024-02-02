@@ -100,73 +100,66 @@ impl fmt::Display for BatchCommand {
 }
 
 /// This error occurs whenever the debug probe logic encounters an error while operating the relevant debug probe.
-#[derive(thiserror::Error, Debug)]
+#[derive(displaydoc::Display, thiserror::Error, Debug)]
+#[ignore_extra_doc_attributes]
 pub enum DebugProbeError {
-    /// Something with the USB communication went wrong.
-    #[error("USB Communication Error")]
+    /// USB communication error.
     Usb(#[source] std::io::Error),
-    /// The firmware of the probe is outdated. This error is especially prominent with ST-Links.
+    /// The firmware on the probe is outdated, and not supported by probe-rs.
+    ///
+    /// This error is especially prominent with ST-Links.
     /// You can use their official updater utility to update your probe firmware.
-    #[error("The firmware on the probe is outdated, and not supported by probe-rs.")]
     ProbeFirmwareOutdated,
-    /// An error which is specific to the debug probe in use occurred.
-    #[error("An error specific to a probe type occurred")]
+    /// An error specific to the probe occurred.
     ProbeSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
-    /// The debug probe handle could not be created as specified.
-    #[error("Probe could not be created")]
+    /// Probe could not be created.
     ProbeCouldNotBeCreated(#[from] ProbeCreationError),
-    /// The selected wire protocol is not supported with given probe.
-    #[error("Probe does not support {0}")]
+    /// Probe does not support {0}.
     UnsupportedProtocol(WireProtocol),
-    /// The selected probe does not support the selected interface.
+    /// The connected probe does not support the {0} interface.
+    ///
     /// This happens if a probe does not support certain functionality, such as:
     /// - ARM debugging
     /// - RISC-V debugging
     /// - SWO
-    #[error("The connected probe does not support the interface '{0}'")]
     InterfaceNotAvailable(&'static str),
-    /// Some interaction with the target registry failed.
+    /// An error occurred while working with the registry.
+    ///
     /// This happens when an invalid chip name is given for example.
-    #[error("An error occurred while working with the registry")]
     Registry(#[from] RegistryError),
-    /// The debug probe does not support the speed that was chosen.
-    /// Try to alter the selected speed.
-    #[error("The requested speed setting ({0} kHz) is not supported by the probe")]
+    /// The requested speed setting ({0} kHz) is not supported by the probe. Try to lower the selected speed.
     UnsupportedSpeed(u32),
+    /// You need to be attached to the target to perform this action.
+    ///
     /// The debug probe did not yet perform the init sequence.
     /// Try calling [`DebugProbe::attach`] before trying again.
-    #[error("You need to be attached to the target to perform this action")]
     NotAttached,
+    /// You need to be detached from the target to perform this action.
+    ///
     /// The debug probe already performed the init sequence.
     /// Try running the failing command before [`DebugProbe::attach`].
-    #[error("You need to be detached from the target to perform this action")]
     Attached,
-    /// Performing the init sequence on the target failed.
-    /// Check the wiring before continuing.
-    #[error("Failed to find the target or attach to the target")]
+    /// Failed to find the target or attach to the target. Check the wiring before continuing.
     TargetNotFound,
-    /// The variant of the function you called is not yet implemented.
+    /// Some functionality was not implemented yet: {0}.
+    ///
     /// This can happen if some debug probe has some unimplemented functionality for a specific protocol or architecture.
-    #[error("Some functionality was not implemented yet: {0}")]
     NotImplemented(&'static str),
-    /// The called debug sequence is not supported on given probe.
+    /// This debug sequence is not supported on the used probe: {0}.
+    ///
     /// This is most likely happening because you are using an ST-Link, which are severely limited in functionality.
     /// If possible, try using another probe.
-    #[error("This debug sequence is not supported on the used probe: {0}")]
     DebugSequenceNotSupported(&'static str),
-    /// An error occurred during the previously batched command.
-    #[error("Error in previous batched command")]
+    /// An error occurred during a previously batched command.
     BatchError(BatchCommand),
+    /// Command not supported by probe: {0}.
+    ///
     /// The used functionality is not supported by the selected probe.
     /// This can happen when a probe does not allow for setting speed manually for example.
-    #[error("Command not supported by probe: {0}")]
     CommandNotSupportedByProbe(&'static str),
-    /// Some other error occurred.
-    #[error(transparent)]
+    /// An uncategorized error occurred.
     Other(#[from] anyhow::Error),
-
     /// A timeout occurred during probe operation.
-    #[error("Timeout occurred during probe operation.")]
     Timeout,
 }
 
@@ -174,27 +167,22 @@ pub enum DebugProbeError {
 /// This is almost always a sign of a bad USB setup.
 /// Check UDEV rules if you are on Linux and try installing Zadig
 /// (This will disable vendor specific drivers for your probe!) if you are on Windows.
-#[derive(thiserror::Error, Debug)]
+#[derive(displaydoc::Display, thiserror::Error, Debug)]
+#[ignore_extra_doc_attributes]
 pub enum ProbeCreationError {
     /// The selected debug probe was not found.
+    ///
     /// This can be due to permissions.
-    #[error("Probe was not found.")]
     NotFound,
-    /// The selected probe USB device could not be opened.
-    /// Make sure you have all necessary permissions.
-    #[error("USB device could not be opened. Please check the permissions.")]
+    /// The selected probe USB device could not be opened. Make sure you have all necessary permissions.
     CouldNotOpen,
     /// Some error with HID API occurred.
-    #[error("{0}")]
     HidApi(#[from] hidapi::HidError),
     /// Some USB error occurred.
-    #[error("{0}")]
     Usb(std::io::Error),
     /// An error specific with the selected probe occurred.
-    #[error("An error specific to a probe type occurred: {0}")]
     ProbeSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
-    /// Something else happened.
-    #[error("{0}")]
+    /// An uncategorized error occurred: {0}.
     Other(&'static str),
 }
 
@@ -725,14 +713,12 @@ impl DebugProbeInfo {
 }
 
 /// An error which can occur while parsing a [`DebugProbeSelector`].
-#[derive(thiserror::Error, Debug)]
+#[derive(displaydoc::Display, thiserror::Error, Debug)]
 pub enum DebugProbeSelectorParseError {
-    /// The VID or PID is not a valid number.
-    #[error("The VID or PID could not be parsed: {0}")]
+    /// The VID or PID could not be parsed: {0}
     ParseInt(#[from] std::num::ParseIntError),
 
-    /// The format of the selector is invalid.
-    #[error("Please use a string in the form `VID:PID:<Serial>` where Serial is optional.")]
+    /// Please use a string in the form `VID:PID:<Serial>` where Serial is optional.
     Format,
 }
 

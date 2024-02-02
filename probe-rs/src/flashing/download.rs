@@ -68,38 +68,38 @@ impl FromStr for Format {
 ///
 /// This includes corrupt file issues,
 /// OS permission issues as well as chip connectivity and memory boundary issues.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, displaydoc::Display, thiserror::Error)]
+#[ignore_extra_doc_attributes]
 pub enum FileDownloadError {
-    /// An error with the actual flashing procedure has occurred.
+    /// An error occurred with the actual flashing procedure.
     ///
     /// This is mostly an error in the communication with the target inflicted by a bad hardware connection or a probe-rs bug.
-    #[error("Error while flashing")]
     Flash(#[from] FlashError),
-    /// Reading and decoding the IHEX file has failed due to the given error.
-    #[error("Could not read ihex format")]
+
+    /// Could not read ihex format.
     IhexRead(#[from] ihex::ReaderError),
+
     /// An IO error has occurred while reading the firmware file.
-    #[error("I/O error")]
     IO(#[from] std::io::Error),
-    /// The given error has occurred while reading the object file.
-    #[error("Object Error: {0}.")]
+
+    /// Error reading the object file: {0}.
     Object(&'static str),
-    /// Reading and decoding the given ELF file has resulted in the given error.
-    #[error("Could not read ELF file")]
+
+    /// Could not read ELF file.
     Elf(#[from] object::read::Error),
-    /// Espflash format error
-    #[error("Failed to format as esp-idf binary")]
+
+    /// Failed to format as esp-idf binary.
     Idf(#[from] espflash::error::Error),
-    /// The target doesn't support the esp-idf format
-    #[error("Target {0} does not support the esp-idf format")]
+
+    /// Target {0} does not support the esp-idf format.
     IdfUnsupported(String),
+
     /// No loadable segments were found in the ELF file.
     ///
     /// This is most likely because of a bad linker script.
-    #[error("No loadable ELF sections were found.")]
     NoLoadableSegments,
-    /// Some error returned by the flash size detection.
-    #[error("Could not determine flash size.")]
+
+    /// Could not determine flash size.
     FlashSizeDetection(#[from] crate::Error),
 }
 

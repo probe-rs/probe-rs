@@ -13,37 +13,32 @@ use crate::probe::DebugProbeError;
 use std::fmt::Display;
 
 /// An error occurred when interacting with the debug port.
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, displaydoc::Display, Debug)]
 pub enum DebugPortError {
-    /// The accessed register is not supported on this debug port.
-    #[error("Register {register} not supported by debug port version {version}")]
+    /// Register {register} is not supported by debug port version {version}.
     UnsupportedRegister {
         /// The name of the register that was accessed.
         register: &'static str,
         /// The version of the operated debug port.
         version: DebugPortVersion,
     },
-    /// Error parsing a register value.
-    #[error("Error parsing register value.")]
+
+    /// Error parsing register value.
     RegisterParse(#[from] RegisterParseError),
-    /// An error with operating the debug probe occurred.
-    #[error("A Debug Probe Error occurred")]
+
+    /// A Debug Probe Error occurred
     DebugProbe(#[from] DebugProbeError),
 
-    /// A timeout occurred.
-    #[error("Timeout occurred")]
+    /// Timeout occurred
     Timeout,
 
-    /// Powerup of the target device failed.
-    #[error("Target power-up failed.")]
+    /// Target power-up failed.
     TargetPowerUpFailed,
 
-    /// The debug port is not supported.
-    #[error("Debug port not supported: {0}")]
+    /// Debug port not supported: {0}
     Unsupported(String),
 
     /// An error occurred in the communication with an access port or debug port.
-    #[error("An error occurred in the communication with an access port or debug port.")]
     Dap(#[from] DapError),
 }
 /// A typed interface to be implemented on drivers that can control a debug port.

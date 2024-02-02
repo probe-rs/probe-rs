@@ -21,21 +21,24 @@ pub fn parse_u64(input: &str) -> Result<u64, ParseIntError> {
     parse_int::parse(input)
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, displaydoc::Display, Error)]
 pub enum ArtifactError {
-    #[error("Failed to canonicalize path '{work_dir}'.")]
+    /// Failed to canonicalize path '{work_dir}'.
     Canonicalize {
-        #[source]
         source: std::io::Error,
         work_dir: String,
     },
-    #[error("An IO error occurred during the execution of 'cargo build'.")]
+
+    /// An IO error occurred during the execution of 'cargo build'.
     Io(#[source] std::io::Error),
-    #[error("Failed to run cargo build: exit code = {0:?}.")]
+
+    /// Failed to run cargo build: exit code = {0:?}.
     CargoBuild(Option<i32>),
-    #[error("Multiple binary artifacts were found.")]
+
+    /// Multiple binary artifacts were found.
     MultipleArtifacts,
-    #[error("No binary artifacts were found.")]
+
+    /// No binary artifacts were found.
     NoArtifacts,
 }
 

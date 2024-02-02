@@ -375,35 +375,29 @@ pub enum ScanRegion {
 }
 
 /// Error type for RTT operations.
-#[derive(thiserror::Error, Debug)]
+#[derive(displaydoc::Display, thiserror::Error, Debug)]
 pub enum Error {
-    /// RTT control block not found in target memory. Make sure RTT is initialized on the target.
-    #[error(
-        "RTT control block not found in target memory.\n\
-        - Make sure RTT is initialized on the target, AND that there are NO target breakpoints before RTT initalization.\n\
-        - For VSCode and probe-rs-debugger users, using `halt_after_reset:true` in your `launch.json` file will prevent RTT \n\
-        \tinitialization from happening on time.\n\
-        - Depending on the target, sleep modes can interfere with RTT."
-    )]
+    /**
+     * Could not find RTT control block in target memory.
+     *
+     * - Make sure RTT is initialized on the target, AND that there are NO target breakpoints before RTT initalization.
+     * - For VSCode and probe-rs-debugger users, using `halt_after_reset:true` in your `launch.json` file will prevent RTT initialization from happening on time.
+     * - Depending on the target, sleep modes can interfere with RTT.
+     */
     ControlBlockNotFound,
 
-    /// Multiple control blocks found in target memory. The data contains the control block addresses (up to 5).
-    #[error("Multiple control blocks found in target memory.")]
+    /// Multiple control blocks found in target memory: {0:X?}
     MultipleControlBlocksFound(Vec<u32>),
 
-    /// The control block has been corrupted. The data contains a detailed error.
-    #[error("Control block corrupted: {0}")]
+    /// Control block corrupted: {0}
     ControlBlockCorrupted(String),
 
-    /// Attempted an RTT read/write operation against a Core number that is different from the Core number against which RTT was initialized
-    #[error("Incorrect Core number specified for this operation. Expected {0}, and found {1}")]
+    /// Incorrect Core number specified for this operation. Expected {0}, and found {1}
     IncorrectCoreSpecified(usize, usize),
 
-    /// Wraps errors propagated up from probe-rs.
-    #[error("Error communicating with probe: {0}")]
+    /// Error communicating with probe
     Probe(#[from] crate::Error),
 
-    /// Wraps errors propagated up from reading memory on the target.
-    #[error("Unexpected error while reading {0} from target memory. Please report this as a bug.")]
+    /// Unexpected error while reading {0} from target memory. Please report this as a bug.
     MemoryRead(String),
 }
