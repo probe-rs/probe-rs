@@ -7,13 +7,7 @@ use time::UtcOffset;
 use time::{macros::format_description, OffsetDateTime};
 
 use crate::cmd::cargo_embed::DefmtInformation;
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum DataFormat {
-    String,
-    BinaryLE,
-    Defmt,
-}
+use crate::util::rtt::{DataFormat, RttBuffer};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ChannelConfig {
@@ -135,7 +129,7 @@ impl<'defmt> ChannelState<'defmt> {
             name,
             input: String::new(),
             scroll_offset: 0,
-            rtt_buffer: RttBuffer([0u8; 1024]),
+            rtt_buffer: RttBuffer::new(1024),
             data,
         }
     }
@@ -291,13 +285,5 @@ impl<'defmt> ChannelState<'defmt> {
 
     pub(crate) fn data(&self) -> &ChannelData {
         &self.data
-    }
-}
-
-struct RttBuffer([u8; 1024]);
-
-impl fmt::Debug for RttBuffer {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
     }
 }
