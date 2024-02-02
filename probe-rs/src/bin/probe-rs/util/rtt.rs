@@ -17,27 +17,32 @@ use std::{
 };
 use time::{OffsetDateTime, UtcOffset};
 
+/// Try to find the RTT control block in the ELF file and attach to it.
+///
+/// This function can return `Ok(None)` to indicate that RTT is not available on the target.
 pub fn attach_to_rtt(
     core: &mut Core,
     memory_map: &[MemoryRegion],
-    scan_regions: &[std::ops::Range<u64>],
+    rtt_region: &ScanRegion,
     elf_file: &Path,
-    rtt_config: &RttConfig,
-    timestamp_offset: UtcOffset,
-    log_format: Option<&str>,
-) -> Result<Option<RttActiveTarget>, anyhow::Error> {
-    tracing::info!("Initializing RTT");
-    let rtt_header_address = if let Ok(mut file) = File::open(elf_file) {
-        if let Some(address) = RttActiveTarget::get_rtt_symbol(&mut file) {
-            ScanRegion::Exact(address as u32)
-        } else {
-            ScanRegion::Ranges(scan_regions.to_vec())
-        }
-    } else {
-        ScanRegion::Ranges(scan_regions.to_vec())
-    };
+) -> Result<Option<Rtt>, anyhow::Error> {
+    // Try to find the RTT control block symbol in the ELF file.
 
-    if let ScanRegion::Ranges(rngs) = &rtt_header_address {
+    // If we find it, we can use the exact address to attach to the RTT control block. Otherwise, we
+    // fall back to the caller-provided scan regions.
+    let exact_rtt_region;
+    let mut rtt_region = rtt_region;
+
+    if let Ok(mut file) = File::open(elf_file) {
+        if let Some(address) = RttActiveTarget::get_rtt_symbol(&mut file) {
+            exact_rtt_region = ScanRegion::Exact(address as u32);
+            rtt_region = &exact_rtt_region;
+        }
+    }
+
+    tracing::info!("Initializing RTT");
+
+    if let ScanRegion::Ranges(rngs) = &rtt_region {
         if rngs.is_empty() {
             // We have no regions to scan so we cannot initialize RTT.
             tracing::debug!("ELF file has no RTT block symbol, and this target does not support automatic scanning");
@@ -45,12 +50,10 @@ pub fn attach_to_rtt(
         }
     }
 
-    match Rtt::attach_region(core, memory_map, &rtt_header_address) {
+    match Rtt::attach_region(core, memory_map, rtt_region) {
         Ok(rtt) => {
             tracing::info!("RTT initialized.");
-            let app =
-                RttActiveTarget::new(rtt, elf_file, rtt_config, timestamp_offset, log_format)?;
-            Ok(Some(app))
+            Ok(Some(rtt))
         }
         Err(err) => Err(anyhow!("Error attempting to attach to RTT: {}", err)),
     }

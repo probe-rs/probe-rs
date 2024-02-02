@@ -15,10 +15,7 @@ use ratatui::{
     Terminal,
 };
 use std::{fmt::write, path::PathBuf, sync::mpsc::RecvTimeoutError};
-use std::{
-    io::{Read, Seek, Write},
-    time::Duration,
-};
+use std::{io::Write, time::Duration};
 
 use super::{
     super::{config, DefmtInformation},
@@ -153,26 +150,6 @@ impl<'defmt> App<'defmt> {
             history_path,
             logname,
         })
-    }
-
-    pub fn get_rtt_symbol<T: Read + Seek>(file: &mut T) -> Option<u64> {
-        let mut buffer = Vec::new();
-        if file.read_to_end(&mut buffer).is_ok() {
-            if let Ok(binary) = goblin::elf::Elf::parse(buffer.as_slice()) {
-                for sym in &binary.syms {
-                    if let Some(name) = binary.strtab.get_at(sym.st_name) {
-                        if name == "_SEGGER_RTT" {
-                            return Some(sym.st_value);
-                        }
-                    }
-                }
-            }
-        }
-
-        tracing::warn!(
-            "No RTT header info was present in the ELF file. Does your firmware run RTT?"
-        );
-        None
     }
 
     pub fn render(&mut self) {

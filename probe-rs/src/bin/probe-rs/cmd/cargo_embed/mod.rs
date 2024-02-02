@@ -299,17 +299,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
             None
         };
 
-        let rtt_header_address = if let Ok(mut file) = File::open(path) {
-            if let Some(address) = rttui::app::App::get_rtt_symbol(&mut file) {
-                ScanRegion::Exact(address as u32)
-            } else {
-                ScanRegion::Ram
-            }
-        } else {
-            ScanRegion::Ram
-        };
-
-        let mut rtt = rtt_attach(session.clone(), config.rtt.timeout, &rtt_header_address)
+        let mut rtt = rtt_attach(session.clone(), config.rtt.timeout, &ScanRegion::Ram, path)
             .context("Failed to attach to RTT")?;
 
         // Configure rtt channels according to configuration
@@ -466,6 +456,7 @@ fn rtt_attach(
     session: Arc<Mutex<Session>>,
     timeout: Duration,
     rtt_region: &ScanRegion,
+    elf_file: &Path,
 ) -> Result<Rtt> {
     let t = std::time::Instant::now();
 
@@ -485,8 +476,9 @@ fn rtt_attach(
             let memory_map = session_handle.target().memory_map.clone();
             let mut core = session_handle.core(0)?;
 
-            match Rtt::attach_region(&mut core, &memory_map, rtt_region) {
-                Ok(rtt) => return Ok(rtt),
+            match crate::util::rtt::attach_to_rtt(&mut core, &memory_map, rtt_region, elf_file) {
+                Ok(Some(rtt)) => return Ok(rtt),
+                Ok(None) => {}
                 Err(e) => last_error = Some(e),
             }
         }

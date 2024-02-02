@@ -7,6 +7,7 @@ use std::time::Duration;
 
 use anyhow::{anyhow, Result};
 use probe_rs::debug::{DebugInfo, DebugRegisters};
+use probe_rs::rtt::ScanRegion;
 use probe_rs::{
     exception_handler_for_core, probe::list::Lister, BreakpointCause, Core, CoreInterface, Error,
     HaltReason, SemihostingCommand, VectorCatchCondition,
@@ -17,7 +18,7 @@ use time::UtcOffset;
 
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 use crate::util::flash::{build_loader, run_flash_download};
-use crate::util::rtt::{self, RttConfig};
+use crate::util::rtt::{self, RttActiveTarget, RttConfig};
 use crate::FormatOptions;
 
 const RTT_RETRIES: usize = 10;
@@ -315,21 +316,28 @@ fn attach_to_rtt(
     timestamp_offset: UtcOffset,
     log_format: Option<&str>,
 ) -> Option<rtt::RttActiveTarget> {
+    let scan_regions = ScanRegion::Ranges(scan_regions.to_vec());
     for _ in 0..RTT_RETRIES {
-        match rtt::attach_to_rtt(
-            core,
-            memory_map,
-            scan_regions,
-            path,
-            &rtt_config,
-            timestamp_offset,
-            log_format,
-        ) {
-            Ok(target_rtt) => return target_rtt,
+        match rtt::attach_to_rtt(core, memory_map, &scan_regions, path) {
+            Ok(Some(target_rtt)) => {
+                let app = RttActiveTarget::new(
+                    target_rtt,
+                    path,
+                    &rtt_config,
+                    timestamp_offset,
+                    log_format,
+                );
+
+                match app {
+                    Ok(app) => return Some(app),
+                    Err(error) => tracing::debug!("{:?} RTT attach error", error),
+                }
+            }
+            Ok(None) => return None,
             Err(error) => tracing::debug!("{:?} RTT attach error", error),
         }
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
-    tracing::error!("Failed to attach to RTT continuing...");
+    tracing::error!("Failed to attach to RTT, continuing...");
     None
 }
