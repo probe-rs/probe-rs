@@ -63,7 +63,7 @@ enabled = false
 #              String - Directly show output from the target
 #              Defmt  - Format output on the host, see https://defmt.ferrous-systems.com/
 #              BinaryLE - Display as raw hex
-# socket   (Optional) - Server socket address (for optional external frontend or endpoint).
+# socket   (Optional, up channel only) - Server socket address (for optional external frontend or endpoint).
 channels = [
     # { up = 0, down = 0, name = "name", up_mode = "BlockIfFull", format = "Defmt" },
     # { up = 1, down = 0, name = "name", up_mode = "BlockIfFull", format = "String", socket = "127.0.0.1:12345" },

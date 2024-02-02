@@ -1,4 +1,5 @@
 use std::fmt;
+use std::net::SocketAddr;
 
 use defmt_decoder::StreamDecoder;
 use probe_rs::rtt::{ChannelMode, DownChannel, UpChannel};
@@ -23,7 +24,7 @@ pub struct ChannelConfig {
     pub name: Option<String>,
     pub up_mode: Option<ChannelMode>,
     pub format: DataFormat,
-    pub socket: Option<String>,
+    pub socket: Option<SocketAddr>,
 }
 
 pub enum ChannelData<'defmt> {
@@ -122,7 +123,7 @@ impl<'defmt> ChannelState<'defmt> {
         down_channel: Option<DownChannel>,
         name: Option<String>,
         data: ChannelData<'defmt>,
-        tcp_socket: Option<String>,
+        tcp_socket: Option<SocketAddr>,
     ) -> Self {
         let name = name
             .or_else(|| up_channel.as_ref().and_then(|up| up.name().map(Into::into)))

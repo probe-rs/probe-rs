@@ -1,14 +1,14 @@
 use std::io::Write;
-use std::net::TcpStream;
+use std::net::{SocketAddr, TcpStream};
 
 #[derive(Debug)]
 pub struct TcpPublisher {
-    pub address: String,
+    pub address: SocketAddr,
     pub socket: Option<TcpStream>,
 }
 
 impl TcpPublisher {
-    pub fn new(address: impl Into<String>) -> Self {
+    pub fn new(address: SocketAddr) -> Self {
         Self {
             address: address.into(),
             socket: None,
