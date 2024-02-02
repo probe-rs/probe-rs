@@ -14,8 +14,8 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph, Tabs},
     Terminal,
 };
-use std::{fmt::write, path::PathBuf, sync::mpsc::RecvTimeoutError};
-use std::{io::Write, time::Duration};
+use std::io::Write;
+use std::{fmt::write, path::PathBuf, sync::mpsc::TryRecvError};
 
 use super::{
     super::{config, DefmtInformation},
@@ -223,7 +223,7 @@ impl<'defmt> App<'defmt> {
 
     /// Returns true if the application should exit.
     pub fn handle_event(&mut self, core: &mut Core) -> bool {
-        match self.events.next(Duration::from_millis(10)) {
+        match self.events.next() {
             Ok(event) => match event.code {
                 KeyCode::Char('c') if event.modifiers.contains(KeyModifiers::CONTROL) => {
                     clean_up_terminal();
@@ -353,15 +353,14 @@ impl<'defmt> App<'defmt> {
                 }
                 _ => false,
             },
-            Err(RecvTimeoutError::Disconnected) => {
+            Err(TryRecvError::Empty) => return false,
+            Err(TryRecvError::Disconnected) => {
                 tracing::warn!(
                     "Unable to receive anymore input events from terminal, shutting down."
                 );
-                true
+                return true;
             }
-            // Timeout just means no input received.
-            Err(RecvTimeoutError::Timeout) => false,
-        }
+        };
     }
 
     pub fn current_tab(&self) -> &ChannelState<'defmt> {

@@ -366,17 +366,18 @@ fn run_rttui_app(
     let logname = format!("{name}_{chip_name}_{timestamp_millis}");
     let mut app = rttui::app::App::new(rtt, &config, logname, defmt_state.as_ref())?;
     loop {
+        app.render();
+
         {
             let mut session_handle = session.lock().unwrap();
             let mut core = session_handle.core(0)?;
 
             app.poll_rtt(&mut core, timezone_offset)?;
 
-            app.render();
             if app.handle_event(&mut core) {
                 logging::println("Shutting down.");
                 return Ok(());
-            };
+            }
         }
 
         std::thread::sleep(Duration::from_millis(10));
