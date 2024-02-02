@@ -28,7 +28,7 @@ pub struct StackFrame {
     pub is_inlined: bool,
     /// A cache of 'static' scoped variables for this stackframe
     pub static_variables: Option<VariableCache>,
-    /// A cache of 'local' scoped variables for this stafckframe, with a `Variable` for each in-scope variable.
+    /// A cache of 'local' scoped variables for this stackframe, with a `Variable` for each in-scope variable.
     /// - Complex variables and pointers will have additional children.
     ///   - This structure is recursive until a base type is encountered.
     pub local_variables: Option<VariableCache>,

@@ -1458,15 +1458,13 @@ impl UnitInfo {
                 | gimli::DW_AT_frame_base
                 | gimli::DW_AT_data_member_location => match attr.value() {
                     gimli::AttributeValue::Exprloc(expression) => {
-                        return match self.evaluate_expression(memory , expression, stack_frame_registers, frame_base) {
+                        return match self.evaluate_expression(memory, expression, stack_frame_registers, frame_base) {
                             Ok(result) => Ok(result),
-                            Err(error) => {
-                                if matches!(error, DebugError::UnwindIncompleteResults { message: _ }) {
+                            Err(DebugError::UnwindIncompleteResults { message }) => {
+                                tracing::warn!("UnwindIncompleteResults: {:?}", message);
                                     Ok(ExpressionResult::Location(VariableLocation::Unavailable))
-                                } else {
-                                    Err(error)
                                 }
-                            },
+                            e => e
                         };
                     }
                     gimli::AttributeValue::Udata(offset_from_location) => match parent_location {
@@ -1524,13 +1522,11 @@ impl UnitInfo {
                                             frame_base,
                                         ) {
                                             Ok(result) => Ok(result),
-                                            Err(error) => {
-                                                if matches!(error, DebugError::UnwindIncompleteResults { message: _ }) {
+                                            Err(DebugError::UnwindIncompleteResults { message }) => {
+                                                tracing::warn!("UnwindIncompleteResults: {:?}", message);
                                                     Ok(ExpressionResult::Location(VariableLocation::Unavailable))
-                                                } else {
-                                                    Err(error)
                                                 }
-                                            },
+                                            e => e
                                         };
                                     } else {
                                         return Ok(ExpressionResult::Location(
