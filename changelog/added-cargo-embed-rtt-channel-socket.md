@@ -1,1 +1,1 @@
-Added support to `Cargo Embed` for publishing raw RTT data for specific channels on a tcp socket.
+Added support to `cargo embed` for publishing raw RTT data for specific channels on a tcp socket.
