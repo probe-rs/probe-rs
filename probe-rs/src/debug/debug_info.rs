@@ -1172,7 +1172,7 @@ fn get_unwind_info<'a>(
     let frame_descriptor_entry = match frame_section.fde_for_address(
         &unwind_bases,
         frame_program_counter,
-        gimli::DebugFrame::cie_from_offset,
+        DebugFrame::cie_from_offset,
     ) {
         Ok(frame_descriptor_entry) => frame_descriptor_entry,
         Err(error) => {
