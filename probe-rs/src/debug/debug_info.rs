@@ -119,9 +119,9 @@ impl DebugInfo {
     /// ## Inlined functions
     /// Multiple nested inline functions could exist at the given address.
     /// This function will currently return the innermost function in that case.
-    // TODO: This function takes a memory interface. This seems odd, but gimly sometimes needs to read memory to resolve.
-    // Maybe this can be factored out if we can be sure that memory is never read for this usecase.
-    // Until we have more tests we cannot be sure tho and it should stay like this.
+    // TODO: This function takes a memory interface. This seems odd, but gimli sometimes needs to read memory to resolve.
+    // Maybe this can be factored out if we can be sure that memory is never read for this use case.
+    // Until we have more tests we cannot be sure though and it should stay like this.
     pub fn function_name(
         &self,
         address: u64,
