@@ -2283,9 +2283,9 @@ checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
 
 [[package]]
 name = "nusb"
-version = "0.1.4"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4a78c02d64455ced38cfadc3cfb1ecc45a2874a8accbda59ee74ecf2168e18a"
+checksum = "b5f8adce0565ec457ca66a47721a20c72d180be44f444b6cf9539c47b52c653e"
 dependencies = [
  "atomic-waker",
  "core-foundation",
