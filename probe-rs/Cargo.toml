@@ -171,7 +171,7 @@ tracing-subscriber = { version = "0.3", features = [
     "json",
 ], optional = true }
 tracing-appender = { version = "0.2", optional = true }
-ratatui = { version = "0.25", default-features = false, features = [
+ratatui = { version = "0.26.0", default-features = false, features = [
     "crossterm",
 ], optional = true }
 
