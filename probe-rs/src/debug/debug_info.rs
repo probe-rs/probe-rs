@@ -83,7 +83,7 @@ impl DebugInfo {
         let dwarf_cow = gimli::Dwarf::load(&load_section)?;
 
         use gimli::Section;
-        let frame_section = gimli::DebugFrame::load(load_section)?;
+        let mut frame_section = gimli::DebugFrame::load(load_section)?;
         let address_section = gimli::DebugAddr::load(load_section)?;
         let debug_loc = gimli::DebugLoc::load(load_section)?;
         let debug_loc_lists = gimli::DebugLocLists::load(load_section)?;
@@ -96,6 +96,8 @@ impl DebugInfo {
 
         while let Ok(Some(header)) = iter.next() {
             if let Ok(unit) = dwarf_cow.unit(header) {
+                // TODO: maybe it's not correct to read from arbitrary units
+                frame_section.set_address_size(unit.encoding().address_size);
                 unit_infos.push(UnitInfo::new(unit));
             };
         }
