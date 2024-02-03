@@ -60,11 +60,13 @@ enabled = false
 # name     (Optional) - String to be displayed in the RTTUI tab
 # up_mode  (Optional) - RTT channel specific as described above
 # format   (Required) - How to interpret data from target firmware.  One of:
-#              String - Directly show output from the target 
+#              String - Directly show output from the target
 #              Defmt  - Format output on the host, see https://defmt.ferrous-systems.com/
 #              BinaryLE - Display as raw hex
+# socket   (Optional, up channel only) - Server socket address (for optional external frontend or endpoint).
 channels = [
     # { up = 0, down = 0, name = "name", up_mode = "BlockIfFull", format = "Defmt" },
+    # { up = 1, down = 0, name = "name", up_mode = "BlockIfFull", format = "String", socket = "127.0.0.1:12345" },
 ]
 # The duration in ms for which the logger should retry to attach to RTT.
 timeout = 3000

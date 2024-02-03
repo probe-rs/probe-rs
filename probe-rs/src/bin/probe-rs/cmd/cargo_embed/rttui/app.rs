@@ -81,6 +81,7 @@ impl<'defmt> App<'defmt> {
                         .and_then(|down| pull_channel(&mut down_channels, down)),
                     channel.name.clone(),
                     data,
+                    channel.socket,
                 ))
             }
         } else {
@@ -95,6 +96,7 @@ impl<'defmt> App<'defmt> {
                     pull_channel(&mut down_channels, number),
                     None,
                     ChannelData::new_string(config.rtt.show_timestamps),
+                    None,
                 ));
             }
 
@@ -104,6 +106,7 @@ impl<'defmt> App<'defmt> {
                     Some(channel),
                     None,
                     ChannelData::new_string(config.rtt.show_timestamps),
+                    None,
                 ));
             }
         }
