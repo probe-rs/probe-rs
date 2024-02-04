@@ -1239,19 +1239,20 @@ fn unwind_register(
     memory: &mut dyn MemoryInterface,
     instruction_set: Option<InstructionSet>,
 ) -> ControlFlow<crate::Error, ()> {
-    use gimli::read::RegisterRule::*;
+    use gimli::read::RegisterRule;
+
     // If we do not have unwind info, or there is no register rule, then use UnwindRule::Undefined.
     let register_rule = debug_register
         .dwarf_id
         .and_then(|register_position| {
             unwind_info.map(|unwind_info| unwind_info.register(gimli::Register(register_position)))
         })
-        .unwrap_or(gimli::RegisterRule::Undefined);
+        .unwrap_or(RegisterRule::Undefined);
 
     let mut register_rule_string = format!("{register_rule:?}");
 
     let new_value = match register_rule {
-        Undefined => {
+        RegisterRule::Undefined => {
             // In many cases, the DWARF has `Undefined` rules for variables like frame pointer, program counter, etc., so we hard-code some rules here to make sure unwinding can continue. If there is a valid rule, it will bypass these hardcoded ones.
             match &debug_register {
                 fp if fp
@@ -1326,10 +1327,12 @@ fn unwind_register(
                 }
             }
         }
-        SameValue => callee_frame_registers
+
+        RegisterRule::SameValue => callee_frame_registers
             .get_register(debug_register.core_register.id)
             .and_then(|reg| reg.value),
-        Offset(address_offset) => {
+
+        RegisterRule::Offset(address_offset) => {
             // "The previous value of this register is saved at the address CFA+N where CFA is the current CFA value and N is a signed offset"
             let Some(unwind_cfa) = unwind_cfa else {
                 return ControlFlow::Break(
