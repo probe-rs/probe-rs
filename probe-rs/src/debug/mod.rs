@@ -5,16 +5,13 @@
 //! The `debug` module contains various debug functionality, which can be
 //! used to implement a debugger based on `probe-rs`.
 
-// Bad things happen to the VSCode debug extenison and debug_adapter if we panic at the wrong time.
-#![warn(clippy::unwrap_used, clippy::panic, clippy::expect_used)]
-
 /// Debug information which is parsed from DWARF debugging information.
 pub mod debug_info;
 /// Stepping through a program during debug, at various granularities.
 pub mod debug_step;
 /// References to the DIE (debug information entry) of functions.
 pub mod function_die;
-/// Target Register definitions.
+/// Target Register definitions, expanded from [`crate::core::registers::CoreRegister`] to include unwind specific information.
 pub mod registers;
 /// The source statement information used while identifying haltpoints for debug stepping and breakpoints.
 pub(crate) mod source_statement;
@@ -32,15 +29,21 @@ pub use self::{
     variable_cache::VariableCache,
 };
 use crate::{core::Core, MemoryInterface};
+
 use gimli::DebuggingInformationEntry;
+use typed_path::TypedPathBuf;
 
 use std::{
     io,
+    num::NonZeroU32,
     path::PathBuf,
     str::Utf8Error,
-    sync::atomic::{AtomicI64, Ordering},
+    sync::atomic::{AtomicU32, Ordering},
     vec,
 };
+
+/// A simplified type alias of the [`gimli::EndianReader`] type.
+pub type EndianReader = gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>;
 
 /// An error occurred while debugging the target.
 #[derive(Debug, thiserror::Error)]
@@ -89,7 +92,7 @@ pub enum DebugError {
 }
 
 /// A copy of [`gimli::ColumnType`] which uses [`u64`] instead of [`NonZeroU64`](std::num::NonZeroU64).
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize)]
 pub enum ColumnType {
     /// The `LeftEdge` means that the statement begins at the start of the new line.
     LeftEdge,
@@ -106,14 +109,78 @@ impl From<gimli::ColumnType> for ColumnType {
     }
 }
 
-static CACHE_KEY: AtomicI64 = AtomicI64::new(1);
+/// Object reference as defined in the DAP standard.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ObjectRef {
+    /// Valid object reference (> 0)
+    Valid(NonZeroU32),
+    /// Invalid object reference (<= 0)
+    #[default]
+    Invalid,
+}
+
+impl PartialOrd for ObjectRef {
+    fn partial_cmp(&self, other: &ObjectRef) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for ObjectRef {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        i64::from(*self).cmp(&i64::from(*other))
+    }
+}
+
+impl From<ObjectRef> for i64 {
+    fn from(value: ObjectRef) -> Self {
+        match value {
+            ObjectRef::Valid(v) => v.get() as i64,
+            ObjectRef::Invalid => 0,
+        }
+    }
+}
+
+impl From<i64> for ObjectRef {
+    fn from(value: i64) -> Self {
+        if value < 0 {
+            ObjectRef::Invalid
+        } else {
+            match NonZeroU32::try_from(value as u32) {
+                Ok(v) => ObjectRef::Valid(v),
+                Err(_) => ObjectRef::Invalid,
+            }
+        }
+    }
+}
+
+impl std::str::FromStr for ObjectRef {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let value = s.parse::<i64>()?;
+        Ok(ObjectRef::from(value))
+    }
+}
+
+static CACHE_KEY: AtomicU32 = AtomicU32::new(1);
 /// Generate a unique key that can be used to assign id's to StackFrame and Variable structs.
-pub fn get_sequential_key() -> i64 {
-    CACHE_KEY.fetch_add(1, Ordering::SeqCst)
+pub fn get_object_reference() -> ObjectRef {
+    let key = CACHE_KEY.fetch_add(1, Ordering::SeqCst);
+    ObjectRef::Valid(NonZeroU32::new(key).unwrap())
+}
+
+fn serialize_typed_path<S>(path: &Option<TypedPathBuf>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    match path {
+        Some(path) => serializer.serialize_str(&path.to_string_lossy()),
+        None => serializer.serialize_none(),
+    }
 }
 
 /// A specific location in source code.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct SourceLocation {
     /// The line number in the source file with zero based indexing.
     pub line: Option<u64>,
@@ -122,7 +189,8 @@ pub struct SourceLocation {
     /// The file name of the source file.
     pub file: Option<String>,
     /// The directory of the source file.
-    pub directory: Option<PathBuf>,
+    #[serde(serialize_with = "serialize_typed_path")]
+    pub directory: Option<TypedPathBuf>,
     /// The address of the first instruction associated with the source code
     pub low_pc: Option<u32>,
     /// The address of the first location past the last instruction associated with the source code
@@ -131,22 +199,31 @@ pub struct SourceLocation {
 
 impl SourceLocation {
     /// The full path of the source file, combining the `directory` and `file` fields.
-    /// If the path does not resolve to an existing file, and error is returned.
+    /// If the path does not resolve to an existing file, an error is returned.
     pub fn combined_path(&self) -> Result<PathBuf, DebugError> {
-        if let Some(valid_path) = self.directory.as_ref().and_then(|dir| {
-            self.file
-                .as_ref()
-                .map(|file| dir.join(file))
-                .filter(|path| path.exists())
-        }) {
-            Ok(valid_path)
-        } else {
-            Err(DebugError::Other(anyhow::anyhow!(
-                "Unable to find source file for directory {:?} and file {:?}",
-                self.directory,
-                self.file
-            )))
+        let combined_path = self.combined_typed_path();
+
+        if let Some(native_path) = combined_path.and_then(|p| PathBuf::try_from(p).ok()) {
+            if native_path.exists() {
+                return Ok(native_path);
+            }
         }
+
+        Err(DebugError::Other(anyhow::anyhow!(
+            "Unable to find source file for directory {:?} and file {:?}",
+            self.directory,
+            self.file
+        )))
+    }
+
+    /// Get the full path of the source file
+    pub fn combined_typed_path(&self) -> Option<TypedPathBuf> {
+        let combined_path = self
+            .directory
+            .as_ref()
+            .and_then(|dir| self.file.as_ref().map(|file| dir.join(file)));
+
+        combined_path
     }
 }
 
@@ -155,7 +232,7 @@ fn extract_file(
     debug_info: &DebugInfo,
     unit: &gimli::Unit<GimliReader>,
     attribute_value: gimli::AttributeValue<GimliReader>,
-) -> Option<(PathBuf, String)> {
+) -> Option<(TypedPathBuf, String)> {
     match attribute_value {
         gimli::AttributeValue::FileIndex(index) => unit.line_program.as_ref().and_then(|ilnp| {
             let header = ilnp.header();

@@ -1,5 +1,7 @@
 name: fe310
-manufacturer: null
+manufacturer:
+  cc: 0x09
+  id: 0x09
 variants:
   - name: fe310-g002
     cores:

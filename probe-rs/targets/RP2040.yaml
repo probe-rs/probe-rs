@@ -1,4 +1,7 @@
 name: RP2040
+manufacturer:
+  id: 0x13
+  cc: 0x09
 variants:
   - name: RP2040
     cores:
@@ -18,22 +21,6 @@ variants:
       - !Ram
           range:
             start: 0x20000000
-            end: 0x20040000
-          is_boot_memory: false
-          cores:
-            - core0
-            - core1
-      - !Ram
-          range:
-            start: 0x20040000
-            end: 0x20041000
-          is_boot_memory: false
-          cores:
-            - core0
-            - core1
-      - !Ram
-          range:
-            start: 0x20041000
             end: 0x20042000
           is_boot_memory: false
           cores:
@@ -93,20 +80,6 @@ variants:
       - !Ram
           range:
             start: 0x20000000
-            end: 0x20040000
-          is_boot_memory: false
-          cores:
-            - core0
-      - !Ram
-          range:
-            start: 0x20040000
-            end: 0x20041000
-          is_boot_memory: false
-          cores:
-            - core0
-      - !Ram
-          range:
-            start: 0x20041000
             end: 0x20042000
           is_boot_memory: false
           cores:

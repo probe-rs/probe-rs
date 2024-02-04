@@ -1,6 +1,8 @@
 ---
 name: NXP MIMXRT1064 Series (Rev A)
-manufacturer: ~
+manufacturer:
+  cc: 0x00
+  id: 0x15
 variants:
   - name: MIMXRT1064
     part: ~

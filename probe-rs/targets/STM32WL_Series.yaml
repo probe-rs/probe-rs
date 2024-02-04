@@ -1,5 +1,7 @@
 name: STM32WL Series
-manufacturer: null
+manufacturer:
+  id: 0x20
+  cc: 0x0
 variants:
   - name: STM32WLE5J8Ix
     cores:
@@ -52,6 +54,31 @@ variants:
     flash_algorithms:
       - stm32wlexx_128
   - name: STM32WLE5JCIx
+    cores:
+      - name: main
+        type: armv7em
+        core_access_options:
+          !Arm
+            ap: 0x0
+            psel: 0x0
+    memory_map:
+      - !Ram
+          range:
+            start: 0x20000000
+            end: 0x20010000
+          is_boot_memory: false
+          cores:
+            - main
+      - !Nvm
+          range:
+            start: 0x8000000
+            end: 0x8040000
+          is_boot_memory: true
+          cores:
+            - main
+    flash_algorithms:
+      - stm32wlxx_cm4
+  - name: STM32WLE5CCUx
     cores:
       - name: main
         type: armv7em

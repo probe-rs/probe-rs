@@ -14,4 +14,4 @@ license.workspace = true
 [dependencies]
 jep106 = "0.2.8"
 serde = { version = "1", features = ["derive"] }
-base64 = "0.21.1"
+base64 = "0.21.7"

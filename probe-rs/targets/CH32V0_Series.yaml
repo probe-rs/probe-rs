@@ -1,0 +1,48 @@
+name: CH32V0 Series
+variants:
+- name: CH32V003
+  cores:
+  - name: main
+    type: riscv
+    core_access_options: !Riscv {}
+  memory_map:
+  - !Ram
+    range:
+      start: 0x20000000
+      end: 0x20000800
+    cores:
+    - main
+  - !Nvm
+    range:
+      start: 0x0
+      end: 0x4000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - ch32v003
+flash_algorithms:
+- name: ch32v003
+  description: 'flash algorithm for CH32V003, ses-also: https://github.com/ch32-rs/flash-algorithms'
+  default: true
+  instructions: NwUAIANFRSEJyTclAkAMSaFmk4YGCNWNDMl9Fg1FY3emAjcFZ0UTBTUStyUCQMjBN5bvzRMGtprQwcjR0NE3BQAghUUjCrUgAUWCgJcAAADngKAZAAC3BQAgA8ZFIQVFAc43JgJAFEoBRSFnEwcHCNmOFMojigUggoC3BQAgA8ZFIaqFBUUZyhPVtQETNRUAbgWqlRP29T8FZRHCgoA3JQJAEEkTdgYIBeoQSRNmJgAQyUzJDEmT5QUEDMlMRYWJ9f23JQJAyEUTdfX9yMWQSQFFdZqQyYKABWUFBYKAtwUAIIPGRSGqhQVFgc4T1bUBEzUVAG4FM4elAJN19wMFZZHBgoA3JQJADEmT9QUIweUMScFm1Y0MyQxJtwYIANWNDMlMRYWJ9f2BR7cmAkC3AgQAQUO6hROVJwAylQhBiMGISjNlVQCIyshGBYl1/YUHkQXjkmf+NyUCQAxJwWbVjQzJWMkMSZPlBQQMyUxFhYn1/TclAkAMScF2/Rb1jQzJQUUMQxRCY5fVABEHfRURBm35hb8BoAVlBQWCgDcFACCDRUUhBUWFzTclAkAMSZP1BQid5QxJk+VFAAzJDEmT5QUEDMlMRYWJ9f23JQJAyEUTdfX9yMWQSQFFbZqQyYKABWUFBYKAlwAAAOeAoAAAAAGgAAA=
+  load_address: 0x20000020
+  pc_init: 0x0
+  pc_uninit: 0x56
+  pc_program_page: 0xde
+  pc_erase_sector: 0x7a
+  pc_erase_all: 0x19c
+  data_section_offset: 0x20000214
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x4000
+    page_size: 0x40
+    erased_byte_value: 0xff
+    program_page_timeout: 1000
+    erase_sector_timeout: 2000
+    sectors:
+    - size: 0x400
+      address: 0x0
+  cores:
+  - main

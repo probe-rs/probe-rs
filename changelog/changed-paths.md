@@ -1,0 +1,2 @@
+The following are now available under `probe_rs::probe`: `AttachMethod`, `DebugProbe`, `DebugProbeError`, `DebugProbeInfo`, `DebugProbeSelector`, `Probe`, `ProbeCreationError`, `ProbeFactory`, `WireProtocol`
+`Lister` is now available under `probe_rs::probe::list`

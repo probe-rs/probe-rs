@@ -1,7 +1,8 @@
 use probe_rs::rtt::{Channels, Rtt, RttChannel, ScanRegion};
-use probe_rs::Permissions;
-use probe_rs::{config::TargetSelector, DebugProbeInfo, Probe};
+use probe_rs::{config::TargetSelector, probe::DebugProbeInfo};
+use probe_rs::{probe::list::Lister, Permissions};
 
+use anyhow::{bail, Result};
 use clap::Parser;
 use std::io::prelude::*;
 use std::io::{stdin, stdout};
@@ -57,7 +58,8 @@ fn parse_scan_region(
 #[derive(Debug, clap::Parser)]
 #[clap(
     name = "rtthost",
-    about = "Host program for debugging microcontrollers using the RTT (real-time transfer) protocol."
+    about = "Host program for debugging microcontrollers using the RTT (real-time transfer) protocol.",
+    version = clap::crate_version!(),
 )]
 struct Opts {
     #[clap(
@@ -92,6 +94,9 @@ struct Opts {
     )]
     down: Option<usize>,
 
+    #[clap(short, long, help = "Reset the target after RTT session was opened")]
+    reset: bool,
+
     #[clap(
         long,
         default_value="",
@@ -100,62 +105,53 @@ struct Opts {
     scan_region: ScanRegion,
 }
 
-fn main() {
+fn main() -> Result<()> {
     pretty_env_logger::init();
-
-    std::process::exit(run());
-}
-
-fn run() -> i32 {
     let opts = Opts::parse();
 
-    let probes = Probe::list_all();
+    let lister = Lister::new();
+
+    let probes = lister.list_all();
 
     if probes.is_empty() {
-        eprintln!("No debug probes available. Make sure your probe is plugged in, supported and up-to-date.");
-        return 1;
+        bail!("No debug probes available. Make sure your probe is plugged in, supported and up-to-date.");
     }
 
     let probe_number = match opts.probe {
         ProbeInfo::List => {
             list_probes(std::io::stdout(), &probes);
-            return 0;
+            return Ok(());
         }
         ProbeInfo::Number(i) => i,
     };
 
     if probe_number >= probes.len() {
-        eprintln!("Probe {probe_number} does not exist.");
         list_probes(std::io::stderr(), &probes);
-        return 1;
+        bail!("Probe {probe_number} does not exist.");
     }
 
-    let probe = match probes[probe_number].open() {
+    let probe = match probes[probe_number].open(&lister) {
         Ok(probe) => probe,
         Err(err) => {
-            eprintln!("Error opening probe: {err}");
-            return 1;
+            bail!("Error opening probe: {err}");
         }
     };
 
-    let target_selector = opts
-        .chip
-        .clone()
-        .map(TargetSelector::Unspecified)
-        .unwrap_or(TargetSelector::Auto);
+    let target_selector = TargetSelector::from(opts.chip.as_deref());
 
     let mut session = match probe.attach(target_selector, Permissions::default()) {
         Ok(session) => session,
         Err(err) => {
-            eprintln!("Error creating debug session: {err}");
+            let mut err_str = format!("Error creating debug session: {err}");
 
             if opts.chip.is_none() {
                 if let probe_rs::Error::ChipNotFound(_) = err {
-                    eprintln!("Hint: Use '--chip' to specify the target chip type manually");
+                    err_str
+                        .push_str("\nHint: Use '--chip' to specify the target chip type manually");
                 }
             }
 
-            return 1;
+            bail!("{err}");
         }
     };
 
@@ -164,8 +160,7 @@ fn run() -> i32 {
     let mut core = match session.core(0) {
         Ok(core) => core,
         Err(err) => {
-            eprintln!("Error attaching to core # 0 {err}");
-            return 1;
+            bail!("Error attaching to core # 0 {err}");
         }
     };
 
@@ -174,8 +169,7 @@ fn run() -> i32 {
     let mut rtt = match Rtt::attach_region(&mut core, &memory_map, &opts.scan_region) {
         Ok(rtt) => rtt,
         Err(err) => {
-            eprintln!("Error attaching to RTT: {err}");
-            return 1;
+            bail!("Error attaching to RTT: {err}");
         }
     };
 
@@ -186,15 +180,14 @@ fn run() -> i32 {
         println!("Down channels:");
         list_channels(rtt.down_channels());
 
-        return 0;
+        return Ok(());
     }
 
     let up_channel = if let Some(up) = opts.up {
         let chan = rtt.up_channels().take(up);
 
         if chan.is_none() {
-            eprintln!("Error: up channel {up} does not exist.");
-            return 1;
+            bail!("Error: up channel {up} does not exist.");
         }
 
         chan
@@ -206,8 +199,7 @@ fn run() -> i32 {
         let chan = rtt.down_channels().take(down);
 
         if chan.is_none() {
-            eprintln!("Error: up channel {down} does not exist.");
-            return 1;
+            bail!("Error: up channel {down} does not exist.");
         }
 
         chan
@@ -222,13 +214,16 @@ fn run() -> i32 {
     let mut up_buf = [0u8; 1024];
     let mut down_buf = vec![];
 
+    if opts.reset {
+        core.reset()?;
+    }
+
     loop {
         if let Some(up_channel) = up_channel.as_ref() {
             let count = match up_channel.read(&mut core, up_buf.as_mut()) {
                 Ok(count) => count,
                 Err(err) => {
-                    eprintln!("\nError reading from RTT: {err}");
-                    return 1;
+                    bail!("\nError reading from RTT: {err}");
                 }
             };
 
@@ -237,8 +232,7 @@ fn run() -> i32 {
                     stdout().flush().ok();
                 }
                 Err(err) => {
-                    eprintln!("Error writing to stdout: {err}");
-                    return 1;
+                    bail!("Error writing to stdout: {err}");
                 }
             }
         }
@@ -252,8 +246,7 @@ fn run() -> i32 {
                 let count = match down_channel.write(&mut core, down_buf.as_mut()) {
                     Ok(count) => count,
                     Err(err) => {
-                        eprintln!("\nError writing to RTT: {err}");
-                        return 1;
+                        bail!("\nError writing to RTT: {err}");
                     }
                 };
 

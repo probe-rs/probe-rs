@@ -1,6 +1,8 @@
 ---
 name: NXP MIMXRT1010 Series
-manufacturer: ~
+manufacturer:
+  cc: 0x00
+  id: 0x15
 variants:
   - name: MIMXRT1010
     part: ~

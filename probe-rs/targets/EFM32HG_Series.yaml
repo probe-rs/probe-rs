@@ -1,0 +1,529 @@
+name: EFM32HG Series
+manufacturer:
+  cc: 0x02
+  id: 0x21
+generated_from_pack: true
+pack_file_release: 4.3.0
+variants:
+- name: EFM32HG108F32
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - efm32m0p
+- name: EFM32HG108F64
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - efm32m0p
+- name: EFM32HG110F32
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - efm32m0p
+- name: EFM32HG110F64
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - efm32m0p
+- name: EFM32HG210F32
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - efm32m0p
+- name: EFM32HG210F64
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - efm32m0p
+- name: EFM32HG222F32
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20001000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - efm32m0p
+- name: EFM32HG222F64
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - efm32m0p
+- name: EFM32HG308F32
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - efm32m0p
+- name: EFM32HG308F64
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - efm32m0p
+- name: EFM32HG309F32
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - efm32m0p
+- name: EFM32HG309F64
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - efm32m0p
+- name: EFM32HG310F32
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - efm32m0p
+- name: EFM32HG310F64
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - efm32m0p
+- name: EFM32HG321F32
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - efm32m0p
+- name: EFM32HG321F64
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - efm32m0p
+- name: EFM32HG322F32
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - efm32m0p
+- name: EFM32HG322F64
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - efm32m0p
+- name: EFM32HG350F32
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x8000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - efm32m0p
+- name: EFM32HG350F64
+  cores:
+  - name: main
+    type: armv6m
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20002000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x10000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - efm32m0p
+flash_algorithms:
+- name: efm32m0p
+  description: EFM32 Zero/Happy Gecko
+  default: true
+  instructions: QLpwR8C6cEfwtQIlWUvtQ1lMFibiaTJCDdCgaEAIQACgYJAHAtUBIMBD8L1QBwnVACDAQ/C9AkCKQgHRACDwvVse59EoRvC9S0lMSMhjACBwR0lIgWhJCEkAgWAAIHBHcLVFTKBoASEIQ6BgQk1ESEA1aGEIAgDwePgAIWlhoWhJCEkAoWAAKADQASBwvRC1ASMBRpsCBMkbHwLQUhz60AHgUhwR0DRMomgBIQpDomAgYeFgAiAA8Fj4oWhJCEkAoWAAKAHQASAQvQAgEL33tQVGyRwoSI8IgWiCsL8AASIRQ4FgL+ABIIACKBiACoACRBu8QgDZPEYAIQEgBJ7/94P/ACgn0RxIBWEBIcFgAs6BYQghAJbBYCYfDeAIIQhG//dy/wAoFtEAmAFoEkiBYQCYAB02HwCQAC7v0QSYLRkAGT8bBJAAL83RACEBIP/3W/8AKALQASAFsPC9BkiBaEkISQCBYAAg9ucDSchgACEBIEnngJaYAAAADEBxGwAAGmMAAAAAAAA=
+  pc_init: 0x49
+  pc_uninit: 0x53
+  pc_program_page: 0xcf
+  pc_erase_sector: 0x8f
+  pc_erase_all: 0x61
+  data_section_offset: 0x184
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x10000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 100
+    erase_sector_timeout: 200
+    sectors:
+    - size: 0x400
+      address: 0x0

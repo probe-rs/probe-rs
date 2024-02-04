@@ -33,17 +33,65 @@ To see what new functionality was added have a look at the [CHANGELOG](CHANGELOG
 
 If you think probe-rs makes your embedded journey more enjoyable or even earns you money, please consider supporting the project on [Github Sponsors](https://github.com/sponsors/probe-rs/) for better support and more features.
 
-## Downloading a file
+## Tools
 
-The `cargo-flash` utility can be used as a cargo subcommand to download a compiled Rust program onto a target device. It can also be used to download arbitrary ELF files that might come out of a C/C++ compiler. Have a look at [cargo-flash](./cargo-flash) for more information.
+In addition to being a library, probe-rs also includes a suite of tools which can be used for flashing and debugging.
 
-## Better debugging with probe-rs
+### Installation
 
-If you are looking for a more extended debugging experience, please have a look at [cargo-embed](./cargo-embed) which provides support for GDB, RTT, and config files.
 
-## VSCode
+The recommended way to install the tools is to download a precompiled version, using one of the methods below.
+See <https://probe.rs/docs/getting-started/installation/> for a more detailed guide.
 
-We have implemented the [Microsoft DAP protocol](https://microsoft.github.io/debug-adapter-protocol/). This makes embedded debugging via probe-rs available in modern code editors implementing the standard, such as VSCode. Please see [probe-rs-debugger](./debugger) and [vscode](https://github.com/probe-rs/vscode) for more information.
+
+#### Using a shell script
+
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/probe-rs/probe-rs/releases/latest/download/probe-rs-installer.sh | sh
+```
+
+#### Using a powershell script
+
+
+```sh
+irm https://github.com/probe-rs/probe-rs/releases/latest/download/probe-rs-installer.ps1 | iex
+```
+
+#### Using cargo-binstall
+
+
+```bash
+cargo binstall probe-rs 
+```
+
+See <https://github.com/cargo-bins/cargo-binstall> for more information.
+
+#### From source
+
+The tools can also be installed from source. After installing the necessary [prerequisites](#building), the latest released version can be installed using `cargo install`:
+
+```bash
+cargo install probe-rs --features cli
+```
+
+This will compile the tools and place them into the cargo `bin` directory. See the [Cargo book](https://doc.rust-lang.org/cargo/commands/cargo-install.html) for details.
+
+
+### cargo-flash
+
+The `cargo-flash` utility can be used as a cargo subcommand to download a compiled Rust program onto a target device. It can also be used to download arbitrary ELF files that might come out of a C/C++ compiler. Have a look at [cargo-flash](https://probe.rs/docs/tools/cargo-flash/) for more information.
+
+### cargo-embed
+
+If you are looking for a more extended debugging experience, please have a look at [cargo-embed](https://probe.rs/docs/tools/cargo-embed/) which provides support for GDB, RTT, and config files.
+
+### Editors and IDEs
+
+We have implemented the [Microsoft Debug Adapter Protocol (DAP)](https://microsoft.github.io/debug-adapter-protocol/). This makes embedded debugging via probe-rs available in modern code editors implementing the standard, such as VSCode. The DAP website includes [a list of editors and IDEs which support DAP](https://microsoft.github.io/debug-adapter-protocol/implementors/tools/).
+
+#### VSCode
+
+The probe-rs website includes [VSCode configuration instructions](https://probe.rs/docs/tools/debugger/).
 
 ## Usage Examples
 
@@ -125,25 +173,14 @@ Please reach out to [@Yatekii](https://github.com/Yatekii)
 
 ### Building
 
-Building requires Rust and Cargo which can be installed [using rustup](https://rustup.rs/). probe-rs also depends on libusb and libftdi. On linux these can be installed with your package manager:
+Building requires Rust and Cargo which can be installed [using rustup](https://rustup.rs/). On Linux these can be installed with your package manager:
 
 ```console
 # Ubuntu
-> sudo apt install -y libusb-1.0-0-dev libftdi1-dev libudev-dev libssl-dev
+> sudo apt install -y libudev-dev
 
 # Fedora
-> sudo dnf install -y libusbx-devel libftdi-devel libudev-devel openssl-devel
-```
-
-On Windows you can use [vcpkg](https://github.com/microsoft/vcpkg#quick-start-windows):
-
-```console
-# dynamic linking 64-bit
-> vcpkg install libftdi1:x64-windows libusb:x64-windows
-> set VCPKGRS_DYNAMIC=1
-
-# static linking 64-bit
-> vcpkg install libftdi1:x64-windows-static-md libusb:x64-windows-static-md
+> sudo dnf install -y libudev-devel
 ```
 
 See [the vcpkg crate documentation](https://docs.rs/vcpkg/) for more information about configuring vcpkg with rust.

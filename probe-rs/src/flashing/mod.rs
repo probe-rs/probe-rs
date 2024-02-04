@@ -2,7 +2,7 @@
 //!
 //! This modules provides a means to do flash unlocking, erasing and programming.
 //!
-//! It provides a convenient highlevel interface that can flash an ELF, IHEX or BIN file
+//! It provides a convenient high level interface that can flash an ELF, IHEX or BIN file
 //! as well as a lower level block based interface.
 //!
 //!
@@ -45,6 +45,7 @@
 
 mod builder;
 mod download;
+mod encoder;
 mod erase;
 mod error;
 mod flash_algorithm;
@@ -56,6 +57,7 @@ mod visualizer;
 use builder::*;
 use flasher::*;
 
+pub use builder::{FlashDataBlockSpan, FlashFill, FlashLayout, FlashPage, FlashSector};
 pub use download::*;
 pub use erase::*;
 pub use error::*;

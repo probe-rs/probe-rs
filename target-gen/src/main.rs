@@ -13,25 +13,27 @@ use std::{
     fs::create_dir,
     path::{Path, PathBuf},
 };
-use tracing_subscriber::EnvFilter;
+use tracing_subscriber::{filter::LevelFilter, EnvFilter};
 
 use crate::commands::{
     elf::{cmd_elf, serialize_to_yaml_file},
     test::cmd_test,
 };
 
+use core::num::ParseIntError;
+
 #[derive(clap::Parser)]
 enum TargetGen {
     /// Generate target description from ARM CMSIS-Packs
     Pack {
         #[clap(
-            name = "INPUT",
+            value_name = "INPUT",
             value_parser,
             help = "A Pack file or the unziped Pack directory."
         )]
         input: PathBuf,
         #[clap(
-            name = "OUTPUT",
+            value_name = "OUTPUT",
             value_parser,
             help = "An output directory where all the generated .yaml files are put in."
         )]
@@ -98,13 +100,24 @@ enum TargetGen {
         definition_export_path: PathBuf,
         /// The path to the ELF.
         target_artifact: PathBuf,
+        /// The address used as the start of flash memory area to perform test.
+        #[clap(long = "test-address", value_parser = parse_u64)]
+        test_start_sector_address: Option<u64>,
     },
+}
+
+pub fn parse_u64(input: &str) -> Result<u64, ParseIntError> {
+    parse_int::parse(input)
 }
 
 fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .compact()
-        .with_env_filter(EnvFilter::from_default_env())
+        .with_env_filter(
+            EnvFilter::builder()
+                .with_default_directive(LevelFilter::WARN.into())
+                .from_env_lossy(),
+        )
         .init();
 
     let options = TargetGen::parse();
@@ -135,10 +148,12 @@ fn main() -> Result<()> {
             target_artifact,
             template_path,
             definition_export_path,
+            test_start_sector_address,
         } => cmd_test(
             target_artifact.as_path(),
             template_path.as_path(),
             definition_export_path.as_path(),
+            test_start_sector_address,
         )?,
     }
 

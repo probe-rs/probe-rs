@@ -17,18 +17,21 @@ jobs:
     env:
       BRANCH_NAME: release/${{ inputs.version }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          # The custom token is needed so that this workflow can trigger
+          # another workflow. By default, pushing tags from inside a workflow
+          # does not trigger other workflows, but using a custom PAT it does.
+          token: ${{ secrets.GH_PAT }}
       - uses: chainguard-dev/actions/setup-gitsign@main
-      - name: install cargo-release
-        run: |
-          curl -LsSf https://github.com/crate-ci/cargo-release/releases/download/v0.24.0/cargo-release-v0.24.0-x86_64-unknown-linux-gnu.tar.gz | tar xzf - -C ${CARGO_HOME:-~/.cargo}/bin
-      - name: Install semver checks
-        run: |
-          curl -LsSf https://github.com/obi1kenobi/cargo-semver-checks/releases/download/v0.15.2/cargo-semver-checks-x86_64-unknown-linux-musl.tar.gz | tar xzf - -C ${CARGO_HOME:-~/.cargo}/bin
-      - name: Install libusb, libudev (linux)
+      - name: Install cargo-release
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-release,cargo-semver-checks
+      - name: Install libudev (linux)
         run: |
           sudo apt update
-          sudo apt install -y libusb-1.0-0-dev libudev-dev
+          sudo apt install -y libudev-dev
       - name: Install SSH
         run: |
           apt-get update -y && apt-get install openssh-client -y
@@ -53,6 +56,13 @@ jobs:
         run: |
           git checkout -b ${BRANCH_NAME}
 
+      - name: Update changelog
+        run: |
+          cargo xtask assemble-changelog --commit ${{ inputs.version }}
+        env:
+          SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+
       - name: Bump versions
         run: |
           cargo release version ${{ inputs.version }} --execute --verbose --no-confirm --allow-branch ${BRANCH_NAME}
@@ -62,9 +72,10 @@ jobs:
         env:
           SSH_AUTH_SOCK: /tmp/ssh_agent.sock
 
+
       - name: Check semver compliance
         run: |
-          cargo semver-checks check-release -p probe-rs -p probe-rs-target -p probe-rs-rtt -p probe-rs-cli-util
+          cargo semver-checks check-release -p probe-rs -p probe-rs-targets
 
       - name: Push branch
         run: |
@@ -75,17 +86,12 @@ jobs:
           gh pr create -B master -H "${BRANCH_NAME}"\
             --title "Release ${{ inputs.version }}"\
             --label "release"\
+            --label "skip-changelog"\
             --body "Released packages are:
 
           - probe-rs
           - probe-rs-target
-          - probe-rs-cli-util
-          - probe-rs-cli
-          - probe-rs-debugger
-          - gdb-server
           - target-gen
-          - rtthost
-          - cargo-embed
-          - cargo-flash"
+          - rtthost"
         env:
-            GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+            GH_TOKEN: ${{ secrets.GH_PAT }}

@@ -12,11 +12,16 @@
 //!
 //! ```no_run
 //! use std::sync::{Arc, Mutex};
-//! use probe_rs::{Probe, Permissions};
+//! use probe_rs::probe::{list::Lister, Probe};
+//! use probe_rs::Permissions;
 //! use probe_rs::rtt::Rtt;
 //!
 //! // First obtain a probe-rs session (see probe-rs documentation for details)
-//! let probe = Probe::list_all()[0].open()?;
+//! let lister = Lister::new();
+//!
+//! let probes = lister.list_all();
+//!
+//! let probe = probes[0].open(&lister)?;
 //! let mut session = probe.attach("somechip", Permissions::default())?;
 //! let memory_map = session.target().memory_map.clone();
 //! // Select a core.
@@ -44,6 +49,9 @@
 mod channel;
 pub use channel::*;
 
+mod syscall;
+pub use syscall::*;
+
 pub mod channels;
 pub use channels::Channels;
 
@@ -67,18 +75,18 @@ use std::ops::Range;
 /// this RTT interface can be expected to work as expected.  
 ///
 /// 2. **Scenario: Failure to detect RTT Control Block** The target has been configured correctly, BUT the host creates this interface BEFORE
-/// the target program has initalized RTT.
-///     * This most commonly occurs when the target halts processing before intializing RTT. For example, this could happen ...
-///         * During debugging, if the user sets a breakpoint in the code before the RTT initalization.
+/// the target program has initialized RTT.
+///     * This most commonly occurs when the target halts processing before initializing RTT. For example, this could happen ...
+///         * During debugging, if the user sets a breakpoint in the code before the RTT initialization.
 ///         * After flashing, if the user has configured `probe-rs` to `reset_after_flashing` AND `halt_after_reset`. On most targets, this
-/// will result in the target halting with reason `Exception` and will delay the subsequent RTT intialization.
+/// will result in the target halting with reason `Exception` and will delay the subsequent RTT initialization.
 ///         * If RTT initialization on the target is delayed because of time consuming processing or excessive interrupt handling. This can
-/// usually be prevented by moving the RTT intialization code to the very beginning of the target program logic.
-///     * The result of such a timing issue is that `probe-rs` will fail to intialize RTT with an [`probe-rs-rtt::Error::ControlBlockNotFound`]
+/// usually be prevented by moving the RTT initialization code to the very beginning of the target program logic.
+///     * The result of such a timing issue is that `probe-rs` will fail to initialize RTT with an [`probe-rs-rtt::Error::ControlBlockNotFound`]
 ///
-/// 3. **Scenario: Incorrect Channel names and incorrect Channel buffer sizes** This scenario usually occurs when two conditions co-incide. Firstly, the same timing mismatch as described in point #2 above, and secondly, the target memory has NOT been cleared since a previous version of the binary program has been flashed to the target.
+/// 3. **Scenario: Incorrect Channel names and incorrect Channel buffer sizes** This scenario usually occurs when two conditions coincide. Firstly, the same timing mismatch as described in point #2 above, and secondly, the target memory has NOT been cleared since a previous version of the binary program has been flashed to the target.
 ///     * What happens here is that the RTT Control Block is validated by reading a previously initialized RTT ID from the target memory. The next step in the logic is then to read the Channel configuration from the RTT Control block which is usually contains unreliable data
-/// at this point. The symptomps will appear as:
+/// at this point. The symptoms will appear as:
 ///         * RTT Channel names are incorrect and/or contain unprintable characters.
 ///         * RTT Channel names are correct, but no data, or corrupted data, will be reported from RTT, because the buffer sizes are incorrect.
 #[derive(Debug)]
@@ -223,7 +231,7 @@ impl Rtt {
         memory_map: &[MemoryRegion],
         region: &ScanRegion,
     ) -> Result<Rtt, Error> {
-        let ranges: Vec<Range<u32>> = match region {
+        let ranges: Vec<Range<u64>> = match region {
             ScanRegion::Exact(addr) => {
                 tracing::debug!("Scanning at exact address: 0x{:X}", addr);
 
@@ -237,40 +245,75 @@ impl Rtt {
                     .iter()
                     .filter_map(|r| match r {
                         MemoryRegion::Ram(r) => Some(Range {
-                            start: r.range.start as u32,
-                            end: r.range.end as u32,
+                            start: r.range.start,
+                            end: r.range.end,
                         }),
                         _ => None,
                     })
                     .collect()
             }
+            ScanRegion::Ranges(regions) => regions.clone(),
             ScanRegion::Range(region) => {
                 tracing::debug!("Scanning region: {:?}", region);
 
-                vec![region.clone()]
+                vec![Range {
+                    start: region.start as u64,
+                    end: region.end as u64,
+                }]
             }
         };
 
         let mut instances = ranges
             .into_iter()
             .filter_map(|range| {
-                if range.len() < Self::MIN_SIZE {
-                    return None;
-                }
+                let range_len = match range.end.checked_sub(range.start) {
+                    Some(v) => if v < (Self::MIN_SIZE as u64) {
+                        return None;
+                    } else {
+                        v
+                    },
+                    None => return None,
+                };
 
-                let mut mem = vec![0; range.len()];
+                let range_len_usize: usize = match range_len.try_into() {
+                    Ok(v) => v,
+                    Err(_) => {
+                        // FIXME: This is not ideal because it means that we
+                        // won't consider a >4GiB region if probe-rs is running
+                        // on a 32-bit host, but it would be relatively unusual
+                        // to use a 32-bit host to debug a 64-bit target.
+                        tracing::warn!("ignoring region of length {} because it is too long to buffer in host memory", range_len);
+                        return None;
+                    }
+                };
+
+                let mut mem = vec![0; range_len_usize];
                 {
-                    core.read(range.start.into(), mem.as_mut()).ok()?;
+                    core.read(range.start, mem.as_mut()).ok()?;
                 }
 
                 match kmp::kmp_find(&Self::RTT_ID, mem.as_slice()) {
-                    Some(offset) => Rtt::from(
-                        core,
-                        memory_map,
-                        range.start + offset as u32,
-                        Some(&mem[offset..]),
-                    )
-                    .transpose(),
+                    Some(offset) => {
+                        let target_ptr = range.start + (offset as u64);
+                        let target_ptr: u32 = match target_ptr.try_into() {
+                            Ok(v) => v,
+                            Err(_) => {
+                                // FIXME: The RTT API currently supports only
+                                // 32-bit addresses, and so it can't accept
+                                // an RTT block at an address >4GiB.
+                                tracing::warn!("can't use RTT block at {:#010x}; must be at a location reachable by 32-bit addressing", target_ptr);
+                                return None;
+                            },
+                        };
+
+                        Rtt::from(
+                            core,
+                            memory_map,
+                            target_ptr,
+                            Some(&mem[offset..]),
+                        )
+                        .transpose()
+                    },
                     None => None,
                 }
             })
@@ -315,7 +358,15 @@ pub enum ScanRegion {
 
     /// Limit scanning to these memory addresses in target memory. It is up to the user to ensure
     /// that reading from this range will not read from undefined memory.
+    ///
+    /// This variant is equivalent to using [`Self::Ranges`] with a single range as long as the
+    /// memory region fits into a 32-bit address space. This variant is for backward compatibility
+    /// for code written before the addition of [`Self::Ranges`].
     Range(Range<u32>),
+
+    /// Limit scanning to the memory addresses covered by all of the given ranges. It is up to the
+    /// user to ensure that reading from this range will not read from undefined memory.
+    Ranges(Vec<Range<u64>>),
 
     /// Tries to find the control block starting at this exact address. It is up to the user to
     /// ensure that reading the necessary bytes after the pointer will no read from undefined

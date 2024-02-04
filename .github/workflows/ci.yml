@@ -20,7 +20,7 @@ jobs:
         os:
           - ubuntu-latest
           - windows-latest
-          - macos-latest
+          - macos-14
 
     runs-on: ${{ matrix.os }}
 
@@ -29,19 +29,19 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Install libusb, libudev (linux)
+      - name: Install libudev (linux)
         run: |
           sudo apt update
-          sudo apt install -y libusb-1.0-0-dev libudev-dev
+          sudo apt install -y libudev-dev
         # Only install on Ubuntu
         if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-20.04')
 
       - uses: ./.github/actions/setup
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v2.4.0
+        uses: Swatinem/rust-cache@v2.7.3
 
       - name: cargo check for probe-rs, --no-default-features
         run: cargo check -p probe-rs --no-default-features --locked
@@ -67,12 +67,12 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Install libusb (linux)
+      - name: Install libudev (linux)
         run: |
           sudo apt update
-          sudo apt install -y libusb-1.0-0-dev libudev-dev
+          sudo apt install -y libudev-dev
         # Only install on Ubuntu
         if: matrix.os == 'ubuntu-latest'
 
@@ -81,7 +81,7 @@ jobs:
           targets: thumbv7m-none-eabi
       
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v2.4.0
+        uses: Swatinem/rust-cache@v2.7.3
 
       - name: Run cargo test
         run: cargo test --all-features --locked
@@ -91,7 +91,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - uses: ./.github/actions/setup
         with:
@@ -105,27 +105,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Install libusb
+      - name: Install libudev
         run: |
           sudo apt update
-          sudo apt install -y libusb-1.0-0-dev libudev-dev
+          sudo apt install -y libudev-dev
 
       - uses: ./.github/actions/setup
         with:
           components: clippy
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v2.4.0
+        uses: Swatinem/rust-cache@v2.7.3
 
       - name: Run cargo clippy
-        run: cargo clippy --all-features --locked -- -D warnings
+        run: cargo clippy --all-features --all-targets --locked -- -D warnings
 
   cargo-deny:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: EmbarkStudios/cargo-deny-action@v1
 
   doc:
@@ -133,17 +133,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Install libusb
+      - name: Install libudev
         run: |
           sudo apt update
-          sudo apt install -y libusb-1.0-0-dev libudev-dev
+          sudo apt install -y libudev-dev
 
       - uses: ./.github/actions/setup
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v2.4.0
+        uses: Swatinem/rust-cache@v2.7.3
 
       - name: Run cargo doc
         run: cargo doc --all-features --locked

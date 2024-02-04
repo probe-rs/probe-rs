@@ -7,6 +7,9 @@ on:
     types: [closed]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 name: Release on crates.io
 
 jobs:
@@ -17,14 +20,9 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0 # This is a workaround for cargo-release, see https://github.com/crate-ci/cargo-release/issues/625
-
-      - name: Install libusb and libftdi (linux)
-        run: |
-          sudo apt update
-          sudo apt install -y libusb-1.0-0-dev libftdi1-dev libudev-dev
 
       - uses: chainguard-dev/actions/setup-gitsign@main
 
@@ -34,7 +32,7 @@ jobs:
 
       - name: Install SSH
         run: |
-          apt-get update -y && apt-get install openssh-client -y
+          sudo apt-get update -y && sudo apt-get install openssh-client -y
           eval $(ssh-agent -s -a $SSH_AUTH_SOCK)
           echo "$SSH_SIGNING_KEY" | tr -d '\r' | ssh-add -
           mkdir -p ~/.ssh
@@ -56,12 +54,25 @@ jobs:
           VERSION=$(cargo pkgid -p probe-rs | cut -d# -f2 | cut -d: -f2)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
+        # The tag prefix is set to an empty string, so that the tag is just the version number, and doesn't contain the crate name.
       - name: release to crates.io
         run: |
           git checkout master
+
+          echo "::group::Setup auth for crates.io"
           cargo login ${{ secrets.CARGO_REGISTRY_TOKEN }}
-          cargo publish --no-confirm --execute
-          cargo tag --no-confirm --execute --sign-tag
-          cargo push --no-confirm --execute
+          echo "::endgroup::"
+
+          echo "::group::Publishing on crates.io using 'cargo release publish'"
+          cargo release publish --no-confirm --execute
+          echo "::endgroup::"
+
+          echo "::group::Tagging release using 'cargo release tag'"
+          cargo release tag --no-confirm --execute --sign-tag --tag-prefix ""
+          echo "::endgroup::"
+
+          echo "::group::Pushing tags to remote using 'cargo release push'"
+          cargo release push --no-confirm --execute --tag-prefix ""
+          echo "::endgroup::"
         env:
           SSH_AUTH_SOCK: /tmp/ssh_agent.sock

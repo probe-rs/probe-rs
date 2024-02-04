@@ -1,11 +1,14 @@
 pub mod general;
+pub mod jtag;
 pub mod swd;
 pub mod swj;
 pub mod swo;
 pub mod transfer;
 
 use crate::probe::cmsisdap::commands::general::info::PacketSizeCommand;
-use crate::DebugProbeError;
+use crate::probe::usb_util::InterfaceExt;
+use crate::probe::DebugProbeError;
+use std::io::ErrorKind;
 use std::str::Utf8Error;
 use std::time::Duration;
 
@@ -27,9 +30,13 @@ pub enum CmsisDapError {
     #[error("Requested SWO mode is not available on this probe")]
     SwoModeNotAvailable,
     #[error("USB Error reading SWO data.")]
-    SwoReadError(#[source] rusb::Error),
+    SwoReadError(#[source] std::io::Error),
     #[error("Could not determine a suitable packet size for this probe")]
     NoPacketSize,
+    #[error("Invalid IDCODE detected")]
+    InvalidIdCode,
+    #[error("Error scanning IR lengths")]
+    InvalidIR,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -37,7 +44,7 @@ pub enum SendError {
     #[error("Error in the USB HID access")]
     HidApi(#[from] hidapi::HidError),
     #[error("Error in the USB access")]
-    UsbError(rusb::Error),
+    UsbError(std::io::Error),
     #[error("Not enough data in response from probe")]
     NotEnoughData,
     #[error("Status can only be 0x00 or 0xFF")]
@@ -58,15 +65,6 @@ pub enum SendError {
     Timeout,
 }
 
-impl From<rusb::Error> for SendError {
-    fn from(error: rusb::Error) -> Self {
-        match error {
-            rusb::Error::Timeout => SendError::Timeout,
-            other => SendError::UsbError(other),
-        }
-    }
-}
-
 impl From<CmsisDapError> for DebugProbeError {
     fn from(error: CmsisDapError) -> Self {
         DebugProbeError::ProbeSpecific(Box::new(error))
@@ -82,10 +80,10 @@ pub enum CmsisDapDevice {
     },
 
     /// CMSIS-DAP v2 over WinUSB/Bulk.
-    /// Stores an rusb device handle, out/in EP addresses, maximum DAP packet size,
+    /// Stores an usb device handle, out/in EP addresses, maximum DAP packet size,
     /// and an optional SWO streaming EP address and SWO maximum packet size.
     V2 {
-        handle: rusb::DeviceHandle<rusb::Context>,
+        handle: nusb::Interface,
         out_ep: u8,
         in_ep: u8,
         max_packet_size: usize,
@@ -104,7 +102,9 @@ impl CmsisDapDevice {
             },
             CmsisDapDevice::V2 { handle, in_ep, .. } => {
                 let timeout = Duration::from_millis(100);
-                Ok(handle.read_bulk(*in_ep, buf, timeout)?)
+                handle
+                    .read_bulk(*in_ep, buf, timeout)
+                    .map_err(SendError::UsbError)
             }
         }
     }
@@ -116,7 +116,9 @@ impl CmsisDapDevice {
             CmsisDapDevice::V2 { handle, out_ep, .. } => {
                 let timeout = Duration::from_millis(100);
                 // Skip first byte as it's set to 0 for HID transfers
-                Ok(handle.write_bulk(*out_ep, &buf[1..], timeout)?)
+                handle
+                    .write_bulk(*out_ep, &buf[1..], timeout)
+                    .map_err(SendError::UsbError)
             }
         }
     }
@@ -237,7 +239,7 @@ impl CmsisDapDevice {
                             buf.truncate(n);
                             Ok(buf)
                         }
-                        Err(rusb::Error::Timeout) => {
+                        Err(e) if e.kind() == ErrorKind::TimedOut => {
                             buf.truncate(0);
                             Ok(buf)
                         }
@@ -250,7 +252,7 @@ impl CmsisDapDevice {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub(crate) enum Status {
     DAPOk = 0x00,
     DAPError = 0xFF,

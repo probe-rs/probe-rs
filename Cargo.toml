@@ -1,5 +1,5 @@
 [workspace.package]
-version = "0.18.0"
+version = "0.22.0"
 edition = "2021"
 
 documentation = "https://docs.rs/probe-rs/"
@@ -10,49 +10,70 @@ license = "MIT OR Apache-2.0"
 
 
 [workspace]
+resolver = "2"
 members = [
-    "cargo-embed",
-    "cli",
-    "cargo-flash",
-    "debugger",
-    "gdb-server",
     "probe-rs",
     "probe-rs-target",
-    "probe-rs-cli-util",
     "rtthost",
     "smoke-tester",
     "xtask",
     "target-gen",
 ]
+exclude = ["probe-rs/tests/gpio-hal-blinky"]
 
 [workspace.dependencies]
-probe-rs = { path = "probe-rs", version = "0.18.0" }
-probe-rs-cli-util = { path = "probe-rs-cli-util", version = "0.18.0" }
-probe-rs-target = { path = "probe-rs-target", version = "0.18.0" }
-gdb-server = { path = "gdb-server", version = "0.18.0" }
+probe-rs = { path = "probe-rs", version = "0.22.0" }
+probe-rs-target = { path = "probe-rs-target", version = "0.22.0" }
 
-log = "0.4.17"
-pretty_env_logger = "0.5.0"
-thiserror = "1.0"
-anyhow = "1.0.71"
+pretty_env_logger = "0.5"
+thiserror = "1"
+anyhow = "1"
+
+[workspace.metadata.release]
+shared-version = true
+tag-name = "v{{version}}"
 
 # Config for 'cargo dist'
 [workspace.metadata.dist]
 # The preferred cargo-dist version to use in CI (Cargo.toml SemVer syntax)
-cargo-dist-version = "0.0.5"
+cargo-dist-version = "0.8.2"
 # The preferred Rust toolchain to use in CI (rustup toolchain syntax)
-rust-toolchain-version = "1.68.2"
-# CI backends to support (see 'cargo dist generate-ci')
+rust-toolchain-version = "1.74.0"
+# CI backends to support
 ci = ["github"]
 # Target platforms to build apps for (Rust target-triple syntax)
 targets = [
-    "x86_64-unknown-linux-gnu",
-    "x86_64-apple-darwin",
     "aarch64-apple-darwin",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "x86_64-unknown-linux-gnu",
+    "x86_64-unknown-linux-musl",
     "x86_64-pc-windows-msvc",
 ]
+# Build only the required packages, and individually
+precise-builds = true
+# The archive format to use for non-windows builds (defaults .tar.xz)
+unix-archive = ".tar.xz"
+# The installers to generate for each app
+installers = ["shell", "powershell", "homebrew"]
+# Publish jobs to run in CI
+pr-run-mode = "plan"
+# A GitHub repo to push Homebrew formulas to
+tap = "probe-rs/homebrew-probe-rs"
+# Publish jobs to run in CI
+publish-jobs = ["homebrew"]
+# Select custom runner for ARM Linux
+[workspace.metadata.dist.github-custom-runners]
+aarch64-unknown-linux-gnu = "buildjet-2vcpu-ubuntu-2204-arm"
+
+[workspace.metadata.dist.dependencies.apt]
+libudev-dev = '*'
+libudev1 = { stage = ["run"] }
 
 # The profile that 'cargo dist' will build with
 [profile.dist]
 inherits = "release"
 lto = "thin"
+
+[patch.crates-io]
+indicatif = { git = "https://github.com/console-rs/indicatif" }

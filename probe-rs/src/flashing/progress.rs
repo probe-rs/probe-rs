@@ -3,7 +3,7 @@ use std::{sync::Arc, time::Duration};
 
 /// A structure to manage the flashing procedure progress reporting.
 ///
-/// This struct stores a handler closure which will be called everytime an event happens during the flashing process.
+/// This struct stores a handler closure which will be called every time an event happens during the flashing process.
 /// Such an event can be start or finish of the flashing procedure or a progress report, as well as some more events.
 ///
 /// # Example
@@ -47,9 +47,9 @@ impl FlashProgress {
         self.emit(ProgressEvent::StartedFilling);
     }
 
-    /// Signalize that the programing procedure started.
-    pub(super) fn started_programming(&self) {
-        self.emit(ProgressEvent::StartedProgramming);
+    /// Signalize that the programming procedure started.
+    pub(super) fn started_programming(&self, length: u64) {
+        self.emit(ProgressEvent::StartedProgramming { length });
     }
 
     /// Signalize that the page programming procedure has made progress.
@@ -119,7 +119,7 @@ impl FlashProgress {
 /// * `PageProgrammed` for every page
 /// * `FinishedProgramming`
 ///
-/// If an erorr occurs in any stage, one of the `Failed*` event will be returned,
+/// If an error occurs in any stage, one of the `Failed*` event will be returned,
 /// and no further events will be returned.
 #[derive(Debug)]
 pub enum ProgressEvent {
@@ -158,7 +158,10 @@ pub enum ProgressEvent {
     /// Erasing of the flash has finished successfully.
     FinishedErasing,
     /// Programming of the flash has started.
-    StartedProgramming,
+    StartedProgramming {
+        /// The total length of the data to be programmed in bytes.
+        length: u64,
+    },
     /// A flash page has been programmed successfully.
     PageProgrammed {
         /// The size of this page in bytes.

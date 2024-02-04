@@ -7,7 +7,7 @@ use std::ops::Range;
 pub enum FlashError {
     /// No flash memory contains the entire requested memory range.
     #[error(
-        "No flash memory contains the entire requested memory range {start:#010x}..{end:#10x}."
+        "No flash memory contains the entire requested memory range {start:#010x}..{end:#010x}."
     )]
     NoSuitableNvm {
         /// The start of the requested memory range.
@@ -57,6 +57,12 @@ pub enum FlashError {
         name: &'static str,
         /// The error code the called routine returned.
         error_code: u32,
+    },
+    /// The core entered an unexpected status while executing a flashing operation.
+    #[error("The core entered an unexpected status: {status:?}.")]
+    UnexpectedCoreStatus {
+        /// The status that the core entered.
+        status: crate::CoreStatus,
     },
     /// The given address was not contained in the given NVM region.
     #[error("{address:#010x} is not contained in {region:?}")]
@@ -122,7 +128,7 @@ pub enum FlashError {
         /// The name of the chip.
         name: String,
     },
-    /// The given flash algorithm did not have a leng multiple of 4 bytes.
+    /// The given flash algorithm did not have a length multiple of 4 bytes.
     ///
     /// This means that the flash algorithm that was loaded is broken.
     #[error("Flash algorithm {name} does not have a length that is 4 byte aligned.")]

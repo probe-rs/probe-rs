@@ -5,17 +5,258 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.0]
+
+Released 2024-01-03
+
+### Added
+
+ - Add support for CH32V003 RV32EC RISC-V MCU (#1876) by @andelf
+ - Add support for `SAMV71` series targets (#1861). (#1861) by @matteocarnelos
+ - target-gen: Add support for Cortex-M55 and Cortex-M85 (#1959) by @Tiwalun
+ - Add OpenTitan target file with description of the Earl Grey chip. (#1980) by @jwnrt
+ - Added support for riscv semihosting SYS_EXIT syscall.
+   
+   Please note that probe-rs with espflash < 3.0 will probably fail to flash a binary containing semihosting calls due to https://github.com/esp-rs/espflash/issues/522 (#1901) by @t-moe
+
+ - Add support for the esp32c2 target (#1869) (#1869) by @SergioGasquez
+ - Add support for the esp32s3 target (#2003) by @bugadani
+ - Auto-detect ESP32 flash size (#1952) by @bugadani
+ - Added support for EFM32PG1B series microcontrollers. (#1845) by @BogdanOlar
+ - Xtensa: Add flashing support for the esp32s3 (#1956) by @bugadani
+ - The debugger REPL commands now have an implementation for `backtrace`. The stacktrace is serialized using the yaml format. (#1918) by @noppej
+ - Allow specifying the default `Format` for a target
+       
+   Refactor the target definition to allow specifying the default Format
+   for a given target. By default all targets `default_target` is `Elf`,
+   except for the esp32* targets which are now `Idf`. (#1886) by @MabezDev
+
+ - Added initial xtensa support. (#1928) by @MabezDev
+ - Added support for LM3S series targets. (#1990) by @evanmcclure
+ - Added the concept of transfer encoding that is applied during firmware download. Added the Miniz encoding. (#1947) by @bugadani
+ - Added a new `dump` command for the CLI and vscode REPL to dump a full core state (#1783). (#1783) by @Yatekii
+ - Handle the `DW_AT_specification` attribute when unwinding. (#1853) by @Tiwalun
+ - Add `--catch-reset` & `--catch-hardfault` cli flags (#1899) by @MabezDev
+ - Custom debug sequences for ATSAMD1x, D2x, DAx micros.  Enables DSU-based chip erase. (#1855) by @ianrrees
+ - Add support for the esp32h2 target (#1862) (#1862) by @MabezDev
+ - Add scan chain support for the esp32* targets and the espusbjtag driver. (#1878) by @MabezDev
+ - The rtthost gets the ability to reset the targert after the RTT session is established. (#1900) by @Sh3Rm4n
+ - Added support for PAC52XX series microcontroller. (#1868) by @liamkinne
+ - Added experimental support for WCH-Link probe in RV mode. (#1437) by @andelf
+ - Xtensa: detect flash size (#1976) by @bugadani
+
+### Changed
+
+ - Continue running the core if an unsupported semihosting call occured.
+   
+   Previously, `probe-rs run` would exit with "the CPU halted unexpectedly", whenever an unknown semihosting operation occurred.
+   With this change, `probe-rs run` will print a warning and then automatically continue the core. (#1901) by @t-moe
+
+ - `dap-server`: Move initial check of core state from `threads` request to `configuration_done` request. (#1903) by @Andrew-Collins
+ - Renamed `JTAGAccess::get_idle_cycles` to `idle_cycles` and removed redundant inherent fns (#1924) by @bugadani
+ - Reduced logging level for custom debug sequences (#1882) by @ianrrees
+ - The `dump` command that is used by the VSCode REPL can now be used without specifying memory regions.
+   
+   The resulting coredump will include all the memory regions required to unwind the in-scope functions and variables. (#1930) by @noppej
+
+ - For CLI builds, statically link to libusb to make installation of precompiled binaries easier. (#1830) by @Tiwalun
+ - By default, `probe-rs run` and `probe-rs attach` will only scan the memory for the RTT control block if the `--rtt-scan-memory` flag is provided. It will still always look for a `_SEGGER_RTT` symbol in the ELF file and use that first in all circumstances. (#1919) by @ia0
+ - Refactor unwinding code to improve testability, add tests for unwinding. (#1853) by @Tiwalun
+ - The `ftdi-vendored` feature now enabled `ftdi` automatically (#1999) by @bugadani
+ - Hide vector catch errors when it hasn't been implemented for the target. (#1885) by @MabezDev
+ - Logging to file is now off by default. Use `--log-to-folder` or `--log-file` to enable. (#1946) by @bugadani
+ - Improved RISC-V IO utilisation by batching more operations (#1932) by @bugadani
+ - The read operations from the `MemoryInterface` trait are moved into a separte `ReadOnlyMemoryInterface` trait, so that it is clear which code actually changes memory. (#1853) by @Tiwalun
+ - Updated ESP32 targets to tune flashing speed (#1936) by @bugadani
+ - Move the stack refresh functionality to poll_cores, and trigger a refresh when the state changes from 'running' to 'halted'. (#1902) by @Andrew-Collins
+ - Rewrote benchmark cli tool, removing report submission and adding multiple speed/size/stride options (#1837) by @9names
+ - RP2040 memory map changed from three blocks (256K + 4K + 4K) to one block (264K). Allows ELF files to contain sections that go over the boundaries. (#1943) by @thejpster
+ - espusbjtag: don't reset the chip on attach (#1915) by @MabezDev
+ - espusbjtag: capture fewer bits (#1931) by @bugadani
+ - Refactor esp-usbjtag to clean it up some (#1920) by @bugadani
+
 ### Fixed
 
+ - Disable the second core on LPC55S69 to fix #1802. (#1823) by @Tiwalun
+ - Fix LPC55S69 reset sequence 
+   Fix LPC55S69 attach without disturbing target (#1907) by @9names
+
+ - * Improved handling of source file paths in debugger, don't assume paths in the debug information
+     are in the same format as the paths of the host OS. (#1857) by @Tiwalun
+
+ - Updated the STM32G4 target yaml to [version 1.5.0](https://www.keil.arm.com/packs/stm32g4xx_dfp-keil/versions/). This fixes the stm32g4xx_256 flash algorithm. (#1896) by @dlaw
+ - Set DbgSwEnable to 1 during memory access (#1841) by @pcc
+ - Flasher: single buffer transfers are now done with u32 writes (#1944) by @bugadani
+ - cli: Rename struct to avoid debug assert in `profile` subcommand. Fix #1808. (#1825) by @Tiwalun
+ - Added missing reset and halt timeout handling for RV32 targets. (#1874) by @andelf
+ - Also use serial number to distinguish CMSIS-DAP probes. Fix #1835. (#1835) by @pcc
+ - Added missing SRAM entries for STM32L4 microcontrollers. (#1856) by @VilNeo
+ - cli/run: Fix a bug where the last messages printed by the code before crashing (like a panic message) did not get printed. (#1890) by @Dirbaio
+ - Fixed cases where probe attachment were inconsistent. (#1929) by @MabezDev
+ - Fix minor bugs of WCH-Link implementation, add new probe varient. (#1875) by @andelf
+ - Flash loader will now properly flash all bytes (#1951) by @bugadani
+ - Update debug sequence for LPC55S69 with newest from pack, fixes an issue where the chip would not reset properly. (#1832) by @Tiwalun
+ - Change from openSSL to rustls. 
+   
+   The prebuilt binaries depended on the system openSSL installation on Linux.
+   This meant that they required openSSL1, which is not supported e.g. on Ubuntu 22.04.
+   Changing to rustls removes this dependency. (#1828) by @Tiwalun
+
+ - Issue DAPABORT at startup and after receiving WAIT response from CMSIS-DAP (#1840) by @pcc
+ - * Mark all ARM memory accesses as cacheable, to indicate they must not bypass
+     the cache and instead should see the same data as the CPU. Fixes #1715. (#1883) by @adamgreig
+
+ - Fix the RAM address mapping for the esp32c3. (#1898) by @MabezDev
+ - Fix core names and regions in LPC55S69 target description. (#1832) by @Tiwalun
+ - dap-server: Return correct type for error response. (#1895) by @Tiwalun
+ - `target-gen`: Fix incorrect URL formatting (#1860). (#1860) by @matteocarnelos
+ - espusbjtag: Fixed a potential edge case that could lock up the interface. (#1933) by @bugadani
+ - Unlock the OS Lock when starting an ARMv8 core (#1839) by @pcc
+ - Correct esp-usbjtag reset assert/deassert levels. (#1922) by @bugadani
+ - Prevent Debug Adapter Protocol workarounds for VSCode quirks from breaking other DAP clients. (#1872) by @linuxtim
+
+### Removed
+
+ - Removed unused `--assert` from `probe-rs reset` (#1993) by @bugadani
+
+## [0.21.1]
+
+Released 2023-10-12
+
+### Added
+
+ - rtthost: Add --version
+
+### Changed
+
+ - `cli`: Simplify `RttActiveChannel::get_rtt_data` (#1806)
+
+### Fixed
+- debug: Do not crash and, and improve error message when unwinding memory location for optimized binaries. (#1810)
+
+## [0.21.0]
+
+Released 2023-10-04
+
+### Added
+
+- Added Target for MSPM0L (#1789) 
+- Support for EFM32 Happy Gecko MCUs (#1747)
+- Added RA4M1 series target, R7FA4M1AB. (#1706)
+- Support for NXP i.MX RT500 series chips: MIMXRT595S, MIMXRT555S, MIMXRT533S (#1642)
+- Added --no-location option to the CLI run command, which suppresses the filename and line number
+  information from the rtt log (#1704)
+- target-gen: Add new `--test-address` option to the `target-gen test` subcommand. (#1708)
+- `cli`: Add `--verify` flag to `download`, `flash` and `run` (#1727)
+- `cli`: Add `read` and `write` commands to interact with target memory (8,32,64 bit words) (#1746)
+- Added STM32U5A and STM32U59 targets. (#1744)
+- Added AT32F4 series targets (#1759)
+- Allowed JTAG scan chain information to be encoded in targets (#1731)
+- Added support for IDF and BIN to cargo flash.  Added UF2 support to cargo
+  flash and probe-rs. (#1765)
+- Support for handling an Arm Cortex-M Semihosting 'Exit Success' or 'Exit Failure' command. (#1755)
+- Added getters to registry : `get_targets_by_family_name` & `get_target_and_family_by_name`, change `get_target_by_name`. (#1770)
+- Support for vector catch in Armv8-M targets (#1709)
+- Add log rotation to stop disks from filling. Currently a maximum of 20 logs is kept. (#1780)
+- Allow to customize the defmt log format with `--log-format`. (#1788)
+
+### Changed
+
+- `cli`: Allow to interrupt `probe-rs run` during RTT scan (#1705).
+- `cli`: Ignore errors from `enable_vector_catch` (#1714).
+- `cli`: Retry RTT attach before continuing (#1722).
+- `cli`: Clean clap attributes (#1730)
+- `target-gen`: (#1745)
+  - Memory regions in target.yaml are now sorted with lowest address first.
+  - Use `.pdsc` flash algorithm `RAMstart` field to calculate `load_address` for target yaml.
+- Target definitions can now constrain the RTT automatic scanning ranges to just a subset of all available RAM, to support targets that have large amounts of RAM that would take a long time to scan. (#1738, #1749)
+- `cli`: Output `defmt` logs as colored (#1752)
+
+### Fixed
+  - Handle non-secure RESET peripheral in nRF5340 `debug_core_unlock` sequence.
+
+### Removed
+- `cli`: `dump` subcommand, replaced by `read`.
+
+## [0.20.0]
+
+Released 2023-07-19
+
+### Added
+
+- `dap-server`: In addition to `Elf` format, this adds support for binary formats `Bin`, `Hex`, and `Idf` (#1656).
+- Added PAC55XX series targets (#1655)
+- Added support for JTAG commands via CMSIS-DAP protocol (#1462)
+- `core`: Added PAC55XX series targets (#1655)
+- `core`: Stack unwinding can now unwind beyond (optionally nested) exception handlers (#1665).
+  - ARMv6-M: Report Exception / Fault description, and Unwind the registers and next frames.
+  - ARMv7-M: Also decodes details about HardFault, UsageFault, BusFault, and MemManageFault.
+  - ARMv7-A, Armv8-M, Armv8-A, RISC-V: Not implemented - requires architecture specific implementations.
+- `cli`: Added a simple profiler to the probe-rs cli toolkit (#1628)
+- `core`: Added MSP432E4 target (MSP432E401Y and MSP432E411Y). (#1139)
+- `core`: Added vector catch for ARMv6-M and ARMv7-M (#1592)
+  - Currently supported are HardFault and CoreReset.
+- `cli`: The run command now prints a stack trace on `HardFault` (#1592)
+- Added a simple profiler to the probe-rs cli toolkit (#1628)
+- Added MSP432E4 target (MSP432E401Y and MSP432E411Y). (#1139)
+- probe-rs-cli: added `attach` subcommand. (#1672, #1616)
+
+### Changed
+
+- `cli`: more descriptive error messages for ambigous chips (#1671).
+- `cli`: When using `memory` as the trace sink for an ITM trace, the trace is now read
+  out through the debug registers (#1688)
+- `target-gen`: RTT is enabled by default now in the `test` command (#1690).
+
+### Fixed
+
+- `core`: Added a missing reset catch clear that prevented the CPU from properly starting after flashing RTT from attaching (#1675).
+- `cli`: fixed `--base-address` having no effect (#1664).
+- `cli`: fixed `--skip` not accepting hexadecimal values (#1664).
+- `cli`: all the commands now load the chip description path and provide uniform config arguments (#1691).
+- `dap-server`: The VSCode extension reports all STDERR errors if process initialization fails (#1699).
+- `debug` : Consider `RegisterValue` byte size when doing arithmetic on register addresses. (#1701)
+- FTDI probe: Fixed dr_pre bits not being handled correctly during register operations.
+- ARMv7-A, ARMv8-A: Fixed incorrect addresses for registers.
+
+### Removed
+
+- cli: removed obsolete `--skip-bytes` (which had no effect), use `--skip` instead (#1664).
+
+## [0.19.0]
+
+Released 2023-06-27
+
+### Changed
+
+- Merged `probe-rs-cli`, `probe-rs-debugger`, `cargo-embed`, `cargo-flash` binaries into the `probe-rs` crate.
+  - `probe-rs-cli` is now available in `probe-rs`.
+  - `probe-rs-debugger` is now available as `probe-rs dap-server`.
+  - `cargo-embed` and `cargo-flash` functionality is unchanged, but they are now small shim binaries that invoke `probe-rs`.
+  - Running `cargo install probe-rs` installs the `probe-rs`, `cargo-embed` and `cargo-flash` binaries.
+- Merged the `gdb-server` crate into `probe-rs`. It's now available under `probe_rs::gdb_server`, and requires enabling the `gdb-server` Cargo feature.
+
+### Fixed
+
+- probe-rs: recognize `CMSIS-DAP` probes with device strings containing `CMSIS_DAP`
 - probe-rs-debugger: Show errors that happen before VSCode/DAP Client session initializion has completed (#1581).
 - probe-rs-cli-util: replace unwanted instance of `println` with `eprintln` (#1595, fixes #1593).
 - stlink: exit JTAG mode on idle to tristate debug interface (#1615).
+- probe-rs-debugger: The MS DAP Request `setBreapoints` clears existing breakpoints for the specified `Source`, and not for all `Source`'s (#1630)
+- probe-rs/flashing: Inconsistent address formatting in the "No flash memory contains the entire requested memory range" (`FlashError::NoSuitableNvm`) error message (#1644)
+- probe-rs/flashing: For targets whose flash algorithms require a fixed load address, always select a RAM region containing that address. (#1646)
+- probe-rs: Add support for the esp-idf binary format (#1629)
 
 ### Added
 
 - Added support for the Olimex ARM-USB-TINY-H JTAG device (#1586).
 - Added support for propagating `CoreStatus` to the probe in use (#1588).
 - Added PY32F0xx series targets (#1619).
+- Flashing process can now detect and report if the flashing algorithm locks up the core that it's running on. (#1645)
+
+### Removed
+
+- Removed Sentry integration in the CLI tools.
 
 ## [0.18.0]
 
@@ -24,6 +265,7 @@ Released 2023-03-31
 ### Fixed
 
 - Add reset catch sequence for Silicon Labs EFM32/EFR32 Series 2 chips.
+- Support for detecting WCH-Link as CMSIS-DAP v1 probe
 
 - target-gen: Use the correct flash base address when testing flash algorithm (#1542)
 
@@ -124,7 +366,7 @@ Released 2023-02-06
 
 - cmsis-dap: Avoid endless recursion when recovering from errors.
 
-  When an error occured, the cmsis-dap code tried to read the debug port CTRL register.
+  When an error occurred, the cmsis-dap code tried to read the debug port CTRL register.
   If that read failed, it would again try to read the same register, returning in an
   endless recursion.
 
@@ -162,7 +404,7 @@ Released 2023-01-28
 - target-gen: Add a command which enables the easy development and debugging of a flash algorithm.
 
   `target-gen test` is a new command to automatically upload, run, print RTT messages and test
-  a flash algorithm. Have a look at the [template](https://github.com/probe-rs/flash-algorithm-template)
+  a flash algorithm. Have a look at the - Added a simple profiler to the probe-rs cli toolkit (#1628)[template](https://github.com/probe-rs/flash-algorithm-template)
   to create a new flash algorithm.
 
 ### Changed
@@ -315,6 +557,7 @@ Released 2023-01-13
 - Added FPU register support for Cortex-A cores (#1154)
 - GDB now reports the core name in `info threads` (#1158)
 - Added a recover sequence for the nRF9160 (#1169)
+- Added support for `JTAGAccess::write_register_batch` the esp-serial-jtag probe (#1633)
 
 ### Changed
 
@@ -866,7 +1109,12 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.18.0...master
+[unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.22.0...master
+[0.22.0]: https://github.com/probe-rs/probe-rs/compare/v0.21.1...v0.22.0
+[0.21.1]: https://github.com/probe-rs/probe-rs/compare/v0.21.0...v0.21.1
+[0.21.0]: https://github.com/probe-rs/probe-rs/compare/v0.20.0...v0.21.0
+[0.20.0]: https://github.com/probe-rs/probe-rs/compare/v0.19.0...v0.20.0
+[0.19.0]: https://github.com/probe-rs/probe-rs/compare/v0.18.0...v0.19.0
 [0.18.0]: https://github.com/probe-rs/probe-rs/compare/v0.17.0...v0.18.0
 [0.17.0]: https://github.com/probe-rs/probe-rs/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/probe-rs/probe-rs/compare/v0.15.0...v0.16.0

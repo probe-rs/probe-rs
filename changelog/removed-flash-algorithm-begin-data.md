@@ -1,0 +1,1 @@
+Removed the redundant `begin_data` field of `FlashAlgorithm`

@@ -1,4 +1,7 @@
 name: SAME54
+manufacturer:
+  id: 0x1F
+  cc: 0x0
 variants:
   - name: ATSAME54N19A
     cores:

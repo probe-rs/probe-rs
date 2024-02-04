@@ -1,17 +1,23 @@
 //! Register types and the core interface for armv8-M
 
-use crate::architecture::arm::core::{cortex_m::Mvfr0, Dfsr};
-use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
-use crate::architecture::arm::sequences::ArmDebugSequence;
-use crate::architecture::arm::ArmError;
-use crate::core::CoreInterface;
-use crate::core::RegisterFile;
-use crate::error::Error;
-use crate::memory::valid_32bit_address;
-use crate::{architecture::arm::core::register, CoreStatus, HaltReason, MemoryInterface};
-use crate::{Architecture, CoreInformation};
-use crate::{CoreType, InstructionSet, MemoryMappedRegister};
-use crate::{RegisterId, RegisterValue};
+use super::{
+    cortex_m::{IdPfr1, Mvfr0},
+    registers::cortex_m::{
+        CORTEX_M_CORE_REGISTERS, CORTEX_M_WITH_FP_CORE_REGISTERS, FP, PC, RA, SP,
+    },
+    CortexMState, Dfsr,
+};
+use crate::{
+    architecture::arm::{
+        core::registers::cortex_m::XPSR, memory::adi_v5_memory_interface::ArmProbe,
+        sequences::ArmDebugSequence, ArmError,
+    },
+    core::{CoreRegisters, RegisterId, RegisterValue, VectorCatchCondition},
+    error::Error,
+    memory::valid_32bit_address,
+    Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType, HaltReason,
+    InstructionSet, MemoryInterface, MemoryMappedRegister,
+};
 use anyhow::Result;
 use bitfield::bitfield;
 use std::{
@@ -19,8 +25,6 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
-
-use super::{CortexMState, CORTEX_M_COMMON_REGS, CORTEX_M_WITH_FP_REGS};
 
 /// The state of a core that can be used to persist core state across calls to multiple different cores.
 pub struct Armv8m<'probe> {
@@ -101,6 +105,81 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         Ok(self.status()?.is_halted())
     }
 
+    fn status(&mut self) -> Result<crate::core::CoreStatus, Error> {
+        let dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
+
+        if dhcsr.s_lockup() {
+            tracing::warn!(
+                "The core is in locked up status as a result of an unrecoverable exception"
+            );
+
+            self.set_core_status(CoreStatus::LockedUp);
+
+            return Ok(CoreStatus::LockedUp);
+        }
+
+        if dhcsr.s_sleep() {
+            // Check if we assumed the core to be halted
+            if self.state.current_state.is_halted() {
+                tracing::warn!("Expected core to be halted, but core is running");
+            }
+
+            self.set_core_status(CoreStatus::Sleeping);
+
+            return Ok(CoreStatus::Sleeping);
+        }
+
+        // TODO: Handle lockup
+
+        if dhcsr.s_halt() {
+            let dfsr = Dfsr(self.memory.read_word_32(Dfsr::get_mmio_address())?);
+
+            let mut reason = dfsr.halt_reason();
+
+            // Clear bits from Dfsr register
+            self.memory
+                .write_word_32(Dfsr::get_mmio_address(), Dfsr::clear_all().into())?;
+
+            // If the core was halted before, we cannot read the halt reason from the chip,
+            // because we clear it directly after reading.
+            if self.state.current_state.is_halted() {
+                // There shouldn't be any bits set, otherwise it means
+                // that the reason for the halt has changed. No bits set
+                // means that we have an unkown HaltReason.
+                if reason == HaltReason::Unknown {
+                    tracing::debug!("Cached halt reason: {:?}", self.state.current_state);
+                    return Ok(self.state.current_state);
+                }
+
+                tracing::debug!(
+                    "Reason for halt has changed, old reason was {:?}, new reason is {:?}",
+                    &self.state.current_state,
+                    &reason
+                );
+            }
+
+            // Set the status so any semihosting operations will know we're halted
+            self.set_core_status(CoreStatus::Halted(reason));
+
+            if let HaltReason::Breakpoint(_) = reason {
+                reason = super::cortex_m::check_for_semihosting(reason, self)?;
+                // Set it again if it's changed
+                self.set_core_status(CoreStatus::Halted(reason));
+            }
+
+            return Ok(CoreStatus::Halted(reason));
+        }
+
+        // Core is neither halted nor sleeping, so we assume it is running.
+        if self.state.current_state.is_halted() {
+            tracing::warn!("Core is running, but we expected it to be halted");
+        }
+
+        self.set_core_status(CoreStatus::Running);
+
+        Ok(CoreStatus::Running)
+    }
+
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         let mut value = Dhcsr(0);
         value.set_c_halt(true);
@@ -116,14 +195,13 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         let _ = self.status()?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(register::PC.id)?;
+        let pc_value = self.read_core_reg(self.program_counter().into())?;
 
         // get pc
         Ok(CoreInformation {
             pc: pc_value.try_into()?,
         })
     }
-
     fn run(&mut self) -> Result<(), Error> {
         // Before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction.
         self.step()?;
@@ -152,9 +230,8 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
     fn reset_and_halt(&mut self, _timeout: Duration) -> Result<CoreInformation, Error> {
         // Set the vc_corereset bit in the DEMCR register.
         // This will halt the core after reset.
+        self.reset_catch_set()?;
 
-        self.sequence
-            .reset_catch_set(&mut *self.memory, crate::CoreType::Armv8m, None)?;
         self.sequence
             .reset_system(&mut *self.memory, crate::CoreType::Armv8m, None)?;
 
@@ -162,16 +239,16 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         let _ = self.status()?;
 
         const XPSR_THUMB: u32 = 1 << 24;
-        let xpsr_value: u32 = self.read_core_reg(register::XPSR.id)?.try_into()?;
+
+        let xpsr_value: u32 = self.read_core_reg(XPSR.id())?.try_into()?;
         if xpsr_value & XPSR_THUMB == 0 {
-            self.write_core_reg(register::XPSR.id, (xpsr_value | XPSR_THUMB).into())?;
+            self.write_core_reg(XPSR.id(), (xpsr_value | XPSR_THUMB).into())?;
         }
 
-        self.sequence
-            .reset_catch_clear(&mut *self.memory, crate::CoreType::Armv8m, None)?;
+        self.reset_catch_clear()?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(register::PC.id)?;
+        let pc_value = self.read_core_reg(self.program_counter().into())?;
 
         // get pc
         Ok(CoreInformation {
@@ -181,15 +258,15 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
         // First check if we stopped on a breakpoint, because this requires special handling before we can continue.
-        let pc_before_step = self.read_core_reg(self.registers().program_counter().id)?;
-        let was_breakpoint = if matches!(
+        let breakpoint_at_pc = if matches!(
             self.state.current_state,
             CoreStatus::Halted(HaltReason::Breakpoint(_))
         ) {
+            let pc_before_step = self.read_core_reg(self.program_counter().into())?;
             self.enable_breakpoints(false)?;
-            true
+            Some(pc_before_step)
         } else {
-            false
+            None
         };
 
         let mut value = Dhcsr(0);
@@ -208,10 +285,10 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         self.wait_for_core_halted(Duration::from_millis(100))?;
 
         // Try to read the new program counter.
-        let mut pc_after_step = self.read_core_reg(self.registers().program_counter().id)?;
+        let mut pc_after_step = self.read_core_reg(self.program_counter().into())?;
 
         // Re-enable breakpoints before we continue.
-        if was_breakpoint {
+        if let Some(pc_before_step) = breakpoint_at_pc {
             // If we were stopped on a software breakpoint, then we need to manually advance the PC, or else we will be stuck here forever.
             if pc_before_step == pc_after_step
                 && !self
@@ -221,7 +298,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
                 tracing::debug!("Encountered a breakpoint instruction @ {}. We need to manually advance the program counter to the next instruction.", pc_after_step);
                 // Advance the program counter by the architecture specific byte size of the BKPT instruction.
                 pc_after_step.increment_address(2)?;
-                self.write_core_reg(self.registers().program_counter().id, pc_after_step)?;
+                self.write_core_reg(self.program_counter().into(), pc_after_step)?;
             }
             self.enable_breakpoints(true)?;
         }
@@ -242,8 +319,7 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
 
     fn write_core_reg(&mut self, address: RegisterId, value: RegisterValue) -> Result<(), Error> {
         if self.state.current_state.is_halted() {
-            super::cortex_m::write_core_reg(&mut *self.memory, address, value.try_into()?)?;
-            Ok(())
+            super::cortex_m::write_core_reg(&mut *self.memory, address, value.try_into()?)
         } else {
             Err(Error::Arm(ArmError::CoreNotHalted))
         }
@@ -255,6 +331,25 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         let reg = FpCtrl::from(raw_val);
 
         Ok(reg.num_code())
+    }
+
+    /// See docs on the [`CoreInterface::hw_breakpoints`] trait
+    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
+        let mut breakpoints = vec![];
+        let num_hw_breakpoints = self.available_breakpoint_units()? as usize;
+        for bp_unit_index in 0..num_hw_breakpoints {
+            let reg_addr = FpCompN::get_mmio_address() + (bp_unit_index * size_of::<u32>()) as u64;
+            // The raw breakpoint address as read from memory
+            let register_value = self.memory.read_word_32(reg_addr)?;
+            // The breakpoint address after it has been adjusted for FpRev 1 or 2
+            if FpCompN::from(register_value).enable() {
+                let breakpoint = FpCompN::from(register_value).bp_addr() << 1;
+                breakpoints.push(Some(breakpoint as u64));
+            } else {
+                breakpoints.push(None);
+            }
+        }
+        Ok(breakpoints)
     }
 
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error> {
@@ -289,14 +384,6 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         Ok(())
     }
 
-    fn registers(&self) -> &'static RegisterFile {
-        if self.state.fp_present {
-            &CORTEX_M_WITH_FP_REGS
-        } else {
-            &CORTEX_M_COMMON_REGS
-        }
-    }
-
     fn clear_hw_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
         let mut val = FpCompN::from(0);
         val.set_enable(false);
@@ -307,6 +394,30 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         self.memory.write_word_32(reg_addr, val.into())?;
 
         Ok(())
+    }
+
+    fn registers(&self) -> &'static CoreRegisters {
+        if self.state.fp_present {
+            &CORTEX_M_WITH_FP_CORE_REGISTERS
+        } else {
+            &CORTEX_M_CORE_REGISTERS
+        }
+    }
+
+    fn program_counter(&self) -> &'static CoreRegister {
+        &PC
+    }
+
+    fn frame_pointer(&self) -> &'static CoreRegister {
+        &FP
+    }
+
+    fn stack_pointer(&self) -> &'static CoreRegister {
+        &SP
+    }
+
+    fn return_address(&self) -> &'static CoreRegister {
+        &RA
     }
 
     fn hw_breakpoints_enabled(&self) -> bool {
@@ -325,100 +436,93 @@ impl<'probe> CoreInterface for Armv8m<'probe> {
         Ok(InstructionSet::Thumb2)
     }
 
-    fn status(&mut self) -> Result<crate::core::CoreStatus, Error> {
-        let dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
-
-        if dhcsr.s_lockup() {
-            tracing::warn!(
-                "The core is in locked up status as a result of an unrecoverable exception"
-            );
-
-            self.set_core_status(CoreStatus::LockedUp);
-
-            return Ok(CoreStatus::LockedUp);
-        }
-
-        if dhcsr.s_sleep() {
-            // Check if we assumed the core to be halted
-            if self.state.current_state.is_halted() {
-                tracing::warn!("Expected core to be halted, but core is running");
-            }
-
-            self.set_core_status(CoreStatus::Sleeping);
-
-            return Ok(CoreStatus::Sleeping);
-        }
-
-        // TODO: Handle lockup
-
-        if dhcsr.s_halt() {
-            let dfsr = Dfsr(self.memory.read_word_32(Dfsr::get_mmio_address())?);
-
-            let reason = dfsr.halt_reason();
-
-            // Clear bits from Dfsr register
-            self.memory
-                .write_word_32(Dfsr::get_mmio_address(), Dfsr::clear_all().into())?;
-
-            // If the core was halted before, we cannot read the halt reason from the chip,
-            // because we clear it directly after reading.
-            if self.state.current_state.is_halted() {
-                // There shouldn't be any bits set, otherwise it means
-                // that the reason for the halt has changed. No bits set
-                // means that we have an unkown HaltReason.
-                if reason == HaltReason::Unknown {
-                    tracing::debug!("Cached halt reason: {:?}", self.state.current_state);
-                    return Ok(self.state.current_state);
-                }
-
-                tracing::debug!(
-                    "Reason for halt has changed, old reason was {:?}, new reason is {:?}",
-                    &self.state.current_state,
-                    &reason
-                );
-            }
-
-            self.set_core_status(CoreStatus::Halted(reason));
-
-            return Ok(CoreStatus::Halted(reason));
-        }
-
-        // Core is neither halted nor sleeping, so we assume it is running.
-        if self.state.current_state.is_halted() {
-            tracing::warn!("Core is running, but we expected it to be halted");
-        }
-
-        self.set_core_status(CoreStatus::Running);
-
-        Ok(CoreStatus::Running)
-    }
-
-    /// See docs on the [`CoreInterface::hw_breakpoints`] trait
-    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
-        let mut breakpoints = vec![];
-        let num_hw_breakpoints = self.available_breakpoint_units()? as usize;
-        for bp_unit_index in 0..num_hw_breakpoints {
-            let reg_addr = FpCompN::get_mmio_address() + (bp_unit_index * size_of::<u32>()) as u64;
-            // The raw breakpoint address as read from memory
-            let register_value = self.memory.read_word_32(reg_addr)?;
-            // The breakpoint address after it has been adjusted for FpRev 1 or 2
-            if FpCompN::from(register_value).enable() {
-                let breakpoint = FpCompN::from(register_value).bp_addr() << 1;
-                breakpoints.push(Some(breakpoint as u64));
-            } else {
-                breakpoints.push(None);
-            }
-        }
-        Ok(breakpoints)
-    }
-
-    fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
+    fn fpu_support(&mut self) -> Result<bool, Error> {
         Ok(self.state.fp_present)
     }
 
+    fn floating_point_register_count(&mut self) -> Result<usize, Error> {
+        Ok(32)
+    }
+
+    #[tracing::instrument(skip(self))]
+    fn reset_catch_set(&mut self) -> Result<(), Error> {
+        self.sequence
+            .reset_catch_set(&mut *self.memory, CoreType::Armv8m, None)?;
+
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self))]
     fn reset_catch_clear(&mut self) -> Result<(), Error> {
         self.sequence
-            .reset_catch_clear(&mut *self.memory, crate::CoreType::Armv8m, None)?;
+            .reset_catch_clear(&mut *self.memory, CoreType::Armv8m, None)?;
+
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self))]
+    fn debug_core_stop(&mut self) -> Result<(), Error> {
+        self.sequence
+            .debug_core_stop(&mut *self.memory, CoreType::Armv8m)?;
+
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self))]
+    fn enable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
+        let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
+        dhcsr.set_c_debugen(true);
+        self.memory
+            .write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
+
+        let mut demcr = Demcr(self.memory.read_word_32(Demcr::get_mmio_address())?);
+        let idpfr1 = IdPfr1(self.memory.read_word_32(IdPfr1::get_mmio_address())?);
+        match condition {
+            VectorCatchCondition::HardFault => demcr.set_vc_harderr(true),
+            VectorCatchCondition::CoreReset => demcr.set_vc_corereset(true),
+            VectorCatchCondition::SecureFault => {
+                if !idpfr1.security_present() {
+                    return Err(Error::Arm(ArmError::ExtensionRequired(&["Security"])));
+                }
+                demcr.set_vc_sferr(true);
+            }
+            VectorCatchCondition::All => {
+                demcr.set_vc_harderr(true);
+                demcr.set_vc_corereset(true);
+                if idpfr1.security_present() {
+                    demcr.set_vc_sferr(true);
+                }
+            }
+        };
+
+        self.memory
+            .write_word_32(Demcr::get_mmio_address(), demcr.into())?;
+        Ok(())
+    }
+
+    fn disable_vector_catch(&mut self, condition: VectorCatchCondition) -> Result<(), Error> {
+        let mut demcr = Demcr(self.memory.read_word_32(Demcr::get_mmio_address())?);
+        let idpfr1 = IdPfr1(self.memory.read_word_32(IdPfr1::get_mmio_address())?);
+        match condition {
+            VectorCatchCondition::HardFault => demcr.set_vc_harderr(false),
+            VectorCatchCondition::CoreReset => demcr.set_vc_corereset(false),
+            VectorCatchCondition::SecureFault => {
+                if !idpfr1.security_present() {
+                    return Err(Error::Arm(ArmError::ExtensionRequired(&["Security"])));
+                }
+                demcr.set_vc_sferr(false);
+            }
+            VectorCatchCondition::All => {
+                demcr.set_vc_harderr(false);
+                demcr.set_vc_corereset(false);
+                if idpfr1.security_present() {
+                    demcr.set_vc_sferr(false);
+                }
+            }
+        };
+
+        self.memory
+            .write_word_32(Demcr::get_mmio_address(), demcr.into())?;
         Ok(())
     }
 }
@@ -427,18 +531,32 @@ impl<'probe> MemoryInterface for Armv8m<'probe> {
     fn supports_native_64bit_access(&mut self) -> bool {
         self.memory.supports_native_64bit_access()
     }
+
+    fn read_word_64(&mut self, address: u64) -> Result<u64, Error> {
+        self.memory
+            .read_word_64(address)
+            .map_err(From::<ArmError>::from)
+    }
+
     fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
         self.memory
             .read_word_32(address)
             .map_err(From::<ArmError>::from)
     }
+
+    fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
+        self.memory
+            .read_word_16(address)
+            .map_err(From::<ArmError>::from)
+    }
+
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
         self.memory
             .read_word_8(address)
             .map_err(From::<ArmError>::from)
     }
 
-    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), crate::error::Error> {
+    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
         self.memory
             .read_64(address, data)
             .map_err(From::<ArmError>::from)
@@ -450,19 +568,19 @@ impl<'probe> MemoryInterface for Armv8m<'probe> {
             .map_err(From::<ArmError>::from)
     }
 
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
+        self.memory
+            .read_16(address, data)
+            .map_err(From::<ArmError>::from)
+    }
+
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
         self.memory
             .read_8(address, data)
             .map_err(From::<ArmError>::from)
     }
 
-    fn read_word_64(&mut self, address: u64) -> Result<u64, crate::error::Error> {
-        self.memory
-            .read_word_64(address)
-            .map_err(From::<ArmError>::from)
-    }
-
-    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), crate::error::Error> {
+    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
         self.memory
             .write_word_64(address, data)
             .map_err(From::<ArmError>::from)
@@ -474,13 +592,19 @@ impl<'probe> MemoryInterface for Armv8m<'probe> {
             .map_err(From::<ArmError>::from)
     }
 
+    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
+        self.memory
+            .write_word_16(address, data)
+            .map_err(From::<ArmError>::from)
+    }
+
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
         self.memory
             .write_word_8(address, data)
             .map_err(From::<ArmError>::from)
     }
 
-    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), crate::error::Error> {
+    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
         self.memory
             .write_64(address, data)
             .map_err(From::<ArmError>::from)
@@ -489,6 +613,12 @@ impl<'probe> MemoryInterface for Armv8m<'probe> {
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
         self.memory
             .write_32(address, data)
+            .map_err(From::<ArmError>::from)
+    }
+
+    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
+        self.memory
+            .write_16(address, data)
             .map_err(From::<ArmError>::from)
     }
 
@@ -514,25 +644,6 @@ impl<'probe> MemoryInterface for Armv8m<'probe> {
         self.memory.flush().map_err(From::<ArmError>::from)
     }
 }
-
-/*
-pub const REGISTERS: BasicRegisterAddresses = BasicRegisterAddresses {
-    R0: CoreRegisterAddress(0b0_0000),
-    R1: CoreRegisterAddress(0b0_0001),
-    R2: CoreRegisterAddress(0b0_0010),
-    R3: CoreRegisterAddress(0b0_0011),
-    R4: CoreRegisterAddress(0b0_0100),
-    R5: CoreRegisterAddress(0b0_0101),
-    R6: CoreRegisterAddress(0b0_0110),
-    R7: CoreRegisterAddress(0b0_0111),
-    R8: CoreRegisterAddress(0b0_1000),
-    R9: CoreRegisterAddress(0b0_1001),
-    PC: CoreRegisterAddress(0b0_1111),
-    SP: CoreRegisterAddress(0b0_1101),
-    LR: CoreRegisterAddress(0b0_1110),
-    XPSR: CoreRegisterAddress(0b1_0000),
-};
-*/
 
 bitfield! {
     /// Debug Halting Control and Status Register, DHCSR (see armv8-M Architecture Reference Manual D1.2.38)
@@ -771,7 +882,7 @@ bitfield! {
 
 impl Dhcsr {
     /// This function sets the bit to enable writes to this register.
-    fn enable_write(&mut self) {
+    pub fn enable_write(&mut self) {
         self.0 &= !(0xffff << 16);
         self.0 |= 0xa05f << 16;
     }
@@ -919,7 +1030,7 @@ bitfield! {
     /// Global enable for DWT, PMU and ITM features
     pub trcena, set_trcena: 24;
     /// Monitor pending request key. Writes to the mon_pend and mon_en fields
-    /// request are ignorend unless monprkey is set to zero concurrently.
+    /// request are ignored unless `monprkey` is set to zero concurrently.
     pub monprkey, set_monprkey: 23;
     /// Unprivileged monitor enable.
     pub umon_en, set_umon_en: 21;

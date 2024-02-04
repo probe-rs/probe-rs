@@ -1,24 +1,25 @@
 //! Register types and the core interface for armv8-a
 //!
-use super::instructions::aarch64::{self, build_ldr, build_str};
 use super::{
-    armv8a_core_regs::AARCH64_REGISTER_FILE,
-    instructions::aarch32::{build_mcr, build_mrc, build_vmov, build_vmrs},
+    instructions::{
+        aarch32::{build_mcr, build_mrc, build_vmov, build_vmrs},
+        aarch64::{self, build_ldr, build_str},
+    },
+    registers::{aarch32::AARCH32_WITH_FP_32_CORE_REGSISTERS, aarch64::AARCH64_CORE_REGSISTERS},
+    CortexAState,
 };
-use super::{CortexAState, AARCH32_FP_32_REGS};
-
 use crate::{
     architecture::arm::{
         core::armv8a_debug_regs::*, memory::adi_v5_memory_interface::ArmProbe,
         sequences::ArmDebugSequence, ArmError,
     },
     core::{
-        memory_mapped_registers::MemoryMappedRegister, CoreInterface, RegisterFile, RegisterValue,
+        memory_mapped_registers::MemoryMappedRegister, CoreRegisters, RegisterId, RegisterValue,
     },
     error::Error,
     memory::valid_32bit_address,
-    Architecture, CoreInformation, CoreStatus, CoreType, InstructionSet, MemoryInterface,
-    RegisterId,
+    Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType,
+    InstructionSet, MemoryInterface,
 };
 use anyhow::Result;
 use std::{
@@ -90,7 +91,7 @@ impl<'probe> Armv8a<'probe> {
             state.current_state = core_state;
             state.is_64_bit = edscr.currently_64_bit();
             // Always 32 FP regs for v8-a
-            state.fp_reg_count = Some(32);
+            state.fp_reg_count = 32;
         }
 
         let mut core = Self {
@@ -743,6 +744,29 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         Ok(edscr.halted())
     }
 
+    fn status(&mut self) -> Result<crate::core::CoreStatus, Error> {
+        // determine current state
+        let address = Edscr::get_mmio_address_from_base(self.base_address)?;
+        let edscr = Edscr(self.memory.read_word_32(address)?);
+
+        if edscr.halted() {
+            let reason = edscr.halt_reason();
+
+            self.set_core_status(CoreStatus::Halted(reason));
+            self.state.is_64_bit = edscr.currently_64_bit();
+
+            return Ok(CoreStatus::Halted(reason));
+        }
+        // Core is neither halted nor sleeping, so we assume it is running.
+        if self.state.current_state.is_halted() {
+            tracing::warn!("Core is running, but we expected it to be halted");
+        }
+
+        self.set_core_status(CoreStatus::Running);
+
+        Ok(CoreStatus::Running)
+    }
+
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         if !matches!(self.state.current_state, CoreStatus::Halted(_)) {
             // Ungate halt CTI channel
@@ -776,7 +800,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         self.memory.write_word_32(address, cti_gate.into())?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(self.registers().program_counter().id)?;
+        let pc_value = self.read_core_reg(self.program_counter().into())?;
 
         // get pc
         Ok(CoreInformation {
@@ -872,7 +896,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         self.reset_register_cache();
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(self.registers().program_counter().id)?;
+        let pc_value = self.read_core_reg(self.program_counter().into())?;
 
         // get pc
         Ok(CoreInformation {
@@ -899,7 +923,7 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         self.memory.write_word_32(edecr_address, edecr.into())?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(self.registers().program_counter().id)?;
+        let pc_value = self.read_core_reg(self.program_counter().into())?;
 
         // get pc
         Ok(CoreInformation {
@@ -956,6 +980,30 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         Ok(self.num_breakpoints.unwrap())
     }
 
+    /// See docs on the [`CoreInterface::hw_breakpoints`] trait
+    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
+        let mut breakpoints = vec![];
+        let num_hw_breakpoints = self.available_breakpoint_units()? as usize;
+
+        for bp_unit_index in 0..num_hw_breakpoints {
+            let bp_value_addr = Dbgbvr::get_mmio_address_from_base(self.base_address)?
+                + (bp_unit_index * 16) as u64;
+            let mut bp_value = self.memory.read_word_32(bp_value_addr)? as u64;
+            bp_value |= (self.memory.read_word_32(bp_value_addr + 4)? as u64) << 32;
+
+            let bp_control_addr = Dbgbcr::get_mmio_address_from_base(self.base_address)?
+                + (bp_unit_index * 16) as u64;
+            let bp_control = Dbgbcr(self.memory.read_word_32(bp_control_addr)?);
+
+            if bp_control.e() {
+                breakpoints.push(Some(bp_value));
+            } else {
+                breakpoints.push(None);
+            }
+        }
+        Ok(breakpoints)
+    }
+
     fn enable_breakpoints(&mut self, _state: bool) -> Result<(), Error> {
         // Breakpoints are always on with v7-A
         Ok(())
@@ -989,14 +1037,6 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         Ok(())
     }
 
-    fn registers(&self) -> &'static RegisterFile {
-        if self.state.is_64_bit {
-            &AARCH64_REGISTER_FILE
-        } else {
-            &AARCH32_FP_32_REGS
-        }
-    }
-
     fn clear_hw_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
         let bp_value_addr =
             Dbgbvr::get_mmio_address_from_base(self.base_address)? + (bp_unit_index * 16) as u64;
@@ -1008,6 +1048,46 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         self.memory.write_word_32(bp_control_addr, 0)?;
 
         Ok(())
+    }
+
+    fn registers(&self) -> &'static CoreRegisters {
+        if self.state.is_64_bit {
+            &AARCH64_CORE_REGSISTERS
+        } else {
+            &AARCH32_WITH_FP_32_CORE_REGSISTERS
+        }
+    }
+
+    fn program_counter(&self) -> &'static CoreRegister {
+        if self.state.is_64_bit {
+            &super::registers::aarch64::PC
+        } else {
+            &super::registers::cortex_m::PC
+        }
+    }
+
+    fn frame_pointer(&self) -> &'static CoreRegister {
+        if self.state.is_64_bit {
+            &super::registers::aarch64::FP
+        } else {
+            &super::registers::cortex_m::FP
+        }
+    }
+
+    fn stack_pointer(&self) -> &'static CoreRegister {
+        if self.state.is_64_bit {
+            &super::registers::aarch64::SP
+        } else {
+            &super::registers::cortex_m::SP
+        }
+    }
+
+    fn return_address(&self) -> &'static CoreRegister {
+        if self.state.is_64_bit {
+            &super::registers::aarch64::RA
+        } else {
+            &super::registers::cortex_m::RA
+        }
     }
 
     fn hw_breakpoints_enabled(&self) -> bool {
@@ -1036,75 +1116,48 @@ impl<'probe> CoreInterface for Armv8a<'probe> {
         }
     }
 
-    fn status(&mut self) -> Result<crate::core::CoreStatus, Error> {
-        // determine current state
-        let address = Edscr::get_mmio_address_from_base(self.base_address)?;
-        let edscr = Edscr(self.memory.read_word_32(address)?);
-
-        if edscr.halted() {
-            let reason = edscr.halt_reason();
-
-            self.set_core_status(CoreStatus::Halted(reason));
-            self.state.is_64_bit = edscr.currently_64_bit();
-
-            return Ok(CoreStatus::Halted(reason));
-        }
-        // Core is neither halted nor sleeping, so we assume it is running.
-        if self.state.current_state.is_halted() {
-            tracing::warn!("Core is running, but we expected it to be halted");
-        }
-
-        self.set_core_status(CoreStatus::Running);
-
-        Ok(CoreStatus::Running)
-    }
-
-    /// See docs on the [`CoreInterface::hw_breakpoints`] trait
-    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
-        let mut breakpoints = vec![];
-        let num_hw_breakpoints = self.available_breakpoint_units()? as usize;
-
-        for bp_unit_index in 0..num_hw_breakpoints {
-            let bp_value_addr = Dbgbvr::get_mmio_address_from_base(self.base_address)?
-                + (bp_unit_index * 16) as u64;
-            let mut bp_value = self.memory.read_word_32(bp_value_addr)? as u64;
-            bp_value |= (self.memory.read_word_32(bp_value_addr + 4)? as u64) << 32;
-
-            let bp_control_addr = Dbgbcr::get_mmio_address_from_base(self.base_address)?
-                + (bp_unit_index * 16) as u64;
-            let bp_control = Dbgbcr(self.memory.read_word_32(bp_control_addr)?);
-
-            if bp_control.e() {
-                breakpoints.push(Some(bp_value));
-            } else {
-                breakpoints.push(None);
-            }
-        }
-        Ok(breakpoints)
-    }
-
     fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
         // Always available for v8-a
         Ok(true)
     }
 
-    fn on_session_stop(&mut self) -> Result<(), Error> {
+    fn floating_point_register_count(&mut self) -> Result<usize, crate::error::Error> {
+        // Always available for v8-a
+        Ok(self.state.fp_reg_count)
+    }
+
+    #[tracing::instrument(skip(self))]
+    fn reset_catch_set(&mut self) -> Result<(), Error> {
+        self.sequence.reset_catch_set(
+            &mut *self.memory,
+            CoreType::Armv8a,
+            Some(self.base_address),
+        )?;
+
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self))]
+    fn reset_catch_clear(&mut self) -> Result<(), Error> {
+        self.sequence.reset_catch_clear(
+            &mut *self.memory,
+            CoreType::Armv8a,
+            Some(self.base_address),
+        )?;
+
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self))]
+    fn debug_core_stop(&mut self) -> Result<(), Error> {
         if matches!(self.state.current_state, CoreStatus::Halted(_)) {
             // We may have clobbered registers we wrote during debugging
             // Best effort attempt to put them back before we exit
-            self.writeback_registers()
-        } else {
-            Ok(())
+            self.writeback_registers()?;
         }
-    }
 
-    fn reset_catch_clear(&mut self) -> Result<(), Error> {
-        // Release from reset
-        self.sequence.reset_catch_clear(
-            &mut *self.memory,
-            crate::CoreType::Armv8a,
-            Some(self.base_address),
-        )?;
+        self.sequence
+            .debug_core_stop(&mut *self.memory, CoreType::Armv8a)?;
 
         Ok(())
     }
@@ -1134,6 +1187,18 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
         }
     }
 
+    fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
+        // Find the word this is in and its byte offset
+        let byte_offset = address % 4;
+        let word_start = address - byte_offset;
+
+        // Read the word
+        let data = self.read_word_32(word_start)?;
+
+        // Return the byte
+        Ok((data >> (byte_offset * 8)) as u16)
+    }
+
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
         // Find the word this is in and its byte offset
         let byte_offset = address % 4;
@@ -1157,6 +1222,14 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
         for (i, word) in data.iter_mut().enumerate() {
             *word = self.read_word_32(address + ((i as u64) * 4))?;
+        }
+
+        Ok(())
+    }
+
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
+        for (i, word) in data.iter_mut().enumerate() {
+            *word = self.read_word_16(address + ((i as u64) * 2))?;
         }
 
         Ok(())
@@ -1190,6 +1263,21 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
         }
     }
 
+    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
+        // Find the word this is in and its byte offset
+        let byte_offset = address % 4;
+        let word_start = address - byte_offset;
+
+        // Get the current word value
+        let mut word = self.read_word_32(word_start)?;
+
+        // patch the word into it
+        word &= !(0xFFFFu32 << (byte_offset * 8));
+        word |= (data as u32) << (byte_offset * 8);
+
+        self.write_word_32(word_start, word)
+    }
+
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
         // Find the word this is in and its byte offset
         let byte_offset = address % 4;
@@ -1219,9 +1307,17 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
         Ok(())
     }
 
+    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
+        for (i, word) in data.iter().enumerate() {
+            self.write_word_16(address + ((i as u64) * 2), *word)?;
+        }
+
+        Ok(())
+    }
+
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
         for (i, byte) in data.iter().enumerate() {
-            self.write_word_8(address + ((i as u64) * 4), *byte)?;
+            self.write_word_8(address + (i as u64), *byte)?;
         }
 
         Ok(())
@@ -1244,7 +1340,7 @@ mod test {
             ap::MemoryAp, communication_interface::SwdSequence,
             memory::adi_v5_memory_interface::ArmProbe, sequences::DefaultArmSequence, ArmError,
         },
-        DebugProbeError,
+        probe::DebugProbeError,
     };
 
     use super::*;
@@ -1299,6 +1395,10 @@ mod test {
             todo!()
         }
 
+        fn read_16(&mut self, _address: u64, _data: &mut [u16]) -> Result<(), ArmError> {
+            todo!()
+        }
+
         fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
             if self.expected_ops.is_empty() {
                 panic!(
@@ -1331,6 +1431,10 @@ mod test {
         }
 
         fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), ArmError> {
+            todo!()
+        }
+
+        fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), ArmError> {
             todo!()
         }
 

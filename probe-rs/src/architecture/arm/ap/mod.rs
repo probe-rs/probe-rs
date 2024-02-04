@@ -6,7 +6,7 @@ pub(crate) mod generic_ap;
 pub(crate) mod memory_ap;
 
 use crate::architecture::arm::dp::DebugPortError;
-use crate::DebugProbeError;
+use crate::probe::DebugProbeError;
 
 pub use generic_ap::{ApClass, ApType, GenericAp, IDR};
 pub use memory_ap::{
@@ -164,6 +164,7 @@ impl<T: DapAccess> ApAccess for T {
         self.write_raw_ap_register(port.into().ap_address(), R::ADDRESS, register.into())
     }
 
+    #[tracing::instrument(skip(self, port, values), fields(register = R::NAME, len = values.len()))]
     fn write_ap_register_repeated<PORT, R>(
         &mut self,
         port: impl Into<PORT>,
@@ -206,7 +207,7 @@ impl<T: DapAccess> ApAccess for T {
 ///
 /// The test is performed by reading the IDR register, and checking if the register is non-zero.
 ///
-/// Can fail silently under the hood testing an ap that doesnt exist and would require cleanup.
+/// Can fail silently under the hood testing an ap that doesn't exist and would require cleanup.
 pub fn access_port_is_valid<AP>(debug_port: &mut AP, access_port: GenericAp) -> bool
 where
     AP: ApAccess,
@@ -227,7 +228,7 @@ where
 }
 
 /// Return a Vec of all valid access ports found that the target connected to the debug_probe.
-/// Can fail silently under the hood testing an ap that doesnt exist and would require cleanup.
+/// Can fail silently under the hood testing an ap that doesn't exist and would require cleanup.
 #[tracing::instrument(skip(debug_port))]
 pub(crate) fn valid_access_ports<AP>(debug_port: &mut AP, dp: DpAddress) -> Vec<GenericAp>
 where

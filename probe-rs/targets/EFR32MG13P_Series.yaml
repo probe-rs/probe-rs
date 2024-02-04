@@ -1,4 +1,7 @@
 name: EFR32MG13P Series
+manufacturer:
+  cc: 0x02
+  id: 0x21
 variants:
   - name: EFR32MG13P632F512
     cores:

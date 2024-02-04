@@ -4,7 +4,6 @@
 //! # Prerequisites
 //!
 //! - Udev rules
-//! - libusb
 //!
 //! # Examples
 //!
@@ -12,13 +11,16 @@
 //! ## Halting the attached chip
 //! ```no_run
 //! # use probe_rs::Error;
-//! use probe_rs::{Probe, Permissions};
+//! use probe_rs::probe::{list::Lister, Probe};
+//! use probe_rs::Permissions;
 //!
 //! // Get a list of all available debug probes.
-//! let probes = Probe::list_all();
+//! let lister = Lister::new();
+//!
+//! let probes = lister.list_all();
 //!
 //! // Use the first probe found.
-//! let mut probe = probes[0].open()?;
+//! let mut probe = probes[0].open(&lister)?;
 //!
 //! // Attach to a chip.
 //! let mut session = probe.attach("nrf52", Permissions::default())?;
@@ -35,8 +37,7 @@
 //!
 //! ```no_run
 //! # use probe_rs::Error;
-//! use probe_rs::{Session, Permissions};
-//! use probe_rs::MemoryInterface;
+//! use probe_rs::{Session, Permissions, MemoryInterface};
 //!
 //! let mut session = Session::auto_attach("nrf52", Permissions::default())?;
 //! let mut core = session.core(0)?;
@@ -61,7 +62,9 @@
 //!
 //! probe-rs is built around 4 main interfaces: the [Probe],
 //! [Target], [Session]  and [Core] structs.
-
+//!
+//! [Probe]: probe::Probe
+#![warn(missing_docs)]
 #![recursion_limit = "256"]
 
 #[macro_use]
@@ -71,35 +74,35 @@ extern crate serde;
 pub mod architecture;
 pub mod config;
 
-#[warn(missing_docs)]
 mod core;
 pub mod debug;
 mod error;
-#[warn(missing_docs)]
 pub mod flashing;
-#[warn(missing_docs)]
+#[cfg(feature = "gdb-server")]
+pub mod gdb_server;
+pub mod integration;
 mod memory;
-#[warn(missing_docs)]
-mod probe;
-#[warn(missing_docs)]
+pub mod probe;
 #[cfg(feature = "rtt")]
 pub mod rtt;
-#[warn(missing_docs)]
 mod session;
+#[cfg(test)]
+mod test;
 
 pub use crate::config::{CoreType, InstructionSet, Target};
 pub use crate::core::{
-    Architecture, BreakpointCause, Core, CoreInformation, CoreState, CoreStatus, HaltReason,
-    MemoryMappedRegister, RegisterDescription, RegisterFile, RegisterId, RegisterValue,
-    SpecificCoreState,
+    exception_handler_for_core, Architecture, BreakpointCause, Core, CoreDump, CoreDumpError,
+    CoreInformation, CoreInterface, CoreRegister, CoreRegisters, CoreState, CoreStatus, HaltReason,
+    MemoryMappedRegister, RegisterId, RegisterRole, RegisterValue, SemihostingCommand,
+    SpecificCoreState, VectorCatchCondition,
 };
 pub use crate::error::Error;
 pub use crate::memory::MemoryInterface;
 pub use crate::probe::{
-    AttachMethod, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType,
-    Probe, ProbeCreationError, WireProtocol,
+    AttachMethod, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe,
+    ProbeCreationError, WireProtocol,
 };
-pub use crate::session::permissions::Permissions;
+pub use crate::session::Permissions;
 pub use crate::session::{Config, CoreSelection, CoreSelector, Session};
 
 // TODO: Hide behind feature

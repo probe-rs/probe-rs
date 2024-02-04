@@ -1,0 +1,1 @@
+Fixed flashing MIMXRT1060 devices

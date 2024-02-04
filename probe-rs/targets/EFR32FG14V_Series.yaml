@@ -1,4 +1,7 @@
 name: EFR32FG14V Series
+manufacturer:
+  cc: 0x02
+  id: 0x21
 variants:
   - name: EFR32FG14V132F256
     cores:

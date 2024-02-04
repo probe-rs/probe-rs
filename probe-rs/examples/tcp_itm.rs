@@ -1,5 +1,5 @@
 use probe_rs::architecture::arm::{component::TraceSink, swo::SwoConfig};
-use probe_rs::{Error, Permissions};
+use probe_rs::{probe::list::Lister, Error, Permissions};
 
 use itm::{Decoder, DecoderOptions, TracePacket};
 
@@ -12,13 +12,13 @@ use std::{any::Any, io::prelude::*};
 fn main() -> Result<(), Error> {
     pretty_env_logger::init();
 
-    use probe_rs::Probe;
+    let lister = Lister::new();
 
     // Get a list of all available debug probes.
-    let probes = Probe::list_all();
+    let probes = lister.list_all();
 
     // Use the first probe found.
-    let probe = probes[0].open()?;
+    let probe = probes[0].open(&lister)?;
 
     // Attach to a chip.
     let mut session = probe.attach("stm32f407", Permissions::default())?;

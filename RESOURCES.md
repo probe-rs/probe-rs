@@ -22,6 +22,8 @@ STLINKv1, v2 and v2-1. Written in C.
 [CoreSight Technical Introduction](http://infocenter.arm.com/help/topic/com.arm.doc.epm039795/coresight_technical_introduction_EPM_039795.pdf)
 [CMSIS Packs](https://developer.arm.com/tools-and-software/embedded/cmsis/cmsis-packs)
 
+[Semihosting Specification](https://github.com/ARM-software/abi-aa/blob/main/semihosting/semihosting.rst)
+
 ### Armv6-M Architecture 
 
 [Architecture Reference Manual](https://static.docs.arm.com/ddi0419/d/DDI0419D_armv6m_arm.pdf)
@@ -55,9 +57,9 @@ STLINKv1, v2 and v2-1. Written in C.
 ### CMSIS-DAP
 [CMSIS-DAP Spec](https://arm-software.github.io/CMSIS_5/DAP/html/index.html)
 
-## RISCV
+## RISC-V
 
-[RISCV Debug Specification](https://github.com/riscv/riscv-debug-spec/blob/release/riscv-debug-release.pdf)
+[RISC-V Debug Specification](https://github.com/riscv/riscv-debug-spec/blob/release/riscv-debug-release.pdf)
 
 
 ## ELF

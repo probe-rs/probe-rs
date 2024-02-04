@@ -1,0 +1,1 @@
+Fixed a regression that made it impossible to select a chip target that was a substring of another chip (eg cortex-m3 is a substring of cortex-m33)

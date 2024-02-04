@@ -18,8 +18,17 @@ pub struct BinOptions {
     pub skip: u32,
 }
 
+/// Extended options for flashing a ESP-IDF format file.
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]
+pub struct IdfOptions {
+    /// The bootloader
+    pub bootloader: Option<Vec<u8>>,
+    /// The partition table
+    pub partition_table: Option<esp_idf_part::PartitionTable>,
+}
+
 /// A finite list of all the available binary formats probe-rs understands.
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub enum Format {
     /// Marks a file in binary format. This means that the file contains the contents of the flash 1:1.
     /// [BinOptions] can be used to define the location in flash where the file contents should be put at.
@@ -28,7 +37,13 @@ pub enum Format {
     /// Marks a file in [Intel HEX](https://en.wikipedia.org/wiki/Intel_HEX) format.
     Hex,
     /// Marks a file in the [ELF](https://en.wikipedia.org/wiki/Executable_and_Linkable_Format) format.
+    #[default]
     Elf,
+    /// Marks a file in the [ESP-IDF bootloader](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/app_image_format.html#app-image-structures) format.
+    /// Use [IdfOptions] to configure flashing.
+    Idf(IdfOptions),
+    /// Marks a file in the [UF2](https://github.com/microsoft/uf2) format.
+    Uf2,
 }
 
 impl FromStr for Format {
@@ -40,8 +55,10 @@ impl FromStr for Format {
                 base_address: None,
                 skip: 0,
             })),
+            "idf" | "esp-idf" => Ok(Format::Idf(Default::default())),
             "hex" | "ihex" | "intelhex" => Ok(Format::Hex),
             "elf" => Ok(Format::Elf),
+            "uf2" => Ok(Format::Uf2),
             _ => Err(format!("Format '{s}' is unknown.")),
         }
     }
@@ -70,15 +87,23 @@ pub enum FileDownloadError {
     /// Reading and decoding the given ELF file has resulted in the given error.
     #[error("Could not read ELF file")]
     Elf(#[from] object::read::Error),
+    /// Espflash format error
+    #[error("Failed to format as esp-idf binary")]
+    Idf(#[from] espflash::error::Error),
+    /// The target doesn't support the esp-idf format
+    #[error("Target {0} does not support the esp-idf format")]
+    IdfUnsupported(String),
     /// No loadable segments were found in the ELF file.
     ///
     /// This is most likely because of a bad linker script.
     #[error("No loadable ELF sections were found.")]
     NoLoadableSegments,
+    /// Some error returned by the flash size detection.
+    #[error("Could not determine flash size.")]
+    FlashSizeDetection(#[from] crate::Error),
 }
 
 /// Options for downloading a file onto a target chip.
-///
 ///
 /// This struct should be created using the [`DownloadOptions::default()`] function, and can be configured by setting
 /// the fields directly:
@@ -126,7 +151,7 @@ impl DownloadOptions {
 
 /// Downloads a file of given `format` at `path` to the flash of the target given in `session`.
 ///
-/// This will ensure that memory bounderies are honored and does unlocking, erasing and programming of the flash for you.
+/// This will ensure that memory boundaries are honored and does unlocking, erasing and programming of the flash for you.
 ///
 /// If you are looking for more options, have a look at [download_file_with_options].
 pub fn download_file<P: AsRef<Path>>(
@@ -139,7 +164,7 @@ pub fn download_file<P: AsRef<Path>>(
 
 /// Downloads a file of given `format` at `path` to the flash of the target given in `session`.
 ///
-/// This will ensure that memory bounderies are honored and does unlocking, erasing and programming of the flash for you.
+/// This will ensure that memory boundaries are honored and does unlocking, erasing and programming of the flash for you.
 ///
 /// If you are looking for a simple version without many options, have a look at [download_file].
 pub fn download_file_with_options<P: AsRef<Path>>(
@@ -148,10 +173,7 @@ pub fn download_file_with_options<P: AsRef<Path>>(
     format: Format,
     options: DownloadOptions,
 ) -> Result<(), FileDownloadError> {
-    let mut file = match File::open(path.as_ref()) {
-        Ok(file) => file,
-        Err(e) => return Err(FileDownloadError::IO(e)),
-    };
+    let mut file = File::open(path.as_ref()).map_err(FileDownloadError::IO)?;
 
     let mut loader = session.target().flash_loader();
 
@@ -159,6 +181,8 @@ pub fn download_file_with_options<P: AsRef<Path>>(
         Format::Bin(options) => loader.load_bin_data(&mut file, options),
         Format::Elf => loader.load_elf_data(&mut file),
         Format::Hex => loader.load_hex_data(&mut file),
+        Format::Idf(options) => loader.load_idf_data(session, &mut file, options),
+        Format::Uf2 => loader.load_uf2_data(&mut file),
     }?;
 
     loader
@@ -166,7 +190,7 @@ pub fn download_file_with_options<P: AsRef<Path>>(
         .map_err(FileDownloadError::Flash)
 }
 
-/// Flash data which was extraced from an ELF file.
+/// Flash data which was extracted from an ELF file.
 pub(super) struct ExtractedFlashData<'data> {
     pub(super) section_names: Vec<String>,
     pub(super) address: u32,

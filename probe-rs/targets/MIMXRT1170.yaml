@@ -1,5 +1,7 @@
 name: MIMXRT1170 Series
-manufacturer: null
+manufacturer:
+  cc: 0x00
+  id: 0x15
 variants:
 - name: MIMXRT1170
   part: null

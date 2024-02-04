@@ -5,22 +5,28 @@ use super::{
         build_bx, build_ldc, build_mcr, build_mov, build_mrc, build_mrs, build_stc, build_vmov,
         build_vmrs,
     },
-    CortexAState, AARCH32_COMMON_REGS, AARCH32_FP_16_REGS, AARCH32_FP_32_REGS,
+    registers::{
+        aarch32::{
+            AARCH32_CORE_REGSISTERS, AARCH32_WITH_FP_16_CORE_REGSISTERS,
+            AARCH32_WITH_FP_32_CORE_REGSISTERS,
+        },
+        cortex_m::{FP, PC, RA, SP},
+    },
+    CortexAState,
 };
 use crate::{
     architecture::arm::{
-        core::{armv7a_debug_regs::*, register},
-        memory::adi_v5_memory_interface::ArmProbe,
-        sequences::ArmDebugSequence,
-        ArmError,
+        core::armv7a_debug_regs::*, memory::adi_v5_memory_interface::ArmProbe,
+        sequences::ArmDebugSequence, ArmError,
     },
-    core::{CoreInterface, MemoryMappedRegister, RegisterFile, RegisterValue},
+    core::{CoreRegisters, MemoryMappedRegister, RegisterId, RegisterValue},
     error::Error,
     memory::valid_32bit_address,
-    Architecture, CoreInformation, CoreStatus, CoreType, InstructionSet, MemoryInterface,
-    RegisterId,
+    Architecture, CoreInformation, CoreInterface, CoreRegister, CoreStatus, CoreType,
+    InstructionSet, MemoryInterface,
 };
 use anyhow::Result;
+use num_traits::Zero;
 use std::{
     mem::size_of,
     sync::Arc,
@@ -104,7 +110,7 @@ impl<'probe> Armv7a<'probe> {
     }
 
     fn read_fp_reg_count(&mut self) -> Result<(), Error> {
-        if self.state.fp_reg_count.is_none()
+        if self.state.fp_reg_count.is_zero()
             && matches!(self.state.current_state, CoreStatus::Halted(_))
         {
             self.prepare_r0_for_clobber()?;
@@ -117,11 +123,11 @@ impl<'probe> Armv7a<'probe> {
             let instruction = build_mcr(14, 0, 0, 0, 5, 0);
             let vmrs = self.execute_instruction_with_result(instruction)?;
 
-            self.state.fp_reg_count = Some(match vmrs & 0b111 {
+            self.state.fp_reg_count = match vmrs & 0b111 {
                 0b001 => 16,
                 0b010 => 32,
                 _ => 0,
-            });
+            };
         }
 
         Ok(())
@@ -320,6 +326,30 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         Ok(dbgdscr.halted())
     }
 
+    fn status(&mut self) -> Result<crate::core::CoreStatus, Error> {
+        // determine current state
+        let address = Dbgdscr::get_mmio_address_from_base(self.base_address)?;
+        let dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
+
+        if dbgdscr.halted() {
+            let reason = dbgdscr.halt_reason();
+
+            self.set_core_status(CoreStatus::Halted(reason));
+
+            self.read_fp_reg_count()?;
+
+            return Ok(CoreStatus::Halted(reason));
+        }
+        // Core is neither halted nor sleeping, so we assume it is running.
+        if self.state.current_state.is_halted() {
+            tracing::warn!("Core is running, but we expected it to be halted");
+        }
+
+        self.set_core_status(CoreStatus::Running);
+
+        Ok(CoreStatus::Running)
+    }
+
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         if !matches!(self.state.current_state, CoreStatus::Halted(_)) {
             let address = Dbgdrcr::get_mmio_address_from_base(self.base_address)?;
@@ -337,14 +367,13 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         let _ = self.status()?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(register::PC.id)?;
+        let pc_value = self.read_core_reg(self.program_counter().into())?;
 
         // get pc
         Ok(CoreInformation {
             pc: pc_value.try_into()?,
         })
     }
-
     fn run(&mut self) -> Result<(), Error> {
         if matches!(self.state.current_state, CoreStatus::Running) {
             return Ok(());
@@ -424,7 +453,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         self.reset_register_cache();
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(register::PC.id)?;
+        let pc_value = self.read_core_reg(self.program_counter().into())?;
 
         // get pc
         Ok(CoreInformation {
@@ -444,7 +473,9 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         let saved_bp_control = self.memory.read_word_32(bp_control_addr)?;
 
         // Set breakpoint for any change
-        let current_pc: u32 = self.read_core_reg(register::PC.id)?.try_into()?;
+        let current_pc: u32 = self
+            .read_core_reg(self.program_counter().into())?
+            .try_into()?;
         let mut bp_control = Dbgbcr(0);
 
         // Breakpoint type - address mismatch
@@ -473,7 +504,7 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
             .write_word_32(bp_control_addr, saved_bp_control)?;
 
         // try to read the program counter
-        let pc_value = self.read_core_reg(register::PC.id)?;
+        let pc_value = self.read_core_reg(self.program_counter().into())?;
 
         // get pc
         Ok(CoreInformation {
@@ -628,6 +659,29 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         Ok(self.num_breakpoints.unwrap())
     }
 
+    /// See docs on the [`CoreInterface::hw_breakpoints`] trait
+    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
+        let mut breakpoints = vec![];
+        let num_hw_breakpoints = self.available_breakpoint_units()? as usize;
+
+        for bp_unit_index in 0..num_hw_breakpoints {
+            let bp_value_addr = Dbgbvr::get_mmio_address_from_base(self.base_address)?
+                + (bp_unit_index * size_of::<u32>()) as u64;
+            let bp_value = self.memory.read_word_32(bp_value_addr)?;
+
+            let bp_control_addr = Dbgbcr::get_mmio_address_from_base(self.base_address)?
+                + (bp_unit_index * size_of::<u32>()) as u64;
+            let bp_control = Dbgbcr(self.memory.read_word_32(bp_control_addr)?);
+
+            if bp_control.e() {
+                breakpoints.push(Some(bp_value as u64));
+            } else {
+                breakpoints.push(None);
+            }
+        }
+        Ok(breakpoints)
+    }
+
     fn enable_breakpoints(&mut self, _state: bool) -> Result<(), Error> {
         // Breakpoints are always on with v7-A
         Ok(())
@@ -659,14 +713,6 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         Ok(())
     }
 
-    fn registers(&self) -> &'static RegisterFile {
-        match self.state.fp_reg_count {
-            Some(16) => &AARCH32_FP_16_REGS,
-            Some(32) => &AARCH32_FP_32_REGS,
-            _ => &AARCH32_COMMON_REGS,
-        }
-    }
-
     fn clear_hw_breakpoint(&mut self, bp_unit_index: usize) -> Result<(), Error> {
         let bp_value_addr = Dbgbvr::get_mmio_address_from_base(self.base_address)?
             + (bp_unit_index * size_of::<u32>()) as u64;
@@ -677,6 +723,30 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         self.memory.write_word_32(bp_control_addr, 0)?;
 
         Ok(())
+    }
+
+    fn registers(&self) -> &'static CoreRegisters {
+        match self.state.fp_reg_count {
+            16 => &AARCH32_WITH_FP_16_CORE_REGSISTERS,
+            32 => &AARCH32_WITH_FP_32_CORE_REGSISTERS,
+            _ => &AARCH32_CORE_REGSISTERS,
+        }
+    }
+
+    fn program_counter(&self) -> &'static CoreRegister {
+        &PC
+    }
+
+    fn frame_pointer(&self) -> &'static CoreRegister {
+        &FP
+    }
+
+    fn stack_pointer(&self) -> &'static CoreRegister {
+        &SP
+    }
+
+    fn return_address(&self) -> &'static CoreRegister {
+        &RA
     }
 
     fn hw_breakpoints_enabled(&self) -> bool {
@@ -701,75 +771,47 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         }
     }
 
-    fn status(&mut self) -> Result<crate::core::CoreStatus, Error> {
-        // determine current state
-        let address = Dbgdscr::get_mmio_address_from_base(self.base_address)?;
-        let dbgdscr = Dbgdscr(self.memory.read_word_32(address)?);
-
-        if dbgdscr.halted() {
-            let reason = dbgdscr.halt_reason();
-
-            self.set_core_status(CoreStatus::Halted(reason));
-
-            self.read_fp_reg_count()?;
-
-            return Ok(CoreStatus::Halted(reason));
-        }
-        // Core is neither halted nor sleeping, so we assume it is running.
-        if self.state.current_state.is_halted() {
-            tracing::warn!("Core is running, but we expected it to be halted");
-        }
-
-        self.set_core_status(CoreStatus::Running);
-
-        Ok(CoreStatus::Running)
-    }
-
-    /// See docs on the [`CoreInterface::hw_breakpoints`] trait
-    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
-        let mut breakpoints = vec![];
-        let num_hw_breakpoints = self.available_breakpoint_units()? as usize;
-
-        for bp_unit_index in 0..num_hw_breakpoints {
-            let bp_value_addr = Dbgbvr::get_mmio_address_from_base(self.base_address)?
-                + (bp_unit_index * size_of::<u32>()) as u64;
-            let bp_value = self.memory.read_word_32(bp_value_addr)?;
-
-            let bp_control_addr = Dbgbcr::get_mmio_address_from_base(self.base_address)?
-                + (bp_unit_index * size_of::<u32>()) as u64;
-            let bp_control = Dbgbcr(self.memory.read_word_32(bp_control_addr)?);
-
-            if bp_control.e() {
-                breakpoints.push(Some(bp_value as u64));
-            } else {
-                breakpoints.push(None);
-            }
-        }
-        Ok(breakpoints)
-    }
-
     fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
-        Err(crate::error::Error::Other(anyhow::anyhow!(
-            "Fpu detection not yet implemented"
-        )))
+        Ok(!self.state.fp_reg_count.is_zero())
     }
 
-    fn on_session_stop(&mut self) -> Result<(), Error> {
-        if matches!(self.state.current_state, CoreStatus::Halted(_)) {
-            // We may have clobbered registers we wrote during debugging
-            // Best effort attempt to put them back before we exit
-            self.writeback_registers()
-        } else {
-            Ok(())
-        }
+    fn floating_point_register_count(&mut self) -> Result<usize, crate::error::Error> {
+        Ok(self.state.fp_reg_count)
     }
 
-    fn reset_catch_clear(&mut self) -> Result<(), Error> {
-        self.sequence.reset_catch_clear(
+    #[tracing::instrument(skip(self))]
+    fn reset_catch_set(&mut self) -> Result<(), Error> {
+        self.sequence.reset_catch_set(
             &mut *self.memory,
-            crate::CoreType::Armv7a,
+            CoreType::Armv7a,
             Some(self.base_address),
         )?;
+
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self))]
+    fn reset_catch_clear(&mut self) -> Result<(), Error> {
+        // Clear the reset_catch bit which was set earlier.
+        self.sequence.reset_catch_clear(
+            &mut *self.memory,
+            CoreType::Armv7a,
+            Some(self.base_address),
+        )?;
+
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self))]
+    fn debug_core_stop(&mut self) -> Result<(), Error> {
+        if matches!(self.state.current_state, CoreStatus::Halted(_)) {
+            // We may have clobbered registers we wrote during debugging
+            // Best effort attempt to put them back before we exit debug mode
+            self.writeback_registers()?;
+        }
+
+        self.sequence
+            .debug_core_stop(&mut *self.memory, CoreType::Armv7a)?;
 
         Ok(())
     }
@@ -803,6 +845,18 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
         self.execute_instruction_with_result(instr)
     }
 
+    fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
+        // Find the word this is in and its byte offset
+        let byte_offset = address % 4;
+        let word_start = address - byte_offset;
+
+        // Read the word
+        let data = self.read_word_32(word_start)?;
+
+        // Return the byte
+        Ok((data >> (byte_offset * 8)) as u16)
+    }
+
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
         // Find the word this is in and its byte offset
         let byte_offset = address % 4;
@@ -826,6 +880,14 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
         for (i, word) in data.iter_mut().enumerate() {
             *word = self.read_word_32(address + ((i as u64) * 4))?;
+        }
+
+        Ok(())
+    }
+
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
+        for (i, word) in data.iter_mut().enumerate() {
+            *word = self.read_word_16(address + ((i as u64) * 2))?;
         }
 
         Ok(())
@@ -876,6 +938,21 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
         self.write_word_32(word_start, u32::from_le_bytes(word_bytes))
     }
 
+    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
+        // Find the word this is in and its byte offset
+        let byte_offset = address % 4;
+        let word_start = address - byte_offset;
+
+        // Get the current word value
+        let mut word = self.read_word_32(word_start)?;
+
+        // patch the word into it
+        word &= !(0xFFFFu32 << (byte_offset * 8));
+        word |= (data as u32) << (byte_offset * 8);
+
+        self.write_word_32(word_start, word)
+    }
+
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), crate::error::Error> {
         for (i, word) in data.iter().enumerate() {
             self.write_word_64(address + ((i as u64) * 8), *word)?;
@@ -892,9 +969,17 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
         Ok(())
     }
 
+    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
+        for (i, word) in data.iter().enumerate() {
+            self.write_word_16(address + ((i as u64) * 2), *word)?;
+        }
+
+        Ok(())
+    }
+
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
         for (i, byte) in data.iter().enumerate() {
-            self.write_word_8(address + ((i as u64) * 4), *byte)?;
+            self.write_word_8(address + (i as u64), *byte)?;
         }
 
         Ok(())
@@ -917,7 +1002,7 @@ mod test {
             ap::MemoryAp, communication_interface::SwdSequence,
             memory::adi_v5_memory_interface::ArmProbe, sequences::DefaultArmSequence, ArmError,
         },
-        DebugProbeError,
+        probe::DebugProbeError,
     };
 
     use super::*;
@@ -969,6 +1054,10 @@ mod test {
             todo!()
         }
 
+        fn read_16(&mut self, _address: u64, _data: &mut [u16]) -> Result<(), ArmError> {
+            todo!()
+        }
+
         fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
             if self.expected_ops.is_empty() {
                 panic!(
@@ -1005,6 +1094,10 @@ mod test {
         }
 
         fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), ArmError> {
+            todo!()
+        }
+
+        fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), ArmError> {
             todo!()
         }
 

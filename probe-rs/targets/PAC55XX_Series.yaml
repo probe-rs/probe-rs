@@ -1,0 +1,176 @@
+name: PAC55XX Series
+generated_from_pack: true
+pack_file_release: 1.1.0
+variants:
+- name: PAC5523
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - pac55xx
+- name: PAC5524
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - pac55xx
+- name: PAC5527
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - pac55xx
+- name: PAC5532
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - pac55xx
+- name: PAC5556
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - pac55xx
+- name: PAC55XX
+  cores:
+  - name: main
+    type: armv7em
+    core_access_options: !Arm
+      ap: 0
+      psel: 0
+  memory_map:
+  - !Ram
+    name: IRAM1
+    range:
+      start: 0x20000000
+      end: 0x20008000
+    cores:
+    - main
+  - !Nvm
+    name: IROM1
+    range:
+      start: 0x0
+      end: 0x20000
+    is_boot_memory: true
+    cores:
+    - main
+  flash_algorithms:
+  - pac55xx
+flash_algorithms:
+- name: pac55xx
+  description: PAC55XX 128kB Flash
+  default: true
+  instructions: HLUDRkXyVVBhTCBgASBgTAg0IGAAIAGQG+AAIFxMCDQgYACQAuAAmEAcAJAAmAoo+dsBIFZMCDQgYAAgAJAC4ACYQBwAkACYCij52wGYQBwBkAGYsPV6f9/bT/IFEE1MIGBNSCQdIGAAv0pIAB0AaADwgHAAKPjQT/IVEEVMIGBGSEdMoGBHSCBgACCgYAkgP0wINCBgACAcvQFGACBwR4kgO0kIMQhgAL89SEBoAPACAAAo+dE8SDlJiGA7SAhiAL83SEBoAPACAAAo+dE4SDNJCGIAvzJIQGgA8AIAACj50S9JiGBwRwFGigoAvyxIQGgA8AIAACj50StIKEuYYBhGwmArSBhiAL8lSEBoAPACAAAo+dEiS5hgcEct6fBFA0YMRhVGHkYvRqIIEEZP6uJ6Auuaek/qqgqi64oMzPEECAC/FkhAaADwAgAAKPnRFUjf+EygyvgIAAAhBOBX+CEARvghAEkckUL42wAhBuBP8P8wAusBCkb4KgBJHEFF9tsAIN/4GKDK+AgAvejwhQAkDUAABA1ARSwBAJC0E9UAAA1ARgByAAoU30PJdu4JRf9mEqeceYwAAAAA
+  pc_init: 0x1
+  pc_uninit: 0x9b
+  pc_program_page: 0x11d
+  pc_erase_sector: 0xe9
+  pc_erase_all: 0xa1
+  data_section_offset: 0x1b8
+  flash_properties:
+    address_range:
+      start: 0x0
+      end: 0x20000
+    page_size: 0x400
+    erased_byte_value: 0xff
+    program_page_timeout: 300
+    erase_sector_timeout: 3000
+    sectors:
+    - size: 0x400
+      address: 0x0

@@ -10,30 +10,22 @@ pub mod sequences;
 pub mod swo;
 mod traits;
 
+pub use self::core::{armv6m, armv7a, armv7m, armv8a, armv8m, Dump};
+use self::{
+    ap::{AccessPort, AccessPortError},
+    communication_interface::RegisterParseError,
+    dp::DebugPortError,
+    memory::romtable::RomTableError,
+    sequences::ArmDebugSequenceError,
+    {armv7a::Armv7aError, armv8a::Armv8aError},
+};
+use crate::probe::DebugProbeError;
 pub use communication_interface::{
-    ApInformation, ArmChipInfo, ArmCommunicationInterface, DapError, MemoryApInformation, Register,
+    ApInformation, ArmChipInfo, ArmCommunicationInterface, ArmProbeInterface, DapError,
+    MemoryApInformation, Register,
 };
 pub use swo::{SwoAccess, SwoConfig, SwoMode, SwoReader};
 pub use traits::*;
-
-use crate::DebugProbeError;
-
-use self::ap::AccessPort;
-use self::ap::AccessPortError;
-use self::armv7a::Armv7aError;
-use self::armv8a::Armv8aError;
-use self::communication_interface::RegisterParseError;
-pub use self::core::armv6m;
-pub use self::core::armv7a;
-pub use self::core::armv7m;
-pub use self::core::armv8a;
-pub use self::core::armv8m;
-pub use self::core::Dump;
-use self::dp::DebugPortError;
-use self::memory::romtable::RomTableError;
-use self::sequences::ArmDebugSequenceError;
-
-pub use communication_interface::ArmProbeInterface;
 
 /// ARM-specific errors
 #[derive(Debug, thiserror::Error)]
@@ -98,7 +90,7 @@ pub enum ArmError {
         /// The required alignment in bytes (address increments).
         alignment: usize,
     },
-    /// A region ouside of the AP address space was accessed.
+    /// A region outside of the AP address space was accessed.
     #[error("Out of bounds access")]
     OutOfBounds,
     /// The requested memory transfer width is not supported on the current core.
@@ -116,10 +108,10 @@ pub enum ArmError {
     #[error("Unable to create a breakpoint at address {0:#010X}. Hardware breakpoints are only supported at addresses < 0x2000'0000.")]
     UnsupportedBreakpointAddress(u32),
 
-    /// ARMv8a specifc erorr occurred.
+    /// ARMv8a specific error occurred.
     Armv8a(#[from] Armv8aError),
 
-    /// ARMv7a specifc erorr occurred.
+    /// ARMv7a specific error occurred.
     Armv7a(#[from] Armv7aError),
 
     /// Error occurred in a debug sequence.
@@ -136,6 +128,10 @@ pub enum ArmError {
 
     /// Failed to erase chip
     ChipEraseFailed,
+
+    /// The operation requires a specific extension.
+    #[error("The operation requires the following extension(s): {0:?}")]
+    ExtensionRequired(&'static [&'static str]),
 
     /// Any other error occurred.
     Other(#[from] anyhow::Error),

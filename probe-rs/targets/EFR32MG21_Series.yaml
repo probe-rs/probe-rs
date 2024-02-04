@@ -1,4 +1,7 @@
 name: EFR32MG21 Series
+manufacturer:
+  cc: 0x02
+  id: 0x21
 variants:
   - name: EFR32MG21A010F1024
     cores:

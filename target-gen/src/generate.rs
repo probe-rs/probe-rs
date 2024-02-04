@@ -1,17 +1,23 @@
-use std::fs::{self};
-use std::io::Read;
-use std::path::Path;
-
 use anyhow::{anyhow, bail, Context, Error, Result};
 use cmsis_pack::pdsc::{Core, Device, Package, Processor};
 use cmsis_pack::{pack_index::PdscRef, utils::FromElem};
 use futures::StreamExt;
-use probe_rs::config::{
-    Chip, ChipFamily, Core as ProbeCore, GenericRegion, MemoryRegion, NvmRegion, RamRegion,
-    RawFlashAlgorithm,
+use probe_rs::{
+    config::{
+        Chip, ChipFamily, Core as ProbeCore, GenericRegion, MemoryRegion, NvmRegion, RamRegion,
+        RawFlashAlgorithm,
+    },
+    flashing::FlashAlgorithm,
+    Architecture, CoreType,
 };
-use probe_rs::{Architecture, CoreType};
-use probe_rs_target::{ArmCoreAccessOptions, CoreAccessOptions, RiscvCoreAccessOptions};
+use probe_rs_target::{
+    ArmCoreAccessOptions, CoreAccessOptions, RiscvCoreAccessOptions, XtensaCoreAccessOptions,
+};
+use std::{
+    fs::{self},
+    io::Read,
+    path::Path,
+};
 use tokio::runtime::Builder;
 
 pub(crate) enum Kind<'a, T>
@@ -81,7 +87,7 @@ where
             .algorithms
             .iter()
             .map(|flash_algorithm| {
-                let algo = match &mut kind {
+                let mut algo = match &mut kind {
                     Kind::Archive(archive) => crate::parser::extract_flash_algo(
                         archive.by_name(&flash_algorithm.file_name.as_path().to_string_lossy())?,
                         &flash_algorithm.file_name,
@@ -95,6 +101,15 @@ where
                         false, // Algorithms from CMSIS-Pack files are position independent
                     ),
                 }?;
+
+                // If the algo specifies `RAMstart` and/or `RAMsize` fields, then use them.
+                // - See https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/pdsc_family_pg.html#element_algorithm for more information.
+                algo.load_address = flash_algorithm.ram_start.map(|ram_start| ram_start + FlashAlgorithm::get_max_algorithm_header_size());
+                if let Some(stack_size) = flash_algorithm.ram_size {
+                     algo.stack_size = Some(stack_size.try_into().map_err(|data_conversion_error|
+                        anyhow!("Algorithm requires a stack size of  '{:?}' : {data_conversion_error:?}", flash_algorithm.ram_size)
+                    )?);
+                }
 
                 // We add this algo directly to the algos of the family if it's not already added.
                 // Make sure we never add an algo twice to save file size.
@@ -139,12 +154,18 @@ where
             .map(create_core)
             .collect::<Result<Vec<_>>>()?;
 
+        let memory_map = get_mem_map(&device, &cores);
+
         family.variants.push(Chip {
             name: device_name,
             part: None,
+            svd: None,
             cores,
-            memory_map: get_mem_map(&device),
+            memory_map,
             flash_algorithms: flash_algorithm_names,
+            rtt_scan_ranges: None,
+            jtag: None, // TODO, parse scan chain from sdf
+            default_binary_format: None,
         });
     }
 
@@ -167,7 +188,10 @@ fn create_core(processor: &Processor) -> Result<ProbeCore> {
                 debug_base: None,
                 cti_base: None,
             }),
-            Architecture::Riscv => CoreAccessOptions::Riscv(RiscvCoreAccessOptions {}),
+            Architecture::Riscv => {
+                CoreAccessOptions::Riscv(RiscvCoreAccessOptions { hart_id: None })
+            }
+            Architecture::Xtensa => CoreAccessOptions::Xtensa(XtensaCoreAccessOptions {}),
         },
     })
 }
@@ -180,6 +204,8 @@ fn core_to_probe_core(value: &Core) -> Result<CoreType, Error> {
         Core::CortexM3 => CoreType::Armv7m,
         Core::CortexM23 => CoreType::Armv8m,
         Core::CortexM33 => CoreType::Armv8m,
+        Core::CortexM55 => CoreType::Armv8m,
+        Core::CortexM85 => CoreType::Armv8m,
         Core::CortexM7 => CoreType::Armv7em,
         Core::StarMC1 => CoreType::Armv8m,
         c => {
@@ -296,7 +322,7 @@ pub(crate) async fn visit_arm_file(
 ) -> Vec<ChipFamily> {
     let url = format!(
         "{url}/{vendor}.{name}.{version}.pack",
-        url = pack.url,
+        url = pack.url.trim_end_matches('/'),
         vendor = pack.vendor,
         name = pack.name,
         version = pack.version
@@ -446,14 +472,10 @@ struct DeviceMemory {
     name: String,
 }
 
-// From PR's https://github.com/probe-rs/target-gen/pull/20 and https://github.com/probe-rs/target-gen/pull/25:
-// TODO: What is the logic that justifies PR#20 selecting the largest memory? Shouldn't we match flash algo's with RAM based on load_address?
-// Flash and RAM regions are not guaranteed to be sorted in the PDSC file, so we:
-// - Sort them here.
-// - Merge contiguous regions.
-// Update: For multiple cores, we have to take processor access into account during this merge.
-/// Sorts the memory regions in the package and merges contiguous regions with the same attributes.
-pub(crate) fn get_mem_map(device: &Device) -> Vec<MemoryRegion> {
+/// Extracts the memory regions in the package.
+/// The new memory regions are sorted by memory type, then by boot memory, then by start address,
+/// with correctly assigned cores/processor names.
+pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> Vec<MemoryRegion> {
     let mut device_memories: Vec<DeviceMemory> = device
         .memories
         .0
@@ -478,81 +500,71 @@ pub(crate) fn get_mem_map(device: &Device) -> Vec<MemoryRegion> {
         })
         .collect();
 
-    // Merge memory regions with the same attributes.
-    if device_memories.len() > 1 {
-        // Sort by memory type, then by processor name, then by boot memory, then by start address.
-        device_memories.sort();
+    // Sort by memory type, then by processor name, then by boot memory, then by start address.
+    device_memories.sort();
 
-        let mut merged: Vec<DeviceMemory> = Vec::new();
-        let mut cur = device_memories.first().cloned().unwrap();
-        for region in device_memories.iter().skip(1) {
-            if region.is_boot_memory == cur.is_boot_memory && region.memory_start == cur.memory_end
-            {
-                // Merge with previous region.
-                cur.memory_end = region.memory_end;
-                cur.name = format!("{} + {}", cur.name, region.name);
-            } else {
-                merged.push(cur);
-                cur = region.clone();
-            }
-        }
-        merged.push(cur);
-        device_memories = merged;
-    }
+    let all_cores: Vec<_> = cores.iter().map(|core| core.name.clone()).collect();
 
-    // Finally, sort so that the LARGEST contiguous region is first for each core.
-    device_memories.sort_by_cached_key(|region| {
-        (
-            region.memory_type.clone(),
-            region.p_name.clone(),
-            (region.memory_start as i128 - region.memory_end as i128),
-        )
-    });
+    let is_multi_core = cores.len() > 1;
 
     // Convert DeviceMemory's to MemoryRegion's, and assign cores to shared reqions.
     let mut mem_map = vec![];
     for region in &device_memories {
-        let current_core = region
+        if is_multi_core && region.p_name.is_none() {
+            log::warn!("Device {}, memory region {} has no processor name, but this is required for a multicore device. Assigning memory to all cores!", device.name, region.name);
+        }
+
+        let cores = region
             .p_name
             .as_ref()
-            .map(|s| s.to_ascii_lowercase())
-            .unwrap_or_else(|| "main".to_string());
+            .map(|s| vec![s.to_ascii_lowercase()])
+            .unwrap_or_else(|| all_cores.clone());
+
         match region.memory_type {
-            MemoryType::Ram => if let Some(MemoryRegion::Ram(existing_region)) = mem_map.iter_mut().find(|existing_region|{
-                matches!(existing_region, MemoryRegion::Ram(ram_region) if ram_region.name == Some(region.name.clone()))})
+            MemoryType::Ram => {
+                if let Some(MemoryRegion::Ram(existing_region)) = mem_map.iter_mut().find(|existing_region| {
+                        matches!(existing_region, MemoryRegion::Ram(ram_region) if ram_region.name == Some(region.name.clone()))
+                    })
                 {
-                    existing_region.cores.push(current_core);
+                    existing_region.cores.extend_from_slice(&cores);
                 } else {
                     mem_map.push(MemoryRegion::Ram(RamRegion {
                     name: Some(region.name.clone()),
                     range: region.memory_start..region.memory_end,
                     is_boot_memory: region.is_boot_memory,
-                    cores: vec![current_core],
+                    cores,
                     }));
-                },
-            MemoryType::Nvm => if let Some(MemoryRegion::Nvm(existing_region)) = mem_map.iter_mut().find(|existing_region|{
-                matches!(existing_region, MemoryRegion::Nvm(nvm_region) if nvm_region.name == Some(region.name.clone()))})
+                }
+            },
+            MemoryType::Nvm => {
+                if let Some(MemoryRegion::Nvm(existing_region)) = mem_map.iter_mut().find(|existing_region| {
+                        matches!(existing_region, MemoryRegion::Nvm(nvm_region) if nvm_region.name == Some(region.name.clone()))
+                    })
                 {
-                    existing_region.cores.push(current_core);
+                    existing_region.cores.extend_from_slice(&cores);
                 } else {
                     mem_map.push(MemoryRegion::Nvm(NvmRegion {
                     name: Some(region.name.clone()),
                     range: region.memory_start..region.memory_end,
                     is_boot_memory: region.is_boot_memory,
-                    cores: vec![current_core],
+                    cores,
                     }));
-                },
-            MemoryType::Generic => if let Some(MemoryRegion::Generic(existing_region)) = mem_map.iter_mut().find(|existing_region|{
-                matches!(existing_region, MemoryRegion::Generic(generic_region) if generic_region.name == Some(region.name.clone()))})
+                }
+            },
+            MemoryType::Generic => {
+                if let Some(MemoryRegion::Generic(existing_region)) = mem_map.iter_mut().find(|existing_region| {
+                        matches!(existing_region, MemoryRegion::Generic(generic_region) if generic_region.name == Some(region.name.clone()))
+                    })
                 {
-                    existing_region.cores.push(current_core);
+                    existing_region.cores.extend_from_slice(&cores);
                 } else {
                     mem_map.push(MemoryRegion::Generic(GenericRegion {
                     name: Some(region.name.clone()),
                     range: region.memory_start..region.memory_end,
-                    cores: vec![current_core],
+                    cores,
                     }));
-                },
+                }
+            },
         };
     }
     mem_map
