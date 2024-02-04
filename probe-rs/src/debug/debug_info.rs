@@ -421,6 +421,7 @@ impl DebugInfo {
         &self,
         memory: &mut impl MemoryInterface,
         address: u64,
+        unwind_context: &mut UnwindContext<DwarfReader>,
         unwind_registers: &registers::DebugRegisters,
     ) -> Result<Vec<StackFrame>, DebugError> {
         // When reporting the address, we format it as a hex string, with the width matching
@@ -450,6 +451,12 @@ impl DebugInfo {
             return Ok(frames);
         };
 
+        // Determining the frame base may need the CFA (Canonical Frame Address) to be calculated first.
+        let cfa = get_unwind_info(unwind_context, &self.frame_section, address)
+            .ok()
+            .and_then(|unwind_info| determine_cfa(unwind_registers, unwind_info).ok())
+            .flatten();
+
         // The first function is the non-inlined function, and the rest are inlined functions.
         // The frame base only exists for the non-inlined function, so we can reuse it for all the inlined functions.
         let frame_base = functions[0].frame_base(
@@ -458,7 +465,7 @@ impl DebugInfo {
             StackFrameInfo {
                 registers: unwind_registers,
                 frame_base: None,
-                canonical_frame_address: None,
+                canonical_frame_address: cfa,
             },
         )?;
 
@@ -528,7 +535,7 @@ impl DebugInfo {
                     is_inlined: function_die.is_inline(),
                     static_variables,
                     local_variables,
-                    canonical_frame_address: None,
+                    canonical_frame_address: cfa,
                 });
             } else {
                 tracing::warn!(
@@ -590,7 +597,7 @@ impl DebugInfo {
             is_inlined: last_function.is_inline(),
             static_variables,
             local_variables,
-            canonical_frame_address: None,
+            canonical_frame_address: cfa,
         });
 
         Ok(frames)
@@ -673,18 +680,19 @@ impl DebugInfo {
 
             // PART 1-a: Prepare the `StackFrame` that holds the current frame information.
 
-            let mut cached_stack_frames =
-                match self.get_stackframe_info(memory, frame_pc, &unwind_registers) {
-                    Ok(cached_stack_frames) => cached_stack_frames,
-                    Err(e) => {
-                        tracing::error!(
-                            "UNWIND: Unable to complete `StackFrame` information: {}",
-                            e
-                        );
-                        // There is no point in continuing with the unwind, so let's get out of here.
-                        break;
-                    }
-                };
+            let mut cached_stack_frames = match self.get_stackframe_info(
+                memory,
+                frame_pc,
+                &mut unwind_context,
+                &unwind_registers,
+            ) {
+                Ok(cached_stack_frames) => cached_stack_frames,
+                Err(e) => {
+                    tracing::error!("UNWIND: Unable to complete `StackFrame` information: {}", e);
+                    // There is no point in continuing with the unwind, so let's get out of here.
+                    break;
+                }
+            };
 
             while cached_stack_frames.len() > 1 {
                 // If we encountered INLINED functions (all `StackFrames`s in this Vec, except for the last one, which is the containing NON-INLINED function), these are simply added to the list of stack_frames we return.
@@ -853,19 +861,10 @@ impl DebugInfo {
                 }
             };
 
-            // PART 2-b: Determine the CFA (canonical frame address) to use for this unwind row.
-            let Some(unwind_cfa) = determine_cfa(&unwind_registers, unwind_info)? else {
-                stack_frames.push(return_frame);
-                tracing::trace!("UNWIND: Stack unwind complete - Unable to determine the CFA.");
-                break;
-            };
-
-            return_frame.canonical_frame_address = Some(unwind_cfa);
-
             // Because we will be updating the `unwind_registers` with previous frame unwind info, we need to keep a copy of the current frame's registers that can be used to resolve [DWARF](https://dwarfstd.org) expressions.
             let callee_frame_registers = unwind_registers.clone();
 
-            // PART 2-c: Unwind registers for the "previous/calling" frame.
+            // PART 2-b: Unwind registers for the "previous/calling" frame.
             // We sometimes need to keep a copy of the LR value to calculate the PC. For both ARM, and RISC-V, The LR will be unwound before the PC, so we can reference it safely.
             let mut unwound_return_address: Option<RegisterValue> = None;
             for debug_register in unwind_registers.0.iter_mut() {
@@ -873,7 +872,7 @@ impl DebugInfo {
                     debug_register,
                     &callee_frame_registers,
                     Some(unwind_info),
-                    Some(unwind_cfa),
+                    return_frame.canonical_frame_address,
                     &mut unwound_return_address,
                     memory,
                     instruction_set,
