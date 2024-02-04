@@ -1406,6 +1406,23 @@ impl UnitInfo {
         memory: &mut dyn MemoryInterface,
         frame_info: StackFrameInfo<'_>,
     ) -> Result<ExpressionResult, DebugError> {
+        trait ResultExt {
+            fn convert_incomplete(self) -> Result<ExpressionResult, DebugError>;
+        }
+
+        impl ResultExt for Result<ExpressionResult, DebugError> {
+            fn convert_incomplete(self) -> Result<ExpressionResult, DebugError> {
+                match self {
+                    Ok(result) => Ok(result),
+                    Err(DebugError::UnwindIncompleteResults { message }) => {
+                        tracing::warn!("UnwindIncompleteResults: {:?}", message);
+                        Ok(ExpressionResult::Location(VariableLocation::Unavailable))
+                    }
+                    e => e,
+                }
+            }
+        }
+
         let mut attrs = node_die.attrs();
         while let Ok(Some(attr)) = attrs.next() {
             match attr.name() {
@@ -1413,14 +1430,7 @@ impl UnitInfo {
                 | gimli::DW_AT_frame_base
                 | gimli::DW_AT_data_member_location => match attr.value() {
                     gimli::AttributeValue::Exprloc(expression) => {
-                        return match self.evaluate_expression(memory, expression, frame_info) {
-                            Ok(result) => Ok(result),
-                            Err(DebugError::UnwindIncompleteResults { message }) => {
-                                tracing::warn!("UnwindIncompleteResults: {:?}", message);
-                                Ok(ExpressionResult::Location(VariableLocation::Unavailable))
-                            }
-                            e => e
-                        };
+                        return self.evaluate_expression(memory, expression, frame_info).convert_incomplete();
                     }
                     gimli::AttributeValue::Udata(offset_from_location) => match parent_location {
                         VariableLocation::Address(address) => {
@@ -1470,18 +1480,12 @@ impl UnitInfo {
                                         }
                                     }
                                     if let Some(valid_expression) = expression {
-                                        return match self.evaluate_expression(
+                                        return self.evaluate_expression(
                                             memory,
                                             valid_expression,
                                             frame_info
-                                        ) {
-                                            Ok(result) => Ok(result),
-                                            Err(DebugError::UnwindIncompleteResults { message }) => {
-                                                tracing::warn!("UnwindIncompleteResults: {:?}", message);
-                                                Ok(ExpressionResult::Location(VariableLocation::Unavailable))
-                                            }
-                                            e => e
-                                        };
+                                        )
+                                        .convert_incomplete();
                                     } else {
                                         return Ok(ExpressionResult::Location(
                                             VariableLocation::Unavailable,
