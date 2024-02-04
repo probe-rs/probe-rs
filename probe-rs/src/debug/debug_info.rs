@@ -835,7 +835,7 @@ impl DebugInfo {
                             calling_pc,
                             &callee_frame_registers,
                             None,
-                            None,
+                            return_frame.canonical_frame_address,
                             &mut unwound_return_address,
                             memory,
                             instruction_set,
