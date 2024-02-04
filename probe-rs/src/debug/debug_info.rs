@@ -435,132 +435,68 @@ impl DebugInfo {
 
         let mut frames = Vec::new();
 
+        let mut functions = None;
         for unit_info in &self.unit_infos {
-            let functions = unit_info.get_function_dies(self, address, true)?;
+            let function_dies = unit_info.get_function_dies(self, address, true)?;
 
-            if functions.is_empty() {
-                continue;
+            if !function_dies.is_empty() {
+                functions = Some((unit_info, function_dies));
+                break;
             }
+        }
 
-            // The first function is the non-inlined function, and the rest are inlined functions.
-            // The frame base only exists for the non-inlined function, so we can reuse it for all the inlined functions.
-            let frame_base = functions[0].frame_base(
-                self,
-                memory,
-                StackFrameInfo {
-                    registers: unwind_registers,
-                    frame_base: None,
-                    canonical_frame_address: None,
-                },
-            )?;
+        let Some((unit_info, functions)) = functions else {
+            // No function found at the given address.
+            return Ok(frames);
+        };
 
-            // Handle all functions which contain further inlined functions. For
-            // these functions, the location is the call site of the inlined function.
-            for (index, function_die) in functions[0..functions.len() - 1].iter().enumerate() {
-                let function_name = function_die
-                    .function_name(self)
-                    .unwrap_or_else(unknown_function);
+        // The first function is the non-inlined function, and the rest are inlined functions.
+        // The frame base only exists for the non-inlined function, so we can reuse it for all the inlined functions.
+        let frame_base = functions[0].frame_base(
+            self,
+            memory,
+            StackFrameInfo {
+                registers: unwind_registers,
+                frame_base: None,
+                canonical_frame_address: None,
+            },
+        )?;
 
-                tracing::debug!("UNWIND: Function name: {}", function_name);
-
-                let next_function = &functions[index + 1];
-
-                assert!(next_function.is_inline());
-
-                // Calculate the call site for this function, so that we can use it later to create an additional 'callee' `StackFrame` from that PC.
-                let address_size = unit_info.unit.header.address_size() as u64;
-
-                if next_function.low_pc > address_size && next_function.low_pc < u32::MAX.into() {
-                    // The first instruction of the inlined function is used as the call site
-                    let inlined_call_site = RegisterValue::from(next_function.low_pc);
-
-                    tracing::debug!(
-                        "UNWIND: Callsite for inlined function {:?}",
-                        next_function.function_name(self)
-                    );
-
-                    let inlined_caller_source_location = next_function.inline_call_location(self);
-
-                    tracing::debug!("UNWIND: Call site: {:?}", inlined_caller_source_location);
-
-                    // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
-                    // Resolve the statics that belong to the compilation unit that this function is in.
-                    let static_variables = self.create_static_scope_cache(unit_info).map_or_else(
-                        |error| {
-                            tracing::error!(
-                                "Could not resolve static variables. {}. Continuing...",
-                                error
-                            );
-                            None
-                        },
-                        Some,
-                    );
-
-                    // Next, resolve and cache the function variables.
-                    let local_variables = self
-                        .create_function_scope_cache(function_die, unit_info)
-                        .map_or_else(
-                            |error| {
-                                tracing::error!(
-                                    "Could not resolve function variables. {}. Continuing...",
-                                    error
-                                );
-                                None
-                            },
-                            Some,
-                        );
-
-                    frames.push(StackFrame {
-                        id: get_object_reference(),
-                        function_name,
-                        source_location: inlined_caller_source_location,
-                        registers: unwind_registers.clone(),
-                        pc: inlined_call_site,
-                        frame_base,
-                        is_inlined: function_die.is_inline(),
-                        static_variables,
-                        local_variables,
-                        canonical_frame_address: None,
-                    });
-                } else {
-                    tracing::warn!(
-                        "UNWIND: Unknown call site for inlined function {}.",
-                        function_name
-                    );
-                }
-            }
-
-            // Handle last function, which contains no further inlined functions
-            //UNWRAP: Checked at beginning of loop, functions must contain at least one value
-            #[allow(clippy::unwrap_used)]
-            let last_function = functions.last().unwrap();
-
-            let function_name = last_function
+        // Handle all functions which contain further inlined functions. For
+        // these functions, the location is the call site of the inlined function.
+        for (index, function_die) in functions[0..functions.len() - 1].iter().enumerate() {
+            let function_name = function_die
                 .function_name(self)
                 .unwrap_or_else(unknown_function);
 
-            let function_location = self.get_source_location(address);
+            tracing::debug!("UNWIND: Function name: {}", function_name);
 
-            // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
-            // Resolve the statics that belong to the compilation unit that this function is in.
-            let static_variables = self.create_static_scope_cache(unit_info).map_or_else(
-                |error| {
-                    tracing::error!(
-                        "Could not resolve static variables. {}. Continuing...",
-                        error
-                    );
-                    None
-                },
-                Some,
-            );
+            let next_function = &functions[index + 1];
 
-            // Next, resolve and cache the function variables.
-            let local_variables = self
-                .create_function_scope_cache(last_function, unit_info)
-                .map_or_else(
+            assert!(next_function.is_inline());
+
+            // Calculate the call site for this function, so that we can use it later to create an additional 'callee' `StackFrame` from that PC.
+            let address_size = unit_info.unit.header.address_size() as u64;
+
+            if next_function.low_pc > address_size && next_function.low_pc < u32::MAX.into() {
+                // The first instruction of the inlined function is used as the call site
+                let inlined_call_site = RegisterValue::from(next_function.low_pc);
+
+                tracing::debug!(
+                    "UNWIND: Callsite for inlined function {:?}",
+                    next_function.function_name(self)
+                );
+
+                let inlined_caller_source_location = next_function.inline_call_location(self);
+
+                tracing::debug!("UNWIND: Call site: {:?}", inlined_caller_source_location);
+
+                // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
+                // Resolve the statics that belong to the compilation unit that this function is in.
+                let static_variables = self.create_static_scope_cache(unit_info).map_or_else(
                     |error| {
                         tracing::error!(
-                            "Could not resolve function variables. {}. Continuing...",
+                            "Could not resolve static variables. {}. Continuing...",
                             error
                         );
                         None
@@ -568,25 +504,95 @@ impl DebugInfo {
                     Some,
                 );
 
-            frames.push(StackFrame {
-                id: get_object_reference(),
-                function_name,
-                source_location: function_location,
-                registers: unwind_registers.clone(),
-                pc: match unwind_registers.get_address_size_bytes() {
-                    4 => RegisterValue::U32(address as u32),
-                    8 => RegisterValue::U64(address),
-                    _ => RegisterValue::from(address),
-                },
-                frame_base,
-                is_inlined: last_function.is_inline(),
-                static_variables,
-                local_variables,
-                canonical_frame_address: None,
-            });
+                // Next, resolve and cache the function variables.
+                let local_variables = self
+                    .create_function_scope_cache(function_die, unit_info)
+                    .map_or_else(
+                        |error| {
+                            tracing::error!(
+                                "Could not resolve function variables. {}. Continuing...",
+                                error
+                            );
+                            None
+                        },
+                        Some,
+                    );
 
-            break;
+                frames.push(StackFrame {
+                    id: get_object_reference(),
+                    function_name,
+                    source_location: inlined_caller_source_location,
+                    registers: unwind_registers.clone(),
+                    pc: inlined_call_site,
+                    frame_base,
+                    is_inlined: function_die.is_inline(),
+                    static_variables,
+                    local_variables,
+                    canonical_frame_address: None,
+                });
+            } else {
+                tracing::warn!(
+                    "UNWIND: Unknown call site for inlined function {}.",
+                    function_name
+                );
+            }
         }
+
+        // Handle last function, which contains no further inlined functions
+        //UNWRAP: Checked at beginning of loop, functions must contain at least one value
+        #[allow(clippy::unwrap_used)]
+        let last_function = functions.last().unwrap();
+
+        let function_name = last_function
+            .function_name(self)
+            .unwrap_or_else(unknown_function);
+
+        let function_location = self.get_source_location(address);
+
+        // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
+        // Resolve the statics that belong to the compilation unit that this function is in.
+        let static_variables = self.create_static_scope_cache(unit_info).map_or_else(
+            |error| {
+                tracing::error!(
+                    "Could not resolve static variables. {}. Continuing...",
+                    error
+                );
+                None
+            },
+            Some,
+        );
+
+        // Next, resolve and cache the function variables.
+        let local_variables = self
+            .create_function_scope_cache(last_function, unit_info)
+            .map_or_else(
+                |error| {
+                    tracing::error!(
+                        "Could not resolve function variables. {}. Continuing...",
+                        error
+                    );
+                    None
+                },
+                Some,
+            );
+
+        frames.push(StackFrame {
+            id: get_object_reference(),
+            function_name,
+            source_location: function_location,
+            registers: unwind_registers.clone(),
+            pc: match unwind_registers.get_address_size_bytes() {
+                4 => RegisterValue::U32(address as u32),
+                8 => RegisterValue::U64(address),
+                _ => RegisterValue::from(address),
+            },
+            frame_base,
+            is_inlined: last_function.is_inline(),
+            static_variables,
+            local_variables,
+            canonical_frame_address: None,
+        });
+
         Ok(frames)
     }
 
