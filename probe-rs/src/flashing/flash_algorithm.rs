@@ -216,12 +216,23 @@ impl FlashAlgorithm {
 
         let assembled_instructions = raw.instructions.chunks_exact(size_of::<u32>());
 
-        if !assembled_instructions.remainder().is_empty() {
-            return Err(FlashError::InvalidFlashAlgorithmLength {
-                name: raw.name.to_string(),
-                algorithm_source: Some(target.source().clone()),
-            });
-        }
+        let remainder = assembled_instructions.remainder();
+        let last_elem = if !remainder.is_empty() {
+            let word = u32::from_le_bytes(
+                remainder
+                    .iter()
+                    .cloned()
+                    // Pad with up to three bytes
+                    .chain([0u8, 0u8, 0u8])
+                    .take(4)
+                    .collect::<Vec<u8>>()
+                    .try_into()
+                    .unwrap(),
+            );
+            Some(word)
+        } else {
+            None
+        };
 
         let header = Self::algorithm_header(target.architecture());
         let instructions: Vec<u32> = header
@@ -230,6 +241,7 @@ impl FlashAlgorithm {
             .chain(
                 assembled_instructions.map(|bytes| u32::from_le_bytes(bytes.try_into().unwrap())),
             )
+            .chain(last_elem)
             .collect();
 
         let header_size = size_of_val(header) as u64;
