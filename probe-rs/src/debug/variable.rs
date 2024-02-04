@@ -430,7 +430,6 @@ impl Variable {
     /// Implementing get_value(), because Variable.value has to be private (a requirement of updating the value without overriding earlier values ... see set_value()).
     pub fn get_value(&self, variable_cache: &variable_cache::VariableCache) -> String {
         // Allow for chained `if let` without complaining
-        #[allow(clippy::if_same_then_else)]
         if VariableNodeType::SvdRegister == self.variable_node_type {
             if let VariableValue::Valid(register_value) = &self.value {
                 if let Ok(register_u32_value) = register_value.parse::<u32>() {
@@ -458,7 +457,7 @@ impl Variable {
                         self.memory_location.memory_address().unwrap_or(u64::MAX),
                         self.range_lower_bound,
                         self.range_upper_bound,
-                        width = (self.range_upper_bound - self.range_lower_bound) as usize
+                        width = self.subrange_bounds().count()
                     )
                 } else {
                     format!(
@@ -474,21 +473,18 @@ impl Variable {
             // - It is base data type for which a value was determined based on the core runtime, or ...
             // - We encountered an error somewhere, so report it to the user
             format!("{}", self.value)
-        } else if let VariableName::AnonymousNamespace = self.name {
-            // Namespaces do not have values
-            String::new()
-        } else if let VariableName::Namespace(_) = self.name {
+        } else if matches!(
+            self.name,
+            VariableName::AnonymousNamespace | VariableName::Namespace(_)
+        ) {
             // Namespaces do not have values
             String::new()
         } else {
             // We need to construct a 'human readable' value using `fmt::Display` to represent the values of complex types and pointers.
             match variable_cache.has_children(self) {
-                Ok(has_children) => {
-                    if has_children {
-                        self.formatted_variable_value(variable_cache, 0_usize, false)
-                    } else if self.type_name == VariableType::Unknown
-                        || !self.memory_location.valid()
-                    {
+                Ok(true) => self.formatted_variable_value(variable_cache, 0_usize, false),
+                Ok(false) => {
+                    if self.type_name == VariableType::Unknown || !self.memory_location.valid() {
                         if self.variable_node_type.is_deferred() {
                             // When we will do a lazy-load of variable children, and they have not yet been requested by the user, just display the type_name as the value
                             format!("{:?}", self.type_name.clone())
@@ -497,10 +493,10 @@ impl Variable {
                             // If a user sees this error, then there is a logic problem in the stack unwind
                             "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location".to_string()
                         }
-                    } else if self.type_name == VariableType::Struct("None".to_string()) {
-                        "None".to_string()
-                    } else if matches!(&self.type_name, VariableType::Array{item_type_name: _,  count} if *count == 0)
+                    } else if matches!(self.type_name, VariableType::Struct(ref name) if name == "None")
                     {
+                        "None".to_string()
+                    } else if matches!(self.type_name, VariableType::Array { count: 0, .. }) {
                         self.formatted_variable_value(variable_cache, 0_usize, false)
                     } else {
                         format!(
@@ -895,6 +891,10 @@ impl Variable {
         } else {
             None
         }
+    }
+
+    pub(crate) fn subrange_bounds(&self) -> Range<i64> {
+        self.range_lower_bound..self.range_upper_bound
     }
 }
 
