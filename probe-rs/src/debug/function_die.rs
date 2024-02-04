@@ -3,7 +3,7 @@ use crate::{debug::stack_frame::StackFrameInfo, MemoryInterface};
 use super::{
     debug_info, extract_file,
     unit_info::{ExpressionResult, UnitInfo},
-    ColumnType, DebugError, DebugRegisters, SourceLocation, VariableLocation,
+    ColumnType, DebugError, SourceLocation, VariableLocation,
 };
 
 pub(crate) type Die<'abbrev, 'unit> =
@@ -180,18 +180,14 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info> FunctionDie<'abbrev, 'u
         &self,
         debug_info: &super::DebugInfo,
         memory: &mut impl MemoryInterface,
-        stackframe_registers: &DebugRegisters,
+        frame_info: StackFrameInfo,
     ) -> Result<Option<u64>, DebugError> {
         match self.unit_info.extract_location(
             debug_info,
             &self.function_die,
             &VariableLocation::Unknown,
             memory,
-            StackFrameInfo {
-                registers: stackframe_registers,
-                frame_base: None,
-                canonical_frame_address: None,
-            },
+            frame_info,
         )? {
             ExpressionResult::Location(VariableLocation::Address(address)) => Ok(Some(address)),
             _ => Ok(None),

@@ -442,7 +442,15 @@ impl DebugInfo {
 
             // The first function is the non-inlined function, and the rest are inlined functions.
             // The frame base only exists for the non-inlined function, so we can reuse it for all the inlined functions.
-            let frame_base = functions[0].frame_base(self, memory, unwind_registers)?;
+            let frame_base = functions[0].frame_base(
+                self,
+                memory,
+                StackFrameInfo {
+                    registers: unwind_registers,
+                    frame_base: None,
+                    canonical_frame_address: None,
+                },
+            )?;
 
             // Handle all functions which contain further inlined functions. For
             // these functions, the location is the call site of the inlined function.
