@@ -621,8 +621,7 @@ impl DebugInfo {
     ) -> Result<Vec<StackFrame>, crate::Error> {
         let mut stack_frames = Vec::<StackFrame>::new();
 
-        let mut unwind_context: Box<UnwindContext<DwarfReader>> =
-            Box::new(gimli::UnwindContext::new());
+        let mut unwind_context = Box::new(gimli::UnwindContext::new());
 
         let mut unwind_registers = initial_registers;
 
@@ -1146,7 +1145,7 @@ pub(crate) fn canonical_path_eq(
 
 /// Get a handle to the [`gimli::UnwindTableRow`] for this call frame, so that we can reference it to unwind register values.
 fn get_unwind_info<'a>(
-    unwind_context: &'a mut Box<UnwindContext<DwarfReader>>,
+    unwind_context: &'a mut UnwindContext<DwarfReader>,
     frame_section: &'a DebugFrame<DwarfReader>,
     frame_program_counter: u64,
 ) -> Result<&'a gimli::UnwindTableRow<DwarfReader, gimli::StoreOnHeap>, DebugError> {
