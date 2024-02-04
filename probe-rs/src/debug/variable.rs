@@ -642,6 +642,36 @@ impl Variable {
                         |value| VariableValue::Valid(value.to_string()),
                     ),
                     "None" => VariableValue::Valid("None".to_string()),
+
+                    // C types - should probably branch on the language
+                    "_Bool" => self.read_unsigned_int(memory).map_or_else(
+                        |err| VariableValue::Error(format!("{err:?}")),
+                        |value| VariableValue::Valid((value != 0).to_string()),
+                    ),
+
+                    "unsigned char" | "unsigned int" | "short unsigned int"
+                    | "long unsigned int" => self.read_unsigned_int(memory).map_or_else(
+                        |err| VariableValue::Error(format!("{err:?}")),
+                        |value| VariableValue::Valid(value.to_string()),
+                    ),
+                    "signed char" | "int" | "short int" | "long int" | "signed int"
+                    | "short signed int" | "long signed int" => {
+                        self.read_signed_int(memory).map_or_else(
+                            |err| VariableValue::Error(format!("{err:?}")),
+                            |value| VariableValue::Valid(value.to_string()),
+                        )
+                    }
+
+                    "float" => match self.byte_size {
+                        Some(4) | None => f32::get_value(self, memory, variable_cache).map_or_else(
+                            |err| VariableValue::Error(format!("{err:?}")),
+                            |value| VariableValue::Valid(value.to_string()),
+                        ),
+                        Some(size) => {
+                            VariableValue::Error(format!("Invalid byte size for float: {size}"))
+                        }
+                    },
+
                     _undetermined_value => VariableValue::Empty,
                 }
             }
@@ -895,6 +925,23 @@ impl Variable {
 
     pub(crate) fn subrange_bounds(&self) -> Range<i64> {
         self.range_lower_bound..self.range_upper_bound
+    }
+
+    fn read_unsigned_int(&self, memory: &mut dyn MemoryInterface) -> Result<usize, DebugError> {
+        let mut buff = 0usize.to_le_bytes();
+        memory.read(
+            self.memory_location.memory_address()?,
+            &mut buff[..self.byte_size.unwrap_or(1) as usize],
+        )?;
+
+        Ok(usize::from_le_bytes(buff))
+    }
+
+    fn read_signed_int(&self, memory: &mut dyn MemoryInterface) -> Result<isize, DebugError> {
+        let unsigned = self.read_unsigned_int(memory)?;
+        // sign extend
+        let shift = (std::mem::size_of::<isize>() - self.byte_size.unwrap_or(1) as usize) * 8;
+        Ok((unsigned << shift) as isize >> shift)
     }
 }
 

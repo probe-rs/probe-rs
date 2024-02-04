@@ -1195,10 +1195,43 @@ impl UnitInfo {
                 child_variable =
                     self.process_tree(debug_info, node, child_variable, memory, cache, frame_info)?;
             }
+
+            other @ (gimli::DW_TAG_typedef
+            | gimli::DW_TAG_const_type
+            | gimli::DW_TAG_volatile_type) => match node.entry().attr(gimli::DW_AT_type) {
+                Ok(Some(data_type_attribute)) => match data_type_attribute.value() {
+                    gimli::AttributeValue::UnitRef(unit_ref) => {
+                        child_variable = self.expand_indirect_type(
+                            debug_info,
+                            unit_ref,
+                            cache,
+                            parent_variable,
+                            child_variable,
+                            memory,
+                            frame_info,
+                        )?;
+                    }
+                    other_attribute_value => {
+                        child_variable.set_value(VariableValue::Error(format!(
+                            "Unimplemented: Attribute Value for {other:?} {:.100}",
+                            format!("{other_attribute_value:?}")
+                        )));
+                    }
+                },
+
+                Ok(None) => child_variable.set_value(VariableValue::Error(format!(
+                    "Error: Failed to decode {other:?} type reference"
+                ))),
+
+                Err(error) => child_variable.set_value(VariableValue::Error(format!(
+                    "Error: Failed to decode {other:?} type reference: {error:?}"
+                ))),
+            },
+
             // Do not expand this type.
             other => {
                 child_variable.set_value(VariableValue::Error(format!(
-                    "<unimplemented: type : {:?}>",
+                    "<unimplemented: type: {:?}>",
                     other.static_string()
                 )));
                 child_variable.type_name = VariableType::Other("unimplemented".to_string());
@@ -1280,6 +1313,55 @@ impl UnitInfo {
         cache.update_variable_and_value(&mut array_member_variable, memory)?;
 
         Ok(())
+    }
+
+    /// Create child variable entries to represent array members and their values.
+    #[allow(clippy::too_many_arguments)]
+    fn expand_indirect_type(
+        &self,
+        debug_info: &DebugInfo,
+        unit_ref: UnitOffset,
+        cache: &mut VariableCache,
+        parent_variable: &Variable,
+        mut child_variable: Variable,
+        memory: &mut dyn MemoryInterface,
+        frame_info: StackFrameInfo<'_>,
+    ) -> Result<Variable, DebugError> {
+        let mut type_tree = self
+            .unit
+            .header
+            .entries_tree(&self.unit.abbreviations, Some(unit_ref))?;
+
+        let Ok(type_tree_node) = type_tree.root() else {
+            return Ok(child_variable);
+        };
+
+        self.process_memory_location(
+            debug_info,
+            type_tree_node.entry(),
+            parent_variable,
+            &mut child_variable,
+            memory,
+            frame_info,
+        )?;
+        child_variable = self.extract_type(
+            debug_info,
+            type_tree_node,
+            parent_variable,
+            child_variable,
+            memory,
+            cache,
+            frame_info,
+        )?;
+
+        self.handle_memory_location_special_cases(
+            unit_ref,
+            &mut child_variable,
+            parent_variable,
+            memory,
+        );
+
+        Ok(child_variable)
     }
 
     /// Process a memory location for a variable, by first evaluating the `byte_size`, and then calling the `self.extract_location`.
