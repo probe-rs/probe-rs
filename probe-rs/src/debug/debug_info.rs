@@ -1150,22 +1150,23 @@ fn get_unwind_info<'a>(
     frame_section: &'a DebugFrame<DwarfReader>,
     frame_program_counter: u64,
 ) -> Result<&'a gimli::UnwindTableRow<DwarfReader, gimli::StoreOnHeap>, DebugError> {
+    let transform_error = |error| {
+        DebugError::Other(anyhow::anyhow!(
+            "UNWIND: Error reading FrameDescriptorEntry at PC={} : {}",
+            frame_program_counter,
+            error
+        ))
+    };
+
     let unwind_bases = BaseAddresses::default();
 
-    let frame_descriptor_entry = match frame_section.fde_for_address(
-        &unwind_bases,
-        frame_program_counter,
-        DebugFrame::cie_from_offset,
-    ) {
-        Ok(frame_descriptor_entry) => frame_descriptor_entry,
-        Err(error) => {
-            return Err(DebugError::Other(anyhow::anyhow!(
-                "UNWIND: Error reading FrameDescriptorEntry at PC={} : {}",
-                frame_program_counter,
-                error
-            )));
-        }
-    };
+    let frame_descriptor_entry = frame_section
+        .fde_for_address(
+            &unwind_bases,
+            frame_program_counter,
+            DebugFrame::cie_from_offset,
+        )
+        .map_err(transform_error)?;
 
     frame_descriptor_entry
         .unwind_info_for_address(
@@ -1174,13 +1175,7 @@ fn get_unwind_info<'a>(
             unwind_context,
             frame_program_counter,
         )
-        .map_err(|error| {
-            DebugError::Other(anyhow::anyhow!(
-                "UNWIND: Error reading FrameDescriptorEntry at PC={} : {}",
-                frame_program_counter,
-                error
-            ))
-        })
+        .map_err(transform_error)
 }
 
 /// Determines the CFA (canonical frame address) for the current [`gimli::UnwindTableRow`], using the current register values.
