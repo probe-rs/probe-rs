@@ -425,11 +425,13 @@ impl DebugInfo {
     ) -> Result<Vec<StackFrame>, DebugError> {
         // When reporting the address, we format it as a hex string, with the width matching
         // the configured size of the datatype used in the `RegisterValue` address.
-        let unknown_function = format!(
-            "<unknown function @ {:#0width$x}>",
-            address,
-            width = (unwind_registers.get_address_size_bytes() * 2 + 2)
-        );
+        let unknown_function = || {
+            format!(
+                "<unknown function @ {:#0width$x}>",
+                address,
+                width = (unwind_registers.get_address_size_bytes() * 2 + 2)
+            )
+        };
 
         let mut frames = Vec::new();
 
@@ -457,7 +459,7 @@ impl DebugInfo {
             for (index, function_die) in functions[0..functions.len() - 1].iter().enumerate() {
                 let function_name = function_die
                     .function_name(self)
-                    .unwrap_or_else(|| unknown_function.clone());
+                    .unwrap_or_else(unknown_function);
 
                 tracing::debug!("UNWIND: Function name: {}", function_name);
 
@@ -535,7 +537,7 @@ impl DebugInfo {
 
             let function_name = last_function
                 .function_name(self)
-                .unwrap_or_else(|| unknown_function.clone());
+                .unwrap_or_else(unknown_function);
 
             let function_location = self.get_source_location(address);
 
