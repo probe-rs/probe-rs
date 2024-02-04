@@ -14,7 +14,7 @@ use crate::{
 use anyhow::anyhow;
 use gimli::{
     BaseAddresses, ColumnType, DebugFrame, FileEntry, LineProgramHeader, UnwindContext,
-    UnwindSection,
+    UnwindSection, UnwindTableRow,
 };
 use object::read::{Object, ObjectSection};
 use probe_rs_target::InstructionSet;
@@ -848,46 +848,17 @@ impl DebugInfo {
                 }
             };
 
-            // Because we will be updating the `unwind_registers` with previous frame unwind info, we need to keep a copy of the current frame's registers that can be used to resolve [DWARF](https://dwarfstd.org) expressions.
-            let callee_frame_registers = unwind_registers.clone();
             // PART 2-b: Determine the CFA (canonical frame address) to use for this unwind row.
-            let unwind_cfa = match unwind_info.cfa() {
-                gimli::CfaRule::RegisterAndOffset { register, offset } => {
-                    let reg_val = unwind_registers
-                        .get_register_by_dwarf_id(register.0)
-                        .and_then(|register| register.value);
-                    match reg_val {
-                        Some(reg_val) => {
-                            if reg_val.is_zero() {
-                                // If we encounter this rule for CFA, it implies the scenario depends on a FP/frame pointer to continue successfully.
-                                // Therefore, if reg_val is zero (i.e. FP is zero), then we do not have enough information to determine the CFA by rule.
-                                stack_frames.push(return_frame);
-                                tracing::trace!("UNWIND: Stack unwind complete - The FP register value unwound to a value of zero.");
-                                break;
-                            }
-                            let unwind_cfa = add_to_address(
-                                reg_val.try_into()?,
-                                *offset,
-                                unwind_registers.get_address_size_bytes(),
-                            );
-                            tracing::trace!(
-                                "UNWIND - CFA : {:#010x}\tRule: {:?}",
-                                unwind_cfa,
-                                unwind_info.cfa()
-                            );
-                            Some(unwind_cfa)
-                        }
-                        None => {
-                            tracing::error!("UNWIND: `StackFrameIterator` unable to determine the unwind CFA: Missing value of register {}",register.0);
-                            stack_frames.push(return_frame);
-                            break;
-                        }
-                    }
-                }
-                gimli::CfaRule::Expression(_) => unimplemented!(),
+            let Some(unwind_cfa) = determine_cfa(&unwind_registers, unwind_info)? else {
+                stack_frames.push(return_frame);
+                tracing::trace!("UNWIND: Stack unwind complete - Unable to determine the CFA.");
+                break;
             };
 
-            return_frame.canonical_frame_address = unwind_cfa;
+            return_frame.canonical_frame_address = Some(unwind_cfa);
+
+            // Because we will be updating the `unwind_registers` with previous frame unwind info, we need to keep a copy of the current frame's registers that can be used to resolve [DWARF](https://dwarfstd.org) expressions.
+            let callee_frame_registers = unwind_registers.clone();
 
             // PART 2-c: Unwind registers for the "previous/calling" frame.
             // We sometimes need to keep a copy of the LR value to calculate the PC. For both ARM, and RISC-V, The LR will be unwound before the PC, so we can reference it safely.
@@ -897,7 +868,7 @@ impl DebugInfo {
                     debug_register,
                     &callee_frame_registers,
                     Some(unwind_info),
-                    unwind_cfa,
+                    Some(unwind_cfa),
                     &mut unwound_return_address,
                     memory,
                     instruction_set,
@@ -1210,6 +1181,52 @@ fn get_unwind_info<'a>(
                 error
             ))
         })
+}
+
+/// Determines the CFA (canonical frame address) for the current [`gimli::UnwindTableRow`], using the current register values.
+fn determine_cfa<R: gimli::Reader>(
+    unwind_registers: &DebugRegisters,
+    unwind_info: &UnwindTableRow<R>,
+) -> Result<Option<u64>, crate::Error> {
+    let gimli::CfaRule::RegisterAndOffset { register, offset } = unwind_info.cfa() else {
+        unimplemented!()
+    };
+
+    let reg_val = unwind_registers
+        .get_register_by_dwarf_id(register.0)
+        .and_then(|register| register.value);
+
+    let cfa = match reg_val {
+        None => {
+            tracing::error!("UNWIND: `StackFrameIterator` unable to determine the unwind CFA: Missing value of register {}", register.0);
+            None
+        }
+
+        Some(reg_val) if reg_val.is_zero() => {
+            // If we encounter this rule for CFA, it implies the scenario depends on a FP/frame pointer to continue successfully.
+            // Therefore, if reg_val is zero (i.e. FP is zero), then we do not have enough information to determine the CFA by rule.
+            tracing::trace!(
+                "UNWIND: Stack unwind complete - The FP register value unwound to a value of zero."
+            );
+            None
+        }
+
+        Some(reg_val) => {
+            let unwind_cfa = add_to_address(
+                reg_val.try_into()?,
+                *offset,
+                unwind_registers.get_address_size_bytes(),
+            );
+            tracing::trace!(
+                "UNWIND - CFA : {:#010x}\tRule: {:?}",
+                unwind_cfa,
+                unwind_info.cfa()
+            );
+            Some(unwind_cfa)
+        }
+    };
+
+    Ok(cfa)
 }
 
 /// A per_register unwind, applying register rules and updating the [`registers::DebugRegister`] value as appropriate, before returning control to the calling function.
