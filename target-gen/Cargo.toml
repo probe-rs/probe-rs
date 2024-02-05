@@ -35,10 +35,10 @@ clap = { version = "4.4", features = ["derive"] }
 colored = "2"
 base64 = "0.21.7"
 anyhow = "1.0.79"
-reqwest = { version = "0.11.23", features = ["json", "blocking", "rustls-tls"], default-features = false }
+reqwest = { version = "0.11.24", features = ["json", "blocking", "rustls-tls"], default-features = false }
 serde = { version = "1", features = ["derive"] }
 futures = "0.3.30"
-tokio = { version = "1.35.1", features = ["macros", "rt", "rt-multi-thread"] }
+tokio = { version = "1.36.0", features = ["macros", "rt", "rt-multi-thread"] }
 tracing-subscriber = { version = "0.3.18", features = [
     "env-filter",
     "tracing-log",
