@@ -1,0 +1,1 @@
+debug: Added `StackFrame::canonical_frame_address` and `StackFrameInfo`
