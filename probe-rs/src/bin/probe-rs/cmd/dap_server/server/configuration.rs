@@ -122,18 +122,9 @@ impl SessionConfig {
 
     /// Validate the new given cwd for this process exists, or else update the cwd setting to use the running process' current working directory.
     pub(crate) fn resolve_cwd(&self) -> Result<Option<PathBuf>, DebuggerError> {
-        Ok(match &self.cwd {
-            Some(temp_path) => {
-                if temp_path.is_dir() {
-                    Some(temp_path.to_path_buf())
-                } else if let Ok(current_dir) = current_dir() {
-                    Some(current_dir)
-                } else {
-                    tracing::error!("Cannot use current working directory. Please check existence and permissions.");
-                    None
-                }
-            }
-            None => {
+        let path = match self.cwd {
+            Some(ref temp_path) if temp_path.is_dir() => Some(temp_path.to_path_buf()),
+            _ => {
                 if let Ok(current_dir) = current_dir() {
                     Some(current_dir)
                 } else {
@@ -141,7 +132,9 @@ impl SessionConfig {
                     None
                 }
             }
-        })
+        };
+
+        Ok(path)
     }
 
     pub(crate) fn probe_options(&self) -> ProbeOptions {
