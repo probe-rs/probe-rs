@@ -190,7 +190,7 @@ impl ProbeFactory for JLinkFactory {
             jtag_response: BitVec::new(),
 
             max_mem_block_size: 0, // dummy value
-            chunk_size: 0,         // dummy value
+            jtag_chunk_size: 0,    // dummy value
         };
         this.fill_capabilities()?;
         this.fill_interfaces()?;
@@ -235,7 +235,7 @@ impl ProbeFactory for JLinkFactory {
             this.max_mem_block_size = this.read_max_mem_block()?;
 
             tracing::debug!(
-                "J-Link max mem block size: {} byte",
+                "J-Link max mem block size for SWD IO: {} byte",
                 this.max_mem_block_size
             );
         } else {
@@ -245,12 +245,12 @@ impl ProbeFactory for JLinkFactory {
             this.max_mem_block_size = 65535;
         }
 
-        // Some devices can't handle large transfers, so we limit the chunk size
+        // Some devices can't handle large transfers, so we limit the chunk size.
         // While it would be nice to read this directly from the device,
         // `read_max_mem_block`'s return value does not directly correspond to the
-        // maximum transfer size, and it's not clear how to get the actual value.
+        // maximum transfer size when performing JTAG IO, and it's not clear how to get the actual value.
         // The number of *bits* is encoded as a u16, so the maximum value is 65535
-        this.chunk_size = match selector.product_id {
+        this.jtag_chunk_size = match selector.product_id {
             // 0x0101: J-Link EDU
             0x0101 => 65535,
             // 0x1051: J-Link OB-K22-SiFive: 504 bits
@@ -349,9 +349,12 @@ pub struct JLink {
     jtag_response: BitVec<u8, Lsb0>,
     jtag_state: JtagDriverState,
 
-    // max number of bits in a transfer chunk
-    chunk_size: usize,
+    /// max number of bits in a transfer chunk, when using JTAG
+    jtag_chunk_size: usize,
 
+    /// Maximum memory block size, as report by the `GET_MAX_MEM_BLOCK` command.
+    ///
+    /// Used to determine maximum transfer length for SWD IO.
     max_mem_block_size: u32,
 
     probe_statistics: ProbeStatistics,
@@ -604,21 +607,26 @@ impl JLink {
         Ok(u16::from_le_bytes(voltage))
     }
 
-    fn shift_bit(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError> {
+    fn shift_jtag_bit(
+        &mut self,
+        tms: bool,
+        tdi: bool,
+        capture: bool,
+    ) -> Result<(), DebugProbeError> {
         self.jtag_state.state.update(tms);
 
         self.jtag_tms_bits.push(tms);
         self.jtag_tdi_bits.push(tdi);
         self.jtag_capture_tdo.push(capture);
 
-        if self.jtag_tms_bits.len() >= self.chunk_size {
-            self.flush()?;
+        if self.jtag_tms_bits.len() >= self.jtag_chunk_size {
+            self.flush_jtag()?;
         }
 
         Ok(())
     }
 
-    fn flush(&mut self) -> Result<(), JlinkError> {
+    fn flush_jtag(&mut self) -> Result<(), JlinkError> {
         if self.jtag_tms_bits.is_empty() {
             return Ok(());
         }
@@ -698,12 +706,16 @@ impl JLink {
     }
 
     fn read_captured_bits(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
-        self.flush()?;
+        self.flush_jtag()?;
 
         Ok(std::mem::take(&mut self.jtag_response))
     }
 
-    fn perform_swdio<D, S>(&self, dir: D, swdio: S) -> Result<Vec<bool>, DebugProbeError>
+    /// Perform a single SWDIO command
+    ///
+    /// The caller needs to ensure that the given iterators are not longer than the maximum transfer size
+    /// allowed. It seems that the maximum transfer size is determined by [`self.max_mem_block_size`].
+    fn perform_swdio_transfer<D, S>(&self, dir: D, swdio: S) -> Result<Vec<bool>, DebugProbeError>
     where
         D: IntoIterator<Item = bool>,
         S: IntoIterator<Item = bool>,
@@ -1050,7 +1062,8 @@ impl RawProtocolIo for JLink {
         let mut output = Vec::new();
 
         for (dir, swdio) in chunks {
-            let mut resp = self.perform_swdio(dir.iter().copied(), swdio.iter().copied())?;
+            let mut resp =
+                self.perform_swdio_transfer(dir.iter().copied(), swdio.iter().copied())?;
 
             output.append(&mut resp);
         }
@@ -1109,11 +1122,11 @@ impl RawJtagIo for JLink {
     }
 
     fn shift_bit(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError> {
-        self.shift_bit(tms, tdi, capture)
+        self.shift_jtag_bit(tms, tdi, capture)
     }
 
     fn flush(&mut self) -> Result<(), DebugProbeError> {
-        self.flush()?;
+        self.flush_jtag()?;
         Ok(())
     }
 
