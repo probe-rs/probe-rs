@@ -74,6 +74,7 @@ impl ArmDebugSequence for Stm32Armv7 {
         interface: &mut dyn ArmProbeInterface,
         default_ap: MemoryAp,
         _permissions: &crate::Permissions,
+        _core_index: usize,
     ) -> Result<(), ArmError> {
         let mut memory = interface.memory_interface(default_ap)?;
 

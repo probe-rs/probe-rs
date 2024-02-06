@@ -47,7 +47,7 @@ use probe_rs::{
     probe::{
         list::Lister, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, WireProtocol,
     },
-    Permissions, Session, Target,
+    AttachMethod, Config, CoreSelection, CoreSelector, Permissions, Session, Target,
 };
 use serde::{Deserialize, Serialize};
 
@@ -170,12 +170,13 @@ impl ProbeOptions {
     pub fn simple_attach(
         self,
         lister: &Lister,
+        core_identifier: &CoreSelector,
     ) -> Result<(Session, LoadedProbeOptions), OperationError> {
         let common_options = self.load()?;
 
         let target = common_options.get_target_selector()?;
         let probe = common_options.attach_probe(lister)?;
-        let session = common_options.attach_session(probe, target)?;
+        let session = common_options.attach_session(probe, target, &CoreSelector::default())?;
 
         Ok((session, common_options))
     }
@@ -307,20 +308,37 @@ impl LoadedProbeOptions {
         &self,
         probe: Probe,
         target: TargetSelector,
+        core_identifier: &CoreSelector,
     ) -> Result<Session, OperationError> {
         let mut permissions = Permissions::new();
         if self.0.allow_erase_all {
             permissions = permissions.allow_erase_all();
         }
 
-        let session = if self.0.connect_under_reset {
-            probe.attach_under_reset(target, permissions)
-        } else {
-            probe.attach(target, permissions)
+        let mut config = Config::default();
+
+        if self.connect_under_reset() {
+            config.attach_method = AttachMethod::UnderReset;
         }
-        .map_err(|error| OperationError::AttachingFailed {
-            source: error,
-            connect_under_reset: self.0.connect_under_reset,
+
+        config.permissions = permissions;
+
+        config.cores = match core_identifier {
+            CoreSelector::Index(i) => CoreSelection::Specific(vec![*i]),
+            CoreSelector::Name(name) => match &target {
+                TargetSelector::Unspecified(_) => CoreSelection::All,
+                TargetSelector::Specified(t) => {
+                    CoreSelection::Specific(vec![t.core_index_by_name(name).unwrap()])
+                }
+                TargetSelector::Auto => CoreSelection::All,
+            },
+        };
+
+        let session = probe.attach_with_config(target, config).map_err(|error| {
+            OperationError::AttachingFailed {
+                source: error,
+                connect_under_reset: self.connect_under_reset(),
+            }
         })?;
 
         Ok(session)

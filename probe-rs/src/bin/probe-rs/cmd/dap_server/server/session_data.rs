@@ -14,7 +14,7 @@ use probe_rs::{
     debug::{debug_info::DebugInfo, DebugRegisters, SourceLocation},
     exception_handler_for_core,
     probe::list::Lister,
-    CoreStatus, Session,
+    CoreSelector, CoreStatus, Session,
 };
 use std::env::set_current_dir;
 use time::UtcOffset;
@@ -71,7 +71,8 @@ impl SessionData {
 
         let options = config.probe_options().load()?;
         let target_probe = options.attach_probe(lister)?;
-        let target_session = options.attach_session(target_probe, target_selector)?;
+        let target_session =
+            options.attach_session(target_probe, target_selector, &CoreSelector::default())?;
 
         // Change the current working directory if `config.cwd` is `Some(T)`.
         if let Some(new_cwd) = config.cwd.clone() {

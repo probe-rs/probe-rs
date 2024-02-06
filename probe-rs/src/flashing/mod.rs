@@ -20,7 +20,7 @@
 //!
 //! flashing::download_file(&mut session, "binary.hex", flashing::Format::Hex)?;
 //!
-//! # Ok::<(), anyhow::Error>(())
+//! # Ok:<(), anyhow::Error>(())
 //! ```
 //!
 //! ### Adding data manually

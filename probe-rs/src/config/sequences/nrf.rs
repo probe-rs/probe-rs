@@ -1,15 +1,13 @@
 //! Sequences for the nRF devices.
 
-use crate::{
-    architecture::arm::{
-        ap::MemoryAp,
-        communication_interface::Initialized,
-        memory::adi_v5_memory_interface::ArmProbe,
-        sequences::{ArmDebugSequence, ArmDebugSequenceError},
-        ApAddress, ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess,
-    },
-    session::MissingPermissions,
+use crate::architecture::arm::{
+    ap::MemoryAp,
+    communication_interface::Initialized,
+    memory::adi_v5_memory_interface::ArmProbe,
+    sequences::{ArmDebugSequence, ArmDebugSequenceError},
+    ApAddress, ArmCommunicationInterface, ArmError, ArmProbeInterface, DapAccess,
 };
+use crate::session::permissions::MissingPermissions;
 use std::fmt::Debug;
 
 pub trait Nrf: Sync + Send + Debug {
@@ -38,7 +36,9 @@ const APPLICATION_RESET_S_NETWORK_FORCEOFF_REGISTER: u32 = 0x50005614;
 const APPLICATION_RESET_NS_NETWORK_FORCEOFF_REGISTER: u32 = 0x40005614;
 const RELEASE_FORCEOFF: u32 = 0;
 
-/// Unlocks the core by performing an erase all procedure.
+/// Unlocks the core by performing an erase all procedure,
+/// or by setting the appropriate key value to diable approtect.
+///
 /// The `ap_address` must be of the ctrl ap of the core.
 fn unlock_core(
     arm_interface: &mut ArmCommunicationInterface<Initialized>,
@@ -47,7 +47,12 @@ fn unlock_core(
 ) -> Result<(), ArmError> {
     permissions
         .erase_all()
-        .map_err(|MissingPermissions(desc)| ArmError::MissingPermissions(desc))?;
+        .map_err(
+            |MissingPermissions { operation }| ArmError::MissingPermissions {
+                operation,
+                core: None,
+            },
+        )?;
 
     arm_interface.write_raw_ap_register(ap_address, ERASEALL, 1)?;
 
@@ -81,6 +86,7 @@ impl<T: Nrf> ArmDebugSequence for T {
         interface: &mut dyn ArmProbeInterface,
         default_ap: MemoryAp,
         permissions: &crate::Permissions,
+        chosen_core_index: usize,
     ) -> Result<(), ArmError> {
         let mut interface = interface.memory_interface(default_ap)?;
 
@@ -91,6 +97,11 @@ impl<T: Nrf> ArmDebugSequence for T {
         for (core_index, (core_ahb_ap_address, core_ctrl_ap_address)) in
             self.core_aps(&mut *interface).iter().copied().enumerate()
         {
+            // TODO: Don't loop, just choose the right core directly
+            if core_index != chosen_core_index {
+                continue;
+            }
+
             tracing::info!("Checking if core {} is unlocked", core_index);
             if self.is_core_unlocked(
                 interface.get_arm_communication_interface()?,
@@ -109,7 +120,17 @@ impl<T: Nrf> ArmDebugSequence for T {
                 interface.get_arm_communication_interface()?,
                 core_ctrl_ap_address,
                 permissions,
-            )?;
+            )
+            .map_err(|e| {
+                if let ArmError::MissingPermissions { operation, .. } = e {
+                    ArmError::MissingPermissions {
+                        operation,
+                        core: Some(chosen_core_index),
+                    }
+                } else {
+                    e
+                }
+            })?;
 
             if !self.is_core_unlocked(
                 interface.get_arm_communication_interface()?,

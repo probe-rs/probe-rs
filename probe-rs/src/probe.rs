@@ -28,7 +28,7 @@ use crate::config::RegistryError;
 use crate::config::TargetSelector;
 use crate::probe::common::IdCode;
 use crate::probe::list::Lister;
-use crate::{Error, Permissions, Session};
+use crate::{Config, Error, Permissions, Session};
 use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
 use std::collections::HashMap;
@@ -261,7 +261,11 @@ impl Probe {
         target: impl Into<TargetSelector>,
         permissions: Permissions,
     ) -> Result<Session, Error> {
-        Session::new(self, target.into(), AttachMethod::Normal, permissions)
+        let mut config = Config::default();
+
+        config.permissions = permissions;
+
+        Session::new(self, target.into(), config)
     }
 
     /// Attach to a target without knowing what target you have at hand.
@@ -288,6 +292,17 @@ impl Probe {
         Ok(())
     }
 
+    /// Attach with the given config
+    pub fn attach_with_config(
+        mut self,
+        target: impl Into<TargetSelector>,
+        config: Config,
+    ) -> Result<Session, Error> {
+        self.attached = true;
+
+        Session::new(self, target.into(), config)
+    }
+
     /// Attach to the chip under hard-reset.
     ///
     /// This asserts the reset pin via the probe, plays the protocol init routines and deasserts the pin.
@@ -298,9 +313,14 @@ impl Probe {
         target: impl Into<TargetSelector>,
         permissions: Permissions,
     ) -> Result<Session, Error> {
+        let mut config = Config::default();
+
+        config.attach_method = AttachMethod::UnderReset;
+        config.permissions = permissions;
+
         // The session will de-assert reset after connecting to the debug interface.
-        Session::new(self, target.into(), AttachMethod::UnderReset, permissions).map_err(|e| {
-            if matches!(e, Error::Arm(ArmError::Timeout) | Error::Riscv(RiscvError::Timeout)| Error::Xtensa(XtensaError::Timeout)) {
+        Session::new(self, target.into(), config).map_err(|e| {
+            if matches!(e, Error::Arm(ArmError::Timeout) | Error::Riscv(RiscvError::Timeout) | Error::Xtensa(XtensaError::Timeout)) {
                 Error::Other(
                 anyhow::anyhow!("Timeout while attaching to target under reset. This can happen if the target is not responding to the reset sequence. Ensure the chip's reset pin is connected, or try attaching without reset (`connectUnderReset = false` for DAP Clients, or remove `connect-under-reset` option from CLI options.)."))
             } else {
@@ -1181,9 +1201,10 @@ impl std::hash::Hash for DeferredResultIndex {
 }
 
 /// The method that should be used for attaching.
-#[derive(PartialEq, Eq, Debug, Copy, Clone)]
+#[derive(PartialEq, Eq, Default, Debug, Copy, Clone)]
 pub enum AttachMethod {
     /// Attach normally with no special behavior.
+    #[default]
     Normal,
     /// Attach to the target while it is in reset.
     ///

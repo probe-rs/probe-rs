@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use probe_rs::probe::list::Lister;
+use probe_rs::CoreSelector;
 
 use crate::util::common_options::BinaryDownloadOptions;
 use crate::util::common_options::ProbeOptions;
@@ -29,7 +30,9 @@ pub struct Cmd {
 
 impl Cmd {
     pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
-        let (mut session, probe_options) = self.probe_options.simple_attach(lister)?;
+        let (mut session, probe_options) = self
+            .probe_options
+            .simple_attach(lister, &CoreSelector::default())?;
 
         let loader = build_loader(&mut session, &self.path, self.format_options)?;
         run_flash_download(

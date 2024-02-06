@@ -8,6 +8,7 @@ use std::time::Duration;
 use anyhow::{anyhow, Result};
 use probe_rs::debug::{DebugInfo, DebugRegisters};
 use probe_rs::rtt::ScanRegion;
+use probe_rs::CoreSelector;
 use probe_rs::{
     exception_handler_for_core, probe::list::Lister, BreakpointCause, Core, CoreInterface, Error,
     HaltReason, SemihostingCommand, VectorCatchCondition,
@@ -33,6 +34,9 @@ pub struct Cmd {
 
     /// The path to the ELF file to flash and run
     pub(crate) path: String,
+
+    #[clap(long)]
+    core: Option<CoreSelector>,
 
     /// Always print the stacktrace on ctrl + c.
     #[clap(long)]
@@ -71,7 +75,9 @@ impl Cmd {
         run_download: bool,
         timestamp_offset: UtcOffset,
     ) -> Result<()> {
-        let (mut session, probe_options) = self.probe_options.simple_attach(lister)?;
+        let (mut session, probe_options) = self
+            .probe_options
+            .simple_attach(lister, &CoreSelector::default())?;
         let path = Path::new(&self.path);
 
         if run_download {
@@ -95,7 +101,10 @@ impl Cmd {
             true => session.target().rtt_scan_regions.clone(),
             false => Vec::new(),
         };
-        let mut core = session.core(0)?;
+
+        let selector = self.core.unwrap_or_default();
+
+        let mut core = session.core_by_selector(&selector)?;
 
         if self.catch_hardfault || self.catch_reset {
             core.halt(Duration::from_millis(100))?;

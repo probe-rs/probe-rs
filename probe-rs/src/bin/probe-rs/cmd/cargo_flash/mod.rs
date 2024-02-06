@@ -3,6 +3,7 @@ mod diagnostics;
 use colored::*;
 use diagnostics::render_diagnostics;
 use probe_rs::probe::list::Lister;
+use probe_rs::CoreSelector;
 use std::ffi::OsString;
 use std::{path::PathBuf, process};
 
@@ -96,7 +97,9 @@ fn main_try(mut args: Vec<OsString>, lister: &Lister) -> Result<(), OperationErr
     ));
 
     // Attach to specified probe
-    let (mut session, probe_options) = opt.probe_options.simple_attach(lister)?;
+    let (mut session, probe_options) = opt
+        .probe_options
+        .simple_attach(lister, &CoreSelector::default())?;
 
     // Flash the binary
     let loader = flash::build_loader(&mut session, &path, opt.format_options).unwrap();

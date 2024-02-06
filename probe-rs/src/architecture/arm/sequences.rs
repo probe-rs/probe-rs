@@ -420,18 +420,22 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     ///
     /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetHardwareDeassert
     #[doc(alias = "ResetHardwareDeassert")]
-    fn reset_hardware_deassert(&self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
+    fn reset_hardware_deassert(
+        &self,
+        probe: &mut dyn ArmProbeInterface,
+        _default_ap: MemoryAp,
+    ) -> Result<(), ArmError> {
         let mut n_reset = Pins(0);
         n_reset.set_nreset(true);
         let n_reset = n_reset.0 as u32;
 
-        let can_read_pins = memory.swj_pins(n_reset, n_reset, 0)? != 0xffff_ffff;
+        let can_read_pins = probe.swj_pins(n_reset, n_reset, 0)? != 0xffff_ffff;
 
         if can_read_pins {
             let start = Instant::now();
 
             while start.elapsed() < Duration::from_secs(1) {
-                if Pins(memory.swj_pins(n_reset, n_reset, 0)? as u8).nreset() {
+                if Pins(probe.swj_pins(n_reset, n_reset, 0)? as u8).nreset() {
                     return Ok(());
                 }
 
@@ -778,6 +782,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         _interface: &mut dyn ArmProbeInterface,
         _default_ap: MemoryAp,
         _permissions: &crate::Permissions,
+        _core_index: usize,
     ) -> Result<(), ArmError> {
         tracing::debug!("debug_device_unlock - empty by default");
         Ok(())

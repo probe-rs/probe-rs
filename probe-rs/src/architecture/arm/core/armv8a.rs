@@ -1,9 +1,9 @@
 //! Register types and the core interface for armv8-a
-
+//!
 use super::{
     instructions::{
-        aarch64,
-        thumb2::{build_ldr, build_mcr, build_mrc, build_str, build_vmov, build_vmrs},
+        aarch32::{build_mcr, build_mrc, build_vmov, build_vmrs},
+        aarch64::{self, build_ldr, build_str},
     },
     registers::{aarch32::AARCH32_WITH_FP_32_CORE_REGSISTERS, aarch64::AARCH64_CORE_REGSISTERS},
     CortexAState,

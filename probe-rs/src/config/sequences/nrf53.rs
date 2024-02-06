@@ -54,6 +54,7 @@ impl Nrf for Nrf5340 {
         let csw: CSW = arm_interface
             .read_raw_ap_register(ahb_ap_address, 0x00)?
             .try_into()?;
+        tracing::info!("CSW = {:#010x}", u32::from(csw));
         Ok(csw.DeviceEn != 0)
     }
 

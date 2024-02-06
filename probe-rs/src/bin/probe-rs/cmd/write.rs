@@ -1,3 +1,4 @@
+use probe_rs::CoreSelector;
 use probe_rs::{probe::list::Lister, MemoryInterface};
 
 use crate::util::common_options::{ProbeOptions, ReadWriteBitWidth, ReadWriteOptions};
@@ -30,7 +31,9 @@ pub struct Cmd {
 
 impl Cmd {
     pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
-        let (mut session, _probe_options) = self.probe_options.simple_attach(lister)?;
+        let (mut session, _probe_options) = self
+            .probe_options
+            .simple_attach(lister, &CoreSelector::default())?;
         let mut core = session.core(self.shared.core)?;
 
         match self.read_write_options.width {

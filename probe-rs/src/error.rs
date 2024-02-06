@@ -64,6 +64,9 @@ pub enum Error {
         /// The required alignment in bytes (address increments).
         alignment: usize,
     },
+    /// The current Config does not enable debugging for the given core.
+    #[error("Debugging is not enabled for the core with id {0} with the current Config")]
+    DebugNotEnabled(usize),
 }
 
 impl From<ArmError> for Error {

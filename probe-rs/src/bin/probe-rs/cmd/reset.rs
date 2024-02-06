@@ -1,4 +1,4 @@
-use probe_rs::probe::list::Lister;
+use probe_rs::{probe::list::Lister, CoreSelector};
 
 use crate::{util::common_options::ProbeOptions, CoreOptions};
 
@@ -13,7 +13,9 @@ pub struct Cmd {
 
 impl Cmd {
     pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
-        let (mut session, _probe_options) = self.common.simple_attach(lister)?;
+        let (mut session, _probe_options) = self
+            .common
+            .simple_attach(lister, &CoreSelector::default())?;
 
         session.core(self.shared.core)?.reset()?;
 

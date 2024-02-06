@@ -65,8 +65,13 @@ pub enum ArmError {
     ///
     /// This can for example happen when the core is locked and needs to be erased to be unlocked.
     /// Then the correct permission needs to be given to automatically unlock the core to prevent accidental erases.
-    #[error("An operation could not be performed because it lacked the permission to do so: {0}")]
-    MissingPermissions(String),
+    #[error("An operation could not be performed because it lacked the permission to do so: {operation} (on core {core:?})")]
+    MissingPermissions {
+        /// String which describes the operation
+        operation: String,
+        /// Index of the core for which the permission was missing
+        core: Option<usize>,
+    },
 
     /// An error occurred in the communication with an access port or debug port.
     #[error("An error occurred in the communication with an access port or debug port.")]

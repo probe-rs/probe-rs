@@ -10,6 +10,7 @@ use probe_rs::{
         DpAddress, SwoConfig,
     },
     probe::list::Lister,
+    CoreSelector,
 };
 use time::Instant;
 
@@ -71,7 +72,10 @@ impl core::fmt::Display for ProfileMethod {
 
 impl ProfileCmd {
     pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
-        let (mut session, probe_options) = self.run.probe_options.simple_attach(lister)?;
+        let (mut session, probe_options) = self
+            .run
+            .probe_options
+            .simple_attach(lister, &CoreSelector::default())?;
 
         let loader = build_loader(&mut session, &self.run.path, self.run.format_options)?;
 

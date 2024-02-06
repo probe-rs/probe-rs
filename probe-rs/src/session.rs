@@ -1,7 +1,7 @@
-use crate::architecture::arm::ap::AccessPort;
+use crate::architecture::arm::ap::{AccessPort, MemoryAp};
 use crate::architecture::arm::component::get_arm_components;
 use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
-use crate::architecture::arm::{ArmError, DpAddress};
+use crate::architecture::arm::{ApAddress, ArmError, DpAddress};
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::xtensa::communication_interface::{
     XtensaCommunicationInterface, XtensaError,
@@ -24,8 +24,15 @@ use crate::{
     Core, CoreType, Error,
 };
 use anyhow::anyhow;
+use probe_rs_target::ArmCoreAccessOptions;
+use std::convert::Infallible;
 use std::ops::DerefMut;
+use std::str::FromStr;
 use std::{fmt, sync::Arc, time::Duration};
+
+pub use self::permissions::Permissions;
+
+pub(crate) mod permissions;
 
 /// The `Session` struct represents an active debug session.
 ///
@@ -100,15 +107,37 @@ impl ArchitectureInterface {
 
 impl Session {
     /// Open a new session with a given debug target.
-    pub(crate) fn new(
-        probe: Probe,
-        target: TargetSelector,
-        attach_method: AttachMethod,
-        permissions: Permissions,
-    ) -> Result<Self, Error> {
-        let (probe, target) = get_target_from_selector(target, attach_method, probe)?;
+    ///
+    /// A debug connection will be established to all cores in the target specification. The
+    /// steps taken are detailed below for ARM and RISCV.
+    ///
+    /// ## ARM
+    ///
+    /// - The actual target is determined using the given TargetSelector`.
+    ///
+    /// - If attach under reset is selected, the [`ArmDebugSequence::reset_hardware_assert()`] function is called,
+    ///   if the probe is CMSIS-DAP probe or a J-Link. For other probes, where a custom sequence is not supported,
+    ///   the [`Probe::target_reset_assert()`](crate::Probe::target_reset_assert()) function is called.
+    ///
+    ///
+    pub(crate) fn new(probe: Probe, target: TargetSelector, config: Config) -> Result<Self, Error> {
+        let (probe, target) = get_target_from_selector(target, config.attach_method, probe)?;
 
-        let cores = target
+        let mut session = match target.architecture() {
+            Architecture::Arm => Session::attach_arm(probe, target, config)?,
+            Architecture::Riscv => Session::attach_riscv(probe, target, config)?,
+            Architecture::Xtensa => Session::attach_xtensa(probe, target, config)?,
+        };
+
+        session.clear_all_hw_breakpoints()?;
+
+        Ok(session)
+    }
+
+    fn attach_arm(mut probe: Probe, target: Target, config: Config) -> Result<Self, Error> {
+        let default_core = target.default_core();
+
+        let mut cores: Vec<_> = target
             .cores
             .iter()
             .enumerate()
@@ -122,31 +151,7 @@ impl Session {
             })
             .collect();
 
-        let mut session = match target.architecture() {
-            Architecture::Arm => {
-                Self::attach_arm(probe, target, attach_method, permissions, cores)?
-            }
-            Architecture::Riscv => {
-                Self::attach_riscv(probe, target, attach_method, permissions, cores)?
-            }
-            Architecture::Xtensa => {
-                Self::attach_xtensa(probe, target, attach_method, permissions, cores)?
-            }
-        };
-
-        session.clear_all_hw_breakpoints()?;
-
-        Ok(session)
-    }
-
-    fn attach_arm(
-        mut probe: Probe,
-        target: Target,
-        attach_method: AttachMethod,
-        permissions: Permissions,
-        cores: Vec<CombinedCoreState>,
-    ) -> Result<Self, Error> {
-        let default_core = target.default_core();
+        let arm_core_access_options = default_core.core_access_options.expect_arm().clone();
 
         let default_memory_ap = default_core.memory_ap().ok_or_else(|| {
             Error::Other(anyhow::anyhow!(
@@ -161,7 +166,7 @@ impl Session {
             _ => unreachable!("Mismatch between architecture and sequence type!"),
         };
 
-        if AttachMethod::UnderReset == attach_method {
+        if AttachMethod::UnderReset == config.attach_method {
             let span = tracing::debug_span!("Asserting hardware assert");
             let _enter = span.enter();
 
@@ -189,48 +194,60 @@ impl Session {
         let mut interface = interface
             .initialize(sequence_handle.clone(), default_dp)
             .map_err(|(_interface, e)| e)?;
-        let unlock_span = tracing::debug_span!("debug_device_unlock").entered();
 
-        // Enable debug mode
-        let unlock_res =
-            sequence_handle.debug_device_unlock(&mut *interface, default_memory_ap, &permissions);
-        drop(unlock_span);
+        for core in cores.iter().filter(|c| config.is_core_enabled(c.id())) {
+            let unlock_span =
+                tracing::debug_span!("debug_device_unlock", core_id = core.id()).entered();
 
-        match unlock_res {
-            Ok(()) => (),
-            // In case this happens after unlock. Try to re-attach the probe once.
-            Err(ArmError::ReAttachRequired) => {
-                Self::reattach_arm_interface(&mut interface, &sequence_handle)?;
+            // Enable debug mode
+            let unlock_res = sequence_handle.debug_device_unlock(
+                &mut *interface,
+                core.arm_memory_ap(),
+                &config.permissions,
+                core.id(),
+            );
+            drop(unlock_span);
+
+            match unlock_res {
+                Ok(()) => (),
+                // In case this happens after unlock. Try to re-attach the probe once.
+                Err(ArmError::ReAttachRequired) => {
+                    Self::reattach_arm_interface(&mut interface, &sequence_handle)?;
+                }
+                Err(e) => return Err(Error::Arm(e)),
             }
-            Err(e) => return Err(Error::Arm(e)),
         }
 
         // For each core, setup debugging
-        for core in &cores {
+        for core in &mut cores {
             core.enable_arm_debug(&mut *interface)?;
         }
 
-        if attach_method == AttachMethod::UnderReset {
-            {
-                for core in &cores {
-                    core.arm_reset_catch_set(&mut *interface)?;
+        if config.attach_method == AttachMethod::UnderReset {
+            for core in &cores {
+                let mut memory_interface = interface.memory_interface(core.arm_memory_ap())?;
+
+                tracing::debug_span!("reset_catch_set", core_id = core.id()).in_scope(|| {
+                    sequence_handle.reset_catch_set(
+                        &mut *memory_interface,
+                        core.core_type(),
+                        arm_core_access_options.debug_base,
+                    )
+                })?;
+            }
+
+            // TODO: A timeout here indicates that the reset pin is probably not properly
+            //       connected.
+            let result = tracing::debug_span!("reset_hardware_deassert").in_scope(|| {
+                sequence_handle.reset_hardware_deassert(&mut *interface, default_memory_ap)
+            });
+
+            if let Err(e) = result {
+                if matches!(e, ArmError::Timeout) {
+                    tracing::warn!("Timeout while deasserting hardware reset pin. This indicates that the reset pin is not properly connected. Please check your hardware setup.");
                 }
 
-                let reset_hardware_deassert =
-                    tracing::debug_span!("reset_hardware_deassert").entered();
-
-                let mut memory_interface = interface.memory_interface(default_memory_ap)?;
-
-                // TODO: A timeout here indicates that the reset pin is probably not properly
-                //       connected.
-                if let Err(e) = sequence_handle.reset_hardware_deassert(&mut *memory_interface) {
-                    if matches!(e, ArmError::Timeout) {
-                        tracing::warn!("Timeout while deasserting hardware reset pin. This indicates that the reset pin is not properly connected. Please check your hardware setup.");
-                    }
-
-                    return Err(e.into());
-                }
-                drop(reset_hardware_deassert);
+                return Err(e.into());
             }
 
             let mut session = Session {
@@ -241,7 +258,7 @@ impl Session {
             };
 
             {
-                // Wait for the core to be halted. The core should be
+                // Wait for the cores to be halted. The cores should be
                 // halted because we set the `reset_catch` earlier, which
                 // means that the core should stop when coming out of reset.
 
@@ -256,6 +273,8 @@ impl Session {
 
             Ok(session)
         } else {
+            // No further work needs to be done for the "normal" attach procedure
+
             Ok(Session {
                 target,
                 interface: ArchitectureInterface::Arm(interface),
@@ -265,14 +284,22 @@ impl Session {
         }
     }
 
-    fn attach_riscv(
-        mut probe: Probe,
-        target: Target,
-        _attach_method: AttachMethod,
-        _permissions: Permissions,
-        cores: Vec<CombinedCoreState>,
-    ) -> Result<Self, Error> {
+    fn attach_riscv(mut probe: Probe, target: Target, config: Config) -> Result<Self, Error> {
         // TODO: Handle attach under reset
+
+        let mut cores: Vec<_> = target
+            .cores
+            .iter()
+            .enumerate()
+            .map(|(id, core)| {
+                Core::create_state(
+                    id,
+                    core.core_access_options.clone(),
+                    &target,
+                    core.core_type,
+                )
+            })
+            .collect();
 
         let sequence_handle = match &target.debug_sequence {
             DebugSequence::Riscv(sequence) => sequence.clone(),
@@ -303,13 +330,21 @@ impl Session {
         Ok(session)
     }
 
-    fn attach_xtensa(
-        mut probe: Probe,
-        target: Target,
-        _attach_method: AttachMethod,
-        _permissions: Permissions,
-        cores: Vec<CombinedCoreState>,
-    ) -> Result<Self, Error> {
+    fn attach_xtensa(mut probe: Probe, target: Target, config: Config) -> Result<Self, Error> {
+        let mut cores: Vec<_> = target
+            .cores
+            .iter()
+            .enumerate()
+            .map(|(id, core)| {
+                Core::create_state(
+                    id,
+                    core.core_access_options.clone(),
+                    &target,
+                    core.core_type,
+                )
+            })
+            .collect();
+
         let sequence_handle = match &target.debug_sequence {
             DebugSequence::Xtensa(sequence) => sequence.clone(),
             _ => unreachable!("Mismatch between architecture and sequence type!"),
@@ -367,9 +402,141 @@ impl Session {
         probe.attach(target, permissions)
     }
 
+    /*
+    fn attach_arm_old(
+        mut probe: Probe,
+        target: Target,
+        config: Config,
+    ) -> Result<Session, crate::Error> {
+        let default_core = config.default_core(&target);
+
+        let arm_core_access_options = default_core.core_access_options.expect_arm().clone();
+
+        let default_memory_ap = memory_ap(&arm_core_access_options);
+
+        let sequence_handle = match &target.debug_sequence {
+            DebugSequence::Arm(sequence) => sequence.clone(),
+            DebugSequence::Riscv(_) => {
+                panic!("Mismatch between architecture and sequence type!")
+            }
+        };
+
+        if AttachMethod::UnderReset == config.attach_method {
+            let _span = tracing::debug_span!("Asserting hardware assert").entered();
+
+            if let Some(dap_probe) = probe.try_as_dap_probe() {
+                sequence_handle.reset_hardware_assert(dap_probe)?;
+            } else {
+                tracing::info!(
+                    "Custom reset sequences are not supported on {}.",
+                    probe.get_name()
+                );
+                tracing::info!("Falling back to standard probe reset.");
+                probe.target_reset_assert()?;
+            }
+        }
+
+        probe.inner_attach()?;
+
+        let interface = probe.try_into_arm_interface().map_err(|(_, err)| err)?;
+
+        let mut interface = interface
+            .initialize(sequence_handle.clone())
+            .map_err(|(_interface, e)| e)?;
+
+        for core in cores.iter().filter(|c| config.is_core_enabled(c.id())) {
+            let unlock_span =
+                tracing::debug_span!("debug_device_unlock", core_id = core.id()).entered();
+
+            // Enable debug mode
+            let unlock_res = sequence_handle.debug_device_unlock(
+                &mut *interface,
+                core.arm_memory_ap(),
+                &config.permissions,
+                core.id(),
+            );
+            drop(unlock_span);
+
+            match unlock_res {
+                Ok(()) => (),
+                // In case this happens after unlock. Try to re-attach the probe once.
+                Err(ArmError::ReAttachRequired) => {
+                    Self::reattach_arm_interface(&mut interface, &sequence_handle)?;
+                }
+                Err(e) => return Err(Error::Arm(e)),
+            }
+        }
+
+        // For each core, setup debugging
+        for core in cores.iter_mut().filter(|c| config.is_core_enabled(c.id())) {
+            core.enable_arm_debug(&mut *interface)?;
+        }
+
+        if config.attach_method == AttachMethod::Normal {
+            // No further work needs to be done for the "normal" attach procedure
+
+            Ok(Session {
+                target,
+                interface: ArchitectureInterface::Arm(interface),
+                cores,
+                configured_trace_sink: None,
+            })
+        } else {
+            for core in &cores {
+                let mut memory_interface = interface.memory_interface(core.arm_memory_ap())?;
+
+                tracing::debug_span!("reset_catch_set", core_id = core.id()).in_scope(|| {
+                    sequence_handle.reset_catch_set(
+                        &mut *memory_interface,
+                        core.core_type(),
+                        arm_core_access_options.debug_base,
+                    )
+                })?;
+            }
+
+            // TODO: A timeout here indicates that the reset pin is probably not properly
+            //       connected.
+            let result = tracing::debug_span!("reset_hardware_deassert").in_scope(|| {
+                sequence_handle.reset_hardware_deassert(&mut *interface, default_memory_ap)
+            });
+
+            if let Err(e) = result {
+                if matches!(e, ArmError::Timeout) {
+                    tracing::warn!("Timeout while deasserting hardware reset pin. This indicates that the reset pin is not properly connected. Please check your hardware setup.");
+                }
+
+                return Err(e.into());
+            }
+
+            let mut session = Session {
+                target,
+                interface: ArchitectureInterface::Arm(interface),
+                cores,
+                configured_trace_sink: None,
+            };
+
+            {
+                // Wait for the core to be halted. The core should be
+                // halted because we set the `reset_catch` earlier, which
+                // means that the core should stop when coming out of reset.
+                let mut core = session.core(0)?;
+                core.wait_for_core_halted(Duration::from_millis(100))?;
+
+                core.reset_catch_clear()?;
+            }
+
+            Ok(session)
+        }
+    }
+
+    */
+
     /// Lists the available cores with their number and their type.
     pub fn list_cores(&self) -> Vec<(usize, CoreType)> {
-        self.cores.iter().map(|t| (t.id(), t.core_type())).collect()
+        self.cores
+            .iter()
+            .map(|t| (t.core_state.id(), t.core_type()))
+            .collect()
     }
 
     /// Attaches to the core with the given number.
@@ -393,7 +560,49 @@ impl Session {
             .cores
             .get_mut(core_index)
             .ok_or(Error::CoreNotFound(core_index))?;
+
         self.interface.attach(&self.target, combined_state)
+    }
+
+    /// Select a core by a core selector
+    pub fn core_by_selector(&mut self, selector: &CoreSelector) -> Result<Core<'_>, Error> {
+        let core_index = match selector {
+            CoreSelector::Index(i) => *i,
+            CoreSelector::Name(name) => self
+                .target
+                .core_index_by_name(name)
+                .expect("Failed to find core "),
+        };
+
+        self.core(core_index)
+    }
+
+    /// Enable a core for debugging
+    ///
+    /// This will enable debug power for the given core.
+    ///
+    /// If debug power is already enabled, nothing will be changed.
+    ///
+    /// ## Errors
+    /// If the core is not found, `Error::CoreNotFound` will be returned.
+    ///
+    pub fn enable_core(&mut self, core_index: usize) -> Result<(), Error> {
+        let combined_state = self
+            .cores
+            .get_mut(core_index)
+            .ok_or(Error::CoreNotFound(core_index))?;
+
+        combined_state.enable_debug(&mut self.interface)
+    }
+
+    /// Disable debug power on a core
+    pub fn disable_core(&mut self, core_index: usize) -> Result<(), Error> {
+        let combined_state = self
+            .cores
+            .get_mut(core_index)
+            .ok_or(Error::CoreNotFound(core_index))?;
+
+        combined_state.disable_debug(&mut self.interface)
     }
 
     /// Read available trace data from the specified data sink.
@@ -548,9 +757,8 @@ impl Session {
             Ok(()) => (),
             // In case this happens after unlock. Try to re-attach the probe once.
             Err(ArmError::ReAttachRequired) => {
-                Self::reattach_arm_interface(interface, debug_sequence)?;
                 // For re-setup debugging on all cores
-                for core_state in &self.cores {
+                for core_state in &mut self.cores {
                     core_state.enable_arm_debug(interface.deref_mut())?;
                 }
             }
@@ -650,38 +858,74 @@ impl Session {
 
     /// Clears all hardware breakpoints on all cores
     pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), Error> {
-        { 0..self.cores.len() }.try_for_each(|n| {
-            self.core(n)
+        self.enabled_core_indices().iter().try_for_each(|n| {
+            self.core(*n)
                 .and_then(|mut core| core.clear_all_hw_breakpoints())
         })
+    }
+
+    /// Get indices of all cores with enabled debugging
+    fn enabled_core_indices(&self) -> Vec<usize> {
+        self.cores
+            .iter()
+            .filter(|c| c.debug_enabled)
+            .map(|c| c.id())
+            .collect()
     }
 }
 
 // This test ensures that [Session] is fully [Send] + [Sync].
 static_assertions::assert_impl_all!(Session: Send);
 
-// TODO tiwalun: Enable again, after rework of Session::new is done.
 impl Drop for Session {
     #[tracing::instrument(name = "session_drop", skip(self))]
     fn drop(&mut self) {
-        if let Err(err) = { 0..self.cores.len() }.try_for_each(|i| {
-            self.core(i)
+        if let Err(err) = self.enabled_core_indices().iter().try_for_each(|i| {
+            self.core(*i)
                 .and_then(|mut core| core.clear_all_hw_breakpoints())
         }) {
-            tracing::warn!(
-                "Could not clear all hardware breakpoints: {:?}",
-                anyhow!(err)
-            );
+            tracing::warn!("Could not clear all hardware breakpoints: {err}");
         }
 
-        // Call any necessary deconfiguration/shutdown hooks.
-        if let Err(err) = { 0..self.cores.len() }
-            .try_for_each(|i| self.core(i).and_then(|mut core| core.debug_core_stop()))
+        if let Err(err) = self.enabled_core_indices().iter().try_for_each(|i| {
+            self.core(*i)
+                .and_then(|mut core| core.debug_on_sw_breakpoint(false))
+        }) {
+            tracing::warn!("Could not reset software breakpoint behaviour: {:?}", err);
+        }
+
+        if let Err(err) = self
+            .enabled_core_indices()
+            .iter()
+            .try_for_each(|i| self.core(*i).and_then(|mut core| core.debug_core_stop()))
         {
             tracing::warn!(
                 "Failed to deconfigure device during shutdown: {:?}",
                 anyhow!(err)
             );
+        }
+
+        // Disable tracing for all Cortex-M cores.
+        if let Err(err) = self.enabled_core_indices().iter().try_for_each(|i| {
+            let is_cortex_m = self.core(*i)?.core_type().is_cortex_m();
+
+            if is_cortex_m {
+                self.disable_swv(*i)
+            } else {
+                Ok(())
+            }
+        }) {
+            tracing::warn!("Could not stop core tracing: {:?}", err);
+        }
+
+        for core in &mut self.cores {
+            if let Err(err) = core.disable_debug(&mut self.interface) {
+                tracing::warn!(
+                    "Failed to disable debug power for core {}: {}",
+                    core.id(),
+                    err
+                );
+            }
         }
     }
 }
@@ -778,51 +1022,117 @@ fn get_target_from_selector(
     Ok((probe, target))
 }
 
-/// The `Permissions` struct represents what a [Session] is allowed to do with a target.
-/// Some operations can be irreversible, so need to be explicitly allowed by the user.
-///
-/// # Example
-///
-/// ```
-/// use probe_rs::Permissions;
-///
-/// let permissions = Permissions::new().allow_erase_all();
-/// ```
-#[non_exhaustive]
-#[derive(Debug, Clone, Default)]
-pub struct Permissions {
-    /// When set to true, all memory of the chip may be erased or reset to factory default
-    erase_all: bool,
+/// Configuration for a session
+#[derive(Debug, Default, Clone)]
+pub struct Config {
+    /// Selection of cores which should be debugged / attached to
+    pub cores: CoreSelection,
+
+    /// Attach method which should be used when connecting
+    pub attach_method: AttachMethod,
+
+    /// Allowed permisisons for potentially irreverable actions,
+    /// such as erasing the device memory.
+    pub permissions: Permissions,
 }
 
-impl Permissions {
-    /// Constructs a new permissions object with the default values
-    pub fn new() -> Self {
-        Self::default()
+impl Config {
+    fn default_core(&self, target: &Target) -> probe_rs_target::Core {
+        match &self.cores {
+            CoreSelection::All => {
+                if target.cores.len() > 1 {
+                    let default_core = target.cores[0].clone();
+
+                    tracing::info!(
+                        "Connection to all cores of a multi-core target, using core {} (index 0) for initial connection.",
+                        default_core.name
+                    );
+
+                    default_core
+                } else {
+                    // Single core, so there is no choice anyways
+                    target.cores[0].clone()
+                }
+            }
+            CoreSelection::Specific(cores) => {
+                // TODO: Verify that there are actually cores here...
+                let default_core_index = cores[0];
+
+                if cores.len() > 1 {
+                    tracing::info!("Connection to cores {:?} of a multi-core target, using core {} for connection.", cores, default_core_index);
+                }
+
+                target.cores[0].clone()
+            }
+        }
     }
 
-    /// Allow the session to erase all memory of the chip or reset it to factory default.
+    fn is_core_enabled(&self, id: usize) -> bool {
+        match &self.cores {
+            CoreSelection::All => true,
+            CoreSelection::Specific(cores) => cores.contains(&id),
+        }
+    }
+}
+
+/// Selection of cores for debugging
+#[derive(Debug, Default, Clone)]
+pub enum CoreSelection {
+    /// All cores of the target will be set up for debugging.
     ///
-    /// # Warning
-    /// This may irreversibly remove otherwise read-protected data from the device like security keys and 3rd party firmware.
-    /// What happens exactly may differ per device and per probe-rs version.
-    #[must_use]
-    pub fn allow_erase_all(self) -> Self {
-        Self {
-            erase_all: true,
-            ..self
-        }
-    }
+    /// This is the default selection.
+    #[default]
+    All,
+    /// Only the cores with the given indices will be set up for debugging.
+    Specific(Vec<usize>),
+}
 
-    pub(crate) fn erase_all(&self) -> Result<(), MissingPermissions> {
-        if self.erase_all {
-            Ok(())
-        } else {
-            Err(MissingPermissions("erase_all".into()))
+pub fn memory_ap(access_options: &ArmCoreAccessOptions) -> MemoryAp {
+    MemoryAp::new(ApAddress {
+        dp: match access_options.psel {
+            0 => DpAddress::Default,
+            x => DpAddress::Multidrop(x),
+        },
+        ap: access_options.ap,
+    })
+}
+
+/// Select a core using either its index or name
+#[derive(Debug, Clone)]
+pub enum CoreSelector {
+    /// Index based selection of a core, based on the order in which the cores are defined
+    /// in the target description
+    Index(usize),
+    /// Select a core based on its name
+    Name(String),
+}
+
+impl Default for CoreSelector {
+    fn default() -> Self {
+        CoreSelector::Index(0)
+    }
+}
+
+// This is implemented for CLI applications,
+// so that this can be used as a default value for a CLI arguments in clap.
+impl std::fmt::Display for CoreSelector {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CoreSelector::Index(i) => write!(f, "core {i}"),
+            CoreSelector::Name(name) => write!(f, "core '{name}'"),
         }
     }
 }
 
-#[derive(Debug, Clone, thiserror::Error)]
-#[error("An operation could not be performed because it lacked the permission to do so: {0}")]
-pub struct MissingPermissions(pub String);
+impl FromStr for CoreSelector {
+    type Err = Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        // Try to parse as an integer.
+        if let Ok(index) = usize::from_str(s) {
+            Ok(CoreSelector::Index(index))
+        } else {
+            Ok(CoreSelector::Name(s.to_string()))
+        }
+    }
+}

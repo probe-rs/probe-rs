@@ -11,7 +11,7 @@ use crate::{
         },
     },
     probe::DebugProbeError,
-    session::MissingPermissions,
+    session::permissions::MissingPermissions,
     Permissions,
 };
 use bitfield::bitfield;
@@ -240,18 +240,20 @@ impl AtSAM {
         let dsu_status_b = DsuStatusB::from(memory.read_word_8(DsuStatusB::ADDRESS)?);
 
         match (dsu_status_b.celck(), dsu_status_b.prot(), permissions.erase_all()) {
-            (true, _, _) => Err(ArmError::MissingPermissions(
-                "Chip-Erase is locked. This can only be unlocked from within the device firmware by performing \
+            (true, _, _) => Err(ArmError::MissingPermissions{
+                operation: "Chip-Erase is locked. This can only be unlocked from within the device firmware by performing \
                 a Chip-Erase Unlock (CEULCK) command."
                     .into(),
-            )),
-            (false, true, Err(MissingPermissions(permission))) => Err(ArmError::MissingPermissions(
-                format!("Device is locked. A Chip-Erase operation is required to unlock. \
-                            Re-run with granting the '{permission}' permission and connecting under reset"
+                    core: None,
+            }),
+            (false, true, Err(MissingPermissions { operation })) => Err(ArmError::MissingPermissions{
+                operation: format!("Device is locked. A Chip-Erase operation is required to unlock. \
+                            Re-run with granting the '{operation}' permission and connecting under reset"
                     ),
-            )),
+                    core: None,
+            }),
             // TODO: This seems wrong? Currently preserves the bevaiour before the change of the error type.
-            (false, false,Err(MissingPermissions(permission))) => Err(ArmError::MissingPermissions(permission)),
+            (false, false,Err(MissingPermissions { operation })) => Err(ArmError::MissingPermissions{operation, core: None}),
             (false, _, Ok(())) => Ok(()),
         }?;
 
@@ -387,12 +389,16 @@ impl ArmDebugSequence for AtSAM {
     ///
     /// Instead of de-asserting `nReset` here (this was already done during the CPU Reset Extension process),
     /// the device is released from Reset Extension.
-    fn reset_hardware_deassert(&self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
+    fn reset_hardware_deassert(
+        &self,
+        probe: &mut dyn ArmProbeInterface,
+        default_ap: MemoryAp,
+    ) -> Result<(), ArmError> {
         let mut pins = architecture::arm::Pins(0);
         pins.set_nreset(true);
 
         let current_pins =
-            architecture::arm::Pins(memory.swj_pins(pins.0 as u32, pins.0 as u32, 0)? as u8);
+            architecture::arm::Pins(probe.swj_pins(pins.0 as u32, pins.0 as u32, 0)? as u8);
         if !current_pins.nreset() {
             return Err(ArmDebugSequenceError::SequenceSpecific(
                 "Expected nReset to already be de-asserted".into(),
@@ -400,7 +406,9 @@ impl ArmDebugSequence for AtSAM {
             .into());
         }
 
-        self.release_reset_extension(memory)
+        let mut memory = probe.memory_interface(default_ap)?;
+
+        self.release_reset_extension(&mut *memory)
     }
 
     /// `debug_device_unlock` for ATSAM devices
@@ -418,6 +426,7 @@ impl ArmDebugSequence for AtSAM {
         interface: &mut dyn ArmProbeInterface,
         default_ap: architecture::arm::ap::MemoryAp,
         permissions: &Permissions,
+        _core_index: usize,
     ) -> Result<(), ArmError> {
         // First check if the device is locked
         let mut memory = interface.memory_interface(default_ap)?;

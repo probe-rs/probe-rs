@@ -164,6 +164,7 @@ impl<T: DapAccess> ApAccess for T {
         self.write_raw_ap_register(port.into().ap_address(), R::ADDRESS, register.into())
     }
 
+    #[tracing::instrument(skip(self, port, values), fields(register = R::NAME, len = values.len()))]
     fn write_ap_register_repeated<PORT, R>(
         &mut self,
         port: impl Into<PORT>,

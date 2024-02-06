@@ -399,6 +399,9 @@ impl FlashLoader {
                 .iter()
                 .position(|c| c.name == core_name)
                 .unwrap();
+
+            tracing::debug!("Using core {core} for flashing");
+
             let mut flasher = Flasher::new(session, core, &algo, options.progress.clone())?;
 
             let mut do_chip_erase = options.do_chip_erase;

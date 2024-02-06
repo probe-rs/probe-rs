@@ -2,6 +2,7 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 use probe_rs::probe::list::Lister;
+use probe_rs::CoreSelector;
 
 use crate::util::common_options::ProbeOptions;
 
@@ -26,7 +27,9 @@ pub struct Cmd {
 
 impl Cmd {
     pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
-        let (mut session, _probe_options) = self.common.simple_attach(lister)?;
+        let (mut session, _probe_options) = self
+            .common
+            .simple_attach(lister, &CoreSelector::default())?;
 
         if self.reset_halt {
             session

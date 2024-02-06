@@ -4,6 +4,7 @@ use std::time::Duration;
 use std::time::Instant;
 
 use probe_rs::probe::list::Lister;
+use probe_rs::CoreSelector;
 use probe_rs::MemoryInterface;
 use scroll::{Pwrite, LE};
 
@@ -30,7 +31,9 @@ impl Cmd {
 
         let start = Instant::now();
 
-        let (mut session, _probe_options) = self.common.simple_attach(lister)?;
+        let (mut session, _probe_options) = self
+            .common
+            .simple_attach(lister, &CoreSelector::default())?;
 
         let mut core = session.core(self.shared.core)?;
 

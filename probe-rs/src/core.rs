@@ -1,6 +1,7 @@
 use crate::{
     architecture::{
         arm::{
+            ap::MemoryAp,
             core::registers::{
                 aarch32::{
                     AARCH32_CORE_REGSISTERS, AARCH32_WITH_FP_16_CORE_REGSISTERS,
@@ -9,14 +10,22 @@ use crate::{
                 aarch64::AARCH64_CORE_REGSISTERS,
                 cortex_m::{CORTEX_M_CORE_REGISTERS, CORTEX_M_WITH_FP_CORE_REGISTERS},
             },
+            memory::adi_v5_memory_interface::ArmProbe,
             sequences::ArmDebugSequence,
+            ArmProbeInterface,
         },
-        riscv::registers::RISCV_CORE_REGSISTERS,
-        xtensa::registers::XTENSA_CORE_REGSISTERS,
+        riscv::{
+            communication_interface::RiscvCommunicationInterface, registers::RISCV_CORE_REGSISTERS,
+        },
+        xtensa::{
+            communication_interface::XtensaCommunicationInterface,
+            registers::XTENSA_CORE_REGSISTERS,
+        },
     },
     config::DebugSequence,
     debug::{DebugRegister, DebugRegisters},
     error::Error,
+    session::ArchitectureInterface,
     CoreType, InstructionSet, MemoryInterface, Target,
 };
 use anyhow::anyhow;
@@ -550,6 +559,194 @@ impl<'probe> MemoryInterface for Core<'probe> {
     }
 }
 
+/*
+
+#[derive(Debug)]
+pub struct CombinedCoreState {
+    /// Flag to indicate if the core is enabled for debugging
+    ///
+    /// In multi-core systems, only a subset of cores could be enabled.
+    pub(crate) debug_enabled: bool,
+
+    pub(crate) core_state: CoreState,
+
+    pub(crate) specific_state: SpecificCoreState,
+}
+
+impl CombinedCoreState {
+    pub fn id(&self) -> usize {
+        self.core_state.id()
+    }
+
+    pub fn core_type(&self) -> CoreType {
+        self.specific_state.core_type()
+    }
+
+    pub(crate) fn attach_arm<'probe>(
+        &'probe mut self,
+        arm_interface: &'probe mut Box<dyn ArmProbeInterface>,
+    ) -> Result<Core<'probe>, Error> {
+        if !self.debug_enabled {
+            return Err(Error::DebugNotEnabled(self.id()));
+        }
+
+        let memory = arm_interface.memory_interface(self.arm_memory_ap())?;
+
+        self.specific_state.attach_arm(&mut self.core_state, memory)
+    }
+
+    pub(crate) fn attach_riscv<'probe>(
+        &'probe mut self,
+        interface: &'probe mut RiscvCommunicationInterface,
+    ) -> Result<Core<'probe>, Error> {
+        self.specific_state
+            .attach_riscv(&mut self.core_state, interface)
+    }
+
+    pub(crate) fn attach_xtensa<'probe>(
+        &'probe mut self,
+        interface: &'probe mut XtensaCommunicationInterface,
+    ) -> Result<Core<'probe>, Error> {
+        self.specific_state
+            .attach_xtensa(&mut self.core_state, interface)
+    }
+
+    /// Get the memory AP for this core.
+    ///
+    /// ## Panic
+    ///
+    /// This function will panic if the core is not an ARM core and doesn't have a memory AP
+    pub(crate) fn arm_memory_ap(&self) -> MemoryAp {
+        self.core_state.memory_ap()
+    }
+
+    pub(crate) fn enable_debug(
+        &mut self,
+        interface: &mut ArchitectureInterface,
+    ) -> Result<(), crate::Error> {
+        match interface {
+            ArchitectureInterface::Arm(boxed_interface) => {
+                let interface: &mut dyn ArmProbeInterface = boxed_interface.as_mut();
+                self.enable_arm_debug(interface)
+            }
+            ArchitectureInterface::Riscv(interface) => self.enable_riscv_debug(interface),
+            ArchitectureInterface::Xtensa(_) => todo!(),
+        }
+    }
+
+    pub(crate) fn enable_arm_debug(
+        &mut self,
+        interface: &mut dyn ArmProbeInterface,
+    ) -> Result<(), crate::Error> {
+        let (sequence_handle, arm_core_access_options) = match &self.core_state.core_access_options
+        {
+            crate::core::ResolvedCoreOptions::Arm { sequence, options } => (sequence, options),
+            crate::core::ResolvedCoreOptions::Riscv { .. } => todo!(),
+            crate::core::ResolvedCoreOptions::Xtensa { .. } => todo!(),
+        };
+
+        if !self.debug_enabled {
+            tracing::debug_span!("debug_core_start", core_id = self.id()).in_scope(|| {
+                // Enable debug mode
+                sequence_handle.debug_core_start(
+                    interface,
+                    self.arm_memory_ap(),
+                    self.core_type(),
+                    arm_core_access_options.debug_base,
+                    arm_core_access_options.cti_base,
+                )
+            })?;
+
+            self.debug_enabled = true;
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn enable_riscv_debug(
+        &mut self,
+        _interface: &mut RiscvCommunicationInterface,
+    ) -> Result<(), crate::Error> {
+        todo!()
+    }
+
+    pub(crate) fn disable_debug(
+        &mut self,
+        interface: &mut ArchitectureInterface,
+    ) -> Result<(), Error> {
+        match interface {
+            ArchitectureInterface::Arm(boxed_interface) => {
+                let interface: &mut dyn ArmProbeInterface = boxed_interface.as_mut();
+                self.disable_arm_debug(interface)
+            }
+            ArchitectureInterface::Riscv(interface) => self.disable_riscv_debug(interface),
+            ArchitectureInterface::Xtensa(_) => todo!(),
+        }
+    }
+
+    pub(crate) fn disable_arm_debug(
+        &mut self,
+        interface: &mut dyn ArmProbeInterface,
+    ) -> Result<(), crate::Error> {
+        let (sequence_handle, _arm_core_access_options) = match &self.core_state.core_access_options
+        {
+            crate::core::ResolvedCoreOptions::Arm { sequence, options } => (sequence, options),
+            crate::core::ResolvedCoreOptions::Riscv { .. } => todo!(),
+            &crate::core::ResolvedCoreOptions::Xtensa { .. } => todo!(),
+        };
+
+        if self.debug_enabled {
+            let mut memory_interface = interface.memory_interface(self.arm_memory_ap())?;
+            let mut interface: &mut dyn ArmProbe = memory_interface.as_mut();
+            let core_type = self.core_type();
+
+            let stop_span = tracing::debug_span!("debug_core_stop", core_id = self.id()).entered();
+            sequence_handle.debug_core_stop(interface, core_type)?;
+            drop(stop_span);
+
+            self.debug_enabled = false;
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn disable_riscv_debug(
+        &mut self,
+        _interface: &mut RiscvCommunicationInterface,
+    ) -> Result<(), crate::Error> {
+        todo!()
+    }
+}
+
+*/
+
+pub enum ResolvedCoreOptions {
+    Arm {
+        sequence: Arc<dyn ArmDebugSequence>,
+        options: ArmCoreAccessOptions,
+    },
+    Riscv {
+        options: RiscvCoreAccessOptions,
+    },
+    Xtensa {
+        options: XtensaCoreAccessOptions,
+    },
+}
+
+impl std::fmt::Debug for ResolvedCoreOptions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Arm { options, .. } => f
+                .debug_struct("Arm")
+                .field("sequence", &"<ArmDebugSequence>")
+                .field("options", options)
+                .finish(),
+            Self::Riscv { options } => f.debug_struct("Riscv").field("options", options).finish(),
+            Self::Xtensa { options } => f.debug_struct("Xtensa").field("options", options).finish(),
+        }
+    }
+}
+
 /// A struct containing key information about an exception.
 /// The exception details are architecture specific, and the abstraction is handled in the
 /// architecture specific implementations of [`crate::core::ExceptionInterface`].
@@ -698,6 +895,9 @@ impl<'probe> Core<'probe> {
     ) -> CombinedCoreState {
         let specific_state = SpecificCoreState::from_core_type(core_type);
 
+        // TODO: Should this be set here
+        let debug_enabled = false;
+
         match options {
             CoreAccessOptions::Arm(options) => {
                 let DebugSequence::Arm(sequence) = target.debug_sequence.clone() else {
@@ -706,28 +906,31 @@ impl<'probe> Core<'probe> {
                     );
                 };
 
-                let core_state = CoreState::new(ResolvedCoreOptions::Arm { sequence, options });
+                let core_state = CoreState::new(id, ResolvedCoreOptions::Arm { sequence, options });
 
                 CombinedCoreState {
                     id,
                     core_state,
+                    debug_enabled,
                     specific_state,
                 }
             }
             CoreAccessOptions::Riscv(options) => {
-                let core_state = CoreState::new(ResolvedCoreOptions::Riscv { options });
+                let core_state = CoreState::new(id, ResolvedCoreOptions::Riscv { options });
                 CombinedCoreState {
                     id,
                     core_state,
                     specific_state,
+                    debug_enabled,
                 }
             }
             CoreAccessOptions::Xtensa(options) => {
-                let core_state = CoreState::new(ResolvedCoreOptions::Xtensa { options });
+                let core_state = CoreState::new(id, ResolvedCoreOptions::Xtensa { options });
                 CombinedCoreState {
                     id,
                     core_state,
                     specific_state,
+                    debug_enabled,
                 }
             }
         }
@@ -740,7 +943,7 @@ impl<'probe> Core<'probe> {
 
     /// Wait until the core is halted. If the core does not halt on its own,
     /// a [`DebugProbeError::Timeout`](crate::probe::DebugProbeError::Timeout) error will be returned.
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self), fields(id = self.id))]
     pub fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
         self.inner.wait_for_core_halted(timeout)
     }
@@ -753,13 +956,13 @@ impl<'probe> Core<'probe> {
 
     /// Try to halt the core. This function ensures the core is actually halted, and
     /// returns a [`DebugProbeError::Timeout`](crate::probe::DebugProbeError::Timeout) otherwise.
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self), fields(id = self.id))]
     pub fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         self.inner.halt(timeout)
     }
 
     /// Continue to execute instructions.
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self), fields(id = self.id))]
     pub fn run(&mut self) -> Result<(), Error> {
         self.inner.run()
     }
@@ -768,7 +971,7 @@ impl<'probe> Core<'probe> {
     /// should be halted after reset, use the [`reset_and_halt`] function.
     ///
     /// [`reset_and_halt`]: Core::reset_and_halt
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self), fields(id = self.id))]
     pub fn reset(&mut self) -> Result<(), Error> {
         self.inner.reset()
     }
@@ -777,7 +980,7 @@ impl<'probe> Core<'probe> {
     /// reset, use the [`reset`] function.
     ///
     /// [`reset`]: Core::reset
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self), fields(id = self.id))]
     pub fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         self.inner.reset_and_halt(timeout)
     }
@@ -1174,7 +1377,7 @@ impl<'probe> CoreInterface for Core<'probe> {
     }
 
     fn reset_catch_set(&mut self) -> Result<(), Error> {
-        todo!()
+        self.reset_catch_set()
     }
 
     fn reset_catch_clear(&mut self) -> Result<(), Error> {
@@ -1183,32 +1386,5 @@ impl<'probe> CoreInterface for Core<'probe> {
 
     fn debug_core_stop(&mut self) -> Result<(), Error> {
         self.debug_core_stop()
-    }
-}
-
-pub enum ResolvedCoreOptions {
-    Arm {
-        sequence: Arc<dyn ArmDebugSequence>,
-        options: ArmCoreAccessOptions,
-    },
-    Riscv {
-        options: RiscvCoreAccessOptions,
-    },
-    Xtensa {
-        options: XtensaCoreAccessOptions,
-    },
-}
-
-impl std::fmt::Debug for ResolvedCoreOptions {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Arm { options, .. } => f
-                .debug_struct("Arm")
-                .field("sequence", &"<ArmDebugSequence>")
-                .field("options", options)
-                .finish(),
-            Self::Riscv { options } => f.debug_struct("Riscv").field("options", options).finish(),
-            Self::Xtensa { options } => f.debug_struct("Xtensa").field("options", options).finish(),
-        }
     }
 }

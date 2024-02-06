@@ -151,6 +151,7 @@ impl ArmDebugSequence for Stm32h7 {
         interface: &mut dyn ArmProbeInterface,
         _default_ap: MemoryAp,
         _permissions: &crate::Permissions,
+        _core_index: usize,
     ) -> Result<(), ArmError> {
         // Power up the debug components through AP2, which is the default AP debug port.
         let ap = MemoryAp::new(ApAddress {

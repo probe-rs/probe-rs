@@ -188,9 +188,8 @@ pub(crate) mod aarch32 {
 }
 
 pub(crate) mod thumb2 {
-    // These are the same encoding in thumb2
-    pub(crate) use super::aarch32::{build_mcr, build_mrc, build_vmov, build_vmrs};
 
+    #[cfg(test)]
     pub(crate) fn build_ldr(reg_target: u16, reg_source: u16, imm: u8) -> u32 {
         let mut ret = 0b1111_1000_0101_0000_0000_1011_0000_0000;
 
@@ -201,6 +200,7 @@ pub(crate) mod thumb2 {
         ret
     }
 
+    #[cfg(test)]
     pub(crate) fn build_str(reg_target: u16, reg_source: u16, imm: u8) -> u32 {
         let mut ret = 0b1111_1000_0100_0000_0000_1011_0000_0000;
 

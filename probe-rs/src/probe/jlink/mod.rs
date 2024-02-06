@@ -405,6 +405,7 @@ impl JLink {
         Ok(())
     }
 
+    #[tracing::instrument(level = "debug", skip(self, cmd))]
     fn write_cmd(&self, cmd: &[u8]) -> Result<(), JlinkError> {
         trace!("write {} bytes: {:x?}", cmd.len(), cmd);
 

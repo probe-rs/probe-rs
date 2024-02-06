@@ -9,7 +9,7 @@ use crate::architecture::arm::{
     sequences::{ArmDebugSequence, ArmDebugSequenceError},
     ApAddress, ArmError, ArmProbeInterface, DpAddress,
 };
-use crate::session::MissingPermissions;
+use crate::session::permissions::MissingPermissions;
 
 /// An error when operating a core ROM table component occurred.
 #[derive(thiserror::Error, Debug)]
@@ -89,6 +89,7 @@ impl ArmDebugSequence for Nrf52 {
         iface: &mut dyn ArmProbeInterface,
         _default_ap: MemoryAp,
         permissions: &crate::Permissions,
+        _core_index: usize,
     ) -> Result<(), ArmError> {
         let ctrl_ap = ApAddress {
             ap: 1,
@@ -104,7 +105,12 @@ impl ArmDebugSequence for Nrf52 {
         tracing::warn!("Core is locked. Erase procedure will be started to unlock it.");
         permissions
             .erase_all()
-            .map_err(|MissingPermissions(desc)| ArmError::MissingPermissions(desc))?;
+            .map_err(
+                |MissingPermissions { operation }| ArmError::MissingPermissions {
+                    operation,
+                    core: None,
+                },
+            )?;
 
         // Reset
         iface.write_raw_ap_register(ctrl_ap, RESET, 1)?;

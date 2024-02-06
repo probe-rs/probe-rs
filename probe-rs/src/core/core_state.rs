@@ -3,6 +3,7 @@ use crate::{
         arm::{
             ap::MemoryAp,
             core::{CortexAState, CortexMState},
+            memory::adi_v5_memory_interface::ArmProbe,
             ApAddress, ArmProbeInterface, DpAddress,
         },
         riscv::{communication_interface::RiscvCommunicationInterface, RiscVState},
@@ -15,6 +16,11 @@ use super::ResolvedCoreOptions;
 
 #[derive(Debug)]
 pub(crate) struct CombinedCoreState {
+    /// Flag to indicate if the core is enabled for debugging
+    ///
+    /// In multi-core systems, only a subset of cores could be enabled.
+    pub(crate) debug_enabled: bool,
+
     pub(crate) core_state: CoreState,
 
     pub(crate) specific_state: SpecificCoreState,
@@ -210,19 +216,64 @@ impl CombinedCoreState {
     pub(crate) fn arm_memory_ap(&self) -> MemoryAp {
         self.core_state.memory_ap()
     }
+
+    pub(crate) fn enable_debug(
+        &self,
+        interface: &mut crate::session::ArchitectureInterface,
+    ) -> Result<(), Error> {
+        match interface {
+            crate::session::ArchitectureInterface::Arm(interface) => {
+                let mut interface: &mut dyn ArmProbeInterface = interface.as_mut();
+                self.enable_arm_debug(interface)
+            }
+            _ => todo!(),
+        }
+    }
+
+    pub(crate) fn disable_debug(
+        &self,
+        interface: &mut crate::session::ArchitectureInterface,
+    ) -> Result<(), Error> {
+        match interface {
+            crate::session::ArchitectureInterface::Arm(interface) => {
+                let mut interface: &mut dyn ArmProbeInterface = interface.as_mut();
+                self.disable_arm_debug(interface)
+            }
+            _ => todo!(),
+        }
+    }
+
+    fn disable_arm_debug(&self, interface: &mut dyn ArmProbeInterface) -> Result<(), Error> {
+        let ResolvedCoreOptions::Arm { sequence, options } = &self.core_state.core_access_options
+        else {
+            unreachable!("This should never happen. Please file a bug if it does.");
+        };
+
+        let mut memory_interface = interface.memory_interface(self.arm_memory_ap())?;
+        let mut memory_interface: &mut dyn ArmProbe = memory_interface.as_mut();
+
+        tracing::debug_span!("debug_core_stop", id = self.id()).in_scope(|| {
+            // Enable debug mode
+            sequence.debug_core_stop(memory_interface, self.core_type())
+        })?;
+
+        Ok(())
+    }
 }
 
 /// A generic core state which caches the generic parts of the core state.
 #[derive(Debug)]
 pub struct CoreState {
+    id: usize,
     /// Information needed to access the core
-    core_access_options: ResolvedCoreOptions,
+    pub core_access_options: ResolvedCoreOptions,
 }
 
 impl CoreState {
     /// Creates a new core state from the core ID.
-    pub fn new(core_access_options: ResolvedCoreOptions) -> Self {
+    pub fn new(id: usize, core_access_options: ResolvedCoreOptions) -> Self {
         Self {
+            id,
             core_access_options,
         }
     }
@@ -244,6 +295,10 @@ impl CoreState {
         };
 
         MemoryAp::new(ap)
+    }
+
+    pub(crate) fn id(&self) -> usize {
+        self.id
     }
 }
 
@@ -294,4 +349,116 @@ impl SpecificCoreState {
             SpecificCoreState::Xtensa(_) => CoreType::Xtensa,
         }
     }
+
+    /*
+
+    pub(crate) fn attach_arm<'probe, 'target: 'probe>(
+        &'probe mut self,
+        state: &'probe mut CoreState,
+        memory: Box<dyn ArmProbe + 'probe>,
+    ) -> Result<Core<'probe>, Error> {
+        /*
+        let debug_sequence = match &target.debug_sequence {
+            crate::config::DebugSequence::Arm(sequence) => sequence.clone(),
+            crate::config::DebugSequence::Riscv(_) => {
+                return Err(Error::UnableToOpenProbe(
+                    "Core architecture and Probe mismatch.",
+                ))
+            }
+        };
+
+        let options = match &state.core_access_options {
+            CoreAccessOptions::Arm(options) => options,
+            CoreAccessOptions::Riscv(_) => {
+                return Err(Error::UnableToOpenProbe(
+                    "Core architecture and Probe mismatch.",
+                ))
+            }
+        };
+
+        */
+
+        let (options, debug_sequence) = match &state.core_access_options {
+            ResolvedCoreOptions::Arm { options, sequence } => (options, sequence.clone()),
+            _ => {
+                return Err(Error::UnableToOpenProbe(
+                    "Core architecture and Probe mismatch.",
+                ))
+            }
+        };
+
+        Ok(match self {
+            SpecificCoreState::Armv6m(s) => Core::new(
+                state.id,
+                name,
+                crate::architecture::arm::armv6m::Armv6m::new(memory, s, debug_sequence)?,
+                state,
+            ),
+            SpecificCoreState::Armv7a(s) => Core::new(
+                crate::architecture::arm::armv7a::Armv7a::new(
+                    memory,
+                    s,
+                    options.debug_base.expect("base_address not specified"),
+                    debug_sequence,
+                )?,
+                state,
+            ),
+            SpecificCoreState::Armv7m(s) | SpecificCoreState::Armv7em(s) => Core::new(
+                crate::architecture::arm::armv7m::Armv7m::new(memory, s, debug_sequence)?,
+                state,
+            ),
+            SpecificCoreState::Armv8a(s) => Core::new(
+                crate::architecture::arm::armv8a::Armv8a::new(
+                    memory,
+                    s,
+                    options.debug_base.expect("base_address not specified"),
+                    options.cti_base.expect("cti_address not specified"),
+                    debug_sequence,
+                )?,
+                state,
+            ),
+            SpecificCoreState::Armv8m(s) => Core::new(
+                crate::architecture::arm::armv8m::Armv8m::new(memory, s, debug_sequence)?,
+                state,
+            ),
+            _ => {
+                return Err(Error::UnableToOpenProbe(
+                    "Core architecture and Probe mismatch.",
+                ))
+            }
+        })
+    }
+
+    pub(crate) fn attach_riscv<'probe>(
+        &'probe mut self,
+        state: &'probe mut CoreState,
+        interface: &'probe mut RiscvCommunicationInterface,
+    ) -> Result<Core<'probe>, Error> {
+        todo!();
+
+        /*
+        Ok(match self {
+            SpecificCoreState::Riscv(s) => Core::new(
+                crate::architecture::riscv::Riscv32::new(interface, s),
+                state,
+            ),
+            _ => {
+                return Err(Error::UnableToOpenProbe(
+                    "Core architecture and Probe mismatch.",
+                ))
+            }
+        })
+
+        */
+    }
+
+    pub(crate) fn attach_xtensa<'probe>(
+        &'probe mut self,
+        state: &'probe mut CoreState,
+        interface: &'probe mut XtensaCommunicationInterface,
+    ) -> Result<Core<'probe>, Error> {
+        todo!()
+    }
+
+    */
 }

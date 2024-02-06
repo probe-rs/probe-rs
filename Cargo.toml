@@ -74,3 +74,6 @@ libudev1 = { stage = ["run"] }
 [profile.dist]
 inherits = "release"
 lto = "thin"
+
+[patch.crates-io]
+indicatif = { git = "https://github.com/console-rs/indicatif" }

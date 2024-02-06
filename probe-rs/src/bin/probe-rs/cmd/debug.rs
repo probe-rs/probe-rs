@@ -16,6 +16,7 @@ use probe_rs::flashing::FileDownloadError;
 use probe_rs::probe::list::Lister;
 use probe_rs::probe::DebugProbeError;
 use probe_rs::CoreDumpError;
+use probe_rs::CoreSelector;
 use probe_rs::{
     debug::{debug_info::DebugInfo, registers::DebugRegisters, stack_frame::StackFrame},
     Core, CoreType, InstructionSet, MemoryInterface, RegisterValue,
@@ -39,7 +40,9 @@ pub struct Cmd {
 
 impl Cmd {
     pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
-        let (mut session, _probe_options) = self.common.simple_attach(lister)?;
+        let (mut session, _probe_options) = self
+            .common
+            .simple_attach(lister, &CoreSelector::default())?;
 
         let di = self
             .exe

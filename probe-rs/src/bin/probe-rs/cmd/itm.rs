@@ -2,6 +2,7 @@
 
 use probe_rs::architecture::arm::{component::TraceSink, swo::SwoConfig};
 use probe_rs::probe::list::Lister;
+use probe_rs::CoreSelector;
 
 use crate::util::common_options::ProbeOptions;
 use crate::CoreOptions;
@@ -67,7 +68,9 @@ pub struct Cmd {
 
 impl Cmd {
     pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
-        let (mut session, _probe_options) = self.common.simple_attach(lister)?;
+        let (mut session, _probe_options) = self
+            .common
+            .simple_attach(lister, &CoreSelector::default())?;
 
         match self.source {
             ItmSource::TraceMemory { coreclk } => {

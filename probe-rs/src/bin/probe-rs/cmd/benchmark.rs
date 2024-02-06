@@ -4,7 +4,7 @@ use std::{
 };
 
 use anyhow::Context;
-use probe_rs::{probe::list::Lister, MemoryInterface};
+use probe_rs::{probe::list::Lister, CoreSelector, MemoryInterface};
 use rand::prelude::*;
 
 use crate::util::common_options::LoadedProbeOptions;
@@ -138,7 +138,7 @@ impl Cmd {
 
         let target = common_options.get_target_selector()?;
         let probe_name = probe.get_name();
-        let session = common_options.attach_session(probe, target)?;
+        let session = common_options.attach_session(probe, target, &CoreSelector::default())?;
         let target_name = session.target().name.clone();
         println!(
             "Probe: Probe type {}, debug interface {}, target chip {}\n",
@@ -160,7 +160,8 @@ impl Cmd {
         let mut probe = common_options.attach_probe(lister)?;
         let target = common_options.get_target_selector()?;
         if probe.set_speed(speed).is_ok() {
-            let mut session = common_options.attach_session(probe, target)?;
+            let mut session =
+                common_options.attach_session(probe, target, &CoreSelector::default())?;
             let mut test = TestData::new(address, word_size, size);
             println!(
                 "Test: Speed {}, Word size {}bit, Data length {} bytes, Number of iterations {}",

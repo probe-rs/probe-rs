@@ -98,4 +98,12 @@ pub use crate::core::{
 };
 pub use crate::error::Error;
 pub use crate::memory::MemoryInterface;
-pub use crate::session::{Permissions, Session};
+pub use crate::probe::{
+    AttachMethod, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe,
+    ProbeCreationError, WireProtocol,
+};
+pub use crate::session::Permissions;
+pub use crate::session::{Config, CoreSelection, CoreSelector, Session};
+
+// TODO: Hide behind feature
+pub use crate::probe::fake_probe::FakeProbe;

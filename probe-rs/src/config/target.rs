@@ -21,16 +21,19 @@ use super::{
     },
     Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource,
 };
-use crate::architecture::{
-    arm::{
-        ap::MemoryAp,
-        sequences::{ArmDebugSequence, DefaultArmSequence},
-        ApAddress, DpAddress,
-    },
-    riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
-    xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
-};
 use crate::flashing::FlashLoader;
+use crate::{
+    architecture::{
+        arm::{
+            ap::MemoryAp,
+            sequences::{ArmDebugSequence, DefaultArmSequence},
+            ApAddress, DpAddress,
+        },
+        riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
+        xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
+    },
+    CoreSelector,
+};
 use probe_rs_target::{Architecture, BinaryFormat, ChipFamily, Jtag, MemoryRange};
 use std::sync::Arc;
 
@@ -284,8 +287,24 @@ impl Target {
     }
 
     /// Gets the core index from the core name
-    pub(crate) fn core_index_by_name(&self, name: &str) -> Option<usize> {
+    pub fn core_index_by_name(&self, name: &str) -> Option<usize> {
         self.cores.iter().position(|c| c.name == name)
+    }
+
+    /// Get the core index for a given selector
+    ///
+    /// If no core with the given selector can be found, `None` is returned.
+    pub fn core_index_by_selector(&self, selector: &CoreSelector) -> Option<usize> {
+        match selector {
+            CoreSelector::Index(i) => {
+                if *i < self.cores.len() {
+                    Some(*i)
+                } else {
+                    None
+                }
+            }
+            CoreSelector::Name(name) => self.core_index_by_name(name),
+        }
     }
 
     /// Gets the first found [MemoryRegion] that contains the given address

@@ -8,6 +8,7 @@ use colored::*;
 use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::probe::list::Lister;
 use probe_rs::rtt::{Rtt, ScanRegion};
+use probe_rs::CoreSelector;
 use probe_rs::{probe::DebugProbeSelector, Session};
 use std::ffi::OsString;
 use std::{
@@ -193,7 +194,9 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
         allow_erase_all: config.flashing.enabled || config.gdb.enabled,
     };
 
-    let (mut session, probe_options) = match probe_options.simple_attach(&lister) {
+    let (mut session, probe_options) = match probe_options
+        .simple_attach(&lister, &CoreSelector::default())
+    {
         Ok((session, probe_options)) => (session, probe_options),
 
         Err(OperationError::MultipleProbesFound { list }) => {
