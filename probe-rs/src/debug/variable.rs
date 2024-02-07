@@ -713,7 +713,7 @@ impl Variable {
         indentation: usize,
         show_name: bool,
     ) -> String {
-        let line_feed = if indentation == 0 { "" } else { "\n" }.to_string();
+        let line_feed = if indentation == 0 { "" } else { "\n" };
         // Allow for chained `if let` without complaining
         #[allow(clippy::if_same_then_else)]
         if !self.value.is_empty() {
