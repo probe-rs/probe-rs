@@ -298,7 +298,9 @@ impl Session {
             configured_trace_sink: None,
         };
 
-        sequence_handle.on_connect(session.get_riscv_interface()?)?;
+        session.halted_access(|sess| {
+            sequence_handle.on_connect(sess.get_riscv_interface()?)
+        })?;
 
         Ok(session)
     }
@@ -370,6 +372,28 @@ impl Session {
     /// Lists the available cores with their number and their type.
     pub fn list_cores(&self) -> Vec<(usize, CoreType)> {
         self.cores.iter().map(|t| (t.id(), t.core_type())).collect()
+    }
+
+    /// Get access to the session when all cores are halted.
+    /// 
+    /// Any previously running cores will be resumed once the closure is executed. 
+    pub(crate) fn halted_access<R>(&mut self, f: impl FnOnce(&mut Self) -> Result<R, Error>) -> Result<R, Error> {
+        let mut resume_state = vec![];
+        for (core, _) in self.list_cores() {
+            let mut c = self.core(core)?;
+            resume_state.push((core, c.core_halted()?));
+            c.halt(Duration::from_millis(100))?;
+        }
+
+        let r = f(self);
+
+        for (core, was_halted) in resume_state {
+            if !was_halted {
+                self.core(core)?.run()?;
+            }
+        }
+
+        r
     }
 
     /// Attaches to the core with the given number.
