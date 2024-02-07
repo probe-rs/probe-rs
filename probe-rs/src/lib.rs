@@ -91,8 +91,9 @@ mod test;
 
 pub use crate::config::{CoreType, InstructionSet, Target};
 pub use crate::core::{
-    exception_handler_for_core, Architecture, BreakpointCause, Core, CoreDump, CoreDumpError,
-    CoreInformation, CoreInterface, CoreRegister, CoreRegisters, CoreState, CoreStatus, HaltReason,
+    dump::{CoreDump, CoreDumpError},
+    exception_handler_for_core, Architecture, BreakpointCause, Core, CoreInformation,
+    CoreInterface, CoreRegister, CoreRegisters, CoreState, CoreStatus, HaltReason,
     MemoryMappedRegister, RegisterId, RegisterRole, RegisterValue, SemihostingCommand,
     SpecificCoreState, VectorCatchCondition,
 };
