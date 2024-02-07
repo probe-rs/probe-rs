@@ -82,7 +82,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
     let device_root_variable = svd_cache.root_variable();
 
     // Adding the Peripheral Group Name as an additional level in the structure helps to keep the 'variable tree' more compact, but more importantly, it helps to avoid having duplicate variable names that conflict with hal crates.
-    let mut peripheral_group_variable = Variable::new(None, None);
+    let mut peripheral_group_variable = Variable::new(None, None, None);
     peripheral_group_variable.name = VariableName::Named(peripheral_device.name.clone());
     let mut peripheral_parent_key = device_root_variable.variable_key();
     for peripheral in &peripheral_device.peripherals {
@@ -99,7 +99,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                         peripheral_group_variable = existing_peripharal_group_variable
                     }
                     None => {
-                        peripheral_group_variable = Variable::new(None, None);
+                        peripheral_group_variable = Variable::new(None, None, None);
                         peripheral_group_variable.name =
                             VariableName::Named(peripheral_group_name.clone());
                         peripheral_group_variable.type_name =
@@ -133,7 +133,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
             }
         }
 
-        let mut peripheral_variable = Variable::new(None, None);
+        let mut peripheral_variable = Variable::new(None, None, None);
         peripheral_variable.name = VariableName::Named(format!(
             "{}.{}",
             peripheral_group_variable.name, peripheral.name
@@ -150,7 +150,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
         svd_cache.add_variable(peripheral_parent_key, &mut peripheral_variable)?;
 
         for register in peripheral.all_registers() {
-            let mut register_variable = Variable::new(None, None);
+            let mut register_variable = Variable::new(None, None, None);
             register_variable.name = VariableName::Named(format!(
                 "{}.{}",
                 &peripheral_variable.name,
@@ -181,7 +181,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
             svd_cache.add_variable(peripheral_variable.variable_key(), &mut register_variable)?;
 
             for field in register.fields() {
-                let mut field_variable = Variable::new(None, None);
+                let mut field_variable = Variable::new(None, None, None);
                 field_variable.name = VariableName::Named(format!(
                     "{}.{}",
                     &register_variable.name,

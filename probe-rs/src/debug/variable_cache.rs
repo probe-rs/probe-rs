@@ -1,5 +1,8 @@
 use super::*;
-use crate::{debug::stack_frame::StackFrameInfo, Error};
+use crate::{
+    debug::{stack_frame::StackFrameInfo, unit_info::UnitInfo},
+    Error,
+};
 use anyhow::anyhow;
 use gimli::{DebugInfoOffset, UnitOffset, UnitSectionOffset};
 use probe_rs_target::MemoryRange;
@@ -112,9 +115,13 @@ impl VariableCache {
         header_offset: UnitSectionOffset,
         entries_offset: UnitOffset,
         name: VariableName,
+        unit_info: Option<&UnitInfo>,
     ) -> Self {
-        let mut static_root_variable =
-            Variable::new(header_offset.as_debug_info_offset(), Some(entries_offset));
+        let mut static_root_variable = Variable::new(
+            header_offset.as_debug_info_offset(),
+            Some(entries_offset),
+            unit_info,
+        );
         static_root_variable.variable_node_type = VariableNodeType::DirectLookup;
         static_root_variable.name = name;
 
@@ -123,7 +130,7 @@ impl VariableCache {
 
     /// Create a new cache for SVD variables
     pub fn new_svd_cache() -> Self {
-        let mut device_root_variable = Variable::new(None, None);
+        let mut device_root_variable = Variable::new(None, None, None);
         device_root_variable.variable_node_type = VariableNodeType::DoNotRecurse;
         device_root_variable.name = VariableName::PeripheralScopeRoot;
 
@@ -157,14 +164,15 @@ impl VariableCache {
         parent_key: ObjectRef,
         header_offset: Option<DebugInfoOffset>,
         entries_offset: Option<UnitOffset>,
+        unit_info: Option<&UnitInfo>,
     ) -> Result<Variable, Error> {
-        let mut variable_to_add = Variable::new(header_offset, entries_offset);
         // Validate that the parent_key exists ...
-        if self.variable_hash_map.contains_key(&parent_key) {
-            variable_to_add.parent_key = parent_key;
-        } else {
-            return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {:?}. Please report this as a bug", variable_to_add.name, parent_key).into());
+        if !self.variable_hash_map.contains_key(&parent_key) {
+            return Err(anyhow!("VariableCache: Attempted to add a new variable with non existent `parent_key`: {:?}. Please report this as a bug", parent_key).into());
         }
+
+        let mut variable_to_add = Variable::new(header_offset, entries_offset, unit_info);
+        variable_to_add.parent_key = parent_key;
 
         // The caller is telling us this is definitely a new `Variable`
         variable_to_add.variable_key = get_object_reference();
@@ -599,6 +607,7 @@ mod test {
             DebugInfoOffset(0).into(),
             UnitOffset(0),
             VariableName::StaticScopeRoot,
+            None,
         );
 
         let cache_variable = c.root_variable();
@@ -629,9 +638,13 @@ mod test {
         let mut cache = VariableCache::new_svd_cache();
         let root_key = cache.root_variable().variable_key;
 
-        let var_1 = cache.create_variable(root_key, None, None).unwrap();
+        let var_1 = cache
+            .create_variable(root_key, None, None, gimli::DW_LANG_Rust)
+            .unwrap();
 
-        let var_2 = cache.create_variable(root_key, None, None).unwrap();
+        let var_2 = cache
+            .create_variable(root_key, None, None, gimli::DW_LANG_Rust)
+            .unwrap();
 
         let children = cache.get_children(root_key).unwrap();
 
@@ -645,9 +658,13 @@ mod test {
         let mut cache = VariableCache::new_svd_cache();
         let root_key = cache.root_variable().variable_key;
 
-        let var_1 = cache.create_variable(root_key, None, None).unwrap();
+        let var_1 = cache
+            .create_variable(root_key, None, None, gimli::DW_LANG_Rust)
+            .unwrap();
 
-        let _var_2 = cache.create_variable(root_key, None, None).unwrap();
+        let _var_2 = cache
+            .create_variable(root_key, None, None, gimli::DW_LANG_Rust)
+            .unwrap();
 
         assert_eq!(cache.get_variable_by_key(var_1.variable_key), Some(var_1));
     }
@@ -672,26 +689,32 @@ mod test {
         let mut cache = VariableCache::new_svd_cache();
         let root_key = cache.root_variable().variable_key;
 
-        let var_1 = cache.create_variable(root_key, None, None).unwrap();
+        let var_1 = cache
+            .create_variable(root_key, None, None, gimli::DW_LANG_Rust)
+            .unwrap();
 
-        let var_2 = cache.create_variable(root_key, None, None).unwrap();
+        let var_2 = cache
+            .create_variable(root_key, None, None, gimli::DW_LANG_Rust)
+            .unwrap();
 
         let var_3 = cache
-            .create_variable(var_2.variable_key, None, None)
+            .create_variable(var_2.variable_key, None, None, gimli::DW_LANG_Rust)
             .unwrap();
 
         let var_4 = cache
-            .create_variable(var_2.variable_key, None, None)
+            .create_variable(var_2.variable_key, None, None, gimli::DW_LANG_Rust)
             .unwrap();
 
         let var_5 = cache
-            .create_variable(var_3.variable_key, None, None)
+            .create_variable(var_3.variable_key, None, None, gimli::DW_LANG_Rust)
             .unwrap();
 
-        let var_6 = cache.create_variable(root_key, None, None).unwrap();
+        let var_6 = cache
+            .create_variable(root_key, None, None, gimli::DW_LANG_Rust)
+            .unwrap();
 
         let var_7 = cache
-            .create_variable(var_6.variable_key, None, None)
+            .create_variable(var_6.variable_key, None, None, gimli::DW_LANG_Rust)
             .unwrap();
 
         assert_eq!(cache.len(), 8);

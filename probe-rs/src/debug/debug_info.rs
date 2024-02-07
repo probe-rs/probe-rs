@@ -268,6 +268,7 @@ impl DebugInfo {
             unit_info.unit.header.offset(),
             unit_node.entry().offset(),
             VariableName::StaticScopeRoot,
+            Some(unit_info),
         ))
     }
 
@@ -288,6 +289,7 @@ impl DebugInfo {
             unit_info.unit.header.offset(),
             function_node.entry().offset(),
             VariableName::LocalScopeRoot,
+            Some(unit_info),
         );
 
         Ok(function_variable_cache)
@@ -316,9 +318,7 @@ impl DebugInfo {
         };
 
         let unit_header = self.dwarf.debug_info.header_from_offset(header_offset)?;
-        let unit_info = UnitInfo {
-            unit: gimli::Unit::new(&self.dwarf, unit_header)?,
-        };
+        let unit_info = UnitInfo::new(gimli::Unit::new(&self.dwarf, unit_header)?);
 
         match parent_variable.variable_node_type {
             VariableNodeType::ReferenceOffset(reference_offset) => {
@@ -332,6 +332,7 @@ impl DebugInfo {
                     parent_variable.variable_key,
                     unit_info.unit.header.offset().as_debug_info_offset(),
                     Some(referenced_node.entry().offset()),
+                    Some(&unit_info),
                 )?;
 
                 referenced_variable.name = match &parent_variable.name {

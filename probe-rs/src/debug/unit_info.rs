@@ -14,11 +14,12 @@ pub(crate) enum ExpressionResult {
 }
 
 /// A struct containing information about a single compilation unit.
-pub(crate) struct UnitInfo {
+pub struct UnitInfo {
     pub(crate) unit: gimli::Unit<GimliReader, usize>,
 }
 
 impl UnitInfo {
+    /// Create a new `UnitInfo` from a `gimli::Unit`.
     pub fn new(unit: gimli::Unit<GimliReader, usize>) -> Self {
         Self { unit }
     }
@@ -399,6 +400,7 @@ impl UnitInfo {
                                 parent_variable.variable_key,
                                 self.unit.header.offset().as_debug_info_offset(),
                                 Some(discriminant_node.entry().offset()),
+                                Some(self),
                             )?;
                             discriminant_variable = self.process_tree_node_attributes(
                                 debug_info,
@@ -535,6 +537,7 @@ impl UnitInfo {
                     let mut namespace_variable = Variable::new(
                         self.unit.header.offset().as_debug_info_offset(),
                         Some(child_node.entry().offset()),
+                        Some(self),
                     );
 
                     namespace_variable.name = if let Ok(Some(attr)) = child_node.entry().attr(gimli::DW_AT_name) {
@@ -549,16 +552,21 @@ impl UnitInfo {
                         match namespace_child_node.entry().tag() {
                             gimli::DW_TAG_variable => {
                                 // We only want the TOP level variables of the namespace (statics).
-                                let static_child_variable = cache.create_variable(namespace_variable.variable_key,
+                                let static_child_variable = cache.create_variable(
+                                    namespace_variable.variable_key,
                                     self.unit.header.offset().as_debug_info_offset(),
-                                    Some(namespace_child_node.entry().offset()))?;
+                                    Some(namespace_child_node.entry().offset()),
+                                    Some(self),
+                                )?;
                                 self.process_tree_node_attributes(debug_info, &mut namespace_child_node, &mut namespace_variable, static_child_variable, memory, cache, frame_info)?;
                             }
                             gimli::DW_TAG_namespace => {
                                 // Recurse for additional namespace variables.
                                 let mut namespace_child_variable = Variable::new(
                                     self.unit.header.offset().as_debug_info_offset(),
-                                    Some(namespace_child_node.entry().offset()),);
+                                    Some(namespace_child_node.entry().offset()),
+                                    Some(self),
+                                );
                                 namespace_child_variable.name = if let Ok(Some(attr)) = namespace_child_node.entry().attr(gimli::DW_AT_name) {
 
                                     match &namespace_variable.name {
@@ -591,9 +599,11 @@ impl UnitInfo {
                 gimli::DW_TAG_member           | // Members of structured types.
                 gimli::DW_TAG_enumerator         // Possible values for enumerators, used by extract_type() when processing DW_TAG_enumeration_type.
                 => {
-                    let mut child_variable = cache.create_variable(parent_variable.variable_key,
-                    self.unit.header.offset().as_debug_info_offset(),
-                    Some(child_node.entry().offset()),
+                    let mut child_variable = cache.create_variable(
+                        parent_variable.variable_key,
+                        self.unit.header.offset().as_debug_info_offset(),
+                        Some(child_node.entry().offset()),
+                        Some(self),
                     )?;
                     child_variable = self.process_tree_node_attributes(debug_info, &mut child_node, &mut parent_variable, child_variable, memory, cache, frame_info)?;
                     // Do not keep or process PhantomData nodes, or variant parts that we have already used.
@@ -617,7 +627,9 @@ impl UnitInfo {
                     // TODO: Handle Level 3 nodes that belong to a DW_AT_discr_list, instead of having a discreet DW_AT_discr_value 
                     let mut child_variable = cache.create_variable(
                         parent_variable.variable_key,
-                        self.unit.header.offset().as_debug_info_offset(),Some(child_node.entry().offset()),
+                        self.unit.header.offset().as_debug_info_offset(),
+                        Some(child_node.entry().offset()),
+                        Some(self),
                     )?;
                     // To determine the discriminant, we use the following rules:
                     // - If there is no DW_AT_discr, then there will be a single DW_TAG_variant, and this will be the matching value. In the code here, we assign a default value of u64::MAX to both, so that they will be matched as belonging together (https://dwarfstd.org/ShowIssue.php?issue=180517.2)
@@ -636,7 +648,9 @@ impl UnitInfo {
                     if !cache.has_children(&parent_variable)? {
                         let mut child_variable = cache.create_variable(
                             parent_variable.variable_key,
-                            self.unit.header.offset().as_debug_info_offset(), Some(child_node.entry().offset())
+                            self.unit.header.offset().as_debug_info_offset(),
+                            Some(child_node.entry().offset()),
+                            Some(self),
                         )?;
                         self.extract_variant_discriminant(&child_node, &mut child_variable)?;
                         child_variable = self.process_tree_node_attributes(debug_info, &mut child_node, &mut parent_variable, child_variable, memory, cache, frame_info)?;
@@ -663,9 +677,11 @@ impl UnitInfo {
                 gimli::DW_TAG_subrange_type => {
                     // This tag is a child node fore parent types such as (array, vector, etc.).
                     // Recursively process each node, but pass the parent_variable so that new children are caught despite missing these tags.
-                    let mut range_variable = cache.create_variable(parent_variable.variable_key,
-                    self.unit.header.offset().as_debug_info_offset(),
-                    Some(child_node.entry().offset()),
+                    let mut range_variable = cache.create_variable(
+                        parent_variable.variable_key,
+                        self.unit.header.offset().as_debug_info_offset(),
+                        Some(child_node.entry().offset()),
+                        Some(self),
                     )?;
 
                     range_variable = self.process_tree_node_attributes(debug_info, &mut child_node, &mut parent_variable, range_variable, memory, cache, frame_info)?;
@@ -1049,6 +1065,7 @@ impl UnitInfo {
                                     child_variable.variable_key,
                                     self.unit.header.offset().as_debug_info_offset(),
                                     Some(node.entry().offset()),
+                                    Some(self),
                                 )?;
                                 subrange_variable = self.process_tree(
                                     debug_info,
@@ -1268,6 +1285,7 @@ impl UnitInfo {
             child_variable.variable_key,
             self.unit.header.offset().as_debug_info_offset(),
             Some(unit_ref),
+            Some(self),
         )?;
         array_member_variable.member_index = Some(array_member_index);
         // Override the calculated member name with a more 'array-like' name.
