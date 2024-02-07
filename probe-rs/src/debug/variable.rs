@@ -322,13 +322,10 @@ pub struct Variable {
 
 impl Variable {
     /// In most cases, Variables will be initialized with their ELF references so that we resolve their data types and values on demand.
-    pub fn new(
-        header_offset: Option<DebugInfoOffset>,
-        entries_offset: Option<UnitOffset>,
-        unit_info: Option<&UnitInfo>,
-    ) -> Variable {
+    pub fn new(entries_offset: Option<UnitOffset>, unit_info: Option<&UnitInfo>) -> Variable {
         Variable {
-            unit_header_offset: header_offset,
+            unit_header_offset: unit_info
+                .and_then(|info| info.unit.header.offset().as_debug_info_offset()),
             variable_unit_offset: entries_offset,
             language: unit_info
                 .map(|info| info.get_language())

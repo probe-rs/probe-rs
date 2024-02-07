@@ -265,7 +265,6 @@ impl DebugInfo {
         let unit_node = header_tree.root()?;
 
         Ok(VariableCache::new_dwarf_cache(
-            unit_info.unit.header.offset(),
             unit_node.entry().offset(),
             VariableName::StaticScopeRoot,
             Some(unit_info),
@@ -286,7 +285,6 @@ impl DebugInfo {
         let function_node = tree.root()?;
 
         let function_variable_cache = VariableCache::new_dwarf_cache(
-            unit_info.unit.header.offset(),
             function_node.entry().offset(),
             VariableName::LocalScopeRoot,
             Some(unit_info),
@@ -330,7 +328,6 @@ impl DebugInfo {
                 let referenced_node = type_tree.root()?;
                 let mut referenced_variable = cache.create_variable(
                     parent_variable.variable_key,
-                    unit_info.unit.header.offset().as_debug_info_offset(),
                     Some(referenced_node.entry().offset()),
                     Some(&unit_info),
                 )?;

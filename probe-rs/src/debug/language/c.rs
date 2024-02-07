@@ -18,7 +18,7 @@ impl ProgrammingLanguage for C {
     ) -> VariableValue {
         match &variable.type_name {
             VariableType::Base(_) if variable.memory_location == VariableLocation::Unknown => {
-                return VariableValue::Empty;
+                VariableValue::Empty
             }
 
             VariableType::Base(type_name) => match type_name.as_str() {

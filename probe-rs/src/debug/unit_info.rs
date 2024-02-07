@@ -398,7 +398,6 @@ impl UnitInfo {
                             let mut discriminant_node = type_tree.root()?;
                             let mut discriminant_variable = cache.create_variable(
                                 parent_variable.variable_key,
-                                self.unit.header.offset().as_debug_info_offset(),
                                 Some(discriminant_node.entry().offset()),
                                 Some(self),
                             )?;
@@ -535,7 +534,6 @@ impl UnitInfo {
                 gimli::DW_TAG_namespace => {
                     // Use these parents to extract `statics`.
                     let mut namespace_variable = Variable::new(
-                        self.unit.header.offset().as_debug_info_offset(),
                         Some(child_node.entry().offset()),
                         Some(self),
                     );
@@ -554,7 +552,6 @@ impl UnitInfo {
                                 // We only want the TOP level variables of the namespace (statics).
                                 let static_child_variable = cache.create_variable(
                                     namespace_variable.variable_key,
-                                    self.unit.header.offset().as_debug_info_offset(),
                                     Some(namespace_child_node.entry().offset()),
                                     Some(self),
                                 )?;
@@ -563,7 +560,6 @@ impl UnitInfo {
                             gimli::DW_TAG_namespace => {
                                 // Recurse for additional namespace variables.
                                 let mut namespace_child_variable = Variable::new(
-                                    self.unit.header.offset().as_debug_info_offset(),
                                     Some(namespace_child_node.entry().offset()),
                                     Some(self),
                                 );
@@ -601,7 +597,6 @@ impl UnitInfo {
                 => {
                     let mut child_variable = cache.create_variable(
                         parent_variable.variable_key,
-                        self.unit.header.offset().as_debug_info_offset(),
                         Some(child_node.entry().offset()),
                         Some(self),
                     )?;
@@ -627,7 +622,6 @@ impl UnitInfo {
                     // TODO: Handle Level 3 nodes that belong to a DW_AT_discr_list, instead of having a discreet DW_AT_discr_value 
                     let mut child_variable = cache.create_variable(
                         parent_variable.variable_key,
-                        self.unit.header.offset().as_debug_info_offset(),
                         Some(child_node.entry().offset()),
                         Some(self),
                     )?;
@@ -648,7 +642,6 @@ impl UnitInfo {
                     if !cache.has_children(&parent_variable)? {
                         let mut child_variable = cache.create_variable(
                             parent_variable.variable_key,
-                            self.unit.header.offset().as_debug_info_offset(),
                             Some(child_node.entry().offset()),
                             Some(self),
                         )?;
@@ -679,7 +672,6 @@ impl UnitInfo {
                     // Recursively process each node, but pass the parent_variable so that new children are caught despite missing these tags.
                     let mut range_variable = cache.create_variable(
                         parent_variable.variable_key,
-                        self.unit.header.offset().as_debug_info_offset(),
                         Some(child_node.entry().offset()),
                         Some(self),
                     )?;
@@ -1063,7 +1055,6 @@ impl UnitInfo {
                                 // First get the DW_TAG_subrange child of this node. It has a DW_AT_type that points to DW_TAG_base_type:__ARRAY_SIZE_TYPE__.
                                 let mut subrange_variable = cache.create_variable(
                                     child_variable.variable_key,
-                                    self.unit.header.offset().as_debug_info_offset(),
                                     Some(node.entry().offset()),
                                     Some(self),
                                 )?;
@@ -1281,12 +1272,8 @@ impl UnitInfo {
         let Ok(array_member_type_node) = array_member_type_tree.root() else {
             return Ok(());
         };
-        let mut array_member_variable = cache.create_variable(
-            child_variable.variable_key,
-            self.unit.header.offset().as_debug_info_offset(),
-            Some(unit_ref),
-            Some(self),
-        )?;
+        let mut array_member_variable =
+            cache.create_variable(child_variable.variable_key, Some(unit_ref), Some(self))?;
         array_member_variable.member_index = Some(array_member_index);
         // Override the calculated member name with a more 'array-like' name.
         array_member_variable.name = VariableName::Named(format!("__{array_member_index}"));

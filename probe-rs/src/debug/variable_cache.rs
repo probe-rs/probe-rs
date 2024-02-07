@@ -4,7 +4,7 @@ use crate::{
     Error,
 };
 use anyhow::anyhow;
-use gimli::{DebugInfoOffset, UnitOffset, UnitSectionOffset};
+use gimli::UnitOffset;
 use probe_rs_target::MemoryRange;
 use serde::{Serialize, Serializer};
 use std::{
@@ -72,16 +72,16 @@ impl Serialize for VariableCache {
                     };
 
                     VariableTreeNode {
-                                    name: child_variable.name,
-                                    type_name: child_variable.type_name,
-                                    value ,
-                                    children: if child_variable.range_upper_bound > 50 {
-                                        // Empty Vec's will show as variables with no children.
-                                        Vec::new()
-                                    } else {
-                                        recurse_variables(variable_cache, child_variable.variable_key)
-                                    },
-                                                    }
+                        name: child_variable.name,
+                        type_name: child_variable.type_name,
+                        value,
+                        children: if child_variable.range_upper_bound > 50 {
+                            // Empty Vec's will show as variables with no children.
+                            Vec::new()
+                        } else {
+                            recurse_variables(variable_cache, child_variable.variable_key)
+                        },
+                    }
                 })
                 .collect::<Vec<VariableTreeNode>>()
         }
@@ -112,16 +112,11 @@ impl VariableCache {
     /// The entries form a tree, only entries below the entry
     /// at `entries_offset` are considered when filling the cache.
     pub fn new_dwarf_cache(
-        header_offset: UnitSectionOffset,
         entries_offset: UnitOffset,
         name: VariableName,
         unit_info: Option<&UnitInfo>,
     ) -> Self {
-        let mut static_root_variable = Variable::new(
-            header_offset.as_debug_info_offset(),
-            Some(entries_offset),
-            unit_info,
-        );
+        let mut static_root_variable = Variable::new(Some(entries_offset), unit_info);
         static_root_variable.variable_node_type = VariableNodeType::DirectLookup;
         static_root_variable.name = name;
 
@@ -130,7 +125,7 @@ impl VariableCache {
 
     /// Create a new cache for SVD variables
     pub fn new_svd_cache() -> Self {
-        let mut device_root_variable = Variable::new(None, None, None);
+        let mut device_root_variable = Variable::new(None, None);
         device_root_variable.variable_node_type = VariableNodeType::DoNotRecurse;
         device_root_variable.name = VariableName::PeripheralScopeRoot;
 
@@ -162,7 +157,6 @@ impl VariableCache {
     pub fn create_variable(
         &mut self,
         parent_key: ObjectRef,
-        header_offset: Option<DebugInfoOffset>,
         entries_offset: Option<UnitOffset>,
         unit_info: Option<&UnitInfo>,
     ) -> Result<Variable, Error> {
@@ -171,7 +165,7 @@ impl VariableCache {
             return Err(anyhow!("VariableCache: Attempted to add a new variable with non existent `parent_key`: {:?}. Please report this as a bug", parent_key).into());
         }
 
-        let mut variable_to_add = Variable::new(header_offset, entries_offset, unit_info);
+        let mut variable_to_add = Variable::new(entries_offset, unit_info);
         variable_to_add.parent_key = parent_key;
 
         // The caller is telling us this is definitely a new `Variable`
@@ -569,7 +563,7 @@ impl VariableCache {
 
 #[cfg(test)]
 mod test {
-    use gimli::{DebugInfoOffset, UnitOffset};
+    use gimli::UnitOffset;
     use termtree::Tree;
 
     use crate::debug::{
@@ -603,12 +597,7 @@ mod test {
 
     #[test]
     fn static_cache() {
-        let c = VariableCache::new_dwarf_cache(
-            DebugInfoOffset(0).into(),
-            UnitOffset(0),
-            VariableName::StaticScopeRoot,
-            None,
-        );
+        let c = VariableCache::new_dwarf_cache(UnitOffset(0), VariableName::StaticScopeRoot, None);
 
         let cache_variable = c.root_variable();
 
@@ -638,13 +627,9 @@ mod test {
         let mut cache = VariableCache::new_svd_cache();
         let root_key = cache.root_variable().variable_key;
 
-        let var_1 = cache
-            .create_variable(root_key, None, None, gimli::DW_LANG_Rust)
-            .unwrap();
+        let var_1 = cache.create_variable(root_key, None, None).unwrap();
 
-        let var_2 = cache
-            .create_variable(root_key, None, None, gimli::DW_LANG_Rust)
-            .unwrap();
+        let var_2 = cache.create_variable(root_key, None, None).unwrap();
 
         let children = cache.get_children(root_key).unwrap();
 
@@ -658,13 +643,9 @@ mod test {
         let mut cache = VariableCache::new_svd_cache();
         let root_key = cache.root_variable().variable_key;
 
-        let var_1 = cache
-            .create_variable(root_key, None, None, gimli::DW_LANG_Rust)
-            .unwrap();
+        let var_1 = cache.create_variable(root_key, None, None).unwrap();
 
-        let _var_2 = cache
-            .create_variable(root_key, None, None, gimli::DW_LANG_Rust)
-            .unwrap();
+        let _var_2 = cache.create_variable(root_key, None, None).unwrap();
 
         assert_eq!(cache.get_variable_by_key(var_1.variable_key), Some(var_1));
     }
@@ -689,32 +670,26 @@ mod test {
         let mut cache = VariableCache::new_svd_cache();
         let root_key = cache.root_variable().variable_key;
 
-        let var_1 = cache
-            .create_variable(root_key, None, None, gimli::DW_LANG_Rust)
-            .unwrap();
+        let var_1 = cache.create_variable(root_key, None, None).unwrap();
 
-        let var_2 = cache
-            .create_variable(root_key, None, None, gimli::DW_LANG_Rust)
-            .unwrap();
+        let var_2 = cache.create_variable(root_key, None, None).unwrap();
 
         let var_3 = cache
-            .create_variable(var_2.variable_key, None, None, gimli::DW_LANG_Rust)
+            .create_variable(var_2.variable_key, None, None)
             .unwrap();
 
         let var_4 = cache
-            .create_variable(var_2.variable_key, None, None, gimli::DW_LANG_Rust)
+            .create_variable(var_2.variable_key, None, None)
             .unwrap();
 
         let var_5 = cache
-            .create_variable(var_3.variable_key, None, None, gimli::DW_LANG_Rust)
+            .create_variable(var_3.variable_key, None, None)
             .unwrap();
 
-        let var_6 = cache
-            .create_variable(root_key, None, None, gimli::DW_LANG_Rust)
-            .unwrap();
+        let var_6 = cache.create_variable(root_key, None, None).unwrap();
 
         let var_7 = cache
-            .create_variable(var_6.variable_key, None, None, gimli::DW_LANG_Rust)
+            .create_variable(var_6.variable_key, None, None)
             .unwrap();
 
         assert_eq!(cache.len(), 8);
