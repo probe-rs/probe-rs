@@ -294,7 +294,7 @@ pub struct Variable {
     /// The name of the type of this variable.
     pub type_name: VariableType,
     /// The unit_header_offset and variable_unit_offset are cached to allow on-demand access to the variable's gimli::Unit, through functions like:
-    ///   `gimli::Read::DebugInfo.header_from_offset()`, and   
+    ///   `gimli::Read::DebugInfo.header_from_offset()`, and
     ///   `gimli::Read::UnitHeader.entries_tree()`
     pub unit_header_offset: Option<DebugInfoOffset>,
     /// The offset of this variable into the compilation unit debug information.
@@ -306,7 +306,7 @@ pub struct Variable {
     pub memory_location: VariableLocation,
     /// The size of this variable in bytes.
     pub byte_size: Option<u64>,
-    /// If  this is a subrange (array, vector, etc.), is the ordinal position of this variable in that range
+    /// If this is a subrange (array, vector, etc.), is the ordinal position of this variable in that range
     pub member_index: Option<i64>,
     /// If this is a subrange (array, vector, etc.), we need to temporarily store the lower bound.
     pub range_lower_bound: i64,
@@ -506,7 +506,7 @@ impl Variable {
                     }
                 }
                 Err(error) => format!(
-                    "Failed to determine children for `Variable`:{}. {:?}",
+                    "Failed to determine children for `Variable`: {}. {:?}",
                     self.name, error
                 ),
             }
@@ -533,7 +533,7 @@ impl Variable {
                 Ok(u32_value) => self.value = VariableValue::Valid(u32_value.to_le().to_string()),
                 Err(error) => {
                     self.value = VariableValue::Error(format!(
-                        "Unable to read peripheral register value @ {:#010X} : {:?}",
+                        "Unable to read peripheral register value @ {:#010X}: {:?}",
                         self.memory_location.memory_address().unwrap_or(u64::MAX),
                         error
                     ))
