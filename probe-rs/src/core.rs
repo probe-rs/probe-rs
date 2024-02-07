@@ -9,9 +9,9 @@ use probe_rs_target::{
 };
 use std::{collections::HashMap, ops::Range, sync::Arc, time::Duration};
 
-pub(crate) mod core_dump;
 pub mod core_state;
 pub mod core_status;
+pub(crate) mod dump;
 pub mod memory_mapped_registers;
 pub mod registers;
 
@@ -20,7 +20,7 @@ pub use core_status::*;
 pub use memory_mapped_registers::MemoryMappedRegister;
 pub use registers::*;
 
-use self::core_dump::CoreDump;
+use self::dump::CoreDump;
 
 /// An struct for storing the current state of a core.
 #[derive(Debug, Clone)]
