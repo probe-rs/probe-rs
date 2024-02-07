@@ -381,7 +381,7 @@ impl Variable {
                 self.name, self.value, self.type_name, self.memory_location).into());
         } else if variable_name.starts_with('*') {
             // Writing the values of pointers is a bit more complex, and not currently supported.
-            return  Err(anyhow!("Please only update variables with a base data type. Updating pointer variable types is not yet supported.").into());
+            return Err(anyhow!("Please only update variables with a base data type. Updating pointer variable types is not yet supported.").into());
         } else {
             // We have everything we need to update the variable value.
             let update_result = match &self.type_name {
