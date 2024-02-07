@@ -763,7 +763,7 @@ impl UnitInfo {
                             // These will be processed elsewhere, or not at all, until we discover a use case that needs to be implemented.
                         }
                         unimplemented => {
-                            parent_variable.set_value(VariableValue::Error(format!("Unimplemented: Encountered unimplemented DwTag {:?} for Variable {:?}", unimplemented.static_string(), parent_variable)));
+                            parent_variable.set_value(VariableValue::Error(format!("Unimplemented: Encountered unimplemented DwTag {:?} for Variable {:?}", unimplemented.static_string(), parent_variable.name)));
                         }
                     }
                 }
