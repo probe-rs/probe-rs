@@ -451,6 +451,10 @@ impl UnitInfo {
                             }
                         }
                     }
+                    gimli::DW_AT_accessibility => {
+                        // Silently ignore these for now.
+                        // TODO: Add flag for public/private/protected for `Variable`, once we have a use case.
+                    }
                     gimli::DW_AT_external => {
                         // TODO: Implement globally visible variables.
                     }
