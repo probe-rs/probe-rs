@@ -1,20 +1,23 @@
-use std::{fs::File, ops::Range};
+use std::{fs::File, ops::Range, path::Path};
 
 use super::session_data::{self, ActiveBreakpoint, BreakpointType, SourceLocationScope};
-use crate::cmd::dap_server::{
-    debug_adapter::{
-        dap::{
-            adapter::DebugAdapter,
-            core_status::DapStatus,
-            dap_types::{ContinuedEventBody, MessageSeverity, Source, StoppedEventBody},
-        },
-        protocol::ProtocolAdapter,
-    },
-    peripherals::svd_variables::SvdCache,
-    server::debug_rtt,
-    DebuggerError,
-};
 use crate::util::rtt::{self, ChannelMode, DataFormat, RttActiveTarget};
+use crate::{
+    cmd::dap_server::{
+        debug_adapter::{
+            dap::{
+                adapter::DebugAdapter,
+                core_status::DapStatus,
+                dap_types::{ContinuedEventBody, MessageSeverity, Source, StoppedEventBody},
+            },
+            protocol::ProtocolAdapter,
+        },
+        peripherals::svd_variables::SvdCache,
+        server::debug_rtt,
+        DebuggerError,
+    },
+    util::rtt::RttConfig,
+};
 use anyhow::{anyhow, Result};
 use probe_rs::{
     debug::{
@@ -175,57 +178,44 @@ impl<'p> CoreHandle<'p> {
     pub fn attach_to_rtt<P: ProtocolAdapter>(
         &mut self,
         debug_adapter: &mut DebugAdapter<P>,
-        target_memory_map: &[probe_rs::config::MemoryRegion],
         program_binary: &std::path::Path,
         rtt_config: &rtt::RttConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<()> {
         let mut debugger_rtt_channels: Vec<debug_rtt::DebuggerRttChannel> = vec![];
+
         // Attach to RTT by using the RTT control block address from the ELF file. Do not scan the memory for the control block.
-        match File::open(program_binary)
-            .map_err(|error| anyhow!("Error attempting to attach to RTT: {}", error))
-            .and_then(|mut open_file| {
-                RttActiveTarget::get_rtt_symbol(&mut open_file).map_or_else(
-                    || Err(anyhow!("No RTT control block found in ELF file")),
-                    |rtt_header_address| Ok(ScanRegion::Exact(rtt_header_address as u32)),
-                )
-            })
-            .and_then(|scan_region| {
-                Rtt::attach_region(&mut self.core, target_memory_map, &scan_region)
-                    .map_err(|error| anyhow!("Error attempting to attach to RTT: {}", error))
-            })
-            .and_then(|rtt| {
-                tracing::info!("RTT initialized.");
-                RttActiveTarget::new(rtt, program_binary, rtt_config, timestamp_offset, None)
-            }) {
-            Ok(target_rtt) => {
-                for any_channel in target_rtt.active_channels.iter() {
-                    if let Some(up_channel) = &any_channel.up_channel {
-                        if any_channel.data_format == DataFormat::Defmt {
-                            // For defmt, we set the channel to be blocking when full.
-                            up_channel.set_mode(&mut self.core, ChannelMode::BlockIfFull)?;
-                        }
-                        debugger_rtt_channels.push(debug_rtt::DebuggerRttChannel {
-                            channel_number: up_channel.number(),
-                            // This value will eventually be set to true by a VSCode client request "rttWindowOpened"
-                            has_client_window: false,
-                        });
-                        debug_adapter.rtt_window(
-                            up_channel.number(),
-                            any_channel.channel_name.clone(),
-                            any_channel.data_format,
-                        );
-                    }
-                }
-                self.core_data.rtt_connection = Some(debug_rtt::RttConnection {
-                    target_rtt,
-                    debugger_rtt_channels,
-                });
-            }
-            Err(_error) => {
-                tracing::warn!("Failed to initalize RTT. Will try again on the next request... ");
-            }
+        let Ok(target_rtt) =
+            try_attach_rtt(&mut self.core, program_binary, rtt_config, timestamp_offset)
+        else {
+            tracing::warn!("Failed to initalize RTT. Will try again on the next request... ");
+            return Ok(());
         };
+
+        for any_channel in target_rtt.active_channels.iter() {
+            if let Some(up_channel) = &any_channel.up_channel {
+                if any_channel.data_format == DataFormat::Defmt {
+                    // For defmt, we set the channel to be blocking when full.
+                    up_channel.set_mode(&mut self.core, ChannelMode::BlockIfFull)?;
+                }
+                debugger_rtt_channels.push(debug_rtt::DebuggerRttChannel {
+                    channel_number: up_channel.number(),
+                    // This value will eventually be set to true by a VSCode client request "rttWindowOpened"
+                    has_client_window: false,
+                });
+                debug_adapter.rtt_window(
+                    up_channel.number(),
+                    any_channel.channel_name.clone(),
+                    any_channel.data_format,
+                );
+            }
+        }
+
+        self.core_data.rtt_connection = Some(debug_rtt::RttConnection {
+            target_rtt,
+            debugger_rtt_channels,
+        });
+
         Ok(())
     }
 
@@ -427,6 +417,31 @@ impl<'p> CoreHandle<'p> {
         // Consolidating all memory ranges that are withing 0x400 bytes of each other.
         consolidate_memory_ranges(all_discrete_memory_ranges, 0x400)
     }
+}
+
+fn try_attach_rtt(
+    core: &mut Core,
+    elf_file: &Path,
+    rtt_config: &RttConfig,
+    timestamp_offset: UtcOffset,
+) -> Result<RttActiveTarget, Error> {
+    let mut open_file = File::open(elf_file)
+        .map_err(|error| anyhow!("Error attempting to attach to RTT: {}", error))?;
+
+    let header_address = RttActiveTarget::get_rtt_symbol(&mut open_file)
+        .ok_or_else(|| anyhow!("No RTT control block found in ELF file"))?;
+
+    let scan_region = ScanRegion::Exact(header_address as u32);
+
+    let memory_regions = core.memory_regions().cloned().collect::<Vec<_>>();
+
+    let rtt = Rtt::attach_region(core, &memory_regions[..], &scan_region)
+        .map_err(|error| anyhow!("Error attempting to attach to RTT: {}", error))?;
+
+    tracing::info!("RTT initialized.");
+    let target = RttActiveTarget::new(rtt, elf_file, rtt_config, timestamp_offset, None)?;
+
+    Ok(target)
 }
 
 /// Return a Vec of memory ranges that consolidate the adjacent memory ranges of the input ranges.
