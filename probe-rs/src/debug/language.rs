@@ -5,14 +5,20 @@ use crate::{
     MemoryInterface,
 };
 
-/// C, C89, C99, C11
+/// C, C89, C99, C11, ...
 pub mod c;
 /// Rust
 pub mod rust;
 
 pub fn from_dwarf(dwarf_language: DwLang) -> Box<dyn ProgrammingLanguage> {
     match dwarf_language {
-        gimli::DW_LANG_C => Box::new(c::C),
+        // Handle all C-like languages the same now.
+        // We may have to split it later if this is not good enough.
+        gimli::DW_LANG_C
+        | gimli::DW_LANG_C89
+        | gimli::DW_LANG_C99
+        | gimli::DW_LANG_C11
+        | gimli::DW_LANG_C17 => Box::new(c::C),
         gimli::DW_LANG_Rust => Box::new(rust::Rust),
         _ => Box::new(UnknownLanguage),
     }
