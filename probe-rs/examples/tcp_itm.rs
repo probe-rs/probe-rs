@@ -253,20 +253,18 @@ impl SwoPublisher<Box<dyn Any + Send>> for TcpPublisher {
     }
 
     fn stop(&mut self) -> Result<(), Box<dyn Any + Send>> {
-        let thread_handle = self.thread_handle.take();
-        match thread_handle.map(|h| {
+        if let Some((thread_handle, sender)) = self.thread_handle.take() {
             // If we have a running thread, send the request to stop it and then wait for a join.
             // If this unwrap fails the thread has already been destroyed.
             // This cannot be assumed under normal operation conditions. Even with normal fault handling this should never happen.
             // So this unwarp is fine.
-            h.1.send(()).unwrap();
-            h.0.join()
-        }) {
-            Some(Err(err)) => {
+            sender.send(()).unwrap();
+
+            if let Err(err) = thread_handle.join() {
                 tracing::error!("An error occurred during thread execution: {:?}", err);
-                Err(err)
+                return Err(err);
             }
-            _ => Ok(()),
         }
+        Ok(())
     }
 }

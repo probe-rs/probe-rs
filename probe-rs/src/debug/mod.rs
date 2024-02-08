@@ -11,6 +11,8 @@ pub mod debug_info;
 pub mod debug_step;
 /// References to the DIE (debug information entry) of functions.
 pub mod function_die;
+/// Programming languages
+pub(crate) mod language;
 /// Target Register definitions, expanded from [`crate::core::registers::CoreRegister`] to include unwind specific information.
 pub mod registers;
 /// The source statement information used while identifying haltpoints for debug stepping and breakpoints.
@@ -268,6 +270,10 @@ fn extract_byte_size(node_die: &DebuggingInformationEntry<GimliReader>) -> Optio
         Ok(optional_byte_size_attr) => match optional_byte_size_attr {
             Some(byte_size_attr) => match byte_size_attr.value() {
                 gimli::AttributeValue::Udata(byte_size) => Some(byte_size),
+                gimli::AttributeValue::Data1(byte_size) => Some(byte_size as u64),
+                gimli::AttributeValue::Data2(byte_size) => Some(byte_size as u64),
+                gimli::AttributeValue::Data4(byte_size) => Some(byte_size as u64),
+                gimli::AttributeValue::Data8(byte_size) => Some(byte_size),
                 other => {
                     tracing::warn!("Unimplemented: DW_AT_byte_size value: {:?} ", other);
                     None

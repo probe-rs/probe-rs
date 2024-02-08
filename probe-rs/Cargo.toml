@@ -135,7 +135,7 @@ cargo_metadata = { version = "0.18", optional = true }
 clap = { version = "4", features = ["derive", "env"], optional = true }
 colored = { version = "2", optional = true }
 crossterm = { version = "<= 0.27", optional = true }
-defmt-decoder = { version = "0.3", features = ["unstable"], optional = true }
+defmt-decoder = { version = "=0.3.9", features = ["unstable"], optional = true }
 directories = { version = "5", optional = true }
 dunce = { version = "1" }
 figment = { version = "0.10", features = [
