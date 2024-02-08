@@ -9,7 +9,7 @@ use super::{
 };
 use crate::cmd::dap_server::{
     debug_adapter::protocol::{ProtocolAdapter, ProtocolHelper},
-    peripherals::svd_cache::{SvdVariable, SvdVariableCache, SvdVariableName, SvdVariableNodeType},
+    peripherals::svd_cache::{SvdVariable, SvdVariableCache, SvdVariableName},
     server::{
         configuration::ConsoleLog,
         core_data::CoreHandle,
@@ -513,14 +513,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                             &SvdVariableName::Named(expression.clone()),
                                         );
                                     }
-                                    if let Some(variable) = &mut svd_variable {
-                                        if variable.variable_node_type
-                                            == SvdVariableNodeType::SvdRegister
-                                            || variable.variable_node_type
-                                                == SvdVariableNodeType::SvdField
-                                        {
-                                            variable.extract_value(&mut target_core.core)
-                                        }
+                                    if svd_variable.is_some() {
                                         svd_variable_cache = Some(search_cache);
                                         break;
                                     }
@@ -536,10 +529,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                     indexed_child_variables_cnt,
                                 ) = get_svd_variable_reference(&variable, variable_cache);
                                 response_body.indexed_variables = Some(indexed_child_variables_cnt);
-                                response_body.memory_reference =
-                                    Some(format!("{}", variable.memory_location));
+                                response_body.memory_reference = variable.memory_reference();
                                 response_body.named_variables = Some(named_child_variables_cnt);
-                                response_body.result = variable.get_value(variable_cache);
+                                response_body.result = variable.get_value(&mut target_core.core);
                                 response_body.type_ = Some(format!("{:?}", variable.type_name));
                                 response_body.variables_reference = variables_reference.into();
                             } else {
@@ -1405,18 +1397,14 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         Variable {
                             name,
                             evaluate_name: Some(variable.name.to_string()),
-                            memory_reference: variable
-                                .memory_location
-                                .memory_address()
-                                .map_or_else(|_| None, |address| Some(format!("{address:#010x}"))),
+                            memory_reference: variable.memory_reference(),
                             indexed_variables: Some(indexed_child_variables_cnt),
                             named_variables: Some(named_child_variables_cnt),
                             presentation_hint: None,
                             type_: Some(variable.type_name.to_string()),
                             value: {
                                 // The SVD cache is not automatically refreshed on every stack trace, and we only need to refresh the field values.
-                                variable.extract_value(&mut target_core.core);
-                                variable.get_value(&core_peripherals.svd_variable_cache)
+                                variable.get_value(&mut target_core.core)
                             },
                             variables_reference: variables_reference.into(),
                         }

@@ -1,7 +1,10 @@
 use super::*;
-use crate::{debug::stack_frame::StackFrameInfo, Error};
+use crate::{
+    debug::{stack_frame::StackFrameInfo, unit_info::UnitInfo},
+    Error,
+};
 use anyhow::anyhow;
-use gimli::{DebugInfoOffset, UnitOffset, UnitSectionOffset};
+use gimli::UnitOffset;
 use probe_rs_target::MemoryRange;
 use serde::{Serialize, Serializer};
 use std::{
@@ -69,16 +72,16 @@ impl Serialize for VariableCache {
                     };
 
                     VariableTreeNode {
-                                    name: child_variable.name,
-                                    type_name: child_variable.type_name,
-                                    value ,
-                                    children: if child_variable.range_upper_bound > 50 {
-                                        // Empty Vec's will show as variables with no children.
-                                        Vec::new()
-                                    } else {
-                                        recurse_variables(variable_cache, child_variable.variable_key)
-                                    },
-                                                    }
+                        name: child_variable.name,
+                        type_name: child_variable.type_name,
+                        value,
+                        children: if child_variable.range_upper_bound > 50 {
+                            // Empty Vec's will show as variables with no children.
+                            Vec::new()
+                        } else {
+                            recurse_variables(variable_cache, child_variable.variable_key)
+                        },
+                    }
                 })
                 .collect::<Vec<VariableTreeNode>>()
         }
@@ -103,18 +106,17 @@ impl VariableCache {
 
     /// Create a variable cache based on DWARF debug information
     ///
-    /// The `header_offset` and `entries_offset` values are used to
+    /// The `entries_offset` and `unit_info` values are used to
     /// extract the variable information from the debug information.
     ///
     /// The entries form a tree, only entries below the entry
     /// at `entries_offset` are considered when filling the cache.
     pub fn new_dwarf_cache(
-        header_offset: UnitSectionOffset,
         entries_offset: UnitOffset,
         name: VariableName,
+        unit_info: Option<&UnitInfo>,
     ) -> Self {
-        let mut static_root_variable =
-            Variable::new(header_offset.as_debug_info_offset(), Some(entries_offset));
+        let mut static_root_variable = Variable::new(Some(entries_offset), unit_info);
         static_root_variable.variable_node_type = VariableNodeType::DirectLookup;
         static_root_variable.name = name;
 
@@ -146,16 +148,16 @@ impl VariableCache {
     pub fn create_variable(
         &mut self,
         parent_key: ObjectRef,
-        header_offset: Option<DebugInfoOffset>,
         entries_offset: Option<UnitOffset>,
+        unit_info: Option<&UnitInfo>,
     ) -> Result<Variable, Error> {
-        let mut variable_to_add = Variable::new(header_offset, entries_offset);
         // Validate that the parent_key exists ...
-        if self.variable_hash_map.contains_key(&parent_key) {
-            variable_to_add.parent_key = parent_key;
-        } else {
-            return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {:?}. Please report this as a bug", variable_to_add.name, parent_key).into());
+        if !self.variable_hash_map.contains_key(&parent_key) {
+            return Err(anyhow!("VariableCache: Attempted to add a new variable with non existent `parent_key`: {:?}. Please report this as a bug", parent_key).into());
         }
+
+        let mut variable_to_add = Variable::new(entries_offset, unit_info);
+        variable_to_add.parent_key = parent_key;
 
         // The caller is telling us this is definitely a new `Variable`
         variable_to_add.variable_key = get_object_reference();
@@ -552,7 +554,7 @@ impl VariableCache {
 
 #[cfg(test)]
 mod test {
-    use gimli::{DebugInfoOffset, UnitOffset, UnitSectionOffset};
+    use gimli::UnitOffset;
     use termtree::Tree;
 
     use crate::debug::{
@@ -586,11 +588,7 @@ mod test {
 
     #[test]
     fn static_cache() {
-        let c = VariableCache::new_dwarf_cache(
-            DebugInfoOffset(0).into(),
-            UnitOffset(0),
-            VariableName::StaticScopeRoot,
-        );
+        let c = VariableCache::new_dwarf_cache(UnitOffset(0), VariableName::StaticScopeRoot, None);
 
         let cache_variable = c.root_variable();
 
@@ -618,9 +616,9 @@ mod test {
     #[test]
     fn find_children() {
         let mut cache = VariableCache::new_dwarf_cache(
-            UnitSectionOffset::DebugInfoOffset(DebugInfoOffset(0)),
             UnitOffset(0),
             VariableName::Named("root".to_string()),
+            None,
         );
         let root_key = cache.root_variable().variable_key;
 
@@ -638,9 +636,9 @@ mod test {
     #[test]
     fn find_entry() {
         let mut cache = VariableCache::new_dwarf_cache(
-            UnitSectionOffset::DebugInfoOffset(DebugInfoOffset(0)),
             UnitOffset(0),
             VariableName::Named("root".to_string()),
+            None,
         );
         let root_key = cache.root_variable().variable_key;
 
@@ -669,9 +667,9 @@ mod test {
     ///     +-- [var_7]
     fn build_test_tree() -> (VariableCache, Vec<Variable>) {
         let mut cache = VariableCache::new_dwarf_cache(
-            UnitSectionOffset::DebugInfoOffset(DebugInfoOffset(0)),
             UnitOffset(0),
             VariableName::Named("root".to_string()),
+            None,
         );
         let root_key = cache.root_variable().variable_key;
 

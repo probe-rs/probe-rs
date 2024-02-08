@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
-use std::ops::Range;
 
-use probe_rs::debug::{get_object_reference, DebugError, ObjectRef};
+use probe_rs::debug::{get_object_reference, ObjectRef};
 use probe_rs::{Error, MemoryInterface};
 
 use anyhow::anyhow;
@@ -36,11 +35,6 @@ impl SvdVariableCache {
         device_root_variable.variable_node_type = SvdVariableNodeType::DoNotRecurse;
 
         SvdVariableCache::new(device_root_variable)
-    }
-
-    pub fn has_children(&self, parent_variable: &SvdVariable) -> Result<bool, Error> {
-        self.get_children(parent_variable.variable_key)
-            .map(|children| !children.is_empty())
     }
 
     /// Retrieve `clone`d version of all the children of a `Variable`.
@@ -197,12 +191,6 @@ pub struct SvdVariable {
     /// For 'lazy loading' of certain variable types we have to determine if the variable recursion should be deferred, and if so, how to resolve it when the request for further recursion happens.
     /// See [VariableNodeType] for more information.
     pub variable_node_type: SvdVariableNodeType,
-    /// The starting location/address in memory where this Variable's value is stored.
-    pub memory_location: SvdVariableLocation,
-    /// If this is a subrange (array, vector, etc.), we need to temporarily store the lower bound.
-    pub range_lower_bound: i64,
-    /// If this is a subrange (array, vector, etc.), we need to temporarily store the the upper bound of the range.
-    pub range_upper_bound: i64,
 }
 
 impl SvdVariable {
@@ -214,9 +202,6 @@ impl SvdVariable {
             value: SvdVariableValue::default(),
             type_name,
             variable_node_type: SvdVariableNodeType::default(),
-            memory_location: SvdVariableLocation::default(),
-            range_lower_bound: 0,
-            range_upper_bound: 0,
         }
     }
 
@@ -225,221 +210,72 @@ impl SvdVariable {
         self.variable_key
     }
 
+    /// Memory reference, compatible with DAP
+    pub fn memory_reference(&self) -> Option<String> {
+        match self.variable_node_type {
+            SvdVariableNodeType::SvdRegister(address) => Some(format!("{:#010X}", address)),
+            SvdVariableNodeType::SvdField { address, .. } => Some(format!("{:#010X}", address)),
+            _ => None,
+        }
+    }
+
     /// Implementing get_value(), because Variable.value has to be private (a requirement of updating the value without overriding earlier values ... see set_value()).
-    pub fn get_value(&self, variable_cache: &SvdVariableCache) -> String {
-        // Allow for chained `if let` without complaining
-        if SvdVariableNodeType::SvdRegister == self.variable_node_type {
-            if let SvdVariableValue::Valid(register_value) = &self.value {
-                if let Ok(register_u32_value) = register_value.parse::<u32>() {
-                    format!(
-                        "{:032b} @ {:#010X}",
-                        register_u32_value,
-                        self.memory_location.memory_address().unwrap_or(u64::MAX) // We should never encounter a memory location that is invalid if we already used it to read the register value.
-                    )
-                } else {
-                    format!("Invalid register value {register_value}")
-                }
-            } else {
-                format!("{}", self.value)
-            }
-        } else if SvdVariableNodeType::SvdField == self.variable_node_type {
-            // In this special case, we extract just the bits we need from the stored value of the register.
-            if let SvdVariableValue::Valid(register_value) = &self.value {
-                if let Ok(register_u32_value) = register_value.parse::<u32>() {
-                    let mut bit_value: u32 = register_u32_value;
-                    bit_value <<= 32 - self.range_upper_bound;
-                    bit_value >>= 32 - (self.range_upper_bound - self.range_lower_bound);
-                    format!(
-                        "{:0width$b} @ {:#010X}:{}..{}",
-                        bit_value,
-                        self.memory_location.memory_address().unwrap_or(u64::MAX),
-                        self.range_lower_bound,
-                        self.range_upper_bound,
-                        width = self.subrange_bounds().count()
-                    )
-                } else {
-                    format!(
-                        "Invalid bit range {}..{} from value {}",
-                        self.range_lower_bound, self.range_upper_bound, register_value
-                    )
-                }
-            } else {
-                format!("{}", self.value)
-            }
-        } else if !self.value.is_empty() {
-            // The `value` for this `Variable` is non empty because ...
-            // - It is base data type for which a value was determined based on the core runtime, or ...
-            // - We encountered an error somewhere, so report it to the user
-            format!("{}", self.value)
-        } else {
-            // We need to construct a 'human readable' value using `fmt::Display` to represent the values of complex types and pointers.
-            match variable_cache.has_children(self) {
-                Ok(true) => self.formatted_variable_value(variable_cache, 0_usize, false),
-                Ok(false) => {
-                    if !self.memory_location.valid() {
-                        // This condition should only be true for intermediate nodes from DWARF. These should not show up in the final `VariableCache`
-                        // If a user sees this error, then there is a logic problem in the stack unwind
-                        "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location".to_string()
-                    } else {
-                        format!(
-                            "Unimplemented: Evaluate type {:?} at location 0x{:08x?}",
-                            self.type_name, self.memory_location
-                        )
-                    }
-                }
-                Err(error) => format!(
-                    "Failed to determine children for `Variable`:{}. {:?}",
-                    self.name, error
-                ),
-            }
-        }
-    }
-
-    pub fn extract_value(&mut self, memory: &mut dyn MemoryInterface) {
-        if let SvdVariableValue::Error(_) = self.value {
-            // Nothing more to do ...
-            return;
-        }
-
-        if self.variable_node_type == SvdVariableNodeType::SvdRegister
-            || self.variable_node_type == SvdVariableNodeType::SvdField
-        {
-            // Special handling for SVD registers.
-            // Because we cache the SVD structure once per sesion, we have to re-read the actual register values whenever queried.
-            match memory.read_word_32(self.memory_location.memory_address().unwrap_or(u64::MAX)) {
-                Ok(u32_value) => {
-                    self.value = SvdVariableValue::Valid(u32_value.to_le().to_string())
-                }
-                Err(error) => {
-                    self.value = SvdVariableValue::Error(format!(
-                        "Unable to read peripheral register value @ {:#010X} : {:?}",
-                        self.memory_location.memory_address().unwrap_or(u64::MAX),
-                        error
-                    ))
-                }
-            }
-            return;
-        }
-
-        todo!("Implement `Variable::extract_value` for SvdVariable");
-    }
-
-    pub(crate) fn subrange_bounds(&self) -> Range<i64> {
-        self.range_lower_bound..self.range_upper_bound
-    }
-
-    fn formatted_variable_value(
-        &self,
-        variable_cache: &SvdVariableCache,
-        indentation: usize,
-        show_name: bool,
-    ) -> String {
-        let line_feed = if indentation == 0 { "" } else { "\n" }.to_string();
-        // Allow for chained `if let` without complaining
-        #[allow(clippy::if_same_then_else)]
-        if !self.value.is_empty() {
-            if show_name {
-                // Use the supplied value or error message.
-                format!(
-                    "{}{:\t<indentation$}{}: {} = {}",
-                    line_feed, "", self.name, self.type_name, self.value
-                )
-            } else {
-                // Use the supplied value or error message.
-                format!("{}{:\t<indentation$}{}", line_feed, "", self.value)
-            }
-        } else {
-            // Infer a human readable value using the available children of this variable.
-            let mut compound_value = String::new();
-            if let Ok(children) = variable_cache.get_children(self.variable_key) {
-                // Generic handling of other structured types.
-                // The pre- and post- fix is determined by the type of children.
-                // compound_value = format!("{} {}", compound_value, self.type_name);
-
-                if children.is_empty() {
-                    // Struct with no children -> just print type name
-                    // This is for example the None value of an Option.
-
-                    format!("{}{:\t<indentation$}{}", line_feed, "", self.name)
-                } else {
-                    let (mut pre_fix, mut post_fix): (Option<String>, Option<String>) =
-                        (None, None);
-
-                    let mut child_count: usize = 0;
-
-                    let mut is_tuple = false;
-
-                    for child in children.iter() {
-                        child_count += 1;
-                        if pre_fix.is_none() && post_fix.is_none() {
-                            if let SvdVariableName::Named(child_name) = &child.name {
-                                if child_name.starts_with("__0") {
-                                    is_tuple = true;
-                                    // Treat this structure as a tuple
-                                    pre_fix = Some(format!(
-                                        "{}{:\t<indentation$}{}: {}({}) = {}(",
-                                        line_feed,
-                                        "",
-                                        self.name,
-                                        self.type_name,
-                                        child.type_name,
-                                        self.type_name,
-                                    ));
-                                    post_fix =
-                                        Some(format!("{}{:\t<indentation$})", line_feed, ""));
-                                } else {
-                                    // Treat this structure as a `struct`
-
-                                    if show_name {
-                                        pre_fix = Some(format!(
-                                            "{}{:\t<indentation$}{}: {} = {} {{",
-                                            line_feed,
-                                            "",
-                                            self.name,
-                                            self.type_name,
-                                            self.type_name,
-                                        ));
-                                    } else {
-                                        pre_fix = Some(format!(
-                                            "{}{:\t<indentation$}{} {{",
-                                            line_feed, "", self.type_name,
-                                        ));
-                                    }
-                                    post_fix =
-                                        Some(format!("{}{:\t<indentation$}}}", line_feed, ""));
-                                }
-                            };
-                            if let Some(pre_fix) = &pre_fix {
-                                compound_value = format!("{compound_value}{pre_fix}");
-                            };
-                        }
-
-                        let print_name = !is_tuple;
-
-                        compound_value = format!(
-                            "{}{}{}",
-                            compound_value,
-                            child.formatted_variable_value(
-                                variable_cache,
-                                indentation + 1,
-                                print_name
-                            ),
-                            if child_count == children.len() {
-                                // Do not add a separator at the end of the list
-                                ""
-                            } else {
-                                ", "
-                            }
-                        );
-                    }
-                    if let Some(post_fix) = &post_fix {
-                        compound_value = format!("{compound_value}{post_fix}");
+    pub fn get_value(&self, memory: &mut dyn MemoryInterface) -> String {
+        match &self.value {
+            SvdVariableValue::Fixed(s) => s.clone(),
+            SvdVariableValue::Error(s) => s.clone(),
+            SvdVariableValue::Empty => "<empty>".to_string(),
+            SvdVariableValue::Lookup => {
+                // Allow for chained `if let` without complaining
+                if let SvdVariableNodeType::SvdRegister(address) = self.variable_node_type {
+                    let value = match memory.read_word_32(address) {
+                        Ok(u32_value) => Ok(u32_value),
+                        Err(error) => Err(format!(
+                            "Unable to read peripheral register value @ {:#010X} : {:?}",
+                            address, error
+                        )),
                     };
-                    compound_value
+
+                    match value {
+                        Ok(u32_value) => {
+                            format!("{:#010X}", u32_value)
+                        }
+                        Err(error) => error,
+                    }
+                } else if let SvdVariableNodeType::SvdField {
+                    address,
+                    bit_range_lower_bound,
+                    bit_range_upper_bound,
+                } = self.variable_node_type
+                {
+                    let value = match memory.read_word_32(address) {
+                        Ok(u32_value) => Ok(u32_value),
+                        Err(error) => Err(format!(
+                            "Unable to read peripheral register value @ {:#010X} : {:?}",
+                            address, error
+                        )),
+                    };
+
+                    // In this special case, we extract just the bits we need from the stored value of the register.
+                    match value {
+                        Ok(register_u32_value) => {
+                            let mut bit_value: u32 = register_u32_value;
+                            bit_value <<= 32 - bit_range_upper_bound;
+                            bit_value >>= 32 - (bit_range_upper_bound - bit_range_lower_bound);
+                            format!(
+                                "{:0width$b} @ {:#010X}:{}..{}",
+                                bit_value,
+                                address,
+                                bit_range_lower_bound,
+                                bit_range_upper_bound,
+                                width = (bit_range_lower_bound..bit_range_upper_bound).count()
+                            )
+                        }
+                        Err(e) => e,
+                    }
+                } else {
+                    unreachable!("Should never get here")
                 }
-            } else {
-                // We don't have a value, and we can't generate one from children values, so use the type_name
-                format!("{:\t<indentation$}{}", "", self.type_name)
             }
         }
     }
@@ -480,19 +316,25 @@ impl SvdVariable {
             // Concatenate the error messages ...
             self.value = SvdVariableValue::Error(format!("{} : {}", self.value, new_value));
         }
-        if !self.value.is_valid() {
-            // If the value is invalid, then make sure we don't propogate invalid memory location values.
-            self.memory_location = SvdVariableLocation::Unavailable;
-        }
     }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub enum SvdVariableNodeType {
     DoNotRecurse,
-    SvdRegister,
-    SvdField,
-    SvdPeripheral,
+    /// Register with address
+    SvdRegister(u64),
+    /// Field with address (of what exactly?)
+    SvdField {
+        address: u64,
+        bit_range_lower_bound: i64,
+        bit_range_upper_bound: i64,
+    },
+    /// Peripherl with peripheral base address
+    SvdPeripheral {
+        base_address: u64,
+    },
+    SvdPeripheralGroup,
     #[default]
     RecurseToBaseType,
 }
@@ -500,6 +342,8 @@ pub enum SvdVariableNodeType {
 /// The variants of VariableType allows us to streamline the conditional logic that requires specific handling depending on the nature of the variable.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub enum SvdVariableType {
+    PeripheralGroup,
+    Peripheral,
     /// For infrequently used categories of variables that does not fall into any of the other `VariableType` variants.
     Other(String),
 }
@@ -507,6 +351,8 @@ pub enum SvdVariableType {
 impl std::fmt::Display for SvdVariableType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            SvdVariableType::PeripheralGroup => write!(f, "Peripheral Group"),
+            SvdVariableType::Peripheral => write!(f, "Peripheral"),
             SvdVariableType::Other(other) => other.fmt(f),
         }
     }
@@ -518,38 +364,12 @@ pub enum SvdVariableLocation {
     /// Location of the variable is not known. This means that it has not been evaluated yet.
     #[default]
     Unknown,
-    /// The variable does not have a location currently, probably due to optimisations.
-    Unavailable,
-    /// The variable can be found in memory, at this address.
-    Address(u64),
-}
-
-impl SvdVariableLocation {
-    /// Return the memory address, if available. Otherwise an error is returned.
-    pub fn memory_address(&self) -> Result<u64, DebugError> {
-        match self {
-            SvdVariableLocation::Address(address) => Ok(*address),
-            other => Err(DebugError::UnwindIncompleteResults {
-                message: format!("Variable does not have a memory location: location={other:?}"),
-            }),
-        }
-    }
-
-    /// Check if the location is valid, ie. not an error, unsupported, or unavailable.
-    pub fn valid(&self) -> bool {
-        match self {
-            SvdVariableLocation::Address(_) | SvdVariableLocation::Unknown => true,
-            _other => false,
-        }
-    }
 }
 
 impl std::fmt::Display for SvdVariableLocation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             SvdVariableLocation::Unknown => "<unknown value>".fmt(f),
-            SvdVariableLocation::Unavailable => "<value not available>".fmt(f),
-            SvdVariableLocation::Address(address) => write!(f, "{address:#010X}"),
         }
     }
 }
@@ -577,8 +397,9 @@ impl std::fmt::Display for SvdVariableName {
 /// - If we encounter unexpected errors, they will be treated as proper errors and will propagated to the calling process as an `Err()`
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub enum SvdVariableValue {
-    /// A valid value of this variable
-    Valid(String),
+    /// Fixed value, e.g. description
+    Fixed(String),
+    Lookup,
     /// Notify the user that we encountered a problem correctly resolving the variable.
     /// - The variable will be visible to the user, as will the other field of the variable.
     /// - The contained warning message will be displayed to the user.
@@ -594,7 +415,8 @@ pub enum SvdVariableValue {
 impl std::fmt::Display for SvdVariableValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SvdVariableValue::Valid(value) => value.fmt(f),
+            SvdVariableValue::Fixed(value) => value.fmt(f),
+            SvdVariableValue::Lookup => write!(f, "<Lookup>"),
             SvdVariableValue::Error(error) => write!(f, "< {error} >",),
             SvdVariableValue::Empty => write!(
                 f,

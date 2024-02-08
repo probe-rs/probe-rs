@@ -10,8 +10,8 @@ use svd_parser::{
 };
 
 use super::svd_cache::{
-    SvdVariable, SvdVariableCache, SvdVariableLocation, SvdVariableName, SvdVariableNodeType,
-    SvdVariableType, SvdVariableValue,
+    SvdVariable, SvdVariableCache, SvdVariableName, SvdVariableNodeType, SvdVariableType,
+    SvdVariableValue,
 };
 
 /// The SVD file contents and related data
@@ -32,45 +32,46 @@ impl SvdCache {
         dap_request_id: i64,
     ) -> Result<Self, DebuggerError> {
         let svd_xml = &mut String::new();
-        match File::open(svd_file) {
-            Ok(mut svd_opened_file) => {
-                let progress_id = debug_adapter.start_progress(
-                    format!("Loading SVD file : {:?}", &svd_file).as_str(),
-                    Some(dap_request_id),
-                )?;
-                let _ = svd_opened_file.read_to_string(svd_xml);
-                let svd_cache = match svd::parse_with_config(
-                    svd_xml,
-                    &Config::default().expand(true).ignore_enums(true),
-                ) {
-                    Ok(peripheral_device) => {
-                        debug_adapter
-                            .update_progress(
-                                None,
-                                Some(format!("Done loading SVD file :{:?}", &svd_file)),
-                                progress_id,
-                            )
-                            .ok();
 
-                        Ok(SvdCache {
-                            svd_variable_cache: variable_cache_from_svd(
-                                peripheral_device,
-                                debug_adapter,
-                                progress_id,
-                            )?,
-                        })
-                    }
-                    Err(error) => Err(DebuggerError::Other(anyhow::anyhow!(
-                        "Unable to parse CMSIS-SVD file: {:?}. {:?}",
-                        svd_file,
-                        error,
-                    ))),
-                };
-                debug_adapter.end_progress(progress_id)?;
-                svd_cache
+        let mut svd_opened_file = File::open(svd_file)?;
+
+        let progress_id = debug_adapter.start_progress(
+            format!("Loading SVD file : {}", svd_file.display()).as_str(),
+            Some(dap_request_id),
+        )?;
+
+        let _ = svd_opened_file.read_to_string(svd_xml)?;
+
+        let svd_cache = match svd::parse_with_config(
+            svd_xml,
+            &Config::default().expand(true).ignore_enums(true),
+        ) {
+            Ok(peripheral_device) => {
+                debug_adapter
+                    .update_progress(
+                        None,
+                        Some(format!("Done loading SVD file :{:?}", &svd_file)),
+                        progress_id,
+                    )
+                    .ok();
+
+                Ok(SvdCache {
+                    svd_variable_cache: variable_cache_from_svd(
+                        peripheral_device,
+                        debug_adapter,
+                        progress_id,
+                    )?,
+                })
             }
-            Err(error) => Err(DebuggerError::Other(anyhow::anyhow!("{}", error))),
-        }
+            Err(error) => Err(DebuggerError::Other(anyhow::anyhow!(
+                "Unable to parse CMSIS-SVD file: {:?}. {:?}",
+                svd_file,
+                error,
+            ))),
+        };
+        debug_adapter.end_progress(progress_id)?;
+
+        svd_cache
     }
 }
 
@@ -87,7 +88,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
     // but more importantly, it helps to avoid having duplicate variable names that conflict with hal crates.
     let mut peripheral_group_variable = SvdVariable::new(
         SvdVariableName::Named(peripheral_device.name.clone()),
-        SvdVariableType::Other("Peripheral Group".to_string()),
+        SvdVariableType::PeripheralGroup,
     );
     let mut peripheral_parent_key = device_root_variable.variable_key();
 
@@ -107,12 +108,12 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                     None => {
                         peripheral_group_variable = SvdVariable::new(
                             SvdVariableName::Named(peripheral_group_name.clone()),
-                            SvdVariableType::Other("Peripheral Group".to_string()),
+                            SvdVariableType::PeripheralGroup,
                         );
 
                         peripheral_group_variable.variable_node_type =
-                            SvdVariableNodeType::SvdPeripheral;
-                        peripheral_group_variable.set_value(SvdVariableValue::Valid(
+                            SvdVariableNodeType::SvdPeripheralGroup;
+                        peripheral_group_variable.set_value(SvdVariableValue::Fixed(
                             peripheral
                                 .description
                                 .clone()
@@ -144,11 +145,12 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                 "{}.{}",
                 peripheral_group_variable.name, peripheral.name
             )),
-            SvdVariableType::Other("Peripheral".to_string()),
+            SvdVariableType::Peripheral,
         );
-        peripheral_variable.variable_node_type = SvdVariableNodeType::SvdPeripheral;
-        peripheral_variable.memory_location = SvdVariableLocation::Address(peripheral.base_address);
-        peripheral_variable.set_value(SvdVariableValue::Valid(
+        peripheral_variable.variable_node_type = SvdVariableNodeType::SvdPeripheral {
+            base_address: peripheral.base_address,
+        };
+        peripheral_variable.set_value(SvdVariableValue::Fixed(
             peripheral
                 .description
                 .clone()
@@ -170,10 +172,12 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                         .unwrap_or_else(|| "Peripheral Register".to_string()),
                 ),
             );
-            register_variable.variable_node_type = SvdVariableNodeType::SvdRegister;
-            register_variable.memory_location = SvdVariableLocation::Address(
-                peripheral.base_address + register.address_offset as u64,
-            );
+
+            let register_address = peripheral.base_address + register.address_offset as u64;
+
+            register_variable.variable_node_type =
+                SvdVariableNodeType::SvdRegister(register_address);
+
             let mut register_has_restricted_read = false;
             if register.read_action.is_some()
                 || (if let Some(register_access) = register.properties.access {
@@ -203,11 +207,11 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                             .unwrap_or_else(|| "Register Field".to_string()),
                     ),
                 );
-                field_variable.variable_node_type = SvdVariableNodeType::SvdField;
-                field_variable.memory_location = register_variable.memory_location.clone();
-                // For SVD fields, we overload the range_lower_bound and range_upper_bound as the bit range LSB and MSB.
-                field_variable.range_lower_bound = field.bit_offset() as i64;
-                field_variable.range_upper_bound = (field.bit_offset() + field.bit_width()) as i64;
+                field_variable.variable_node_type = SvdVariableNodeType::SvdField {
+                    address: register_address,
+                    bit_range_lower_bound: field.bit_offset() as i64,
+                    bit_range_upper_bound: (field.bit_offset() + field.bit_width()) as i64,
+                };
                 if register_has_restricted_read {
                     register_variable.set_value(SvdVariableValue::Error(
                         "Register access doesn't allow reading, or will have side effects."
