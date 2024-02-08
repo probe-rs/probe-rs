@@ -1406,19 +1406,23 @@ impl UnitInfo {
         frame_info: StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         // The `byte_size` is used for arrays, etc. to offset the memory location of the next element.
-        // For nested types, the `byte_size` may need to be calculated as the product of the `byte_size` and array upper bound.
+        // For nested arrays, the `byte_size` may need to be calculated as the product of the `byte_size` and array upper bound.
         child_variable.byte_size = child_variable
             .byte_size
             .or_else(|| extract_byte_size(node_die))
             .or_else(|| {
-                parent_variable.byte_size.map(|byte_size| {
-                    let array_member_count = parent_variable.subrange_bounds().count() as u64;
-                    if array_member_count > 0 {
-                        byte_size / array_member_count
-                    } else {
-                        byte_size
-                    }
-                })
+                if let VariableType::Array { .. } = parent_variable.type_name {
+                    parent_variable.byte_size.map(|byte_size| {
+                        let array_member_count = parent_variable.subrange_bounds().count() as u64;
+                        if array_member_count > 0 {
+                            byte_size / array_member_count
+                        } else {
+                            byte_size
+                        }
+                    })
+                } else {
+                    None
+                }
             });
 
         if child_variable.memory_location == VariableLocation::Unknown {
