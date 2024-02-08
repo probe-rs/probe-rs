@@ -52,6 +52,10 @@ pub trait ProgrammingLanguage {
     fn format_enum_value(&self, type_name: &VariableType, value: &VariableName) -> VariableValue {
         VariableValue::Valid(format!("{}::{}", type_name, value))
     }
+
+    fn process_tag_with_no_type(&self, tag: gimli::DwTag) -> VariableValue {
+        VariableValue::Error(format!("Error: Failed to decode {tag} type reference"))
+    }
 }
 
 #[derive(Clone)]

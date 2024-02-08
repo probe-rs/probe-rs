@@ -64,6 +64,13 @@ impl ProgrammingLanguage for C {
     fn format_enum_value(&self, _type_name: &VariableType, value: &VariableName) -> VariableValue {
         VariableValue::Valid(value.to_string())
     }
+
+    fn process_tag_with_no_type(&self, tag: gimli::DwTag) -> VariableValue {
+        match tag {
+            gimli::DW_TAG_const_type => VariableValue::Valid("<void>".to_string()),
+            _ => VariableValue::Error(format!("Error: Failed to decode {tag} type reference")),
+        }
+    }
 }
 
 fn read_c_char(

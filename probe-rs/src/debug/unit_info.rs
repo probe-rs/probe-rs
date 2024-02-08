@@ -1252,9 +1252,9 @@ impl UnitInfo {
                     }
                 },
 
-                Ok(None) => child_variable.set_value(VariableValue::Error(format!(
-                    "Error: Failed to decode {other:?} type reference"
-                ))),
+                Ok(None) => child_variable.set_value(
+                    language::from_dwarf(self.get_language()).process_tag_with_no_type(other),
+                ),
 
                 Err(error) => child_variable.set_value(VariableValue::Error(format!(
                     "Error: Failed to decode {other:?} type reference: {error:?}"
