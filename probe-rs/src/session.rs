@@ -298,9 +298,7 @@ impl Session {
             configured_trace_sink: None,
         };
 
-        session.halted_access(|sess| {
-            sequence_handle.on_connect(sess.get_riscv_interface()?)
-        })?;
+        session.halted_access(|sess| sequence_handle.on_connect(sess.get_riscv_interface()?))?;
 
         Ok(session)
     }
@@ -336,9 +334,7 @@ impl Session {
             configured_trace_sink: None,
         };
 
-        session.halted_access(|sess| {
-            sequence_handle.on_connect(sess.get_xtensa_interface()?)
-        })?;
+        session.halted_access(|sess| sequence_handle.on_connect(sess.get_xtensa_interface()?))?;
 
         Ok(session)
     }
@@ -370,22 +366,28 @@ impl Session {
     }
 
     /// Get access to the session when all cores are halted.
-    /// 
-    /// Any previously running cores will be resumed once the closure is executed. 
-    pub(crate) fn halted_access<R>(&mut self, f: impl FnOnce(&mut Self) -> Result<R, Error>) -> Result<R, Error> {
+    ///
+    /// Any previously running cores will be resumed once the closure is executed.
+    pub(crate) fn halted_access<R>(
+        &mut self,
+        f: impl FnOnce(&mut Self) -> Result<R, Error>,
+    ) -> Result<R, Error> {
         let mut resume_state = vec![];
         for (core, _) in self.list_cores() {
             let mut c = self.core(core)?;
-            resume_state.push((core, c.core_halted()?));
-            c.halt(Duration::from_millis(100))?;
+            tracing::info!("Core status: {:?}", c.status()?);
+            if !c.core_halted()? {
+                tracing::info!("Halting core...");
+                resume_state.push(core);
+                c.halt(Duration::from_millis(100))?;
+            }
         }
 
         let r = f(self);
 
-        for (core, was_halted) in resume_state {
-            if !was_halted {
-                self.core(core)?.run()?;
-            }
+        for core in resume_state {
+            tracing::info!("Resuming core...");
+            self.core(core)?.run()?;
         }
 
         r
@@ -669,9 +671,12 @@ impl Session {
 
     /// Clears all hardware breakpoints on all cores
     pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), Error> {
-        { 0..self.cores.len() }.try_for_each(|n| {
-            self.core(n)
-                .and_then(|mut core| core.clear_all_hw_breakpoints())
+        self.halted_access(|session| {
+            { 0..session.cores.len() }.try_for_each(|n| {
+                session
+                    .core(n)
+                    .and_then(|mut core| core.clear_all_hw_breakpoints())
+            })
         })
     }
 }
