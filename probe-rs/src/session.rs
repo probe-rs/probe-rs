@@ -336,14 +336,9 @@ impl Session {
             configured_trace_sink: None,
         };
 
-        {
-            // Todo: Add multicore support. How to deal with any cores that are not active and won't respond?
-            let mut core = session.core(0)?;
-
-            core.halt(Duration::from_millis(100))?;
-        }
-
-        sequence_handle.on_connect(session.get_xtensa_interface()?)?;
+        session.halted_access(|sess| {
+            sequence_handle.on_connect(sess.get_xtensa_interface()?)
+        })?;
 
         Ok(session)
     }
