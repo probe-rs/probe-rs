@@ -273,7 +273,7 @@ fn extract_byte_size(node_die: &DebuggingInformationEntry<GimliReader>) -> Optio
                 gimli::AttributeValue::Data1(byte_size) => Some(byte_size as u64),
                 gimli::AttributeValue::Data2(byte_size) => Some(byte_size as u64),
                 gimli::AttributeValue::Data4(byte_size) => Some(byte_size as u64),
-                gimli::AttributeValue::Data8(byte_size) => Some(byte_size as u64),
+                gimli::AttributeValue::Data8(byte_size) => Some(byte_size),
                 other => {
                     tracing::warn!("Unimplemented: DW_AT_byte_size value: {:?} ", other);
                     None

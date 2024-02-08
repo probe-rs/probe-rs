@@ -319,42 +319,16 @@ impl UnitInfo {
                         // - The `DW_AT_location` of the child.
                         // - The `DW_AT_byte_size` of the child.
                         // - The `DW_AT_name` of the data type node.
-                        match attr.value() {
-                            gimli::AttributeValue::UnitRef(unit_ref) => {
-                                // Reference to a type, or an entry to another type or a type modifier which will point to another type.
-                                // Before we resolve that type tree, we need to resolve the current node's memory location.
-                                // This is because the memory location of the type nodes and child variables often inherit this value.
-                                self.process_memory_location(
-                                    debug_info,
-                                    &attributes_entry,
-                                    parent_variable,
-                                    &mut child_variable,
-                                    memory,
-                                    frame_info,
-                                )?;
-
-                                // Now reslolve the referenced tree node for the type.
-                                let mut type_tree = self
-                                    .unit
-                                    .header
-                                    .entries_tree(&self.unit.abbreviations, Some(unit_ref))?;
-                                let referenced_type_tree_node = type_tree.root()?;
-                                child_variable = self.extract_type(
-                                    debug_info,
-                                    referenced_type_tree_node,
-                                    parent_variable,
-                                    child_variable,
-                                    memory,
-                                    cache,
-                                    frame_info,
-                                )?;
-                            }
-                            other_attribute_value => {
-                                child_variable.set_value(VariableValue::Error(format!(
-                                    "Unimplemented: Attribute Value for DW_AT_type {other_attribute_value:?}"
-                                )));
-                            }
-                        }
+                        child_variable = self.process_type_attribute(
+                            &attr,
+                            debug_info,
+                            &attributes_entry,
+                            parent_variable,
+                            child_variable,
+                            memory,
+                            frame_info,
+                            cache,
+                        )?;
                     }
                     gimli::DW_AT_enum_class => match attr.value() {
                         gimli::AttributeValue::Flag(is_enum_class) => {
@@ -516,6 +490,58 @@ impl UnitInfo {
             }
         }
         cache.update_variable_and_value(&mut child_variable, memory)?;
+
+        Ok(child_variable)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn process_type_attribute(
+        &self,
+        attr: &gimli::Attribute<GimliReader>,
+        debug_info: &DebugInfo,
+        attributes_entry: &gimli::DebuggingInformationEntry<GimliReader>,
+        parent_variable: &Variable,
+        mut child_variable: Variable,
+        memory: &mut dyn MemoryInterface,
+        frame_info: StackFrameInfo<'_>,
+        cache: &mut VariableCache,
+    ) -> Result<Variable, DebugError> {
+        match attr.value() {
+            gimli::AttributeValue::UnitRef(unit_ref) => {
+                // Reference to a type, or an entry to another type or a type modifier which will point to another type.
+                // Before we resolve that type tree, we need to resolve the current node's memory location.
+                // This is because the memory location of the type nodes and child variables often inherit this value.
+                self.process_memory_location(
+                    debug_info,
+                    attributes_entry,
+                    parent_variable,
+                    &mut child_variable,
+                    memory,
+                    frame_info,
+                )?;
+
+                // Now reslolve the referenced tree node for the type.
+                let mut type_tree = self
+                    .unit
+                    .header
+                    .entries_tree(&self.unit.abbreviations, Some(unit_ref))?;
+                let referenced_type_tree_node = type_tree.root()?;
+                child_variable = self.extract_type(
+                    debug_info,
+                    referenced_type_tree_node,
+                    parent_variable,
+                    child_variable,
+                    memory,
+                    cache,
+                    frame_info,
+                )?;
+            }
+            other_attribute_value => {
+                child_variable.set_value(VariableValue::Error(format!(
+                    "Unimplemented: Attribute Value for DW_AT_type {other_attribute_value:?}"
+                )));
+            }
+        }
 
         Ok(child_variable)
     }
@@ -1232,25 +1258,18 @@ impl UnitInfo {
             other @ (gimli::DW_TAG_typedef
             | gimli::DW_TAG_const_type
             | gimli::DW_TAG_volatile_type) => match node.entry().attr(gimli::DW_AT_type) {
-                Ok(Some(data_type_attribute)) => match data_type_attribute.value() {
-                    gimli::AttributeValue::UnitRef(unit_ref) => {
-                        child_variable = self.expand_indirect_type(
-                            debug_info,
-                            unit_ref,
-                            cache,
-                            parent_variable,
-                            child_variable,
-                            memory,
-                            frame_info,
-                        )?;
-                    }
-                    other_attribute_value => {
-                        child_variable.set_value(VariableValue::Error(format!(
-                            "Unimplemented: Attribute Value for {other:?} {:.100}",
-                            format!("{other_attribute_value:?}")
-                        )));
-                    }
-                },
+                Ok(Some(attr)) => {
+                    child_variable = self.process_type_attribute(
+                        &attr,
+                        debug_info,
+                        node.entry(),
+                        parent_variable,
+                        child_variable,
+                        memory,
+                        frame_info,
+                        cache,
+                    )?
+                }
 
                 Ok(None) => child_variable.set_value(
                     language::from_dwarf(self.get_language()).process_tag_with_no_type(other),
@@ -1343,55 +1362,6 @@ impl UnitInfo {
         cache.update_variable_and_value(&mut array_member_variable, memory)?;
 
         Ok(())
-    }
-
-    /// Create child variable entries to represent array members and their values.
-    #[allow(clippy::too_many_arguments)]
-    fn expand_indirect_type(
-        &self,
-        debug_info: &DebugInfo,
-        unit_ref: UnitOffset,
-        cache: &mut VariableCache,
-        parent_variable: &Variable,
-        mut child_variable: Variable,
-        memory: &mut dyn MemoryInterface,
-        frame_info: StackFrameInfo<'_>,
-    ) -> Result<Variable, DebugError> {
-        let mut type_tree = self
-            .unit
-            .header
-            .entries_tree(&self.unit.abbreviations, Some(unit_ref))?;
-
-        let Ok(type_tree_node) = type_tree.root() else {
-            return Ok(child_variable);
-        };
-
-        self.process_memory_location(
-            debug_info,
-            type_tree_node.entry(),
-            parent_variable,
-            &mut child_variable,
-            memory,
-            frame_info,
-        )?;
-        child_variable = self.extract_type(
-            debug_info,
-            type_tree_node,
-            parent_variable,
-            child_variable,
-            memory,
-            cache,
-            frame_info,
-        )?;
-
-        self.handle_memory_location_special_cases(
-            unit_ref,
-            &mut child_variable,
-            parent_variable,
-            memory,
-        );
-
-        Ok(child_variable)
     }
 
     /// Process a memory location for a variable, by first evaluating the `byte_size`, and then calling the `self.extract_location`.
