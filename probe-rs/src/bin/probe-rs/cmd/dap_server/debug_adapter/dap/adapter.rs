@@ -9,7 +9,6 @@ use super::{
 };
 use crate::cmd::dap_server::{
     debug_adapter::protocol::{ProtocolAdapter, ProtocolHelper},
-    peripherals::svd_cache::{SvdVariable, SvdVariableCache, SvdVariableName},
     server::{
         configuration::ConsoleLog,
         core_data::CoreHandle,
@@ -158,18 +157,18 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let arguments: ReadMemoryArguments = get_arguments(self, request)?;
 
         let memory_offset = arguments.offset.unwrap_or(0);
-        let mut address: u64 =
-            if let Ok(address) = parse::<u64>(arguments.memory_reference.as_ref()) {
-                address + memory_offset as u64
-            } else {
+        let mut address: u64 = match parse::<u64>(arguments.memory_reference.as_ref()) {
+            Ok(address) => address + memory_offset as u64,
+            Err(err) => {
                 return self.send_response::<()>(
                     request,
                     Err(&DebuggerError::Other(anyhow!(
-                        "Could not read any data at address {:?}",
+                        "Failed to parse memory reference {:?}: {err}",
                         arguments.memory_reference
                     ))),
                 );
-            };
+            }
+        };
         let mut num_bytes_unread = arguments.count as usize;
         // The probe-rs API does not return partially read data.
         // It either succeeds for the whole buffer or not. However, doing single byte reads is slow, so we will
@@ -494,48 +493,38 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             response_body.type_ = Some(format!("{:?}", variable.type_name));
                             response_body.variables_reference = variables_reference.into();
                         } else {
-                            let mut svd_variable: Option<SvdVariable> = None;
-                            let mut svd_variable_cache: Option<&mut SvdVariableCache> = None;
-
                             // If we made it to here, no register or variable matched the expression.
-                            #[allow(clippy::manual_flatten)]
-                            for variable_cache_entry in
-                                [target_core.core_data.core_peripherals.as_mut().map(
-                                    |core_peripherals| &mut core_peripherals.svd_variable_cache,
-                                )]
+                            for variable_cache_entry in [target_core
+                                .core_data
+                                .core_peripherals
+                                .as_ref()
+                                .map(|core_peripherals| &core_peripherals.svd_variable_cache)]
+                            .into_iter()
+                            .flatten()
                             {
-                                if let Some(search_cache) = variable_cache_entry {
-                                    if let Ok(expression_as_key) = expression.parse::<ObjectRef>() {
-                                        svd_variable =
-                                            search_cache.get_variable_by_key(expression_as_key);
-                                    } else {
-                                        svd_variable = search_cache.get_variable_by_name(
-                                            &SvdVariableName::Named(expression.clone()),
+                                let svd_variable = if let Ok(expression_as_key) =
+                                    expression.parse::<ObjectRef>()
+                                {
+                                    variable_cache_entry.get_variable_by_key(expression_as_key)
+                                } else {
+                                    variable_cache_entry.get_variable_by_name(&expression)
+                                };
+
+                                if let Some(svd_variable) = svd_variable {
+                                    let (variables_reference, named_child_variables_cnt) =
+                                        get_svd_variable_reference(
+                                            svd_variable,
+                                            variable_cache_entry,
                                         );
-                                    }
-                                    if svd_variable.is_some() {
-                                        svd_variable_cache = Some(search_cache);
-                                        break;
-                                    }
+                                    response_body.indexed_variables = None;
+                                    response_body.memory_reference =
+                                        svd_variable.memory_reference();
+                                    response_body.named_variables = Some(named_child_variables_cnt);
+                                    response_body.result =
+                                        svd_variable.get_value(&mut target_core.core);
+                                    response_body.type_ = svd_variable.type_name();
+                                    response_body.variables_reference = variables_reference.into();
                                 }
-                            }
-                            // Check if we found a variable.
-                            if let (Some(variable), Some(variable_cache)) =
-                                (svd_variable, svd_variable_cache)
-                            {
-                                let (
-                                    variables_reference,
-                                    named_child_variables_cnt,
-                                    indexed_child_variables_cnt,
-                                ) = get_svd_variable_reference(&variable, variable_cache);
-                                response_body.indexed_variables = Some(indexed_child_variables_cnt);
-                                response_body.memory_reference = variable.memory_reference();
-                                response_body.named_variables = Some(named_child_variables_cnt);
-                                response_body.result = variable.get_value(&mut target_core.core);
-                                response_body.type_ = Some(format!("{:?}", variable.type_name));
-                                response_body.variables_reference = variables_reference.into();
-                            } else {
-                                // If we made it to here, no register or variable matched the expression.
                             }
                         }
                     }
@@ -1174,7 +1163,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let mut dap_scopes: Vec<Scope> = vec![];
 
         if let Some(core_peripherals) = &mut target_core.core_data.core_peripherals {
-            let peripherals_root_variable = core_peripherals.svd_variable_cache.root_variable();
+            let peripherals_root_variable = core_peripherals.svd_variable_cache.root_variable_key();
             dap_scopes.push(Scope {
                 line: None,
                 column: None,
@@ -1186,7 +1175,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 presentation_hint: Some("registers".to_string()),
                 named_variables: None,
                 source: None,
-                variables_reference: peripherals_root_variable.variable_key().into(),
+                variables_reference: peripherals_root_variable.into(),
             });
         };
 
@@ -1374,34 +1363,28 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     .iter_mut()
                     // Convert the `probe_rs::debug::Variable` to `probe_rs_debugger::dap_types::Variable`
                     .map(|variable| {
-                        let (
-                            variables_reference,
-                            named_child_variables_cnt,
-                            indexed_child_variables_cnt,
-                        ) = get_svd_variable_reference(
-                            variable,
-                            &mut core_peripherals.svd_variable_cache,
-                        );
+                        let (variables_reference, named_child_variables_cnt) =
+                            get_svd_variable_reference(
+                                variable,
+                                &core_peripherals.svd_variable_cache,
+                            );
 
                         // We use fully qualified Peripheral.Register.Field form to ensure the `evaluate` request can find the right registers and fields by name.
-                        let name = if let SvdVariableName::Named(variable_name) = &variable.name {
-                            if let Some(last_part) = variable_name.split_terminator('.').last() {
+                        let name =
+                            if let Some(last_part) = variable.name.split_terminator('.').last() {
                                 last_part.to_string()
                             } else {
-                                variable_name.to_string()
-                            }
-                        } else {
-                            variable.name.to_string()
-                        };
+                                variable.name.to_string()
+                            };
 
                         Variable {
                             name,
                             evaluate_name: Some(variable.name.to_string()),
                             memory_reference: variable.memory_reference(),
-                            indexed_variables: Some(indexed_child_variables_cnt),
+                            indexed_variables: None,
                             named_variables: Some(named_child_variables_cnt),
                             presentation_hint: None,
-                            type_: Some(variable.type_name.to_string()),
+                            type_: variable.type_name(),
                             value: {
                                 // The SVD cache is not automatically refreshed on every stack trace, and we only need to refresh the field values.
                                 variable.get_value(&mut target_core.core)

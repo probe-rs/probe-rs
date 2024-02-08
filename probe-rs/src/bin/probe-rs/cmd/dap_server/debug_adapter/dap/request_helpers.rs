@@ -386,33 +386,21 @@ pub(crate) fn get_variable_reference(
 /// (`variable_reference`, `named_child_variables_cnt`, `indexed_child_variables_cnt`)
 pub(crate) fn get_svd_variable_reference(
     parent_variable: &SvdVariable,
-    cache: &mut SvdVariableCache,
-) -> (ObjectRef, i64, i64) {
-    if !parent_variable.is_valid() {
-        return (ObjectRef::Invalid, 0, 0);
-    }
-
+    cache: &SvdVariableCache,
+) -> (ObjectRef, i64) {
     let mut named_child_variables_cnt = 0;
-    let mut indexed_child_variables_cnt = 0;
     if let Ok(children) = cache.get_children(parent_variable.variable_key()) {
-        for child_variable in children {
-            if child_variable.is_indexed() {
-                indexed_child_variables_cnt += 1;
-            } else {
-                named_child_variables_cnt += 1;
-            }
-        }
+        named_child_variables_cnt = children.len();
     };
 
-    if named_child_variables_cnt > 0 || indexed_child_variables_cnt > 0 {
+    if named_child_variables_cnt > 0 {
         (
             parent_variable.variable_key(),
-            named_child_variables_cnt,
-            indexed_child_variables_cnt,
+            named_child_variables_cnt as i64,
         )
     } else {
         // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
-        (ObjectRef::Invalid, 0, 0)
+        (ObjectRef::Invalid, 0)
     }
 }
 

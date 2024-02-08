@@ -73,8 +73,6 @@ pub enum VariableName {
     RegistersRoot,
     /// Top-level variable for local scoped variables, child of a stack frame variable.
     LocalScopeRoot,
-    /// Top-level variable for CMSIS-SVD file Device peripherals/registers/fields.
-    PeripheralScopeRoot,
     /// Artificial variable, without a name (e.g. enum discriminant)
     Artifical,
     /// Anonymous namespace
@@ -94,7 +92,6 @@ impl std::fmt::Display for VariableName {
             VariableName::StaticScopeRoot => write!(f, "Static Variable"),
             VariableName::RegistersRoot => write!(f, "Platform Register"),
             VariableName::LocalScopeRoot => write!(f, "Function Variable"),
-            VariableName::PeripheralScopeRoot => write!(f, "Peripheral Variable"),
             VariableName::Artifical => write!(f, "<artifical>"),
             VariableName::AnonymousNamespace => write!(f, "<anonymous_namespace>"),
             VariableName::Namespace(name) => name.fmt(f),
