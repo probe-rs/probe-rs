@@ -3,12 +3,13 @@ use super::{
     dap_types,
     repl_commands_helpers::{build_expanded_commands, command_completions},
     request_helpers::{
-        disassemble_target_memory, get_dap_source, get_variable_reference,
-        set_instruction_breakpoint,
+        disassemble_target_memory, get_dap_source, get_svd_variable_reference,
+        get_variable_reference, set_instruction_breakpoint,
     },
 };
 use crate::cmd::dap_server::{
     debug_adapter::protocol::{ProtocolAdapter, ProtocolHelper},
+    peripherals::svd_cache::{SvdVariable, SvdVariableCache, SvdVariableName, SvdVariableNodeType},
     server::{
         configuration::ConsoleLog,
         core_data::CoreHandle,
@@ -26,7 +27,7 @@ use probe_rs::{
     architecture::{arm::ArmError, riscv::communication_interface::RiscvError},
     debug::{
         stack_frame::StackFrameInfo, ColumnType, ObjectRef, SourceLocation, SteppingMode,
-        VariableName, VariableNodeType, VerifiedBreakpoint,
+        VariableName, VerifiedBreakpoint,
     },
     Architecture::Riscv,
     CoreStatus, Error, HaltReason, MemoryInterface, RegisterValue,
@@ -443,15 +444,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         let mut variable_cache: Option<&mut probe_rs::debug::VariableCache> = None;
                         // Search through available caches and stop as soon as the variable is found
                         #[allow(clippy::manual_flatten)]
-                        for variable_cache_entry in
-                            [
-                                stack_frame.local_variables.as_mut(),
-                                stack_frame.static_variables.as_mut(),
-                                target_core.core_data.core_peripherals.as_mut().map(
-                                    |core_peripherals| &mut core_peripherals.svd_variable_cache,
-                                ),
-                            ]
-                        {
+                        for variable_cache_entry in [
+                            stack_frame.local_variables.as_mut(),
+                            stack_frame.static_variables.as_mut(),
+                        ] {
                             if let Some(search_cache) = variable_cache_entry {
                                 if search_cache.len() == 1 {
                                     // This is a special case where we have a single variable in the cache, and it is the root of a scope.
@@ -477,12 +473,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                         &VariableName::Named(expression.clone()),
                                     );
                                 }
-                                if let Some(variable) = &mut variable {
-                                    if variable.variable_node_type == VariableNodeType::SvdRegister
-                                        || variable.variable_node_type == VariableNodeType::SvdField
-                                    {
-                                        variable.extract_value(&mut target_core.core, search_cache)
-                                    }
+                                if variable.is_some() {
                                     variable_cache = Some(search_cache);
                                     break;
                                 }
@@ -503,7 +494,57 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             response_body.type_ = Some(format!("{:?}", variable.type_name));
                             response_body.variables_reference = variables_reference.into();
                         } else {
+                            let mut svd_variable: Option<SvdVariable> = None;
+                            let mut svd_variable_cache: Option<&mut SvdVariableCache> = None;
+
                             // If we made it to here, no register or variable matched the expression.
+                            #[allow(clippy::manual_flatten)]
+                            for variable_cache_entry in
+                                [target_core.core_data.core_peripherals.as_mut().map(
+                                    |core_peripherals| &mut core_peripherals.svd_variable_cache,
+                                )]
+                            {
+                                if let Some(search_cache) = variable_cache_entry {
+                                    if let Ok(expression_as_key) = expression.parse::<ObjectRef>() {
+                                        svd_variable =
+                                            search_cache.get_variable_by_key(expression_as_key);
+                                    } else {
+                                        svd_variable = search_cache.get_variable_by_name(
+                                            &SvdVariableName::Named(expression.clone()),
+                                        );
+                                    }
+                                    if let Some(variable) = &mut svd_variable {
+                                        if variable.variable_node_type
+                                            == SvdVariableNodeType::SvdRegister
+                                            || variable.variable_node_type
+                                                == SvdVariableNodeType::SvdField
+                                        {
+                                            variable.extract_value(&mut target_core.core)
+                                        }
+                                        svd_variable_cache = Some(search_cache);
+                                        break;
+                                    }
+                                }
+                            }
+                            // Check if we found a variable.
+                            if let (Some(variable), Some(variable_cache)) =
+                                (svd_variable, svd_variable_cache)
+                            {
+                                let (
+                                    variables_reference,
+                                    named_child_variables_cnt,
+                                    indexed_child_variables_cnt,
+                                ) = get_svd_variable_reference(&variable, variable_cache);
+                                response_body.indexed_variables = Some(indexed_child_variables_cnt);
+                                response_body.memory_reference =
+                                    Some(format!("{}", variable.memory_location));
+                                response_body.named_variables = Some(named_child_variables_cnt);
+                                response_body.result = variable.get_value(variable_cache);
+                                response_body.type_ = Some(format!("{:?}", variable.type_name));
+                                response_body.variables_reference = variables_reference.into();
+                            } else {
+                                // If we made it to here, no register or variable matched the expression.
+                            }
                         }
                     }
                 }
@@ -1345,13 +1386,13 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             variables_reference,
                             named_child_variables_cnt,
                             indexed_child_variables_cnt,
-                        ) = get_variable_reference(
+                        ) = get_svd_variable_reference(
                             variable,
                             &mut core_peripherals.svd_variable_cache,
                         );
 
                         // We use fully qualified Peripheral.Register.Field form to ensure the `evaluate` request can find the right registers and fields by name.
-                        let name = if let VariableName::Named(variable_name) = &variable.name {
+                        let name = if let SvdVariableName::Named(variable_name) = &variable.name {
                             if let Some(last_part) = variable_name.split_terminator('.').last() {
                                 last_part.to_string()
                             } else {
@@ -1374,10 +1415,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             type_: Some(variable.type_name.to_string()),
                             value: {
                                 // The SVD cache is not automatically refreshed on every stack trace, and we only need to refresh the field values.
-                                variable.extract_value(
-                                    &mut target_core.core,
-                                    &core_peripherals.svd_variable_cache,
-                                );
+                                variable.extract_value(&mut target_core.core);
                                 variable.get_value(&core_peripherals.svd_variable_cache)
                             },
                             variables_reference: variables_reference.into(),

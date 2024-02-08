@@ -1,5 +1,6 @@
 use crate::cmd::dap_server::{
     debug_adapter::dap::dap_types::{DisassembledInstruction, Source},
+    peripherals::svd_cache::{SvdVariable, SvdVariableCache},
     server::{core_data::CoreHandle, session_data::BreakpointType},
     DebuggerError,
 };
@@ -374,6 +375,41 @@ pub(crate) fn get_variable_reference(
         // We have not yet cached the children for this reference.
         // Provide DAP Client with a reference so that it will explicitly ask for children when the user expands it.
         (parent_variable.variable_key(), 0, 0)
+    } else {
+        // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
+        (ObjectRef::Invalid, 0, 0)
+    }
+}
+
+/// The DAP protocol uses three related values to determine how to invoke the `Variables` request.
+/// This function retrieves that information from the `DebugInfo::VariableCache` and returns it as
+/// (`variable_reference`, `named_child_variables_cnt`, `indexed_child_variables_cnt`)
+pub(crate) fn get_svd_variable_reference(
+    parent_variable: &SvdVariable,
+    cache: &mut SvdVariableCache,
+) -> (ObjectRef, i64, i64) {
+    if !parent_variable.is_valid() {
+        return (ObjectRef::Invalid, 0, 0);
+    }
+
+    let mut named_child_variables_cnt = 0;
+    let mut indexed_child_variables_cnt = 0;
+    if let Ok(children) = cache.get_children(parent_variable.variable_key()) {
+        for child_variable in children {
+            if child_variable.is_indexed() {
+                indexed_child_variables_cnt += 1;
+            } else {
+                named_child_variables_cnt += 1;
+            }
+        }
+    };
+
+    if named_child_variables_cnt > 0 || indexed_child_variables_cnt > 0 {
+        (
+            parent_variable.variable_key(),
+            named_child_variables_cnt,
+            indexed_child_variables_cnt,
+        )
     } else {
         // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
         (ObjectRef::Invalid, 0, 0)

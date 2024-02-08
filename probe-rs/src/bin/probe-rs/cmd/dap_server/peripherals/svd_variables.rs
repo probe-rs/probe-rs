@@ -2,14 +2,16 @@ use crate::cmd::dap_server::{
     debug_adapter::{dap::adapter::DebugAdapter, protocol::ProtocolAdapter},
     DebuggerError,
 };
-use probe_rs::debug::{
-    Variable, VariableCache, VariableLocation, VariableName, VariableNodeType, VariableType,
-};
 use std::{fmt::Debug, fs::File, io::Read, path::Path};
 use svd_parser::{
     self as svd,
     svd::{Access, Device},
     Config,
+};
+
+use super::svd_cache::{
+    SvdVariable, SvdVariableCache, SvdVariableLocation, SvdVariableName, SvdVariableNodeType,
+    SvdVariableType, SvdVariableValue,
 };
 
 /// The SVD file contents and related data
@@ -19,7 +21,7 @@ pub struct SvdCache {
     /// Unlike other VariableCache instances, it will only be built once per DebugSession.
     /// After that, only the SVD fields values change values, and the data for these will be re-read
     /// every time they are queried by the debugger.
-    pub(crate) svd_variable_cache: VariableCache,
+    pub(crate) svd_variable_cache: SvdVariableCache,
 }
 
 impl SvdCache {
@@ -72,41 +74,45 @@ impl SvdCache {
     }
 }
 
-/// Create a [`probe_rs::debug::VariableCache`] from a Device that was parsed from a CMSIS-SVD file.
+/// Create a [`probe_rs::debug::SvdVariableCache`] from a Device that was parsed from a CMSIS-SVD file.
 pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
     peripheral_device: Device,
     debug_adapter: &mut DebugAdapter<P>,
     progress_id: i64,
-) -> Result<probe_rs::debug::VariableCache, DebuggerError> {
-    let mut svd_cache = probe_rs::debug::VariableCache::new_svd_cache();
+) -> Result<SvdVariableCache, DebuggerError> {
+    let mut svd_cache = SvdVariableCache::new_svd_cache();
     let device_root_variable = svd_cache.root_variable();
 
-    // Adding the Peripheral Group Name as an additional level in the structure helps to keep the 'variable tree' more compact, but more importantly, it helps to avoid having duplicate variable names that conflict with hal crates.
-    let mut peripheral_group_variable = Variable::new(None, None);
-    peripheral_group_variable.name = VariableName::Named(peripheral_device.name.clone());
+    // Adding the Peripheral Group Name as an additional level in the structure helps to keep the 'variable tree' more compact,
+    // but more importantly, it helps to avoid having duplicate variable names that conflict with hal crates.
+    let mut peripheral_group_variable = SvdVariable::new(
+        SvdVariableName::Named(peripheral_device.name.clone()),
+        SvdVariableType::Other("Peripheral Group".to_string()),
+    );
     let mut peripheral_parent_key = device_root_variable.variable_key();
+
     for peripheral in &peripheral_device.peripherals {
-        if let (Some(peripheral_group_name), VariableName::Named(variable_group_name)) =
+        if let (Some(peripheral_group_name), SvdVariableName::Named(variable_group_name)) =
             (&peripheral.group_name, &peripheral_group_variable.name)
         {
             if variable_group_name != peripheral_group_name {
                 // Before we create a new group variable, check if we have one by that name already.
                 match svd_cache.get_variable_by_name_and_parent(
-                    &VariableName::Named(peripheral_group_name.clone()),
+                    &SvdVariableName::Named(peripheral_group_name.clone()),
                     device_root_variable.variable_key(),
                 ) {
                     Some(existing_peripharal_group_variable) => {
                         peripheral_group_variable = existing_peripharal_group_variable
                     }
                     None => {
-                        peripheral_group_variable = Variable::new(None, None);
-                        peripheral_group_variable.name =
-                            VariableName::Named(peripheral_group_name.clone());
-                        peripheral_group_variable.type_name =
-                            VariableType::Other("Peripheral Group".to_string());
+                        peripheral_group_variable = SvdVariable::new(
+                            SvdVariableName::Named(peripheral_group_name.clone()),
+                            SvdVariableType::Other("Peripheral Group".to_string()),
+                        );
+
                         peripheral_group_variable.variable_node_type =
-                            VariableNodeType::SvdPeripheral;
-                        peripheral_group_variable.set_value(probe_rs::debug::VariableValue::Valid(
+                            SvdVariableNodeType::SvdPeripheral;
+                        peripheral_group_variable.set_value(SvdVariableValue::Valid(
                             peripheral
                                 .description
                                 .clone()
@@ -133,15 +139,16 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
             }
         }
 
-        let mut peripheral_variable = Variable::new(None, None);
-        peripheral_variable.name = VariableName::Named(format!(
-            "{}.{}",
-            peripheral_group_variable.name, peripheral.name
-        ));
-        peripheral_variable.type_name = VariableType::Other("Peripheral".to_string());
-        peripheral_variable.variable_node_type = VariableNodeType::SvdPeripheral;
-        peripheral_variable.memory_location = VariableLocation::Address(peripheral.base_address);
-        peripheral_variable.set_value(probe_rs::debug::VariableValue::Valid(
+        let mut peripheral_variable = SvdVariable::new(
+            SvdVariableName::Named(format!(
+                "{}.{}",
+                peripheral_group_variable.name, peripheral.name
+            )),
+            SvdVariableType::Other("Peripheral".to_string()),
+        );
+        peripheral_variable.variable_node_type = SvdVariableNodeType::SvdPeripheral;
+        peripheral_variable.memory_location = SvdVariableLocation::Address(peripheral.base_address);
+        peripheral_variable.set_value(SvdVariableValue::Valid(
             peripheral
                 .description
                 .clone()
@@ -150,21 +157,23 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
         svd_cache.add_variable(peripheral_parent_key, &mut peripheral_variable)?;
 
         for register in peripheral.all_registers() {
-            let mut register_variable = Variable::new(None, None);
-            register_variable.name = VariableName::Named(format!(
-                "{}.{}",
-                &peripheral_variable.name,
-                register.name.clone()
-            ));
-            register_variable.type_name = VariableType::Other(
-                register
-                    .description
-                    .clone()
-                    .unwrap_or_else(|| "Peripheral Register".to_string()),
+            let mut register_variable = SvdVariable::new(
+                SvdVariableName::Named(format!(
+                    "{}.{}",
+                    &peripheral_variable.name,
+                    register.name.clone()
+                )),
+                SvdVariableType::Other(
+                    register
+                        .description
+                        .clone()
+                        .unwrap_or_else(|| "Peripheral Register".to_string()),
+                ),
             );
-            register_variable.variable_node_type = VariableNodeType::SvdRegister;
-            register_variable.memory_location =
-                VariableLocation::Address(peripheral.base_address + register.address_offset as u64);
+            register_variable.variable_node_type = SvdVariableNodeType::SvdRegister;
+            register_variable.memory_location = SvdVariableLocation::Address(
+                peripheral.base_address + register.address_offset as u64,
+            );
             let mut register_has_restricted_read = false;
             if register.read_action.is_some()
                 || (if let Some(register_access) = register.properties.access {
@@ -173,7 +182,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                     false
                 })
             {
-                register_variable.set_value(probe_rs::debug::VariableValue::Error(
+                register_variable.set_value(SvdVariableValue::Error(
                     "Register access doesn't allow reading, or will have side effects.".to_string(),
                 ));
                 register_has_restricted_read = true;
@@ -181,25 +190,26 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
             svd_cache.add_variable(peripheral_variable.variable_key(), &mut register_variable)?;
 
             for field in register.fields() {
-                let mut field_variable = Variable::new(None, None);
-                field_variable.name = VariableName::Named(format!(
-                    "{}.{}",
-                    &register_variable.name,
-                    field.name.clone()
-                ));
-                field_variable.type_name = VariableType::Other(
-                    field
-                        .description
-                        .clone()
-                        .unwrap_or_else(|| "Register Field".to_string()),
+                let mut field_variable = SvdVariable::new(
+                    SvdVariableName::Named(format!(
+                        "{}.{}",
+                        &register_variable.name,
+                        field.name.clone()
+                    )),
+                    SvdVariableType::Other(
+                        field
+                            .description
+                            .clone()
+                            .unwrap_or_else(|| "Register Field".to_string()),
+                    ),
                 );
-                field_variable.variable_node_type = VariableNodeType::SvdField;
+                field_variable.variable_node_type = SvdVariableNodeType::SvdField;
                 field_variable.memory_location = register_variable.memory_location.clone();
                 // For SVD fields, we overload the range_lower_bound and range_upper_bound as the bit range LSB and MSB.
                 field_variable.range_lower_bound = field.bit_offset() as i64;
                 field_variable.range_upper_bound = (field.bit_offset() + field.bit_width()) as i64;
                 if register_has_restricted_read {
-                    register_variable.set_value(probe_rs::debug::VariableValue::Error(
+                    register_variable.set_value(SvdVariableValue::Error(
                         "Register access doesn't allow reading, or will have side effects."
                             .to_string(),
                     ));
@@ -210,12 +220,12 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                         false
                     })
                 {
-                    field_variable.set_value(probe_rs::debug::VariableValue::Error(
+                    field_variable.set_value(SvdVariableValue::Error(
                         "Field access doesn't allow reading, or will have side effects."
                             .to_string(),
                     ));
                     // If we can't read any of the bits, then don't read the register either.
-                    register_variable.set_value(probe_rs::debug::VariableValue::Error(
+                    register_variable.set_value(SvdVariableValue::Error(
                         "Some fields' access doesn't allow reading, or will have side effects."
                             .to_string(),
                     ));

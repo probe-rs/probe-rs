@@ -121,15 +121,6 @@ impl VariableCache {
         VariableCache::new(static_root_variable)
     }
 
-    /// Create a new cache for SVD variables
-    pub fn new_svd_cache() -> Self {
-        let mut device_root_variable = Variable::new(None, None);
-        device_root_variable.variable_node_type = VariableNodeType::DoNotRecurse;
-        device_root_variable.name = VariableName::PeripheralScopeRoot;
-
-        VariableCache::new(device_root_variable)
-    }
-
     /// Get the root variable of the cache
     pub fn root_variable(&self) -> Variable {
         self.variable_hash_map[&self.root_variable_key].clone()
@@ -561,7 +552,7 @@ impl VariableCache {
 
 #[cfg(test)]
 mod test {
-    use gimli::{DebugInfoOffset, UnitOffset};
+    use gimli::{DebugInfoOffset, UnitOffset, UnitSectionOffset};
     use termtree::Tree;
 
     use crate::debug::{
@@ -626,7 +617,11 @@ mod test {
 
     #[test]
     fn find_children() {
-        let mut cache = VariableCache::new_svd_cache();
+        let mut cache = VariableCache::new_dwarf_cache(
+            UnitSectionOffset::DebugInfoOffset(DebugInfoOffset(0)),
+            UnitOffset(0),
+            VariableName::Named("root".to_string()),
+        );
         let root_key = cache.root_variable().variable_key;
 
         let var_1 = cache.create_variable(root_key, None, None).unwrap();
@@ -642,7 +637,11 @@ mod test {
 
     #[test]
     fn find_entry() {
-        let mut cache = VariableCache::new_svd_cache();
+        let mut cache = VariableCache::new_dwarf_cache(
+            UnitSectionOffset::DebugInfoOffset(DebugInfoOffset(0)),
+            UnitOffset(0),
+            VariableName::Named("root".to_string()),
+        );
         let root_key = cache.root_variable().variable_key;
 
         let var_1 = cache.create_variable(root_key, None, None).unwrap();
@@ -669,7 +668,11 @@ mod test {
     ///     |
     ///     +-- [var_7]
     fn build_test_tree() -> (VariableCache, Vec<Variable>) {
-        let mut cache = VariableCache::new_svd_cache();
+        let mut cache = VariableCache::new_dwarf_cache(
+            UnitSectionOffset::DebugInfoOffset(DebugInfoOffset(0)),
+            UnitOffset(0),
+            VariableName::Named("root".to_string()),
+        );
         let root_key = cache.root_variable().variable_key;
 
         let var_1 = cache.create_variable(root_key, None, None).unwrap();
