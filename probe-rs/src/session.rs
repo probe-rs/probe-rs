@@ -688,10 +688,7 @@ static_assertions::assert_impl_all!(Session: Send);
 impl Drop for Session {
     #[tracing::instrument(name = "session_drop", skip(self))]
     fn drop(&mut self) {
-        if let Err(err) = { 0..self.cores.len() }.try_for_each(|i| {
-            self.core(i)
-                .and_then(|mut core| core.clear_all_hw_breakpoints())
-        }) {
+        if let Err(err) = self.clear_all_hw_breakpoints() {
             tracing::warn!(
                 "Could not clear all hardware breakpoints: {:?}",
                 anyhow!(err)
