@@ -3,7 +3,11 @@ use super::{
     function_die::FunctionDie, variable::*, DebugError, DebugRegisters, EndianReader,
     SourceLocation, VariableCache,
 };
-use crate::{core::RegisterValue, debug::stack_frame::StackFrameInfo, Error, MemoryInterface};
+use crate::{
+    core::RegisterValue,
+    debug::{language, stack_frame::StackFrameInfo},
+    Error, MemoryInterface,
+};
 use gimli::{AttributeValue::Language, EvaluationResult, Location, UnitOffset};
 use num_traits::Zero;
 
@@ -373,6 +377,24 @@ impl UnitInfo {
                     },
                     gimli::DW_AT_const_value => match attr.value() {
                         gimli::AttributeValue::Udata(const_value) => {
+                            child_variable.set_value(VariableValue::Valid(const_value.to_string()));
+                        }
+                        gimli::AttributeValue::Sdata(const_value) => {
+                            child_variable.set_value(VariableValue::Valid(const_value.to_string()));
+                        }
+                        // TODO: DataX impls here were added specifically for C enum values
+                        // and I'm completely ignoring the "may be signed, unsigned or float" part
+                        // of the standard. I'm sure this will bite in the future.
+                        gimli::AttributeValue::Data1(const_value) => {
+                            child_variable.set_value(VariableValue::Valid(const_value.to_string()));
+                        }
+                        gimli::AttributeValue::Data2(const_value) => {
+                            child_variable.set_value(VariableValue::Valid(const_value.to_string()));
+                        }
+                        gimli::AttributeValue::Data4(const_value) => {
+                            child_variable.set_value(VariableValue::Valid(const_value.to_string()));
+                        }
+                        gimli::AttributeValue::Data8(const_value) => {
                             child_variable.set_value(VariableValue::Valid(const_value.to_string()));
                         }
                         other_attribute_value => {
@@ -1016,10 +1038,9 @@ impl UnitInfo {
                                 ),
                             };
 
-                        VariableValue::Valid(format!(
-                            "{}::{}",
-                            child_variable.type_name, enumumerator_value
-                        ))
+                        // TODO this might be more expensive than we'd like
+                        language::from_dwarf(self.get_language())
+                            .format_enum_value(&child_variable.type_name, &enumumerator_value)
                     } else {
                         VariableValue::Error(format!(
                             "Unsupported variable location {:?}",

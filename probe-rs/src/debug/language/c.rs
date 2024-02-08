@@ -1,7 +1,7 @@
 use crate::{
     debug::{
         language::ProgrammingLanguage, DebugError, Variable, VariableCache, VariableLocation,
-        VariableType, VariableValue,
+        VariableName, VariableType, VariableValue,
     },
     MemoryInterface,
 };
@@ -59,6 +59,10 @@ impl ProgrammingLanguage for C {
             },
             _other => VariableValue::Empty,
         }
+    }
+
+    fn format_enum_value(&self, _type_name: &VariableType, value: &VariableName) -> VariableValue {
+        VariableValue::Valid(value.to_string())
     }
 }
 

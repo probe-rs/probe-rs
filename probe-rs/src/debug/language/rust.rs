@@ -140,6 +140,10 @@ impl ProgrammingLanguage for Rust {
             }),
         }
     }
+
+    fn format_enum_value(&self, type_name: &VariableType, value: &VariableName) -> VariableValue {
+        VariableValue::Valid(format!("{}::{}", type_name, value))
+    }
 }
 
 /// Traits and Impl's to read from, and write to, memory value based on Variable::typ and Variable::location.

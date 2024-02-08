@@ -1,7 +1,7 @@
 use gimli::DwLang;
 
 use crate::{
-    debug::{DebugError, Variable, VariableCache, VariableValue},
+    debug::{DebugError, Variable, VariableCache, VariableName, VariableType, VariableValue},
     MemoryInterface,
 };
 
@@ -41,6 +41,10 @@ pub trait ProgrammingLanguage {
                 variable.type_name
             ),
         })
+    }
+
+    fn format_enum_value(&self, type_name: &VariableType, value: &VariableName) -> VariableValue {
+        VariableValue::Valid(format!("{}::{}", type_name, value))
     }
 }
 
