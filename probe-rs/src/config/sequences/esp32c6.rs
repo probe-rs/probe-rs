@@ -72,14 +72,14 @@ impl RiscvDebugSequence for ESP32C6 {
         // interface.write_word_32(0x600b1034, 0x80000000)?;
         // interface.write_word_32(0x600b1038, 0x10000000)?;
 
-        interface.perform_memory_write_sysbus(0x600b1034, &[0x80000000u32])?;
-        interface.perform_memory_write_sysbus(0x600b1038, &[0x10000000u32])?;
+        // interface.perform_memory_write_sysbus(0x600b1034, &[0x80000000u32])?;
+        // interface.perform_memory_write_sysbus(0x600b1038, &[0x10000000u32])?;
 
-        use crate::architecture::riscv::Dmcontrol;
+        // use crate::architecture::riscv::Dmcontrol;
 
-        let mut dmcontrol = Dmcontrol(0);
-        dmcontrol.set_dmactive(false);
-        interface.write_dm_register(dmcontrol)?;
+        // let mut dmcontrol = Dmcontrol(0);
+        // dmcontrol.set_dmactive(false);
+        // interface.write_dm_register(dmcontrol)?;
 
         Ok(())
     }

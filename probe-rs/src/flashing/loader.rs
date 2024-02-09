@@ -143,9 +143,25 @@ impl FlashLoader {
         file.read_to_end(&mut buf)?;
 
         let flash_size_result = session.halted_access(|sess| {
+            // TODO only do this if memprot is enabled
+            {
+                let mut core = sess.core(0)?;
+                core.reset_catch_set()?;
+                core.run()?;
+            }
+            
             // Figure out flash size from the memory map. We need a different bootloader for each size.
             Ok(match target.debug_sequence.clone() {
                 DebugSequence::Riscv(sequence) => {
+                    sequence.reset(sess.get_riscv_interface()?)?;
+                    {
+                        let mut core = sess.core(0)?;
+                        // wait for the reset to happen
+                        core.wait_for_core_halted(std::time::Duration::from_millis(100))?;
+                        tracing::info!("Caught reset");
+                        core.reset_catch_clear()?;
+                    }
+                    sequence.on_connect(sess.get_riscv_interface()?)?;
                     sequence.detect_flash_size(sess.get_riscv_interface()?)
                 }
                 DebugSequence::Xtensa(sequence) => {
