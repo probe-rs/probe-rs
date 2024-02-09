@@ -349,34 +349,21 @@ impl UnitInfo {
                             )));
                         }
                     },
-                    gimli::DW_AT_const_value => match attr.value() {
-                        gimli::AttributeValue::Udata(const_value) => {
-                            child_variable.set_value(VariableValue::Valid(const_value.to_string()));
-                        }
-                        gimli::AttributeValue::Sdata(const_value) => {
-                            child_variable.set_value(VariableValue::Valid(const_value.to_string()));
-                        }
-                        // TODO: DataX impls here were added specifically for C enum values
-                        // and I'm completely ignoring the "may be signed, unsigned or float" part
-                        // of the standard. I'm sure this will bite in the future.
-                        gimli::AttributeValue::Data1(const_value) => {
-                            child_variable.set_value(VariableValue::Valid(const_value.to_string()));
-                        }
-                        gimli::AttributeValue::Data2(const_value) => {
-                            child_variable.set_value(VariableValue::Valid(const_value.to_string()));
-                        }
-                        gimli::AttributeValue::Data4(const_value) => {
-                            child_variable.set_value(VariableValue::Valid(const_value.to_string()));
-                        }
-                        gimli::AttributeValue::Data8(const_value) => {
-                            child_variable.set_value(VariableValue::Valid(const_value.to_string()));
-                        }
-                        other_attribute_value => {
-                            child_variable.set_value(VariableValue::Error(format!(
-                                "Unimplemented: Attribute Value for DW_AT_const_value: {other_attribute_value:?}"
-                            )));
-                        }
-                    },
+                    gimli::DW_AT_const_value => {
+                        let attr_value = attr.value();
+                        let variable_value = if let Some(const_value) = attr_value.udata_value() {
+                            VariableValue::Valid(const_value.to_string())
+                        } else if let Some(const_value) = attr_value.sdata_value() {
+                            VariableValue::Valid(const_value.to_string())
+                        } else {
+                            VariableValue::Error(format!(
+                                "Unimplemented: Attribute Value for DW_AT_const_value: {:?}",
+                                attr_value
+                            ))
+                        };
+
+                        child_variable.set_value(variable_value)
+                    }
                     gimli::DW_AT_alignment => {
                         // TODO: Figure out when (if at all) we need to do anything with DW_AT_alignment for the purposes of decoding data values.
                     }
