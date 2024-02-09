@@ -1629,17 +1629,27 @@ impl UnitInfo {
         self.evaluate_expression(memory, valid_expression, frame_info)
     }
 
-    /// Evaluate a gimli::Expression as a valid memory location.
+    /// Evaluate a [`gimli::Expression`] as a valid memory location.
     /// Return values are implemented as follows:
-    /// - Result<_, DebugError>: This happens when we encounter an error we did not expect, and will propagate upwards until the debugger request is failed. NOT GRACEFUL, and should be avoided.
-    /// - Result<ExpressionResult::Value(),_>:  The value is statically stored in the binary, and can be returned, and has no relevant memory location.
-    /// - Result<ExpressionResult::Location(),_>:  One of the variants of VariableLocation, and needs to be interpreted for handling the 'expected' errors we encounter during evaluation.
+    /// - `Result<_, DebugError>`: This happens when we encounter an error we did not expect, and will propagate upwards until the debugger request is failed. NOT GRACEFUL, and should be avoided.
+    /// - `Result<ExpressionResult::Value(),_>`: The value is statically stored in the binary, and can be returned, and has no relevant memory location.
+    /// - `Result<ExpressionResult::Location(),_>`: One of the variants of VariableLocation, and needs to be interpreted for handling the 'expected' errors we encounter during evaluation.
     pub(crate) fn evaluate_expression(
         &self,
         memory: &mut dyn MemoryInterface,
         expression: gimli::Expression<GimliReader>,
         frame_info: StackFrameInfo<'_>,
     ) -> Result<ExpressionResult, DebugError> {
+        fn evaluate_address(address: u64, memory: &mut dyn MemoryInterface) -> ExpressionResult {
+            let location = if address >= u32::MAX as u64 && !memory.supports_native_64bit_access() {
+                VariableLocation::Error(format!("The memory location for this variable value ({:#010X}) is invalid. Please report this as a bug.", address))
+            } else {
+                VariableLocation::Address(address)
+            };
+
+            ExpressionResult::Location(location)
+        }
+
         let pieces = self.expression_to_piece(memory, expression, frame_info)?;
 
         if pieces.is_empty() {
@@ -1662,18 +1672,7 @@ impl UnitInfo {
                 let error = "The value of this variable may have been optimized out of the debug info, by the compiler.".to_string();
                 ExpressionResult::Location(VariableLocation::Error(error))
             }
-            Location::Address { address } if !memory.supports_native_64bit_access() => {
-                let location = if *address < u32::MAX as u64 {
-                    VariableLocation::Address(*address)
-                } else {
-                    VariableLocation::Error(format!("The memory location for this variable value ({:#010X}) is invalid. Please report this as a bug.", address))
-                };
-
-                ExpressionResult::Location(location)
-            }
-            Location::Address { address } => {
-                ExpressionResult::Location(VariableLocation::Address(*address))
-            }
+            Location::Address { address } => evaluate_address(*address, memory),
             Location::Value { value } => {
                 let value = match value {
                     gimli::Value::Generic(value) => value.to_string(),
@@ -1698,18 +1697,7 @@ impl UnitInfo {
                     .and_then(|register| register.value)
                 {
                     match address.try_into() {
-                        Ok(location) if !memory.supports_native_64bit_access() => {
-                            let location = if location < u32::MAX as u64 {
-                                VariableLocation::Address(location)
-                            } else {
-                                VariableLocation::Error(format!("The memory location for this variable value ({location:#010X}) is invalid. Please report this as a bug."))
-                            };
-
-                            ExpressionResult::Location(location)
-                        }
-                        Ok(location) => {
-                            ExpressionResult::Location(VariableLocation::Address(location))
-                        }
+                        Ok(address) => evaluate_address(address, memory),
                         Err(error) => ExpressionResult::Location(VariableLocation::Error(format!(
                             "Error: Cannot convert register value to location address: {error:?}"
                         ))),
