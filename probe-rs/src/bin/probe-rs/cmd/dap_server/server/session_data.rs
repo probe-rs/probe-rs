@@ -188,7 +188,6 @@ impl SessionData {
         // By default, we will have a small delay between polls, and will disable it if we know the last poll returned data, on the assumption that there might be at least one more batch of data.
         let mut suggest_delay_required = true;
         let mut status_of_cores: Vec<CoreStatus> = vec![];
-        let target_memory_map = &self.session.target().memory_map.clone();
 
         let timestamp_offset = self.timestamp_offset;
 
@@ -226,7 +225,6 @@ impl SessionData {
                         #[allow(clippy::unwrap_used)]
                         match target_core.attach_to_rtt(
                             debug_adapter,
-                            target_memory_map,
                             core_config.program_binary.as_ref().unwrap(),
                             &core_config.rtt_config,
                             timestamp_offset,

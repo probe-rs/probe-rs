@@ -1,18 +1,24 @@
 use gimli::DwLang;
 
 use crate::{
-    debug::{DebugError, Variable, VariableCache, VariableValue},
+    debug::{DebugError, Variable, VariableCache, VariableName, VariableType, VariableValue},
     MemoryInterface,
 };
 
-/// C, C89, C99, C11
+/// C, C89, C99, C11, ...
 pub mod c;
 /// Rust
 pub mod rust;
 
 pub fn from_dwarf(dwarf_language: DwLang) -> Box<dyn ProgrammingLanguage> {
     match dwarf_language {
-        gimli::DW_LANG_C => Box::new(c::C),
+        // Handle all C-like languages the same now.
+        // We may have to split it later if this is not good enough.
+        gimli::DW_LANG_C
+        | gimli::DW_LANG_C89
+        | gimli::DW_LANG_C99
+        | gimli::DW_LANG_C11
+        | gimli::DW_LANG_C17 => Box::new(c::C),
         gimli::DW_LANG_Rust => Box::new(rust::Rust),
         _ => Box::new(UnknownLanguage),
     }
@@ -41,6 +47,14 @@ pub trait ProgrammingLanguage {
                 variable.type_name
             ),
         })
+    }
+
+    fn format_enum_value(&self, type_name: &VariableType, value: &VariableName) -> VariableValue {
+        VariableValue::Valid(format!("{}::{}", type_name, value))
+    }
+
+    fn process_tag_with_no_type(&self, tag: gimli::DwTag) -> VariableValue {
+        VariableValue::Error(format!("Error: Failed to decode {tag} type reference"))
     }
 }
 
