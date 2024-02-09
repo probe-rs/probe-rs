@@ -1911,33 +1911,34 @@ impl UnitInfo {
     }
 }
 
-/// Gets necessary register informations for the DWARF resolver.
+/// Gets necessary register information for the DWARF resolver.
 fn provide_register(
     stack_frame_registers: &DebugRegisters,
     register: gimli::Register,
     base_type: UnitOffset,
     evaluation: &mut gimli::Evaluation<EndianReader>,
 ) -> Result<EvaluationResult<EndianReader>, DebugError> {
-    let raw_value = match stack_frame_registers
+    match stack_frame_registers
         .get_register_by_dwarf_id(register.0)
         .and_then(|reg| reg.value)
     {
-        Some(raw_value) => {
-            if base_type != gimli::UnitOffset(0) {
-                return Err(DebugError::UnwindIncompleteResults {
-                    message: format!("Unimplemented: Support for type {base_type:?} in `RequiresRegister` request is not yet implemented."
-                )});
-            }
-            raw_value
+        Some(raw_value) if base_type == gimli::UnitOffset(0) => {
+            let register_value = gimli::Value::Generic(raw_value.try_into()?);
+            Ok(evaluation.resume_with_register(register_value)?)
         }
-        None => {
-            return Err(DebugError::UnwindIncompleteResults {
-                    message: format!("Error while calculating `Variable::memory_location`. No value for register #:{}.",
-                    register.0
-                )});
-        }
-    };
-    Ok(evaluation.resume_with_register(gimli::Value::Generic(raw_value.try_into()?))?)
+        Some(_) => Err(DebugError::UnwindIncompleteResults {
+            message: format!(
+                "Unimplemented: Support for type {:?} in `RequiresRegister`",
+                base_type
+            ),
+        }),
+        None => Err(DebugError::UnwindIncompleteResults {
+            message: format!(
+                "Error while calculating `Variable::memory_location`. No value for register #:{}.",
+                register.0
+            ),
+        }),
+    }
 }
 
 /// Gets necessary framebase information for the DWARF resolver.
