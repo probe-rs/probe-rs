@@ -20,6 +20,11 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
     ) -> Result<Option<usize>, crate::Error> {
         Ok(None)
     }
+
+    /// Perform a SoC wide reset
+    fn soc_reset(&self, _session: &mut Session) -> Result<(), crate::Error> {
+        Ok(())
+    }
 }
 
 /// The default sequences that is used for RISC-V chips that do not specify a specific sequence.

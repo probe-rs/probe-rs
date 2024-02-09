@@ -1,6 +1,7 @@
 //! Sequence for the ESP32C3.
 
 use std::sync::Arc;
+use std::time::Duration;
 
 use probe_rs_target::Chip;
 
@@ -31,6 +32,15 @@ impl ESP32C3 {
 
 impl RiscvDebugSequence for ESP32C3 {
     fn on_connect(&self, session: &mut Session) -> Result<(), crate::Error> {
+        let interface = session.get_riscv_interface()?;
+        tracing::info!("Checking memprot status...");
+        if interface.read_word_32(0x600C10A8)? & 0x1 != 0
+            || interface.read_word_32(0x600C10C0)? & 0x1 != 0
+        {
+            // if memprot is enabled, we must reset to disable it
+            self.soc_reset(session)?;
+        }
+
         tracing::info!("Disabling esp32c3 watchdogs...");
         let interface = session.get_riscv_interface()?;
 
@@ -61,5 +71,33 @@ impl RiscvDebugSequence for ESP32C3 {
     fn detect_flash_size(&self, session: &mut Session) -> Result<Option<usize>, crate::Error> {
         self.inner
             .detect_flash_size_riscv(session.get_riscv_interface()?)
+    }
+
+    fn soc_reset(&self, session: &mut Session) -> Result<(), crate::Error> {
+        tracing::info!("SoC Reset...");
+        {
+            let mut core = session.core(0)?;
+            core.halt(Duration::from_millis(100))?;
+            core.reset_catch_set()?;
+            core.run()?;
+        }
+
+        let interface = session.get_riscv_interface()?;
+        // trigger a full SoC reset which resets all domains execept the RTC domain
+        interface.write_word_32(0x60008000, 0x9c00a000)?;
+        interface.write_word_32(0x6001F068, 0)?;
+        // Workaround for stuck in cpu start during calibration.
+        // By writing zero to TIMG_RTCCALICFG_REG, we are disabling calibration
+        interface.write_word_32(0x6001F068, 0)?;
+
+        {
+            let mut core = session.core(0)?;
+            // wait for the reset to happen
+            core.wait_for_core_halted(std::time::Duration::from_millis(100))?;
+            tracing::info!("Caught reset");
+            core.reset_catch_clear()?;
+        }
+
+        Ok(())
     }
 }
