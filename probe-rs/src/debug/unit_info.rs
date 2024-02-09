@@ -819,12 +819,11 @@ impl UnitInfo {
                 Ok(optional_discr_value_attr) => {
                     match optional_discr_value_attr {
                         Some(discr_attr) => {
-                            match discr_attr.value() {
-                                gimli::AttributeValue::Data1(const_value) => {
-                                    VariantRole::Variant(const_value as u64)
-                                }
-                                other_attribute_value => {
-                                    variable.set_value(VariableValue::Error(format!("Unimplemented: Attribute Value for DW_AT_discr_value: {:.100}", format!("{other_attribute_value:?}"))));
+                            let attr_value = discr_attr.value();
+                            match attr_value.udata_value() {
+                                Some(const_value) => VariantRole::Variant(const_value),
+                                None => {
+                                    variable.set_value(VariableValue::Error(format!("Unimplemented: Attribute Value for DW_AT_discr_value: {:.100}", format!("{attr_value:?}"))));
                                     VariantRole::Variant(u64::MAX)
                                 }
                             }
