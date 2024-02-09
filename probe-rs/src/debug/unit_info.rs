@@ -66,7 +66,7 @@ impl UnitInfo {
 
         let mut entries_cursor = self.unit.entries();
         while let Ok(Some((_depth, current))) = entries_cursor.next_dfs() {
-            let Some(die) = FunctionDie::new(current.clone(), self) else {
+            let Some(mut die) = FunctionDie::new(current.clone(), self) else {
                 continue;
             };
 
@@ -76,7 +76,7 @@ impl UnitInfo {
                 if !(ranges.begin <= address && address < ranges.end) {
                     continue;
                 }
-                let mut die = die.clone();
+
                 // Check if we are actually in an inlined function
                 die.low_pc = ranges.begin;
                 die.high_pc = ranges.end;
@@ -121,14 +121,15 @@ impl UnitInfo {
         address: u64,
         offset: UnitOffset,
     ) -> Result<Vec<FunctionDie>, DebugError> {
-        let mut current_depth = 0;
-        let mut abort_depth = 0;
-        let mut functions = Vec::new();
-
         // If we don't have any entries at our unit offset, return an empty vector.
         let Ok(mut cursor) = self.unit.entries_at_offset(offset) else {
             return Ok(vec![]);
         };
+
+        let mut current_depth = 0;
+        let mut abort_depth = 0;
+        let mut functions = Vec::new();
+
         while let Ok(Some((depth, current))) = cursor.next_dfs() {
             current_depth += depth;
             if current_depth < abort_depth {
