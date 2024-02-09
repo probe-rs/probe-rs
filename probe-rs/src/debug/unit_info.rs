@@ -1768,10 +1768,7 @@ impl UnitInfo {
                     read_memory(size, memory, address, &mut evaluation)?
                 }
                 EvaluationResult::RequiresFrameBase => {
-                    match provide_frame_base(frame_info.frame_base, &mut evaluation) {
-                        Ok(value) => value,
-                        Err(value) => return Err(value),
-                    }
+                    provide_frame_base(frame_info.frame_base, &mut evaluation)?
                 }
                 EvaluationResult::RequiresRegister {
                     register,
@@ -1782,10 +1779,7 @@ impl UnitInfo {
                     evaluation.resume_with_relocated_address(address_index)?
                 }
                 EvaluationResult::RequiresCallFrameCfa => {
-                    match provide_cfa(frame_info.canonical_frame_address, &mut evaluation) {
-                        Ok(value) => value,
-                        Err(value) => return Err(value),
-                    }
+                    provide_cfa(frame_info.canonical_frame_address, &mut evaluation)?
                 }
                 unimplemented_expression => {
                     return Err(DebugError::UnwindIncompleteResults {
