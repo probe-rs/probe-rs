@@ -8,7 +8,7 @@ use crate::{
     debug::{language, stack_frame::StackFrameInfo},
     MemoryInterface,
 };
-use gimli::{AttributeValue::Language, EvaluationResult, Location, UnitOffset};
+use gimli::{AttributeValue, EvaluationResult, Location, UnitOffset};
 use num_traits::Zero;
 
 /// The result of `UnitInfo::evaluate_expression()` can be the value of a variable, or a memory location.
@@ -20,28 +20,36 @@ pub(crate) enum ExpressionResult {
 /// A struct containing information about a single compilation unit.
 pub struct UnitInfo {
     pub(crate) unit: gimli::Unit<GimliReader, usize>,
+    dwarf_language: gimli::DwLang,
+    language: Box<dyn language::ProgrammingLanguage>,
 }
 
 impl UnitInfo {
     /// Create a new `UnitInfo` from a `gimli::Unit`.
     pub fn new(unit: gimli::Unit<GimliReader, usize>) -> Self {
-        Self { unit }
+        let dwarf_language = if let Ok(Some(AttributeValue::Language(unit_language))) = unit
+            .header
+            .entries_tree(&unit.abbreviations, None)
+            .and_then(|mut tree| tree.root()?.entry().attr_value(gimli::DW_AT_language))
+        {
+            unit_language
+        } else {
+            tracing::warn!("Unable to retrieve DW_AT_language attribute, assuming Rust.");
+            gimli::DW_LANG_Rust
+        };
+
+        Self {
+            unit,
+            dwarf_language,
+            language: language::from_dwarf(dwarf_language),
+        }
     }
 
     /// Retrieve the value of the `DW_AT_language` attribute of the compilation unit.
     ///
     /// In the unlikely event that we are unable to retrieve the language, we assume Rust.
     pub(crate) fn get_language(&self) -> gimli::DwLang {
-        let Ok(Some(Language(unit_language))) = self
-            .unit
-            .header
-            .entries_tree(&self.unit.abbreviations, None)
-            .and_then(|mut tree| tree.root()?.entry().attr_value(gimli::DW_AT_language))
-        else {
-            tracing::warn!("Unable to retrieve DW_AT_language attribute, assuming Rust.");
-            return gimli::DW_LANG_Rust;
-        };
-        unit_language
+        self.dwarf_language
     }
 
     /// Get the DIEs for the function containing the given address.
@@ -1064,8 +1072,7 @@ impl UnitInfo {
                                 ),
                             };
 
-                        // TODO this might be more expensive than we'd like
-                        language::from_dwarf(self.get_language())
+                        self.language
                             .format_enum_value(&child_variable.type_name, &enumumerator_value)
                     } else {
                         VariableValue::Error(format!(
@@ -1271,9 +1278,7 @@ impl UnitInfo {
                     )?
                 }
 
-                Ok(None) => child_variable.set_value(
-                    language::from_dwarf(self.get_language()).process_tag_with_no_type(other),
-                ),
+                Ok(None) => child_variable.set_value(self.language.process_tag_with_no_type(other)),
 
                 Err(error) => child_variable.set_value(VariableValue::Error(format!(
                     "Error: Failed to decode {other:?} type reference: {error:?}"
