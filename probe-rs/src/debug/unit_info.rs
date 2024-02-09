@@ -6,7 +6,7 @@ use super::{
 use crate::{
     core::RegisterValue,
     debug::{language, stack_frame::StackFrameInfo},
-    Error, MemoryInterface,
+    MemoryInterface,
 };
 use gimli::{AttributeValue::Language, EvaluationResult, Location, UnitOffset};
 use num_traits::Zero;
@@ -1985,38 +1985,41 @@ fn read_memory(
     address: u64,
     evaluation: &mut gimli::Evaluation<EndianReader>,
 ) -> Result<EvaluationResult<EndianReader>, DebugError> {
-    fn decode_error(error: Vec<u8>) -> DebugError {
-        DebugError::UnwindIncompleteResults {
-            message: format!("Unexpected error while dereferencing debug expressions from target memory: {error:?}. Please report this as a bug.")
-        }
+    /// Reads `SIZE` bytes from the memory.
+    fn read<const SIZE: usize>(
+        memory: &mut dyn MemoryInterface,
+        address: u64,
+    ) -> Result<[u8; SIZE], DebugError> {
+        let mut buff = [0u8; SIZE];
+        memory.read(address, &mut buff).map_err(|error| {
+            DebugError::UnwindIncompleteResults {
+                message: format!("Unexpected error while reading debug expressions from target memory: {error:?}. Please report this as a bug.")
+            }
+        })?;
+        Ok(buff)
     }
 
-    fn read_error(error: Error) -> DebugError {
-        DebugError::UnwindIncompleteResults {
-            message: format!("Unexpected error while reading debug expressions from target memory: {error:?}. Please report this as a bug.")
+    let val = match size {
+        1 => {
+            let buff = read::<1>(memory, address)?;
+            gimli::Value::U8(buff[0])
         }
-    }
-
-    fn size_error(x: u8) -> DebugError {
-        DebugError::UnwindIncompleteResults {
-            message: format!(
-                "Unimplemented: Requested memory with size {x}, which is not supported yet."
-            ),
+        2 => {
+            let buff = read::<2>(memory, address)?;
+            gimli::Value::U16(u16::from_le_bytes(buff))
         }
-    }
-
-    let mut buff = vec![0u8; size as usize];
-    memory.read(address, &mut buff).map_err(read_error)?;
-    Ok(match size {
-        1 => evaluation.resume_with_memory(gimli::Value::U8(buff[0]))?,
-        2 => evaluation.resume_with_memory(gimli::Value::U16(u16::from_le_bytes(
-            buff.try_into().map_err(decode_error)?,
-        )))?,
-        4 => evaluation.resume_with_memory(gimli::Value::U32(u32::from_le_bytes(
-            buff.try_into().map_err(decode_error)?,
-        )))?,
+        4 => {
+            let buff = read::<4>(memory, address)?;
+            gimli::Value::U32(u32::from_le_bytes(buff))
+        }
         x => {
-            return Err(size_error(x));
+            return Err(DebugError::UnwindIncompleteResults {
+                message: format!(
+                    "Unimplemented: Requested memory with size {x}, which is not supported yet."
+                ),
+            });
         }
-    })
+    };
+
+    Ok(evaluation.resume_with_memory(val)?)
 }
