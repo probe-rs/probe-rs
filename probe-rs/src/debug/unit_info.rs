@@ -814,34 +814,33 @@ impl UnitInfo {
         node: &gimli::EntriesTreeNode<GimliReader>,
         variable: &mut Variable,
     ) -> Result<(), DebugError> {
-        if node.entry().tag() == gimli::DW_TAG_variant {
-            variable.role = match node.entry().attr(gimli::DW_AT_discr_value) {
-                Ok(optional_discr_value_attr) => {
-                    match optional_discr_value_attr {
-                        Some(discr_attr) => {
-                            let attr_value = discr_attr.value();
-                            match attr_value.udata_value() {
-                                Some(const_value) => VariantRole::Variant(const_value),
-                                None => {
-                                    variable.set_value(VariableValue::Error(format!("Unimplemented: Attribute Value for DW_AT_discr_value: {:.100}", format!("{attr_value:?}"))));
-                                    VariantRole::Variant(u64::MAX)
-                                }
-                            }
-                        }
-                        None => {
-                            // In the case where the variable is a DW_TAG_variant, but has NO DW_AT_discr_value, then this is the "default" to be used.
-                            VariantRole::Variant(u64::MAX)
-                        }
-                    }
-                }
-                Err(_error) => {
+        variable.role = match node.entry().attr(gimli::DW_AT_discr_value) {
+            Ok(Some(discr_value_attr)) => {
+                let attr_value = discr_value_attr.value();
+                let variant = if let Some(const_value) = attr_value.udata_value() {
+                    const_value
+                } else {
                     variable.set_value(VariableValue::Error(format!(
-                        "Error: Retrieving DW_AT_discr_value for variable {variable:?}"
+                        "Unimplemented: Attribute Value for DW_AT_discr_value: {:.100}",
+                        format!("{attr_value:?}")
                     )));
-                    VariantRole::NonVariant
-                }
-            };
-        }
+                    u64::MAX
+                };
+
+                VariantRole::Variant(variant)
+            }
+            Ok(None) => {
+                // In the case where the variable is a DW_TAG_variant, but has NO DW_AT_discr_value, then this is the "default" to be used.
+                VariantRole::Variant(u64::MAX)
+            }
+            Err(_error) => {
+                variable.set_value(VariableValue::Error(format!(
+                    "Error: Retrieving DW_AT_discr_value for variable {variable:?}"
+                )));
+                VariantRole::NonVariant
+            }
+        };
+
         Ok(())
     }
 
