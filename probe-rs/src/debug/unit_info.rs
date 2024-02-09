@@ -760,16 +760,17 @@ impl UnitInfo {
 
                                         if let Ok(mut ranges) = debug_info
                                             .dwarf
-                                            .ranges(&self.unit, range_lists_offset) {
-                                                while let Ok(Some(ranges)) = ranges.next() {
-                                                    // We have established positive scope, so no need to continue.
-                                                    if ranges.begin <= program_counter && program_counter < ranges.end {
-                                                        in_scope = true;
-                                                        break;
-                                                    }
+                                            .ranges(&self.unit, range_lists_offset)
+                                        {
+                                            while let Ok(Some(ranges)) = ranges.next() {
+                                                // We have established positive scope, so no need to continue.
+                                                if ranges.begin <= program_counter && program_counter < ranges.end {
+                                                    in_scope = true;
+                                                    break;
                                                 }
                                             }
                                         }
+                                    }
                                     other_range_attribute => {
                                         parent_variable.set_value(VariableValue::Error(format!("Found unexpected scope attribute: {:?} for variable {:?}", other_range_attribute, parent_variable.name)));
                                     }
