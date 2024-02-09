@@ -1315,7 +1315,7 @@ impl UnitInfo {
             // Once we know the type of the first member, we can set the array type.
             child_variable.type_name = VariableType::Array {
                 count: child_variable.range_upper_bound as usize,
-                item_type_name: array_member_variable.type_name.clone().to_string(),
+                item_type_name: array_member_variable.type_name.to_string(),
             };
             // Once we know the byte_size of the first member, we can set the array byte_size.
             if let Some(array_member_byte_size) = array_member_variable.byte_size {
