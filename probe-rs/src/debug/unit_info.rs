@@ -790,24 +790,19 @@ impl UnitInfo {
                     // They are followed by a sibling of `DW_TAG_member` with name '__0' that has all the attributes needed to resolve the value.
                     // TODO: If there are multiple types supported, then I suspect there will be additional `DW_TAG_member` siblings. We will need to match those correctly.
                 }
-                other => {
-                    // One of two things are true here. Either we've encountered a DwTag that is implemented in `extract_type`, and whould be ignored, or we have encountered an unimplemented  DwTag.
-                    match other {
-                        gimli::DW_TAG_inlined_subroutine | // Inlined subroutines are handled at the [StackFame] level
-                        gimli::DW_TAG_base_type |
-                        gimli::DW_TAG_pointer_type |
-                        gimli::DW_TAG_structure_type |
-                        gimli::DW_TAG_enumeration_type |
-                        gimli::DW_TAG_array_type |
-                        gimli::DW_TAG_subroutine_type |
-                        gimli::DW_TAG_subprogram |
-                        gimli::DW_TAG_union_type => {
-                            // These will be processed elsewhere, or not at all, until we discover a use case that needs to be implemented.
-                        }
-                        unimplemented => {
-                            parent_variable.set_value(VariableValue::Error(format!("Unimplemented: Encountered unimplemented DwTag {:?} for Variable {:?}", unimplemented.static_string(), parent_variable.name)));
-                        }
-                    }
+                gimli::DW_TAG_inlined_subroutine | // Inlined subroutines are handled at the [StackFame] level
+                gimli::DW_TAG_base_type |
+                gimli::DW_TAG_pointer_type |
+                gimli::DW_TAG_structure_type |
+                gimli::DW_TAG_enumeration_type |
+                gimli::DW_TAG_array_type |
+                gimli::DW_TAG_subroutine_type |
+                gimli::DW_TAG_subprogram |
+                gimli::DW_TAG_union_type => {
+                    // These will be processed elsewhere, or not at all, until we discover a use case that needs to be implemented.
+                }
+                unimplemented => {
+                    parent_variable.set_value(VariableValue::Error(format!("Unimplemented: Encountered unimplemented DwTag {:?} for Variable {:?}", unimplemented.static_string(), parent_variable.name)));
                 }
             }
         }
