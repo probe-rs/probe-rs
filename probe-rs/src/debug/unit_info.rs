@@ -1641,114 +1641,92 @@ impl UnitInfo {
         frame_info: StackFrameInfo<'_>,
     ) -> Result<ExpressionResult, DebugError> {
         let pieces = self.expression_to_piece(memory, expression, frame_info)?;
+
         if pieces.is_empty() {
-            Ok(ExpressionResult::Location(VariableLocation::Error(
-                format!("Error: expr_to_piece() returned 0 results: {pieces:?}"),
-            )))
-        } else if pieces.len() > 1 {
-            Ok(ExpressionResult::Location(VariableLocation::Error(
-                "<unsupported memory implementation>".to_string(),
-            )))
-        } else {
-            match &pieces[0].location {
-                Location::Empty => {
-                    // This means the value was optimized away.
-                    Ok(ExpressionResult::Location(VariableLocation::Unavailable))
-                }
-                Location::Address { address } => {
-                    if address.is_zero() {
-                        Ok(ExpressionResult::Location(VariableLocation::Error("The value of this variable may have been optimized out of the debug info, by the compiler.".to_string())))
-                    } else if !memory.supports_native_64bit_access() {
-                        if *address < u32::MAX as u64 {
-                            Ok(ExpressionResult::Location(VariableLocation::Address(
-                                *address,
-                            )))
-                        } else {
-                            Ok(ExpressionResult::Location(VariableLocation::Error(format!("The memory location for this variable value ({address:#010X}) is invalid. Please report this as a bug."))))
-                        }
-                    } else {
-                        Ok(ExpressionResult::Location(VariableLocation::Address(
-                            *address,
-                        )))
-                    }
-                }
-                Location::Value { value } => match value {
-                    gimli::Value::Generic(value) => Ok(ExpressionResult::Value(
-                        VariableValue::Valid(value.to_string()),
-                    )),
-                    gimli::Value::I8(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
-                        value.to_string(),
-                    ))),
-                    gimli::Value::U8(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
-                        value.to_string(),
-                    ))),
-                    gimli::Value::I16(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
-                        value.to_string(),
-                    ))),
-                    gimli::Value::U16(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
-                        value.to_string(),
-                    ))),
-                    gimli::Value::I32(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
-                        value.to_string(),
-                    ))),
-                    gimli::Value::U32(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
-                        value.to_string(),
-                    ))),
-                    gimli::Value::I64(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
-                        value.to_string(),
-                    ))),
-                    gimli::Value::U64(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
-                        value.to_string(),
-                    ))),
-                    gimli::Value::F32(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
-                        value.to_string(),
-                    ))),
-                    gimli::Value::F64(value) => Ok(ExpressionResult::Value(VariableValue::Valid(
-                        value.to_string(),
-                    ))),
-                },
-                Location::Register { register } => {
-                    if let Some(address) = frame_info
-                        .registers
-                        .get_register_by_dwarf_id(register.0)
-                        .and_then(|register| register.value)
-                    {
-                        match address.try_into() {
-                            Ok(location) => {
-                                if !memory.supports_native_64bit_access() {
-                                    if location < u32::MAX as u64 {
-                                        Ok(ExpressionResult::Location(VariableLocation::Address(
-                                            location,
-                                        )))
-                                    } else {
-                                Ok(ExpressionResult::Location(VariableLocation::Error(format!("The memory location for this variable value ({location:#010X}) is invalid. Please report this as a bug."))))
-                                    }
-                                } else {
-                                    Ok(ExpressionResult::Location(VariableLocation::Address(
-                                        location,
-                                    )))
-                                }
-                            },
-                            Err(error) => Ok(ExpressionResult::Location(
-                                VariableLocation::Error(format!(
-                                    "Error: Cannot convert register value to location address: {error:?}"
-                                )),
-                            )),
-                        }
-                    } else {
-                        Ok(ExpressionResult::Location(VariableLocation::Error(
-                            format!("Error: Cannot resolve register: {register:?}"),
-                        )))
-                    }
-                }
-                l => Ok(ExpressionResult::Location(VariableLocation::Error(
-                    format!(
-                        "Unimplemented: extract_location() found a location type: {:.100}",
-                        format!("{l:?}")
-                    ),
-                ))),
-            }
+            return Ok(ExpressionResult::Location(VariableLocation::Error(
+                "Error: expr_to_piece() returned 0 results".to_string(),
+            )));
         }
+        if pieces.len() > 1 {
+            return Ok(ExpressionResult::Location(VariableLocation::Error(
+                "<unsupported memory implementation>".to_string(),
+            )));
+        }
+
+        let result = match &pieces[0].location {
+            Location::Empty => {
+                // This means the value was optimized away.
+                ExpressionResult::Location(VariableLocation::Unavailable)
+            }
+            Location::Address { address } if address.is_zero() => {
+                let error = "The value of this variable may have been optimized out of the debug info, by the compiler.".to_string();
+                ExpressionResult::Location(VariableLocation::Error(error))
+            }
+            Location::Address { address } if !memory.supports_native_64bit_access() => {
+                let location = if *address < u32::MAX as u64 {
+                    VariableLocation::Address(*address)
+                } else {
+                    VariableLocation::Error(format!("The memory location for this variable value ({:#010X}) is invalid. Please report this as a bug.", address))
+                };
+
+                ExpressionResult::Location(location)
+            }
+            Location::Address { address } => {
+                ExpressionResult::Location(VariableLocation::Address(*address))
+            }
+            Location::Value { value } => {
+                let value = match value {
+                    gimli::Value::Generic(value) => value.to_string(),
+                    gimli::Value::I8(value) => value.to_string(),
+                    gimli::Value::U8(value) => value.to_string(),
+                    gimli::Value::I16(value) => value.to_string(),
+                    gimli::Value::U16(value) => value.to_string(),
+                    gimli::Value::I32(value) => value.to_string(),
+                    gimli::Value::U32(value) => value.to_string(),
+                    gimli::Value::I64(value) => value.to_string(),
+                    gimli::Value::U64(value) => value.to_string(),
+                    gimli::Value::F32(value) => value.to_string(),
+                    gimli::Value::F64(value) => value.to_string(),
+                };
+
+                ExpressionResult::Value(VariableValue::Valid(value))
+            }
+            Location::Register { register } => {
+                if let Some(address) = frame_info
+                    .registers
+                    .get_register_by_dwarf_id(register.0)
+                    .and_then(|register| register.value)
+                {
+                    match address.try_into() {
+                        Ok(location) if !memory.supports_native_64bit_access() => {
+                            let location = if location < u32::MAX as u64 {
+                                VariableLocation::Address(location)
+                            } else {
+                                VariableLocation::Error(format!("The memory location for this variable value ({location:#010X}) is invalid. Please report this as a bug."))
+                            };
+
+                            ExpressionResult::Location(location)
+                        }
+                        Ok(location) => {
+                            ExpressionResult::Location(VariableLocation::Address(location))
+                        }
+                        Err(error) => ExpressionResult::Location(VariableLocation::Error(format!(
+                            "Error: Cannot convert register value to location address: {error:?}"
+                        ))),
+                    }
+                } else {
+                    ExpressionResult::Location(VariableLocation::Error(format!(
+                        "Error: Cannot resolve register: {register:?}"
+                    )))
+                }
+            }
+            l => ExpressionResult::Location(VariableLocation::Error(format!(
+                "Unimplemented: extract_location() found a location type: {:.100}",
+                format!("{l:?}")
+            ))),
+        };
+
+        Ok(result)
     }
 
     /// Tries to get the result of a DWARF expression in the form of a Piece.
