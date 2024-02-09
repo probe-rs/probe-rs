@@ -4,7 +4,6 @@ use super::{
     SourceLocation, VariableCache,
 };
 use crate::{
-    core::RegisterValue,
     debug::{language, stack_frame::StackFrameInfo},
     MemoryInterface,
 };
@@ -72,14 +71,14 @@ impl UnitInfo {
 
             let mut ranges = debug_info.dwarf.die_ranges(&self.unit, current)?;
 
-            while let Ok(Some(ranges)) = ranges.next() {
-                if !(ranges.begin <= address && address < ranges.end) {
+            while let Ok(Some(range)) = ranges.next() {
+                if !range.contains(address) {
                     continue;
                 }
 
                 // Check if we are actually in an inlined function
-                die.low_pc = ranges.begin;
-                die.high_pc = ranges.end;
+                die.low_pc = range.begin;
+                die.high_pc = range.end;
 
                 // Extract the frame_base for this function DIE.
                 let mut functions = vec![die];
@@ -143,10 +142,10 @@ impl UnitInfo {
 
             let mut ranges = debug_info.dwarf.die_ranges(&self.unit, current)?;
 
-            while let Ok(Some(ranges)) = ranges.next() {
-                if !(ranges.begin <= address && address < ranges.end) {
+            while let Ok(Some(range)) = ranges.next() {
+                if !range.contains(address) {
                     continue;
-                };
+                }
                 // Check if we are actually in an inlined function
 
                 // We don't have to search further up in the tree, if there are multiple inlined functions,
@@ -173,8 +172,8 @@ impl UnitInfo {
                     continue;
                 };
 
-                die.low_pc = ranges.begin;
-                die.high_pc = ranges.end;
+                die.low_pc = range.begin;
+                die.high_pc = range.end;
 
                 functions.push(die);
             }
@@ -639,7 +638,7 @@ impl UnitInfo {
                     child_variable = self.process_tree_node_attributes(debug_info, &mut child_node, &mut parent_variable, child_variable, memory, cache, frame_info)?;
                     // Do not keep or process PhantomData nodes, or variant parts that we have already used.
                     if child_variable.type_name.is_phantom_data()
-                        ||  child_variable.name == VariableName::Artifical
+                        || child_variable.name == VariableName::Artifical
                     {
                         cache.remove_cache_entry(child_variable.variable_key)?;
                     } else if child_variable.is_valid() {
@@ -742,11 +741,15 @@ impl UnitInfo {
                             // These have not been specified correctly ... something went wrong.
                             parent_variable.set_value(VariableValue::Error("Error: Processing of variables failed because of invalid/unsupported scope information. Please log a bug at 'https://github.com/probe-rs/probe-rs/issues'".to_string()));
                         }
-                        if low_pc <= program_counter && program_counter  < high_pc {
+                        let block_range = gimli::Range {
+                            begin: low_pc,
+                            end: high_pc,
+                        };
+                        if block_range.contains(program_counter) {
                             // We have established positive scope, so no need to continue.
                             in_scope = true;
-                        };
-                        // No scope info yet, so keep looking. 
+                        }
+                        // No scope info yet, so keep looking.
                     };
                     // Searching for ranges has a bit more overhead, so ONLY do this if do not have scope confirmed yet.
                     if !in_scope {
@@ -756,17 +759,11 @@ impl UnitInfo {
                                     gimli::AttributeValue::RangeListsRef(raw_range_lists_offset) => {
                                         let range_lists_offset = debug_info.dwarf.ranges_offset_from_raw(&self.unit, raw_range_lists_offset);
 
-                                        if let Ok(mut ranges) = debug_info
+                                        if let Ok(mut range_iter) = debug_info
                                             .dwarf
                                             .ranges(&self.unit, range_lists_offset)
                                         {
-                                            while let Ok(Some(ranges)) = ranges.next() {
-                                                // We have established positive scope, so no need to continue.
-                                                if ranges.begin <= program_counter && program_counter < ranges.end {
-                                                    in_scope = true;
-                                                    break;
-                                                }
-                                            }
+                                            in_scope = range_iter.contains(program_counter);
                                         }
                                     }
                                     other_range_attribute => {
@@ -1589,11 +1586,11 @@ impl UnitInfo {
                 }
             };
 
-            if program_counter >= RegisterValue::from(location.range.begin)
-                && program_counter < RegisterValue::from(location.range.end)
-            {
-                expression = Some(location.data);
-                break 'find_range;
+            if let Ok(program_counter) = program_counter.try_into() {
+                if location.range.contains(program_counter) {
+                    expression = Some(location.data);
+                    break 'find_range;
+                }
             }
         }
 
@@ -1958,4 +1955,26 @@ fn read_memory(
     };
 
     Ok(evaluation.resume_with_memory(val)?)
+}
+
+trait RangeExt {
+    fn contains(self, addr: u64) -> bool;
+}
+
+impl RangeExt for &mut gimli::RngListIter<GimliReader> {
+    fn contains(self, addr: u64) -> bool {
+        while let Ok(Some(range)) = self.next() {
+            if range.contains(addr) {
+                return true;
+            }
+        }
+
+        false
+    }
+}
+
+impl RangeExt for gimli::Range {
+    fn contains(self, addr: u64) -> bool {
+        self.begin <= addr && addr < self.end
+    }
 }
