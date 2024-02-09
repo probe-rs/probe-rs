@@ -1440,8 +1440,6 @@ impl UnitInfo {
                     child_variable.set_value(VariableValue::Error(error_message.clone()));
                 }
 
-                ExpressionResult::Location(VariableLocation::Unknown) => {}
-
                 ExpressionResult::Location(location_from_expression) => {
                     child_variable.memory_location = location_from_expression;
                 }
@@ -1539,7 +1537,7 @@ impl UnitInfo {
                 gimli::DW_AT_address_class => {
                     let location = match attr.value() {
                         gimli::AttributeValue::AddressClass(gimli::DwAddr(0)) => {
-                            // We pass on the location of the parent, which will later to be used along with DW_AT_data_member_location to calculate the location of this variable. 
+                            // We pass on the location of the parent, which will later to be used along with DW_AT_data_member_location to calculate the location of this variable.
                             parent_location.clone()
                         }
                         gimli::AttributeValue::AddressClass(address_class) => {
