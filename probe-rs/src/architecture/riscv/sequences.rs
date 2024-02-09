@@ -1,6 +1,6 @@
 //! Debug sequences to operate special requirements RISC-V targets.
 
-use super::communication_interface::RiscvCommunicationInterface;
+use crate::Session;
 use std::fmt::Debug;
 use std::sync::Arc;
 
@@ -9,14 +9,14 @@ use std::sync::Arc;
 /// Should be implemented on a custom handle for chips that require special sequence code.
 pub trait RiscvDebugSequence: Send + Sync + Debug {
     /// Executed when the probe establishes a connection to the target.
-    fn on_connect(&self, _interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
+    fn on_connect(&self, _session: &mut Session) -> Result<(), crate::Error> {
         Ok(())
     }
 
     /// Detects the flash size of the target.
     fn detect_flash_size(
         &self,
-        _interface: &mut RiscvCommunicationInterface,
+        _session: &mut Session,
     ) -> Result<Option<usize>, crate::Error> {
         Ok(None)
     }

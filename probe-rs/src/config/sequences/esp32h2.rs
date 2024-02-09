@@ -5,11 +5,8 @@ use std::sync::Arc;
 use probe_rs_target::Chip;
 
 use crate::{
-    architecture::riscv::{
-        communication_interface::RiscvCommunicationInterface, sequences::RiscvDebugSequence,
-    },
-    config::sequences::esp::EspFlashSizeDetector,
-    MemoryInterface,
+    architecture::riscv::sequences::RiscvDebugSequence,
+    config::sequences::esp::EspFlashSizeDetector, MemoryInterface, Session,
 };
 
 /// The debug sequence implementation for the ESP32H2.
@@ -33,8 +30,10 @@ impl ESP32H2 {
 }
 
 impl RiscvDebugSequence for ESP32H2 {
-    fn on_connect(&self, interface: &mut RiscvCommunicationInterface) -> Result<(), crate::Error> {
+    fn on_connect(&self, session: &mut Session) -> Result<(), crate::Error> {
         tracing::info!("Disabling esp32h2 watchdogs...");
+        let interface = session.get_riscv_interface()?;
+        
         // disable super wdt
         interface.write_word_32(0x600B1C20, 0x50D83AA1)?; // write protection off
         let current = interface.read_word_32(0x600B_1C1C)?;
@@ -59,10 +58,8 @@ impl RiscvDebugSequence for ESP32H2 {
         Ok(())
     }
 
-    fn detect_flash_size(
-        &self,
-        interface: &mut RiscvCommunicationInterface,
-    ) -> Result<Option<usize>, crate::Error> {
-        self.inner.detect_flash_size_riscv(interface)
+    fn detect_flash_size(&self, session: &mut Session) -> Result<Option<usize>, crate::Error> {
+        self.inner
+            .detect_flash_size_riscv(session.get_riscv_interface()?)
     }
 }

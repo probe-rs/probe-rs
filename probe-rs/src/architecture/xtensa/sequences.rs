@@ -1,24 +1,18 @@
 use std::{fmt::Debug, sync::Arc};
 
-use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
+use crate::Session;
 
 /// A interface to operate debug sequences for Xtensa targets.
 ///
 /// Should be implemented on a custom handle for chips that require special sequence code.
 pub trait XtensaDebugSequence: Send + Sync + Debug {
     /// Executed when the probe establishes a connection to the target.
-    fn on_connect(
-        &self,
-        _interface: &mut XtensaCommunicationInterface,
-    ) -> Result<(), crate::Error> {
+    fn on_connect(&self, _session: &mut Session) -> Result<(), crate::Error> {
         Ok(())
     }
 
     /// Detects the flash size of the target.
-    fn detect_flash_size(
-        &self,
-        _interface: &mut XtensaCommunicationInterface,
-    ) -> Result<Option<usize>, crate::Error> {
+    fn detect_flash_size(&self, _session: &mut Session) -> Result<Option<usize>, crate::Error> {
         Ok(None)
     }
 }

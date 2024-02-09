@@ -299,7 +299,7 @@ impl Session {
             configured_trace_sink: None,
         };
 
-        session.halted_access(|sess| sequence_handle.on_connect(sess.get_riscv_interface()?))?;
+        session.halted_access(|sess| sequence_handle.on_connect(sess))?;
 
         Ok(session)
     }
@@ -335,7 +335,7 @@ impl Session {
             configured_trace_sink: None,
         };
 
-        session.halted_access(|sess| sequence_handle.on_connect(sess.get_xtensa_interface()?))?;
+        session.halted_access(|sess| sequence_handle.on_connect(sess))?;
 
         Ok(session)
     }

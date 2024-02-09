@@ -142,13 +142,9 @@ impl FlashLoader {
 
         let flash_size_result = session.halted_access(|sess| {
             // Figure out flash size from the memory map. We need a different bootloader for each size.
-            Ok(match sess.target().debug_sequence.clone() {
-                DebugSequence::Riscv(sequence) => {
-                    sequence.detect_flash_size(sess.get_riscv_interface()?)
-                }
-                DebugSequence::Xtensa(sequence) => {
-                    sequence.detect_flash_size(sess.get_xtensa_interface()?)
-                }
+            Ok(match target.debug_sequence.clone() {
+                DebugSequence::Riscv(sequence) => sequence.detect_flash_size(sess),
+                DebugSequence::Xtensa(sequence) => sequence.detect_flash_size(sess),
                 DebugSequence::Arm(_) => panic!("There are no ARM ESP targets."),
             })
         })?;
