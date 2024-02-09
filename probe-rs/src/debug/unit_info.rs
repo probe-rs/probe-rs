@@ -552,18 +552,17 @@ impl UnitInfo {
             return Ok(parent_variable);
         }
 
-        let program_counter = if let Some(program_counter) = frame_info
+        let Some(program_counter) = frame_info
             .registers
             .get_program_counter()
             .and_then(|reg| reg.value)
-        {
-            program_counter.try_into()?
-        } else {
+        else {
             return Err(DebugError::UnwindIncompleteResults {
                 message: "Cannot unwind `Variable` without a valid PC (program_counter)"
                     .to_string(),
             });
         };
+        let program_counter = program_counter.try_into()?;
 
         tracing::trace!("process_tree for parent {:?}", parent_variable.variable_key);
 
