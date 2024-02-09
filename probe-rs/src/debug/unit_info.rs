@@ -414,7 +414,7 @@ impl UnitInfo {
                     },
                     // Property of variables that are of DW_TAG_subrange_type.
                     gimli::DW_AT_lower_bound => match attr.value().udata_value() {
-                        Some(lower_bound) => child_variable.range_lower_bound = lower_bound as i64,
+                        Some(bound) => child_variable.range_lower_bound = bound as i64,
                         None => {
                             child_variable.set_value(VariableValue::Error(format!(
                                 "Unimplemented: Attribute Value for DW_AT_lower_bound: {:?}",
@@ -425,9 +425,7 @@ impl UnitInfo {
                     // Property of variables that are of DW_TAG_subrange_type.
                     gimli::DW_AT_upper_bound | gimli::DW_AT_count => {
                         match attr.value().udata_value() {
-                            Some(upper_bound) => {
-                                child_variable.range_upper_bound = upper_bound as i64
-                            }
+                            Some(bound) => child_variable.range_upper_bound = bound as i64,
                             None => {
                                 child_variable.set_value(VariableValue::Error(format!(
                                     "Unimplemented: Attribute Value for DW_AT_upper_bound: {:?}",
