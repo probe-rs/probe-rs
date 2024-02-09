@@ -1125,11 +1125,6 @@ impl RawJtagIo for JLink {
         self.shift_jtag_bit(tms, tdi, capture)
     }
 
-    fn flush(&mut self) -> Result<(), DebugProbeError> {
-        self.flush_jtag()?;
-        Ok(())
-    }
-
     fn read_captured_bits(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
         self.read_captured_bits()
     }

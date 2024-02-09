@@ -498,10 +498,6 @@ impl RawJtagIo for FtdiProbe {
     fn state(&self) -> &JtagDriverState {
         &self.jtag_state
     }
-
-    fn flush(&mut self) -> Result<(), DebugProbeError> {
-        self.adapter.flush()
-    }
 }
 
 /// Known properties associated to particular FTDI chip types.
