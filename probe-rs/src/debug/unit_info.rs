@@ -263,55 +263,47 @@ impl UnitInfo {
                         if let Some((directory, file_name)) =
                             extract_file(debug_info, &self.unit, attr.value())
                         {
-                            match child_variable.source_location {
-                                Some(existing_source_location) => {
-                                    child_variable.source_location = Some(SourceLocation {
-                                        line: existing_source_location.line,
-                                        column: existing_source_location.column,
-                                        file: Some(file_name),
-                                        directory: Some(directory),
-                                        low_pc: None,
-                                        high_pc: None,
-                                    });
-                                }
-                                None => {
-                                    child_variable.source_location = Some(SourceLocation {
-                                        line: None,
-                                        column: None,
-                                        file: Some(file_name),
-                                        directory: Some(directory),
-                                        low_pc: None,
-                                        high_pc: None,
-                                    });
-                                }
-                            }
-                        };
+                            child_variable.source_location = match child_variable.source_location {
+                                Some(existing_source_location) => Some(SourceLocation {
+                                    line: existing_source_location.line,
+                                    column: existing_source_location.column,
+                                    file: Some(file_name),
+                                    directory: Some(directory),
+                                    low_pc: None,
+                                    high_pc: None,
+                                }),
+                                None => Some(SourceLocation {
+                                    line: None,
+                                    column: None,
+                                    file: Some(file_name),
+                                    directory: Some(directory),
+                                    low_pc: None,
+                                    high_pc: None,
+                                }),
+                            };
+                        }
                     }
                     gimli::DW_AT_decl_line => {
                         if let Some(line_number) = extract_line(attr.value()) {
-                            match child_variable.source_location {
-                                Some(existing_source_location) => {
-                                    child_variable.source_location = Some(SourceLocation {
-                                        line: Some(line_number),
-                                        column: existing_source_location.column,
-                                        file: existing_source_location.file,
-                                        directory: existing_source_location.directory,
-                                        low_pc: None,
-                                        high_pc: None,
-                                    });
-                                }
-                                None => {
-                                    child_variable.source_location = Some(SourceLocation {
-                                        line: Some(line_number),
-                                        column: None,
-                                        file: None,
-                                        directory: None,
-                                        low_pc: None,
-                                        high_pc: None,
-                                    });
-                                }
-                            }
-                        };
+                            child_variable.source_location = match child_variable.source_location {
+                                Some(existing_source_location) => Some(SourceLocation {
+                                    line: Some(line_number),
+                                    column: existing_source_location.column,
+                                    file: existing_source_location.file,
+                                    directory: existing_source_location.directory,
+                                    low_pc: None,
+                                    high_pc: None,
+                                }),
+                                None => Some(SourceLocation {
+                                    line: Some(line_number),
+                                    column: None,
+                                    file: None,
+                                    directory: None,
+                                    low_pc: None,
+                                    high_pc: None,
+                                }),
+                            };
+                        }
                     }
                     gimli::DW_AT_decl_column => {
                         // Unused.
@@ -340,17 +332,16 @@ impl UnitInfo {
                         )?;
                     }
                     gimli::DW_AT_enum_class => match attr.value() {
-                        gimli::AttributeValue::Flag(is_enum_class) => {
-                            if is_enum_class {
-                                child_variable.set_value(VariableValue::Valid(format!(
-                                    "{:?}",
-                                    child_variable.type_name.clone()
-                                )));
-                            } else {
-                                child_variable.set_value(VariableValue::Error(format!(
-                                    "Unimplemented: Flag Value for DW_AT_enum_class {is_enum_class:?}"
-                                )));
-                            }
+                        gimli::AttributeValue::Flag(true) => {
+                            child_variable.set_value(VariableValue::Valid(format!(
+                                "{:?}",
+                                child_variable.type_name.clone()
+                            )));
+                        }
+                        gimli::AttributeValue::Flag(false) => {
+                            child_variable.set_value(VariableValue::Error(
+                                "Unimplemented: DW_AT_enum_class(false)".to_string(),
+                            ));
                         }
                         other_attribute_value => {
                             child_variable.set_value(VariableValue::Error(format!(
@@ -415,16 +406,17 @@ impl UnitInfo {
                                 cache,
                                 frame_info,
                             )?;
-                            if !discriminant_variable.is_valid() {
-                                parent_variable.role = VariantRole::VariantPart(u64::MAX);
+
+                            let variant_part = if !discriminant_variable.is_valid() {
+                                u64::MAX
                             } else {
-                                parent_variable.role = VariantRole::VariantPart(
-                                    discriminant_variable
-                                        .get_value(cache)
-                                        .parse()
-                                        .unwrap_or(u64::MAX),
-                                );
-                            }
+                                discriminant_variable
+                                    .get_value(cache)
+                                    .parse()
+                                    .unwrap_or(u64::MAX)
+                            };
+
+                            parent_variable.role = VariantRole::VariantPart(variant_part);
                             cache.remove_cache_entry(discriminant_variable.variable_key)?;
                         }
                         other_attribute_value => {
