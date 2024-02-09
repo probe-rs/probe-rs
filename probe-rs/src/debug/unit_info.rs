@@ -1472,13 +1472,13 @@ impl UnitInfo {
                     gimli::AttributeValue::Udata(offset_from_location) => {
                         let location = if let VariableLocation::Address(address) = parent_location {
                             let Some(location) = address.checked_add(offset_from_location) else {
-                                    return Err(DebugError::UnwindIncompleteResults {
-                                        message: "Overflow calculating variable address"
-                                            .to_string(),
-                                    });
+                                return Err(DebugError::UnwindIncompleteResults {
+                                    message: "Overflow calculating variable address"
+                                        .to_string(),
+                                });
                             };
 
-                                VariableLocation::Address(location)
+                            VariableLocation::Address(location)
                         } else {
                             parent_location.clone()
                         };
@@ -1733,7 +1733,7 @@ impl UnitInfo {
         parent_variable: &Variable,
         memory: &mut dyn MemoryInterface,
     ) {
-        if let Some(child_member_index) = child_variable.member_index {
+        let location = if let Some(child_member_index) = child_variable.member_index {
             // If this variable is a member of an array type, and needs special handling to calculate the `memory_location`.
             if let VariableLocation::Address(address) = parent_variable.memory_location {
                 if let Some(byte_size) = child_variable.byte_size {
@@ -1745,25 +1745,23 @@ impl UnitInfo {
                         return;
                     };
 
-                    child_variable.memory_location = VariableLocation::Address(location);
+                    VariableLocation::Address(location)
                 } else {
                     // If this array member doesn't have a byte_size, it may be because it is the first member of an array itself.
                     // In this case, the byte_size will be calculated when the nested array members are resolved.
                     // The first member of an array will have a memory location of the same as it's parent.
-                    child_variable.memory_location = parent_variable.memory_location.clone();
+                    parent_variable.memory_location.clone()
                 }
             } else {
-                child_variable.memory_location = VariableLocation::Unavailable;
+                VariableLocation::Unavailable
             }
         } else if child_variable.memory_location == VariableLocation::Unknown {
             // Non-array members can inherit their memory location from their parent, but only if the parent has a valid memory location.
-
-            // Overriding clippy, to defer the processing of `self.has_address_pointer()` until after the `||` conditions.
             if self.is_pointer(child_variable, parent_variable, unit_ref) {
                 match &parent_variable.memory_location {
                     VariableLocation::Address(address) => {
                         // Now, retrieve the location by reading the adddress pointed to by the parent variable.
-                        child_variable.memory_location = match memory.read_word_32(*address) {
+                        match memory.read_word_32(*address) {
                             Ok(memory_location) => {
                                 VariableLocation::Address(memory_location as u64)
                             }
@@ -1771,20 +1769,22 @@ impl UnitInfo {
                                 tracing::debug!("Failed to read referenced variable address from memory location {} : {error}.", parent_variable.memory_location);
                                 VariableLocation::Error(format!("Failed to read referenced variable address from memory location {} : {error}.", parent_variable.memory_location))
                             }
-                        };
+                        }
                     }
-                    other => {
-                        child_variable.memory_location = VariableLocation::Unsupported(format!(
-                            "Location {other:?} not supported for referenced variables."
-                        ));
-                    }
+                    other => VariableLocation::Unsupported(format!(
+                        "Location {other:?} not supported for referenced variables."
+                    )),
                 }
             } else {
                 // If the parent variable is not a pointer, or it is a pointer to the actual data location
                 // (not the address of the data location) then it can inherit it's memory location from it's parent.
-                child_variable.memory_location = parent_variable.memory_location.clone();
+                parent_variable.memory_location.clone()
             }
-        }
+        } else {
+            return;
+        };
+
+        child_variable.memory_location = location;
     }
 
     /// Returns `true` if the variable is a pointer, `false` otherwise.
