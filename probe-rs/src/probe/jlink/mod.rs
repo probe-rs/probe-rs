@@ -892,6 +892,14 @@ impl DebugProbe for JLink {
     fn has_xtensa_interface(&self) -> bool {
         self.supported_protocols.contains(&WireProtocol::Jtag)
     }
+
+    fn try_set_kickstart_power(&mut self, enable: bool) -> Result<(), DebugProbeError> {
+        self.require_capability(Capability::SetKsPower)?;
+
+        self.write_cmd(&[Command::SetKsPower as u8, enable as u8])?;
+
+        Ok(())
+    }
 }
 
 impl RawProtocolIo for JLink {

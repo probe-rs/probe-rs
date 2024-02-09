@@ -482,6 +482,14 @@ impl Probe {
     pub fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
         self.inner.get_target_voltage()
     }
+
+    /// Enable/Disable the Target Power Supply of the probe.
+    ///
+    /// This is not available on all probes.
+    /// This is avialable on some J-Links
+    pub fn try_set_kickstart_power(&mut self, enable: bool) -> Result<(), DebugProbeError> {
+        self.inner.try_set_kickstart_power(enable)
+    }
 }
 
 /// An abstraction over a probe driver type.
@@ -647,6 +655,16 @@ pub trait DebugProbe: Send + fmt::Debug {
     /// if the probe doesn’t support reading the target voltage.
     fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {
         Ok(None)
+    }
+
+    /// Enable/Disable the Target Power Supply of the probe.
+    ///
+    /// This is not available on all probes.
+    /// This is avialable on some J-Links
+    fn try_set_kickstart_power(&mut self, enable: bool) -> Result<(), DebugProbeError> {
+        Err(DebugProbeError::CommandNotSupportedByProbe(
+            "set_kickstart_power",
+        ))
     }
 }
 
