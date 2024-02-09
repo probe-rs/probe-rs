@@ -41,7 +41,7 @@ impl SvdVariableCache {
         Ok(children)
     }
 
-    /// Retrieve a clone of a specific `Variable`, using the `variable_key`.
+    /// Retrieve a specific `Variable`, using the `variable_key`.
     pub fn get_variable_by_key(&self, variable_key: ObjectRef) -> Option<&SvdVariable> {
         self.variable_hash_map.get(&variable_key)
     }
@@ -103,8 +103,8 @@ impl SvdVariableCache {
     pub fn add_variable(
         &mut self,
         parent_key: ObjectRef,
-        cache_variable: &mut SvdVariable,
-    ) -> Result<(), Error> {
+        mut cache_variable: SvdVariable,
+    ) -> Result<ObjectRef, Error> {
         // Validate that the parent_key exists ...
         if self.variable_hash_map.contains_key(&parent_key) || parent_key == self.root_variable_key
         {
@@ -134,32 +134,7 @@ impl SvdVariableCache {
             return Err(anyhow!("Attempt to insert a new `SvdVariable`:{:?} with a duplicate cache key: {:?}. Please report this as a bug.", cache_variable.name, old_variable.variable_key).into());
         }
 
-        Ok(())
-    }
-
-    pub fn update_variable(&mut self, cache_variable: &SvdVariable) -> Result<(), Error> {
-        if cache_variable.variable_key == ObjectRef::Invalid {
-            return Err(anyhow!("Attempt to update an existing `Variable`:{:?} with a non-existent cache key: {:?}. Please report this as a bug.", cache_variable.name, cache_variable.variable_key).into());
-        }
-
-        // Attempt to update an existing `Variable` in the cache
-        tracing::trace!(
-            "SvdVariableCache: Update SvdVariable, key={:?}, name={:?}",
-            cache_variable.variable_key,
-            &cache_variable.name
-        );
-
-        if let Some(prev_entry) = self.variable_hash_map.get_mut(&cache_variable.variable_key) {
-            if cache_variable != prev_entry {
-                tracing::trace!("Updated:  {:?}", cache_variable);
-                tracing::trace!("Previous: {:?}", prev_entry);
-                *prev_entry = cache_variable.clone();
-            }
-        } else {
-            return Err(anyhow!("Attempt to update an existing `Variable`:{:?} with a non-existent cache key: {:?}. Please report this as a bug.", cache_variable.name, cache_variable.variable_key).into());
-        }
-
-        Ok(())
+        Ok(cache_variable.variable_key)
     }
 }
 
