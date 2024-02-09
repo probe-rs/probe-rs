@@ -407,13 +407,13 @@ impl UnitInfo {
                                 frame_info,
                             )?;
 
-                            let variant_part = if !discriminant_variable.is_valid() {
-                                u64::MAX
-                            } else {
+                            let variant_part = if discriminant_variable.is_valid() {
                                 discriminant_variable
                                     .get_value(cache)
                                     .parse()
                                     .unwrap_or(u64::MAX)
+                            } else {
+                                u64::MAX
                             };
 
                             parent_variable.role = VariantRole::VariantPart(variant_part);
