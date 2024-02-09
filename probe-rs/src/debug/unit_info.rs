@@ -1470,20 +1470,17 @@ impl UnitInfo {
                         .convert_incomplete()?,
 
                     gimli::AttributeValue::Udata(offset_from_location) => {
-                        let location = match parent_location {
-                            VariableLocation::Address(address) => {
-                                let (location, has_overflowed) =
-                                    address.overflowing_add(offset_from_location);
-                                if has_overflowed {
+                        let location = if let VariableLocation::Address(address) = parent_location {
+                            let Some(location) = address.checked_add(offset_from_location) else {
                                     return Err(DebugError::UnwindIncompleteResults {
                                         message: "Overflow calculating variable address"
                                             .to_string(),
                                     });
-                                }
+                            };
 
                                 VariableLocation::Address(location)
-                            }
-                            other => other.clone(),
+                        } else {
+                            parent_location.clone()
                         };
 
                         ExpressionResult::Location(location)
@@ -1740,16 +1737,15 @@ impl UnitInfo {
             // If this variable is a member of an array type, and needs special handling to calculate the `memory_location`.
             if let VariableLocation::Address(address) = parent_variable.memory_location {
                 if let Some(byte_size) = child_variable.byte_size {
-                    let (location, has_overflowed) =
-                        address.overflowing_add(child_member_index as u64 * byte_size);
-
-                    if has_overflowed {
+                    let Some(location) = address.checked_add(child_member_index as u64 * byte_size)
+                    else {
                         child_variable.set_value(VariableValue::Error(
                             "Overflow calculating variable address".to_string(),
                         ));
-                    } else {
-                        child_variable.memory_location = VariableLocation::Address(location);
-                    }
+                        return;
+                    };
+
+                    child_variable.memory_location = VariableLocation::Address(location);
                 } else {
                     // If this array member doesn't have a byte_size, it may be because it is the first member of an array itself.
                     // In this case, the byte_size will be calculated when the nested array members are resolved.
