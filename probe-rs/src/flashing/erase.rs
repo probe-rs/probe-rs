@@ -68,7 +68,7 @@ pub fn erase_all(session: &mut Session, progress: Option<FlashProgress>) -> Resu
             let first = sectors.first().unwrap();
             let last = sectors.last().unwrap();
             flasher.run_erase(|active| {
-                active.erase_range(first.base_address, last.base_address + last.size - 1)?;
+                active.erase_range(first.base_address, last.base_address + last.size)?;
 
                 Ok(())
             })?;

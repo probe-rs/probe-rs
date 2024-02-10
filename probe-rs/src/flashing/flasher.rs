@@ -410,7 +410,7 @@ impl<'session> Flasher<'session> {
                 let first = flash_encoder.sectors().first().unwrap();
                 let last = flash_encoder.sectors().last().unwrap();
 
-                active.erase_range(first.address(), last.address() + last.size() - 1)?;
+                active.erase_range(first.address(), last.address() + last.size())?;
                 Ok(())
             } else {
                 for sector in flash_encoder.sectors() {
@@ -889,7 +889,7 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
         // we're assuming that the first sector size is representative here.
         // timeout might be too long/short if this doesn't hold true
         let sector_sz = &algo.flash_properties.sectors.first().unwrap().size;
-        let len = end_addr - start_addr + 1;
+        let len = end_addr - start_addr;
         let qty_sectors: u64 = len / sector_sz;
         let sector_erase_timeout: u64 = algo.flash_properties.erase_sector_timeout.into();
 
