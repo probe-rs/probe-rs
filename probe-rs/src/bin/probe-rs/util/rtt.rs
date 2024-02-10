@@ -342,8 +342,7 @@ impl RttActiveChannel {
                                     None,
                                 )
                             };
-                            let s =
-                                formatter.format_to_string(frame, file.as_deref(), line, module);
+                            let s = formatter.format_frame(frame, file.as_deref(), line, module);
                             writeln!(formatted_data, "{s}").expect("Writing to String cannot fail");
                             continue;
                         }
@@ -379,11 +378,16 @@ pub struct RttActiveTarget {
     pub defmt_state: Option<DefmtState>,
 }
 
-#[derive(Debug)]
 pub struct DefmtState {
     table: defmt_decoder::Table,
     locs: Option<defmt_decoder::Locations>,
-    formatter: defmt_decoder::log::Formatter,
+    formatter: defmt_decoder::log::format::Formatter,
+}
+
+impl fmt::Debug for DefmtState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("DefmtState").finish()
+    }
 }
 
 impl RttActiveTarget {
@@ -467,7 +471,8 @@ impl RttActiveTarget {
                     (false, true) => "{t} {L} {s}",
                     (false, false) => "{L} {s}",
                 });
-                let formatter = defmt_decoder::log::Formatter::new(format);
+                let format = defmt_decoder::log::format::FormatterConfig::custom(format);
+                let formatter = defmt_decoder::log::format::Formatter::new(format);
 
                 let locs = {
                     let locs = table.get_locations(&elf)?;

@@ -931,9 +931,9 @@ checksum = "7e962a19be5cfc3f3bf6dd8f61eb50107f356ad6270fbb3ed41476571db78be5"
 
 [[package]]
 name = "defmt-decoder"
-version = "0.3.9"
+version = "0.3.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5cc8c950fcaefdfce609498332b92c9b235c431d85c6c71908142cbb55709140"
+checksum = "edfd9e4fb2a0ad57aac44194390825607592bee871dbee99188b8287e601dffa"
 dependencies = [
  "anyhow",
  "byteorder",
@@ -963,9 +963,9 @@ dependencies = [
 
 [[package]]
 name = "defmt-parser"
-version = "0.3.3"
+version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "269924c02afd7f94bc4cecbfa5c379f6ffcf9766b3408fe63d22c728654eccd0"
+checksum = "ff4a5fefe330e8d7f31b16a318f9ce81000d8e35e69b93eae154d16d2278f70f"
 dependencies = [
  "thiserror",
 ]
