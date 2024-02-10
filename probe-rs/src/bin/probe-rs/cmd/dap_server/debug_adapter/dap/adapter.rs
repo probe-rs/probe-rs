@@ -1364,7 +1364,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 // Convert the `probe_rs::debug::Variable` to `probe_rs_debugger::dap_types::Variable`
                 .map(|variable| {
                     let (variables_reference, named_child_variables_cnt) =
-                        get_svd_variable_reference(variable, &svd_cache);
+                        get_svd_variable_reference(variable, svd_cache);
 
                     // We use fully qualified Peripheral.Register.Field form to ensure the `evaluate` request can find the right registers and fields by name.
                     let name = if let Some(last_part) = variable.name().split_terminator('.').last()
