@@ -111,8 +111,8 @@ impl SvdVariableCache {
             let variable_key = get_object_reference();
             Variable {
                 variable_key,
-                parent_key: parent_key,
-                name: name,
+                parent_key,
+                name,
                 variable_kind: variable,
             }
         };
