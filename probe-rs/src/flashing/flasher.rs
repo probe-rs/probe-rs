@@ -405,10 +405,12 @@ impl<'session> Flasher<'session> {
 
         let mut t = Instant::now();
         let result = self.run_erase(|active| {
-            if active.flash_algorithm.pc_erase_sectors.is_some() {
-                let qty = flash_encoder.sectors().len().try_into().unwrap();
+            if active.flash_algorithm.pc_erase_range.is_some() {
+                // Assumption here that sectors are ordered and contiguous
                 let first = flash_encoder.sectors().first().unwrap();
-                active.erase_sectors(first.address(), qty)?;
+                let last = flash_encoder.sectors().last().unwrap();
+
+                active.erase_range(first.address(), last.address() + last.size() - 1)?;
                 Ok(())
             } else {
                 for sector in flash_encoder.sectors() {
@@ -874,29 +876,33 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
         }
     }
 
-    pub(super) fn erase_sectors(&mut self, address: u64, qty: u64) -> Result<(), FlashError> {
+    pub(super) fn erase_range(&mut self, start_addr: u64, end_addr: u64) -> Result<(), FlashError> {
         tracing::info!(
-            "Erasing {} sectors starting at address 0x{:08x}",
-            qty,
-            address
+            "Erasing flash from address 0x{:08x} to 0x{:08x}",
+            start_addr,
+            end_addr,
         );
         let flasher = self;
         let algo = &flasher.flash_algorithm;
         let t1 = Instant::now();
 
-        if let Some(pc_erase_sectors) = algo.pc_erase_sectors {
+        let sectors: Vec<_> = algo.flash_properties.sectors.iter().filter(|s| (start_addr..=end_addr).contains(&s.address)).collect();
+        let qty_sectors: u64 = sectors.len().try_into().unwrap_or(0);
+        let sector_erase_timeout: u64 = algo.flash_properties.erase_sector_timeout.into();
+
+        if let Some(pc_erase_range) = algo.pc_erase_range {
             let result = flasher
                 .call_function_and_wait(
                     &Registers {
-                        pc: into_reg(pc_erase_sectors)?,
-                        r0: Some(into_reg(address)?),
-                        r1: Some(into_reg(qty)?),
+                        pc: into_reg(pc_erase_range)?,
+                        r0: Some(into_reg(start_addr)?),
+                        r1: Some(into_reg(end_addr)?),
                         r2: None,
                         r3: None,
                     },
                     false,
                     Duration::from_millis(
-                        algo.flash_properties.erase_sector_timeout as u64 * qty as u64,
+                        sector_erase_timeout * qty_sectors,
                     ),
                 )
                 .map_err(|error| FlashError::ChipEraseFailed {
