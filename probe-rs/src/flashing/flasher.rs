@@ -886,8 +886,11 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
         let algo = &flasher.flash_algorithm;
         let t1 = Instant::now();
 
-        let sectors: Vec<_> = algo.flash_properties.sectors.iter().filter(|s| (start_addr..=end_addr).contains(&s.address)).collect();
-        let qty_sectors: u64 = sectors.len().try_into().unwrap_or(0);
+        // we're assuming that the first sector size is representative here.
+        // timeout might be too long/short if this doesn't hold true
+        let sector_sz = &algo.flash_properties.sectors.first().unwrap().size;
+        let len = end_addr - start_addr + 1;
+        let qty_sectors: u64 = len / sector_sz;
         let sector_erase_timeout: u64 = algo.flash_properties.erase_sector_timeout.into();
 
         if let Some(pc_erase_range) = algo.pc_erase_range {
