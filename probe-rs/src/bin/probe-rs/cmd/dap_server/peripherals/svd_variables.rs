@@ -5,7 +5,7 @@ use crate::cmd::dap_server::{
 use std::{fmt::Debug, fs::File, io::Read, path::Path};
 use svd_parser::{self as svd, svd::Device, Config};
 
-use super::svd_cache::{SvdVariable, SvdVariableCache, SvdVariableNodeType};
+use super::svd_cache::{SvdVariable, SvdVariableCache};
 
 /// The SVD file contents and related data
 #[derive(Debug)]
@@ -77,66 +77,60 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
     let mut svd_cache = SvdVariableCache::new_svd_cache();
     let device_root_variable_key = svd_cache.root_variable_key();
 
-    // Adding the Peripheral Group Name as an additional level in the structure helps to keep the 'variable tree' more compact,
-    // but more importantly, it helps to avoid having duplicate variable names that conflict with hal crates.
-    let peripheral_group_variable = SvdVariable::new(
-        peripheral_device.name.clone(),
-        SvdVariableNodeType::SvdPeripheralGroup {
-            description: Some(peripheral_device.description.clone()),
-        },
-    );
-    let mut peripheral_parent_key = device_root_variable_key;
-    let mut current_peripheral_group_name = peripheral_group_variable.name.clone();
-
     for peripheral in &peripheral_device.peripherals {
-        if let Some(peripheral_group_name) = &peripheral.group_name {
-            if &current_peripheral_group_name != peripheral_group_name {
-                // Before we create a new group variable, check if we have one by that name already.
-                match svd_cache.get_variable_by_name_and_parent(
-                    peripheral_group_name,
-                    device_root_variable_key,
-                ) {
-                    Some(existing_peripheral_group_variable) => {
-                        peripheral_parent_key = existing_peripheral_group_variable.variable_key();
-                        current_peripheral_group_name = peripheral_group_name.clone();
-                    }
-                    None => {
-                        let peripheral_group_variable = SvdVariable::new(
-                            peripheral_group_name.clone(),
-                            SvdVariableNodeType::SvdPeripheralGroup {
-                                description: peripheral.description.clone(),
-                            },
-                        );
-                        peripheral_parent_key = svd_cache
-                            .add_variable(device_root_variable_key, peripheral_group_variable)?;
-                        current_peripheral_group_name = peripheral_group_name.clone();
-                    }
-                };
+        let current_peripheral_group_name = peripheral.group_name.as_ref();
 
-                debug_adapter
-                    .update_progress(
-                        None,
-                        Some(format!(
-                            "SVD loading peripheral group:{}",
-                            &peripheral_group_name
-                        )),
-                        progress_id,
-                    )
-                    .ok();
-            }
+        let peripheral_parent_key;
+
+        // Adding the Peripheral Group Name as an additional level in the structure helps to keep the 'variable tree' more compact,
+        // but more importantly, it helps to avoid having duplicate variable names that conflict with hal crates.
+        if let Some(peripheral_group_name) = &peripheral.group_name {
+            // Before we create a new group variable, check if we have one by that name already.
+            match svd_cache
+                .get_variable_by_name_and_parent(peripheral_group_name, device_root_variable_key)
+            {
+                Some(existing_peripheral_group_variable) => {
+                    peripheral_parent_key = existing_peripheral_group_variable.variable_key();
+                }
+                None => {
+                    peripheral_parent_key = svd_cache.add_variable(
+                        device_root_variable_key,
+                        peripheral_group_name.clone(),
+                        SvdVariable::SvdPeripheralGroup {
+                            description: peripheral.description.clone(),
+                        },
+                    )?;
+                }
+            };
+
+            debug_adapter
+                .update_progress(
+                    None,
+                    Some(format!(
+                        "SVD loading peripheral group:{}",
+                        peripheral_group_name
+                    )),
+                    progress_id,
+                )
+                .ok();
+        } else {
+            peripheral_parent_key = device_root_variable_key;
         }
 
-        let peripheral_name = format!("{}.{}", current_peripheral_group_name, peripheral.name);
+        let peripheral_name = if let Some(peripheral_group) = current_peripheral_group_name {
+            format!("{}.{}", peripheral_group, peripheral.name)
+        } else {
+            peripheral.name.clone()
+        };
 
-        let peripheral_variable = SvdVariable::new(
+        let peripheral_key = svd_cache.add_variable(
+            peripheral_parent_key,
             peripheral_name.clone(),
-            SvdVariableNodeType::SvdPeripheral {
+            SvdVariable::SvdPeripheral {
                 base_address: peripheral.base_address,
                 description: peripheral.description.clone(),
             },
-        );
-
-        let peripheral_key = svd_cache.add_variable(peripheral_parent_key, peripheral_variable)?;
+        )?;
 
         for register in peripheral.all_registers() {
             let register_address = peripheral.base_address + register.address_offset as u64;
@@ -160,9 +154,9 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                         .map(|a| !a.can_read())
                         .unwrap_or(register_has_restricted_read);
 
-                let field_variable = SvdVariable::new(
+                let field_variable = (
                     format!("{}.{}", register_name, field.name),
-                    SvdVariableNodeType::SvdField {
+                    SvdVariable::SvdField {
                         address: register_address,
                         restricted_read: field_has_restricted_read,
                         bit_range_lower_bound: field.bit_offset(),
@@ -177,21 +171,19 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                 field_variables.push(field_variable);
             }
 
-            let register_variable = SvdVariable::new(
+            let register_variable_key = svd_cache.add_variable(
+                peripheral_key,
                 format!("{}.{}", &peripheral_name, register.name),
-                SvdVariableNodeType::SvdRegister {
+                SvdVariable::SvdRegister {
                     address: register_address,
                     restricted_read: register_has_restricted_read,
                     description: register.description.clone(),
                 },
-            );
+            )?;
 
-            let register_variable_key =
-                svd_cache.add_variable(peripheral_key, register_variable)?;
-
-            for variable in field_variables {
+            for (variable_name, variable) in field_variables {
                 // TODO: Extend the Variable definition, so that we can resolve the EnumeratedValues for fields.
-                svd_cache.add_variable(register_variable_key, variable)?;
+                svd_cache.add_variable(register_variable_key, variable_name, variable)?;
             }
         }
     }

@@ -1,6 +1,6 @@
 use crate::cmd::dap_server::{
     debug_adapter::dap::dap_types::{DisassembledInstruction, Source},
-    peripherals::svd_cache::{SvdVariable, SvdVariableCache},
+    peripherals::svd_cache::{SvdVariableCache, Variable},
     server::{core_data::CoreHandle, session_data::BreakpointType},
     DebuggerError,
 };
@@ -385,13 +385,10 @@ pub(crate) fn get_variable_reference(
 /// This function retrieves that information from the `DebugInfo::VariableCache` and returns it as
 /// (`variable_reference`, `named_child_variables_cnt`, `indexed_child_variables_cnt`)
 pub(crate) fn get_svd_variable_reference(
-    parent_variable: &SvdVariable,
+    parent_variable: &Variable,
     cache: &SvdVariableCache,
 ) -> (ObjectRef, i64) {
-    let mut named_child_variables_cnt = 0;
-    if let Ok(children) = cache.get_children(parent_variable.variable_key()) {
-        named_child_variables_cnt = children.len();
-    };
+    let named_child_variables_cnt = cache.get_children(parent_variable.variable_key()).len();
 
     if named_child_variables_cnt > 0 {
         (

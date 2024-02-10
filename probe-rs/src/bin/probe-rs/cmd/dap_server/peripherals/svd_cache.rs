@@ -10,39 +10,40 @@ use anyhow::anyhow;
 pub struct SvdVariableCache {
     root_variable_key: ObjectRef,
 
-    variable_hash_map: BTreeMap<ObjectRef, SvdVariable>,
+    variable_hash_map: BTreeMap<ObjectRef, Variable>,
 }
 
 impl SvdVariableCache {
     /// Create a new cache for SVD variables
     pub fn new_svd_cache() -> Self {
-        let key = get_object_reference();
-
-        let mut variable =
-            SvdVariable::new("Peripheral variable".to_string(), SvdVariableNodeType::Root);
-        variable.variable_key = key;
+        let root_variable_key = get_object_reference();
+        let root_variable = Variable {
+            variable_key: root_variable_key,
+            parent_key: ObjectRef::Invalid,
+            name: "Peripheral variable".to_string(),
+            variable_kind: SvdVariable::Root,
+        };
 
         SvdVariableCache {
-            root_variable_key: key,
-            variable_hash_map: BTreeMap::from([(key, variable)]),
+            root_variable_key,
+            variable_hash_map: BTreeMap::from([(root_variable_key, root_variable)]),
         }
     }
 
-    /// Retrieve `clone`d version of all the children of a `Variable`.
+    /// Retrieve all the children of a `Variable`.
     /// If `parent_key == None`, it will return all the top level variables (no parents) in this cache.
-    pub fn get_children(&self, parent_key: ObjectRef) -> Result<Vec<SvdVariable>, Error> {
-        let children: Vec<SvdVariable> = self
+    pub fn get_children(&self, parent_key: ObjectRef) -> Vec<&Variable> {
+        let children = self
             .variable_hash_map
             .values()
             .filter(|child_variable| child_variable.parent_key == parent_key)
-            .cloned()
-            .collect::<Vec<SvdVariable>>();
+            .collect::<Vec<_>>();
 
-        Ok(children)
+        children
     }
 
     /// Retrieve a specific `Variable`, using the `variable_key`.
-    pub fn get_variable_by_key(&self, variable_key: ObjectRef) -> Option<&SvdVariable> {
+    pub fn get_variable_by_key(&self, variable_key: ObjectRef) -> Option<&Variable> {
         self.variable_hash_map.get(&variable_key)
     }
 
@@ -54,12 +55,12 @@ impl SvdVariableCache {
     /// Retrieve a clone of a specific `Variable`, using the `name`.
     /// If there is more than one, it will be logged (tracing::warn!), and only the first will be returned.
     /// It is possible for a hierarchy of variables in a cache to have duplicate names under different parents.
-    pub fn get_variable_by_name(&self, variable_name: &str) -> Option<&SvdVariable> {
+    pub fn get_variable_by_name(&self, variable_name: &str) -> Option<&Variable> {
         let child_variables = self
             .variable_hash_map
             .values()
             .filter(|child_variable| child_variable.name.eq(variable_name))
-            .collect::<Vec<&SvdVariable>>();
+            .collect::<Vec<&Variable>>();
 
         match &child_variables[..] {
             [] => None,
@@ -81,21 +82,21 @@ impl SvdVariableCache {
         &self,
         variable_name: &str,
         parent_key: ObjectRef,
-    ) -> Option<SvdVariable> {
+    ) -> Option<&Variable> {
         let child_variables = self
             .variable_hash_map
             .values()
             .filter(|child_variable| {
                 child_variable.name == variable_name && child_variable.parent_key == parent_key
             })
-            .collect::<Vec<&SvdVariable>>();
+            .collect::<Vec<&Variable>>();
 
         match &child_variables[..] {
             [] => None,
-            [variable] => Some((*variable).clone()),
+            [variable] => Some(variable),
             [.., last] => {
                 tracing::error!("Found {} variables with parent_key={:?} and name={}. Please report this as a bug.", child_variables.len(), parent_key, variable_name);
-                Some((*last).clone())
+                Some(last)
             }
         }
     }
@@ -103,22 +104,23 @@ impl SvdVariableCache {
     pub fn add_variable(
         &mut self,
         parent_key: ObjectRef,
-        mut cache_variable: SvdVariable,
+        name: String,
+        variable: SvdVariable,
     ) -> Result<ObjectRef, Error> {
+        let cache_variable = {
+            let variable_key = get_object_reference();
+            Variable {
+                variable_key,
+                parent_key: parent_key,
+                name: name,
+                variable_kind: variable,
+            }
+        };
+
         // Validate that the parent_key exists ...
-        if self.variable_hash_map.contains_key(&parent_key) || parent_key == self.root_variable_key
-        {
-            cache_variable.parent_key = parent_key;
-        } else {
+        if !self.variable_hash_map.contains_key(&parent_key) {
             return Err(anyhow!("SvdVariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {:?}. Please report this as a bug", cache_variable.name, parent_key).into());
         }
-
-        if cache_variable.variable_key != ObjectRef::Invalid {
-            return Err(anyhow!("SvdVariableCache: Attempted to add a new variable: {} with already set key: {:?}. Please report this as a bug", cache_variable.name, cache_variable.variable_key).into());
-        }
-
-        // The caller is telling us this is definitely a new `Variable`
-        cache_variable.variable_key = get_object_reference();
 
         tracing::trace!(
             "SvdVariableCache: Add Variable: key={:?}, parent={:?}, name={:?}",
@@ -143,27 +145,20 @@ impl SvdVariableCache {
 /// Any modifications to the `Variable` value will be transient (lost when it goes out of scope),
 /// unless it is updated through one of the available methods on `VariableCache`.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SvdVariable {
+pub struct Variable {
     /// Every variable must have a unique key value assigned to it. The value will be zero until it is stored in VariableCache, at which time its value will be set to the same as the VariableCache::variable_cache_key
-    pub(super) variable_key: ObjectRef,
+    variable_key: ObjectRef,
     /// Every variable must have a unique parent assigned to it when stored in the VariableCache.
-    pub parent_key: ObjectRef,
-    /// The variable name refers to the name of any of the types of values described in the [VariableCache]
-    pub name: String,
+    parent_key: ObjectRef,
+    /// The name of the SVD variable, the name of a register, field, peripheral, etc.
+    name: String,
 
-    /// For 'lazy loading' of certain variable types we have to determine if the variable recursion should be deferred, and if so, how to resolve it when the request for further recursion happens.
-    /// See [VariableNodeType] for more information.
-    pub variable_node_type: SvdVariableNodeType,
+    pub variable_kind: SvdVariable,
 }
 
-impl SvdVariable {
-    pub fn new(name: String, variable_node_type: SvdVariableNodeType) -> SvdVariable {
-        SvdVariable {
-            variable_key: ObjectRef::default(),
-            parent_key: ObjectRef::default(),
-            name,
-            variable_node_type,
-        }
+impl Variable {
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     /// Get a unique key for this variable.
@@ -173,14 +168,14 @@ impl SvdVariable {
 
     /// Memory reference, compatible with DAP
     pub fn memory_reference(&self) -> Option<String> {
-        match self.variable_node_type {
-            SvdVariableNodeType::SvdRegister {
+        match self.variable_kind {
+            SvdVariable::SvdRegister {
                 address,
                 restricted_read: false,
                 ..
             } => Some(format!("{:#010X}", address)),
 
-            SvdVariableNodeType::SvdField {
+            SvdVariable::SvdField {
                 address,
                 restricted_read: false,
                 ..
@@ -190,26 +185,60 @@ impl SvdVariable {
     }
 
     pub fn type_name(&self) -> Option<String> {
-        match &self.variable_node_type {
-            SvdVariableNodeType::SvdRegister { description, .. }
-            | SvdVariableNodeType::SvdField { description, .. } => description.clone(),
-            SvdVariableNodeType::SvdPeripheral { .. } => Some("Peripheral".to_string()),
-            SvdVariableNodeType::SvdPeripheralGroup { .. } => Some("Peripheral Group".to_string()),
-            SvdVariableNodeType::Root => None,
-        }
+        self.variable_kind.type_name()
     }
 
-    /// Implementing get_value(), because Variable.value has to be private (a requirement of updating the value without overriding earlier values ... see set_value()).
+    /// Value of the variable, compatible with DAP
+    ///
+    /// The value might be retrieved usng the `MemoryInterface` to read the value from the target.
     pub fn get_value(&self, memory: &mut dyn MemoryInterface) -> String {
-        match &self.variable_node_type {
-            SvdVariableNodeType::Root => "".to_string(),
-            SvdVariableNodeType::SvdPeripheral { description, .. }
-            | SvdVariableNodeType::SvdPeripheralGroup { description } => description
-                .as_ref()
-                .cloned()
-                .unwrap_or_else(|| self.name.to_string()),
+        self.variable_kind.get_value(memory)
+    }
+}
 
-            SvdVariableNodeType::SvdRegister {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SvdVariable {
+    Root,
+    /// Register with address
+    SvdRegister {
+        address: u64,
+        /// true if the register is write-only or  if a ride has side effects
+        restricted_read: bool,
+
+        /// Description of the register, used as type in DAP
+        description: Option<String>,
+    },
+    /// Field with address
+    SvdField {
+        address: u64,
+        /// true if the register is write-only or  if a ride has side effects
+        restricted_read: bool,
+        bit_range_lower_bound: u32,
+        bit_range_upper_bound: u32,
+
+        description: Option<String>,
+    },
+    /// Peripheral with peripheral base address
+    SvdPeripheral {
+        base_address: u64,
+        description: Option<String>,
+    },
+    SvdPeripheralGroup {
+        description: Option<String>,
+    },
+}
+
+impl SvdVariable {
+    fn get_value(&self, memory: &mut dyn MemoryInterface) -> String {
+        match &self {
+            SvdVariable::Root => "".to_string(),
+            // For peripheral and peripheral group, we use the description as the value if there is one, otherwise there is no value
+            SvdVariable::SvdPeripheral { description, .. }
+            | SvdVariable::SvdPeripheralGroup { description } => {
+                description.as_ref().cloned().unwrap_or_default()
+            }
+
+            SvdVariable::SvdRegister {
                 address,
                 restricted_read,
                 ..
@@ -236,7 +265,7 @@ impl SvdVariable {
                     }
                 }
             }
-            SvdVariableNodeType::SvdField {
+            SvdVariable::SvdField {
                 address,
                 restricted_read,
                 bit_range_lower_bound,
@@ -278,36 +307,14 @@ impl SvdVariable {
             }
         }
     }
-}
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SvdVariableNodeType {
-    Root,
-    /// Register with address
-    SvdRegister {
-        address: u64,
-        /// true if the register is write-only or  if a ride has side effects
-        restricted_read: bool,
-
-        /// Description of the register, used as type in DAP
-        description: Option<String>,
-    },
-    /// Field with address
-    SvdField {
-        address: u64,
-        /// true if the register is write-only or  if a ride has side effects
-        restricted_read: bool,
-        bit_range_lower_bound: u32,
-        bit_range_upper_bound: u32,
-
-        description: Option<String>,
-    },
-    /// Peripheral with peripheral base address
-    SvdPeripheral {
-        base_address: u64,
-        description: Option<String>,
-    },
-    SvdPeripheralGroup {
-        description: Option<String>,
-    },
+    fn type_name(&self) -> Option<String> {
+        match &self {
+            SvdVariable::SvdRegister { description, .. }
+            | SvdVariable::SvdField { description, .. } => description.clone(),
+            SvdVariable::SvdPeripheral { .. } => Some("Peripheral".to_string()),
+            SvdVariable::SvdPeripheralGroup { .. } => Some("Peripheral Group".to_string()),
+            SvdVariable::Root => None,
+        }
+    }
 }
