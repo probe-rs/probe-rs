@@ -148,7 +148,7 @@ cargo_toml = { version = "0.17.2", optional = true }
 clap = { version = "4.4", features = ["derive"], optional = true }
 colored = { version = "2.1.0", optional = true }
 crossterm = { version = "<= 0.27.0", optional = true }
-defmt-decoder = { version = "0.3.9", features = ["unstable"], optional = true }
+defmt-decoder = { version = "=0.3.10", features = ["unstable"], optional = true } # pinned because "unstable" has potential for breaking changes
 directories = { version = "5", optional = true }
 dunce = { version = "1.0.4" }
 figment = { version = "0.10", features = [
