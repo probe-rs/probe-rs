@@ -614,7 +614,7 @@ mod test {
 
     #[test]
     fn create_session_with_fake_probe() {
-        let fake_probe = FakeProbe::new();
+        let fake_probe = FakeProbe::with_mocked_core();
 
         let probe = fake_probe.into_probe();
 

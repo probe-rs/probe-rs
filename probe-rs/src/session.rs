@@ -298,7 +298,7 @@ impl Session {
             configured_trace_sink: None,
         };
 
-        sequence_handle.on_connect(session.get_riscv_interface()?)?;
+        session.halted_access(|sess| sequence_handle.on_connect(sess.get_riscv_interface()?))?;
 
         Ok(session)
     }
@@ -334,14 +334,7 @@ impl Session {
             configured_trace_sink: None,
         };
 
-        {
-            // Todo: Add multicore support. How to deal with any cores that are not active and won't respond?
-            let mut core = session.core(0)?;
-
-            core.halt(Duration::from_millis(100))?;
-        }
-
-        sequence_handle.on_connect(session.get_xtensa_interface()?)?;
+        session.halted_access(|sess| sequence_handle.on_connect(sess.get_xtensa_interface()?))?;
 
         Ok(session)
     }
@@ -370,6 +363,34 @@ impl Session {
     /// Lists the available cores with their number and their type.
     pub fn list_cores(&self) -> Vec<(usize, CoreType)> {
         self.cores.iter().map(|t| (t.id(), t.core_type())).collect()
+    }
+
+    /// Get access to the session when all cores are halted.
+    ///
+    /// Any previously running cores will be resumed once the closure is executed.
+    pub(crate) fn halted_access<R>(
+        &mut self,
+        f: impl FnOnce(&mut Self) -> Result<R, Error>,
+    ) -> Result<R, Error> {
+        let mut resume_state = vec![];
+        for (core, _) in self.list_cores() {
+            let mut c = self.core(core)?;
+            tracing::info!("Core status: {:?}", c.status()?);
+            if !c.core_halted()? {
+                tracing::info!("Halting core...");
+                resume_state.push(core);
+                c.halt(Duration::from_millis(100))?;
+            }
+        }
+
+        let r = f(self);
+
+        for core in resume_state {
+            tracing::info!("Resuming core...");
+            self.core(core)?.run()?;
+        }
+
+        r
     }
 
     /// Attaches to the core with the given number.
@@ -650,9 +671,12 @@ impl Session {
 
     /// Clears all hardware breakpoints on all cores
     pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), Error> {
-        { 0..self.cores.len() }.try_for_each(|n| {
-            self.core(n)
-                .and_then(|mut core| core.clear_all_hw_breakpoints())
+        self.halted_access(|session| {
+            { 0..session.cores.len() }.try_for_each(|n| {
+                session
+                    .core(n)
+                    .and_then(|mut core| core.clear_all_hw_breakpoints())
+            })
         })
     }
 }
@@ -664,10 +688,7 @@ static_assertions::assert_impl_all!(Session: Send);
 impl Drop for Session {
     #[tracing::instrument(name = "session_drop", skip(self))]
     fn drop(&mut self) {
-        if let Err(err) = { 0..self.cores.len() }.try_for_each(|i| {
-            self.core(i)
-                .and_then(|mut core| core.clear_all_hw_breakpoints())
-        }) {
+        if let Err(err) = self.clear_all_hw_breakpoints() {
             tracing::warn!(
                 "Could not clear all hardware breakpoints: {:?}",
                 anyhow!(err)

@@ -426,16 +426,8 @@ pub(crate) trait RawJtagIo {
     /// in batches for performance reasons.
     fn shift_bit(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError>;
 
-    /// Ensures internal buffers are flushed.
-    fn flush(&mut self) -> Result<(), DebugProbeError>;
-
     /// Returns the bits captured from TDO and clears the capture buffer.
     fn read_captured_bits(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError>;
-
-    /// Set the IR register length
-    fn set_ir_len(&mut self, len: usize) {
-        self.state_mut().chain_params.irlen = len;
-    }
 
     /// Resets the JTAG state machine by shifting out a number of high TMS bits.
     fn reset_jtag_state_machine(&mut self) -> Result<(), DebugProbeError> {
