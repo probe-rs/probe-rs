@@ -106,7 +106,7 @@ impl VariableCache {
 
     /// Create a variable cache based on DWARF debug information
     ///
-    /// The `header_offset` and `entries_offset` values are used to
+    /// The `entries_offset` and `unit_info` values are used to
     /// extract the variable information from the debug information.
     ///
     /// The entries form a tree, only entries below the entry
@@ -121,15 +121,6 @@ impl VariableCache {
         static_root_variable.name = name;
 
         VariableCache::new(static_root_variable)
-    }
-
-    /// Create a new cache for SVD variables
-    pub fn new_svd_cache() -> Self {
-        let mut device_root_variable = Variable::new(None, None);
-        device_root_variable.variable_node_type = VariableNodeType::DoNotRecurse;
-        device_root_variable.name = VariableName::PeripheralScopeRoot;
-
-        VariableCache::new(device_root_variable)
     }
 
     /// Get the root variable of the cache
@@ -624,7 +615,11 @@ mod test {
 
     #[test]
     fn find_children() {
-        let mut cache = VariableCache::new_svd_cache();
+        let mut cache = VariableCache::new_dwarf_cache(
+            UnitOffset(0),
+            VariableName::Named("root".to_string()),
+            None,
+        );
         let root_key = cache.root_variable().variable_key;
 
         let var_1 = cache.create_variable(root_key, None, None).unwrap();
@@ -640,7 +635,11 @@ mod test {
 
     #[test]
     fn find_entry() {
-        let mut cache = VariableCache::new_svd_cache();
+        let mut cache = VariableCache::new_dwarf_cache(
+            UnitOffset(0),
+            VariableName::Named("root".to_string()),
+            None,
+        );
         let root_key = cache.root_variable().variable_key;
 
         let var_1 = cache.create_variable(root_key, None, None).unwrap();
@@ -667,7 +666,11 @@ mod test {
     ///     |
     ///     +-- [var_7]
     fn build_test_tree() -> (VariableCache, Vec<Variable>) {
-        let mut cache = VariableCache::new_svd_cache();
+        let mut cache = VariableCache::new_dwarf_cache(
+            UnitOffset(0),
+            VariableName::Named("root".to_string()),
+            None,
+        );
         let root_key = cache.root_variable().variable_key;
 
         let var_1 = cache.create_variable(root_key, None, None).unwrap();

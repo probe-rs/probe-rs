@@ -1,5 +1,6 @@
 use crate::cmd::dap_server::{
     debug_adapter::dap::dap_types::{DisassembledInstruction, Source},
+    peripherals::svd_cache::{SvdVariableCache, Variable},
     server::{core_data::CoreHandle, session_data::BreakpointType},
     DebuggerError,
 };
@@ -377,6 +378,26 @@ pub(crate) fn get_variable_reference(
     } else {
         // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
         (ObjectRef::Invalid, 0, 0)
+    }
+}
+
+/// The DAP protocol uses three related values to determine how to invoke the `Variables` request.
+/// This function retrieves that information from the `DebugInfo::VariableCache` and returns it as
+/// (`variable_reference`, `named_child_variables_cnt`, `indexed_child_variables_cnt`)
+pub(crate) fn get_svd_variable_reference(
+    parent_variable: &Variable,
+    cache: &SvdVariableCache,
+) -> (ObjectRef, i64) {
+    let named_child_variables_cnt = cache.get_children(parent_variable.variable_key()).len();
+
+    if named_child_variables_cnt > 0 {
+        (
+            parent_variable.variable_key(),
+            named_child_variables_cnt as i64,
+        )
+    } else {
+        // Returning 0's allows VSCode DAP Client to behave correctly for frames that have no variables, and variables that have no children.
+        (ObjectRef::Invalid, 0)
     }
 }
 

@@ -73,8 +73,6 @@ pub enum VariableName {
     RegistersRoot,
     /// Top-level variable for local scoped variables, child of a stack frame variable.
     LocalScopeRoot,
-    /// Top-level variable for CMSIS-SVD file Device peripherals/registers/fields.
-    PeripheralScopeRoot,
     /// Artificial variable, without a name (e.g. enum discriminant)
     Artifical,
     /// Anonymous namespace
@@ -94,7 +92,6 @@ impl std::fmt::Display for VariableName {
             VariableName::StaticScopeRoot => write!(f, "Static Variable"),
             VariableName::RegistersRoot => write!(f, "Platform Register"),
             VariableName::LocalScopeRoot => write!(f, "Function Variable"),
-            VariableName::PeripheralScopeRoot => write!(f, "Peripheral Variable"),
             VariableName::Artifical => write!(f, "<artifical>"),
             VariableName::AnonymousNamespace => write!(f, "<anonymous_namespace>"),
             VariableName::Namespace(name) => name.fmt(f),
@@ -132,12 +129,6 @@ pub enum VariableNodeType {
     /// - Rule: For now, Union types WILL ALWAYS BE recursed. TODO: Evaluate if it is beneficial to defer these.
     #[default]
     RecurseToBaseType,
-    /// SVD Device Peripherals
-    SvdPeripheral,
-    /// SVD Peripheral Registers
-    SvdRegister,
-    /// SVD Register Fields
-    SvdField,
 }
 
 impl VariableNodeType {
@@ -429,45 +420,7 @@ impl Variable {
     /// Implementing get_value(), because Variable.value has to be private (a requirement of updating the value without overriding earlier values ... see set_value()).
     pub fn get_value(&self, variable_cache: &variable_cache::VariableCache) -> String {
         // Allow for chained `if let` without complaining
-        if VariableNodeType::SvdRegister == self.variable_node_type {
-            if let VariableValue::Valid(register_value) = &self.value {
-                if let Ok(register_u32_value) = register_value.parse::<u32>() {
-                    format!(
-                        "{:032b} @ {:#010X}",
-                        register_u32_value,
-                        self.memory_location.memory_address().unwrap_or(u64::MAX) // We should never encounter a memory location that is invalid if we already used it to read the register value.
-                    )
-                } else {
-                    format!("Invalid register value {register_value}")
-                }
-            } else {
-                format!("{}", self.value)
-            }
-        } else if VariableNodeType::SvdField == self.variable_node_type {
-            // In this special case, we extract just the bits we need from the stored value of the register.
-            if let VariableValue::Valid(register_value) = &self.value {
-                if let Ok(register_u32_value) = register_value.parse::<u32>() {
-                    let mut bit_value: u32 = register_u32_value;
-                    bit_value <<= 32 - self.range_upper_bound;
-                    bit_value >>= 32 - (self.range_upper_bound - self.range_lower_bound);
-                    format!(
-                        "{:0width$b} @ {:#010X}:{}..{}",
-                        bit_value,
-                        self.memory_location.memory_address().unwrap_or(u64::MAX),
-                        self.range_lower_bound,
-                        self.range_upper_bound,
-                        width = self.subrange_bounds().count()
-                    )
-                } else {
-                    format!(
-                        "Invalid bit range {}..{} from value {}",
-                        self.range_lower_bound, self.range_upper_bound, register_value
-                    )
-                }
-            } else {
-                format!("{}", self.value)
-            }
-        } else if !self.value.is_empty() {
+        if !self.value.is_empty() {
             // The `value` for this `Variable` is non empty because ...
             // - It is base data type for which a value was determined based on the core runtime, or ...
             // - We encountered an error somewhere, so report it to the user
@@ -520,24 +473,6 @@ impl Variable {
     ) {
         if let VariableValue::Error(_) = self.value {
             // Nothing more to do ...
-            return;
-        }
-
-        if self.variable_node_type == VariableNodeType::SvdRegister
-            || self.variable_node_type == VariableNodeType::SvdField
-        {
-            // Special handling for SVD registers.
-            // Because we cache the SVD structure once per sesion, we have to re-read the actual register values whenever queried.
-            match memory.read_word_32(self.memory_location.memory_address().unwrap_or(u64::MAX)) {
-                Ok(u32_value) => self.value = VariableValue::Valid(u32_value.to_le().to_string()),
-                Err(error) => {
-                    self.value = VariableValue::Error(format!(
-                        "Unable to read peripheral register value @ {:#010X}: {:?}",
-                        self.memory_location.memory_address().unwrap_or(u64::MAX),
-                        error
-                    ))
-                }
-            }
             return;
         }
 
