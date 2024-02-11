@@ -166,19 +166,35 @@ pub fn erase_sectors(
             })
             .collect::<Vec<_>>();
 
-        flasher.run_erase(|active| {
-            for info in sectors {
+        if flasher.flash_algorithm().pc_erase_range.is_some() {
+            flasher.run_erase(|active| {
+                let start_address = sectors.first().unwrap().base_address;
+                let last = sectors.last().unwrap();
+                let end_address = last.base_address + last.size;
                 tracing::debug!(
-                    "    sector: {:08x}-{:08x} ({} bytes)",
-                    info.base_address,
-                    info.base_address + info.size,
-                    info.size
+                    "    range: {:08x}-{:08x} ({} bytes)",
+                    start_address,
+                    end_address,
+                    end_address - start_address
                 );
+                active.erase_range(start_address, end_address)?;
+                Ok(())
+            })?;
+        } else {
+            flasher.run_erase(|active| {
+                for info in sectors {
+                    tracing::debug!(
+                        "    sector: {:08x}-{:08x} ({} bytes)",
+                        info.base_address,
+                        info.base_address + info.size,
+                        info.size
+                    );
 
-                active.erase_sector(info.base_address)?;
-            }
-            Ok(())
-        })?;
+                    active.erase_sector(info.base_address)?;
+                }
+                Ok(())
+            })?;
+        }
     }
 
     Ok(())
