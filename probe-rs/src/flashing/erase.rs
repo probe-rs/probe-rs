@@ -55,23 +55,6 @@ pub fn erase_all(session: &mut Session, progress: Option<FlashProgress>) -> Resu
         if flasher.is_chip_erase_supported() {
             tracing::debug!("     -- chip erase supported, doing it.");
             flasher.run_erase_all()?;
-        } else if flasher.flash_algorithm().pc_erase_range.is_some() {
-            tracing::debug!("     -- chip erase not supported, erasing by bulk sector erase");
-            let sectors = flasher
-                .flash_algorithm()
-                .iter_sectors()
-                .filter(|info| {
-                    let range = info.base_address..info.base_address + info.size;
-                    regions.iter().any(|r| r.range.contains_range(&range))
-                })
-                .collect::<Vec<_>>();
-            let first = sectors.first().unwrap();
-            let last = sectors.last().unwrap();
-            flasher.run_erase(|active| {
-                active.erase_range(first.base_address, last.base_address + last.size)?;
-
-                Ok(())
-            })?;
         } else {
             tracing::debug!("     -- chip erase not supported, erasing by sector.");
 
@@ -85,20 +68,9 @@ pub fn erase_all(session: &mut Session, progress: Option<FlashProgress>) -> Resu
                     regions.iter().any(|r| r.range.contains_range(&range))
                 })
                 .collect::<Vec<_>>();
-
-            flasher.run_erase(|active| {
-                for info in sectors {
-                    tracing::debug!(
-                        "    sector: {:08x}-{:08x} ({} bytes)",
-                        info.base_address,
-                        info.base_address + info.size,
-                        info.size
-                    );
-
-                    active.erase_sector(info.base_address)?;
-                }
-                Ok(())
-            })?;
+            let qty = sectors.len();
+            tracing::debug!("Calling erase_sectors to erase {qty} sectors...");
+            erase_sectors(session, progress.clone(), 0, qty)?;
         }
     }
 
@@ -168,17 +140,22 @@ pub fn erase_sectors(
 
         if flasher.flash_algorithm().pc_erase_range.is_some() {
             flasher.run_erase(|active| {
-                let start_address = sectors.first().unwrap().base_address;
-                let last = sectors.last().unwrap();
-                let end_address = last.base_address + last.size;
-                tracing::debug!(
-                    "    range: {:08x}-{:08x} ({} bytes)",
-                    start_address,
-                    end_address,
-                    end_address - start_address
-                );
-                active.erase_range(start_address, end_address)?;
-                Ok(())
+                if sectors.len() == 0 {
+                    tracing::debug!("    no sectors to erase",);
+                    Ok(())
+                } else {
+                    let start_address = sectors.first().unwrap().base_address;
+                    let last = sectors.last().unwrap();
+                    let end_address = last.base_address + last.size;
+                    tracing::debug!(
+                        "    range: {:08x}-{:08x} ({} bytes)",
+                        start_address,
+                        end_address,
+                        end_address - start_address
+                    );
+                    active.erase_range(start_address, end_address)?;
+                    Ok(())
+                }
             })?;
         } else {
             flasher.run_erase(|active| {
