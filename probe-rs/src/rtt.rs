@@ -49,6 +49,8 @@
 mod channel;
 pub use channel::*;
 
+pub mod host;
+
 mod syscall;
 pub use syscall::*;
 
@@ -406,4 +408,16 @@ pub enum Error {
     /// Wraps errors propagated up from reading memory on the target.
     #[error("Unexpected error while reading {0} from target memory. Please report this as a bug.")]
     MemoryRead(String),
+
+    /// UpChannel does not exist
+    #[error("UpChannel {0} does not exist")]
+    UpChannelDoesNotExist(usize),
+
+    /// UpChannel does not exist
+    #[error("DownChannel {0} does not exist")]
+    DownChannelDoesNotExist(usize),
+
+    /// Error attempting to read from a channel
+    #[error("Error reading from channel")]
+    ChannelRead,
 }
