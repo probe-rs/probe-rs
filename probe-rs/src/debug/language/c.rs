@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use crate::{
     debug::{
         language::ProgrammingLanguage, DebugError, Variable, VariableCache, VariableLocation,
@@ -54,10 +56,42 @@ impl ProgrammingLanguage for C {
                         VariableValue::Error(format!("Invalid byte size for float: {size}"))
                     }
                 },
-
+                // TODO: doubles
                 _undetermined_value => VariableValue::Empty,
             },
             _other => VariableValue::Empty,
+        }
+    }
+
+    fn update_variable(
+        &self,
+        variable: &Variable,
+        memory: &mut dyn MemoryInterface,
+        new_value: &str,
+    ) -> Result<(), DebugError> {
+        match &variable.type_name {
+            VariableType::Base(name) => match name.as_str() {
+                "_Bool" => write_unsigned_int(variable, memory, new_value),
+                "char" => write_c_char(variable, memory, new_value),
+                "unsigned char" | "unsigned int" | "short unsigned int" | "long unsigned int" => {
+                    write_unsigned_int(variable, memory, new_value)
+                }
+                "signed char" | "int" | "short int" | "long int" | "signed int"
+                | "short signed int" | "long signed int" => {
+                    write_signed_int(variable, memory, new_value)
+                }
+                "float" => write_f32(variable, memory, new_value),
+                // TODO: doubles
+                other => Err(DebugError::UnwindIncompleteResults {
+                    message: format!("Unsupported data type: {other}. Please only update variables with a base data type."),
+                }),
+            },
+            other => Err(DebugError::UnwindIncompleteResults {
+                message: format!(
+                    "Unsupported variable type {:?}. Only base variables can be updated.",
+                    other
+                ),
+            }),
         }
     }
 
@@ -90,22 +124,38 @@ fn read_c_char(
     })
 }
 
+fn write_c_char(
+    variable: &Variable,
+    memory: &mut dyn MemoryInterface,
+    new_value: &str,
+) -> Result<(), DebugError> {
+    fn input_error(value: &str) -> DebugError {
+        DebugError::UnwindIncompleteResults {
+            message: format!("Invalid value for char: {value}. Please provide a single character."),
+        }
+    }
+
+    // TODO: what do we want to support here exactly? This is now symmetrical with read_c_char
+    // but we could be somewhat smarter, too.
+    let new_value = if new_value.len() == 1 && new_value.is_ascii() {
+        new_value.as_bytes()[0]
+    } else if new_value.starts_with("\\x") && [3, 4].contains(&new_value.len()) {
+        u8::from_str_radix(&new_value[2..], 16).map_err(|_| input_error(new_value))?
+    } else {
+        return Err(input_error(new_value));
+    };
+
+    memory.write(variable.memory_location.memory_address()?, &[new_value])?;
+
+    Ok(())
+}
+
 /// A very naive implementation of printing an arbitrary length number.
 fn print_arbitrary_length(is_signed: bool, num: &mut [u8]) -> String {
     let prefix = if is_signed {
         let negative = num.last().map_or(false, |&x| x & 0x80 != 0);
-
         if negative {
-            // Two's complement
-            let mut carry = true;
-            for byte in num.iter_mut() {
-                *byte = !*byte;
-                let (new, overflow) = byte.overflowing_add(carry as u8);
-                *byte = new;
-                carry = overflow;
-            }
-        }
-        if negative {
+            twos_complement(num);
             "-"
         } else {
             ""
@@ -117,14 +167,7 @@ fn print_arbitrary_length(is_signed: bool, num: &mut [u8]) -> String {
     // in a loop, we divide the number by 10 and print the remainder digit
     let mut out = String::new();
     while num.iter().any(|&x| x != 0) {
-        // divide byte-by-byte by 10.
-        // We could divide by 100 but that way we may end up with a leading 0 we have to remove
-        let mut carry = 0;
-        for byte in num.iter_mut().rev() {
-            let val = *byte as u32 + carry * 256;
-            *byte = (val / 10) as u8;
-            carry = val % 10;
-        }
+        let carry = divide(num, 10);
         out.insert(0, char::from_digit(carry, 10).unwrap());
     }
 
@@ -135,6 +178,30 @@ fn print_arbitrary_length(is_signed: bool, num: &mut [u8]) -> String {
     out.insert_str(0, prefix);
 
     out
+}
+
+// Divide byte-by-byte
+fn divide(num: &mut [u8], by: u8) -> u32 {
+    let by = by as u32;
+
+    let mut carry = 0;
+    for byte in num.iter_mut().rev() {
+        let val = *byte as u32 + carry * 256;
+        *byte = (val / by) as u8;
+        carry = val % by;
+    }
+
+    carry
+}
+
+fn twos_complement(num: &mut [u8]) {
+    let mut carry = true;
+    for byte in num.iter_mut() {
+        *byte = !*byte;
+        let (new, overflow) = byte.overflowing_add(carry as u8);
+        *byte = new;
+        carry = overflow;
+    }
 }
 
 fn read_unsigned_int(
@@ -157,10 +224,64 @@ fn read_signed_int(
     Ok(print_arbitrary_length(true, &mut buff))
 }
 
+fn write_unsigned_int(
+    variable: &Variable,
+    memory: &mut dyn MemoryInterface,
+    new_value: &str,
+) -> Result<(), DebugError> {
+    let buff = u128::to_le_bytes(<u128 as FromStr>::from_str(new_value).map_err(|error| {
+        DebugError::UnwindIncompleteResults {
+            message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
+        }
+    })?);
+
+    // TODO: check that value actually fits into `bytes` number of bytes
+    let bytes = variable.byte_size.unwrap_or(1) as usize;
+    memory.write_8(variable.memory_location.memory_address()?, &buff[..bytes])?;
+
+    Ok(())
+}
+
+fn write_signed_int(
+    variable: &Variable,
+    memory: &mut dyn MemoryInterface,
+    new_value: &str,
+) -> Result<(), DebugError> {
+    let buff = i128::to_le_bytes(<i128 as FromStr>::from_str(new_value).map_err(|error| {
+        DebugError::UnwindIncompleteResults {
+            message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
+        }
+    })?);
+
+    // TODO: check that value actually fits into `bytes` number of bytes
+    let bytes = variable.byte_size.unwrap_or(1) as usize;
+    memory.write_8(variable.memory_location.memory_address()?, &buff[..bytes])?;
+
+    Ok(())
+}
+
 fn read_f32(variable: &Variable, memory: &mut dyn MemoryInterface) -> Result<String, DebugError> {
     let mut buff = [0u8; 4];
     memory.read(variable.memory_location.memory_address()?, &mut buff)?;
     Ok(f32::from_le_bytes(buff).to_string())
+}
+
+fn write_f32(
+    variable: &Variable,
+    memory: &mut dyn MemoryInterface,
+    new_value: &str,
+) -> Result<(), DebugError> {
+    let buff = f32::to_le_bytes(<f32 as FromStr>::from_str(new_value).map_err(|error| {
+        DebugError::UnwindIncompleteResults {
+            message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
+        }
+    })?);
+
+    memory
+        .write_8(variable.memory_location.memory_address()?, &buff)
+        .map_err(|error| DebugError::UnwindIncompleteResults {
+            message: format!("{error:?}"),
+        })
 }
 
 #[cfg(test)]
