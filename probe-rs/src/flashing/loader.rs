@@ -121,7 +121,7 @@ impl FlashLoader {
         file: &mut T,
         options: IdfOptions,
     ) -> Result<(), FileDownloadError> {
-        let target = session.target();
+        let target = session.target().clone();
         let target_name = target
             .name
             .split_once('-')

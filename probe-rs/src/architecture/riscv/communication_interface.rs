@@ -520,7 +520,7 @@ impl RiscvCommunicationInterface {
             tracing::debug!("anynonexistent not supported, assuming only one hart exists")
         }
 
-        tracing::debug!("Number of harts: {}", num_harts);
+        tracing::info!("Number of harts: {}", num_harts);
 
         self.state.num_harts = num_harts;
 
@@ -530,6 +530,14 @@ impl RiscvCommunicationInterface {
         control.set_hartsel(0);
 
         self.write_dm_register(control)?;
+
+        loop {
+            let control: Dmcontrol = self.read_dm_register()?;
+            if control.dmactive() {
+                break;
+            }
+            tracing::info!("dmactive not yet!");
+        }
 
         // determine size of the program buffer, and number of data
         // registers for abstract commands

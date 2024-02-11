@@ -41,9 +41,11 @@ impl<'probe> Riscv32<'probe> {
         interface: &'probe mut RiscvCommunicationInterface,
         state: &'probe mut RiscVState,
     ) -> Result<Self, RiscvError> {
+        tracing::info!("Riscv32::new0");
         if !interface.hart_enabled(hart) {
             return Err(RiscvError::HartUnavailable);
         }
+        tracing::info!("Riscv32::new1");
 
         Ok(Self {
             hart,
@@ -168,25 +170,34 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn core_halted(&mut self) -> Result<bool, crate::Error> {
+        tracing::info!("Core::core_halted0");
         self.interface.select_hart(self.hart)?;
-
+        
+        tracing::info!("Core::core_halted1");
         let dmstatus: Dmstatus = self.interface.read_dm_register()?;
+        tracing::info!("Core::core_halted2");
 
         Ok(dmstatus.allhalted())
     }
 
     fn status(&mut self) -> Result<crate::core::CoreStatus, crate::Error> {
+        tracing::info!("Riscv32::status0");
         self.interface.select_hart(self.hart)?;
+        tracing::info!("Riscv32::status1");
 
         // TODO: We should use hartsum to determine if any hart is halted
         //       quickly
 
         let status: Dmstatus = self.interface.read_dm_register()?;
+        tracing::info!("Dmstatus: {:?}", status);
 
+        tracing::info!("Riscv32::status2");
         if status.allhalted() {
             // determine reason for halt
+            tracing::info!("Riscv32::status3");
             let dcsr = Dcsr(self.read_core_reg(RegisterId::from(0x7b0))?.try_into()?);
-
+            tracing::info!("Riscv32::status4");
+            
             let reason = match dcsr.cause() {
                 // An ebreak instruction was hit
                 1 => {
@@ -205,9 +216,10 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
                 // Reserved for future use in specification
                 _ => HaltReason::Unknown,
             };
-
+            
             Ok(CoreStatus::Halted(reason))
         } else if status.allrunning() {
+            tracing::info!("Riscv32::status=running");
             Ok(CoreStatus::Running)
         } else {
             Err(
