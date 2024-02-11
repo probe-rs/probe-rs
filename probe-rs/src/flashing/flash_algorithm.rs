@@ -29,7 +29,7 @@ pub struct FlashAlgorithm {
     pub pc_program_page: u64,
     /// Address of the `EraseSector()` entry point.
     pub pc_erase_sector: u64,
-    /// Address of the `EraseSectors()` entry point. Optional
+    /// Address of the `EraseRange()` entry point. Optional
     pub pc_erase_range: Option<u64>,
     /// Address of the `EraseAll()` entry point. Optional.
     pub pc_erase_all: Option<u64>,
