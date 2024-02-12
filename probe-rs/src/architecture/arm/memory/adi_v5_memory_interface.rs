@@ -112,9 +112,9 @@ pub trait ArmProbe: SwdSequence {
         // Number of unaligned bytes at the start
         let start_extra_count = ((4 - (address % 4) as usize) % 4).min(len);
         // Extra bytes to be written at the end
-        let end_extra_count = len.saturating_sub(start_extra_count) % 4;
+        let end_extra_count = (len - start_extra_count) % 4;
         // Number of bytes between start and end (i.e. number of bytes transmitted as 32 bit words)
-        let inbetween_count = len.saturating_sub(start_extra_count + end_extra_count);
+        let inbetween_count = len - start_extra_count - end_extra_count;
 
         assert!(start_extra_count < 4);
         assert!(end_extra_count < 4);
@@ -1154,6 +1154,29 @@ mod tests {
                 let data = &DATA8[..len];
                 mi.write_8(address, data)
                     .unwrap_or_else(|_| panic!("write_8 failed, address = {address}, len = {len}"));
+
+                assert_eq!(
+                    mi.mock_memory(),
+                    expected.as_slice(),
+                    "address = {address}, len = {len}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn write() {
+        for address in 0..4 {
+            for len in 0..12 {
+                let mut mock = MockMemoryAp::with_pattern_and_size(128);
+                let mut mi = ADIMemoryInterface::new_mock(&mut mock);
+
+                let mut expected = Vec::from(mi.mock_memory());
+                expected[address as usize..(address as usize) + len].copy_from_slice(&DATA8[..len]);
+
+                let data = &DATA8[..len];
+                mi.write(address, data)
+                    .unwrap_or_else(|_| panic!("write failed, address = {address}, len = {len}"));
 
                 assert_eq!(
                     mi.mock_memory(),
