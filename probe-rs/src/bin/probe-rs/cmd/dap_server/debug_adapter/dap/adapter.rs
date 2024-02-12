@@ -1358,45 +1358,47 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             .as_ref()
             .map(|cp| &cp.svd_variable_cache)
         {
-            let dap_variables: Vec<Variable> = svd_cache
-                .get_children(variable_ref)
-                .iter()
-                // Convert the `probe_rs::debug::Variable` to `probe_rs_debugger::dap_types::Variable`
-                .map(|variable| {
-                    let (variables_reference, named_child_variables_cnt) =
-                        get_svd_variable_reference(variable, svd_cache);
+            if svd_cache.get_variable_by_key(variable_ref).is_some() {
+                let dap_variables: Vec<Variable> = svd_cache
+                    .get_children(variable_ref)
+                    .iter()
+                    // Convert the `probe_rs::debug::Variable` to `probe_rs_debugger::dap_types::Variable`
+                    .map(|variable| {
+                        let (variables_reference, named_child_variables_cnt) =
+                            get_svd_variable_reference(variable, svd_cache);
 
-                    // We use fully qualified Peripheral.Register.Field form to ensure the `evaluate` request can find the right registers and fields by name.
-                    let name = if let Some(last_part) = variable.name().split_terminator('.').last()
-                    {
-                        last_part.to_string()
-                    } else {
-                        variable.name().to_string()
-                    };
+                        // We use fully qualified Peripheral.Register.Field form to ensure the `evaluate` request can find the right registers and fields by name.
+                        let name =
+                            if let Some(last_part) = variable.name().split_terminator('.').last() {
+                                last_part.to_string()
+                            } else {
+                                variable.name().to_string()
+                            };
 
-                    Variable {
-                        name,
-                        evaluate_name: Some(variable.name().to_string()),
-                        memory_reference: variable.memory_reference(),
-                        indexed_variables: None,
-                        named_variables: Some(named_child_variables_cnt),
-                        presentation_hint: None,
-                        type_: variable.type_name(),
-                        value: {
-                            // The SVD cache is not automatically refreshed on every stack trace, and we only need to refresh the field values.
-                            variable.get_value(&mut target_core.core)
-                        },
-                        variables_reference: variables_reference.into(),
-                    }
-                })
-                .collect();
+                        Variable {
+                            name,
+                            evaluate_name: Some(variable.name().to_string()),
+                            memory_reference: variable.memory_reference(),
+                            indexed_variables: None,
+                            named_variables: Some(named_child_variables_cnt),
+                            presentation_hint: None,
+                            type_: variable.type_name(),
+                            value: {
+                                // The SVD cache is not automatically refreshed on every stack trace, and we only need to refresh the field values.
+                                variable.get_value(&mut target_core.core)
+                            },
+                            variables_reference: variables_reference.into(),
+                        }
+                    })
+                    .collect();
 
-            return self.send_response(
-                request,
-                Ok(Some(VariablesResponseBody {
-                    variables: dap_variables,
-                })),
-            );
+                return self.send_response(
+                    request,
+                    Ok(Some(VariablesResponseBody {
+                        variables: dap_variables,
+                    })),
+                );
+            }
         }
 
         let mut parent_variable: Option<probe_rs::debug::Variable> = None;
