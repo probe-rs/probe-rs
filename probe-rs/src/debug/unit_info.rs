@@ -297,7 +297,7 @@ impl UnitInfo {
                         gimli::AttributeValue::Flag(true) => {
                             child_variable.set_value(VariableValue::Valid(format!(
                                 "{:?}",
-                                child_variable.type_name.clone()
+                                child_variable.type_name
                             )));
                         }
                         gimli::AttributeValue::Flag(false) => {
