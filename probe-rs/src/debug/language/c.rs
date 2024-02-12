@@ -1,9 +1,8 @@
-use std::str::FromStr;
-
 use crate::{
     debug::{
-        language::ProgrammingLanguage, DebugError, Variable, VariableCache, VariableLocation,
-        VariableName, VariableType, VariableValue,
+        language::{ParseToBytes, ProgrammingLanguage},
+        DebugError, Variable, VariableCache, VariableLocation, VariableName, VariableType,
+        VariableValue,
     },
     MemoryInterface,
 };
@@ -229,11 +228,7 @@ fn write_unsigned_int(
     memory: &mut dyn MemoryInterface,
     new_value: &str,
 ) -> Result<(), DebugError> {
-    let buff = u128::to_le_bytes(<u128 as FromStr>::from_str(new_value).map_err(|error| {
-        DebugError::UnwindIncompleteResults {
-            message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
-        }
-    })?);
+    let buff = u128::parse_to_bytes(new_value)?;
 
     // TODO: check that value actually fits into `bytes` number of bytes
     let bytes = variable.byte_size.unwrap_or(1) as usize;
@@ -247,11 +242,7 @@ fn write_signed_int(
     memory: &mut dyn MemoryInterface,
     new_value: &str,
 ) -> Result<(), DebugError> {
-    let buff = i128::to_le_bytes(<i128 as FromStr>::from_str(new_value).map_err(|error| {
-        DebugError::UnwindIncompleteResults {
-            message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
-        }
-    })?);
+    let buff = i128::parse_to_bytes(new_value)?;
 
     // TODO: check that value actually fits into `bytes` number of bytes
     let bytes = variable.byte_size.unwrap_or(1) as usize;
@@ -271,11 +262,7 @@ fn write_f32(
     memory: &mut dyn MemoryInterface,
     new_value: &str,
 ) -> Result<(), DebugError> {
-    let buff = f32::to_le_bytes(<f32 as FromStr>::from_str(new_value).map_err(|error| {
-        DebugError::UnwindIncompleteResults {
-            message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
-        }
-    })?);
+    let buff = f32::parse_to_bytes(new_value)?;
 
     memory
         .write_8(variable.memory_location.memory_address()?, &buff)

@@ -2,8 +2,9 @@ use std::str::FromStr;
 
 use crate::{
     debug::{
-        language::ProgrammingLanguage, DebugError, Variable, VariableCache, VariableLocation,
-        VariableName, VariableType, VariableValue,
+        language::{ParseToBytes, ProgrammingLanguage},
+        DebugError, Variable, VariableCache, VariableLocation, VariableName, VariableType,
+        VariableValue,
     },
     MemoryInterface,
 };
@@ -330,17 +331,9 @@ impl Value for i8 {
         memory: &mut dyn MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
+        let buff = i8::parse_to_bytes(new_value)?;
         memory
-            .write_word_8(
-                variable.memory_location.memory_address()?,
-                <i8 as FromStr>::from_str(new_value).map_err(|error| {
-                    DebugError::UnwindIncompleteResults {
-                        message: format!(
-                            "Invalid data conversion from value: {new_value:?}. {error:?}"
-                        ),
-                    }
-                })? as u8,
-            )
+            .write_word_8(variable.memory_location.memory_address()?, buff[0])
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),
             })
@@ -363,11 +356,7 @@ impl Value for i16 {
         memory: &mut dyn MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        let buff = i16::to_le_bytes(<i16 as FromStr>::from_str(new_value).map_err(|error| {
-            DebugError::UnwindIncompleteResults {
-                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
-            }
-        })?);
+        let buff = i16::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
@@ -392,11 +381,7 @@ impl Value for i32 {
         memory: &mut dyn MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        let buff = i32::to_le_bytes(<i32 as FromStr>::from_str(new_value).map_err(|error| {
-            DebugError::UnwindIncompleteResults {
-                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
-            }
-        })?);
+        let buff = i32::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
@@ -421,11 +406,7 @@ impl Value for i64 {
         memory: &mut dyn MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        let buff = i64::to_le_bytes(<i64 as FromStr>::from_str(new_value).map_err(|error| {
-            DebugError::UnwindIncompleteResults {
-                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
-            }
-        })?);
+        let buff = i64::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
@@ -450,11 +431,7 @@ impl Value for i128 {
         memory: &mut dyn MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        let buff = i128::to_le_bytes(<i128 as FromStr>::from_str(new_value).map_err(|error| {
-            DebugError::UnwindIncompleteResults {
-                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
-            }
-        })?);
+        let buff = i128::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
@@ -480,14 +457,9 @@ impl Value for isize {
         memory: &mut dyn MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        let buff =
-            isize::to_le_bytes(<isize as FromStr>::from_str(new_value).map_err(|error| {
-                DebugError::UnwindIncompleteResults {
-                    message: format!(
-                        "Invalid data conversion from value: {new_value:?}. {error:?}"
-                    ),
-                }
-            })?);
+        // TODO: We can get the actual WORD length from [DWARF] instead of assuming `u32`
+        let buff = i32::parse_to_bytes(new_value)?;
+
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
@@ -512,17 +484,9 @@ impl Value for u8 {
         memory: &mut dyn MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
+        let buff = u8::parse_to_bytes(new_value)?;
         memory
-            .write_word_8(
-                variable.memory_location.memory_address()?,
-                <u8 as FromStr>::from_str(new_value).map_err(|error| {
-                    DebugError::UnwindIncompleteResults {
-                        message: format!(
-                            "Invalid data conversion from value: {new_value:?}. {error:?}"
-                        ),
-                    }
-                })?,
-            )
+            .write_word_8(variable.memory_location.memory_address()?, buff[0])
             .map_err(|error| DebugError::UnwindIncompleteResults {
                 message: format!("{error:?}"),
             })
@@ -545,11 +509,7 @@ impl Value for u16 {
         memory: &mut dyn MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        let buff = u16::to_le_bytes(<u16 as FromStr>::from_str(new_value).map_err(|error| {
-            DebugError::UnwindIncompleteResults {
-                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
-            }
-        })?);
+        let buff = u16::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
@@ -574,11 +534,7 @@ impl Value for u32 {
         memory: &mut dyn MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        let buff = u32::to_le_bytes(<u32 as FromStr>::from_str(new_value).map_err(|error| {
-            DebugError::UnwindIncompleteResults {
-                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
-            }
-        })?);
+        let buff = u32::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
@@ -603,11 +559,7 @@ impl Value for u64 {
         memory: &mut dyn MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        let buff = u64::to_le_bytes(<u64 as FromStr>::from_str(new_value).map_err(|error| {
-            DebugError::UnwindIncompleteResults {
-                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
-            }
-        })?);
+        let buff = u64::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
@@ -632,11 +584,7 @@ impl Value for u128 {
         memory: &mut dyn MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        let buff = u128::to_le_bytes(<u128 as FromStr>::from_str(new_value).map_err(|error| {
-            DebugError::UnwindIncompleteResults {
-                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
-            }
-        })?);
+        let buff = u128::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
@@ -662,14 +610,8 @@ impl Value for usize {
         memory: &mut dyn MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        let buff =
-            usize::to_le_bytes(<usize as FromStr>::from_str(new_value).map_err(|error| {
-                DebugError::UnwindIncompleteResults {
-                    message: format!(
-                        "Invalid data conversion from value: {new_value:?}. {error:?}"
-                    ),
-                }
-            })?);
+        // TODO: We can get the actual WORD length from [DWARF] instead of assuming `u32`
+        let buff = u32::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
@@ -694,11 +636,7 @@ impl Value for f32 {
         memory: &mut dyn MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        let buff = f32::to_le_bytes(<f32 as FromStr>::from_str(new_value).map_err(|error| {
-            DebugError::UnwindIncompleteResults {
-                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
-            }
-        })?);
+        let buff = f32::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
@@ -723,11 +661,7 @@ impl Value for f64 {
         memory: &mut dyn MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        let buff = f64::to_le_bytes(<f64 as FromStr>::from_str(new_value).map_err(|error| {
-            DebugError::UnwindIncompleteResults {
-                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
-            }
-        })?);
+        let buff = f64::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
