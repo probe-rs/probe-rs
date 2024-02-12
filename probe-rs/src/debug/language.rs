@@ -10,6 +10,9 @@ pub mod c;
 /// Rust
 pub mod rust;
 
+mod parsing;
+mod value;
+
 pub fn from_dwarf(dwarf_language: DwLang) -> Box<dyn ProgrammingLanguage> {
     match dwarf_language {
         // Handle all C-like languages the same now.
