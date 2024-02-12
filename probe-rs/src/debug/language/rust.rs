@@ -31,77 +31,29 @@ impl ProgrammingLanguage for Rust {
                     |err| VariableValue::Error(format!("{err:?}")),
                     |value| VariableValue::Valid(value.to_string()),
                 ),
-                "char" => char::get_value(variable, memory, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{err:?}")),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "i8" => i8::get_value(variable, memory, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{err:?}")),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "i16" => i16::get_value(variable, memory, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{err:?}")),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "i32" => i32::get_value(variable, memory, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{err:?}")),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "i64" => i64::get_value(variable, memory, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{err:?}")),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "i128" => i128::get_value(variable, memory, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{err:?}")),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
+                "char" => char::get_value(variable, memory, variable_cache).into(),
+                "i8" => i8::get_value(variable, memory, variable_cache).into(),
+                "i16" => i16::get_value(variable, memory, variable_cache).into(),
+                "i32" => i32::get_value(variable, memory, variable_cache).into(),
+                "i64" => i64::get_value(variable, memory, variable_cache).into(),
+                "i128" => i128::get_value(variable, memory, variable_cache).into(),
                 // TODO: We can get the actual WORD length from DWARF instead of assuming `i32`
-                "isize" => i32::get_value(variable, memory, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{err:?}")),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "u8" => u8::get_value(variable, memory, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{err:?}")),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "u16" => u16::get_value(variable, memory, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{err:?}")),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "u32" => u32::get_value(variable, memory, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{err:?}")),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "u64" => u64::get_value(variable, memory, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{err:?}")),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "u128" => u128::get_value(variable, memory, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{err:?}")),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
+                "isize" => i32::get_value(variable, memory, variable_cache).into(),
+                "u8" => u8::get_value(variable, memory, variable_cache).into(),
+                "u16" => u16::get_value(variable, memory, variable_cache).into(),
+                "u32" => u32::get_value(variable, memory, variable_cache).into(),
+                "u64" => u64::get_value(variable, memory, variable_cache).into(),
+                "u128" => u128::get_value(variable, memory, variable_cache).into(),
                 // TODO: We can get the actual WORD length from DWARF instead of assuming `u32`
-                "usize" => u32::get_value(variable, memory, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{err:?}")),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "f32" => f32::get_value(variable, memory, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{err:?}")),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
-                "f64" => f64::get_value(variable, memory, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{err:?}")),
-                    |value| VariableValue::Valid(value.to_string()),
-                ),
+                "usize" => u32::get_value(variable, memory, variable_cache).into(),
+                "f32" => f32::get_value(variable, memory, variable_cache).into(),
+                "f64" => f64::get_value(variable, memory, variable_cache).into(),
                 "None" => VariableValue::Valid("None".to_string()),
 
                 _undetermined_value => VariableValue::Empty,
             },
             VariableType::Struct(name) if name == "&str" => {
-                String::get_value(variable, memory, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{err:?}")),
-                    VariableValue::Valid,
-                )
+                String::get_value(variable, memory, variable_cache).into()
             }
             _other => VariableValue::Empty,
         }
@@ -170,6 +122,18 @@ trait Value {
         memory: &mut dyn MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError>;
+}
+
+impl<V> Into<VariableValue> for Result<V, DebugError>
+where
+    V: Value + ToString,
+{
+    fn into(self) -> VariableValue {
+        self.map_or_else(
+            |err| VariableValue::Error(format!("{err:?}")),
+            |value| VariableValue::Valid(value.to_string()),
+        )
+    }
 }
 
 impl Value for bool {
