@@ -29,12 +29,12 @@ pub trait Value {
     ) -> Result<(), DebugError>;
 }
 
-impl<V> Into<VariableValue> for Result<V, DebugError>
+impl<V> From<Result<V, DebugError>> for VariableValue
 where
     V: Value + ToString,
 {
-    fn into(self) -> VariableValue {
-        self.map_or_else(
+    fn from(val: Result<V, DebugError>) -> Self {
+        val.map_or_else(
             |err| VariableValue::Error(format!("{err:?}")),
             |value| VariableValue::Valid(value.to_string()),
         )
