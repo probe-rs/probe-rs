@@ -861,9 +861,8 @@ impl UnitInfo {
         frame_info: StackFrameInfo<'_>,
     ) -> Result<Variable, DebugError> {
         let type_name = match node.entry().attr(gimli::DW_AT_name) {
-            Ok(optional_name_attr) => {
-                optional_name_attr.map(|name_attr| extract_name(debug_info, name_attr.value()))
-            }
+            Ok(Some(name_attr)) => extract_name(debug_info, name_attr.value()),
+            Ok(None) => None,
             Err(error) => {
                 let message = format!("Error: evaluating type name: {error:?} ");
                 child_variable.set_value(VariableValue::Error(message.clone()));
