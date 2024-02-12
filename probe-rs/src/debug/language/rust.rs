@@ -55,7 +55,8 @@ impl ProgrammingLanguage for Rust {
                     |err| VariableValue::Error(format!("{err:?}")),
                     |value| VariableValue::Valid(value.to_string()),
                 ),
-                "isize" => isize::get_value(variable, memory, variable_cache).map_or_else(
+                // TODO: We can get the actual WORD length from DWARF instead of assuming `i32`
+                "isize" => i32::get_value(variable, memory, variable_cache).map_or_else(
                     |err| VariableValue::Error(format!("{err:?}")),
                     |value| VariableValue::Valid(value.to_string()),
                 ),
@@ -79,7 +80,8 @@ impl ProgrammingLanguage for Rust {
                     |err| VariableValue::Error(format!("{err:?}")),
                     |value| VariableValue::Valid(value.to_string()),
                 ),
-                "usize" => usize::get_value(variable, memory, variable_cache).map_or_else(
+                // TODO: We can get the actual WORD length from DWARF instead of assuming `u32`
+                "usize" => u32::get_value(variable, memory, variable_cache).map_or_else(
                     |err| VariableValue::Error(format!("{err:?}")),
                     |value| VariableValue::Valid(value.to_string()),
                 ),
@@ -120,13 +122,15 @@ impl ProgrammingLanguage for Rust {
                 "i32" => i32::update_value(variable, memory, new_value),
                 "i64" => i64::update_value(variable, memory, new_value),
                 "i128" => i128::update_value(variable, memory, new_value),
-                "isize" => isize::update_value(variable, memory, new_value),
+                // TODO: We can get the actual WORD length from DWARF instead of assuming `i32`
+                "isize" => i32::update_value(variable, memory, new_value),
                 "u8" => u8::update_value(variable, memory, new_value),
                 "u16" => u16::update_value(variable, memory, new_value),
                 "u32" => u32::update_value(variable, memory, new_value),
                 "u64" => u64::update_value(variable, memory, new_value),
                 "u128" => u128::update_value(variable, memory, new_value),
-                "usize" => usize::update_value(variable, memory, new_value),
+                // TODO: We can get the actual WORD length from DWARF instead of assuming `u32`
+                "usize" => u32::update_value(variable, memory, new_value),
                 "f32" => f32::update_value(variable, memory, new_value),
                 "f64" => f64::update_value(variable, memory, new_value),
                 other => Err(DebugError::UnwindIncompleteResults {
@@ -439,34 +443,6 @@ impl Value for i128 {
             })
     }
 }
-impl Value for isize {
-    fn get_value(
-        variable: &Variable,
-        memory: &mut dyn MemoryInterface,
-        _variable_cache: &VariableCache,
-    ) -> Result<Self, DebugError> {
-        let mut buff = [0u8; 4];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        // TODO: We can get the actual WORD length from [DWARF] instead of assuming `u32`
-        let ret_value = i32::from_le_bytes(buff);
-        Ok(ret_value as isize)
-    }
-
-    fn update_value(
-        variable: &Variable,
-        memory: &mut dyn MemoryInterface,
-        new_value: &str,
-    ) -> Result<(), DebugError> {
-        // TODO: We can get the actual WORD length from [DWARF] instead of assuming `u32`
-        let buff = i32::parse_to_bytes(new_value)?;
-
-        memory
-            .write_8(variable.memory_location.memory_address()?, &buff)
-            .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{error:?}"),
-            })
-    }
-}
 impl Value for u8 {
     fn get_value(
         variable: &Variable,
@@ -585,33 +561,6 @@ impl Value for u128 {
         new_value: &str,
     ) -> Result<(), DebugError> {
         let buff = u128::parse_to_bytes(new_value)?;
-        memory
-            .write_8(variable.memory_location.memory_address()?, &buff)
-            .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{error:?}"),
-            })
-    }
-}
-impl Value for usize {
-    fn get_value(
-        variable: &Variable,
-        memory: &mut dyn MemoryInterface,
-        _variable_cache: &VariableCache,
-    ) -> Result<Self, DebugError> {
-        let mut buff = [0u8; 4];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        // TODO: We can get the actual WORD length from [DWARF] instead of assuming `u32`
-        let ret_value = u32::from_le_bytes(buff);
-        Ok(ret_value as usize)
-    }
-
-    fn update_value(
-        variable: &Variable,
-        memory: &mut dyn MemoryInterface,
-        new_value: &str,
-    ) -> Result<(), DebugError> {
-        // TODO: We can get the actual WORD length from [DWARF] instead of assuming `u32`
-        let buff = u32::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
             .map_err(|error| DebugError::UnwindIncompleteResults {
