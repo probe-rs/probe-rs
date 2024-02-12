@@ -487,10 +487,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             ) = get_variable_reference(&variable, variable_cache);
                             response_body.indexed_variables = Some(indexed_child_variables_cnt);
                             response_body.memory_reference =
-                                Some(format!("{}", variable.memory_location));
+                                Some(variable.memory_location.to_string());
                             response_body.named_variables = Some(named_child_variables_cnt);
                             response_body.result = variable.get_value(variable_cache);
-                            response_body.type_ = Some(format!("{:?}", variable.type_name));
+                            response_body.type_ = Some(variable.type_name.to_string());
                             response_body.variables_reference = variables_reference.into();
                         } else {
                             // If we made it to here, no register or variable matched the expression.
@@ -1510,7 +1510,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         indexed_variables: Some(indexed_child_variables_cnt),
                         named_variables: Some(named_child_variables_cnt),
                         presentation_hint: None,
-                        type_: Some(format!("{:?}", variable.type_name)),
+                        type_: Some(variable.type_name.to_string()),
                         value: variable.get_value(variable_cache),
                         variables_reference: variables_reference.into(),
                     }
