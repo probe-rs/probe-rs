@@ -145,7 +145,7 @@ impl Value for CChar {
             return Err(input_error(new_value));
         };
 
-        memory.write(variable.memory_location.memory_address()?, &[new_value])?;
+        memory.write_word_8(variable.memory_location.memory_address()?, new_value)?;
 
         Ok(())
     }
