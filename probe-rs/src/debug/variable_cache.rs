@@ -444,13 +444,14 @@ impl VariableCache {
                     memory_ranges.push(memory_range);
                 }
             }
+
             // The datatype &str is a special case, because it is stores a pointer to the string data,
             // and the length of the string.
-            if variable.type_name == VariableType::Struct("&str".to_string()) {
+            if matches!(variable.type_name, VariableType::Struct(ref name) if name == "&str") {
                 let children: Vec<_> = self.get_children(variable.variable_key).collect();
                 if !children.is_empty() {
                     let string_length = match children.iter().find(|child_variable| {
-                        child_variable.name == VariableName::Named("length".to_string())
+                        matches!(child_variable.name, VariableName::Named(ref name) if name == "length")
                     }) {
                         Some(string_length) => {
                             if string_length.is_valid() {
@@ -462,7 +463,7 @@ impl VariableCache {
                         None => 0_usize,
                     };
                     let string_location = match children.iter().find(|child_variable| {
-                        child_variable.name == VariableName::Named("data_ptr".to_string())
+                        matches!(child_variable.name, VariableName::Named(ref name ) if name == "data_ptr")
                     }) {
                         Some(location_value) => {
                             let mut child_variables =
@@ -552,7 +553,7 @@ mod test {
             VariableNodeType::DirectLookup
         );
 
-        assert_eq!(cache_variable.get_value(&c), "Unknown");
+        assert_eq!(cache_variable.get_value(&c), "<unknown>");
 
         assert_eq!(cache_variable.source_location, Default::default());
         assert_eq!(cache_variable.memory_location, VariableLocation::Unknown);
