@@ -47,7 +47,6 @@ cli = [
     "dep:indicatif",
     "dep:is-terminal",
     "dep:itm",
-    "dep:parse_int",
     "dep:rand",
     "dep:rustyline",
     "dep:sanitize-filename",
@@ -149,7 +148,7 @@ indicatif = { version = "0.17", optional = true }
 insta = { version = "1", features = ["yaml", "filters"] }
 is-terminal = { version = "0.4", optional = true }
 itm = { version = "0.9.0-rc.1", default-features = false, optional = true }
-parse_int = { version = "0.6", optional = true }
+parse_int = "0.6"
 rand = { version = "0.8", optional = true }
 rustyline = { version = "13", optional = true }
 sanitize-filename = { version = "0.5", optional = true }
