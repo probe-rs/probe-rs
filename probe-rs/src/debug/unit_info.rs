@@ -1,7 +1,6 @@
 use super::{
-    debug_info::*, extract_byte_size, extract_file, extract_line, extract_name,
-    function_die::FunctionDie, variable::*, DebugError, DebugRegisters, EndianReader,
-    SourceLocation, VariableCache,
+    debug_info::*, extract_byte_size, extract_file, extract_line, function_die::FunctionDie,
+    variable::*, DebugError, DebugRegisters, EndianReader, SourceLocation, VariableCache,
 };
 use crate::{
     debug::{language, stack_frame::StackFrameInfo},
@@ -237,13 +236,10 @@ impl UnitInfo {
 
         // For variable attribute resolution, we need to resolve a few attributes in advance of looping through all the other ones.
         // Try to exact the name first, for easier debugging
-        if let Some(name) = attributes_entry
-            .as_ref()
-            .map(|ae| ae.attr_value(gimli::DW_AT_name))
-            .transpose()?
-            .flatten()
-        {
-            child_variable.name = VariableName::Named(extract_name(debug_info, name));
+        if let Some(entry) = attributes_entry.as_ref() {
+            if let Ok(Some(name)) = extract_name(debug_info, entry) {
+                child_variable.name = VariableName::Named(name);
+            }
         }
 
         if let Some(attributes_entry) = attributes_entry {
@@ -573,9 +569,11 @@ impl UnitInfo {
                         Some(self),
                     );
 
-                    namespace_variable.name = if let Ok(Some(attr)) = child_node.entry().attr(gimli::DW_AT_name) {
-                        VariableName::Namespace(extract_name(debug_info, attr.value()))
-                    } else { VariableName::AnonymousNamespace };
+                    namespace_variable.name = if let Ok(Some(name)) = extract_name(debug_info, child_node.entry()) {
+                        VariableName::Namespace(name)
+                    } else {
+                        VariableName::AnonymousNamespace
+                    };
                     namespace_variable.type_name = VariableType::Namespace;
                     namespace_variable.memory_location = VariableLocation::Unavailable;
                     cache.add_variable(parent_variable.variable_key, &mut namespace_variable)?;
@@ -598,16 +596,19 @@ impl UnitInfo {
                                     Some(namespace_child_node.entry().offset()),
                                     Some(self),
                                 );
-                                namespace_child_variable.name = if let Ok(Some(attr)) = namespace_child_node.entry().attr(gimli::DW_AT_name) {
-
+                                namespace_child_variable.name = if let Ok(Some(name_attr)) = extract_name(debug_info, namespace_child_node.entry()) {
                                     match &namespace_variable.name {
                                         VariableName::Namespace(name) => {
-                                        VariableName::Namespace(format!("{}::{}", name, extract_name(debug_info, attr.value())))
+                                            VariableName::Namespace(format!("{}::{}", name, name_attr))
                                         }
-                                        other => return Err(DebugError::UnwindIncompleteResults {message: format!("Unable to construct namespace variable, unexpected parent name: {other:?}")})
+                                        other => return Err(DebugError::UnwindIncompleteResults {
+                                            message: format!("Unable to construct namespace variable, unexpected parent name: {other:?}")
+                                        })
                                     }
+                                } else {
+                                    VariableName::AnonymousNamespace
+                                };
 
-                                } else { VariableName::AnonymousNamespace};
                                 namespace_child_variable.type_name = VariableType::Namespace;
                                 namespace_child_variable.memory_location = VariableLocation::Unavailable;
                                 cache.add_variable(namespace_variable.variable_key, &mut namespace_child_variable)?;
@@ -860,9 +861,8 @@ impl UnitInfo {
         cache: &mut VariableCache,
         frame_info: StackFrameInfo<'_>,
     ) -> Result<Variable, DebugError> {
-        let type_name = match node.entry().attr(gimli::DW_AT_name) {
-            Ok(Some(name_attr)) => extract_name(debug_info, name_attr.value()),
-            Ok(None) => None,
+        let type_name = match extract_name(debug_info, node.entry()) {
+            Ok(name) => name,
             Err(error) => {
                 let message = format!("Error: evaluating type name: {error:?} ");
                 child_variable.set_value(VariableValue::Error(message.clone()));
@@ -1189,16 +1189,14 @@ impl UnitInfo {
                         gimli::AttributeValue::UnitRef(unit_ref) => {
                             let subroutine_type_node =
                                 self.unit.header.entry(&self.unit.abbreviations, unit_ref)?;
-                            let at_name = subroutine_type_node.attr(gimli::DW_AT_name);
-                            child_variable.type_name = match at_name {
-                                Ok(Some(name_attr)) => {
-                                    VariableType::Other(extract_name(debug_info, name_attr.value()))
-                                }
-                                Ok(None) => VariableType::Unknown,
-                                Err(error) => VariableType::Other(format!(
-                                    "Error: evaluating subroutine type name: {error:?} "
-                                )),
-                            };
+                            child_variable.type_name =
+                                match extract_name(debug_info, &subroutine_type_node) {
+                                    Ok(Some(name_attr)) => VariableType::Other(name_attr),
+                                    Ok(None) => VariableType::Unknown,
+                                    Err(error) => VariableType::Other(format!(
+                                        "Error: evaluating subroutine type name: {error:?} "
+                                    )),
+                                };
                         }
                         other_attribute_value => {
                             child_variable.set_value(VariableValue::Error(format!(
@@ -1834,6 +1832,31 @@ impl UnitInfo {
         }
         Ok(false)
     }
+}
+
+fn extract_name(
+    debug_info: &DebugInfo,
+    entry: &gimli::DebuggingInformationEntry<GimliReader>,
+) -> Result<Option<String>, gimli::Error> {
+    let attr = match entry.attr(gimli::DW_AT_name) {
+        Ok(Some(attr)) => attr.value(),
+        Ok(None) => return Ok(None),
+        Err(error) => return Err(error),
+    };
+
+    let name = match attr {
+        gimli::AttributeValue::DebugStrRef(name_ref) => {
+            if let Ok(name_raw) = debug_info.dwarf.string(name_ref) {
+                String::from_utf8_lossy(&name_raw).to_string()
+            } else {
+                "Invalid DW_AT_name value".to_string()
+            }
+        }
+        gimli::AttributeValue::String(name) => String::from_utf8_lossy(&name).to_string(),
+        other => format!("Unimplemented: Evaluate name from {other:?}"),
+    };
+
+    Ok(Some(name))
 }
 
 /// Gets necessary register information for the DWARF resolver.
