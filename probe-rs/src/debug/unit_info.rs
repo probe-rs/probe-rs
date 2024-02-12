@@ -1,6 +1,6 @@
 use super::{
     debug_info::*, extract_byte_size, extract_file, extract_line, function_die::FunctionDie,
-    variable::*, DebugError, DebugRegisters, EndianReader, SourceLocation, VariableCache,
+    variable::*, DebugError, DebugRegisters, EndianReader, VariableCache,
 };
 use crate::{
     debug::{language, stack_frame::StackFrameInfo},
@@ -258,46 +258,13 @@ impl UnitInfo {
                         if let Some((directory, file_name)) =
                             extract_file(debug_info, &self.unit, attr.value())
                         {
-                            child_variable.source_location = match child_variable.source_location {
-                                Some(existing_source_location) => Some(SourceLocation {
-                                    line: existing_source_location.line,
-                                    column: existing_source_location.column,
-                                    file: Some(file_name),
-                                    directory: Some(directory),
-                                    low_pc: None,
-                                    high_pc: None,
-                                }),
-                                None => Some(SourceLocation {
-                                    line: None,
-                                    column: None,
-                                    file: Some(file_name),
-                                    directory: Some(directory),
-                                    low_pc: None,
-                                    high_pc: None,
-                                }),
-                            };
+                            child_variable.source_location.file = Some(file_name);
+                            child_variable.source_location.directory = Some(directory);
                         }
                     }
                     gimli::DW_AT_decl_line => {
                         if let Some(line_number) = extract_line(attr.value()) {
-                            child_variable.source_location = match child_variable.source_location {
-                                Some(existing_source_location) => Some(SourceLocation {
-                                    line: Some(line_number),
-                                    column: existing_source_location.column,
-                                    file: existing_source_location.file,
-                                    directory: existing_source_location.directory,
-                                    low_pc: None,
-                                    high_pc: None,
-                                }),
-                                None => Some(SourceLocation {
-                                    line: Some(line_number),
-                                    column: None,
-                                    file: None,
-                                    directory: None,
-                                    low_pc: None,
-                                    high_pc: None,
-                                }),
-                            };
+                            child_variable.source_location.line = Some(line_number);
                         }
                     }
                     gimli::DW_AT_decl_column => {

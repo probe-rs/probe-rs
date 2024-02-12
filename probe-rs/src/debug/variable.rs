@@ -282,7 +282,7 @@ pub struct Variable {
     /// Use `Variable::set_value()` and `Variable::get_value()` to correctly process this `value`
     pub(super) value: VariableValue,
     /// The source location of the declaration of this variable, if available.
-    pub source_location: Option<SourceLocation>,
+    pub source_location: SourceLocation,
     /// Programming language of the defining compilation unit.
     pub language: DwLang,
 
