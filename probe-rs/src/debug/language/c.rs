@@ -1,6 +1,6 @@
 use crate::{
     debug::{
-        language::{ParseToBytes, ProgrammingLanguage},
+        language::{parsing::ParseToBytes, value::Value, ProgrammingLanguage},
         DebugError, Variable, VariableCache, VariableLocation, VariableName, VariableType,
         VariableValue,
     },
@@ -15,7 +15,7 @@ impl ProgrammingLanguage for C {
         &self,
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
-        _variable_cache: &VariableCache,
+        variable_cache: &VariableCache,
     ) -> VariableValue {
         match &variable.type_name {
             VariableType::Base(_) if variable.memory_location == VariableLocation::Unknown => {
@@ -23,34 +23,19 @@ impl ProgrammingLanguage for C {
             }
 
             VariableType::Base(type_name) => match type_name.as_str() {
-                "_Bool" => read_unsigned_int(variable, memory).map_or_else(
-                    |err| VariableValue::Error(format!("{err:?}")),
-                    VariableValue::Valid,
-                ),
-
-                "char" => read_c_char(variable, memory).map_or_else(
-                    |err| VariableValue::Error(format!("{err:?}")),
-                    VariableValue::Valid,
-                ),
+                "_Bool" => read_unsigned_int(variable, memory).into(),
+                "char" => read_c_char(variable, memory).into(),
 
                 "unsigned char" | "unsigned int" | "short unsigned int" | "long unsigned int" => {
-                    read_unsigned_int(variable, memory).map_or_else(
-                        |err| VariableValue::Error(format!("{err:?}")),
-                        VariableValue::Valid,
-                    )
+                    read_unsigned_int(variable, memory).into()
                 }
                 "signed char" | "int" | "short int" | "long int" | "signed int"
-                | "short signed int" | "long signed int" => read_signed_int(variable, memory)
-                    .map_or_else(
-                        |err| VariableValue::Error(format!("{err:?}")),
-                        VariableValue::Valid,
-                    ),
+                | "short signed int" | "long signed int" => {
+                    read_signed_int(variable, memory).into()
+                }
 
                 "float" => match variable.byte_size {
-                    Some(4) | None => read_f32(variable, memory).map_or_else(
-                        |err| VariableValue::Error(format!("{err:?}")),
-                        VariableValue::Valid,
-                    ),
+                    Some(4) | None => f32::get_value(variable, memory, variable_cache).into(),
                     Some(size) => {
                         VariableValue::Error(format!("Invalid byte size for float: {size}"))
                     }
@@ -79,7 +64,7 @@ impl ProgrammingLanguage for C {
                 | "short signed int" | "long signed int" => {
                     write_signed_int(variable, memory, new_value)
                 }
-                "float" => write_f32(variable, memory, new_value),
+                "float" => f32::update_value(variable, memory, new_value),
                 // TODO: doubles
                 other => Err(DebugError::UnwindIncompleteResults {
                     message: format!("Unsupported data type: {other}. Please only update variables with a base data type."),
@@ -249,26 +234,6 @@ fn write_signed_int(
     memory.write_8(variable.memory_location.memory_address()?, &buff[..bytes])?;
 
     Ok(())
-}
-
-fn read_f32(variable: &Variable, memory: &mut dyn MemoryInterface) -> Result<String, DebugError> {
-    let mut buff = [0u8; 4];
-    memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-    Ok(f32::from_le_bytes(buff).to_string())
-}
-
-fn write_f32(
-    variable: &Variable,
-    memory: &mut dyn MemoryInterface,
-    new_value: &str,
-) -> Result<(), DebugError> {
-    let buff = f32::parse_to_bytes(new_value)?;
-
-    memory
-        .write_8(variable.memory_location.memory_address()?, &buff)
-        .map_err(|error| DebugError::UnwindIncompleteResults {
-            message: format!("{error:?}"),
-        })
 }
 
 #[cfg(test)]
