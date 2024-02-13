@@ -153,8 +153,8 @@ impl DebugInfo {
                 Ok(ranges) => ranges,
                 Err(error) => {
                     tracing::warn!(
-                        "No valid source code ranges found for address {}: {:?}",
-                        address,
+                        "No valid source code ranges found for unit {:?}: {:?}",
+                        unit.dwo_name(),
                         error
                     );
                     continue;
@@ -978,7 +978,7 @@ impl DebugInfo {
         let unit = &unit_header.unit;
         let header: &LineProgramHeader<GimliReader, usize> = line_program.header();
 
-        // Check if any of the file names in the header match the path we are looking for.
+        // Early return, if none of the file names in the header match the path we are looking for.
         if !header.file_names().iter().any(|file_name| {
             let combined_path = self.get_path(unit, header, file_name);
 
@@ -992,12 +992,13 @@ impl DebugInfo {
         let mut rows = line_program.clone().rows();
 
         while let Some((header, row)) = rows.next_row()? {
+            // If the row is not in the same file, we can skip it.
             let row_path = row
                 .file(header)
                 .and_then(|file_entry| self.get_path(unit, header, file_entry));
-
             if row_path
-                .map(|p| !canonical_path_eq(path, &p))
+                .as_ref()
+                .map(|p| !canonical_path_eq(path, p))
                 .unwrap_or(true)
             {
                 continue;
