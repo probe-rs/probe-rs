@@ -604,7 +604,7 @@ mod test {
 
         assert_eq!(cache_variable.get_value(&c), "Unknown");
 
-        assert_eq!(cache_variable.source_location, None);
+        assert_eq!(cache_variable.source_location, Default::default());
         assert_eq!(cache_variable.memory_location, VariableLocation::Unknown);
         assert_eq!(cache_variable.byte_size, None);
         assert_eq!(cache_variable.member_index, None);
