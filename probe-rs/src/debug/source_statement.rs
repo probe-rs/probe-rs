@@ -23,8 +23,7 @@ impl Debug for SourceStatements {
 }
 
 impl SourceStatements {
-    /// Extract all the source statements from the `program_unit`, starting at the `program_counter`.
-    /// Note:: In the interest of efficiency, for the case of SteppingMode::Breakpoint, this method will return as soon as it finds a valid halt point, and the result will only include the source statements between program_counter and the first valid haltpoint (inclusive).
+    /// Extract all the source statements, belonging to the active sequence (i.e. the sequence that contains the `program_counter`).
     pub(crate) fn new(
         debug_info: &DebugInfo,
         program_unit: &UnitInfo,
@@ -34,7 +33,7 @@ impl SourceStatements {
             statements: Vec::new(),
         };
         let (complete_line_program, active_sequence) =
-            get_program_info_at_pc(debug_info, program_unit, program_counter)?;
+            get_program_and_sequence_for_pc(debug_info, program_unit, program_counter)?;
         let mut sequence_rows = complete_line_program.resume_from(&active_sequence);
         let program_language = program_unit.get_language();
         let mut prologue_completed = false;
@@ -227,8 +226,8 @@ impl From<&gimli::LineRow> for SourceStatement {
 
 // Overriding clippy, as this is a private helper function.
 #[allow(clippy::type_complexity)]
-/// Resolve the relevant program row data for the given program counter.
-fn get_program_info_at_pc(
+/// Resolve the relevant program and line-sequence row data for the given program counter.
+fn get_program_and_sequence_for_pc(
     debug_info: &DebugInfo,
     program_unit: &UnitInfo,
     program_counter: u64,

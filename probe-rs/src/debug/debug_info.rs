@@ -165,8 +165,7 @@ impl DebugInfo {
                 if !(range.begin <= address && address < range.end) {
                     continue;
                 }
-                // Get the function name.
-
+                // Get the DWARF LineProgram.
                 let ilnp = unit.line_program.as_ref()?.clone();
 
                 let (program, sequences) = match ilnp.sequences() {
@@ -1012,12 +1011,12 @@ impl DebugInfo {
                 continue;
             }
 
-            // The first match of the file and row will be used to build the SourceStatements, and then:
-            // 1. If there is an exact column match, we will use the low_pc of the statement at that column and line.
-            // 2. If there is no exact column match, we use the first available statement in the line.
             let source_statements =
                 SourceStatements::new(self, unit_header, row.address())?.statements;
 
+            // The first match of the file and row will be used to build the SourceStatements, and then:
+            // 1. If there is an exact column match, we will use the low_pc of the statement at that column and line.
+            // 2. If there is no exact column match, we use the first available statement in the line.
             let halt_address_and_location = |source_statement: &SourceStatement| {
                 (
                     source_statement.low_pc(),
@@ -1042,6 +1041,7 @@ impl DebugInfo {
                 )
             };
 
+            // The case where we have exact match on file, line AND column.
             let first_find = source_statements.iter().find(|statement| {
                 column
                     .and_then(NonZeroU64::new)
@@ -1049,7 +1049,6 @@ impl DebugInfo {
                     .map_or(false, |col| col == statement.column)
                     && statement.line == Some(cur_line)
             });
-
             if let Some((halt_address, Some(halt_location))) =
                 first_find.map(halt_address_and_location)
             {
@@ -1058,6 +1057,8 @@ impl DebugInfo {
                     source_location: halt_location,
                 }));
             }
+
+            // The fallback case where we have exact match on file and line, but no column.
             let second_find = source_statements
                 .iter()
                 .find(|statement| statement.line == Some(cur_line));
