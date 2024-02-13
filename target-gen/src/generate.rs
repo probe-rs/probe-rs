@@ -188,9 +188,7 @@ fn create_core(processor: &Processor) -> Result<ProbeCore> {
                 debug_base: None,
                 cti_base: None,
             }),
-            Architecture::Riscv => {
-                CoreAccessOptions::Riscv(RiscvCoreAccessOptions { hart_id: None })
-            }
+            Architecture::Riscv => CoreAccessOptions::Riscv(RiscvCoreAccessOptions { hart_id: 0 }),
             Architecture::Xtensa => CoreAccessOptions::Xtensa(XtensaCoreAccessOptions {}),
         },
     })

@@ -855,9 +855,13 @@ impl fmt::Display for DebugProbeSelector {
 pub trait JTAGAccess: DebugProbe {
     /// Returns `IDCODE` and `IR` length information about the devices on the JTAG chain.
     ///
-    /// If configured, this will use the data from [`DebugProbe::set_scan_chain`]. Otherwise, it
-    /// will try to measure and extract `IR` lengths by driving the JTAG interface.
-    fn scan_chain(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError>;
+    /// This function will measure the length of the instruction registers of all devices on the
+    /// JTAG chain. If configured, the it will use the data from [`DebugProbe::set_scan_chain`] to
+    /// check that the IR lengths are as expected.
+    fn scan_chain(&mut self) -> Result<&'_ [JtagChainItem], DebugProbeError>;
+
+    /// Selects a TAP on the JTAG chain.
+    fn select_target(&mut self, target: usize) -> Result<(), DebugProbeError>;
 
     /// Read a JTAG register.
     ///

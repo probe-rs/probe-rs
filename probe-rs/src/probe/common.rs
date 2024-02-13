@@ -379,7 +379,9 @@ pub(crate) struct JtagDriverState {
     // The maximum IR address
     pub max_ir_address: u32,
     pub expected_scan_chain: Option<Vec<ScanChainElement>>,
+    pub chain: Vec<JtagChainItem>,
     pub chain_params: ChainParams,
+    pub target_tap: usize,
     /// Idle cycles necessary between consecutive
     /// accesses to the DMI register
     pub jtag_idle_cycles: usize,
@@ -392,6 +394,8 @@ impl Default for JtagDriverState {
             current_ir_reg: 1,
             max_ir_address: 0x0F,
             expected_scan_chain: None,
+            chain: vec![],
+            target_tap: 0,
             chain_params: ChainParams::default(),
             jtag_idle_cycles: 0,
         }
@@ -441,28 +445,6 @@ pub(crate) trait RawJtagIo {
         let response = self.read_captured_bits()?;
 
         tracing::debug!("Response to reset: {}", response);
-
-        Ok(())
-    }
-
-    /// Configures the probe to address the given target.
-    fn select_target(
-        &mut self,
-        chain: &[JtagChainItem],
-        target: usize,
-    ) -> Result<(), DebugProbeError> {
-        let Some(params) = ChainParams::from_jtag_chain(chain, target) else {
-            return Err(DebugProbeError::TargetNotFound);
-        };
-
-        let max_ir_address = (1 << params.irlen) - 1;
-
-        tracing::debug!("Setting chain params: {:?}", params);
-        tracing::debug!("Setting max_ir_address to {}", max_ir_address);
-
-        let state = self.state_mut();
-        state.max_ir_address = max_ir_address;
-        state.chain_params = params;
 
         Ok(())
     }
@@ -622,7 +604,7 @@ fn prepare_write_register(
 }
 
 impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
-    fn scan_chain(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError> {
+    fn scan_chain(&mut self) -> Result<&[JtagChainItem], DebugProbeError> {
         const MAX_CHAIN: usize = 8;
 
         self.reset_jtag_state_machine()?;
@@ -689,11 +671,18 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
 
         tracing::debug!("Detected IR lens: {:?}", ir_lens);
 
-        Ok(idcodes
+        self.state_mut().chain = idcodes
             .into_iter()
             .zip(ir_lens)
             .map(|(idcode, irlen)| JtagChainItem { irlen, idcode })
-            .collect())
+            .collect::<Vec<_>>();
+
+        let target_tap = self.state().target_tap;
+        // Force a reconfigure
+        self.state_mut().target_tap = target_tap + 1;
+        self.select_target(target_tap)?;
+
+        Ok(&self.state().chain)
     }
 
     fn set_idle_cycles(&mut self, idle_cycles: u8) {
@@ -775,6 +764,30 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
         }
 
         Ok(responses)
+    }
+
+    /// Configures the probe to address the given target.
+    fn select_target(&mut self, target: usize) -> Result<(), DebugProbeError> {
+        if target == self.state().target_tap {
+            return Ok(());
+        }
+
+        let Some(params) = ChainParams::from_jtag_chain(&self.state().chain, target) else {
+            return Err(DebugProbeError::TargetNotFound);
+        };
+
+        let max_ir_address = (1 << params.irlen) - 1;
+
+        tracing::debug!("Setting chain params: {:?}", params);
+        tracing::debug!("Setting max_ir_address to {}", max_ir_address);
+
+        let state = self.state_mut();
+        state.max_ir_address = max_ir_address;
+        state.chain_params = params;
+
+        state.target_tap = target;
+
+        Ok(())
     }
 }
 

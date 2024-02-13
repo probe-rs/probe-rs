@@ -884,14 +884,7 @@ impl DebugProbe for JLink {
                 tracing::debug!("Resetting JTAG chain using trst");
                 self.reset_trst()?;
 
-                let chain = self.scan_chain()?;
-                tracing::info!("Found {} TAPs on reset scan", chain.len());
-
-                if chain.len() > 1 {
-                    tracing::warn!("More than one TAP detected, defaulting to tap0");
-                }
-
-                self.select_target(&chain, 0)?;
+                self.scan_chain()?;
             }
             WireProtocol::Swd => {
                 // Attaching is handled in sequence

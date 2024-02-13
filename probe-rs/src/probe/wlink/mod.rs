@@ -385,8 +385,12 @@ impl DebugProbe for WchLink {
 
 /// Wrap WCH-Link's USB based DMI access as a fake JTAGAccess
 impl JTAGAccess for WchLink {
-    fn scan_chain(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError> {
-        Ok(vec![])
+    fn scan_chain(&mut self) -> Result<&[JtagChainItem], DebugProbeError> {
+        Ok(&[])
+    }
+
+    fn select_target(&mut self, _target: usize) -> Result<(), DebugProbeError> {
+        Ok(())
     }
 
     fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
