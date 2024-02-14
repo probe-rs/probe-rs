@@ -88,7 +88,7 @@ impl SteppingMode {
                     break;
                 }
                 Err(error) => match error {
-                    DebugError::NoValidHaltLocation {
+                    DebugError::IncompleteDebugInfo {
                         message,
                         pc_at_error,
                     } => {
@@ -141,7 +141,7 @@ impl SteppingMode {
                 run_to_address(program_counter, target_address, core)?
             }
             None => {
-                return Err(DebugError::NoValidHaltLocation {
+                return Err(DebugError::IncompleteDebugInfo {
                     message: "Unable to determine target address for this step request."
                         .to_string(),
                     pc_at_error: program_counter,
@@ -180,12 +180,12 @@ impl SteppingMode {
         program_counter: u64,
         return_address: Option<u64>,
     ) -> Result<(Option<u64>, Option<SourceLocation>), DebugError> {
-        let program_unit = get_compile_unit_info(debug_info, program_counter)?;
+        let program_unit = debug_info.compile_unit_info(program_counter)?;
         match self {
             SteppingMode::BreakPoint => {
                 // Find the first_breakpoint_address
                 for source_statement in
-                    SourceStatements::new(debug_info, program_unit, program_counter)?.statements
+                    SourceStatements::for_active_sequence(debug_info, program_counter)?.statements
                 {
                     if let Some(halt_address) =
                         source_statement.get_first_halt_address(program_counter)
@@ -195,6 +195,7 @@ impl SteppingMode {
                             halt_address,
                             program_counter
                         );
+                        // TODO: This should be refactored to be a method on the SourceStatement struct.
                         // We have a good first halt address.
                         let first_breakpoint_address = Some(halt_address);
                         let first_breakpoint_source_location = program_unit
@@ -238,7 +239,7 @@ impl SteppingMode {
                 //    -- If there is one, it means the step over target is in the current sequence, so we get the get_first_halt_address() for this next statement.
                 //    -- Otherwise the step over target is the same as the step out target.
                 let source_statements =
-                    SourceStatements::new(debug_info, program_unit, program_counter)?.statements;
+                    SourceStatements::for_active_sequence(debug_info, program_counter)?.statements;
                 let mut source_statements_iter = source_statements.iter();
                 if let Some((target_address, target_location)) = source_statements_iter
                     .find(|source_statement| {
@@ -279,7 +280,7 @@ impl SteppingMode {
                 // TODO: In theory, we could disassemble the instructions in this statement's address range, and find branching instructions, then we would not need to single step the core past the original haltpoint.
 
                 let source_statements =
-                    SourceStatements::new(debug_info, program_unit, program_counter)?.statements;
+                    SourceStatements::for_active_sequence(debug_info, program_counter)?.statements;
                 let mut source_statements_iter = source_statements.iter();
                 if let Some(current_source_statement) =
                     source_statements_iter.find(|source_statement| {
@@ -366,7 +367,7 @@ impl SteppingMode {
             }
         }
 
-        Err(DebugError::NoValidHaltLocation{
+        Err(DebugError::IncompleteDebugInfo{
                 message: "Could not determine valid halt locations for this request. Please consider using instruction level stepping.".to_string(),
                 pc_at_error: program_counter,
             })
@@ -386,7 +387,7 @@ fn run_to_address(
 ) -> Result<(CoreStatus, u64), DebugError> {
     Ok(if target_address < program_counter {
         // We are not able to calculate a step_out_address. Notify the user to try something else.
-        return Err(DebugError::NoValidHaltLocation {
+        return Err(DebugError::IncompleteDebugInfo {
             message: "Unable to determine target address for this step request. Please try a different form of stepping.".to_string(),
             pc_at_error: program_counter,
         });
@@ -466,7 +467,7 @@ fn step_to_address(
                     break;
                 }
                 // This is a recoverable error kind, and can be reported to the user higher up in the call stack.
-                other_halt_reason => return Err(DebugError::NoValidHaltLocation{message: format!("Target halted unexpectedly before we reached the destination address of a step operation: {other_halt_reason:?}"), pc_at_error: core.read_core_reg(core.program_counter().id())?.try_into()?}),
+                other_halt_reason => return Err(DebugError::IncompleteDebugInfo{message: format!("Target halted unexpectedly before we reached the destination address of a step operation: {other_halt_reason:?}"), pc_at_error: core.read_core_reg(core.program_counter().id())?.try_into()?}),
             },
             // This is not a recoverable error, and will result in the debug session ending (we have no predicatable way of successfully continuing the session)
             other_status => return Err(DebugError::Other(anyhow::anyhow!("Target failed to reach the destination address of a step operation: {:?}", other_status))),
@@ -477,27 +478,4 @@ fn step_to_address(
         core.read_core_reg(core.program_counter().id())?
             .try_into()?,
     ))
-}
-
-/// Find the compile unit at the current address.
-fn get_compile_unit_info(
-    debug_info: &DebugInfo,
-    program_counter: u64,
-) -> Result<&super::unit_info::UnitInfo, DebugError> {
-    for header in &debug_info.unit_infos {
-        match debug_info.dwarf.unit_ranges(&header.unit) {
-            Ok(mut ranges) => {
-                while let Ok(Some(range)) = ranges.next() {
-                    if (range.begin <= program_counter) && (range.end > program_counter) {
-                        return Ok(header);
-                    }
-                }
-            }
-            Err(_) => continue,
-        };
-    }
-    Err(DebugError::NoValidHaltLocation{
-        message: "The specified source location does not have any debug information available. Please consider using instruction level stepping.".to_string(),
-        pc_at_error: program_counter,
-    })
 }

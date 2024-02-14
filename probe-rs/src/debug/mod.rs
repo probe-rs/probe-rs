@@ -71,10 +71,12 @@ pub enum DebugError {
     /// An int could not be created from the given string.
     #[error(transparent)]
     IntConversion(#[from] std::num::TryFromIntError),
-    /// Errors encountered while determining valid halt locations for breakpoints and stepping.
-    /// These are distinct from other errors because they terminate the current step, and result in a user message, but they do not interrupt the rest of the debug session.
+    /// Errors encountered while determining valid locations for memory addresses involved in actions like
+    /// setting breakpoints and/or stepping through source code.
+    /// These are distinct from other errors because they gracefully terminate the current action,
+    /// and result in a user message, but they do not interrupt the rest of the debug session.
     #[error("{message}  @program_counter={:#010X}.", pc_at_error)]
-    NoValidHaltLocation {
+    IncompleteDebugInfo {
         /// A message that can be displayed to the user to help them make an informed recovery choice.
         message: String,
         /// The value of the program counter for which a halt was requested.

@@ -1018,7 +1018,7 @@ impl DebugInfo {
             }
 
             let source_statements =
-                SourceStatements::new(self, unit_header, row.address())?.statements;
+                SourceStatements::for_active_sequence(self, row.address())?.statements;
 
             // The first match of the file and row will be used to build the SourceStatements, and then:
             // 1. If there is an exact column match, we will use the low_pc of the statement at that column and line.
@@ -1139,6 +1139,29 @@ impl DebugInfo {
         let directory = combined_path.parent().map(|p| p.to_path_buf());
 
         Some((file_name, directory))
+    }
+
+    // Return the compilation unit that contains the given address
+    pub(crate) fn compile_unit_info(
+        &self,
+        address: u64,
+    ) -> Result<&super::unit_info::UnitInfo, DebugError> {
+        for header in &self.unit_infos {
+            match self.dwarf.unit_ranges(&header.unit) {
+                Ok(mut ranges) => {
+                    while let Ok(Some(range)) = ranges.next() {
+                        if (range.begin <= address) && (range.end > address) {
+                            return Ok(header);
+                        }
+                    }
+                }
+                Err(_) => continue,
+            };
+        }
+        Err(DebugError::IncompleteDebugInfo{
+            message: "No debug information available for the specified instruction address. Please consider using instruction level stepping.".to_string(),
+            pc_at_error: address,
+        })
     }
 }
 

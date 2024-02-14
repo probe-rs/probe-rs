@@ -23,20 +23,18 @@ impl Debug for SourceStatements {
 
 impl SourceStatements {
     /// Extract all the source statements, belonging to the active sequence (i.e. the sequence that contains the `program_counter`).
-    pub(crate) fn new(
+    pub(crate) fn for_active_sequence(
         debug_info: &DebugInfo,
-        program_unit: &UnitInfo,
         program_counter: u64,
     ) -> Result<Self, DebugError> {
         let mut source_statements = SourceStatements {
             statements: Vec::new(),
         };
-        let source_sequence =
-            get_program_and_sequence_for_pc(debug_info, program_unit, program_counter)?;
+        let source_sequence = get_program_and_sequence_for_pc(debug_info, program_counter)?;
         let mut sequence_rows = source_sequence
             .complete_line_program
             .resume_from(&source_sequence.line_sequence);
-        let program_language = program_unit.get_language();
+        let program_language = source_sequence.program_unit.get_language();
         let mut prologue_completed = false;
         let mut source_statement: Option<SourceStatement> = None;
         while let Ok(Some((_, row))) = sequence_rows.next_row() {
@@ -134,7 +132,7 @@ impl SourceStatements {
         }
 
         if source_statements.len() == 0 {
-            Err(DebugError::NoValidHaltLocation{
+            Err(DebugError::IncompleteDebugInfo{
                 message: "Could not find valid source statements for this address. Consider using instruction level stepping.".to_string(),
                 pc_at_error: program_counter,
             })
@@ -160,7 +158,8 @@ impl SourceStatements {
 }
 
 /// Uniquely identifies a sequence of instructions in a line program.
-struct ProgramLineSequence {
+struct ProgramLineSequence<'a> {
+    program_unit: &'a UnitInfo,
     complete_line_program: gimli::CompleteLineProgram<
         gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>,
         usize,
@@ -257,9 +256,9 @@ impl From<&gimli::LineRow> for SourceStatement {
 /// Resolve the relevant program and line-sequence row data for the given program counter.
 fn get_program_and_sequence_for_pc(
     debug_info: &DebugInfo,
-    program_unit: &UnitInfo,
     program_counter: u64,
 ) -> Result<ProgramLineSequence, DebugError> {
+    let program_unit = debug_info.compile_unit_info(program_counter)?;
     let (offset, address_size) = if let Some(line_program) = program_unit.unit.line_program.clone()
     {
         (
@@ -267,7 +266,7 @@ fn get_program_and_sequence_for_pc(
             line_program.header().address_size(),
         )
     } else {
-        return Err(DebugError::NoValidHaltLocation{
+        return Err(DebugError::IncompleteDebugInfo{
                     message: "The specified source location does not have any line_program information available. Please consider using instruction level stepping.".to_string(),
                     pc_at_error: program_counter,
                 });
@@ -285,11 +284,12 @@ fn get_program_and_sequence_for_pc(
         line_sequence.start <= program_counter && program_counter < line_sequence.end
     }) {
         Ok(ProgramLineSequence {
+            program_unit,
             complete_line_program: complete_line_program.clone(),
             line_sequence: active_sequence.clone(),
         })
     } else {
-        Err(DebugError::NoValidHaltLocation{
+        Err(DebugError::IncompleteDebugInfo{
                     message: "The specified source location does not have any line information available. Please consider using instruction level stepping.".to_string(),
                     pc_at_error: program_counter,
                 })
