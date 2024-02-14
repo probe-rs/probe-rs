@@ -7,7 +7,6 @@ use std::{
 };
 
 /// Keep track of all the source statements required to satisfy the operations of [`SteppingMode`].
-
 pub struct SourceStatements {
     // NOTE: Use Vec as a container, because we will have relatively few statements per sequence, and we need to maintain the order.
     pub(crate) statements: Vec<SourceStatement>,
@@ -32,9 +31,11 @@ impl SourceStatements {
         let mut source_statements = SourceStatements {
             statements: Vec::new(),
         };
-        let (complete_line_program, active_sequence) =
+        let source_sequence =
             get_program_and_sequence_for_pc(debug_info, program_unit, program_counter)?;
-        let mut sequence_rows = complete_line_program.resume_from(&active_sequence);
+        let mut sequence_rows = source_sequence
+            .complete_line_program
+            .resume_from(&source_sequence.line_sequence);
         let program_language = program_unit.get_language();
         let mut prologue_completed = false;
         let mut source_statement: Option<SourceStatement> = None;
@@ -45,7 +46,9 @@ impl SourceStatements {
                     && row.file_index() == source_row.file_index
                     && row.column() == source_row.column
                 {
-                    // Workaround the line number issue (it is recorded as None in the DWARF when for debug purposes, it makes more sense to be the same as the previous line).
+                    // Workaround the line number issue (if recorded as 0 in the DWARF, then gimli reports it as None).
+                    // For debug purposes, it makes more sense to be the same as the previous line.
+                    // This prevents the debugger from jumping to the top of the file unexpectedly.
                     source_row.line = row.line();
                 }
             } else {
@@ -78,16 +81,27 @@ impl SourceStatements {
             }
 
             if !prologue_completed {
-                log_row_eval(&active_sequence, program_counter, row, "  inside prologue>");
+                log_row_eval(
+                    &source_sequence.line_sequence,
+                    program_counter,
+                    row,
+                    "  inside prologue>",
+                );
                 continue;
             } else {
-                log_row_eval(&active_sequence, program_counter, row, "  after prologue>");
+                log_row_eval(
+                    &source_sequence.line_sequence,
+                    program_counter,
+                    row,
+                    "  after prologue>",
+                );
             }
 
             // Notes about the process of building the source statement:
             // 1. Start a new (and close off the previous) source statement, when we encounter end of sequence OR change of file/line/column.
             // 2. The starting range of the first source statement will always be greater than or equal to the program_counter.
-            // 3. The values in the `source_statement` are only updated before we exit the current iteration of the loop, so that we can retroactively close off and store the source statement that belongs to previous `rows`.
+            // 3. The values in the `source_statement` are only updated before we exit the current iteration of the loop,
+            // so that we can retroactively close off and store the source statement that belongs to previous `rows`.
             // 4. The debug_info sometimes has a `None` value for the `row.line` that was started in the previous row, in which case we need to carry the previous row `line` number forward. GDB ignores this fact, and it shows up during debug as stepping to the top of the file (line 0) unexpectedly.
 
             if let Some(source_row) = source_statement.as_mut() {
@@ -102,7 +116,8 @@ impl SourceStatements {
                 {
                     if source_row.low_pc() >= program_counter {
                         // We need to close off the "current" source statement and add it to the list.
-                        source_row.sequence_range = program_counter..active_sequence.end;
+                        source_row.sequence_range =
+                            program_counter..source_sequence.line_sequence.end;
                         source_statements.add(source_row.clone());
                     }
 
@@ -144,16 +159,27 @@ impl SourceStatements {
     }
 }
 
+/// Uniquely identifies a sequence of instructions in a line program.
+struct ProgramLineSequence {
+    complete_line_program: gimli::CompleteLineProgram<
+        gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>,
+        usize,
+    >,
+    line_sequence: gimli::LineSequence<gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>>,
+}
+
 #[derive(Clone)]
 /// Keep track of the boundaries of a source statement inside [`gimli::LineSequence`].
 /// The `file_index`, `line` and `column` fields from a [`gimli::LineRow`] are used to identify the source statement UNIQUELY in a sequence.
 /// Terminology note:
 /// - An `instruction` maps to a single machine instruction on target.
-/// - A `row` (a [`gimli::LineRow`]) describes the role of an `instruction` in the context of a `sequence`.
-/// - A `source_statement` is a range of rows where the addresses of the machine instructions are increasing, but not necessarily contiguous.
-/// - A line of code in a source file may contain multiple source statements, in which case a new source statement with unique `column` is created.
+/// - A `row` (a [`gimli::LineRow`]) describes the role of an `instruction` in the boundaries of a `sequence`.
+/// - A `sequence`( [`gimli::LineSequence`] ) is a series of contiguous `rows`/`instructions`.
+/// - A `source_statement` is a range of rows where the addresses of the machine instructions are increasing,
+/// but not necessarily contiguous. In other words, can span multiple `sequences` of `rows`.
+/// - A line of code in a source file may contain multiple source statements, in which case
+/// a new source statement with unique `column` is created.
 /// - The [`gimli::LineRow`] entries for a source statement does not have to be contiguous where they appear in a [`gimli::LineSequence`]
-/// - A `sequence`( [`gimli::LineSequence`] ) is a series of contiguous `rows`/`instructions`(may contain multiple `source_statement`'s).
 pub(crate) struct SourceStatement {
     /// The first address of the statement where row.is_stmt() is true.
     pub(crate) is_stmt: bool,
@@ -161,11 +187,15 @@ pub(crate) struct SourceStatement {
     pub(crate) line: Option<NonZeroU64>,
     pub(crate) column: ColumnType,
     /// The range of instruction addresses associated with a source statement.
-    /// The `address_range.start` is the address of the first instruction which is greater than or equal to the program_counter and not inside the prologue.
-    /// The `address_range.end` is the address of the row of the next the sequence, i.e. not part of this statement.
+    /// The `instruction_range.start` is the address of the first instruction which is greater than,
+    ///  or equal to the program_counter and not inside the prologue.
+    /// The `instruction_range.end` is the address of the row of the next the non-contiguous sequence,
+    ///  i.e. not part of this statement.
     pub(crate) instruction_range: Range<u64>,
-    /// The `sequence_range.start` is the address of the program counter for which this sequence is valid, and allows us to identify target source statements where the program counter lies inside the prologue.
-    /// The `sequence_range.end` is the address of the first byte after the end of a sequence, and allows us to identify when stepping over a source statement would result in leaving a sequence.
+    /// The `sequence_range.start` is the address of the program counter for which this sequence is valid,
+    /// and allows us to identify target source statements where the program counter lies inside the prologue.
+    /// The `sequence_range.end` is the address of the first byte after the end of a sequence,
+    /// and allows us to identify when stepping over a source statement would result in leaving a sequence.
     pub(crate) sequence_range: Range<u64>,
 }
 
@@ -224,23 +254,12 @@ impl From<&gimli::LineRow> for SourceStatement {
     }
 }
 
-// Overriding clippy, as this is a private helper function.
-#[allow(clippy::type_complexity)]
 /// Resolve the relevant program and line-sequence row data for the given program counter.
 fn get_program_and_sequence_for_pc(
     debug_info: &DebugInfo,
     program_unit: &UnitInfo,
     program_counter: u64,
-) -> Result<
-    (
-        gimli::CompleteLineProgram<
-            gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>,
-            usize,
-        >,
-        gimli::LineSequence<gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>>,
-    ),
-    DebugError,
-> {
+) -> Result<ProgramLineSequence, DebugError> {
     let (offset, address_size) = if let Some(line_program) = program_unit.unit.line_program.clone()
     {
         (
@@ -265,7 +284,10 @@ fn get_program_and_sequence_for_pc(
     if let Some(active_sequence) = line_sequences.iter().find(|line_sequence| {
         line_sequence.start <= program_counter && program_counter < line_sequence.end
     }) {
-        Ok((complete_line_program, active_sequence.clone()))
+        Ok(ProgramLineSequence {
+            complete_line_program: complete_line_program.clone(),
+            line_sequence: active_sequence.clone(),
+        })
     } else {
         Err(DebugError::NoValidHaltLocation{
                     message: "The specified source location does not have any line information available. Please consider using instruction level stepping.".to_string(),
