@@ -96,8 +96,14 @@ impl DebugInfo {
 
         while let Ok(Some(header)) = iter.next() {
             if let Ok(unit) = dwarf_cow.unit(header) {
-                // TODO: maybe it's not correct to read from arbitrary units
+                // The DWARF V5 standard, section 2.4 specifies that the address size
+                // for the object file (or the target architecture default) will be used for
+                // DWARF debugging information.
+                // The following line is a workaround for instances where the address size of the
+                // CIE (Common Information Entry) is not correctly set.
+                // The frame section address size is only used for CIE versions before 4.
                 frame_section.set_address_size(unit.encoding().address_size);
+
                 unit_infos.push(UnitInfo::new(unit));
             };
         }
