@@ -544,76 +544,17 @@ impl UnitInfo {
                     namespace_variable.memory_location = VariableLocation::Unavailable;
                     cache.add_variable(parent_variable.variable_key, &mut namespace_variable)?;
 
-                    let mut namespace_children_nodes = child_node.children();
-                    while let Some(mut namespace_child_node) = namespace_children_nodes.next()? {
-                        match namespace_child_node.entry().tag() {
-                            gimli::DW_TAG_variable => {
-                                // We only want the TOP level variables of the namespace (statics).
-                                let static_child_variable = cache.create_variable(
-                                    namespace_variable.variable_key,
-                                    Some(namespace_child_node.entry().offset()),
-                                    Some(self),
-                                )?;
-                                self.process_tree_node_attributes(
-                                    debug_info,
-                                    &mut namespace_child_node,
-                                    &mut namespace_variable,
-                                    static_child_variable,
-                                    memory,
-                                    cache,
-                                    frame_info,
-                                )?;
-                            }
-                            gimli::DW_TAG_namespace => {
-                                // Recurse for additional namespace variables.
-                                let mut namespace_child_variable = Variable::new(
-                                    Some(namespace_child_node.entry().offset()),
-                                    Some(self),
-                                );
-                                namespace_child_variable.name = if let Ok(Some(name_attr)) =
-                                    extract_name(debug_info, namespace_child_node.entry())
-                                {
-                                    match &namespace_variable.name {
-                                        VariableName::Namespace(name) => VariableName::Namespace(
-                                            format!("{}::{}", name, name_attr),
-                                        ),
-                                        other => {
-                                            let message = format!("Unable to construct namespace variable, unexpected parent name: {:?}", other);
-                                            return Err(DebugError::UnwindIncompleteResults {
-                                                message,
-                                            });
-                                        }
-                                    }
-                                } else {
-                                    VariableName::AnonymousNamespace
-                                };
+                    // Recurse for additional namespace variables.
+                    namespace_variable = self.process_tree(
+                        debug_info,
+                        child_node,
+                        namespace_variable,
+                        memory,
+                        cache,
+                        frame_info,
+                    )?;
 
-                                namespace_child_variable.type_name = VariableType::Namespace;
-                                namespace_child_variable.memory_location =
-                                    VariableLocation::Unavailable;
-                                cache.add_variable(
-                                    namespace_variable.variable_key,
-                                    &mut namespace_child_variable,
-                                )?;
-                                namespace_child_variable = self.process_tree(
-                                    debug_info,
-                                    namespace_child_node,
-                                    namespace_child_variable,
-                                    memory,
-                                    cache,
-                                    frame_info,
-                                )?;
-                                if !cache.has_children(&namespace_child_variable)? {
-                                    cache.remove_cache_entry(
-                                        namespace_child_variable.variable_key,
-                                    )?;
-                                }
-                            }
-                            _ => {
-                                // We only want namespace and variable children.
-                            }
-                        }
-                    }
+                    // Do not keep empty namespaces around
                     if !cache.has_children(&namespace_variable)? {
                         cache.remove_cache_entry(namespace_variable.variable_key)?;
                     }
