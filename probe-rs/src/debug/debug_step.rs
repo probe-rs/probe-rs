@@ -186,7 +186,7 @@ impl SteppingMode {
                 // Find the first_breakpoint_address
                 // TODO: Move this to a method on SourceStatements
                 for source_statement in
-                    SourceStatements::for_active_sequence(debug_info, program_counter)?.statements
+                    SourceStatements::for_address(debug_info, program_counter)?.statements
                 {
                     if let Some(halt_address) =
                         source_statement.get_first_halt_address(program_counter)
@@ -228,7 +228,7 @@ impl SteppingMode {
                 //    -- If there is one, it means the step over target is in the current sequence, so we get the get_first_halt_address() for this next statement.
                 //    -- Otherwise the step over target is the same as the step out target.
                 let source_statements =
-                    SourceStatements::for_active_sequence(debug_info, program_counter)?.statements;
+                    SourceStatements::for_address(debug_info, program_counter)?.statements;
                 let mut source_statements_iter = source_statements.iter();
                 if let Some((target_address, target_location)) = source_statements_iter
                     .find(|source_statement| {
@@ -269,7 +269,7 @@ impl SteppingMode {
                 // TODO: In theory, we could disassemble the instructions in this statement's address range, and find branching instructions, then we would not need to single step the core past the original haltpoint.
 
                 let source_statements =
-                    SourceStatements::for_active_sequence(debug_info, program_counter)?.statements;
+                    SourceStatements::for_address(debug_info, program_counter)?.statements;
                 let mut source_statements_iter = source_statements.iter();
                 if let Some(current_source_statement) =
                     source_statements_iter.find(|source_statement| {

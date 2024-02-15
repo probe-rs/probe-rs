@@ -8,6 +8,18 @@ use std::{
 };
 use typed_path::TypedPathBuf;
 
+/// Capture the required information when a breakpoint is set based on a requested source location.
+/// It is possible that the requested source location cannot be resolved to a valid instruction address,
+/// in which case the first 'valid' instruction address will be used, and the source location will be
+/// updated to reflect the actual source location, not the requested source location.
+#[derive(Clone, Debug)]
+pub struct VerifiedBreakpoint {
+    /// The address in target memory, where the breakpoint was set.
+    pub address: u64,
+    /// If the breakpoint request was for a specific source location, then this field will contain the resolved source location.
+    pub source_location: SourceLocation,
+}
+
 fn serialize_typed_path<S>(path: &Option<TypedPathBuf>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
@@ -111,7 +123,7 @@ impl Debug for SourceStatements {
 
 impl SourceStatements {
     /// Extract all the source statements, belonging to the active sequence (i.e. the sequence that contains the `program_counter`).
-    pub(crate) fn for_active_sequence(
+    pub(crate) fn for_address(
         debug_info: &DebugInfo,
         program_counter: u64,
     ) -> Result<Self, DebugError> {
@@ -232,6 +244,24 @@ impl SourceStatements {
             );
             Ok(source_statements)
         }
+    }
+
+    /// Identifying the source statements for a specific location (path, line, colunmn) is a bit more complex,
+    /// compared to the `for_address()` method, due to a few factors:
+    /// - We need to find the correct program instructions, which may be in any of the compilation
+    /// units of the current program.
+    /// - The debug information may not contain data for the "requested source location", e.g.
+    ///   - DWARFv5 standard, section 6.2, allows omissions based on certain conditions. In this case,
+    ///    we need to find the closest "relevant" source location that has valid debug information.
+    ///   - The requested location may not be a valid source location, e.g. when the
+    ///    debug information has been optimized away. In this case we will return an appropriate error.
+
+    pub(crate) fn for_source(
+        path: &TypedPathBuf,
+        line: u64,
+        column: Option<u64>,
+    ) -> Result<Self, DebugError> {
+        Err(DebugError::Other(anyhow::anyhow!("TODO")))
     }
 
     /// Add a new source statement to the list.

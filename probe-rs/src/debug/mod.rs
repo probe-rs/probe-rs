@@ -28,7 +28,8 @@ pub mod variable_cache;
 
 pub use self::{
     debug_info::*, debug_step::SteppingMode, registers::*, source_statement::SourceLocation,
-    stack_frame::StackFrame, variable::*, variable_cache::VariableCache,
+    source_statement::VerifiedBreakpoint, stack_frame::StackFrame, variable::*,
+    variable_cache::VariableCache,
 };
 use crate::{core::Core, MemoryInterface};
 

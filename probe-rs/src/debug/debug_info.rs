@@ -1,3 +1,4 @@
+use super::source_statement::VerifiedBreakpoint;
 use super::ObjectRef;
 use super::SourceLocation;
 use super::{
@@ -32,18 +33,6 @@ pub(crate) type GimliReader = gimli::EndianReader<gimli::LittleEndian, std::rc::
 pub(crate) type GimliAttribute = gimli::Attribute<GimliReader>;
 
 pub(crate) type DwarfReader = gimli::read::EndianRcSlice<gimli::LittleEndian>;
-
-/// Capture the required information when a breakpoint is set based on a requested source location.
-/// It is possible that the requested source location cannot be resolved to a valid instruction address,
-/// in which case the first 'valid' instruction address will be used, and the source location will be
-/// updated to reflect the actual source location, not the requested source location.
-#[derive(Clone, Debug)]
-pub struct VerifiedBreakpoint {
-    /// The address in target memory, where the breakpoint was set.
-    pub address: u64,
-    /// If the breakpoint request was for a specific source location, then this field will contain the resolved source location.
-    pub source_location: SourceLocation,
-}
 
 /// Debug information which is parsed from DWARF debugging information.
 pub struct DebugInfo {
@@ -1019,8 +1008,7 @@ impl DebugInfo {
                 continue;
             }
 
-            let source_statements =
-                SourceStatements::for_active_sequence(self, row.address())?.statements;
+            let source_statements = SourceStatements::for_address(self, row.address())?.statements;
 
             // The first match of the file and row will be used to build the SourceStatements, and then:
             // 1. If there is an exact column match, we will use the low_pc of the statement at that column and line.
