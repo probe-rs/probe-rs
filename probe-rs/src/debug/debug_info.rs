@@ -1,11 +1,13 @@
 use super::ObjectRef;
+use super::SourceLocation;
 use super::{
     function_die::FunctionDie, get_object_reference, unit_info::UnitInfo, variable::*, DebugError,
-    DebugRegisters, SourceLocation, StackFrame, VariableCache,
+    DebugRegisters, StackFrame, VariableCache,
 };
 use crate::core::UnwindRule;
 use crate::debug::source_statement::SourceStatement;
 use crate::debug::stack_frame::StackFrameInfo;
+use crate::debug::ColumnType;
 use crate::{
     core::{ExceptionInterface, RegisterRole, RegisterValue},
     debug::{registers, source_statement::SourceStatements},
@@ -13,8 +15,8 @@ use crate::{
 };
 use anyhow::anyhow;
 use gimli::{
-    BaseAddresses, ColumnType, DebugFrame, FileEntry, LineProgramHeader, UnwindContext,
-    UnwindSection, UnwindTableRow,
+    BaseAddresses, DebugFrame, FileEntry, LineProgramHeader, UnwindContext, UnwindSection,
+    UnwindTableRow,
 };
 use object::read::{Object, ObjectSection};
 use probe_rs_target::InstructionSet;
@@ -950,25 +952,25 @@ impl DebugInfo {
                 .unwrap_or_else(|| "-".to_owned())
         );
 
-        for unit_header in &self.unit_infos {
-            let Some(ref line_program) = &unit_header.unit.line_program else {
+        // We need to look through all the compilation units, and inspect their line programs,
+        // to determine the correct address for the breakpoint.
+        for progam_unit in &self.unit_infos {
+            // TODO: We do NOT need to look up the line program here.
+            let Some(ref line_program) = &progam_unit.unit.line_program else {
                 continue;
             };
 
             if let Some(location) =
-                self.get_breakpoint_location_in_unit(unit_header, line_program, path, line, column)?
+                self.get_breakpoint_location_in_unit(progam_unit, line_program, path, line, column)?
             {
                 return Ok(location);
             };
         }
 
-        let p = path.to_path();
-
+        // If we get here, it means we didn't find any valid breakpoint locations.
         Err(DebugError::Other(anyhow::anyhow!(
-            "No valid breakpoint information found for file: {}, line: {:?}, column: {:?}",
-            p.display(),
-            line,
-            column
+            "No valid breakpoint information found for file: {}, line: {line:?}, column: {column:?}",
+            path.to_path().display()
         )))
     }
 
@@ -1037,7 +1039,7 @@ impl DebugInfo {
                             )
                             .map(|(file, directory)| SourceLocation {
                                 line: source_statement.line.map(std::num::NonZeroU64::get),
-                                column: Some(source_statement.column.into()),
+                                column: Some(source_statement.column),
                                 file,
                                 directory,
                                 low_pc: Some(source_statement.low_pc() as u32),
@@ -1050,7 +1052,6 @@ impl DebugInfo {
             // The case where we have exact match on file, line AND column.
             let first_find = source_statements.iter().find(|statement| {
                 column
-                    .and_then(NonZeroU64::new)
                     .map(ColumnType::Column)
                     .map_or(false, |col| col == statement.column)
                     && statement.line == Some(cur_line)

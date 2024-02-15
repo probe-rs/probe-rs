@@ -1,10 +1,70 @@
-use super::{unit_info::UnitInfo, DebugError, DebugInfo};
-use gimli::{ColumnType, LineSequence};
+use super::{unit_info::UnitInfo, ColumnType, DebugError, DebugInfo};
+use gimli::LineSequence;
 use std::{
     fmt::{Debug, Formatter},
     num::NonZeroU64,
     ops::Range,
+    path::PathBuf,
 };
+use typed_path::TypedPathBuf;
+
+fn serialize_typed_path<S>(path: &Option<TypedPathBuf>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    match path {
+        Some(path) => serializer.serialize_str(&path.to_string_lossy()),
+        None => serializer.serialize_none(),
+    }
+}
+
+/// A specific location in source code.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
+pub struct SourceLocation {
+    /// The line number in the source file with zero based indexing.
+    pub line: Option<u64>,
+    /// The column number in the source file with zero based indexing.
+    pub column: Option<ColumnType>,
+    /// The file name of the source file.
+    pub file: Option<String>,
+    /// The directory of the source file.
+    #[serde(serialize_with = "serialize_typed_path")]
+    pub directory: Option<TypedPathBuf>,
+    /// The address of the first instruction associated with the source code
+    pub low_pc: Option<u32>,
+    /// The address of the first location past the last instruction associated with the source code
+    pub high_pc: Option<u32>,
+}
+
+impl SourceLocation {
+    /// The full path of the source file, combining the `directory` and `file` fields.
+    /// If the path does not resolve to an existing file, an error is returned.
+    pub fn combined_path(&self) -> Result<PathBuf, DebugError> {
+        let combined_path = self.combined_typed_path();
+
+        if let Some(native_path) = combined_path.and_then(|p| PathBuf::try_from(p).ok()) {
+            if native_path.exists() {
+                return Ok(native_path);
+            }
+        }
+
+        Err(DebugError::Other(anyhow::anyhow!(
+            "Unable to find source file for directory {:?} and file {:?}",
+            self.directory,
+            self.file
+        )))
+    }
+
+    /// Get the full path of the source file
+    pub fn combined_typed_path(&self) -> Option<TypedPathBuf> {
+        let combined_path = self
+            .directory
+            .as_ref()
+            .and_then(|dir| self.file.as_ref().map(|file| dir.join(file)));
+
+        combined_path
+    }
+}
 
 /// Keep track of all the source statements required to satisfy the operations of [`SteppingMode`].
 pub struct SourceStatements {
@@ -42,7 +102,7 @@ impl SourceStatements {
                 if source_row.line.is_none()
                     && row.line().is_some()
                     && row.file_index() == source_row.file_index
-                    && row.column() == source_row.column
+                    && source_row.column == row.column().into()
                 {
                     // Workaround the line number issue (if recorded as 0 in the DWARF, then gimli reports it as None).
                     // For debug purposes, it makes more sense to be the same as the previous line.
@@ -110,7 +170,7 @@ impl SourceStatements {
                     || (row.is_stmt() && row.address() > source_row.low_pc())
                     || !(row.file_index() == source_row.file_index
                         && (row.line() == source_row.line || row.line().is_none())
-                        && row.column() == source_row.column)
+                        && source_row.column == row.column().into())
                 {
                     if source_row.low_pc() >= program_counter {
                         // We need to close off the "current" source statement and add it to the list.
@@ -209,8 +269,8 @@ impl Debug for SourceStatement {
                 None => 0,
             },
             match &self.column {
-                gimli::ColumnType::LeftEdge => 0,
-                gimli::ColumnType::Column(column) => column.get(),
+                ColumnType::LeftEdge => 0,
+                ColumnType::Column(column) => column.to_owned(),
             },
             &self.file_index,
             &self.instruction_range.start,
@@ -246,7 +306,7 @@ impl From<&gimli::LineRow> for SourceStatement {
             is_stmt: line_row.is_stmt(),
             file_index: line_row.file_index(),
             line: line_row.line(),
-            column: line_row.column(),
+            column: line_row.column().into(),
             instruction_range: line_row.address()..line_row.address(),
             sequence_range: line_row.address()..line_row.address(),
         }

@@ -217,7 +217,7 @@ impl SteppingMode {
                                                 line: source_statement
                                                     .line
                                                     .map(std::num::NonZeroU64::get),
-                                                column: Some(source_statement.column.into()),
+                                                column: Some(source_statement.column),
                                                 file,
                                                 directory,
                                                 low_pc: Some(source_statement.low_pc() as u32),

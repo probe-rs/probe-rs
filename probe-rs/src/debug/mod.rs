@@ -27,8 +27,8 @@ pub mod variable;
 pub mod variable_cache;
 
 pub use self::{
-    debug_info::*, debug_step::SteppingMode, registers::*, stack_frame::StackFrame, variable::*,
-    variable_cache::VariableCache,
+    debug_info::*, debug_step::SteppingMode, registers::*, source_statement::SourceLocation,
+    stack_frame::StackFrame, variable::*, variable_cache::VariableCache,
 };
 use crate::{core::Core, MemoryInterface};
 
@@ -38,7 +38,6 @@ use typed_path::TypedPathBuf;
 use std::{
     io,
     num::NonZeroU32,
-    path::PathBuf,
     str::Utf8Error,
     sync::atomic::{AtomicU32, Ordering},
     vec,
@@ -113,6 +112,15 @@ impl From<gimli::ColumnType> for ColumnType {
     }
 }
 
+impl From<u64> for ColumnType {
+    fn from(column: u64) -> Self {
+        match column {
+            0 => ColumnType::LeftEdge,
+            _ => ColumnType::Column(column),
+        }
+    }
+}
+
 /// Object reference as defined in the DAP standard.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ObjectRef {
@@ -171,64 +179,6 @@ static CACHE_KEY: AtomicU32 = AtomicU32::new(1);
 pub fn get_object_reference() -> ObjectRef {
     let key = CACHE_KEY.fetch_add(1, Ordering::SeqCst);
     ObjectRef::Valid(NonZeroU32::new(key).unwrap())
-}
-
-fn serialize_typed_path<S>(path: &Option<TypedPathBuf>, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: serde::Serializer,
-{
-    match path {
-        Some(path) => serializer.serialize_str(&path.to_string_lossy()),
-        None => serializer.serialize_none(),
-    }
-}
-
-/// A specific location in source code.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
-pub struct SourceLocation {
-    /// The line number in the source file with zero based indexing.
-    pub line: Option<u64>,
-    /// The column number in the source file with zero based indexing.
-    pub column: Option<ColumnType>,
-    /// The file name of the source file.
-    pub file: Option<String>,
-    /// The directory of the source file.
-    #[serde(serialize_with = "serialize_typed_path")]
-    pub directory: Option<TypedPathBuf>,
-    /// The address of the first instruction associated with the source code
-    pub low_pc: Option<u32>,
-    /// The address of the first location past the last instruction associated with the source code
-    pub high_pc: Option<u32>,
-}
-
-impl SourceLocation {
-    /// The full path of the source file, combining the `directory` and `file` fields.
-    /// If the path does not resolve to an existing file, an error is returned.
-    pub fn combined_path(&self) -> Result<PathBuf, DebugError> {
-        let combined_path = self.combined_typed_path();
-
-        if let Some(native_path) = combined_path.and_then(|p| PathBuf::try_from(p).ok()) {
-            if native_path.exists() {
-                return Ok(native_path);
-            }
-        }
-
-        Err(DebugError::Other(anyhow::anyhow!(
-            "Unable to find source file for directory {:?} and file {:?}",
-            self.directory,
-            self.file
-        )))
-    }
-
-    /// Get the full path of the source file
-    pub fn combined_typed_path(&self) -> Option<TypedPathBuf> {
-        let combined_path = self
-            .directory
-            .as_ref()
-            .and_then(|dir| self.file.as_ref().map(|file| dir.join(file)));
-
-        combined_path
-    }
 }
 
 /// If file information is available, it returns `Some(directory:PathBuf, file_name:String)`, otherwise `None`.
