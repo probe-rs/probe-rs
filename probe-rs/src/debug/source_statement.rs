@@ -19,6 +19,8 @@ where
 }
 
 /// A specific location in source code.
+/// Each unique line, column, file and directory combination is a unique source location,
+/// and maps to a contiguous and monotonic range of machine instructions (i.e. a sequence of instructions).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct SourceLocation {
     /// The line number in the source file with zero based indexing.
@@ -174,7 +176,7 @@ impl SourceStatements {
                 {
                     if source_row.low_pc() >= program_counter {
                         // We need to close off the "current" source statement and add it to the list.
-                        source_row.sequence_range =
+                        source_row.statement_range =
                             program_counter..source_sequence.line_sequence.end;
                         source_statements.add(source_row.clone());
                     }
@@ -238,10 +240,10 @@ struct ProgramLineSequence<'a> {
 /// but not necessarily contiguous. In other words, can span multiple `sequences` of `rows`.
 /// - A line of code in a source file may contain multiple source statements, in which case
 /// a new source statement with unique `column` is created.
-/// - The [`gimli::LineRow`] entries for a source statement does not have to be contiguous where they appear in a [`gimli::LineSequence`]
+/// - The [`gimli::LineRow`] entries for a source statement does not have to be contiguous
+/// where they appear in a [`gimli::LineSequence`]. In other words, there are often gaps where
+/// the DWARFv5 standard, section 6.2, allows omissions based on certain conditions.
 pub(crate) struct SourceStatement {
-    /// The first address of the statement where row.is_stmt() is true.
-    pub(crate) is_stmt: bool,
     pub(crate) file_index: u64,
     pub(crate) line: Option<NonZeroU64>,
     pub(crate) column: ColumnType,
@@ -251,19 +253,18 @@ pub(crate) struct SourceStatement {
     /// The `instruction_range.end` is the address of the row of the next the non-contiguous sequence,
     ///  i.e. not part of this statement.
     pub(crate) instruction_range: Range<u64>,
-    /// The `sequence_range.start` is the address of the program counter for which this sequence is valid,
+    /// The `statement_range.start` is the starting address of the program counter for which this sequence is valid,
     /// and allows us to identify target source statements where the program counter lies inside the prologue.
-    /// The `sequence_range.end` is the address of the first byte after the end of a sequence,
+    /// The `statement_range.end` is the address of the first byte after the end of a sequence,
     /// and allows us to identify when stepping over a source statement would result in leaving a sequence.
-    pub(crate) sequence_range: Range<u64>,
+    pub(crate) statement_range: Range<u64>,
 }
 
 impl Debug for SourceStatement {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "\tStatement={:05} on line={:04}  col={:05}  f={:02}, Range: {:#010x}-{:#010x} --> Sequence Range: {:#010x}-{:#010x}",
-            &self.is_stmt,
+            "\tStatement on line={:04}  col={:05}  f={:02}, Range: {:#010x}-{:#010x} --> Sequence Range: {:#010x}-{:#010x}",
             match &self.line {
                 Some(line) => line.get(),
                 None => 0,
@@ -275,8 +276,8 @@ impl Debug for SourceStatement {
             &self.file_index,
             &self.instruction_range.start,
             &self.instruction_range.end,
-            &self.sequence_range.start,
-            &self.sequence_range.end,
+            &self.statement_range.start,
+            &self.statement_range.end,
         )?;
         Ok(())
     }
@@ -286,7 +287,7 @@ impl SourceStatement {
     /// Return the first valid halt address of the statement that is greater than or equal to `address`.
     pub(crate) fn get_first_halt_address(&self, address: u64) -> Option<u64> {
         if self.instruction_range.start == address
-            || (self.sequence_range.start..self.instruction_range.end).contains(&address)
+            || (self.statement_range.start..self.instruction_range.end).contains(&address)
         {
             Some(self.low_pc())
         } else {
@@ -303,12 +304,11 @@ impl SourceStatement {
 impl From<&gimli::LineRow> for SourceStatement {
     fn from(line_row: &gimli::LineRow) -> Self {
         SourceStatement {
-            is_stmt: line_row.is_stmt(),
             file_index: line_row.file_index(),
             line: line_row.line(),
             column: line_row.column().into(),
             instruction_range: line_row.address()..line_row.address(),
-            sequence_range: line_row.address()..line_row.address(),
+            statement_range: line_row.address()..line_row.address(),
         }
     }
 }
