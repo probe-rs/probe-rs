@@ -1,4 +1,4 @@
-use super::type_info::TypeInfo;
+use super::type_info::TypeCache;
 use super::ObjectRef;
 use super::{
     function_die::FunctionDie, get_object_reference, unit_info::UnitInfo, variable::*, DebugError,
@@ -14,14 +14,13 @@ use crate::{
 };
 use anyhow::anyhow;
 use gimli::{
-    BaseAddresses, ColumnType, DebugFrame, DebugInfoOffset, FileEntry, LineProgramHeader,
-    UnwindContext, UnwindSection, UnwindTableRow,
+    BaseAddresses, ColumnType, DebugFrame, FileEntry, LineProgramHeader, UnwindContext,
+    UnwindSection, UnwindTableRow,
 };
 use object::read::{Object, ObjectSection};
 use probe_rs_target::InstructionSet;
 use typed_path::{TypedPath, TypedPathBuf};
 
-use std::collections::HashMap;
 use std::{
     borrow, cmp::Ordering, convert::TryInto, num::NonZeroU64, ops::ControlFlow, path::Path, rc::Rc,
     str::from_utf8,
@@ -314,14 +313,14 @@ impl DebugInfo {
             return Ok(());
         }
 
-        let mut visited_types: HashMap<DebugInfoOffset, Option<TypeInfo>> = HashMap::new();
-
         let Some(header_offset) = parent_variable.unit_header_offset else {
             return Ok(());
         };
 
         let unit_header = self.dwarf.debug_info.header_from_offset(header_offset)?;
         let unit_info = UnitInfo::new(gimli::Unit::new(&self.dwarf, unit_header)?);
+
+        let mut type_cache = TypeCache::new();
 
         match parent_variable.variable_node_type {
             VariableNodeType::ReferenceOffset(reference_offset) => {
@@ -351,23 +350,8 @@ impl DebugInfo {
                     memory,
                     cache,
                     frame_info,
-                    &mut visited_types,
+                    &mut type_cache,
                 )?;
-
-                let mut type_tree = unit_info
-                    .unit
-                    .header
-                    .entries_tree(&unit_info.unit.abbreviations, Some(reference_offset))?;
-                let referenced_node = type_tree.root()?;
-
-                let referenced_type = unit_info.extract_type_type_info(
-                    self,
-                    header_offset,
-                    referenced_node.entry(),
-                    &mut visited_types,
-                )?;
-
-                tracing::debug!("Resolved reference: {:?}", referenced_type);
 
                 if referenced_variable.type_name == VariableType::Base("()".to_owned()) {
                     // Only use this, if it is NOT a unit datatype.
@@ -396,7 +380,7 @@ impl DebugInfo {
                     memory,
                     cache,
                     frame_info,
-                    &mut visited_types,
+                    &mut type_cache,
                 )?;
 
                 cache.adopt_grand_children(parent_variable, &temporary_variable)?;
@@ -424,7 +408,7 @@ impl DebugInfo {
                     memory,
                     cache,
                     frame_info,
-                    &mut visited_types,
+                    &mut type_cache,
                 )?;
 
                 cache.adopt_grand_children(parent_variable, &temporary_variable)?;

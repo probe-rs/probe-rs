@@ -990,6 +990,7 @@ impl UnitInfo {
                         memory,
                         cache,
                         frame_info,
+                        type_cache,
                     )?;
 
                     // Do not keep empty namespaces around

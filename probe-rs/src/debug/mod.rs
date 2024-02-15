@@ -24,9 +24,11 @@ mod type_info;
 pub mod unit_info;
 /// Variable information used during debug.
 pub mod variable;
+
 /// The hierarchical cache of all variables for a given scope.
 pub mod variable_cache;
 
+use self::type_info::TypeInfoError;
 pub use self::{
     debug_info::*, debug_step::SteppingMode, registers::*, stack_frame::StackFrame, variable::*,
     variable_cache::VariableCache,
@@ -89,6 +91,9 @@ pub enum DebugError {
         /// A message that can be displayed to the user to help them understand the reason for the incomplete results.
         message: String,
     },
+    /// Error handling type information
+    #[error("Error handling type information")]
+    TypeInfo(#[from] TypeInfoError),
     /// Some other error occurred.
     #[error(transparent)]
     Other(#[from] anyhow::Error),
