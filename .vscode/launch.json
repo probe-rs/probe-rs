@@ -7,6 +7,22 @@
     {
       "type": "lldb",
       "request": "launch",
+      "name": "Run read_ranges",
+      "cargo": {
+        "args": [
+          "build",
+          "--example",
+          "read_ranges"
+        ]
+      },
+      "args": [
+        "../../static_vrings/build/zephyr/zephyr.elf",
+        "../../static_vrings/coredump"
+      ]
+    },
+    {
+      "type": "lldb",
+      "request": "launch",
       "name": "Debug example 'xtensa'",
       "cargo": {
         "args": [
@@ -31,23 +47,36 @@
       "request": "launch",
       "name": "Launch smoke tester",
       "cargo": {
-        "args": ["build", "--package=smoke_tester"]
+        "args": [
+          "build",
+          "--package=smoke_tester"
+        ]
       },
       "program": "${cargo:program}",
-      "args": ["--dut-definitions=../dut-definitions/"]
+      "args": [
+        "--dut-definitions=../dut-definitions/"
+      ]
     },
     {
       "type": "lldb",
       "request": "launch",
       "name": "DAP-Server probe-rs", // Use this to test the dap server .
       "cargo": {
-        "args": ["build", "--bin=probe-rs", "--features=cli"],
+        "args": [
+          "build",
+          "--bin=probe-rs",
+          "--features=cli"
+        ],
         "filter": {
           "name": "probe-rs",
           "kind": "bin"
         }
       },
-      "args": ["dap-server", "--port", "50001"],
+      "args": [
+        "dap-server",
+        "--port",
+        "50001"
+      ],
       // "env": {
       //     "RUST_LOG": "error",
       //     "DEFMT_LOG": "info"
@@ -59,13 +88,20 @@
       "request": "launch",
       "name": "list supported chips",
       "cargo": {
-        "args": ["build", "--bin=probe-rs", "--features=cli"],
+        "args": [
+          "build",
+          "--bin=probe-rs",
+          "--features=cli"
+        ],
         "filter": {
           "name": "probe-rs",
           "kind": "bin"
         }
       },
-      "args": ["chip", "list"],
+      "args": [
+        "chip",
+        "list"
+      ],
       "cwd": "${workspaceFolder}/debugger"
     },
     {
@@ -73,13 +109,19 @@
       "request": "launch",
       "name": "list attached probes",
       "cargo": {
-        "args": ["build", "--bin=probe-rs", "--features=cli"],
+        "args": [
+          "build",
+          "--bin=probe-rs",
+          "--features=cli"
+        ],
         "filter": {
           "name": "probe-rs",
           "kind": "bin"
         }
       },
-      "args": ["list"],
+      "args": [
+        "list"
+      ],
       "cwd": "${workspaceFolder}/debugger"
     },
     {
@@ -87,13 +129,19 @@
       "request": "launch",
       "name": "display help text",
       "cargo": {
-        "args": ["build", "--bin=probe-rs", "--features=cli"],
+        "args": [
+          "build",
+          "--bin=probe-rs",
+          "--features=cli"
+        ],
         "filter": {
           "name": "probe-rs",
           "kind": "bin"
         }
       },
-      "args": ["help"],
+      "args": [
+        "help"
+      ],
       "cwd": "${workspaceFolder}/debugger"
     },
     {
@@ -101,13 +149,21 @@
       "request": "launch",
       "name": "display dap-server debug subcommand help text",
       "cargo": {
-        "args": ["build", "--bin=probe-rs", "--features=cli"],
+        "args": [
+          "build",
+          "--bin=probe-rs",
+          "--features=cli"
+        ],
         "filter": {
           "name": "probe-rs",
           "kind": "bin"
         }
       },
-      "args": ["help", "dap-server", "debug"],
+      "args": [
+        "help",
+        "dap-server",
+        "debug"
+      ],
       "cwd": "${workspaceFolder}/debugger"
     },
     {
@@ -116,7 +172,11 @@
       "name": "target-gen Download and Update supported ARM target definitions",
       "cwd": "${workspaceFolder}/target-gen",
       "cargo": {
-        "args": ["build", "--bin=target-gen", "--package=target-gen"],
+        "args": [
+          "build",
+          "--bin=target-gen",
+          "--package=target-gen"
+        ],
         "filter": {
           "name": "target-gen",
           "kind": "bin"
@@ -136,13 +196,21 @@
       "name": "target-gen Generate target yaml from single ARM CMSIS Pack file",
       "cwd": "${workspaceFolder}/target-gen",
       "cargo": {
-        "args": ["build", "--bin=target-gen", "--package=target-gen"],
+        "args": [
+          "build",
+          "--bin=target-gen",
+          "--package=target-gen"
+        ],
         "filter": {
           "name": "target-gen",
           "kind": "bin"
         }
       },
-      "args": ["pack", "${input:packFile}", "${input:yamlFile}"]
+      "args": [
+        "pack",
+        "${input:packFile}",
+        "${input:yamlFile}"
+      ]
     }
   ],
   "inputs": [

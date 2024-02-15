@@ -19,6 +19,7 @@ pub mod registers;
 pub(crate) mod source_statement;
 /// The stack frame information used while unwinding the stack from a specific program counter.
 pub mod stack_frame;
+mod type_info;
 /// Information about a Unit in the debug information.
 pub mod unit_info;
 /// Variable information used during debug.
@@ -182,7 +183,7 @@ where
 }
 
 /// A specific location in source code.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
+#[derive(Clone, Default, PartialEq, Eq, Serialize)]
 pub struct SourceLocation {
     /// The line number in the source file with zero based indexing.
     pub line: Option<u64>,
@@ -229,6 +230,24 @@ impl SourceLocation {
     }
 }
 
+impl std::fmt::Debug for SourceLocation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut ds = f.debug_struct("SourceLocation");
+        ds.field("line", &self.line);
+        ds.field("column", &self.column);
+        ds.field("file", &self.file);
+
+        if let Some(dir) = &self.directory {
+            ds.field("directory", &format!("Some({})", dir.to_path().display()));
+        } else {
+            ds.field("directory", &self.directory);
+        }
+        ds.field("low_pc", &self.low_pc);
+        ds.field("high_pc", &self.high_pc);
+        ds.finish()
+    }
+}
+
 /// If file information is available, it returns `Some(directory:PathBuf, file_name:String)`, otherwise `None`.
 fn extract_file(
     debug_info: &DebugInfo,
@@ -267,20 +286,18 @@ fn extract_file(
 /// If a DW_AT_byte_size attribute exists, return the u64 value, otherwise (including errors) return None
 fn extract_byte_size(node_die: &DebuggingInformationEntry<GimliReader>) -> Option<u64> {
     match node_die.attr(gimli::DW_AT_byte_size) {
-        Ok(optional_byte_size_attr) => match optional_byte_size_attr {
-            Some(byte_size_attr) => match byte_size_attr.value() {
-                gimli::AttributeValue::Udata(byte_size) => Some(byte_size),
-                gimli::AttributeValue::Data1(byte_size) => Some(byte_size as u64),
-                gimli::AttributeValue::Data2(byte_size) => Some(byte_size as u64),
-                gimli::AttributeValue::Data4(byte_size) => Some(byte_size as u64),
-                gimli::AttributeValue::Data8(byte_size) => Some(byte_size),
-                other => {
-                    tracing::warn!("Unimplemented: DW_AT_byte_size value: {:?} ", other);
-                    None
-                }
-            },
-            None => None,
+        Ok(Some(byte_size_attr)) => match byte_size_attr.value() {
+            gimli::AttributeValue::Udata(byte_size) => Some(byte_size),
+            gimli::AttributeValue::Data1(byte_size) => Some(byte_size as u64),
+            gimli::AttributeValue::Data2(byte_size) => Some(byte_size as u64),
+            gimli::AttributeValue::Data4(byte_size) => Some(byte_size as u64),
+            gimli::AttributeValue::Data8(byte_size) => Some(byte_size),
+            other => {
+                tracing::warn!("Unimplemented: DW_AT_byte_size value: {:?} ", other);
+                None
+            }
         },
+        Ok(None) => None,
         Err(error) => {
             tracing::warn!(
                 "Failed to extract byte_size: {:?} for debug_entry {:?}",

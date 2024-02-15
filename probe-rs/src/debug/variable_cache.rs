@@ -435,6 +435,7 @@ impl VariableCache {
     /// and add their children to the cache.
     /// Enforce a max level, so that we don't recurse infinitely on circular references.
     #[allow(clippy::too_many_arguments)]
+    #[tracing::instrument(level = "trace", skip_all)]
     pub fn recurse_deferred_variables(
         &mut self,
         debug_info: &DebugInfo,

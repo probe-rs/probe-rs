@@ -5,6 +5,8 @@ use crate::{
     MemoryInterface,
 };
 
+use super::type_info::TypeKind;
+
 /// C, C89, C99, C11, ...
 pub mod c;
 /// Rust
@@ -58,6 +60,12 @@ pub trait ProgrammingLanguage {
 
     fn process_tag_with_no_type(&self, tag: gimli::DwTag) -> VariableValue {
         VariableValue::Error(format!("Error: Failed to decode {tag} type reference"))
+    }
+
+    fn process_tag_with_no_type_type_info(&self, tag: gimli::DwTag) -> TypeKind {
+        TypeKind::Error(format!(
+            "Error: Failed to decode {tag} type, missing type info"
+        ))
     }
 }
 

@@ -1,3 +1,4 @@
+use super::type_info::TypeInfo;
 use super::ObjectRef;
 use super::{
     function_die::FunctionDie, get_object_reference, unit_info::UnitInfo, variable::*, DebugError,
@@ -13,13 +14,14 @@ use crate::{
 };
 use anyhow::anyhow;
 use gimli::{
-    BaseAddresses, ColumnType, DebugFrame, FileEntry, LineProgramHeader, UnwindContext,
-    UnwindSection, UnwindTableRow,
+    BaseAddresses, ColumnType, DebugFrame, DebugInfoOffset, FileEntry, LineProgramHeader,
+    UnwindContext, UnwindSection, UnwindTableRow,
 };
 use object::read::{Object, ObjectSection};
 use probe_rs_target::InstructionSet;
 use typed_path::{TypedPath, TypedPathBuf};
 
+use std::collections::HashMap;
 use std::{
     borrow, cmp::Ordering, convert::TryInto, num::NonZeroU64, ops::ControlFlow, path::Path, rc::Rc,
     str::from_utf8,
@@ -294,6 +296,7 @@ impl DebugInfo {
     }
 
     /// This effects the on-demand expansion of lazy/deferred load of all the 'child' `Variable`s for a given 'parent'.
+    #[tracing::instrument(level = "trace", skip_all, fields(variable_key = ?parent_variable.variable_key))]
     pub fn cache_deferred_variables(
         &self,
         cache: &mut VariableCache,
@@ -310,6 +313,8 @@ impl DebugInfo {
         if cache.has_children(parent_variable)? {
             return Ok(());
         }
+
+        let mut visited_types: HashMap<DebugInfoOffset, Option<TypeInfo>> = HashMap::new();
 
         let Some(header_offset) = parent_variable.unit_header_offset else {
             return Ok(());
@@ -346,7 +351,23 @@ impl DebugInfo {
                     memory,
                     cache,
                     frame_info,
+                    &mut visited_types,
                 )?;
+
+                let mut type_tree = unit_info
+                    .unit
+                    .header
+                    .entries_tree(&unit_info.unit.abbreviations, Some(reference_offset))?;
+                let referenced_node = type_tree.root()?;
+
+                let referenced_type = unit_info.extract_type_type_info(
+                    self,
+                    header_offset,
+                    referenced_node.entry(),
+                    &mut visited_types,
+                )?;
+
+                tracing::debug!("Resolved reference: {:?}", referenced_type);
 
                 if referenced_variable.type_name == VariableType::Base("()".to_owned()) {
                     // Only use this, if it is NOT a unit datatype.
@@ -375,6 +396,7 @@ impl DebugInfo {
                     memory,
                     cache,
                     frame_info,
+                    &mut visited_types,
                 )?;
 
                 cache.adopt_grand_children(parent_variable, &temporary_variable)?;
@@ -402,6 +424,7 @@ impl DebugInfo {
                     memory,
                     cache,
                     frame_info,
+                    &mut visited_types,
                 )?;
 
                 cache.adopt_grand_children(parent_variable, &temporary_variable)?;
@@ -493,8 +516,6 @@ impl DebugInfo {
                 );
 
                 let inlined_caller_source_location = next_function.inline_call_location(self);
-
-                tracing::debug!("UNWIND: Call site: {:?}", inlined_caller_source_location);
 
                 // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
                 // Resolve the statics that belong to the compilation unit that this function is in.
