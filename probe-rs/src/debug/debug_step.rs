@@ -184,6 +184,7 @@ impl SteppingMode {
         match self {
             SteppingMode::BreakPoint => {
                 // Find the first_breakpoint_address
+                // TODO: Move this to a method on SourceStatements
                 for source_statement in
                     SourceStatements::for_active_sequence(debug_info, program_counter)?.statements
                 {
@@ -195,7 +196,6 @@ impl SteppingMode {
                             halt_address,
                             program_counter
                         );
-                        // TODO: This should be refactored to be a method on the SourceStatement struct.
                         // We have a good first halt address.
                         let first_breakpoint_address = Some(halt_address);
                         let first_breakpoint_source_location = program_unit
@@ -207,24 +207,13 @@ impl SteppingMode {
                                     .header()
                                     .file(source_statement.file_index)
                                     .and_then(|file_entry| {
-                                        debug_info
-                                            .find_file_and_directory(
-                                                &program_unit.unit,
-                                                line_program.header(),
-                                                file_entry,
-                                            )
-                                            .map(|(file, directory)| SourceLocation {
-                                                line: source_statement
-                                                    .line
-                                                    .map(std::num::NonZeroU64::get),
-                                                column: Some(source_statement.column),
-                                                file,
-                                                directory,
-                                                low_pc: Some(source_statement.low_pc() as u32),
-                                                high_pc: Some(
-                                                    source_statement.instruction_range.end as u32,
-                                                ),
-                                            })
+                                        SourceLocation::from_source_statement(
+                                            debug_info,
+                                            program_unit,
+                                            line_program,
+                                            file_entry,
+                                            source_statement,
+                                        )
                                     })
                             });
                         return Ok((first_breakpoint_address, first_breakpoint_source_location));

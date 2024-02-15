@@ -39,6 +39,32 @@ pub struct SourceLocation {
 }
 
 impl SourceLocation {
+    /// Resolve debug information for a [`SourceStatement`] and create a [`SourceLocation`].
+    pub(crate) fn from_source_statement(
+        debug_info: &DebugInfo,
+        program_unit: &super::unit_info::UnitInfo,
+        line_program: &gimli::IncompleteLineProgram<
+            gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>,
+            usize,
+        >,
+        file_entry: &gimli::FileEntry<
+            gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>,
+            usize,
+        >,
+        source_statement: super::source_statement::SourceStatement,
+    ) -> Option<SourceLocation> {
+        debug_info
+            .find_file_and_directory(&program_unit.unit, line_program.header(), file_entry)
+            .map(|(file, directory)| SourceLocation {
+                line: source_statement.line.map(std::num::NonZeroU64::get),
+                column: Some(source_statement.column),
+                file,
+                directory,
+                low_pc: Some(source_statement.low_pc() as u32),
+                high_pc: Some(source_statement.instruction_range.end as u32),
+            })
+    }
+
     /// The full path of the source file, combining the `directory` and `file` fields.
     /// If the path does not resolve to an existing file, an error is returned.
     pub fn combined_path(&self) -> Result<PathBuf, DebugError> {
