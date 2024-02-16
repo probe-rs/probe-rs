@@ -7,28 +7,6 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Debug example 'xtensa'",
-      "cargo": {
-        "args": [
-          "build",
-          "--example=xtensa",
-          "--package=probe-rs",
-          "--features=ftdi"
-        ],
-        "filter": {
-          "name": "xtensa",
-          "kind": "example"
-        }
-      },
-      "args": [],
-      "cwd": "${workspaceFolder}",
-      "env": {
-        "RUST_LOG": "info"
-      }
-    },
-    {
-      "type": "lldb",
-      "request": "launch",
       "name": "Launch smoke tester",
       "cargo": {
         "args": ["build", "--package=smoke_tester"]
