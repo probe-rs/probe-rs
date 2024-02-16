@@ -425,13 +425,12 @@ impl UnitInfo {
                         // Processed by `extract_type()`
                     }
                     other_attribute => {
-                        // This follows the examples of the "format!" documenation as the way to limit string length of a {:?} parameter.
-                        child_variable.set_value(VariableValue::Error(format!(
+                        tracing::info!(
                             "Unimplemented: Variable Attribute {:.100} : {:.100}, with children = {}",
                             format!("{:?}", other_attribute.static_string()),
                             format!("{:?}", attributes_entry.attr_value(other_attribute)),
                             attributes_entry.has_children()
-                        )));
+                        );
                     }
                 }
             }
