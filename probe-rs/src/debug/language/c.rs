@@ -1,6 +1,10 @@
 use crate::{
     debug::{
-        language::{parsing::ParseToBytes, value::Value, ProgrammingLanguage},
+        language::{
+            parsing::ParseToBytes,
+            value::{format_float, Value},
+            ProgrammingLanguage,
+        },
         DebugError, Variable, VariableCache, VariableLocation, VariableName, VariableType,
         VariableValue,
     },
@@ -35,7 +39,9 @@ impl ProgrammingLanguage for C {
                 }
 
                 "float" => match variable.byte_size {
-                    Some(4) | None => f32::get_value(variable, memory, variable_cache).into(),
+                    Some(4) | None => f32::get_value(variable, memory, variable_cache)
+                        .map(|f| format_float(f as f64))
+                        .into(),
                     Some(size) => {
                         VariableValue::Error(format!("Invalid byte size for float: {size}"))
                     }

@@ -487,3 +487,19 @@ impl Value for f64 {
             })
     }
 }
+
+/// Format a float value to a string, preserving at least one fractional digit.
+pub fn format_float(value: f64) -> String {
+    let mut s = format!("{}", value);
+    if !s.contains('.') {
+        s.push('.');
+    }
+    while s.ends_with('0') {
+        s.pop();
+    }
+    if s.ends_with('.') {
+        s.push('0');
+    }
+
+    s
+}
