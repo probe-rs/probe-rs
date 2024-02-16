@@ -1,36 +1,35 @@
-pub(crate) mod arm_jtag;
+//! Probe drivers
+pub(crate) mod arm_debug_interface;
 pub(crate) mod common;
+pub(crate) mod usb_util;
 
-pub(crate) mod cmsisdap;
-pub(crate) mod espusbjtag;
-pub(crate) mod fake_probe;
-#[cfg(feature = "ftdi")]
-pub(crate) mod ftdi;
-pub(crate) mod jlink;
-pub(crate) mod list;
-pub(crate) mod stlink;
-pub(crate) mod wlink;
+pub mod cmsisdap;
+pub mod espusbjtag;
+pub mod fake_probe;
+pub mod ftdi;
+pub mod jlink;
+pub mod list;
+pub mod stlink;
+pub mod wlink;
 
+use crate::architecture::arm::sequences::{ArmDebugSequence, DefaultArmSequence};
 use crate::architecture::arm::ArmError;
-use crate::architecture::riscv::communication_interface::RiscvError;
-use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
-use crate::error::Error;
-use crate::{
-    architecture::arm::communication_interface::UninitializedArmProbe,
-    config::{RegistryError, TargetSelector},
+use crate::architecture::arm::{
+    communication_interface::{DapProbe, UninitializedArmProbe},
+    PortType, SwoAccess,
 };
-use crate::{
-    architecture::{
-        arm::{
-            communication_interface::DapProbe,
-            sequences::{ArmDebugSequence, DefaultArmSequence},
-            PortType, SwoAccess,
-        },
-        riscv::communication_interface::RiscvCommunicationInterface,
-    },
-    Permissions,
+use crate::architecture::riscv::communication_interface::{
+    RiscvCommunicationInterface, RiscvError,
 };
-use crate::{Lister, Session};
+use crate::architecture::xtensa::communication_interface::{
+    XtensaCommunicationInterface, XtensaError,
+};
+use crate::config::RegistryError;
+use crate::config::TargetSelector;
+use crate::probe::common::IdCode;
+use crate::probe::list::Lister;
+use crate::{Error, Permissions, Session};
+use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -82,7 +81,10 @@ impl std::str::FromStr for WireProtocol {
 /// which batched command actually encountered the error.
 #[derive(Copy, Clone, Debug)]
 pub enum BatchCommand {
+    /// Read from a port
     Read(PortType, u16),
+
+    /// Write to a port
     Write(PortType, u16, u32),
 }
 
@@ -102,7 +104,7 @@ impl fmt::Display for BatchCommand {
 pub enum DebugProbeError {
     /// Something with the USB communication went wrong.
     #[error("USB Communication Error")]
-    Usb(#[source] Option<Box<dyn std::error::Error + Send + Sync>>),
+    Usb(#[source] std::io::Error),
     /// The firmware of the probe is outdated. This error is especially prominent with ST-Links.
     /// You can use their official updater utility to update your probe firmware.
     #[error("The firmware on the probe is outdated, and not supported by probe-rs.")]
@@ -185,9 +187,9 @@ pub enum ProbeCreationError {
     /// Some error with HID API occurred.
     #[error("{0}")]
     HidApi(#[from] hidapi::HidError),
-    /// Some error with rusb occurred.
+    /// Some USB error occurred.
     #[error("{0}")]
-    Rusb(#[from] rusb::Error),
+    Usb(std::io::Error),
     /// An error specific with the selected probe occurred.
     #[error("An error specific to a probe type occurred: {0}")]
     ProbeSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
@@ -207,7 +209,7 @@ pub enum ProbeCreationError {
 /// to create a new `Probe`:
 ///
 /// ```no_run
-/// use probe_rs::{Lister, Probe};
+/// use probe_rs::probe::{Probe, list::Lister};
 ///
 /// let lister = Lister::new();
 ///
@@ -298,7 +300,7 @@ impl Probe {
     ) -> Result<Session, Error> {
         // The session will de-assert reset after connecting to the debug interface.
         Session::new(self, target.into(), AttachMethod::UnderReset, permissions).map_err(|e| {
-            if matches!(e, Error::Arm(ArmError::Timeout) | Error::Riscv(RiscvError::Timeout)) {
+            if matches!(e, Error::Arm(ArmError::Timeout) | Error::Riscv(RiscvError::Timeout)| Error::Xtensa(XtensaError::Timeout)) {
                 Error::Other(
                 anyhow::anyhow!("Timeout while attaching to target under reset. This can happen if the target is not responding to the reset sequence. Ensure the chip's reset pin is connected, or try attaching without reset (`connectUnderReset = false` for DAP Clients, or remove `connect-under-reset` option from CLI options.)."))
             } else {
@@ -482,19 +484,23 @@ impl Probe {
     }
 }
 
-/// An abstraction over general debug probe functionality.
+/// An abstraction over a probe driver type.
 ///
 /// This trait has to be implemented by ever debug probe driver.
-pub trait DebugProbe: Send + fmt::Debug {
+pub trait ProbeFactory: std::any::Any + std::fmt::Debug + Sync {
     /// Creates a new boxed [`DebugProbe`] from a given [`DebugProbeSelector`].
     /// This will be called for all available debug drivers when discovering probes.
     /// When opening, it will open the first probe which succeeds during this call.
-    fn new_from_selector(
-        selector: impl Into<DebugProbeSelector>,
-    ) -> Result<Box<Self>, DebugProbeError>
-    where
-        Self: Sized;
+    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError>;
 
+    /// Returns a list of all available debug probes of the current type.
+    fn list_probes(&self) -> Vec<DebugProbeInfo>;
+}
+
+/// An abstraction over general debug probe.
+///
+/// This trait has to be implemented by ever debug probe driver.
+pub trait DebugProbe: Send + fmt::Debug {
     /// Get human readable name for the probe.
     fn get_name(&self) -> &str;
 
@@ -644,25 +650,21 @@ pub trait DebugProbe: Send + fmt::Debug {
     }
 }
 
-/// Denotes the type of a given [`DebugProbe`].
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
-pub enum DebugProbeType {
-    /// CMSIS-DAP
-    CmsisDap,
-    /// FTDI based debug probe
-    Ftdi,
-    /// ST-Link
-    StLink,
-    /// J-Link
-    JLink,
-    /// Built in RISC-V ESP JTAG debug probe
-    EspJtag,
-    /// WCH-Link
-    WchLink,
+impl PartialEq for dyn ProbeFactory {
+    fn eq(&self, other: &Self) -> bool {
+        // Consider ProbeFactory objects equal when their types and data pointers are equal.
+        // Pointer equality is insufficient, because ZST objects may have the same dangling pointer
+        // as their address.
+        self.type_id() == other.type_id()
+            && std::ptr::eq(
+                self as *const _ as *const (),
+                other as *const _ as *const (),
+            )
+    }
 }
 
 /// Gathers some information about a debug probe which was found during a scan.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq)]
 pub struct DebugProbeInfo {
     /// The name of the debug probe.
     pub identifier: String,
@@ -673,7 +675,7 @@ pub struct DebugProbeInfo {
     /// The serial number of the debug probe.
     pub serial_number: Option<String>,
     /// The probe type of the debug probe.
-    pub probe_type: DebugProbeType,
+    pub probe_type: &'static dyn ProbeFactory,
 
     /// The USB HID interface which should be used.
     /// This is necessary for composite HID devices.
@@ -689,7 +691,7 @@ impl std::fmt::Debug for DebugProbeInfo {
             self.vendor_id,
             self.product_id,
             self.serial_number
-                .clone()
+                .as_ref()
                 .map_or("".to_owned(), |v| format!("Serial: {v}, ")),
             self.probe_type
         )
@@ -703,8 +705,8 @@ impl DebugProbeInfo {
         vendor_id: u16,
         product_id: u16,
         serial_number: Option<String>,
-        probe_type: DebugProbeType,
-        usb_hid_interface: Option<u8>,
+        probe_type: &'static dyn ProbeFactory,
+        hid_interface: Option<u8>,
     ) -> Self {
         Self {
             identifier: identifier.into(),
@@ -712,7 +714,7 @@ impl DebugProbeInfo {
             product_id,
             serial_number,
             probe_type,
-            hid_interface: usb_hid_interface,
+            hid_interface,
         }
     }
 
@@ -722,10 +724,14 @@ impl DebugProbeInfo {
     }
 }
 
+/// An error which can occur while parsing a [`DebugProbeSelector`].
 #[derive(thiserror::Error, Debug)]
 pub enum DebugProbeSelectorParseError {
+    /// The VID or PID is not a valid number.
     #[error("The VID or PID could not be parsed: {0}")]
     ParseInt(#[from] std::num::ParseIntError),
+
+    /// The format of the selector is invalid.
     #[error("Please use a string in the form `VID:PID:<Serial>` where Serial is optional.")]
     Format,
 }
@@ -741,7 +747,7 @@ pub enum DebugProbeSelectorParseError {
 ///
 /// ```
 /// use std::convert::TryInto;
-/// let selector: probe_rs::DebugProbeSelector = "1942:1337:SERIAL".try_into().unwrap();
+/// let selector: probe_rs::probe::DebugProbeSelector = "1942:1337:SERIAL".try_into().unwrap();
 ///
 /// assert_eq!(selector.vendor_id, 0x1942);
 /// assert_eq!(selector.product_id, 0x1337);
@@ -756,6 +762,18 @@ pub struct DebugProbeSelector {
     pub product_id: u16,
     /// The the serial number of the debug probe to be used.
     pub serial_number: Option<String>,
+}
+
+impl DebugProbeSelector {
+    pub(crate) fn matches(&self, info: &DeviceInfo) -> bool {
+        info.vendor_id() == self.vendor_id
+            && info.product_id() == self.product_id
+            && self
+                .serial_number
+                .as_ref()
+                .map(|s| info.serial_number() == Some(s))
+                .unwrap_or(true)
+    }
 }
 
 impl TryFrom<&str> for DebugProbeSelector {
@@ -835,7 +853,20 @@ impl fmt::Display for DebugProbeSelector {
 /// This trait should be implemented by all probes which offer low-level access to
 /// the JTAG protocol, i.e. direction control over the bytes sent and received.
 pub trait JTAGAccess: DebugProbe {
-    fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError>;
+    /// Returns `IDCODE` and `IR` length information about the devices on the JTAG chain.
+    ///
+    /// If configured, this will use the data from [`DebugProbe::set_scan_chain`]. Otherwise, it
+    /// will try to measure and extract `IR` lengths by driving the JTAG interface.
+    fn scan_chain(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError>;
+
+    /// Read a JTAG register.
+    ///
+    /// This function emulates a read by performing a write with all zeros to the DR.
+    fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
+        let data = vec![0u8; (len as usize + 7) / 8];
+
+        self.write_register(address, &data, len)
+    }
 
     /// For RISC-V, and possibly other interfaces, the JTAG interface has to remain in
     /// the idle state for several cycles between consecutive accesses to the DR register.
@@ -845,9 +876,6 @@ pub trait JTAGAccess: DebugProbe {
 
     /// Return the currently configured idle cycles.
     fn idle_cycles(&self) -> u8;
-
-    /// Set the IR register length
-    fn set_ir_len(&mut self, len: u32);
 
     /// Write to a JTAG register
     ///
@@ -884,24 +912,35 @@ pub trait JTAGAccess: DebugProbe {
     }
 }
 
+/// A low-level JTAG register write command.
 #[derive(Debug, Clone)]
 pub struct JtagWriteCommand {
+    /// The IR register to write to.
     pub address: u32,
+
+    /// The data to be written to DR.
     pub data: Vec<u8>,
+
+    /// The number of bits in `data`
     pub len: u32,
+
+    /// A function to transform the raw response into a [`CommandResult`]
     pub transform: fn(Vec<u8>) -> Result<CommandResult, crate::Error>,
 }
 
 /// Represents a Jtag Tap within the chain.
 #[derive(Debug)]
 pub struct JtagChainItem {
-    pub idcode: u32,
+    /// The IDCODE of the device.
+    pub idcode: Option<IdCode>,
+
+    /// The length of the instruction register.
     pub irlen: usize,
 }
 
 /// Chain parameters to select a target tap within the chain.
-#[derive(Clone, Copy, Debug)]
-pub struct ChainParams {
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct ChainParams {
     pub irpre: usize,
     pub irpost: usize,
     pub drpre: usize,
@@ -909,15 +948,42 @@ pub struct ChainParams {
     pub irlen: usize,
 }
 
+impl ChainParams {
+    fn from_jtag_chain(chain: &[JtagChainItem], selected: usize) -> Option<Self> {
+        let mut params = Self::default();
+
+        let mut found = false;
+        for (index, tap) in chain.iter().enumerate() {
+            tracing::info!("{:?}", tap);
+            if index == selected {
+                params.irlen = tap.irlen;
+                found = true;
+            } else if found {
+                params.irpost += tap.irlen;
+                params.drpost += 1;
+            } else {
+                params.irpre += tap.irlen;
+                params.drpre += 1;
+            }
+        }
+
+        found.then_some(params)
+    }
+}
+
+/// An error that occurred during batched command execution.
 #[derive(thiserror::Error, Debug)]
 pub struct BatchExecutionError {
+    /// The error that occurred during execution.
     #[source]
     pub error: crate::Error,
+
+    /// The results of the commands that were executed before the error occurred.
     pub results: DeferredResultSet,
 }
 
 impl BatchExecutionError {
-    pub fn new(error: crate::Error, results: DeferredResultSet) -> BatchExecutionError {
+    pub(crate) fn new(error: crate::Error, results: DeferredResultSet) -> BatchExecutionError {
         BatchExecutionError { error, results }
     }
 }
@@ -936,24 +1002,43 @@ impl std::fmt::Display for BatchExecutionError {
 /// Results generated by `JtagCommand`s
 #[derive(Debug, Clone)]
 pub enum CommandResult {
+    /// No result
     None,
+
+    /// A single byte
     U8(u8),
+
+    /// A single 16-bit word
     U16(u16),
+
+    /// A single 32-bit word
     U32(u32),
+
+    /// Multiple bytes
     VecU8(Vec<u8>),
 }
 
 impl CommandResult {
-    pub fn as_u32(&self) -> u32 {
+    /// Returns the result as a `u32` if possible.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the result is not a `u32`.
+    pub fn into_u32(self) -> u32 {
         match self {
-            CommandResult::U32(val) => *val,
+            CommandResult::U32(val) => val,
             _ => panic!("CommandResult is not a u32"),
         }
     }
 
-    pub fn as_u8(&self) -> u8 {
+    /// Returns the result as a `u8` if possible.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the result is not a `u8`.
+    pub fn into_u8(self) -> u8 {
         match self {
-            CommandResult::U8(val) => *val,
+            CommandResult::U8(val) => val,
             _ => panic!("CommandResult is not a u8"),
         }
     }
@@ -969,6 +1054,7 @@ pub struct JtagCommandQueue {
 }
 
 impl JtagCommandQueue {
+    /// Creates a new empty queue.
     pub fn new() -> Self {
         Self::default()
     }
@@ -982,20 +1068,22 @@ impl JtagCommandQueue {
         index
     }
 
+    /// Returns the number of commands in the queue.
     pub fn len(&self) -> usize {
         self.commands.len()
     }
 
+    /// Returns whether the queue is empty.
     pub fn is_empty(&self) -> bool {
         self.commands.is_empty()
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &(DeferredResultIndex, JtagWriteCommand)> {
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &(DeferredResultIndex, JtagWriteCommand)> {
         self.commands.iter()
     }
 
     /// Removes the first `len` number of commands from the batch.
-    pub fn consume(&mut self, len: usize) {
+    pub(crate) fn consume(&mut self, len: usize) {
         self.commands.drain(..len);
     }
 }
@@ -1005,27 +1093,36 @@ impl JtagCommandQueue {
 pub struct DeferredResultSet(HashMap<DeferredResultIndex, CommandResult>);
 
 impl DeferredResultSet {
+    /// Creates a new empty result set.
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Creates a new empty result set with the given capacity.
     pub fn with_capacity(capacity: usize) -> Self {
         Self(HashMap::with_capacity(capacity))
     }
 
-    pub fn push(&mut self, idx: &DeferredResultIndex, result: CommandResult) {
+    pub(crate) fn push(&mut self, idx: &DeferredResultIndex, result: CommandResult) {
         self.0.insert(idx.clone(), result);
     }
 
+    /// Returns the number of results in the set.
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
-    pub fn merge_from(&mut self, other: DeferredResultSet) {
+    /// Returns whether the set is empty.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub(crate) fn merge_from(&mut self, other: DeferredResultSet) {
         self.0.extend(other.0);
         self.0.retain(|k, _| k.should_capture());
     }
 
+    /// Takes a result from the set.
     pub fn take(
         &mut self,
         index: DeferredResultIndex,
@@ -1064,7 +1161,7 @@ impl DeferredResultIndex {
         Arc::as_ptr(&self.0) as usize
     }
 
-    pub fn should_capture(&self) -> bool {
+    pub(crate) fn should_capture(&self) -> bool {
         // Both the queue and the user code may hold on to at most one of the references. The queue
         // execution will be able to detect if the user dropped their read reference, meaning
         // the read data would be inaccessible.

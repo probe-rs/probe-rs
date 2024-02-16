@@ -1,3 +1,4 @@
+pub(crate) mod svd_cache;
 /// Notes about SVD:
 /// - Peripherals are 'grouped', but many only belong to a single group.
 /// - We only have to build the structure once down to 'fields' level.

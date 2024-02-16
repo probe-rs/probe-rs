@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use anyhow::{anyhow, bail, Result};
 use libtest_mimic::{Failed, Trial};
 use probe_rs::{
-    BreakpointCause, Core, CoreStatus, Error, HaltReason, Lister, MemoryInterface,
+    probe::list::Lister, BreakpointCause, Core, CoreStatus, Error, HaltReason, MemoryInterface,
     SemihostingCommand, Session, VectorCatchCondition,
 };
 use probe_rs_target::MemoryRegion;

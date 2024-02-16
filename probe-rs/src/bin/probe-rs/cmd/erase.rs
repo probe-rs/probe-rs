@@ -1,4 +1,4 @@
-use probe_rs::{flashing::erase_all, Lister};
+use probe_rs::{flashing::erase_all, probe::list::Lister};
 
 use crate::util::common_options::ProbeOptions;
 

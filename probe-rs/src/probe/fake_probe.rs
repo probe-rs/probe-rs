@@ -10,14 +10,13 @@ use crate::{
         communication_interface::{
             ArmDebugState, Initialized, SwdSequence, Uninitialized, UninitializedArmProbe,
         },
-        dp::DebugPortError,
         memory::adi_v5_memory_interface::{ADIMemoryInterface, ArmProbe},
         sequences::ArmDebugSequence,
         ApAddress, ArmError, ArmProbeInterface, DapAccess, DpAddress, MemoryApInformation,
         PortType, RawDapAccess, SwoAccess,
     },
-    DebugProbe, DebugProbeError, DebugProbeSelector, Error, MemoryMappedRegister, Probe,
-    WireProtocol,
+    probe::{DebugProbe, DebugProbeError, Probe, WireProtocol},
+    Error, MemoryMappedRegister,
 };
 
 /// This is a mock probe which can be used for mocking things in tests or for dry runs.
@@ -80,6 +79,10 @@ impl ArmProbe for &mut MockCore {
         todo!()
     }
 
+    fn read_16(&mut self, _address: u64, _data: &mut [u16]) -> Result<(), ArmError> {
+        todo!()
+    }
+
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
         for (i, val) in data.iter_mut().enumerate() {
             let address = address + (i as u64 * 4);
@@ -116,6 +119,10 @@ impl ArmProbe for &mut MockCore {
     }
 
     fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), ArmError> {
+        todo!()
+    }
+
+    fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), ArmError> {
         todo!()
     }
 
@@ -295,15 +302,6 @@ impl Default for FakeProbe {
 }
 
 impl DebugProbe for FakeProbe {
-    fn new_from_selector(
-        _selector: impl Into<DebugProbeSelector>,
-    ) -> Result<Box<Self>, DebugProbeError>
-    where
-        Self: Sized,
-    {
-        Ok(Box::new(FakeProbe::new()))
-    }
-
     /// Get human readable name for the probe
     fn get_name(&self) -> &str {
         "Mock probe for testing"
@@ -373,13 +371,6 @@ impl DebugProbe for FakeProbe {
 }
 
 impl RawDapAccess for FakeProbe {
-    fn select_dp(&mut self, _dp: DpAddress) -> Result<(), ArmError> {
-        Err(DebugPortError::Unsupported(
-            "Fake debug probe does not support DP selection.".to_string(),
-        )
-        .into())
-    }
-
     /// Reads the DAP register on the specified port and address
     fn raw_read_register(&mut self, port: PortType, addr: u8) -> Result<u32, ArmError> {
         let handler = self.dap_register_read_handler.as_ref().unwrap();
@@ -424,7 +415,7 @@ impl RawDapAccess for FakeProbe {
 struct FakeArmInterface<S: ArmDebugState> {
     probe: Box<FakeProbe>,
 
-    _state: S,
+    state: S,
 }
 
 impl FakeArmInterface<Uninitialized> {
@@ -433,18 +424,16 @@ impl FakeArmInterface<Uninitialized> {
             use_overrun_detect: false,
         };
 
-        Self {
-            probe,
-            _state: state,
-        }
+        Self { probe, state }
     }
 
     fn into_initialized(
         self,
         sequence: Arc<dyn ArmDebugSequence>,
+        dp: DpAddress,
     ) -> Result<FakeArmInterface<Initialized>, (Box<Self>, DebugProbeError)> {
         Ok(FakeArmInterface::<Initialized>::from_uninitialized(
-            self, sequence,
+            self, sequence, dp,
         ))
     }
 }
@@ -453,10 +442,11 @@ impl FakeArmInterface<Initialized> {
     fn from_uninitialized(
         interface: FakeArmInterface<Uninitialized>,
         sequence: Arc<dyn ArmDebugSequence>,
+        dp: DpAddress,
     ) -> Self {
         FakeArmInterface::<Initialized> {
             probe: interface.probe,
-            _state: Initialized::new(sequence, false),
+            state: Initialized::new(sequence, false, dp),
         }
     }
 }
@@ -484,12 +474,13 @@ impl UninitializedArmProbe for FakeArmInterface<Uninitialized> {
     fn initialize(
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
+        dp: DpAddress,
     ) -> Result<Box<dyn ArmProbeInterface>, (Box<dyn UninitializedArmProbe>, Error)> {
         // TODO: Do we need this?
         // sequence.debug_port_setup(&mut self.probe)?;
 
         let interface = self
-            .into_initialized(sequence)
+            .into_initialized(sequence, dp)
             .map_err(|(s, err)| (s as Box<_>, Error::Probe(err)))?;
 
         Ok(Box::new(interface))
@@ -546,6 +537,10 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
 
     fn close(self: Box<Self>) -> Probe {
         Probe::from_attached_probe(self.probe)
+    }
+
+    fn current_debug_port(&self) -> DpAddress {
+        self.state.current_dp
     }
 }
 
@@ -619,7 +614,7 @@ mod test {
 
     #[test]
     fn create_session_with_fake_probe() {
-        let fake_probe = FakeProbe::new();
+        let fake_probe = FakeProbe::with_mocked_core();
 
         let probe = fake_probe.into_probe();
 

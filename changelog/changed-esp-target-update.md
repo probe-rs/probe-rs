@@ -1,1 +1,0 @@
-Updated ESP32 targets to tune flashing speed

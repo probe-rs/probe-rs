@@ -62,8 +62,6 @@ pub struct Armv7a<'probe> {
     num_breakpoints: Option<u32>,
 
     itr_enabled: bool,
-
-    id: usize,
 }
 
 impl<'probe> Armv7a<'probe> {
@@ -72,7 +70,6 @@ impl<'probe> Armv7a<'probe> {
         state: &'probe mut CortexAState,
         base_address: u64,
         sequence: Arc<dyn ArmDebugSequence>,
-        id: usize,
     ) -> Result<Self, Error> {
         if !state.initialized() {
             // determine current state
@@ -101,7 +98,6 @@ impl<'probe> Armv7a<'probe> {
             sequence,
             num_breakpoints: None,
             itr_enabled: false,
-            id,
         };
 
         if !core.state.initialized() {
@@ -783,10 +779,6 @@ impl<'probe> CoreInterface for Armv7a<'probe> {
         Ok(self.state.fp_reg_count)
     }
 
-    fn id(&self) -> usize {
-        self.id
-    }
-
     #[tracing::instrument(skip(self))]
     fn reset_catch_set(&mut self) -> Result<(), Error> {
         self.sequence.reset_catch_set(
@@ -853,6 +845,18 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
         self.execute_instruction_with_result(instr)
     }
 
+    fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
+        // Find the word this is in and its byte offset
+        let byte_offset = address % 4;
+        let word_start = address - byte_offset;
+
+        // Read the word
+        let data = self.read_word_32(word_start)?;
+
+        // Return the byte
+        Ok((data >> (byte_offset * 8)) as u16)
+    }
+
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
         // Find the word this is in and its byte offset
         let byte_offset = address % 4;
@@ -876,6 +880,14 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
         for (i, word) in data.iter_mut().enumerate() {
             *word = self.read_word_32(address + ((i as u64) * 4))?;
+        }
+
+        Ok(())
+    }
+
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
+        for (i, word) in data.iter_mut().enumerate() {
+            *word = self.read_word_16(address + ((i as u64) * 2))?;
         }
 
         Ok(())
@@ -926,6 +938,21 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
         self.write_word_32(word_start, u32::from_le_bytes(word_bytes))
     }
 
+    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
+        // Find the word this is in and its byte offset
+        let byte_offset = address % 4;
+        let word_start = address - byte_offset;
+
+        // Get the current word value
+        let mut word = self.read_word_32(word_start)?;
+
+        // patch the word into it
+        word &= !(0xFFFFu32 << (byte_offset * 8));
+        word |= (data as u32) << (byte_offset * 8);
+
+        self.write_word_32(word_start, word)
+    }
+
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), crate::error::Error> {
         for (i, word) in data.iter().enumerate() {
             self.write_word_64(address + ((i as u64) * 8), *word)?;
@@ -942,9 +969,17 @@ impl<'probe> MemoryInterface for Armv7a<'probe> {
         Ok(())
     }
 
+    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
+        for (i, word) in data.iter().enumerate() {
+            self.write_word_16(address + ((i as u64) * 2), *word)?;
+        }
+
+        Ok(())
+    }
+
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
         for (i, byte) in data.iter().enumerate() {
-            self.write_word_8(address + ((i as u64) * 4), *byte)?;
+            self.write_word_8(address + (i as u64), *byte)?;
         }
 
         Ok(())
@@ -967,7 +1002,7 @@ mod test {
             ap::MemoryAp, communication_interface::SwdSequence,
             memory::adi_v5_memory_interface::ArmProbe, sequences::DefaultArmSequence, ArmError,
         },
-        DebugProbeError,
+        probe::DebugProbeError,
     };
 
     use super::*;
@@ -1019,6 +1054,10 @@ mod test {
             todo!()
         }
 
+        fn read_16(&mut self, _address: u64, _data: &mut [u16]) -> Result<(), ArmError> {
+            todo!()
+        }
+
         fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), ArmError> {
             if self.expected_ops.is_empty() {
                 panic!(
@@ -1055,6 +1094,10 @@ mod test {
         }
 
         fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), ArmError> {
+            todo!()
+        }
+
+        fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), ArmError> {
             todo!()
         }
 
@@ -1312,7 +1355,6 @@ mod test {
             &mut CortexAState::new(),
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
     }
@@ -1348,7 +1390,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1388,7 +1429,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1423,7 +1463,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1457,7 +1496,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1491,7 +1529,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1531,7 +1568,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1571,7 +1607,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1625,7 +1660,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1671,7 +1705,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1700,7 +1733,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1768,7 +1800,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1817,7 +1848,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1852,7 +1882,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1883,7 +1912,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 
@@ -1915,7 +1943,6 @@ mod test {
             &mut state,
             TEST_BASE_ADDRESS,
             DefaultArmSequence::create(),
-            0,
         )
         .unwrap();
 

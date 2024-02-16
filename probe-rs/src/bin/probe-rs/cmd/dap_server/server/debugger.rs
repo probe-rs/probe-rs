@@ -24,7 +24,8 @@ use crate::{
 use anyhow::{anyhow, Context};
 use probe_rs::{
     flashing::{DownloadOptions, FileDownloadError, FlashProgress},
-    Architecture, CoreStatus, Lister,
+    probe::list::Lister,
+    Architecture, CoreStatus,
 };
 use std::{
     cell::RefCell,
@@ -916,26 +917,50 @@ mod test {
     use std::path::PathBuf;
 
     use probe_rs::architecture::arm::ApAddress;
-    use probe_rs::{DebugProbeInfo, FakeProbe};
-    use probe_rs::{Lister, ProbeOperation};
+    use probe_rs::probe::{
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory,
+    };
+    use probe_rs::{
+        integration::{FakeProbe, Operation},
+        probe::list::Lister,
+    };
     use serde_json::json;
     use time::UtcOffset;
 
-    use crate::cmd::dap_server::debug_adapter::dap::dap_types::{
-        DisconnectArguments, ErrorResponseBody, Message, Response, Thread, ThreadsResponseBody,
-    };
-    use crate::cmd::dap_server::server::configuration::{ConsoleLog, CoreConfig, FlashingConfig};
     use crate::cmd::dap_server::{
         debug_adapter::{
             dap::{
                 adapter::DebugAdapter,
-                dap_types::{Capabilities, InitializeRequestArguments, Request},
+                dap_types::{
+                    Capabilities, DisconnectArguments, ErrorResponseBody,
+                    InitializeRequestArguments, Message, Request, Response, Thread,
+                    ThreadsResponseBody,
+                },
             },
             protocol::ProtocolAdapter,
         },
-        server::{configuration::SessionConfig, debugger::DebugSessionStatus},
+        server::{
+            configuration::{ConsoleLog, CoreConfig, FlashingConfig, SessionConfig},
+            debugger::DebugSessionStatus,
+        },
         test::TestLister,
     };
+
+    #[derive(Debug)]
+    struct MockProbeFactory;
+
+    impl ProbeFactory for MockProbeFactory {
+        fn open(
+            &self,
+            _selector: &DebugProbeSelector,
+        ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+            todo!()
+        }
+
+        fn list_probes(&self) -> Vec<DebugProbeInfo> {
+            todo!()
+        }
+    }
 
     /// Helper function to get the expected capabilities for the debugger
     ///
@@ -1266,13 +1291,12 @@ mod test {
                     url_label: Some("Documentation".to_string()),
                     variables: Some(BTreeMap::from([(
                         "response_message".to_string(),
-                        "No probes found. Please check your USB connections.".to_string(),
+                        "No connected probes were found.".to_string(),
                     )])),
                 }),
             });
 
-        protocol_adapter
-            .expect_output_event("No probes found. Please check your USB connections.\n");
+        protocol_adapter.expect_output_event("No connected probes were found.\n");
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
 
@@ -1341,14 +1365,14 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            probe_rs::DebugProbeType::CmsisDap,
+            &MockProbeFactory,
             None,
         );
 
         let fake_probe = FakeProbe::with_mocked_core();
 
         // Indicate that the core is unlocked
-        fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
             ap: ApAddress::with_default_dp(1),
             address: 0xC,
             result: 1,
@@ -1419,14 +1443,14 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            probe_rs::DebugProbeType::CmsisDap,
+            &MockProbeFactory,
             None,
         );
 
         let fake_probe = FakeProbe::with_mocked_core();
 
         // Indicate that the core is unlocked
-        fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
             ap: ApAddress::with_default_dp(1),
             address: 0xC,
             result: 1,
@@ -1475,14 +1499,14 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            probe_rs::DebugProbeType::CmsisDap,
+            &MockProbeFactory,
             None,
         );
 
         let fake_probe = FakeProbe::with_mocked_core();
 
         // Indicate that the core is unlocked
-        fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
             ap: ApAddress::with_default_dp(1),
             address: 0xC,
             result: 1,
@@ -1549,14 +1573,14 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            probe_rs::DebugProbeType::CmsisDap,
+            &MockProbeFactory,
             None,
         );
 
         let fake_probe = FakeProbe::with_mocked_core();
 
         // Indicate that the core is unlocked
-        fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
             ap: ApAddress::with_default_dp(1),
             address: 0xC,
             result: 1,
@@ -1623,14 +1647,14 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            probe_rs::DebugProbeType::CmsisDap,
+            &MockProbeFactory,
             None,
         );
 
         let fake_probe = FakeProbe::with_mocked_core();
 
         // Indicate that the core is unlocked
-        fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
             ap: ApAddress::with_default_dp(1),
             address: 0xC,
             result: 1,
@@ -1715,14 +1739,14 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            probe_rs::DebugProbeType::CmsisDap,
+            &MockProbeFactory,
             None,
         );
 
         let fake_probe = FakeProbe::with_mocked_core();
 
         // Indicate that the core is unlocked
-        fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
             ap: ApAddress::with_default_dp(1),
             address: 0xC,
             result: 1,

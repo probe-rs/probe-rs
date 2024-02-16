@@ -11,6 +11,8 @@ pub mod debug_info;
 pub mod debug_step;
 /// References to the DIE (debug information entry) of functions.
 pub mod function_die;
+/// Programming languages
+pub(crate) mod language;
 /// Target Register definitions, expanded from [`crate::core::registers::CoreRegister`] to include unwind specific information.
 pub mod registers;
 /// The source statement information used while identifying haltpoints for debug stepping and breakpoints.
@@ -268,6 +270,10 @@ fn extract_byte_size(node_die: &DebuggingInformationEntry<GimliReader>) -> Optio
         Ok(optional_byte_size_attr) => match optional_byte_size_attr {
             Some(byte_size_attr) => match byte_size_attr.value() {
                 gimli::AttributeValue::Udata(byte_size) => Some(byte_size),
+                gimli::AttributeValue::Data1(byte_size) => Some(byte_size as u64),
+                gimli::AttributeValue::Data2(byte_size) => Some(byte_size as u64),
+                gimli::AttributeValue::Data4(byte_size) => Some(byte_size as u64),
+                gimli::AttributeValue::Data8(byte_size) => Some(byte_size),
                 other => {
                     tracing::warn!("Unimplemented: DW_AT_byte_size value: {:?} ", other);
                     None
@@ -290,23 +296,6 @@ fn extract_line(attribute_value: gimli::AttributeValue<GimliReader>) -> Option<u
     match attribute_value {
         gimli::AttributeValue::Udata(line) => Some(line),
         _ => None,
-    }
-}
-
-fn extract_name(
-    debug_info: &DebugInfo,
-    attribute_value: gimli::AttributeValue<GimliReader>,
-) -> String {
-    match attribute_value {
-        gimli::AttributeValue::DebugStrRef(name_ref) => {
-            if let Ok(name_raw) = debug_info.dwarf.string(name_ref) {
-                String::from_utf8_lossy(&name_raw).to_string()
-            } else {
-                "Invalid DW_AT_name value".to_string()
-            }
-        }
-        gimli::AttributeValue::String(name) => String::from_utf8_lossy(&name).to_string(),
-        other => format!("Unimplemented: Evaluate name from {other:?}"),
     }
 }
 

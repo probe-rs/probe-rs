@@ -55,8 +55,7 @@ where
     fn show_message(&mut self, severity: MessageSeverity, message: impl Into<String>) -> bool {
         let msg = message.into();
 
-        tracing::debug!("show_message");
-        println!("Do log message: {msg}");
+        tracing::debug!("show_message: {msg}");
 
         let event_body = match serde_json::to_value(ShowMessageEventBody {
             severity,

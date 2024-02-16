@@ -5,15 +5,10 @@ mod rttui;
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
 use colored::*;
-use indicatif::{MultiProgress, ProgressBar, ProgressStyle};
 use probe_rs::gdb_server::GdbInstanceConfiguration;
+use probe_rs::probe::list::Lister;
 use probe_rs::rtt::{Rtt, ScanRegion};
-use probe_rs::Lister;
-use probe_rs::{
-    config::TargetSelector,
-    flashing::{download_file_with_options, DownloadOptions, FlashProgress, Format, ProgressEvent},
-    DebugProbeSelector, Permissions, Session,
-};
+use probe_rs::{probe::DebugProbeSelector, Session};
 use std::ffi::OsString;
 use std::{
     fs,
@@ -23,12 +18,17 @@ use std::{
     path::{Path, PathBuf},
     process,
     sync::{Arc, Mutex},
-    time::{Duration, Instant},
+    time::Duration,
 };
 use time::{OffsetDateTime, UtcOffset};
 
-use self::rttui::channel::DataFormat;
-use crate::util::{build_artifact, common_options::CargoOptions, logging};
+use crate::util::common_options::{
+    BinaryDownloadOptions, LoadedProbeOptions, OperationError, ProbeOptions,
+};
+use crate::util::flash::{build_loader, run_flash_download};
+use crate::util::logging::setup_logging;
+use crate::util::{build_artifact, common_options::CargoOptions, logging, rtt::DataFormat};
+use crate::FormatOptions;
 
 #[derive(Debug, clap::Parser)]
 #[command(after_long_help = CargoOptions::help_message("cargo-embed"))]
@@ -52,18 +52,7 @@ struct Opt {
     cargo_options: CargoOptions,
 }
 
-pub fn main(args: Vec<OsString>) {
-    // Determine the local offset as early as possible to avoid potential
-    // issues with multiple threads and getting the offset.
-    let offset = match UtcOffset::current_local_offset() {
-        Ok(offset) => offset,
-        Err(e) => {
-            log::debug!("Error getting local offset: {e}");
-            log::warn!("Unable to determine local time. All timestamps will be in UTC.");
-            UtcOffset::UTC
-        }
-    };
-
+pub fn main(args: Vec<OsString>, offset: UtcOffset) {
     match main_try(args, offset) {
         Ok(_) => (),
         Err(e) => {
@@ -125,9 +114,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
     let configs = config::Configs::new(work_dir.clone());
     let config = configs.select_defined(config_name)?;
 
-    if config.general.log_level != log::LevelFilter::Off {
-        logging::init(config.general.log_level.to_level());
-    }
+    let _log_guard = setup_logging(None, config.general.log_level);
 
     // Make sure we load the config given in the cli parameters.
     for cdp in &config.general.chip_descriptions {
@@ -135,13 +122,6 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
         probe_rs::config::add_target_from_yaml(file)
             .with_context(|| format!("failed to load the chip description from {cdp}"))?;
     }
-
-    let chip = opt
-        .chip
-        .as_ref()
-        .or(config.general.chip.as_ref())
-        .map(|chip| chip.into())
-        .unwrap_or(TargetSelector::Auto);
 
     // Remove executable name from the arguments list.
     args.remove(0);
@@ -175,101 +155,84 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
     let lister = Lister::new();
 
     // If we got a probe selector in the config, open the probe matching the selector if possible.
-    let mut probe = if let Some(ref selector) = opt.probe_selector {
-        lister.open(selector)?
+    let selector = if let Some(selector) = opt.probe_selector {
+        Some(selector)
     } else {
         match (config.probe.usb_vid.as_ref(), config.probe.usb_pid.as_ref()) {
-            (Some(vid), Some(pid)) => {
-                let selector = DebugProbeSelector {
-                    vendor_id: u16::from_str_radix(vid, 16)?,
-                    product_id: u16::from_str_radix(pid, 16)?,
-                    serial_number: config.probe.serial.clone(),
-                };
-                // if two probes with the same VID:PID pair exist we just choose one
-                lister.open(selector)?
-            }
-            _ => {
-                if config.probe.usb_vid.is_some() {
-                    log::warn!("USB VID ignored, because PID is not specified.");
+            (Some(vid), Some(pid)) => Some(DebugProbeSelector {
+                vendor_id: u16::from_str_radix(vid, 16)?,
+                product_id: u16::from_str_radix(pid, 16)?,
+                serial_number: config.probe.serial.clone(),
+            }),
+            (vid, pid) => {
+                if vid.is_some() {
+                    tracing::warn!("USB VID ignored, because PID is not specified.");
                 }
-                if config.probe.usb_pid.is_some() {
-                    log::warn!("USB PID ignored, because VID is not specified.");
+                if pid.is_some() {
+                    tracing::warn!("USB PID ignored, because VID is not specified.");
                 }
-
-                // Only automatically select a probe if there is only
-                // a single probe detected.
-                let list = lister.list_all();
-                if list.len() > 1 {
-                    use std::fmt::Write;
-
-                    return Err(anyhow!("The following devices were found:\n \
-                                    {} \
-                                        \
-                                    Use '--probe VID:PID'\n \
-                                                            \
-                                    You can also set the [default.probe] config attribute \
-                                    (in your Embed.toml) to select which probe to use. \
-                                    For usage examples see https://github.com/probe-rs/cargo-embed/blob/master/src/config/default.toml .",
-                                    list.iter().enumerate().fold(String::new(), |mut s, (num, link)| { let _ = writeln!(s, "[{num}]: {link:?}"); s })));
-                }
-
-                lister.open(
-                    list.first()
-                        .ok_or_else(|| anyhow!("No supported probe was found"))?,
-                )?
+                None
             }
         }
     };
 
-    probe
-        .select_protocol(config.probe.protocol)
-        .context("failed to select protocol")?;
+    let chip = opt
+        .chip
+        .as_ref()
+        .or(config.general.chip.as_ref())
+        .map(|chip| chip.into());
 
-    let protocol_speed = if let Some(speed) = config.probe.speed {
-        let actual_speed = probe.set_speed(speed).context("failed to set speed")?;
+    let probe_options = ProbeOptions {
+        chip,
+        chip_description_path: None,
+        protocol: Some(config.probe.protocol),
+        probe_selector: selector,
+        speed: config.probe.speed,
+        connect_under_reset: config.general.connect_under_reset,
+        dry_run: false,
+        allow_erase_all: config.flashing.enabled || config.gdb.enabled,
+    };
 
-        if actual_speed < speed {
-            log::warn!(
-                "Unable to use specified speed of {} kHz, actual speed used is {} kHz",
-                speed,
-                actual_speed
-            );
+    let (mut session, probe_options) = match probe_options.simple_attach(&lister) {
+        Ok((session, probe_options)) => (session, probe_options),
+
+        Err(OperationError::MultipleProbesFound { list }) => {
+            use std::fmt::Write;
+
+            return Err(anyhow!("The following devices were found:\n \
+                    {} \
+                        \
+                    Use '--probe VID:PID'\n \
+                                            \
+                    You can also set the [default.probe] config attribute \
+                    (in your Embed.toml) to select which probe to use. \
+                    For usage examples see https://github.com/probe-rs/cargo-embed/blob/master/src/config/default.toml .",
+                    list.iter().enumerate().fold(String::new(), |mut s, (num, link)| { let _ = writeln!(s, "[{num}]: {link:?}"); s })));
         }
-
-        actual_speed
-    } else {
-        probe.speed_khz()
-    };
-
-    log::info!("Protocol speed {} kHz", protocol_speed);
-
-    let permissions = if config.flashing.enabled || config.gdb.enabled {
-        Permissions::new().allow_erase_all()
-    } else {
-        Permissions::new()
-    };
-
-    let mut session = if config.general.connect_under_reset {
-        probe
-            .attach_under_reset(chip, permissions)
-            .context("failed attaching to target")?
-    } else {
-        let potential_session = probe.attach(chip, permissions);
-        match potential_session {
-            Ok(session) => session,
-            Err(err) => {
-                log::info!("The target seems to be unable to be attached to.");
-                log::info!(
+        Err(OperationError::AttachingFailed {
+            source,
+            connect_under_reset,
+        }) => {
+            tracing::info!("The target seems to be unable to be attached to.");
+            if !connect_under_reset {
+                tracing::info!(
                     "A hard reset during attaching might help. This will reset the entire chip."
                 );
-                log::info!("Set `general.connect_under_reset` in your cargo-embed configuration file to enable this feature.");
-                return Err(err).context("failed attaching to target");
+                tracing::info!("Set `general.connect_under_reset` in your cargo-embed configuration file to enable this feature.");
             }
+            return Err(source).context("failed attaching to target");
         }
+        Err(e) => return Err(e.into()),
     };
 
     if config.flashing.enabled {
-        flash(&config, &mut session, path, opt.disable_progressbars)?;
+        flash(
+            &config,
+            &mut session,
+            &probe_options,
+            path,
+            opt.disable_progressbars,
+        )?;
     }
 
     if config.reset.enabled {
@@ -320,82 +283,8 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
     }
 
     if config.rtt.enabled {
-        let defmt_enable = config
-            .rtt
-            .channels
-            .iter()
-            .any(|elem| elem.format == DataFormat::Defmt);
-
-        let defmt_state = if defmt_enable {
-            log::debug!(
-                "Found RTT channels with format = defmt, trying to intialize defmt parsing."
-            );
-            DefmtInformation::try_read_from_elf(path)?
-        } else {
-            None
-        };
-
-        let rtt_header_address = if let Ok(mut file) = File::open(path) {
-            if let Some(address) = rttui::app::App::get_rtt_symbol(&mut file) {
-                ScanRegion::Exact(address as u32)
-            } else {
-                ScanRegion::Ram
-            }
-        } else {
-            ScanRegion::Ram
-        };
-
-        let mut rtt = rtt_attach(session.clone(), config.rtt.timeout, &rtt_header_address)
-            .context("Failed to attach to RTT")?;
-
-        // Configure rtt channels according to configuration
-        rtt_config(session.clone(), &config, &mut rtt)?;
-
-        log::info!("RTT initialized.");
-
-        // Check if the terminal supports x
-
-        // `App` puts the terminal into a special state, as required
-        // by the text-based UI. If a panic happens while the
-        // terminal is in that state, this will completely mess up
-        // the user's terminal (misformatted panic message, newlines
-        // being ignored, input characters not being echoed, ...).
-        //
-        // The following panic hook cleans up the terminal, while
-        // otherwise preserving the behavior of the default panic
-        // hook (or whichever custom hook might have been registered
-        // before).
-        let previous_panic_hook = panic::take_hook();
-        panic::set_hook(Box::new(move |panic_info| {
-            rttui::app::clean_up_terminal();
-            previous_panic_hook(panic_info);
-        }));
-
-        let chip_name = config.general.chip.as_deref().unwrap_or_default();
-
-        let timestamp_millis = OffsetDateTime::now_utc()
-            .to_offset(offset)
-            .unix_timestamp_nanos()
-            / 1_000_000;
-
-        let logname = format!("{name}_{chip_name}_{timestamp_millis}");
-        let mut app = rttui::app::App::new(rtt, &config, logname, defmt_state.as_ref())?;
-        loop {
-            {
-                let mut session_handle = session.lock().unwrap();
-                let mut core = session_handle.core(0)?;
-
-                app.poll_rtt(&mut core, offset)?;
-
-                app.render();
-                if app.handle_event(&mut core) {
-                    logging::println("Shutting down.");
-                    return Ok(());
-                };
-            }
-
-            std::thread::sleep(Duration::from_millis(10));
-        }
+        // GDB is also using the session, so we do not lock on the outside.
+        run_rttui_app(name, &session, config, path, offset)?;
     }
 
     if let Some(gdb_thread_handle) = gdb_thread_handle {
@@ -411,8 +300,91 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
     Ok(())
 }
 
+fn run_rttui_app(
+    name: &str,
+    session: &Mutex<Session>,
+    config: config::Config,
+    elf_path: &Path,
+    timezone_offset: UtcOffset,
+) -> Result<(), anyhow::Error> {
+    let Some(mut rtt) = rtt_attach(session, config.rtt.timeout, &ScanRegion::Ram, elf_path)
+        .context("Failed to attach to RTT")?
+    else {
+        // Because we pass `ScanRegion::Ram` to `rtt_attach`, this branch should never be
+        // reached. However, we might change how we attach to RTT in the future, so let's try
+        // and stay friendly and not panic.
+        tracing::info!("RTT not found, skipping RTT initialization.");
+        return Ok(());
+    };
+
+    let defmt_enable = config
+        .rtt
+        .channels
+        .iter()
+        .any(|elem| elem.format == DataFormat::Defmt);
+
+    let defmt_state = if defmt_enable {
+        tracing::debug!(
+            "Found RTT channels with format = defmt, trying to intialize defmt parsing."
+        );
+        DefmtInformation::try_read_from_elf(elf_path)?
+    } else {
+        None
+    };
+
+    // Configure rtt channels according to configuration
+    rtt_config(session, &config, &mut rtt)?;
+
+    tracing::info!("RTT initialized.");
+
+    // Check if the terminal supports x
+
+    // `App` puts the terminal into a special state, as required
+    // by the text-based UI. If a panic happens while the
+    // terminal is in that state, this will completely mess up
+    // the user's terminal (misformatted panic message, newlines
+    // being ignored, input characters not being echoed, ...).
+    //
+    // The following panic hook cleans up the terminal, while
+    // otherwise preserving the behavior of the default panic
+    // hook (or whichever custom hook might have been registered
+    // before).
+    let previous_panic_hook = panic::take_hook();
+    panic::set_hook(Box::new(move |panic_info| {
+        rttui::app::clean_up_terminal();
+        previous_panic_hook(panic_info);
+    }));
+
+    let chip_name = config.general.chip.as_deref().unwrap_or_default();
+
+    let timestamp_millis = OffsetDateTime::now_utc()
+        .to_offset(timezone_offset)
+        .unix_timestamp_nanos()
+        / 1_000_000;
+
+    let logname = format!("{name}_{chip_name}_{timestamp_millis}");
+    let mut app = rttui::app::App::new(rtt, &config, logname, defmt_state.as_ref())?;
+    loop {
+        app.render();
+
+        {
+            let mut session_handle = session.lock().unwrap();
+            let mut core = session_handle.core(0)?;
+
+            app.poll_rtt(&mut core, timezone_offset)?;
+
+            if app.handle_event(&mut core) {
+                logging::println("Shutting down.");
+                return Ok(());
+            }
+        }
+
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
 fn rtt_config(
-    session: Arc<Mutex<Session>>,
+    session: &Mutex<Session>,
     config: &config::Config,
     rtt: &mut Rtt,
 ) -> Result<(), anyhow::Error> {
@@ -446,7 +418,7 @@ fn rtt_config(
         if let Some(mode) = specific_mode.or(default_up_mode) {
             // Only set the mode when the config file says to,
             // when not set explicitly, the firmware picks.
-            log::debug!("Setting RTT channel {} to {:?}", up_channel.number(), &mode);
+            tracing::debug!("Setting RTT channel {} to {:?}", up_channel.number(), &mode);
             up_channel.set_mode(&mut core, mode)?;
         }
     }
@@ -473,12 +445,14 @@ impl DefmtInformation {
                 let locs = table.get_locations(&elf)?;
 
                 if !table.is_empty() && locs.is_empty() {
-                    log::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
+                    tracing::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
                     None
                 } else if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
                     Some(locs)
                 } else {
-                    log::warn!("Location info is incomplete; it will be omitted from the output.");
+                    tracing::warn!(
+                        "Location info is incomplete; it will be omitted from the output."
+                    );
                     None
                 }
             };
@@ -487,7 +461,7 @@ impl DefmtInformation {
                 location_information: locs,
             })
         } else {
-            log::error!("Defmt enabled in rtt channel config, but defmt table couldn't be loaded from binary.");
+            tracing::error!("Defmt enabled in rtt channel config, but defmt table couldn't be loaded from binary.");
             None
         };
 
@@ -497,10 +471,11 @@ impl DefmtInformation {
 
 /// Try to attach to RTT, with the given timeout
 fn rtt_attach(
-    session: Arc<Mutex<Session>>,
+    session: &Mutex<Session>,
     timeout: Duration,
     rtt_region: &ScanRegion,
-) -> Result<Rtt> {
+    elf_file: &Path,
+) -> Result<Option<Rtt>> {
     let t = std::time::Instant::now();
 
     let mut rtt_init_attempt = 1;
@@ -508,7 +483,7 @@ fn rtt_attach(
     let mut last_error = None;
 
     while t.elapsed() < timeout {
-        log::info!("Initializing RTT (attempt {})...", rtt_init_attempt);
+        tracing::info!("Initializing RTT (attempt {})...", rtt_init_attempt);
         rtt_init_attempt += 1;
 
         // Lock the session mutex in a block, so it gets dropped as soon as possible.
@@ -519,19 +494,19 @@ fn rtt_attach(
             let memory_map = session_handle.target().memory_map.clone();
             let mut core = session_handle.core(0)?;
 
-            match Rtt::attach_region(&mut core, &memory_map, rtt_region) {
+            match crate::util::rtt::attach_to_rtt(&mut core, &memory_map, rtt_region, elf_file) {
                 Ok(rtt) => return Ok(rtt),
                 Err(e) => last_error = Some(e),
             }
         }
 
-        log::debug!("Failed to initialize RTT. Retrying until timeout.");
+        tracing::debug!("Failed to initialize RTT. Retrying until timeout.");
         std::thread::sleep(Duration::from_millis(10));
     }
 
     // Timeout
     if let Some(err) = last_error {
-        Err(err.into())
+        Err(err)
     } else {
         Err(anyhow!("Error setting up RTT"))
     }
@@ -540,141 +515,27 @@ fn rtt_attach(
 fn flash(
     config: &config::Config,
     session: &mut probe_rs::Session,
+    probe_options: &LoadedProbeOptions,
     path: &Path,
     disable_progressbars: bool,
 ) -> Result<(), anyhow::Error> {
-    let instant = Instant::now();
-    if !disable_progressbars {
-        // Create progress bars.
-        let multi_progress = MultiProgress::new();
-        let style = ProgressStyle::default_bar()
-            .tick_chars("⠁⠁⠉⠙⠚⠒⠂⠂⠒⠲⠴⠤⠄⠄⠤⠠⠠⠤⠦⠖⠒⠐⠐⠒⠓⠋⠉⠈⠈✔")
-            .progress_chars("##-")
-            .template("{msg:.green.bold} {spinner} [{elapsed_precise}] [{wide_bar}] {bytes:>8}/{total_bytes:>8} @ {bytes_per_sec:>10} (eta {eta:3})")?;
+    let download_options = BinaryDownloadOptions {
+        disable_progressbars,
+        disable_double_buffering: false,
+        restore_unwritten: config.flashing.restore_unwritten_bytes,
+        flash_layout_output_path: None,
+        verify: false,
+    };
+    let format_options = FormatOptions::default();
+    let loader = build_loader(session, path, format_options)?;
+    run_flash_download(
+        session,
+        path,
+        &download_options,
+        probe_options,
+        loader,
+        config.flashing.do_chip_erase,
+    )?;
 
-        // Create a new progress bar for the fill progress if filling is enabled.
-        let fill_progress = if config.flashing.restore_unwritten_bytes {
-            let fill_progress = Arc::new(multi_progress.add(ProgressBar::new(0)));
-            fill_progress.set_style(style.clone());
-            fill_progress.set_message("     Reading flash  ");
-            Some(fill_progress)
-        } else {
-            None
-        };
-
-        // Create a new progress bar for the erase progress.
-        let erase_progress = Arc::new(multi_progress.add(ProgressBar::new(0)));
-        {
-            logging::set_progress_bar(erase_progress.clone());
-        }
-        erase_progress.set_style(style.clone());
-        erase_progress.set_message("     Erasing sectors");
-
-        // Create a new progress bar for the program progress.
-        let program_progress = multi_progress.add(ProgressBar::new(0));
-        program_progress.set_style(style);
-        program_progress.set_message(" Programming pages  ");
-
-        let flash_layout_output_path = config.flashing.flash_layout_output_path.clone();
-        // Register callback to update the progress.
-        let progress = FlashProgress::new(move |event| {
-            use ProgressEvent::*;
-            match event {
-                Initialized { flash_layout } => {
-                    let total_page_size: u32 = flash_layout.pages().iter().map(|s| s.size()).sum();
-                    let total_sector_size: u64 =
-                        flash_layout.sectors().iter().map(|s| s.size()).sum();
-                    let total_fill_size: u64 = flash_layout.fills().iter().map(|s| s.size()).sum();
-                    if let Some(fp) = fill_progress.as_ref() {
-                        fp.set_length(total_fill_size)
-                    }
-                    erase_progress.set_length(total_sector_size);
-                    program_progress.set_length(total_page_size as u64);
-                    let visualizer = flash_layout.visualize();
-                    flash_layout_output_path
-                        .as_ref()
-                        .map(|path| visualizer.write_svg(path));
-                }
-                StartedProgramming { length } => {
-                    program_progress.enable_steady_tick(Duration::from_millis(100));
-                    program_progress.set_length(length);
-                    program_progress.reset_elapsed();
-                }
-                StartedErasing => {
-                    erase_progress.enable_steady_tick(Duration::from_millis(100));
-                    erase_progress.reset_elapsed();
-                }
-                StartedFilling => {
-                    if let Some(fp) = fill_progress.as_ref() {
-                        fp.enable_steady_tick(Duration::from_millis(100))
-                    };
-                    if let Some(fp) = fill_progress.as_ref() {
-                        fp.reset_elapsed()
-                    };
-                }
-                PageProgrammed { size, .. } => {
-                    program_progress.inc(size as u64);
-                }
-                SectorErased { size, .. } => {
-                    erase_progress.inc(size);
-                }
-                PageFilled { size, .. } => {
-                    if let Some(fp) = fill_progress.as_ref() {
-                        fp.inc(size)
-                    };
-                }
-                FailedErasing => {
-                    erase_progress.abandon();
-                    program_progress.abandon();
-                }
-                FinishedErasing => {
-                    erase_progress.finish();
-                }
-                FailedProgramming => {
-                    program_progress.abandon();
-                }
-                FinishedProgramming => {
-                    program_progress.finish();
-                }
-                FailedFilling => {
-                    if let Some(fp) = fill_progress.as_ref() {
-                        fp.abandon()
-                    };
-                }
-                FinishedFilling => {
-                    if let Some(fp) = fill_progress.as_ref() {
-                        fp.finish()
-                    };
-                }
-                DiagnosticMessage { .. } => todo!(),
-            }
-        });
-
-        let mut options = DownloadOptions::new();
-
-        options.progress = Some(progress);
-        options.keep_unwritten_bytes = config.flashing.restore_unwritten_bytes;
-        options.do_chip_erase = config.flashing.do_chip_erase;
-
-        download_file_with_options(session, path, Format::Elf, options)
-            .with_context(|| format!("failed to flash {}", path.display()))?;
-
-        // If we don't do this, the inactive progress bars will swallow log
-        // messages, so they'll never be printed anywhere.
-        logging::clear_progress_bar();
-    } else {
-        let mut options = DownloadOptions::new();
-        options.keep_unwritten_bytes = config.flashing.restore_unwritten_bytes;
-        options.do_chip_erase = config.flashing.do_chip_erase;
-
-        download_file_with_options(session, path, Format::Elf, options)
-            .with_context(|| format!("failed to flash {}", path.display()))?;
-    }
-    let elapsed = instant.elapsed();
-    logging::println(format!(
-        "    {} flashing in {}s",
-        "Finished".green().bold(),
-        elapsed.as_millis() as f32 / 1000.0,
-    ));
     Ok(())
 }

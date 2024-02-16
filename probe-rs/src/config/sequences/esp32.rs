@@ -60,6 +60,8 @@ impl XtensaDebugSequence for ESP32 {
         interface.write_word_32(RTC_WDTCONFIG0, 0x0)?;
         interface.write_word_32(RTC_WRITE_PROT, 0x0)?; // write protection on
 
+        tracing::warn!("Be careful not to reset your ESP32 while connected to the debugger! Depending on the specific device, this may render it temporarily inoperable or permanently damage it.");
+
         Ok(())
     }
 

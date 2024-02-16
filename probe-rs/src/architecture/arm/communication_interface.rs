@@ -12,8 +12,9 @@ use super::{
     ApAddress, ArmError, DapAccess, DpAddress, PortType, RawDapAccess, SwoAccess, SwoConfig,
 };
 use crate::{
-    architecture::arm::ap::DataSize, CoreStatus, DebugProbe, DebugProbeError,
-    Error as ProbeRsError, Probe,
+    architecture::arm::ap::DataSize,
+    probe::{DebugProbe, DebugProbeError, Probe},
+    CoreStatus, Error as ProbeRsError,
 };
 use jep106::JEP106Code;
 
@@ -26,7 +27,7 @@ use std::{
 
 /// An error in the communication with an access port or
 /// debug port.
-#[derive(Debug, thiserror::Error, Clone, PartialEq, Eq)]
+#[derive(Debug, thiserror::Error, Clone, PartialEq, Eq, Copy)]
 pub enum DapError {
     /// An error occurred during SWD communication.
     #[error("An error occurred in the SWD communication between probe and device.")]
@@ -79,6 +80,9 @@ pub trait ArmProbeInterface: DapAccess + SwdSequence + SwoAccess + Send {
     /// Returns information about a specific access port.
     fn ap_information(&mut self, access_port: GenericAp) -> Result<&ApInformation, ArmError>;
 
+    /// Return the currently connected debug port.
+    fn current_debug_port(&self) -> DpAddress;
+
     /// Returns the number of access ports the debug port has.
     ///
     /// If the target device has multiple debug ports, this will switch the active debug port
@@ -113,12 +117,14 @@ pub trait UninitializedArmProbe: SwdSequence + Debug {
     fn initialize(
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
+        dp: DpAddress,
     ) -> Result<Box<dyn ArmProbeInterface>, (Box<dyn UninitializedArmProbe>, ProbeRsError)>;
 
     fn initialize_unspecified(
         self: Box<Self>,
+        dp: DpAddress,
     ) -> Result<Box<dyn ArmProbeInterface>, (Box<dyn UninitializedArmProbe>, ProbeRsError)> {
-        self.initialize(DefaultArmSequence::create())
+        self.initialize(DefaultArmSequence::create(), dp)
     }
 
     /// Closes the interface and returns back the generic probe it consumed.
@@ -136,16 +142,20 @@ pub struct Uninitialized {
 pub struct Initialized {
     /// Currently selected debug port. For targets without multidrop,
     /// this will always be the single, default debug port in the system.
-    current_dp: Option<DpAddress>,
+    pub(crate) current_dp: DpAddress,
     dps: HashMap<DpAddress, DpState>,
     use_overrun_detect: bool,
     sequence: Arc<dyn ArmDebugSequence>,
 }
 
 impl Initialized {
-    pub fn new(sequence: Arc<dyn ArmDebugSequence>, use_overrun_detect: bool) -> Self {
+    pub fn new(
+        sequence: Arc<dyn ArmDebugSequence>,
+        use_overrun_detect: bool,
+        dp: DpAddress,
+    ) -> Self {
         Self {
-            current_dp: None,
+            current_dp: dp,
             dps: HashMap::new(),
             use_overrun_detect,
             sequence,
@@ -357,6 +367,10 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
     fn close(self: Box<Self>) -> Probe {
         Probe::from_attached_probe(RawDapAccess::into_probe(self.probe))
     }
+
+    fn current_debug_port(&self) -> DpAddress {
+        self.state.current_dp
+    }
 }
 
 impl<S: ArmDebugState> SwdSequence for ArmCommunicationInterface<S> {
@@ -386,6 +400,7 @@ impl ArmCommunicationInterface<Uninitialized> {
     fn into_initialized(
         self,
         sequence: Arc<dyn ArmDebugSequence>,
+        dp: DpAddress,
     ) -> Result<ArmCommunicationInterface<Initialized>, (Box<Self>, DebugProbeError)> {
         let use_overrun_detect = self.state.use_overrun_detect;
 
@@ -393,6 +408,7 @@ impl ArmCommunicationInterface<Uninitialized> {
             self,
             sequence,
             use_overrun_detect,
+            dp,
         )
     }
 }
@@ -401,16 +417,17 @@ impl UninitializedArmProbe for ArmCommunicationInterface<Uninitialized> {
     fn initialize(
         mut self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
+        dp: DpAddress,
     ) -> Result<Box<dyn ArmProbeInterface>, (Box<dyn UninitializedArmProbe>, ProbeRsError)> {
         let setup_span = tracing::debug_span!("debug_port_setup").entered();
-        if let Err(e) = sequence.debug_port_setup(&mut *self.probe) {
+        if let Err(e) = sequence.debug_port_setup(&mut *self.probe, dp) {
             return Err((self as Box<_>, e.into()));
         }
 
         drop(setup_span);
 
         let interface = self
-            .into_initialized(sequence)
+            .into_initialized(sequence, dp)
             .map_err(|(s, err)| (s as Box<_>, ProbeRsError::Probe(err)))?;
 
         Ok(Box::new(interface))
@@ -434,6 +451,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         interface: ArmCommunicationInterface<Uninitialized>,
         sequence: Arc<dyn ArmDebugSequence>,
         use_overrun_detect: bool,
+        dp: DpAddress,
     ) -> Result<
         Self,
         (
@@ -443,7 +461,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     > {
         let initialized_interface = ArmCommunicationInterface {
             probe: interface.probe,
-            state: Initialized::new(sequence, use_overrun_detect),
+            state: Initialized::new(sequence, use_overrun_detect, dp),
         };
 
         Ok(initialized_interface)
@@ -479,19 +497,23 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     }
 
     fn select_dp(&mut self, dp: DpAddress) -> Result<&mut DpState, ArmError> {
-        if self.state.current_dp == Some(dp) {
-            return Ok(self.state.dps.get_mut(&dp).unwrap());
+        if self.state.current_dp != dp {
+            tracing::debug!("Selecting DP {:x?}", dp);
+
+            self.probe.raw_flush()?;
+
+            // Try to switch to the new DP.
+            if let Err(e) = self.state.sequence.debug_port_connect(&mut *self.probe, dp) {
+                tracing::warn!("Failed to switch to DP {:x?}: {}", dp, e);
+
+                // Try the more involved debug_port_setup sequence, which also handles dormant mode.
+                self.state.sequence.debug_port_setup(&mut *self.probe, dp)?;
+            }
+
+            self.state.current_dp = dp;
         }
 
-        tracing::debug!("Selecting DP {:x?}", dp);
-
-        if let Err(e) = self.probe.select_dp(dp) {
-            self.state.current_dp = None;
-            return Err(e);
-        }
-
-        self.state.current_dp = Some(dp);
-
+        // If we don't have  a state for this DP, this means that we haven't run the necessary init sequence yet.
         if let hash_map::Entry::Vacant(entry) = self.state.dps.entry(dp) {
             let sequence = self.state.sequence.clone();
 

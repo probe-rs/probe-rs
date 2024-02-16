@@ -8,7 +8,7 @@ use probe_rs::{
 /// Prints the stacktrace of the current execution state.
 pub fn print_stacktrace(core: &mut impl CoreInterface, path: &Path) -> Result<(), anyhow::Error> {
     let Some(debug_info) = DebugInfo::from_file(path).ok() else {
-        log::error!("No debug info found.");
+        tracing::error!("No debug info found.");
         return Ok(());
     };
     let initial_registers = DebugRegisters::from_core(core);

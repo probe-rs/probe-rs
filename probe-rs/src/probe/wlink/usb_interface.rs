@@ -1,8 +1,10 @@
 use std::time::Duration;
 
-use rusb::{DeviceHandle, UsbContext};
+use nusb::Interface;
 
-use crate::{DebugProbeError, DebugProbeSelector, ProbeCreationError};
+use crate::probe::{
+    usb_util::InterfaceExt, DebugProbeError, DebugProbeSelector, ProbeCreationError,
+};
 
 use super::{commands::WchLinkCommand, get_wlink_info, WchLinkError};
 
@@ -12,83 +14,53 @@ const ENDPOINT_IN: u8 = 0x81;
 // const RAW_ENDPOINT_OUT: u8 = 0x02;
 // const RAW_ENDPOINT_IN: u8 = 0x82;
 
-#[derive(Debug)]
 pub struct WchLinkUsbDevice {
-    device_handle: DeviceHandle<rusb::Context>,
+    device_handle: Interface,
 }
 
 impl WchLinkUsbDevice {
-    pub fn new_from_selector(
-        selector: impl Into<DebugProbeSelector>,
-    ) -> Result<Self, ProbeCreationError> {
-        let selector = selector.into();
-
-        let context = rusb::Context::new()?;
-
-        tracing::trace!("Acquired libusb context.");
-        let device = context
-            .devices()?
-            .iter()
-            .filter(|device| {
-                device
-                    .device_descriptor()
-                    .map(|desc| {
-                        desc.vendor_id() == selector.vendor_id
-                            && desc.product_id() == selector.product_id
-                    })
-                    .unwrap_or(false)
-            })
+    pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, ProbeCreationError> {
+        let device = nusb::list_devices()
+            .map_err(ProbeCreationError::Usb)?
+            .filter(|device| selector.matches(device))
             .find(|device| get_wlink_info(device).is_some())
-            .map_or(Err(ProbeCreationError::NotFound), Ok)?;
-
-        let mut device_handle = device.open()?;
-
-        tracing::trace!("Aquired handle for probe");
-
-        let config = device.active_config_descriptor()?;
-
-        tracing::trace!("Active config descriptor: {:?}", &config);
-
-        let descriptor = device.device_descriptor()?;
-
-        tracing::trace!("Device descriptor: {:?}", &descriptor);
-
-        device_handle.claim_interface(0)?;
-
-        tracing::trace!("Claimed interface 0 of USB device.");
+            .ok_or(ProbeCreationError::NotFound)?;
 
         let mut endpoint_out = false;
         let mut endpoint_in = false;
 
-        if let Some(interface) = config.interfaces().next() {
-            if let Some(descriptor) = interface.descriptors().next() {
-                for endpoint in descriptor.endpoint_descriptors() {
-                    if endpoint.address() == ENDPOINT_OUT {
-                        endpoint_out = true;
-                    } else if endpoint.address() == ENDPOINT_IN {
-                        endpoint_in = true;
+        let device_handle = device.open().map_err(ProbeCreationError::Usb)?;
+
+        let mut configs = device_handle.configurations();
+        if let Some(config) = configs.next() {
+            if let Some(interface) = config.interfaces().next() {
+                if let Some(altsetting) = interface.alt_settings().next() {
+                    for endpoint in altsetting.endpoints() {
+                        if endpoint.address() == ENDPOINT_OUT {
+                            endpoint_out = true;
+                        } else if endpoint.address() == ENDPOINT_IN {
+                            endpoint_in = true;
+                        }
                     }
                 }
             }
         }
 
-        if !endpoint_out {
+        if !endpoint_out || !endpoint_in {
             return Err(WchLinkError::EndpointNotFound.into());
         }
 
-        if !endpoint_in {
-            return Err(WchLinkError::EndpointNotFound.into());
-        }
+        tracing::trace!("Aquired handle for probe");
+        let device_handle = device_handle
+            .claim_interface(0)
+            .map_err(ProbeCreationError::Usb)?;
+        tracing::trace!("Claimed interface 0 of USB device.");
 
         let usb_wlink = Self { device_handle };
 
         tracing::debug!("Succesfully attached to WCH-Link.");
 
         Ok(usb_wlink)
-    }
-
-    fn close(&mut self) -> Result<(), rusb::Error> {
-        self.device_handle.release_interface(0)
     }
 
     pub(crate) fn send_command<C: WchLinkCommand + std::fmt::Debug>(
@@ -105,7 +77,7 @@ impl WchLinkUsbDevice {
         let written_bytes = self
             .device_handle
             .write_bulk(ENDPOINT_OUT, &rxbuf[..len], timeout)
-            .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))?;
+            .map_err(DebugProbeError::Usb)?;
 
         if written_bytes != len {
             return Err(WchLinkError::NotEnoughBytesWritten {
@@ -119,7 +91,7 @@ impl WchLinkUsbDevice {
         let read_bytes = self
             .device_handle
             .read_bulk(ENDPOINT_IN, &mut rxbuf[..], timeout)
-            .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))?;
+            .map_err(DebugProbeError::Usb)?;
 
         if read_bytes < 3 {
             return Err(WchLinkError::NotEnoughBytesRead {
@@ -139,12 +111,5 @@ impl WchLinkUsbDevice {
         let response = cmd.parse_response(&rxbuf[..read_bytes])?;
 
         Ok(response)
-    }
-}
-
-impl Drop for WchLinkUsbDevice {
-    fn drop(&mut self) {
-        // We ignore the error case as we can't do much about it anyways.
-        let _ = self.close();
     }
 }

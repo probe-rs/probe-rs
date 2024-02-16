@@ -352,7 +352,7 @@ expression: stack_frames
                             Base: i16
                           value: "26"
             - name:
-                Namespace: "common_testing_code::setup_data_types"
+                Namespace: setup_data_types
               type_name: Namespace
               value: ""
               children:
@@ -764,6 +764,7 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "6"
+  canonical_frame_address: 536883528
 - function_name: test_deep_stack
   source_location:
     line: 337
@@ -1106,7 +1107,7 @@ expression: stack_frames
                             Base: i16
                           value: "26"
             - name:
-                Namespace: "common_testing_code::setup_data_types"
+                Namespace: setup_data_types
               type_name: Namespace
               value: ""
               children:
@@ -1518,6 +1519,7 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "5"
+  canonical_frame_address: 536883656
 - function_name: test_deep_stack
   source_location:
     line: 337
@@ -1860,7 +1862,7 @@ expression: stack_frames
                             Base: i16
                           value: "26"
             - name:
-                Namespace: "common_testing_code::setup_data_types"
+                Namespace: setup_data_types
               type_name: Namespace
               value: ""
               children:
@@ -2272,6 +2274,7 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "4"
+  canonical_frame_address: 536883784
 - function_name: test_deep_stack
   source_location:
     line: 337
@@ -2614,7 +2617,7 @@ expression: stack_frames
                             Base: i16
                           value: "26"
             - name:
-                Namespace: "common_testing_code::setup_data_types"
+                Namespace: setup_data_types
               type_name: Namespace
               value: ""
               children:
@@ -3026,6 +3029,7 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "3"
+  canonical_frame_address: 536883912
 - function_name: test_deep_stack
   source_location:
     line: 337
@@ -3368,7 +3372,7 @@ expression: stack_frames
                             Base: i16
                           value: "26"
             - name:
-                Namespace: "common_testing_code::setup_data_types"
+                Namespace: setup_data_types
               type_name: Namespace
               value: ""
               children:
@@ -3780,6 +3784,7 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "2"
+  canonical_frame_address: 536884040
 - function_name: test_deep_stack
   source_location:
     line: 337
@@ -4122,7 +4127,7 @@ expression: stack_frames
                             Base: i16
                           value: "26"
             - name:
-                Namespace: "common_testing_code::setup_data_types"
+                Namespace: setup_data_types
               type_name: Namespace
               value: ""
               children:
@@ -4534,6 +4539,7 @@ expression: stack_frames
           type_name:
             Base: usize
           value: "1"
+  canonical_frame_address: 536884168
 - function_name: setup_data_types
   source_location:
     line: 324
@@ -4876,7 +4882,7 @@ expression: stack_frames
                             Base: i16
                           value: "26"
             - name:
-                Namespace: "common_testing_code::setup_data_types"
+                Namespace: setup_data_types
               type_name: Namespace
               value: ""
               children:
@@ -7828,6 +7834,7 @@ expression: stack_frames
                                       type_name:
                                         Base: usize
                                       value: "1"
+  canonical_frame_address: 536887112
 - function_name: __cortex_m_rt_main
   source_location:
     line: 51
@@ -8041,7 +8048,7 @@ expression: stack_frames
           value: ""
           children:
             - name:
-                Namespace: "nRF52833_xxAA::__cortex_m_rt_SysTick_trampoline"
+                Namespace: __cortex_m_rt_SysTick_trampoline
               type_name: Namespace
               value: ""
               children:
@@ -8055,6 +8062,7 @@ expression: stack_frames
       name: LocalScopeRoot
       type_name: Unknown
       value: Unknown
+  canonical_frame_address: 536887288
 - function_name: __cortex_m_rt_main_trampoline
   source_location:
     line: 48
@@ -8267,7 +8275,7 @@ expression: stack_frames
           value: ""
           children:
             - name:
-                Namespace: "nRF52833_xxAA::__cortex_m_rt_SysTick_trampoline"
+                Namespace: __cortex_m_rt_SysTick_trampoline
               type_name: Namespace
               value: ""
               children:
@@ -8281,7 +8289,8 @@ expression: stack_frames
       name: LocalScopeRoot
       type_name: Unknown
       value: Unknown
-- function_name: "<unknown function @ 0x0000013c>"
+  canonical_frame_address: 536887296
+- function_name: "<unknown function @ 0x0000013c> : ERROR: UNWIND: Tried to unwind `RegisterRule` at CFA = None."
   source_location: ~
   registers:
     - core_register:
@@ -8486,7 +8495,7 @@ expression: stack_frames
           value: ""
           children:
             - name:
-                Namespace: "nrf_hal_common::pwm"
+                Namespace: pwm
               type_name: Namespace
               value: ""
               children:
@@ -8544,4 +8553,5 @@ expression: stack_frames
             Named: key
           type_name: Unknown
           value: "< <value optimized away by compiler, out of scope, or dropped> >"
+  canonical_frame_address: ~
 

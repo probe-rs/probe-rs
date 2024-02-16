@@ -9,7 +9,7 @@ use super::{
 use bitfield::bitfield;
 use jep106::JEP106Code;
 
-use crate::DebugProbeError;
+use crate::probe::DebugProbeError;
 use std::fmt::Display;
 
 /// An error occurred when interacting with the debug port.
@@ -68,6 +68,7 @@ pub trait DpAccess {
 }
 
 impl<T: DapAccess> DpAccess for T {
+    #[tracing::instrument(skip(self))]
     fn read_dp_register<R: DpRegister>(&mut self, dp: DpAddress) -> Result<R, ArmError> {
         tracing::debug!("Reading DP register {}", R::NAME);
         let result = self.read_raw_dp_register(dp, R::ADDRESS)?;
@@ -75,6 +76,7 @@ impl<T: DapAccess> DpAccess for T {
         Ok(result.try_into()?)
     }
 
+    #[tracing::instrument(skip(self))]
     fn write_dp_register<R: DpRegister>(
         &mut self,
         dp: DpAddress,

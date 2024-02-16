@@ -383,7 +383,7 @@ pub(crate) static REPL_COMMANDS: &[ReplCommand<ReplHandler>] = &[
 
                 let frame_id = request_arguments
                     .frame_id
-                    .and_then(|id| ObjectRef::try_from(id).ok());
+                    .map(ObjectRef::from);
 
                 input_address = if let Some(frame_pc) = frame_id
                     .and_then(|frame_id| {

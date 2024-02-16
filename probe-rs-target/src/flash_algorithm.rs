@@ -41,6 +41,9 @@ pub struct RawFlashAlgorithm {
     /// Address to load algo into RAM. Optional.
     #[serde(serialize_with = "hex_option")]
     pub load_address: Option<u64>,
+    /// Address to load data into RAM. Optional.
+    #[serde(serialize_with = "hex_option")]
+    pub data_load_address: Option<u64>,
     /// Address of the `Init()` entry point. Optional.
     #[serde(serialize_with = "hex_option")]
     pub pc_init: Option<u64>,
@@ -79,7 +82,7 @@ pub struct RawFlashAlgorithm {
 
     /// The encoding format accepted by the flash algorithm.
     #[serde(default)]
-    pub transfer_encoding: TransferEncoding,
+    pub transfer_encoding: Option<TransferEncoding>,
 }
 
 pub fn serialize<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>

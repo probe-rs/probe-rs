@@ -1,0 +1,1 @@
+The FTDI probe driver is now enabled unconditionally

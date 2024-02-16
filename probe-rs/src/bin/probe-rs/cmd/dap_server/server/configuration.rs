@@ -1,7 +1,8 @@
+use crate::util::common_options::ProbeOptions;
 use crate::util::rtt;
 use crate::{cmd::dap_server::DebuggerError, FormatOptions};
 use anyhow::{anyhow, Result};
-use probe_rs::{DebugProbeSelector, WireProtocol};
+use probe_rs::probe::{DebugProbeSelector, WireProtocol};
 use serde::{Deserialize, Serialize};
 use std::{env::current_dir, path::PathBuf};
 
@@ -9,7 +10,7 @@ use std::{env::current_dir, path::PathBuf};
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionConfig {
-    /// Level of information to be logged to the debugger console (Error, Info or Debug )
+    /// Level of information to be logged to the debugger console (Error, Info or Debug)
     #[serde(default = "default_console_log")]
     pub(crate) console_log_level: Option<ConsoleLog>,
 
@@ -22,6 +23,9 @@ pub struct SessionConfig {
 
     /// The target to be selected.
     pub(crate) chip: Option<String>,
+
+    /// Path to a custom target description yaml.
+    pub(crate) chip_description_path: Option<PathBuf>,
 
     /// Assert target's reset during connect
     #[serde(default)]
@@ -56,14 +60,14 @@ impl SessionConfig {
         for target_core_config in &mut self.core_configs {
             // Update the `program_binary` and validate that the file exists.
             target_core_config.program_binary = match get_absolute_path(
-                self.cwd.clone(),
+                self.cwd.as_ref(),
                 target_core_config.program_binary.as_ref(),
             ) {
                 Ok(program_binary) => {
                     if !program_binary.is_file() {
                         return Err(DebuggerError::Other(anyhow!(
-                            "Invalid program binary file specified '{:?}'",
-                            program_binary
+                            "Invalid program binary file specified '{}'",
+                            program_binary.display()
                         )));
                     }
                     Some(program_binary)
@@ -76,12 +80,12 @@ impl SessionConfig {
             };
             // Update the `svd_file` and validate that the file exists, or else return an error.
             target_core_config.svd_file =
-                match get_absolute_path(self.cwd.clone(), target_core_config.svd_file.as_ref()) {
+                match get_absolute_path(self.cwd.as_ref(), target_core_config.svd_file.as_ref()) {
                     Ok(svd_file) => {
                         if !svd_file.is_file() {
                             return Err(DebuggerError::Other(anyhow!(
-                                "SVD file {:?} not found.",
-                                svd_file
+                                "SVD file {} not found.",
+                                svd_file.display()
                             )));
                         } else {
                             Some(svd_file)
@@ -89,29 +93,38 @@ impl SessionConfig {
                     }
                     Err(error) => {
                         // SVD file is not mandatory.
-                        tracing::debug!("SVD file not specified: {:?}", &error);
+                        tracing::debug!("SVD file not specified: {:?}", error);
                         None
                     }
                 };
         }
+
+        self.chip_description_path =
+            match get_absolute_path(self.cwd.as_ref(), self.chip_description_path.as_ref()) {
+                Ok(description) => {
+                    if !description.is_file() {
+                        return Err(DebuggerError::Other(anyhow!(
+                            "Invalid chip description file specified '{}'",
+                            description.display()
+                        )));
+                    }
+                    Some(description)
+                }
+                Err(error) => {
+                    // Chip description file is not mandatory.
+                    tracing::debug!("Chip description file not specified: {:?}", error);
+                    None
+                }
+            };
 
         Ok(())
     }
 
     /// Validate the new given cwd for this process exists, or else update the cwd setting to use the running process' current working directory.
     pub(crate) fn resolve_cwd(&self) -> Result<Option<PathBuf>, DebuggerError> {
-        Ok(match &self.cwd {
-            Some(temp_path) => {
-                if temp_path.is_dir() {
-                    Some(temp_path.to_path_buf())
-                } else if let Ok(current_dir) = current_dir() {
-                    Some(current_dir)
-                } else {
-                    tracing::error!("Cannot use current working directory. Please check existence and permissions.");
-                    None
-                }
-            }
-            None => {
+        let path = match self.cwd {
+            Some(ref temp_path) if temp_path.is_dir() => Some(temp_path.to_path_buf()),
+            _ => {
                 if let Ok(current_dir) = current_dir() {
                     Some(current_dir)
                 } else {
@@ -119,20 +132,35 @@ impl SessionConfig {
                     None
                 }
             }
-        })
+        };
+
+        Ok(path)
+    }
+
+    pub(crate) fn probe_options(&self) -> ProbeOptions {
+        ProbeOptions {
+            chip: self.chip.clone(),
+            chip_description_path: self.chip_description_path.clone(),
+            protocol: self.wire_protocol,
+            probe_selector: self.probe_selector.clone(),
+            speed: self.speed,
+            connect_under_reset: self.connect_under_reset,
+            dry_run: false,
+            allow_erase_all: self.allow_erase_all,
+        }
     }
 }
 
 /// If the path to the program to be debugged is relative, we join if with the cwd.
 fn get_absolute_path(
-    configured_cwd: Option<PathBuf>,
+    configured_cwd: Option<&PathBuf>,
     os_file_to_validate: Option<&PathBuf>,
 ) -> Result<PathBuf, DebuggerError> {
     match os_file_to_validate {
         Some(temp_path) => {
             let mut new_path = PathBuf::new();
             if temp_path.is_relative() {
-                if let Some(cwd_path) = configured_cwd.clone() {
+                if let Some(cwd_path) = configured_cwd {
                     new_path.push(cwd_path);
                 } else {
                     return Err(DebuggerError::Other(anyhow!(

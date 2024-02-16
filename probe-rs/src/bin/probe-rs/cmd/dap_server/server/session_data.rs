@@ -12,8 +12,9 @@ use anyhow::{anyhow, Result};
 use probe_rs::{
     config::TargetSelector,
     debug::{debug_info::DebugInfo, DebugRegisters, SourceLocation},
-    exception_handler_for_core, CoreStatus, DebugProbeError, Lister, Permissions,
-    ProbeCreationError, Session,
+    exception_handler_for_core,
+    probe::list::Lister,
+    CoreStatus, Session,
 };
 use std::env::set_current_dir;
 use time::UtcOffset;
@@ -66,74 +67,11 @@ impl SessionData {
         config: &mut configuration::SessionConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<Self, DebuggerError> {
-        // `SessionConfig` Probe/Session level configurations initialization.
-        let mut target_probe = match config.probe_selector.clone() {
-            Some(selector) => lister.open(&selector).map_err(|e| match e {
-                DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound) => {
-                    DebuggerError::Other(anyhow!(
-                        "Could not find the probe_selector specified as {:04x}:{:04x}:{:?}",
-                        selector.vendor_id,
-                        selector.product_id,
-                        selector.serial_number
-                    ))
-                }
-                other_error => DebuggerError::DebugProbe(other_error),
-            }),
-            None => {
-                // Only automatically select a probe if there is only a single probe detected.
-                let list = lister.list_all();
-                if list.len() > 1 {
-                    return Err(DebuggerError::Other(anyhow!(
-                        "Found multiple ({}) probes",
-                        list.len()
-                    )));
-                }
+        let target_selector = TargetSelector::from(config.chip.as_deref());
 
-                if let Some(info) = list.first() {
-                    lister.open(info).map_err(DebuggerError::DebugProbe)
-                } else {
-                    return Err(DebuggerError::Other(anyhow!(
-                        "No probes found. Please check your USB connections."
-                    )));
-                }
-            }
-        }?;
-
-        let target_selector = match &config.chip {
-            Some(identifier) => identifier.into(),
-            None => TargetSelector::Auto,
-        };
-
-        // Set the protocol, if the user explicitly selected a protocol. Otherwise, use the default protocol of the probe.
-        if let Some(wire_protocol) = config.wire_protocol {
-            target_probe.select_protocol(wire_protocol)?;
-        }
-
-        // Set the speed.
-        if let Some(speed) = config.speed {
-            let actual_speed = target_probe.set_speed(speed)?;
-            if actual_speed != speed {
-                tracing::warn!(
-                    "Protocol speed {} kHz not supported, actual speed is {} kHz",
-                    speed,
-                    actual_speed
-                );
-            }
-        }
-
-        let mut permissions = Permissions::new();
-        if config.allow_erase_all {
-            permissions = permissions.allow_erase_all();
-        }
-
-        // Attach to the probe.
-        let target_session = if config.connect_under_reset {
-            target_probe.attach_under_reset(target_selector, permissions)?
-        } else {
-            target_probe
-                .attach(target_selector, permissions)
-                .map_err(|err| anyhow!("Error attaching to the probe: {:?}.", err))?
-        };
+        let options = config.probe_options().load()?;
+        let target_probe = options.attach_probe(lister)?;
+        let target_session = options.attach_session(target_probe, target_selector)?;
 
         // Change the current working directory if `config.cwd` is `Some(T)`.
         if let Some(new_cwd) = config.cwd.clone() {
@@ -151,25 +89,20 @@ impl SessionData {
         // `CoreConfig` probe level initialization.
         if config.core_configs.len() != 1 {
             // TODO: For multi-core, allow > 1.
-            return Err(DebuggerError::Other(anyhow!("probe-rs-debugger requires that one, and only one, core  be configured for debugging.")));
+            return Err(DebuggerError::Other(anyhow!("probe-rs-debugger requires that one, and only one, core be configured for debugging.")));
         }
 
         // Filter `CoreConfig` entries based on those that match an actual core on the target probe.
-        let valid_core_configs = config
-            .core_configs
-            .iter()
-            .filter(|&core_config| {
-                target_session
-                    .list_cores()
-                    .iter()
-                    .any(|(target_core_index, _)| *target_core_index == core_config.core_index)
-            })
-            .cloned()
-            .collect::<Vec<CoreConfig>>();
+        let valid_core_configs = config.core_configs.iter().filter(|&core_config| {
+            target_session
+                .list_cores()
+                .iter()
+                .any(|(target_core_index, _)| *target_core_index == core_config.core_index)
+        });
 
         let mut core_data_vec = vec![];
 
-        for core_configuration in &valid_core_configs {
+        for core_configuration in valid_core_configs {
             core_data_vec.push(CoreData {
                 core_index: core_configuration.core_index,
                 last_known_status: CoreStatus::Unknown,
@@ -180,8 +113,8 @@ impl SessionData {
                 ),
                 debug_info: debug_info_from_binary(core_configuration)?,
                 core_peripherals: None,
-                stack_frames: Vec::<probe_rs::debug::stack_frame::StackFrame>::new(),
-                breakpoints: Vec::<ActiveBreakpoint>::new(),
+                stack_frames: vec![],
+                breakpoints: vec![],
                 rtt_connection: None,
             })
         }
@@ -255,7 +188,6 @@ impl SessionData {
         // By default, we will have a small delay between polls, and will disable it if we know the last poll returned data, on the assumption that there might be at least one more batch of data.
         let mut suggest_delay_required = true;
         let mut status_of_cores: Vec<CoreStatus> = vec![];
-        let target_memory_map = &self.session.target().memory_map.clone();
 
         let timestamp_offset = self.timestamp_offset;
 
@@ -293,7 +225,6 @@ impl SessionData {
                         #[allow(clippy::unwrap_used)]
                         match target_core.attach_to_rtt(
                             debug_adapter,
-                            target_memory_map,
                             core_config.program_binary.as_ref().unwrap(),
                             &core_config.rtt_config,
                             timestamp_offset,
@@ -339,17 +270,13 @@ impl SessionData {
     }
 }
 
-pub(crate) fn debug_info_from_binary(
-    core_configuration: &CoreConfig,
-) -> Result<DebugInfo, DebuggerError> {
-    let debug_info = if let Some(binary_path) = &core_configuration.program_binary {
-        DebugInfo::from_file(binary_path).map_err(|error| DebuggerError::Other(anyhow!(error)))?
-    } else {
+fn debug_info_from_binary(core_configuration: &CoreConfig) -> anyhow::Result<DebugInfo> {
+    let Some(ref binary_path) = core_configuration.program_binary else {
         return Err(anyhow!(
-            "Please provide a valid `program_binary` for debug core: {:?}",
+            "Please provide a valid `program_binary` for debug core: {}",
             core_configuration.core_index
-        )
-        .into());
+        ));
     };
-    Ok(debug_info)
+
+    DebugInfo::from_file(binary_path).map_err(|error| anyhow!(error))
 }

@@ -10,8 +10,9 @@ use crate::{
             ApAddress, ArmError, ArmProbeInterface, DpAddress,
         },
     },
+    probe::DebugProbeError,
     session::MissingPermissions,
-    DebugProbeError, Permissions,
+    Permissions,
 };
 use bitfield::bitfield;
 use std::sync::Arc;

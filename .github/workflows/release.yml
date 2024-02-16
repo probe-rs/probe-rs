@@ -64,7 +64,7 @@ jobs:
         # we specify bash to get pipefail; it guards against the `curl` command
         # failing. otherwise `sh` won't catch that `curl` returned non-0
         shell: bash
-        run: "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.6.2/cargo-dist-installer.sh | sh"
+        run: "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.8.2/cargo-dist-installer.sh | sh"
       # sure would be cool if github gave us proper conditionals...
       # so here's a doubly-nested ternary-via-truthiness to try to provide the best possible
       # functionality based on whether this is a pull_request, and whether it's from a fork.
@@ -72,7 +72,7 @@ jobs:
       # but also really annoying to build CI around when it needs secrets to work right.)
       - id: plan
         run: |
-          cargo dist ${{ !github.event.pull_request && format('host --steps=create --tag={0}', github.ref_name) || (github.event.pull_request.head.repo.fork && 'plan' || 'host --steps=check') }} --output-format=json > dist-manifest.json
+          cargo dist ${{ (!github.event.pull_request && format('host --steps=create --tag={0}', github.ref_name)) || 'plan' }} --output-format=json > dist-manifest.json
           echo "cargo dist ran successfully"
           cat dist-manifest.json
           echo "manifest=$(jq -c "." dist-manifest.json)" >> "$GITHUB_OUTPUT"
@@ -166,7 +166,7 @@ jobs:
       - name: Install Rust
         run: rustup update "1.74.0" --no-self-update && rustup default "1.74.0"
       - name: Install cargo-dist
-        run: "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.6.2/cargo-dist-installer.sh | sh"
+        run: "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.8.2/cargo-dist-installer.sh | sh"
       # Get all the local artifacts for the global tasks to use (for e.g. checksums)
       - name: Fetch local artifacts
         uses: actions/download-artifact@v3
@@ -212,7 +212,7 @@ jobs:
       - name: Install Rust
         run: rustup update "1.74.0" --no-self-update && rustup default "1.74.0"
       - name: Install cargo-dist
-        run: "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.6.2/cargo-dist-installer.sh | sh"
+        run: "curl --proto '=https' --tlsv1.2 -LsSf https://github.com/axodotdev/cargo-dist/releases/download/v0.8.2/cargo-dist-installer.sh | sh"
       # Fetch artifacts from scratch-storage
       - name: Fetch artifacts
         uses: actions/download-artifact@v3
@@ -233,15 +233,52 @@ jobs:
           name: artifacts
           path: dist-manifest.json
 
+  publish-homebrew-formula:
+    needs:
+      - plan
+      - host
+    runs-on: "ubuntu-20.04"
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      PLAN: ${{ needs.plan.outputs.val }}
+      GITHUB_USER: "axo bot"
+      GITHUB_EMAIL: "admin+bot@axo.dev"
+    if: ${{ !fromJson(needs.plan.outputs.val).announcement_is_prerelease || fromJson(needs.plan.outputs.val).publish_prereleases }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: "probe-rs/homebrew-probe-rs"
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+      # So we have access to the formula
+      - name: Fetch local artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: artifacts
+          path: Formula/
+      - name: Commit formula files
+        run: |
+          git config --global user.name "${GITHUB_USER}"
+          git config --global user.email "${GITHUB_EMAIL}"
+
+          for release in $(echo "$PLAN" | jq --compact-output '.releases[]'); do
+            name=$(echo "$release" | jq .app_name --raw-output)
+            version=$(echo "$release" | jq .app_version --raw-output)
+
+            git add Formula/${name}.rb
+            git commit -m "${name} ${version}"
+          done
+          git push
+
   # Create a Github Release while uploading all files to it
   announce:
     needs:
       - plan
       - host
+      - publish-homebrew-formula
     # use "always() && ..." to allow us to wait for all publish jobs while
     # still allowing individual publish jobs to skip themselves (for prereleases).
     # "host" however must run to completion, no skipping allowed!
-    if: ${{ always() && needs.host.result == 'success' }}
+    if: ${{ always() && needs.host.result == 'success' && (needs.publish-homebrew-formula.result == 'skipped' || needs.publish-homebrew-formula.result == 'success') }}
     runs-on: "ubuntu-20.04"
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,1 +1,0 @@
-Custom debug sequences for ATSAMD1x, D2x, DAx micros.  Enables DSU-based chip erase.

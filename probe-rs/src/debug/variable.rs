@@ -1,8 +1,10 @@
+use crate::debug::unit_info::UnitInfo;
+
 use super::*;
 use anyhow::anyhow;
-use gimli::{DebugInfoOffset, UnitOffset};
+use gimli::{DebugInfoOffset, DwLang, UnitOffset};
 use num_traits::Zero;
-use std::{ops::Range, str::FromStr};
+use std::ops::Range;
 
 /// Define the role that a variable plays in a Variant relationship. See section '5.7.10 Variant Entries' of the DWARF 5 specification
 #[derive(Debug, Clone, Eq, PartialEq, Default)]
@@ -71,8 +73,6 @@ pub enum VariableName {
     RegistersRoot,
     /// Top-level variable for local scoped variables, child of a stack frame variable.
     LocalScopeRoot,
-    /// Top-level variable for CMSIS-SVD file Device peripherals/registers/fields.
-    PeripheralScopeRoot,
     /// Artificial variable, without a name (e.g. enum discriminant)
     Artifical,
     /// Anonymous namespace
@@ -92,7 +92,6 @@ impl std::fmt::Display for VariableName {
             VariableName::StaticScopeRoot => write!(f, "Static Variable"),
             VariableName::RegistersRoot => write!(f, "Platform Register"),
             VariableName::LocalScopeRoot => write!(f, "Function Variable"),
-            VariableName::PeripheralScopeRoot => write!(f, "Peripheral Variable"),
             VariableName::Artifical => write!(f, "<artifical>"),
             VariableName::AnonymousNamespace => write!(f, "<anonymous_namespace>"),
             VariableName::Namespace(name) => name.fmt(f),
@@ -130,12 +129,6 @@ pub enum VariableNodeType {
     /// - Rule: For now, Union types WILL ALWAYS BE recursed. TODO: Evaluate if it is beneficial to defer these.
     #[default]
     RecurseToBaseType,
-    /// SVD Device Peripherals
-    SvdPeripheral,
-    /// SVD Peripheral Registers
-    SvdRegister,
-    /// SVD Register Fields
-    SvdField,
 }
 
 impl VariableNodeType {
@@ -278,7 +271,7 @@ impl std::fmt::Display for VariableLocation {
 ///
 /// Any modifications to the `Variable` value will be transient (lost when it goes out of scope),
 /// unless it is updated through one of the available methods on `VariableCache`.
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Variable {
     /// Every variable must have a unique key value assigned to it. The value will be zero until it is stored in VariableCache, at which time its value will be set to the same as the VariableCache::variable_cache_key
     pub(super) variable_key: ObjectRef,
@@ -287,14 +280,16 @@ pub struct Variable {
     /// The variable name refers to the name of any of the types of values described in the [VariableCache]
     pub name: VariableName,
     /// Use `Variable::set_value()` and `Variable::get_value()` to correctly process this `value`
-    value: VariableValue,
+    pub(super) value: VariableValue,
     /// The source location of the declaration of this variable, if available.
-    pub source_location: Option<SourceLocation>,
+    pub source_location: SourceLocation,
+    /// Programming language of the defining compilation unit.
+    pub language: DwLang,
 
     /// The name of the type of this variable.
     pub type_name: VariableType,
     /// The unit_header_offset and variable_unit_offset are cached to allow on-demand access to the variable's gimli::Unit, through functions like:
-    ///   `gimli::Read::DebugInfo.header_from_offset()`, and   
+    ///   `gimli::Read::DebugInfo.header_from_offset()`, and
     ///   `gimli::Read::UnitHeader.entries_tree()`
     pub unit_header_offset: Option<DebugInfoOffset>,
     /// The offset of this variable into the compilation unit debug information.
@@ -306,7 +301,7 @@ pub struct Variable {
     pub memory_location: VariableLocation,
     /// The size of this variable in bytes.
     pub byte_size: Option<u64>,
-    /// If  this is a subrange (array, vector, etc.), is the ordinal position of this variable in that range
+    /// If this is a subrange (array, vector, etc.), is the ordinal position of this variable in that range
     pub member_index: Option<i64>,
     /// If this is a subrange (array, vector, etc.), we need to temporarily store the lower bound.
     pub range_lower_bound: i64,
@@ -318,14 +313,28 @@ pub struct Variable {
 
 impl Variable {
     /// In most cases, Variables will be initialized with their ELF references so that we resolve their data types and values on demand.
-    pub fn new(
-        header_offset: Option<DebugInfoOffset>,
-        entries_offset: Option<UnitOffset>,
-    ) -> Variable {
+    pub fn new(entries_offset: Option<UnitOffset>, unit_info: Option<&UnitInfo>) -> Variable {
         Variable {
-            unit_header_offset: header_offset,
+            unit_header_offset: unit_info
+                .and_then(|info| info.unit.header.offset().as_debug_info_offset()),
             variable_unit_offset: entries_offset,
-            ..Default::default()
+            language: unit_info
+                .map(|info| info.get_language())
+                .unwrap_or(gimli::DW_LANG_Rust),
+
+            variable_key: Default::default(),
+            parent_key: Default::default(),
+            name: Default::default(),
+            value: Default::default(),
+            source_location: Default::default(),
+            type_name: Default::default(),
+            variable_node_type: Default::default(),
+            memory_location: Default::default(),
+            byte_size: None,
+            member_index: None,
+            range_lower_bound: 0,
+            range_upper_bound: 0,
+            role: Default::default(),
         }
     }
 
@@ -381,33 +390,14 @@ impl Variable {
                 self.name, self.value, self.type_name, self.memory_location).into());
         } else if variable_name.starts_with('*') {
             // Writing the values of pointers is a bit more complex, and not currently supported.
-            return  Err(anyhow!("Please only update variables with a base data type. Updating pointer variable types is not yet supported.").into());
+            return Err(anyhow!("Please only update variables with a base data type. Updating pointer variable types is not yet supported.").into());
         } else {
             // We have everything we need to update the variable value.
-            let update_result = match &self.type_name {
-                VariableType::Base(name) => match name.as_str() {
-                    "bool" => bool::update_value(self, memory, new_value.as_str()),
-                    "char" => char::update_value(self, memory, new_value.as_str()),
-                    "i8" => i8::update_value(self, memory, new_value.as_str()),
-                    "i16" => i16::update_value(self, memory, new_value.as_str()),
-                    "i32" => i32::update_value(self, memory, new_value.as_str()),
-                    "i64" => i64::update_value(self, memory, new_value.as_str()),
-                    "i128" => i128::update_value(self, memory, new_value.as_str()),
-                    "isize" => isize::update_value(self, memory, new_value.as_str()),
-                    "u8" => u8::update_value(self, memory, new_value.as_str()),
-                    "u16" => u16::update_value(self, memory, new_value.as_str()),
-                    "u32" => u32::update_value(self, memory, new_value.as_str()),
-                    "u64" => u64::update_value(self, memory, new_value.as_str()),
-                    "u128" => u128::update_value(self, memory, new_value.as_str()),
-                    "usize" => usize::update_value(self, memory, new_value.as_str()),
-                    "f32" => f32::update_value(self, memory, new_value.as_str()),
-                    "f64" => f64::update_value(self, memory, new_value.as_str()),
-                    other => Err(DebugError::UnwindIncompleteResults {
-                        message: format!("Unsupported datatype: {other}. Please only update variables with a base data type."),
-                    }),
-                },
-                other => Err(DebugError::UnwindIncompleteResults { message: format!("Unsupported variable type {other:?}. Only base variables can be updated.")}),
-            };
+            let update_result = language::from_dwarf(self.language).update_variable(
+                self,
+                memory,
+                new_value.as_str(),
+            );
 
             match update_result {
                 Ok(()) => {
@@ -430,65 +420,23 @@ impl Variable {
     /// Implementing get_value(), because Variable.value has to be private (a requirement of updating the value without overriding earlier values ... see set_value()).
     pub fn get_value(&self, variable_cache: &variable_cache::VariableCache) -> String {
         // Allow for chained `if let` without complaining
-        #[allow(clippy::if_same_then_else)]
-        if VariableNodeType::SvdRegister == self.variable_node_type {
-            if let VariableValue::Valid(register_value) = &self.value {
-                if let Ok(register_u32_value) = register_value.parse::<u32>() {
-                    format!(
-                        "{:032b} @ {:#010X}",
-                        register_u32_value,
-                        self.memory_location.memory_address().unwrap_or(u64::MAX) // We should never encounter a memory location that is invalid if we already used it to read the register value.
-                    )
-                } else {
-                    format!("Invalid register value {register_value}")
-                }
-            } else {
-                format!("{}", self.value)
-            }
-        } else if VariableNodeType::SvdField == self.variable_node_type {
-            // In this special case, we extract just the bits we need from the stored value of the register.
-            if let VariableValue::Valid(register_value) = &self.value {
-                if let Ok(register_u32_value) = register_value.parse::<u32>() {
-                    let mut bit_value: u32 = register_u32_value;
-                    bit_value <<= 32 - self.range_upper_bound;
-                    bit_value >>= 32 - (self.range_upper_bound - self.range_lower_bound);
-                    format!(
-                        "{:0width$b} @ {:#010X}:{}..{}",
-                        bit_value,
-                        self.memory_location.memory_address().unwrap_or(u64::MAX),
-                        self.range_lower_bound,
-                        self.range_upper_bound,
-                        width = (self.range_upper_bound - self.range_lower_bound) as usize
-                    )
-                } else {
-                    format!(
-                        "Invalid bit range {}..{} from value {}",
-                        self.range_lower_bound, self.range_upper_bound, register_value
-                    )
-                }
-            } else {
-                format!("{}", self.value)
-            }
-        } else if !self.value.is_empty() {
+        if !self.value.is_empty() {
             // The `value` for this `Variable` is non empty because ...
             // - It is base data type for which a value was determined based on the core runtime, or ...
             // - We encountered an error somewhere, so report it to the user
             format!("{}", self.value)
-        } else if let VariableName::AnonymousNamespace = self.name {
-            // Namespaces do not have values
-            String::new()
-        } else if let VariableName::Namespace(_) = self.name {
+        } else if matches!(
+            self.name,
+            VariableName::AnonymousNamespace | VariableName::Namespace(_)
+        ) {
             // Namespaces do not have values
             String::new()
         } else {
             // We need to construct a 'human readable' value using `fmt::Display` to represent the values of complex types and pointers.
             match variable_cache.has_children(self) {
-                Ok(has_children) => {
-                    if has_children {
-                        self.formatted_variable_value(variable_cache, 0_usize, false)
-                    } else if self.type_name == VariableType::Unknown
-                        || !self.memory_location.valid()
-                    {
+                Ok(true) => self.formatted_variable_value(variable_cache, 0_usize, false),
+                Ok(false) => {
+                    if self.type_name == VariableType::Unknown || !self.memory_location.valid() {
                         if self.variable_node_type.is_deferred() {
                             // When we will do a lazy-load of variable children, and they have not yet been requested by the user, just display the type_name as the value
                             format!("{:?}", self.type_name.clone())
@@ -497,10 +445,10 @@ impl Variable {
                             // If a user sees this error, then there is a logic problem in the stack unwind
                             "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location".to_string()
                         }
-                    } else if self.type_name == VariableType::Struct("None".to_string()) {
-                        "None".to_string()
-                    } else if matches!(&self.type_name, VariableType::Array{item_type_name: _,  count} if *count == 0)
+                    } else if matches!(self.type_name, VariableType::Struct(ref name) if name == "None")
                     {
+                        "None".to_string()
+                    } else if matches!(self.type_name, VariableType::Array { count: 0, .. }) {
                         self.formatted_variable_value(variable_cache, 0_usize, false)
                     } else {
                         format!(
@@ -510,7 +458,7 @@ impl Variable {
                     }
                 }
                 Err(error) => format!(
-                    "Failed to determine children for `Variable`:{}. {:?}",
+                    "Failed to determine children for `Variable`: {}. {:?}",
                     self.name, error
                 ),
             }
@@ -525,24 +473,6 @@ impl Variable {
     ) {
         if let VariableValue::Error(_) = self.value {
             // Nothing more to do ...
-            return;
-        }
-
-        if self.variable_node_type == VariableNodeType::SvdRegister
-            || self.variable_node_type == VariableNodeType::SvdField
-        {
-            // Special handling for SVD registers.
-            // Because we cache the SVD structure once per sesion, we have to re-read the actual register values whenever queried.
-            match memory.read_word_32(self.memory_location.memory_address().unwrap_or(u64::MAX)) {
-                Ok(u32_value) => self.value = VariableValue::Valid(u32_value.to_le().to_string()),
-                Err(error) => {
-                    self.value = VariableValue::Error(format!(
-                        "Unable to read peripheral register value @ {:#010X} : {:?}",
-                        self.memory_location.memory_address().unwrap_or(u64::MAX),
-                        error
-                    ))
-                }
-            }
             return;
         }
 
@@ -570,94 +500,8 @@ impl Variable {
             self.type_name
         );
 
-        // This is the primary logic for decoding a variable's value, once we know the type and memory_location.
-        let known_value = match &self.type_name {
-            VariableType::Base(name) => {
-                if self.memory_location == VariableLocation::Unknown {
-                    self.value = VariableValue::Empty;
-                    return;
-                }
-
-                match name.as_str() {
-                    "!" => VariableValue::Valid("<Never returns>".to_string()),
-                    "()" => VariableValue::Valid("()".to_string()),
-                    "bool" => bool::get_value(self, memory, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{err:?}")),
-                        |value| VariableValue::Valid(value.to_string()),
-                    ),
-                    "char" => char::get_value(self, memory, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{err:?}")),
-                        |value| VariableValue::Valid(value.to_string()),
-                    ),
-                    "i8" => i8::get_value(self, memory, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{err:?}")),
-                        |value| VariableValue::Valid(value.to_string()),
-                    ),
-                    "i16" => i16::get_value(self, memory, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{err:?}")),
-                        |value| VariableValue::Valid(value.to_string()),
-                    ),
-                    "i32" => i32::get_value(self, memory, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{err:?}")),
-                        |value| VariableValue::Valid(value.to_string()),
-                    ),
-                    "i64" => i64::get_value(self, memory, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{err:?}")),
-                        |value| VariableValue::Valid(value.to_string()),
-                    ),
-                    "i128" => i128::get_value(self, memory, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{err:?}")),
-                        |value| VariableValue::Valid(value.to_string()),
-                    ),
-                    "isize" => isize::get_value(self, memory, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{err:?}")),
-                        |value| VariableValue::Valid(value.to_string()),
-                    ),
-                    "u8" => u8::get_value(self, memory, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{err:?}")),
-                        |value| VariableValue::Valid(value.to_string()),
-                    ),
-                    "u16" => u16::get_value(self, memory, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{err:?}")),
-                        |value| VariableValue::Valid(value.to_string()),
-                    ),
-                    "u32" => u32::get_value(self, memory, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{err:?}")),
-                        |value| VariableValue::Valid(value.to_string()),
-                    ),
-                    "u64" => u64::get_value(self, memory, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{err:?}")),
-                        |value| VariableValue::Valid(value.to_string()),
-                    ),
-                    "u128" => u128::get_value(self, memory, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{err:?}")),
-                        |value| VariableValue::Valid(value.to_string()),
-                    ),
-                    "usize" => usize::get_value(self, memory, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{err:?}")),
-                        |value| VariableValue::Valid(value.to_string()),
-                    ),
-                    "f32" => f32::get_value(self, memory, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{err:?}")),
-                        |value| VariableValue::Valid(value.to_string()),
-                    ),
-                    "f64" => f64::get_value(self, memory, variable_cache).map_or_else(
-                        |err| VariableValue::Error(format!("{err:?}")),
-                        |value| VariableValue::Valid(value.to_string()),
-                    ),
-                    "None" => VariableValue::Valid("None".to_string()),
-                    _undetermined_value => VariableValue::Empty,
-                }
-            }
-            VariableType::Struct(name) if name == "&str" => {
-                String::get_value(self, memory, variable_cache).map_or_else(
-                    |err| VariableValue::Error(format!("{err:?}")),
-                    VariableValue::Valid,
-                )
-            }
-            _other => VariableValue::Empty,
-        };
-        self.value = known_value;
+        self.value =
+            language::from_dwarf(self.language).read_variable_value(self, memory, variable_cache);
     }
 
     /// The variable is considered to be an 'indexed' variable if the name starts with two underscores followed by a number. e.g. "__1".
@@ -687,7 +531,7 @@ impl Variable {
         indentation: usize,
         show_name: bool,
     ) -> String {
-        let line_feed = if indentation == 0 { "" } else { "\n" }.to_string();
+        let line_feed = if indentation == 0 { "" } else { "\n" };
         // Allow for chained `if let` without complaining
         #[allow(clippy::if_same_then_else)]
         if !self.value.is_empty() {
@@ -896,593 +740,8 @@ impl Variable {
             None
         }
     }
-}
 
-/// Traits and Impl's to read from, and write to, memory value based on Variable::typ and Variable::location.
-trait Value {
-    /// The MS DAP protocol passes the value as a string, so this trait is here to provide the memory read logic before returning it as a string.
-    fn get_value(
-        variable: &Variable,
-        memory: &mut dyn MemoryInterface,
-        _variable_cache: &variable_cache::VariableCache,
-    ) -> Result<Self, DebugError>
-    where
-        Self: Sized;
-
-    /// This `update_value` will update the target memory with a new value for the [`Variable`], ...
-    /// - Only `base` data types can have their value updated in target memory.
-    /// - The input format of the [Variable.value] is a [String], and the impl of this trait must convert the memory value appropriately before storing.
-    fn update_value(
-        variable: &Variable,
-        memory: &mut impl MemoryInterface,
-        new_value: &str,
-    ) -> Result<(), DebugError>;
-}
-
-impl Value for bool {
-    fn get_value(
-        variable: &Variable,
-        memory: &mut dyn MemoryInterface,
-        _variable_cache: &variable_cache::VariableCache,
-    ) -> Result<Self, DebugError> {
-        let mem_data = memory.read_word_8(variable.memory_location.memory_address()?)?;
-        let ret_value: bool = mem_data != 0;
-        Ok(ret_value)
-    }
-
-    fn update_value(
-        variable: &Variable,
-        memory: &mut impl MemoryInterface,
-        new_value: &str,
-    ) -> Result<(), DebugError> {
-        memory
-            .write_word_8(
-                variable.memory_location.memory_address()?,
-                <bool as FromStr>::from_str(new_value).map_err(|error| {
-                    DebugError::UnwindIncompleteResults {
-                        message: format!(
-                            "Invalid data conversion from value: {new_value:?}. {error:?}"
-                        ),
-                    }
-                })? as u8,
-            )
-            .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{error:?}"),
-            })
-    }
-}
-impl Value for char {
-    fn get_value(
-        variable: &Variable,
-        memory: &mut dyn MemoryInterface,
-        _variable_cache: &variable_cache::VariableCache,
-    ) -> Result<Self, DebugError> {
-        let mem_data = memory.read_word_32(variable.memory_location.memory_address()?)?;
-        if let Some(return_value) = char::from_u32(mem_data) {
-            Ok(return_value)
-        } else {
-            Ok('?')
-        }
-    }
-
-    fn update_value(
-        variable: &Variable,
-        memory: &mut impl MemoryInterface,
-        new_value: &str,
-    ) -> Result<(), DebugError> {
-        memory
-            .write_word_32(
-                variable.memory_location.memory_address()?,
-                <char as FromStr>::from_str(new_value).map_err(|error| {
-                    DebugError::UnwindIncompleteResults {
-                        message: format!(
-                            "Invalid data conversion from value: {new_value:?}. {error:?}"
-                        ),
-                    }
-                })? as u32,
-            )
-            .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{error:?}"),
-            })
-    }
-}
-impl Value for String {
-    fn get_value(
-        variable: &Variable,
-        memory: &mut dyn MemoryInterface,
-        variable_cache: &variable_cache::VariableCache,
-    ) -> Result<Self, DebugError> {
-        let mut str_value: String = "".to_owned();
-        if let Ok(children) = variable_cache.get_children(variable.variable_key) {
-            if !children.is_empty() {
-                let mut string_length = match children.iter().find(|child_variable| {
-                    child_variable.name == VariableName::Named("length".to_string())
-                }) {
-                    Some(string_length) => {
-                        if let VariableValue::Valid(length_value) = &string_length.value {
-                            length_value.parse().unwrap_or(0_usize)
-                        } else {
-                            0_usize
-                        }
-                    }
-                    None => 0_usize,
-                };
-                let string_location = match children.iter().find(|child_variable| {
-                    child_variable.name == VariableName::Named("data_ptr".to_string())
-                }) {
-                    Some(location_value) => {
-                        if let Ok(child_variables) =
-                            variable_cache.get_children(location_value.variable_key)
-                        {
-                            if let Some(first_child) = child_variables.first() {
-                                first_child.memory_location.memory_address()?
-                            } else {
-                                0_u64
-                            }
-                        } else {
-                            0_u64
-                        }
-                    }
-                    None => 0_u64,
-                };
-                if string_location == 0 {
-                    str_value = "Error: Failed to determine &str memory location".to_string();
-                } else {
-                    // Limit string length to work around buggy information, otherwise the debugger
-                    // can hang due to buggy debug information.
-                    //
-                    // TODO: If implemented, the variable should not be fetched automatically,
-                    // but only when requested by the user. This workaround can then be removed.
-                    if string_length > 200 {
-                        tracing::warn!(
-                            "Very long string ({} bytes), truncating to 200 bytes.",
-                            string_length
-                        );
-                        string_length = 200;
-                    }
-
-                    if string_length == 0 {
-                        // A string with length 0 doesn't need to be read from memory.
-                    } else {
-                        let mut buff = vec![0u8; string_length];
-                        memory.read(string_location, &mut buff)?;
-                        str_value = core::str::from_utf8(&buff)?.to_owned();
-                    }
-                }
-            } else {
-                str_value = "Error: Failed to evaluate &str value".to_string();
-            }
-        };
-        Ok(str_value)
-    }
-
-    fn update_value(
-        _variable: &Variable,
-        _memory: &mut impl MemoryInterface,
-        _new_value: &str,
-    ) -> Result<(), DebugError> {
-        Err(DebugError::UnwindIncompleteResults { message:"Unsupported datatype: \"String\". Please only update variables with a base data type.".to_string()})
-    }
-}
-impl Value for i8 {
-    fn get_value(
-        variable: &Variable,
-        memory: &mut dyn MemoryInterface,
-        _variable_cache: &variable_cache::VariableCache,
-    ) -> Result<Self, DebugError> {
-        let mut buff = [0u8; 1];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        let ret_value = i8::from_le_bytes(buff);
-        Ok(ret_value)
-    }
-
-    fn update_value(
-        variable: &Variable,
-        memory: &mut impl MemoryInterface,
-        new_value: &str,
-    ) -> Result<(), DebugError> {
-        memory
-            .write_word_8(
-                variable.memory_location.memory_address()?,
-                <i8 as FromStr>::from_str(new_value).map_err(|error| {
-                    DebugError::UnwindIncompleteResults {
-                        message: format!(
-                            "Invalid data conversion from value: {new_value:?}. {error:?}"
-                        ),
-                    }
-                })? as u8,
-            )
-            .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{error:?}"),
-            })
-    }
-}
-impl Value for i16 {
-    fn get_value(
-        variable: &Variable,
-        memory: &mut dyn MemoryInterface,
-        _variable_cache: &variable_cache::VariableCache,
-    ) -> Result<Self, DebugError> {
-        let mut buff = [0u8; 2];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        let ret_value = i16::from_le_bytes(buff);
-        Ok(ret_value)
-    }
-
-    fn update_value(
-        variable: &Variable,
-        memory: &mut impl MemoryInterface,
-        new_value: &str,
-    ) -> Result<(), DebugError> {
-        let buff = i16::to_le_bytes(<i16 as FromStr>::from_str(new_value).map_err(|error| {
-            DebugError::UnwindIncompleteResults {
-                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
-            }
-        })?);
-        memory
-            .write_8(variable.memory_location.memory_address()?, &buff)
-            .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{error:?}"),
-            })
-    }
-}
-impl Value for i32 {
-    fn get_value(
-        variable: &Variable,
-        memory: &mut dyn MemoryInterface,
-        _variable_cache: &variable_cache::VariableCache,
-    ) -> Result<Self, DebugError> {
-        let mut buff = [0u8; 4];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        let ret_value = i32::from_le_bytes(buff);
-        Ok(ret_value)
-    }
-
-    fn update_value(
-        variable: &Variable,
-        memory: &mut impl MemoryInterface,
-        new_value: &str,
-    ) -> Result<(), DebugError> {
-        let buff = i32::to_le_bytes(<i32 as FromStr>::from_str(new_value).map_err(|error| {
-            DebugError::UnwindIncompleteResults {
-                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
-            }
-        })?);
-        memory
-            .write_8(variable.memory_location.memory_address()?, &buff)
-            .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{error:?}"),
-            })
-    }
-}
-impl Value for i64 {
-    fn get_value(
-        variable: &Variable,
-        memory: &mut dyn MemoryInterface,
-        _variable_cache: &variable_cache::VariableCache,
-    ) -> Result<Self, DebugError> {
-        let mut buff = [0u8; 8];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        let ret_value = i64::from_le_bytes(buff);
-        Ok(ret_value)
-    }
-
-    fn update_value(
-        variable: &Variable,
-        memory: &mut impl MemoryInterface,
-        new_value: &str,
-    ) -> Result<(), DebugError> {
-        let buff = i64::to_le_bytes(<i64 as FromStr>::from_str(new_value).map_err(|error| {
-            DebugError::UnwindIncompleteResults {
-                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
-            }
-        })?);
-        memory
-            .write_8(variable.memory_location.memory_address()?, &buff)
-            .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{error:?}"),
-            })
-    }
-}
-impl Value for i128 {
-    fn get_value(
-        variable: &Variable,
-        memory: &mut dyn MemoryInterface,
-        _variable_cache: &variable_cache::VariableCache,
-    ) -> Result<Self, DebugError> {
-        let mut buff = [0u8; 16];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        let ret_value = i128::from_le_bytes(buff);
-        Ok(ret_value)
-    }
-
-    fn update_value(
-        variable: &Variable,
-        memory: &mut impl MemoryInterface,
-        new_value: &str,
-    ) -> Result<(), DebugError> {
-        let buff = i128::to_le_bytes(<i128 as FromStr>::from_str(new_value).map_err(|error| {
-            DebugError::UnwindIncompleteResults {
-                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
-            }
-        })?);
-        memory
-            .write_8(variable.memory_location.memory_address()?, &buff)
-            .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{error:?}"),
-            })
-    }
-}
-impl Value for isize {
-    fn get_value(
-        variable: &Variable,
-        memory: &mut dyn MemoryInterface,
-        _variable_cache: &variable_cache::VariableCache,
-    ) -> Result<Self, DebugError> {
-        let mut buff = [0u8; 4];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        // TODO: We can get the actual WORD length from [DWARF] instead of assuming `u32`
-        let ret_value = i32::from_le_bytes(buff);
-        Ok(ret_value as isize)
-    }
-
-    fn update_value(
-        variable: &Variable,
-        memory: &mut impl MemoryInterface,
-        new_value: &str,
-    ) -> Result<(), DebugError> {
-        let buff =
-            isize::to_le_bytes(<isize as FromStr>::from_str(new_value).map_err(|error| {
-                DebugError::UnwindIncompleteResults {
-                    message: format!(
-                        "Invalid data conversion from value: {new_value:?}. {error:?}"
-                    ),
-                }
-            })?);
-        memory
-            .write_8(variable.memory_location.memory_address()?, &buff)
-            .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{error:?}"),
-            })
-    }
-}
-impl Value for u8 {
-    fn get_value(
-        variable: &Variable,
-        memory: &mut dyn MemoryInterface,
-        _variable_cache: &variable_cache::VariableCache,
-    ) -> Result<Self, DebugError> {
-        let mut buff = [0u8; 1];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        let ret_value = u8::from_le_bytes(buff);
-        Ok(ret_value)
-    }
-
-    fn update_value(
-        variable: &Variable,
-        memory: &mut impl MemoryInterface,
-        new_value: &str,
-    ) -> Result<(), DebugError> {
-        memory
-            .write_word_8(
-                variable.memory_location.memory_address()?,
-                <u8 as FromStr>::from_str(new_value).map_err(|error| {
-                    DebugError::UnwindIncompleteResults {
-                        message: format!(
-                            "Invalid data conversion from value: {new_value:?}. {error:?}"
-                        ),
-                    }
-                })?,
-            )
-            .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{error:?}"),
-            })
-    }
-}
-impl Value for u16 {
-    fn get_value(
-        variable: &Variable,
-        memory: &mut dyn MemoryInterface,
-        _variable_cache: &variable_cache::VariableCache,
-    ) -> Result<Self, DebugError> {
-        let mut buff = [0u8; 2];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        let ret_value = u16::from_le_bytes(buff);
-        Ok(ret_value)
-    }
-
-    fn update_value(
-        variable: &Variable,
-        memory: &mut impl MemoryInterface,
-        new_value: &str,
-    ) -> Result<(), DebugError> {
-        let buff = u16::to_le_bytes(<u16 as FromStr>::from_str(new_value).map_err(|error| {
-            DebugError::UnwindIncompleteResults {
-                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
-            }
-        })?);
-        memory
-            .write_8(variable.memory_location.memory_address()?, &buff)
-            .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{error:?}"),
-            })
-    }
-}
-impl Value for u32 {
-    fn get_value(
-        variable: &Variable,
-        memory: &mut dyn MemoryInterface,
-        _variable_cache: &variable_cache::VariableCache,
-    ) -> Result<Self, DebugError> {
-        let mut buff = [0u8; 4];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        let ret_value = u32::from_le_bytes(buff);
-        Ok(ret_value)
-    }
-
-    fn update_value(
-        variable: &Variable,
-        memory: &mut impl MemoryInterface,
-        new_value: &str,
-    ) -> Result<(), DebugError> {
-        let buff = u32::to_le_bytes(<u32 as FromStr>::from_str(new_value).map_err(|error| {
-            DebugError::UnwindIncompleteResults {
-                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
-            }
-        })?);
-        memory
-            .write_8(variable.memory_location.memory_address()?, &buff)
-            .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{error:?}"),
-            })
-    }
-}
-impl Value for u64 {
-    fn get_value(
-        variable: &Variable,
-        memory: &mut dyn MemoryInterface,
-        _variable_cache: &variable_cache::VariableCache,
-    ) -> Result<Self, DebugError> {
-        let mut buff = [0u8; 8];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        let ret_value = u64::from_le_bytes(buff);
-        Ok(ret_value)
-    }
-
-    fn update_value(
-        variable: &Variable,
-        memory: &mut impl MemoryInterface,
-        new_value: &str,
-    ) -> Result<(), DebugError> {
-        let buff = u64::to_le_bytes(<u64 as FromStr>::from_str(new_value).map_err(|error| {
-            DebugError::UnwindIncompleteResults {
-                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
-            }
-        })?);
-        memory
-            .write_8(variable.memory_location.memory_address()?, &buff)
-            .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{error:?}"),
-            })
-    }
-}
-impl Value for u128 {
-    fn get_value(
-        variable: &Variable,
-        memory: &mut dyn MemoryInterface,
-        _variable_cache: &variable_cache::VariableCache,
-    ) -> Result<Self, DebugError> {
-        let mut buff = [0u8; 16];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        let ret_value = u128::from_le_bytes(buff);
-        Ok(ret_value)
-    }
-
-    fn update_value(
-        variable: &Variable,
-        memory: &mut impl MemoryInterface,
-        new_value: &str,
-    ) -> Result<(), DebugError> {
-        let buff = u128::to_le_bytes(<u128 as FromStr>::from_str(new_value).map_err(|error| {
-            DebugError::UnwindIncompleteResults {
-                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
-            }
-        })?);
-        memory
-            .write_8(variable.memory_location.memory_address()?, &buff)
-            .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{error:?}"),
-            })
-    }
-}
-impl Value for usize {
-    fn get_value(
-        variable: &Variable,
-        memory: &mut dyn MemoryInterface,
-        _variable_cache: &variable_cache::VariableCache,
-    ) -> Result<Self, DebugError> {
-        let mut buff = [0u8; 4];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        // TODO: We can get the actual WORD length from [DWARF] instead of assuming `u32`
-        let ret_value = u32::from_le_bytes(buff);
-        Ok(ret_value as usize)
-    }
-
-    fn update_value(
-        variable: &Variable,
-        memory: &mut impl MemoryInterface,
-        new_value: &str,
-    ) -> Result<(), DebugError> {
-        let buff =
-            usize::to_le_bytes(<usize as FromStr>::from_str(new_value).map_err(|error| {
-                DebugError::UnwindIncompleteResults {
-                    message: format!(
-                        "Invalid data conversion from value: {new_value:?}. {error:?}"
-                    ),
-                }
-            })?);
-        memory
-            .write_8(variable.memory_location.memory_address()?, &buff)
-            .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{error:?}"),
-            })
-    }
-}
-impl Value for f32 {
-    fn get_value(
-        variable: &Variable,
-        memory: &mut dyn MemoryInterface,
-        _variable_cache: &variable_cache::VariableCache,
-    ) -> Result<Self, DebugError> {
-        let mut buff = [0u8; 4];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        let ret_value = f32::from_le_bytes(buff);
-        Ok(ret_value)
-    }
-
-    fn update_value(
-        variable: &Variable,
-        memory: &mut impl MemoryInterface,
-        new_value: &str,
-    ) -> Result<(), DebugError> {
-        let buff = f32::to_le_bytes(<f32 as FromStr>::from_str(new_value).map_err(|error| {
-            DebugError::UnwindIncompleteResults {
-                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
-            }
-        })?);
-        memory
-            .write_8(variable.memory_location.memory_address()?, &buff)
-            .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{error:?}"),
-            })
-    }
-}
-impl Value for f64 {
-    fn get_value(
-        variable: &Variable,
-        memory: &mut dyn MemoryInterface,
-        _variable_cache: &variable_cache::VariableCache,
-    ) -> Result<Self, DebugError> {
-        let mut buff = [0u8; 8];
-        memory.read(variable.memory_location.memory_address()?, &mut buff)?;
-        let ret_value = f64::from_le_bytes(buff);
-        Ok(ret_value)
-    }
-
-    fn update_value(
-        variable: &Variable,
-        memory: &mut impl MemoryInterface,
-        new_value: &str,
-    ) -> Result<(), DebugError> {
-        let buff = f64::to_le_bytes(<f64 as FromStr>::from_str(new_value).map_err(|error| {
-            DebugError::UnwindIncompleteResults {
-                message: format!("Invalid data conversion from value: {new_value:?}. {error:?}"),
-            }
-        })?);
-        memory
-            .write_8(variable.memory_location.memory_address()?, &buff)
-            .map_err(|error| DebugError::UnwindIncompleteResults {
-                message: format!("{error:?}"),
-            })
+    pub(crate) fn subrange_bounds(&self) -> Range<i64> {
+        self.range_lower_bound..self.range_upper_bound
     }
 }

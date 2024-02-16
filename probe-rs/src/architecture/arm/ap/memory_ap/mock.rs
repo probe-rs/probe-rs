@@ -6,7 +6,7 @@ use crate::architecture::arm::{
     dp::{DpAccess, DpRegister},
     ArmError, DpAddress,
 };
-use crate::DebugProbeError;
+use crate::probe::DebugProbeError;
 use std::collections::HashMap;
 use std::convert::TryInto;
 
@@ -19,15 +19,21 @@ pub struct MockMemoryAp {
 impl MockMemoryAp {
     /// Creates a MockMemoryAp with the memory filled with a pattern where each byte is equal to its
     /// own address plus one (to avoid zeros). The pattern can be used as a canary pattern to ensure
-    /// writes do not clobber adjacent memory. The memory is also quite small so it can be feasibly
-    /// printed out for debugging.
+    /// writes do not clobber adjacent memory.
     pub fn with_pattern() -> Self {
+        Self::with_pattern_and_size(1 << 15)
+    }
+
+    /// Creates a MockMemoryAp with the given size where the memory filled with a pattern where each
+    /// byte is equal to its own address plus one (to avoid zeros). The pattern can be used as a
+    /// canary pattern to ensure writes do not clobber adjacent memory.
+    pub fn with_pattern_and_size(size: usize) -> Self {
         let mut store = HashMap::new();
         store.insert(CSW::ADDRESS, 0);
         store.insert(TAR::ADDRESS, 0);
         store.insert(DRW::ADDRESS, 0);
         Self {
-            memory: std::iter::repeat(1..=255).flatten().take(1 << 15).collect(),
+            memory: std::iter::repeat(1..=255).flatten().take(size).collect(),
             store,
         }
     }

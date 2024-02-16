@@ -1,7 +1,10 @@
 use super::*;
-use crate::Error;
+use crate::{
+    debug::{stack_frame::StackFrameInfo, unit_info::UnitInfo},
+    Error,
+};
 use anyhow::anyhow;
-use gimli::{DebugInfoOffset, UnitOffset, UnitSectionOffset};
+use gimli::UnitOffset;
 use probe_rs_target::MemoryRange;
 use serde::{Serialize, Serializer};
 use std::{
@@ -69,16 +72,16 @@ impl Serialize for VariableCache {
                     };
 
                     VariableTreeNode {
-                                    name: child_variable.name,
-                                    type_name: child_variable.type_name,
-                                    value ,
-                                    children: if child_variable.range_upper_bound > 50 {
-                                        // Empty Vec's will show as variables with no children.
-                                        Vec::new()
-                                    } else {
-                                        recurse_variables(variable_cache, child_variable.variable_key)
-                                    },
-                                                    }
+                        name: child_variable.name,
+                        type_name: child_variable.type_name,
+                        value,
+                        children: if child_variable.range_upper_bound > 50 {
+                            // Empty Vec's will show as variables with no children.
+                            Vec::new()
+                        } else {
+                            recurse_variables(variable_cache, child_variable.variable_key)
+                        },
+                    }
                 })
                 .collect::<Vec<VariableTreeNode>>()
         }
@@ -103,31 +106,21 @@ impl VariableCache {
 
     /// Create a variable cache based on DWARF debug information
     ///
-    /// The `header_offset` and `entries_offset` values are used to
+    /// The `entries_offset` and `unit_info` values are used to
     /// extract the variable information from the debug information.
     ///
     /// The entries form a tree, only entries below the entry
     /// at `entries_offset` are considered when filling the cache.
     pub fn new_dwarf_cache(
-        header_offset: UnitSectionOffset,
         entries_offset: UnitOffset,
         name: VariableName,
+        unit_info: Option<&UnitInfo>,
     ) -> Self {
-        let mut static_root_variable =
-            Variable::new(header_offset.as_debug_info_offset(), Some(entries_offset));
+        let mut static_root_variable = Variable::new(Some(entries_offset), unit_info);
         static_root_variable.variable_node_type = VariableNodeType::DirectLookup;
         static_root_variable.name = name;
 
         VariableCache::new(static_root_variable)
-    }
-
-    /// Create a new cache for SVD variables
-    pub fn new_svd_cache() -> Self {
-        let mut device_root_variable = Variable::new(None, None);
-        device_root_variable.variable_node_type = VariableNodeType::DoNotRecurse;
-        device_root_variable.name = VariableName::PeripheralScopeRoot;
-
-        VariableCache::new(device_root_variable)
     }
 
     /// Get the root variable of the cache
@@ -155,16 +148,16 @@ impl VariableCache {
     pub fn create_variable(
         &mut self,
         parent_key: ObjectRef,
-        header_offset: Option<DebugInfoOffset>,
         entries_offset: Option<UnitOffset>,
+        unit_info: Option<&UnitInfo>,
     ) -> Result<Variable, Error> {
-        let mut variable_to_add = Variable::new(header_offset, entries_offset);
         // Validate that the parent_key exists ...
-        if self.variable_hash_map.contains_key(&parent_key) {
-            variable_to_add.parent_key = parent_key;
-        } else {
-            return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {:?}. Please report this as a bug", variable_to_add.name, parent_key).into());
+        if !self.variable_hash_map.contains_key(&parent_key) {
+            return Err(anyhow!("VariableCache: Attempted to add a new variable with non existent `parent_key`: {:?}. Please report this as a bug", parent_key).into());
         }
+
+        let mut variable_to_add = Variable::new(entries_offset, unit_info);
+        variable_to_add.parent_key = parent_key;
 
         // The caller is telling us this is definitely a new `Variable`
         variable_to_add.variable_key = get_object_reference();
@@ -447,10 +440,9 @@ impl VariableCache {
         debug_info: &DebugInfo,
         memory: &mut dyn MemoryInterface,
         parent_variable: Option<&mut Variable>,
-        registers: &DebugRegisters,
-        frame_base: Option<u64>,
         max_recursion_depth: usize,
         current_recursion_depth: usize,
+        frame_info: StackFrameInfo<'_>,
     ) {
         if current_recursion_depth >= max_recursion_depth {
             return;
@@ -465,14 +457,9 @@ impl VariableCache {
             return;
         }
         .clone();
+
         if debug_info
-            .cache_deferred_variables(
-                self,
-                memory,
-                &mut variable_to_recurse,
-                registers,
-                frame_base,
-            )
+            .cache_deferred_variables(self, memory, &mut variable_to_recurse, frame_info)
             .is_err()
         {
             return;
@@ -482,16 +469,15 @@ impl VariableCache {
                 debug_info,
                 memory,
                 Some(&mut child),
-                registers,
-                frame_base,
                 max_recursion_depth,
                 current_recursion_depth + 1,
+                frame_info,
             );
         }
     }
 
     /// Traverse the `VariableCache` and return a Vec of all the memory ranges that are referenced by the variables.
-    /// This is used to determine which memory ranges to read from the target when creating a 'default' [`crate::core::CoreDump`].
+    /// This is used to determine which memory ranges to read from the target when creating a 'default' [`crate::CoreDump`].
     pub fn get_discrete_memory_ranges(&self) -> Vec<Range<u64>> {
         let mut memory_ranges: Vec<Range<u64>> = Vec::new();
         for variable in self.variable_hash_map.values() {
@@ -568,7 +554,7 @@ impl VariableCache {
 
 #[cfg(test)]
 mod test {
-    use gimli::{DebugInfoOffset, UnitOffset};
+    use gimli::UnitOffset;
     use termtree::Tree;
 
     use crate::debug::{
@@ -602,11 +588,7 @@ mod test {
 
     #[test]
     fn static_cache() {
-        let c = VariableCache::new_dwarf_cache(
-            DebugInfoOffset(0).into(),
-            UnitOffset(0),
-            VariableName::StaticScopeRoot,
-        );
+        let c = VariableCache::new_dwarf_cache(UnitOffset(0), VariableName::StaticScopeRoot, None);
 
         let cache_variable = c.root_variable();
 
@@ -622,7 +604,7 @@ mod test {
 
         assert_eq!(cache_variable.get_value(&c), "Unknown");
 
-        assert_eq!(cache_variable.source_location, None);
+        assert_eq!(cache_variable.source_location, Default::default());
         assert_eq!(cache_variable.memory_location, VariableLocation::Unknown);
         assert_eq!(cache_variable.byte_size, None);
         assert_eq!(cache_variable.member_index, None);
@@ -633,7 +615,11 @@ mod test {
 
     #[test]
     fn find_children() {
-        let mut cache = VariableCache::new_svd_cache();
+        let mut cache = VariableCache::new_dwarf_cache(
+            UnitOffset(0),
+            VariableName::Named("root".to_string()),
+            None,
+        );
         let root_key = cache.root_variable().variable_key;
 
         let var_1 = cache.create_variable(root_key, None, None).unwrap();
@@ -649,7 +635,11 @@ mod test {
 
     #[test]
     fn find_entry() {
-        let mut cache = VariableCache::new_svd_cache();
+        let mut cache = VariableCache::new_dwarf_cache(
+            UnitOffset(0),
+            VariableName::Named("root".to_string()),
+            None,
+        );
         let root_key = cache.root_variable().variable_key;
 
         let var_1 = cache.create_variable(root_key, None, None).unwrap();
@@ -676,7 +666,11 @@ mod test {
     ///     |
     ///     +-- [var_7]
     fn build_test_tree() -> (VariableCache, Vec<Variable>) {
-        let mut cache = VariableCache::new_svd_cache();
+        let mut cache = VariableCache::new_dwarf_cache(
+            UnitOffset(0),
+            VariableName::Named("root".to_string()),
+            None,
+        );
         let root_key = cache.root_variable().variable_key;
 
         let var_1 = cache.create_variable(root_key, None, None).unwrap();

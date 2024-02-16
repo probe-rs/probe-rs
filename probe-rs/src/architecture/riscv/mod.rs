@@ -8,8 +8,10 @@ use crate::{
         Architecture, BreakpointCause, CoreInformation, CoreRegisters, RegisterId, RegisterValue,
     },
     memory::valid_32bit_address,
-    memory_mapped_bitfield_register, CoreInterface, CoreRegister, CoreStatus, CoreType, Error,
-    HaltReason, InstructionSet, MemoryInterface, MemoryMappedRegister,
+    memory_mapped_bitfield_register,
+    probe::DebugProbeError,
+    CoreInterface, CoreRegister, CoreStatus, CoreType, Error, HaltReason, InstructionSet,
+    MemoryInterface, MemoryMappedRegister,
 };
 use anyhow::{anyhow, Result};
 use bitfield::bitfield;
@@ -22,51 +24,42 @@ pub(crate) mod registers;
 pub use registers::PC;
 pub(crate) mod assembly;
 pub mod communication_interface;
-mod dtm;
+pub(crate) mod dtm;
 pub mod sequences;
 
 /// An interface to operate RISC-V cores.
 pub struct Riscv32<'probe> {
+    hart: u32,
     interface: &'probe mut RiscvCommunicationInterface,
     state: &'probe mut RiscVState,
-    id: usize,
 }
 
 impl<'probe> Riscv32<'probe> {
     /// Create a new RISC-V interface.
     pub fn new(
+        hart: u32,
         interface: &'probe mut RiscvCommunicationInterface,
         state: &'probe mut RiscVState,
-        id: usize,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, RiscvError> {
+        if !interface.hart_enabled(hart) {
+            return Err(RiscvError::HartUnavailable);
+        }
+
+        Ok(Self {
+            hart,
             interface,
             state,
-            id,
-        }
+        })
     }
 
     fn read_csr(&mut self, address: u16) -> Result<u32, RiscvError> {
-        // We need to use the "Access Register Command",
-        // which has cmdtype 0
-
-        // write needs to be clear
-        // transfer has to be set
-
-        tracing::debug!("Reading CSR {:#x}", address);
-
-        // always try to read register with abstract command, fallback to program buffer,
-        // if not supported
-        match self.interface.abstract_cmd_register_read(address) {
-            Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
-                tracing::debug!("Could not read core register {:#x} with abstract command, falling back to program buffer", address);
-                self.interface.read_csr_progbuf(address)
-            }
-            other => other,
-        }
+        self.interface.select_hart(self.hart)?;
+        self.interface.read_csr(address)
     }
 
     fn write_csr(&mut self, address: u16, value: u32) -> Result<(), RiscvError> {
+        self.interface.select_hart(self.hart)?;
+
         tracing::debug!("Writing CSR {:#x}", address);
 
         match self.interface.abstract_cmd_register_write(address, value) {
@@ -80,10 +73,11 @@ impl<'probe> Riscv32<'probe> {
 
     // Resume the core.
     fn resume_core(&mut self) -> Result<(), crate::Error> {
+        self.interface.select_hart(self.hart)?;
+
         // set resume request.
-        let mut dmcontrol = Dmcontrol(0);
+        let mut dmcontrol: Dmcontrol = self.interface.read_dm_register()?;
         dmcontrol.set_resumereq(true);
-        dmcontrol.set_dmactive(true);
         self.interface.write_dm_register(dmcontrol)?;
 
         // check if request has been acknowleged.
@@ -93,8 +87,7 @@ impl<'probe> Riscv32<'probe> {
         };
 
         // clear resume request.
-        let mut dmcontrol = Dmcontrol(0);
-        dmcontrol.set_dmactive(true);
+        dmcontrol.set_resumereq(false);
         self.interface.write_dm_register(dmcontrol)?;
 
         Ok(())
@@ -105,6 +98,8 @@ impl<'probe> Riscv32<'probe> {
     /// Returns a cached value if available, otherwise queries the
     /// `hasresethaltreq` bit in the `dmstatus` register.
     fn supports_reset_halt_req(&mut self) -> Result<bool, crate::Error> {
+        self.interface.select_hart(self.hart)?;
+
         if let Some(has_reset_halt_req) = self.state.hasresethaltreq {
             Ok(has_reset_halt_req)
         } else {
@@ -172,28 +167,21 @@ impl<'probe> Riscv32<'probe> {
 
 impl<'probe> CoreInterface for Riscv32<'probe> {
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), crate::Error> {
-        let start = Instant::now();
-
-        while start.elapsed() < timeout {
-            let dmstatus: Dmstatus = self.interface.read_dm_register()?;
-
-            tracing::trace!("{:?}", dmstatus);
-
-            if dmstatus.allhalted() {
-                return Ok(());
-            }
-        }
-
-        Err(Error::Riscv(RiscvError::Timeout))
+        self.interface.select_hart(self.hart)?;
+        Ok(self.interface.wait_for_core_halted(timeout)?)
     }
 
     fn core_halted(&mut self) -> Result<bool, crate::Error> {
+        self.interface.select_hart(self.hart)?;
+
         let dmstatus: Dmstatus = self.interface.read_dm_register()?;
 
         Ok(dmstatus.allhalted())
     }
 
     fn status(&mut self) -> Result<crate::core::CoreStatus, crate::Error> {
+        self.interface.select_hart(self.hart)?;
+
         // TODO: We should use hartsum to determine if any hart is halted
         //       quickly
 
@@ -234,40 +222,13 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, crate::Error> {
-        // write 1 to the haltreq register, which is part
-        // of the dmcontrol register
-
-        if tracing::enabled!(tracing::Level::DEBUG) {
-            // For some reason inlining this read into the log macro causes it to be printed
-            // even if debug prints are disabled.
-            let dmc = self.interface.read_dm_register::<Dmcontrol>()?;
-            tracing::debug!(
-                "Before requesting halt, the Dmcontrol register value was: {:?}",
-                dmc
-            );
-        }
-
-        let mut dmcontrol = Dmcontrol(0);
-
-        dmcontrol.set_haltreq(true);
-        dmcontrol.set_dmactive(true);
-
-        self.interface.write_dm_register(dmcontrol)?;
-
-        self.wait_for_core_halted(timeout)?;
-
-        // clear the halt request
-        let mut dmcontrol = Dmcontrol(0);
-
-        dmcontrol.set_dmactive(true);
-
-        self.interface.write_dm_register(dmcontrol)?;
-
-        let pc = self.read_core_reg(self.program_counter().into())?;
-
-        Ok(CoreInformation { pc: pc.try_into()? })
+        self.interface.select_hart(self.hart)?;
+        Ok(self.interface.halt(timeout)?)
     }
+
     fn run(&mut self) -> Result<(), crate::Error> {
+        self.interface.select_hart(self.hart)?;
+
         // Before we run, we always perform a single instruction step, to account for possible breakpoints that might get us stuck on the current instruction.
         self.step()?;
 
@@ -278,11 +239,13 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn reset(&mut self) -> Result<(), crate::Error> {
+        self.interface.select_hart(self.hart)?;
+
         match self.reset_and_halt(Duration::from_millis(500)) {
             Ok(_) => self.resume_core()?,
             Err(error) => {
-                return Err(RiscvError::DebugProbe(crate::DebugProbeError::Other(
-                    anyhow::anyhow!("Error during reset : {:?}", error),
+                return Err(RiscvError::DebugProbe(DebugProbeError::Other(
+                    anyhow::anyhow!("Error during reset").context(error),
                 ))
                 .into());
             }
@@ -294,10 +257,11 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         &mut self,
         timeout: Duration,
     ) -> Result<crate::core::CoreInformation, crate::Error> {
+        self.interface.select_hart(self.hart)?;
+
         tracing::debug!("Resetting core, setting hartreset bit");
 
-        let mut dmcontrol = Dmcontrol(0);
-        dmcontrol.set_dmactive(true);
+        let mut dmcontrol: Dmcontrol = self.interface.read_dm_register()?;
         dmcontrol.set_hartreset(true);
         dmcontrol.set_haltreq(true);
 
@@ -310,7 +274,6 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             tracing::debug!("Clearing hartreset bit");
             // Reset is performed by setting the bit high, and then low again
             let mut dmcontrol = readback;
-            dmcontrol.set_dmactive(true);
             dmcontrol.set_hartreset(false);
 
             self.interface.write_dm_register(dmcontrol)?;
@@ -319,16 +282,13 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             //
             // TODO: Cache this
             tracing::debug!("Hartreset bit not supported, using ndmreset");
-            let mut dmcontrol = Dmcontrol(0);
-            dmcontrol.set_dmactive(true);
+            dmcontrol.set_hartreset(false);
             dmcontrol.set_ndmreset(true);
             dmcontrol.set_haltreq(true);
 
             self.interface.write_dm_register(dmcontrol)?;
 
             tracing::debug!("Clearing ndmreset bit");
-            let mut dmcontrol = Dmcontrol(0);
-            dmcontrol.set_dmactive(true);
             dmcontrol.set_ndmreset(false);
             dmcontrol.set_haltreq(true);
 
@@ -352,7 +312,8 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
         // acknowledge the reset, clear the halt request
         let mut dmcontrol = Dmcontrol(0);
-        dmcontrol.set_dmactive(true);
+        dmcontrol.set_hartreset(false);
+        dmcontrol.set_ndmreset(false);
         dmcontrol.set_ackhavereset(true);
 
         self.interface.write_dm_register(dmcontrol)?;
@@ -366,6 +327,8 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn step(&mut self) -> Result<crate::core::CoreInformation, crate::Error> {
+        self.interface.select_hart(self.hart)?;
+
         let halt_reason = self.status()?;
         let flashing_done = self.state.hw_breakpoints_enabled;
         if matches!(
@@ -431,6 +394,8 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn read_core_reg(&mut self, address: RegisterId) -> Result<RegisterValue, crate::Error> {
+        self.interface.select_hart(self.hart)?;
+
         self.read_csr(address.0)
             .map(|v| v.into())
             .map_err(|e| e.into())
@@ -441,11 +406,15 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         address: RegisterId,
         value: RegisterValue,
     ) -> Result<(), crate::Error> {
+        self.interface.select_hart(self.hart)?;
+
         let value: u32 = value.try_into()?;
         self.write_csr(address.0, value).map_err(|e| e.into())
     }
 
     fn available_breakpoint_units(&mut self) -> Result<u32, crate::Error> {
+        self.interface.select_hart(self.hart)?;
+
         // TODO: This should probably only be done once, when initialising
 
         tracing::debug!("Determining number of HW breakpoints supported");
@@ -519,6 +488,14 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     /// See docs on the [`CoreInterface::hw_breakpoints`] trait
     /// NOTE: For riscv, this assumes that only execution breakpoints are used.
     fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
+        // this can be called w/o halting the core via Session::new - temporarily halt if not halted
+        self.interface.select_hart(self.hart)?;
+
+        let was_running = !self.core_halted()?;
+        if was_running {
+            self.halt(Duration::from_millis(100))?;
+        }
+
         let tselect = 0x7a0;
         let tdata1 = 0x7a1;
         let tdata2 = 0x7a2;
@@ -532,7 +509,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             // Read the trigger "configuration" data.
             let tdata_value = Mcontrol(self.read_csr(tdata1)?);
 
-            tracing::warn!("Breakpoint {}: {:?}", bp_unit_index, tdata_value);
+            tracing::debug!("Breakpoint {}: {:?}", bp_unit_index, tdata_value);
 
             // The trigger must be active in at least a single mode
             let trigger_any_mode_active = tdata_value.m() || tdata_value.s() || tdata_value.u();
@@ -554,10 +531,16 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             }
         }
 
+        if was_running {
+            self.resume_core()?;
+        }
+
         Ok(breakpoints)
     }
 
     fn enable_breakpoints(&mut self, state: bool) -> Result<(), crate::Error> {
+        self.interface.select_hart(self.hart)?;
+
         // Loop through all triggers, and enable/disable them.
         let tselect = 0x7a0;
         let tdata1 = 0x7a1;
@@ -593,6 +576,8 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn set_hw_breakpoint(&mut self, bp_unit_index: usize, addr: u64) -> Result<(), crate::Error> {
+        self.interface.select_hart(self.hart)?;
+
         let addr = valid_32bit_address(addr)?;
 
         if !self.hw_breakpoints_enabled() {
@@ -604,7 +589,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         let tdata1 = 0x7a1;
         let tdata2 = 0x7a2;
 
-        tracing::warn!("Setting breakpoint {}", bp_unit_index);
+        tracing::debug!("Setting breakpoint {}", bp_unit_index);
 
         self.write_csr(tselect, bp_unit_index as u32)?;
 
@@ -647,6 +632,14 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), crate::Error> {
+        // this can be called w/o halting the core via Session::new - temporarily halt if not halted
+        self.interface.select_hart(self.hart)?;
+
+        let was_running = !self.core_halted()?;
+        if was_running {
+            self.halt(Duration::from_millis(100))?;
+        }
+
         let tselect = 0x7a0;
         let tdata1 = 0x7a1;
         let tdata2 = 0x7a2;
@@ -654,6 +647,10 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         self.write_csr(tselect, unit_index as u32)?;
         self.write_csr(tdata1, 0)?;
         self.write_csr(tdata2, 0)?;
+
+        if was_running {
+            self.resume_core()?;
+        }
 
         Ok(())
     }
@@ -683,6 +680,8 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), crate::error::Error> {
+        self.interface.select_hart(self.hart)?;
+
         let mut dcsr = Dcsr(self.read_core_reg(RegisterId(0x7b0))?.try_into()?);
 
         dcsr.set_ebreakm(enabled);
@@ -721,6 +720,8 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
+        self.interface.select_hart(self.hart)?;
+
         // Read the extensions from the Machine ISA regiseter.
         let isa_extensions =
             Misa::from(self.read_csr(Misa::get_mmio_address() as u16)?).extensions();
@@ -729,11 +730,9 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         Ok(isa_extensions & mask != 0)
     }
 
-    fn id(&self) -> usize {
-        self.id
-    }
-
     fn reset_catch_set(&mut self) -> Result<(), Error> {
+        self.interface.select_hart(self.hart)?;
+
         if !self.supports_reset_halt_req()? {
             return Err(Error::Riscv(RiscvError::ResetHaltRequestNotSupported));
         }
@@ -748,6 +747,8 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn reset_catch_clear(&mut self) -> Result<(), Error> {
+        self.interface.select_hart(self.hart)?;
+
         if !self.supports_reset_halt_req()? {
             return Err(Error::Riscv(RiscvError::ResetHaltRequestNotSupported));
         }
@@ -762,6 +763,8 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
     }
 
     fn debug_core_stop(&mut self) -> Result<(), Error> {
+        self.interface.select_hart(self.hart)?;
+
         self.debug_on_sw_breakpoint(false)?;
         Ok(())
     }
@@ -773,54 +776,87 @@ impl<'probe> MemoryInterface for Riscv32<'probe> {
     }
 
     fn read_word_64(&mut self, address: u64) -> Result<u64, crate::error::Error> {
+        self.interface.select_hart(self.hart)?;
         self.interface.read_word_64(address)
     }
 
     fn read_word_32(&mut self, address: u64) -> Result<u32, Error> {
+        self.interface.select_hart(self.hart)?;
         self.interface.read_word_32(address)
     }
 
+    fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
+        self.interface.select_hart(self.hart)?;
+        self.interface.read_word_16(address)
+    }
+
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
+        self.interface.select_hart(self.hart)?;
         self.interface.read_word_8(address)
     }
 
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
+        self.interface.select_hart(self.hart)?;
         self.interface.read_64(address, data)
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
+        self.interface.select_hart(self.hart)?;
         self.interface.read_32(address, data)
     }
 
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
+        self.interface.select_hart(self.hart)?;
+        self.interface.read_16(address, data)
+    }
+
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
+        self.interface.select_hart(self.hart)?;
         self.interface.read_8(address, data)
     }
 
     fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
+        self.interface.select_hart(self.hart)?;
         self.interface.write_word_64(address, data)
     }
 
     fn write_word_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
+        self.interface.select_hart(self.hart)?;
         self.interface.write_word_32(address, data)
     }
 
+    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
+        self.interface.select_hart(self.hart)?;
+        self.interface.write_word_16(address, data)
+    }
+
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
+        self.interface.select_hart(self.hart)?;
         self.interface.write_word_8(address, data)
     }
 
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
+        self.interface.select_hart(self.hart)?;
         self.interface.write_64(address, data)
     }
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
+        self.interface.select_hart(self.hart)?;
         self.interface.write_32(address, data)
     }
 
+    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
+        self.interface.select_hart(self.hart)?;
+        self.interface.write_16(address, data)
+    }
+
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
+        self.interface.select_hart(self.hart)?;
         self.interface.write_8(address, data)
     }
 
     fn write(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
+        self.interface.select_hart(self.hart)?;
         self.interface.write(address, data)
     }
 
@@ -829,6 +865,7 @@ impl<'probe> MemoryInterface for Riscv32<'probe> {
     }
 
     fn flush(&mut self) -> Result<(), Error> {
+        self.interface.select_hart(self.hart)?;
         self.interface.flush()
     }
 }

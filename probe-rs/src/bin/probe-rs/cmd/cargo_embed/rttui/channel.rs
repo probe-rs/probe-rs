@@ -1,4 +1,5 @@
 use std::fmt;
+use std::net::SocketAddr;
 
 use defmt_decoder::StreamDecoder;
 use probe_rs::rtt::{ChannelMode, DownChannel, UpChannel};
@@ -6,14 +7,9 @@ use probe_rs::Core;
 use time::UtcOffset;
 use time::{macros::format_description, OffsetDateTime};
 
+use crate::cmd::cargo_embed::rttui::tcp::TcpPublisher;
 use crate::cmd::cargo_embed::DefmtInformation;
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub enum DataFormat {
-    String,
-    BinaryLE,
-    Defmt,
-}
+use crate::util::rtt::{DataFormat, RttBuffer};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ChannelConfig {
@@ -22,6 +18,7 @@ pub struct ChannelConfig {
     pub name: Option<String>,
     pub up_mode: Option<ChannelMode>,
     pub format: DataFormat,
+    pub socket: Option<SocketAddr>,
 }
 
 pub enum ChannelData<'defmt> {
@@ -111,6 +108,7 @@ pub struct ChannelState<'defmt> {
     input: String,
     scroll_offset: usize,
     rtt_buffer: RttBuffer,
+    tcp_socket: Option<TcpPublisher>,
 }
 
 impl<'defmt> ChannelState<'defmt> {
@@ -119,6 +117,7 @@ impl<'defmt> ChannelState<'defmt> {
         down_channel: Option<DownChannel>,
         name: Option<String>,
         data: ChannelData<'defmt>,
+        tcp_socket: Option<SocketAddr>,
     ) -> Self {
         let name = name
             .or_else(|| up_channel.as_ref().and_then(|up| up.name().map(Into::into)))
@@ -129,14 +128,17 @@ impl<'defmt> ChannelState<'defmt> {
             })
             .unwrap_or_else(|| "Unnamed channel".to_owned());
 
+        let tcp_socket = tcp_socket.map(TcpPublisher::new);
+
         Self {
             up_channel,
             down_channel,
             name,
             input: String::new(),
             scroll_offset: 0,
-            rtt_buffer: RttBuffer([0u8; 1024]),
+            rtt_buffer: RttBuffer::new(1024),
             data,
+            tcp_socket,
         }
     }
 
@@ -192,7 +194,7 @@ impl<'defmt> ChannelState<'defmt> {
             match channel.read(core, self.rtt_buffer.0.as_mut()) {
                 Ok(count) => count,
                 Err(err) => {
-                    log::error!("\nError reading from RTT: {}", err);
+                    tracing::error!("\nError reading from RTT: {}", err);
                     return Ok(());
                 }
             }
@@ -214,6 +216,11 @@ impl<'defmt> ChannelState<'defmt> {
 
                 // First, convert the incoming bytes to UTF8.
                 let mut incoming = String::from_utf8_lossy(&self.rtt_buffer.0[..count]).to_string();
+
+                // Send incoming data over the TCP stream if we have one.
+                if let Some(stream) = &mut self.tcp_socket {
+                    stream.send(incoming.as_bytes());
+                }
 
                 // Then pop the last stored line from our line buffer if possible and append our new line.
                 if !*last_line_done {
@@ -291,13 +298,5 @@ impl<'defmt> ChannelState<'defmt> {
 
     pub(crate) fn data(&self) -> &ChannelData {
         &self.data
-    }
-}
-
-struct RttBuffer([u8; 1024]);
-
-impl fmt::Debug for RttBuffer {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.0.fmt(f)
     }
 }

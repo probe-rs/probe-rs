@@ -6,7 +6,8 @@ use std::time::Duration;
 
 use anyhow::{anyhow, Result};
 use probe_rs::{
-    BreakpointCause, Core, Error, HaltReason, Lister, SemihostingCommand, VectorCatchCondition,
+    probe::list::Lister, BreakpointCause, Core, Error, HaltReason, SemihostingCommand,
+    VectorCatchCondition,
 };
 use probe_rs_target::MemoryRegion;
 use signal_hook::consts::signal;

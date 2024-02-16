@@ -1,0 +1,1 @@
+Add support for AirMCU series.

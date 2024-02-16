@@ -1,5 +1,7 @@
-pub mod constants;
-pub mod tools;
+//! ST-Link probe implementation.
+
+mod constants;
+mod tools;
 mod usb_interface;
 
 use self::usb_interface::{StLinkUsb, StLinkUsbDevice};
@@ -17,7 +19,8 @@ use crate::{
         ApAddress, ApInformation, ArmChipInfo, DapAccess, DpAddress, Pins, SwoAccess, SwoConfig,
         SwoMode,
     },
-    DebugProbeSelector, Error as ProbeRsError, Probe,
+    probe::{DebugProbeInfo, DebugProbeSelector, Probe, ProbeFactory},
+    Error as ProbeRsError,
 };
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use probe_rs_target::ScanChainElement;
@@ -38,28 +41,19 @@ const STLINK_MAX_WRITE_LEN: usize = 0xFFFC;
 
 const DP_PORT: u16 = 0xFFFF;
 
-#[derive(Debug)]
-pub(crate) struct StLink<D: StLinkUsb> {
-    device: D,
-    name: String,
-    hw_version: u8,
-    jtag_version: u8,
-    protocol: WireProtocol,
-    swd_speed_khz: u32,
-    jtag_speed_khz: u32,
-    swo_enabled: bool,
-    scan_chain: Option<Vec<ScanChainElement>>,
+/// A factory for creating [`StLink`] probes.
+pub struct StLinkFactory;
 
-    /// List of opened APs
-    opened_aps: Vec<u8>,
+impl std::fmt::Debug for StLinkFactory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("StLink").finish()
+    }
 }
 
-impl DebugProbe for StLink<StLinkUsbDevice> {
-    fn new_from_selector(
-        selector: impl Into<DebugProbeSelector>,
-    ) -> Result<Box<Self>, DebugProbeError> {
+impl ProbeFactory for StLinkFactory {
+    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         let device = StLinkUsbDevice::new_from_selector(selector)?;
-        let mut stlink = Self {
+        let mut stlink = StLink {
             name: format!("ST-Link {}", &device.info.version_name),
             device,
             hw_version: 0,
@@ -78,6 +72,29 @@ impl DebugProbe for StLink<StLinkUsbDevice> {
         Ok(Box::new(stlink))
     }
 
+    fn list_probes(&self) -> Vec<DebugProbeInfo> {
+        tools::list_stlink_devices()
+    }
+}
+
+/// An ST-Link debugger and programmer.
+#[derive(Debug)]
+pub struct StLink<D: StLinkUsb> {
+    device: D,
+    name: String,
+    hw_version: u8,
+    jtag_version: u8,
+    protocol: WireProtocol,
+    swd_speed_khz: u32,
+    jtag_speed_khz: u32,
+    swo_enabled: bool,
+    scan_chain: Option<Vec<ScanChainElement>>,
+
+    /// List of opened APs
+    opened_aps: Vec<u8>,
+}
+
+impl DebugProbe for StLink<StLinkUsbDevice> {
     fn get_name(&self) -> &str {
         &self.name
     }
@@ -719,6 +736,7 @@ impl<D: StLinkUsb> StLink<D> {
         }
     }
 
+    /// Starts reading SWO trace data.
     pub fn start_trace_reception(&mut self, config: &SwoConfig) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
         let bufsize = 4096u16.to_le_bytes();
@@ -734,6 +752,7 @@ impl<D: StLinkUsb> StLink<D> {
         Ok(())
     }
 
+    /// Stops reading SWO trace data.
     pub fn stop_trace_reception(&mut self) -> Result<(), DebugProbeError> {
         let mut buf = [0; 2];
 
@@ -902,6 +921,55 @@ impl<D: StLinkUsb> StLink<D> {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, data, apsel), fields(ap=apsel, length= data.len()))]
+    fn read_mem_16bit(
+        &mut self,
+        address: u32,
+        data: &mut [u8],
+        apsel: u8,
+    ) -> Result<(), DebugProbeError> {
+        self.select_ap(apsel)?;
+
+        // TODO what is the max length?
+
+        assert!(
+            data.len() % 2 == 0,
+            "Data length has to be a multiple of 2 for 16 bit reads"
+        );
+
+        if address % 2 != 0 {
+            return Err(DebugProbeError::from(StlinkError::UnalignedAddress));
+        }
+
+        let data_length = data.len().to_le_bytes();
+        let addbytes = address.to_le_bytes();
+
+        retry_on_wait(|| {
+            self.device.write(
+                &[
+                    commands::JTAG_COMMAND,
+                    commands::JTAG_READMEM_16BIT,
+                    addbytes[0],
+                    addbytes[1],
+                    addbytes[2],
+                    addbytes[3],
+                    data_length[0],
+                    data_length[1],
+                    apsel,
+                ],
+                &[],
+                data,
+                TIMEOUT,
+            )?;
+
+            self.get_last_rw_status()
+        })?;
+
+        tracing::debug!("Read ok");
+
+        Ok(())
+    }
+
     fn read_mem_8bit(
         &mut self,
         address: u32,
@@ -1000,6 +1068,54 @@ impl<D: StLinkUsb> StLink<D> {
                 &[
                     commands::JTAG_COMMAND,
                     commands::JTAG_WRITEMEM_32BIT,
+                    addbytes[0],
+                    addbytes[1],
+                    addbytes[2],
+                    addbytes[3],
+                    lenbytes[0],
+                    lenbytes[1],
+                    apsel,
+                ],
+                data,
+                &mut [],
+                TIMEOUT,
+            )?;
+
+            self.get_last_rw_status()
+        })?;
+
+        Ok(())
+    }
+
+    fn write_mem_16bit(
+        &mut self,
+        address: u32,
+        data: &[u8],
+        apsel: u8,
+    ) -> Result<(), DebugProbeError> {
+        self.select_ap(apsel)?;
+
+        tracing::trace!("write_mem_16bit");
+        let length = data.len();
+
+        // TODO what is the maximum supported length?
+
+        assert!(
+            data.len() % 2 == 0,
+            "Data length has to be a multiple of 2 for 16 bit writes"
+        );
+
+        if address % 2 != 0 {
+            return Err(DebugProbeError::from(StlinkError::UnalignedAddress));
+        }
+
+        let addbytes = address.to_le_bytes();
+        let lenbytes = length.to_le_bytes();
+        retry_on_wait(|| {
+            self.device.write(
+                &[
+                    commands::JTAG_COMMAND,
+                    commands::JTAG_WRITEMEM_16BIT,
                     addbytes[0],
                     addbytes[1],
                     addbytes[2],
@@ -1132,33 +1248,66 @@ impl<D: StLinkUsb> SwoAccess for StLink<D> {
     }
 }
 
+/// ST-Link specific errors.
 #[derive(thiserror::Error, Debug)]
-pub(crate) enum StlinkError {
+pub enum StlinkError {
+    /// Invalid voltage values returned by probe.
     #[error("Invalid voltage values returned by probe.")]
     VoltageDivisionByZero,
+
+    /// Probe is in an unknown mode.
     #[error("Probe is in an unknown mode.")]
     UnknownMode,
+
+    /// Banks not allowed on DP register.
     #[error(
         "Current version of the STLink firmware does not support accessing banked DP registers. \
          Upgrading the firmware to the newest version might fix this."
     )]
     BanksNotAllowedOnDPRegister,
+
+    /// Not enough bytes were written.
     #[error("Not enough bytes written.")]
-    NotEnoughBytesWritten { is: usize, should: usize },
+    NotEnoughBytesWritten {
+        /// The number of bytes actually written
+        is: usize,
+        /// The number of bytes that should have been written
+        should: usize,
+    },
+
+    /// USB endpoint not found.
     #[error("Usb endpoint not found.")]
     EndpointNotFound,
+
+    /// Command failed.
     #[error("Command failed with status {0:?}")]
     CommandFailed(Status),
+
+    /// The probe does not support JTAG.
     #[error("JTAG not supported on Probe")]
     JTAGNotSupportedOnProbe,
+
+    /// The probe does not support SWO with Manchester encoding.
     #[error("Manchester-coded SWO mode not supported")]
     ManchesterSwoNotSupported,
+
+    /// The probe does not support multidrop SWD.
     #[error("Multidrop SWD not supported")]
     MultidropNotSupported,
+
+    /// Attempted unaligned access.
     #[error("Unaligned")]
     UnalignedAddress,
+
+    /// USB error.
     #[error("USB")]
-    Usb(#[from] rusb::Error),
+    Usb(Box<dyn std::error::Error + Sync + Send>),
+}
+
+impl From<nusb::Error> for StlinkError {
+    fn from(e: nusb::Error) -> Self {
+        StlinkError::Usb(Box::new(e))
+    }
 }
 
 impl From<StlinkError> for DebugProbeError {
@@ -1183,7 +1332,9 @@ impl UninitializedArmProbe for UninitializedStLink {
     fn initialize(
         self: Box<Self>,
         _sequence: Arc<dyn ArmDebugSequence>,
+        dp: DpAddress,
     ) -> Result<Box<dyn ArmProbeInterface>, (Box<dyn UninitializedArmProbe>, ProbeRsError)> {
+        assert_eq!(dp, DpAddress::Default, "Multidrop not supported on ST-Link");
         let interface = StlinkArmDebug::new(self.probe)
             .map_err(|(s, e)| (s as Box<_>, ProbeRsError::from(e)))?;
 
@@ -1384,6 +1535,11 @@ impl ArmProbeInterface for StlinkArmDebug {
     fn close(self: Box<Self>) -> Probe {
         Probe::from_attached_probe(self.probe)
     }
+
+    fn current_debug_port(&self) -> DpAddress {
+        // SWD multidrop is not supported on ST-Link
+        DpAddress::Default
+    }
 }
 
 impl SwdSequence for StlinkArmDebug {
@@ -1481,6 +1637,33 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         Ok(())
     }
 
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), ArmError> {
+        let address = valid_32bit_arm_address(address)?;
+
+        // Read needs to be chunked into chunks of appropriate max length of the probe
+        // use half the limits of 8bit accesses to be conservative. TODO can we increase this?
+        let chunk_size = if self.probe.probe.hw_version < 3 {
+            32
+        } else {
+            64
+        };
+
+        for (index, chunk) in data.chunks_mut(chunk_size).enumerate() {
+            let mut buff = vec![0u8; 2 * chunk.len()];
+            self.probe.probe.read_mem_16bit(
+                address + (index * chunk_size) as u32,
+                &mut buff,
+                self.current_ap.ap_address().ap,
+            )?;
+
+            for (index, word) in buff.chunks_exact(2).enumerate() {
+                chunk[index] = u16::from_le_bytes(word.try_into().unwrap());
+            }
+        }
+
+        Ok(())
+    }
+
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
         let address = valid_32bit_arm_address(address)?;
 
@@ -1545,6 +1728,37 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
 
         for (index, chunk) in tx_buffer.chunks(STLINK_MAX_WRITE_LEN).enumerate() {
             self.probe.probe.write_mem_32bit(
+                address + (index * STLINK_MAX_WRITE_LEN) as u32,
+                chunk,
+                self.current_ap.ap_address().ap,
+            )?;
+        }
+
+        Ok(())
+    }
+
+    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), ArmError> {
+        let address = valid_32bit_arm_address(address)?;
+
+        let mut tx_buffer = vec![0u8; data.len() * 2];
+
+        let mut offset = 0;
+
+        for word in data {
+            tx_buffer
+                .gwrite(word, &mut offset)
+                .expect("Failed to write into tx_buffer");
+        }
+
+        // use half the limits of 8bit accesses to be conservative. TODO can we increase this?
+        let chunk_size = if self.probe.probe.hw_version < 3 {
+            32
+        } else {
+            256
+        };
+
+        for (index, chunk) in tx_buffer.chunks(chunk_size).enumerate() {
+            self.probe.probe.write_mem_16bit(
                 address + (index * STLINK_MAX_WRITE_LEN) as u32,
                 chunk,
                 self.current_ap.ap_address().ap,
@@ -1770,7 +1984,7 @@ mod test {
                 _ => Ok(()),
             }
         }
-        fn reset(&mut self) -> Result<(), crate::DebugProbeError> {
+        fn reset(&mut self) -> Result<(), DebugProbeError> {
             Ok(())
         }
 

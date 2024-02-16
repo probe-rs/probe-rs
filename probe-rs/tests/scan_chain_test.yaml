@@ -2,12 +2,13 @@
 name: TEMP_FAM
 variants:
   - name: FULL_SCAN_CHAIN
-    # https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/sdf_pg.html#sdf_element_scanchain
-    scan_chain:
-      - name: core0
-        ir_len: 4
-      - name: ICEPICK
-        ir_len: 6
+    jtag:
+      # https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/sdf_pg.html#sdf_element_scanchain
+      scan_chain:
+        - name: core0
+          ir_len: 4
+        - name: ICEPICK
+          ir_len: 6
     cores:
       - name: core0
         type: armv6m
@@ -23,7 +24,7 @@ variants:
           is_boot_memory: false
           cores:
             - core0
-  - name: NO_SCAN_CHAIN
+  - name: NO_JTAG_INFO
     cores:
       - name: core0
         type: armv6m
@@ -39,11 +40,29 @@ variants:
           is_boot_memory: true
           cores:
             - core0
+  - name: NO_SCAN_CHAIN
+    cores:
+      - name: core0
+        type: armv6m
+        core_access_options:
+          !Arm
+            ap: 0x0
+            psel: 0x0
+    jtag: {}
+    memory_map:
+      - !Ram
+          range:
+            start: 0x20000000
+            end: 0x20040000
+          is_boot_memory: true
+          cores:
+            - core0
   - name: PARTIAL_SCAN_CHAIN
-    # https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/sdf_pg.html#sdf_element_scanchain
-    scan_chain:
-      - ir_len: 4
-      - ir_len: 6
+    jtag:
+      # https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/sdf_pg.html#sdf_element_scanchain
+      scan_chain:
+        - ir_len: 4
+        - ir_len: 6
     cores:
       - name: core0
         type: armv6m

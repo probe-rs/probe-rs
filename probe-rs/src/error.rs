@@ -4,7 +4,7 @@ use crate::architecture::arm::ArmError;
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::xtensa::communication_interface::XtensaError;
 use crate::config::RegistryError;
-use crate::DebugProbeError;
+use crate::probe::DebugProbeError;
 
 /// The overarching error type which contains all possible errors as variants.
 #[derive(thiserror::Error, Debug)]

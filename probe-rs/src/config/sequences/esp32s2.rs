@@ -23,8 +23,8 @@ impl ESP32S2 {
     pub fn create(_chip: &Chip) -> Arc<dyn XtensaDebugSequence> {
         Arc::new(Self {
             inner: EspFlashSizeDetector {
-                stack_pointer: 0x3FFB_8000,
-                load_address: 0x4002_8000,
+                stack_pointer: 0x4000_0000,
+                load_address: 0x4002C000,
                 spiflash_peripheral: 0x3f40_2000,
                 attach_fn: 0x4001_7004,
             },
@@ -54,7 +54,7 @@ impl XtensaDebugSequence for ESP32S2 {
 
         // rtc wdg
         const RTC_CNTL_BASE: u64 = 0x3f408000;
-        const RTC_WRITE_PROT: u64 = RTC_CNTL_BASE | 0xb0;
+        const RTC_WRITE_PROT: u64 = RTC_CNTL_BASE | 0xac;
         const RTC_WDTCONFIG0: u64 = RTC_CNTL_BASE | 0x94;
         interface.write_word_32(RTC_WRITE_PROT, 0x50D83AA1)?; // write protection off
         interface.write_word_32(RTC_WDTCONFIG0, 0x0)?;

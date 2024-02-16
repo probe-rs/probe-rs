@@ -1,4 +1,4 @@
-use probe_rs_target::{MemoryRegion, RawFlashAlgorithm};
+use probe_rs_target::{MemoryRegion, RamRegion, RawFlashAlgorithm};
 use tracing::Level;
 
 use super::{FlashAlgorithm, FlashBuilder, FlashError, FlashFill, FlashPage, FlashProgress};
@@ -66,15 +66,19 @@ impl<'session> Flasher<'session> {
     ) -> Result<Self, FlashError> {
         let target = session.target();
 
+        fn filter_ram_region(mm: &MemoryRegion) -> Option<&RamRegion> {
+            match mm {
+                MemoryRegion::Ram(ram) => Some(ram),
+                _ => None,
+            }
+        }
+
         // Find a RAM region from which we can run the algo.
         let mm = &target.memory_map;
         let core_name = &target.cores[core_index].name;
         let ram = mm
             .iter()
-            .filter_map(|mm| match mm {
-                MemoryRegion::Ram(ram) => Some(ram),
-                _ => None,
-            })
+            .filter_map(filter_ram_region)
             .find(|ram| {
                 // If the algorithm has a forced load address, we try to use it.
                 // If not, then follow the CMSIS-Pack spec and use first available RAM region.
@@ -96,10 +100,31 @@ impl<'session> Flasher<'session> {
             .ok_or(FlashError::NoRamDefined {
                 name: session.target().name.clone(),
             })?;
-
         tracing::info!("Chosen RAM to run the algo: {:x?}", ram);
 
-        let flash_algorithm = FlashAlgorithm::assemble_from_raw(raw_flash_algorithm, ram, target)?;
+        let data_ram = if let Some(data_load_address) = raw_flash_algorithm.data_load_address {
+            mm.iter()
+                .filter_map(filter_ram_region)
+                .find(|ram| {
+                    // The RAM must contain the forced load address _and_
+                    // be accessible from the core we're going to run the
+                    // algorithm on.
+                    ram.range.contains(&data_load_address) && ram.cores.contains(core_name)
+                })
+                .ok_or(FlashError::NoRamDefined {
+                    name: session.target().name.clone(),
+                })?
+        } else {
+            ram
+        };
+        tracing::info!("Data will be loaded to: {:x?}", data_ram);
+
+        let flash_algorithm = FlashAlgorithm::assemble_from_raw_with_data(
+            raw_flash_algorithm,
+            ram,
+            data_ram,
+            target,
+        )?;
 
         let mut this = Self {
             session,
@@ -144,13 +169,10 @@ impl<'session> Flasher<'session> {
         // TODO: Possible special preparation of the target such as enabling faster clocks for the flash e.g.
 
         // Load flash algorithm code into target RAM.
-        let span = tracing::debug_span!("Loading algorithm into RAM", address = algo.load_address)
-            .entered();
+        tracing::debug!("Downloading algorithm code to {:#08x}", algo.load_address);
 
         core.write_32(algo.load_address, algo.instructions.as_slice())
             .map_err(FlashError::Core)?;
-
-        drop(span);
 
         let mut data = vec![0; algo.instructions.len()];
         core.read_32(algo.load_address, &mut data)
@@ -864,6 +886,11 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
 impl<'p> ActiveFlasher<'p, Program> {
     /// Transfers the buffer bytes to RAM.
     fn load_data(&mut self, address: u64, bytes: &[u8]) -> Result<(), FlashError> {
+        tracing::debug!(
+            "Loading {} bytes of data into RAM at address {:#08x}\n",
+            bytes.len(),
+            address
+        );
         // TODO: Prevent security settings from locking the device.
 
         // In case some of the previous preprocessing forgets to pad the last page,
@@ -906,7 +933,8 @@ impl<'p> ActiveFlasher<'p, Program> {
         );
 
         // Transfer the bytes to RAM.
-        self.load_data(self.flash_algorithm.begin_data, bytes)?;
+        let begin_data = self.buffer_address(0);
+        self.load_data(begin_data, bytes)?;
 
         let result = self
             .call_function_and_wait(
@@ -914,7 +942,7 @@ impl<'p> ActiveFlasher<'p, Program> {
                     pc: into_reg(self.flash_algorithm.pc_program_page)?,
                     r0: Some(into_reg(address)?),
                     r1: Some(bytes.len() as u32),
-                    r2: Some(into_reg(self.flash_algorithm.begin_data)?),
+                    r2: Some(into_reg(begin_data)?),
                     r3: None,
                 },
                 false,
@@ -941,11 +969,7 @@ impl<'p> ActiveFlasher<'p, Program> {
         }
     }
 
-    pub(super) fn start_program_page_with_buffer(
-        &mut self,
-        address: u64,
-        buffer_number: usize,
-    ) -> Result<(), FlashError> {
+    fn buffer_address(&self, buffer_number: usize) -> u64 {
         // Ensure the buffer number is valid, otherwise there is a bug somewhere
         // in the flashing code.
         assert!(
@@ -954,12 +978,22 @@ impl<'p> ActiveFlasher<'p, Program> {
             buffer_number, self.flash_algorithm.page_buffers.len()
         );
 
+        self.flash_algorithm.page_buffers[buffer_number]
+    }
+
+    pub(super) fn start_program_page_with_buffer(
+        &mut self,
+        address: u64,
+        buffer_number: usize,
+    ) -> Result<(), FlashError> {
+        let buffer_address = self.buffer_address(buffer_number);
+
         self.call_function(
             &Registers {
                 pc: into_reg(self.flash_algorithm.pc_program_page)?,
                 r0: Some(into_reg(address)?),
                 r1: Some(self.flash_algorithm.flash_properties.page_size),
-                r2: Some(into_reg(self.flash_algorithm.page_buffers[buffer_number])?),
+                r2: Some(into_reg(buffer_address)?),
                 r3: None,
             },
             false,
@@ -978,17 +1012,8 @@ impl<'p> ActiveFlasher<'p, Program> {
         bytes: &[u8],
         buffer_number: usize,
     ) -> Result<(), FlashError> {
-        let algo = &self.flash_algorithm;
-
-        // Ensure the buffer number is valid, otherwise there is a bug somewhere
-        // in the flashing code.
-        assert!(
-            buffer_number < algo.page_buffers.len(),
-            "Trying to use non-existing buffer ({}/{}) for flashing. This is a bug. Please report it.",
-            buffer_number, algo.page_buffers.len()
-        );
-
-        self.load_data(algo.page_buffers[buffer_number], bytes)?;
+        let buffer_address = self.buffer_address(buffer_number);
+        self.load_data(buffer_address, bytes)?;
 
         Ok(())
     }

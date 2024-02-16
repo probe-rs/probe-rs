@@ -8,7 +8,7 @@ use crate::{
         riscv::{communication_interface::RiscvCommunicationInterface, RiscVState},
         xtensa::{communication_interface::XtensaCommunicationInterface, XtensaState},
     },
-    Core, CoreType, Error,
+    Core, CoreType, Error, Target,
 };
 
 use super::ResolvedCoreOptions;
@@ -33,8 +33,13 @@ impl CombinedCoreState {
 
     pub(crate) fn attach_arm<'probe>(
         &'probe mut self,
+        target: &'probe Target,
         arm_interface: &'probe mut Box<dyn ArmProbeInterface>,
     ) -> Result<Core<'probe>, Error> {
+        let memory_regions = &target.memory_map;
+
+        let name = &target.cores[self.id].name;
+
         let memory = arm_interface.memory_interface(self.arm_memory_ap())?;
 
         let (options, debug_sequence) = match &self.core_state.core_access_options {
@@ -48,32 +53,45 @@ impl CombinedCoreState {
 
         Ok(match &mut self.specific_state {
             SpecificCoreState::Armv6m(s) => Core::new(
-                crate::architecture::arm::armv6m::Armv6m::new(memory, s, debug_sequence, self.id)?,
+                self.id,
+                name,
+                memory_regions,
+                crate::architecture::arm::armv6m::Armv6m::new(memory, s, debug_sequence)?,
             ),
-            SpecificCoreState::Armv7a(s) => {
-                Core::new(crate::architecture::arm::armv7a::Armv7a::new(
+            SpecificCoreState::Armv7a(s) => Core::new(
+                self.id,
+                name,
+                memory_regions,
+                crate::architecture::arm::armv7a::Armv7a::new(
                     memory,
                     s,
                     options.debug_base.expect("base_address not specified"),
                     debug_sequence,
-                    self.id,
-                )?)
-            }
-            SpecificCoreState::Armv7m(s) | SpecificCoreState::Armv7em(s) => Core::new(
-                crate::architecture::arm::armv7m::Armv7m::new(memory, s, debug_sequence, self.id)?,
+                )?,
             ),
-            SpecificCoreState::Armv8a(s) => {
-                Core::new(crate::architecture::arm::armv8a::Armv8a::new(
+            SpecificCoreState::Armv7m(s) | SpecificCoreState::Armv7em(s) => Core::new(
+                self.id,
+                name,
+                memory_regions,
+                crate::architecture::arm::armv7m::Armv7m::new(memory, s, debug_sequence)?,
+            ),
+            SpecificCoreState::Armv8a(s) => Core::new(
+                self.id,
+                name,
+                memory_regions,
+                crate::architecture::arm::armv8a::Armv8a::new(
                     memory,
                     s,
                     options.debug_base.expect("base_address not specified"),
                     options.cti_base.expect("cti_address not specified"),
                     debug_sequence,
-                    self.id,
-                )?)
-            }
+                )?,
+            ),
             SpecificCoreState::Armv8m(s) => Core::new(
-                crate::architecture::arm::armv8m::Armv8m::new(memory, s, debug_sequence, self.id)?,
+                self.id,
+                name,
+                memory_regions,
+                crate::architecture::arm::armv8m::Armv8m::new(memory, s, debug_sequence)?,
             ),
             _ => {
                 return Err(Error::UnableToOpenProbe(
@@ -127,12 +145,32 @@ impl CombinedCoreState {
 
     pub(crate) fn attach_riscv<'probe>(
         &'probe mut self,
+        target: &'probe Target,
         interface: &'probe mut RiscvCommunicationInterface,
     ) -> Result<Core<'probe>, Error> {
+        let memory_regions = &target.memory_map;
+        let name = &target.cores[self.id].name;
+
+        let options = match &self.core_state.core_access_options {
+            ResolvedCoreOptions::Riscv { options } => options,
+            _ => {
+                return Err(Error::UnableToOpenProbe(
+                    "Core architecture and Probe mismatch.",
+                ))
+            }
+        };
+
         Ok(match &mut self.specific_state {
-            SpecificCoreState::Riscv(s) => Core::new(crate::architecture::riscv::Riscv32::new(
-                interface, s, self.id,
-            )),
+            SpecificCoreState::Riscv(s) => Core::new(
+                self.id,
+                name,
+                memory_regions,
+                crate::architecture::riscv::Riscv32::new(
+                    options.hart_id.unwrap_or_default(),
+                    interface,
+                    s,
+                )?,
+            ),
             _ => {
                 return Err(Error::UnableToOpenProbe(
                     "Core architecture and Probe mismatch.",
@@ -143,12 +181,19 @@ impl CombinedCoreState {
 
     pub(crate) fn attach_xtensa<'probe>(
         &'probe mut self,
+        target: &'probe Target,
         interface: &'probe mut XtensaCommunicationInterface,
     ) -> Result<Core<'probe>, Error> {
+        let memory_regions = &target.memory_map;
+        let name = &target.cores[self.id].name;
+
         Ok(match &mut self.specific_state {
-            SpecificCoreState::Xtensa(s) => Core::new(crate::architecture::xtensa::Xtensa::new(
-                interface, s, self.id,
-            )),
+            SpecificCoreState::Xtensa(s) => Core::new(
+                self.id,
+                name,
+                memory_regions,
+                crate::architecture::xtensa::Xtensa::new(interface, s),
+            ),
             _ => {
                 return Err(Error::UnableToOpenProbe(
                     "Core architecture and Probe mismatch.",
