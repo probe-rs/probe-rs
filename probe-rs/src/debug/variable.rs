@@ -372,50 +372,41 @@ impl Variable {
         memory: &mut impl MemoryInterface,
         variable_cache: &mut variable_cache::VariableCache,
         new_value: String,
-    ) -> Result<String, DebugError> {
-        let variable_name = if let VariableName::Named(variable_name) = &self.name {
-            variable_name.clone()
+    ) -> Result<(), DebugError> {
+        let is_pointer = if let VariableName::Named(variable_name) = &self.name {
+            variable_name.starts_with('*')
         } else {
-            String::new()
+            false
         };
-        let updated_value = if !self.is_valid()
+
+        if !self.is_valid()
                 // Need a valid type
                 || self.type_name == VariableType::Unknown
                 // Need a valid memory location
                 || !self.memory_location.valid()
         {
             // Insufficient data available.
-            return Err(anyhow!(
+            Err(anyhow!(
                 "Cannot update variable: {:?}, with supplied information (value={:?}, type={:?}, memory location={:#010x?}).",
-                self.name, self.value, self.type_name, self.memory_location).into());
-        } else if variable_name.starts_with('*') {
+                self.name, self.value, self.type_name, self.memory_location).into())
+        } else if is_pointer {
             // Writing the values of pointers is a bit more complex, and not currently supported.
-            return Err(anyhow!("Please only update variables with a base data type. Updating pointer variable types is not yet supported.").into());
+            Err(anyhow!("Please only update variables with a base data type. Updating pointer variable types is not yet supported.").into())
         } else {
             // We have everything we need to update the variable value.
-            let update_result = language::from_dwarf(self.language).update_variable(
-                self,
-                memory,
-                new_value.as_str(),
-            );
+            language::from_dwarf(self.language)
+                .update_variable(self, memory, &new_value)
+                .map_err(|error| DebugError::UnwindIncompleteResults {
+                    message: format!("Invalid data value={new_value:?}: {error}"),
+                })?;
 
-            match update_result {
-                Ok(()) => {
-                    // Now update the cache with the new value for this variable.
-                    let mut cache_variable = self.clone();
-                    cache_variable.value = VariableValue::Valid(new_value.clone());
-                    cache_variable.extract_value(memory, variable_cache);
-                    variable_cache.update_variable(&cache_variable)?;
-                    new_value
-                }
-                Err(error) => {
-                    return Err(DebugError::UnwindIncompleteResults {
-                        message: format!("Invalid data value={new_value:?}: {error}"),
-                    });
-                }
-            }
-        };
-        Ok(updated_value)
+            // Now update the cache with the new value for this variable.
+            let mut cache_variable = self.clone();
+            cache_variable.value = VariableValue::Valid(new_value);
+            cache_variable.extract_value(memory, variable_cache);
+            variable_cache.update_variable(&cache_variable)?;
+            Ok(())
+        }
     }
 
     /// Implementing get_value(), because Variable.value has to be private (a requirement of updating the value without overriding earlier values ... see set_value()).

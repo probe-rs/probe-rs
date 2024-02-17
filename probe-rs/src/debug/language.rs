@@ -23,7 +23,7 @@ pub fn from_dwarf(dwarf_language: DwLang) -> Box<dyn ProgrammingLanguage> {
         | gimli::DW_LANG_C11
         | gimli::DW_LANG_C17 => Box::new(c::C),
         gimli::DW_LANG_Rust => Box::new(rust::Rust),
-        _ => Box::new(UnknownLanguage),
+        other => Box::new(UnknownLanguage(other)),
     }
 }
 
@@ -43,14 +43,7 @@ pub trait ProgrammingLanguage {
         variable: &Variable,
         _memory: &mut dyn MemoryInterface,
         _new_value: &str,
-    ) -> Result<(), DebugError> {
-        Err(DebugError::UnwindIncompleteResults {
-            message: format!(
-                "Unsupported variable type {:?}. Only base variables can be updated.",
-                variable.type_name
-            ),
-        })
-    }
+    ) -> Result<(), DebugError>;
 
     fn format_enum_value(&self, type_name: &VariableType, value: &VariableName) -> VariableValue {
         VariableValue::Valid(format!("{}::{}", type_name, value))
@@ -61,7 +54,19 @@ pub trait ProgrammingLanguage {
     }
 }
 
-#[derive(Clone)]
-pub struct UnknownLanguage;
+#[derive(Debug, Clone)]
+pub struct UnknownLanguage(DwLang);
 
-impl ProgrammingLanguage for UnknownLanguage {}
+impl ProgrammingLanguage for UnknownLanguage {
+    fn update_variable(
+        &self,
+        _variable: &Variable,
+        _memory: &mut dyn MemoryInterface,
+        _new_value: &str,
+    ) -> Result<(), DebugError> {
+        Err(DebugError::Other(anyhow::anyhow!(
+            "Updating variables for language {} is not supported.",
+            self.0
+        )))
+    }
+}

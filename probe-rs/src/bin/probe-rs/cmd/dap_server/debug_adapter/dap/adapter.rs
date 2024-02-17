@@ -630,7 +630,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         variable_cache,
                         new_value.clone(),
                     ) {
-                        Ok(updated_value) => {
+                        Ok(()) => {
                             let (
                                 variables_reference,
                                 named_child_variables_cnt,
@@ -640,7 +640,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             response_body.named_variables = Some(named_child_variables_cnt);
                             response_body.indexed_variables = Some(indexed_child_variables_cnt);
                             response_body.type_ = Some(format!("{:?}", cache_variable.type_name));
-                            response_body.value = updated_value;
+                            response_body.value = new_value.clone();
                         }
                         Err(error) => {
                             return self.send_response::<SetVariableResponseBody>(
