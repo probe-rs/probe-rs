@@ -260,10 +260,8 @@ impl UnitInfo {
                 tracing::Span::current().record("name", &name);
                 child_variable.name = VariableName::Named(name);
             }
-        }
 
-        if let Some(attributes_entry) = attributes_entry {
-            let mut variable_attributes = attributes_entry.attrs();
+            let mut variable_attributes = entry.attrs();
 
             // Now loop through all the unit attributes to extract the remainder of the `Variable` definition.
             while let Ok(Some(attr)) = variable_attributes.next() {
@@ -305,7 +303,7 @@ impl UnitInfo {
                         child_variable = self.process_type_attribute(
                             &attr,
                             debug_info,
-                            &attributes_entry,
+                            &entry,
                             parent_variable,
                             child_variable,
                             memory,
@@ -450,8 +448,8 @@ impl UnitInfo {
                         tracing::info!(
                             "Unimplemented: Variable Attribute {:.100} : {:.100}, with children = {}",
                             format!("{:?}", other_attribute.static_string()),
-                            format!("{:?}", attributes_entry.attr_value(other_attribute)),
-                            attributes_entry.has_children()
+                            format!("{:?}", entry.attr_value(other_attribute)),
+                            entry.has_children()
                         );
                     }
                 }
@@ -481,7 +479,46 @@ impl UnitInfo {
         child_variable.parent_key = parent_variable.variable_key;
 
         // We need to determine if we are working with a 'abstract` location, and use that node for the attributes we need
-        let attributes_entry = tree_node.entry().clone();
+        let attributes_entry = if let Ok(Some(abstract_origin)) =
+            tree_node.entry().attr(gimli::DW_AT_abstract_origin)
+        {
+            match abstract_origin.value() {
+                gimli::AttributeValue::UnitRef(unit_ref) => {
+                    // The abstract origin is a reference to another DIE, so we need to resolve that,
+                    // but first we need to process the (optional) memory location using the current DIE.
+                    self.process_memory_location(
+                        debug_info,
+                        tree_node.entry(),
+                        parent_variable,
+                        &mut child_variable,
+                        memory,
+                        frame_info,
+                    )?;
+                    Some(
+                        self.unit
+                            .header
+                            .entries_tree(&self.unit.abbreviations, Some(unit_ref))?
+                            .root()?
+                            .entry()
+                            .clone(),
+                    )
+                }
+                other_attribute_value => {
+                    child_variable.set_value(VariableValue::Error(format!(
+                        "Unimplemented: Attribute Value for DW_AT_abstract_origin {other_attribute_value:?}"
+                    )));
+                    None
+                }
+            }
+        } else {
+            Some(tree_node.entry().clone())
+        };
+
+        let Some(attributes_entry) = attributes_entry else {
+            cache.update_variable_and_value(&mut child_variable, memory)?;
+
+            return Ok(child_variable);
+        };
 
         // For variable attribute resolution, we need to resolve a few attributes in advance of looping through all the other ones.
         // Try to exact the name first, for easier debugging
@@ -523,12 +560,8 @@ impl UnitInfo {
                     // TODO: Implement [documented RUST extensions to DWARF standard](https://rustc-dev-guide.rust-lang.org/debugging-support-in-rustc.html?highlight=dwarf#dwarf-and-rustc)
                 }
                 gimli::DW_AT_type => {
-                    let type_info = self.process_type_attribute_type_info(
-                        header_offset,
-                        &attr,
-                        debug_info,
-                        type_cache,
-                    )?;
+                    let type_info =
+                        self.process_type_attribute_type_info(&attr, debug_info, type_cache)?;
 
                     tracing::debug!("TypeInfo: {:?}", type_info);
 
@@ -589,9 +622,9 @@ impl UnitInfo {
                         TypeKind::Struct { byte_size, members } => {
                             child_variable.byte_size = *byte_size;
 
-                            child_variable.type_name = VariableType::Struct(
-                                type_info.name().unwrap_or("<unname>").to_string(),
-                            );
+                            let name = type_info.name().unwrap_or("<unnamed>");
+
+                            child_variable.type_name = VariableType::Struct(name.to_string());
 
                             let location = self.process_memory_location_type_info(
                                 debug_info,
@@ -600,6 +633,13 @@ impl UnitInfo {
                                 memory,
                                 frame_info,
                             )?;
+
+                            let resolve_children = name.starts_with("&str")
+                                || name.starts_with("Option")
+                                || name.starts_with("Some")
+                                || name.starts_with("Result")
+                                || name.starts_with("Ok")
+                                || name.starts_with("Err");
 
                             if let VariableLocation::Value(value) = &location {
                                 child_variable.set_value(value.clone());
@@ -705,6 +745,8 @@ impl UnitInfo {
                                 };
 
                                 cache.update_variable_and_value(&mut variable, memory)?;
+
+                                if resolve_children {}
                             }
 
                             // We should handle strings differently here
@@ -729,6 +771,108 @@ impl UnitInfo {
 
                     // TODO: Now that we have type, we need to use it...
                 }
+                gimli::DW_AT_enum_class => match attr.value() {
+                    gimli::AttributeValue::Flag(true) => {
+                        child_variable.set_value(VariableValue::Valid(format!(
+                            "{:?}",
+                            child_variable.type_name
+                        )));
+                    }
+                    gimli::AttributeValue::Flag(false) => {
+                        child_variable.set_value(VariableValue::Error(
+                            "Unimplemented: DW_AT_enum_class(false)".to_string(),
+                        ));
+                    }
+                    other_attribute_value => {
+                        child_variable.set_value(VariableValue::Error(format!(
+                                "Unimplemented: Attribute Value for DW_AT_enum_class: {other_attribute_value:?}"
+                            )));
+                    }
+                },
+                gimli::DW_AT_const_value => {
+                    let attr_value = attr.value();
+                    let variable_value = if let Some(const_value) = attr_value.udata_value() {
+                        VariableValue::Valid(const_value.to_string())
+                    } else if let Some(const_value) = attr_value.sdata_value() {
+                        VariableValue::Valid(const_value.to_string())
+                    } else {
+                        VariableValue::Error(format!(
+                            "Unimplemented: Attribute Value for DW_AT_const_value: {:?}",
+                            attr_value
+                        ))
+                    };
+
+                    child_variable.set_value(variable_value)
+                }
+                gimli::DW_AT_alignment => {
+                    // TODO: Figure out when (if at all) we need to do anything with DW_AT_alignment for the purposes of decoding data values.
+                }
+                gimli::DW_AT_artificial => {
+                    // These are references for entries like discriminant values of `VariantParts`.
+                    child_variable.name = VariableName::Artifical;
+                }
+                gimli::DW_AT_discr => match attr.value() {
+                    // This calculates the active discriminant value for the `VariantPart`.
+                    gimli::AttributeValue::UnitRef(unit_ref) => {
+                        let mut type_tree = self
+                            .unit
+                            .header
+                            .entries_tree(&self.unit.abbreviations, Some(unit_ref))?;
+                        let mut discriminant_node = type_tree.root()?;
+                        let mut discriminant_variable = cache.create_variable(
+                            parent_variable.variable_key,
+                            Some(discriminant_node.entry().offset()),
+                            Some(self),
+                        )?;
+                        discriminant_variable = self.process_tree_node_attributes(
+                            debug_info,
+                            &mut discriminant_node,
+                            parent_variable,
+                            discriminant_variable,
+                            memory,
+                            cache,
+                            frame_info,
+                            type_cache,
+                        )?;
+
+                        let variant_part = if discriminant_variable.is_valid() {
+                            discriminant_variable
+                                .get_value(cache)
+                                .parse()
+                                .unwrap_or(u64::MAX)
+                        } else {
+                            u64::MAX
+                        };
+
+                        parent_variable.role = VariantRole::VariantPart(variant_part);
+                        cache.remove_cache_entry(discriminant_variable.variable_key)?;
+                    }
+                    other_attribute_value => {
+                        child_variable.set_value(VariableValue::Error(format!(
+                                "Unimplemented: Attribute Value for DW_AT_discr {other_attribute_value:?}"
+                            )));
+                    }
+                },
+                // Property of variables that are of DW_TAG_subrange_type.
+                gimli::DW_AT_lower_bound => match attr.value().udata_value() {
+                    Some(bound) => child_variable.range_lower_bound = bound as i64,
+                    None => {
+                        child_variable.set_value(VariableValue::Error(format!(
+                            "Unimplemented: Attribute Value for DW_AT_lower_bound: {:?}",
+                            attr.value()
+                        )));
+                    }
+                },
+                // Property of variables that are of DW_TAG_subrange_type.
+                gimli::DW_AT_upper_bound | gimli::DW_AT_count => match attr.value().udata_value() {
+                    Some(bound) => child_variable.range_upper_bound = bound as i64,
+                    None => {
+                        child_variable.set_value(VariableValue::Error(format!(
+                            "Unimplemented: Attribute Value for DW_AT_upper_bound: {:?}",
+                            attr.value()
+                        )));
+                    }
+                },
                 other_attribute => {
                     tracing::trace!(
                         "Unimplemented: Attribute {} for a DW_TAG_variable entry",
@@ -890,7 +1034,6 @@ impl UnitInfo {
 
     fn process_type_attribute_type_info(
         &self,
-        header_offset: DebugInfoOffset,
         attr: &gimli::Attribute<GimliReader>,
         debug_info: &DebugInfo,
         type_cache: &mut TypeCache,
@@ -899,15 +1042,10 @@ impl UnitInfo {
         match attr.value() {
             gimli::AttributeValue::UnitRef(unit_ref) => {
                 // Now resolve the referenced tree node for the type.
-                let mut type_tree = self
-                    .unit
-                    .header
-                    .entries_tree(&self.unit.abbreviations, Some(unit_ref))?;
-                let referenced_type_tree_node = type_tree.root()?;
                 type_info = type_cache.type_info_from_unit_offset(debug_info, self, unit_ref)?;
             }
 
-            other_attribute_value => {
+            _other_attribute_value => {
                 // TODO(typeinfo): This is bad, if the type attribute is not a unit ref, we should record this in the calling function
                 let offset = DebugInfoOffset(0);
                 type_info = TypeInfo::new(offset, None);
@@ -1000,8 +1138,7 @@ impl UnitInfo {
 
                 gimli::DW_TAG_formal_parameter
                 | gimli::DW_TAG_member
-                | gimli::DW_TAG_enumerator
-                | gimli::DW_TAG_variable => {
+                | gimli::DW_TAG_enumerator => {
                     // This branch handles:
                     //  - Parameters to functions.
                     //  - Typical top-level variables.
@@ -1040,8 +1177,7 @@ impl UnitInfo {
                         )?;
                     }
                 }
-                /*
-                // ypical top-level variables.
+                // typical top-level variables.
                 gimli::DW_TAG_variable => {
                     let mut child_variable = cache.create_variable(
                         parent_variable.variable_key,
@@ -1076,7 +1212,6 @@ impl UnitInfo {
                         )?;
                     }
                 }
-                */
                 gimli::DW_TAG_variant_part => {
                     // We need to recurse through the children, to find the DW_TAG_variant with discriminant matching the DW_TAG_variant,
                     // and ONLY add it's children to the parent variable.
@@ -1797,133 +1932,6 @@ impl UnitInfo {
         cache.update_variable_and_value(&mut child_variable, memory)?;
 
         Ok(child_variable)
-    }
-
-    fn extract_struct_type_info(
-        &self,
-        header_offset: DebugInfoOffset,
-        debug_info: &DebugInfo,
-        node: &DebuggingInformationEntry<GimliReader>,
-        type_info: &mut TypeInfo,
-        type_cache: &mut TypeCache,
-    ) -> Result<(), DebugError> {
-        let byte_size = extract_byte_size(node);
-
-        let mut members = Vec::new();
-
-        let mut tree = self
-            .unit
-            .header
-            .entries_tree(&self.unit.abbreviations, Some(node.offset()))?;
-
-        let mut child_nodes = tree.root()?.children();
-
-        while let Some(child_node) = child_nodes.next()? {
-            match child_node.entry().tag() {
-                gimli::DW_TAG_variant_part => {
-                    // This is an enum
-                    return self.extract_variant_part(
-                        header_offset,
-                        debug_info,
-                        child_node.children(),
-                        type_info,
-                        type_cache,
-                    );
-                }
-                gimli::DW_TAG_member => {
-                    let name = extract_name(debug_info, child_node.entry()).ok().flatten();
-                    let offset = None;
-
-                    let member_type = if let Some(member_type) =
-                        child_node.entry().attr(gimli::DW_AT_type).ok().flatten()
-                    {
-                        self.process_type_attribute_type_info(
-                            header_offset,
-                            &member_type,
-                            debug_info,
-                            type_cache,
-                        )?
-                    } else {
-                        TypeInfo::new(DebugInfoOffset(0), None)
-                    };
-
-                    members.push(StructMember {
-                        name,
-                        ty: Box::new(member_type),
-                        offset,
-                    });
-                }
-
-                other => {
-                    tracing::trace!("struct: Skipping child node with tag: {}", other);
-                }
-            }
-        }
-
-        type_info.kind = TypeKind::Struct { byte_size, members };
-
-        Ok(())
-    }
-
-    fn extract_variant_part(
-        &self,
-        header_offset: DebugInfoOffset,
-        debug_info: &DebugInfo,
-        node: gimli::EntriesTreeIter<GimliReader>,
-        type_info: &mut TypeInfo,
-        visited_types: &mut TypeCache,
-    ) -> Result<(), DebugError> {
-        todo!()
-    }
-
-    #[tracing::instrument(level = "trace", skip_all)]
-    fn extract_union_type_info(
-        &self,
-        header_offset: DebugInfoOffset,
-        debug_info: &DebugInfo,
-        node: &DebuggingInformationEntry<GimliReader>,
-        type_info: &mut TypeInfo,
-        type_cache: &mut TypeCache,
-    ) -> Result<(), DebugError> {
-        tracing::debug!("Extracting union type info for {:?}", type_info);
-
-        let byte_size = extract_byte_size(node);
-        let mut members = Vec::new();
-
-        let mut tree = self
-            .unit
-            .header
-            .entries_tree(&self.unit.abbreviations, Some(node.offset()))?;
-
-        let mut child_nodes = tree.root()?.children();
-
-        while let Some(child_node) = child_nodes.next()? {
-            match child_node.entry().tag() {
-                gimli::DW_TAG_member => {
-                    let member_type = if let Some(member_type) =
-                        child_node.entry().attr(gimli::DW_AT_type).ok().flatten()
-                    {
-                        self.process_type_attribute_type_info(
-                            header_offset,
-                            &member_type,
-                            debug_info,
-                            type_cache,
-                        )?
-                    } else {
-                        TypeInfo::new(DebugInfoOffset(0), None)
-                    };
-
-                    members.push(Box::new(member_type));
-                }
-                other => {
-                    tracing::trace!("union: Skipping child node with tag: {}", other);
-                }
-            }
-        }
-
-        type_info.kind = TypeKind::Union { byte_size, members };
-
-        Ok(())
     }
 
     /// Create child variable entries to represent array members and their values.
