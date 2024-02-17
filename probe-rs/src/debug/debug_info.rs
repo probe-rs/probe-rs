@@ -254,20 +254,19 @@ impl DebugInfo {
     /// We do not actually resolve the children of `[VariableName::StaticScope]` automatically, and only create the necessary header in the `VariableCache`.
     /// This allows us to resolve the `[VariableName::StaticScope]` on demand/lazily, when a user requests it from the debug client.
     /// This saves a lot of overhead when a user only wants to see the `[VariableName::LocalScope]` or `[VariableName::Registers]` while stepping through code (the most common use cases)
-    pub(crate) fn create_static_scope_cache(
-        &self,
-        unit_info: &UnitInfo,
-    ) -> Result<VariableCache, gimli::Error> {
+    pub(crate) fn create_static_scope_cache(&self) -> Result<VariableCache, gimli::Error> {
+        // TODO: Do this for all Units
+
+        let mut entries = self.unit_infos[0].unit.entries();
+
         // Only process statics for this unit header.
-        let abbrevs = &unit_info.unit.abbreviations;
         // Navigate the current unit from the header down.
-        let mut header_tree = unit_info.unit.header.entries_tree(abbrevs, None)?;
-        let unit_node = header_tree.root()?;
+        let (_, unit_node) = entries.next_dfs()?.unwrap();
 
         Ok(VariableCache::new_dwarf_cache(
-            unit_node.entry().offset(),
+            unit_node.offset(),
             VariableName::StaticScopeRoot,
-            Some(unit_info),
+            Some(&self.unit_infos[0]),
         ))
     }
 
@@ -499,17 +498,6 @@ impl DebugInfo {
 
                 // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
                 // Resolve the statics that belong to the compilation unit that this function is in.
-                let static_variables = self.create_static_scope_cache(unit_info).map_or_else(
-                    |error| {
-                        tracing::error!(
-                            "Could not resolve static variables. {}. Continuing...",
-                            error
-                        );
-                        None
-                    },
-                    Some,
-                );
-
                 // Next, resolve and cache the function variables.
                 let local_variables = self
                     .create_function_scope_cache(function_die, unit_info)
@@ -532,7 +520,6 @@ impl DebugInfo {
                     pc: inlined_call_site,
                     frame_base,
                     is_inlined: function_die.is_inline(),
-                    static_variables,
                     local_variables,
                     canonical_frame_address: cfa,
                 });
@@ -556,19 +543,7 @@ impl DebugInfo {
         let function_location = self.get_source_location(address);
 
         // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
-        // Resolve the statics that belong to the compilation unit that this function is in.
-        let static_variables = self.create_static_scope_cache(unit_info).map_or_else(
-            |error| {
-                tracing::error!(
-                    "Could not resolve static variables. {}. Continuing...",
-                    error
-                );
-                None
-            },
-            Some,
-        );
-
-        // Next, resolve and cache the function variables.
+        // Resolve and cache the function variables.
         let local_variables = self
             .create_function_scope_cache(last_function, unit_info)
             .map_or_else(
@@ -594,7 +569,6 @@ impl DebugInfo {
             },
             frame_base,
             is_inlined: last_function.is_inline(),
-            static_variables,
             local_variables,
             canonical_frame_address: cfa,
         });
@@ -728,7 +702,6 @@ impl DebugInfo {
                             },
                             frame_base: None,
                             is_inlined: false,
-                            static_variables: None,
                             local_variables: None,
                             canonical_frame_address: None,
                         }
@@ -755,7 +728,6 @@ impl DebugInfo {
                             },
                             frame_base: None,
                             is_inlined: false,
-                            static_variables: None,
                             local_variables: None,
                             canonical_frame_address: None,
                         }
@@ -915,7 +887,6 @@ impl DebugInfo {
                             },
                             frame_base: None,
                             is_inlined: false,
-                            static_variables: None,
                             local_variables: None,
                             canonical_frame_address: None,
                         };
@@ -2041,9 +2012,6 @@ mod test {
         // Expand and validate the static and local variables for each stack frame.
         for frame in stack_frames.iter_mut() {
             let mut variable_caches = Vec::new();
-            if let Some(static_variables) = &mut frame.static_variables {
-                variable_caches.push(static_variables);
-            }
             if let Some(local_variables) = &mut frame.local_variables {
                 variable_caches.push(local_variables);
             }
@@ -2067,5 +2035,42 @@ mod test {
         // Using YAML output because it is easier to read than the default snapshot output,
         // and also because they provide better diffs.
         insta::assert_yaml_snapshot!(snapshot_name, stack_frames);
+    }
+
+    #[test_case("RP2040"; "Armv6-m using RP2040")]
+    #[test_case("nRF52833_xxAA"; "Armv7-m using nRF52833_xxAA")]
+    //TODO:  #[test_case("esp32c3"; "RISC-V32E using esp32c3")]
+    fn static_variables(chip_name: &str) {
+        // TODO: Add RISC-V tests.
+
+        let debug_info =
+            load_test_elf_as_debug_info(format!("debug-unwind-tests/{chip_name}.elf").as_str());
+        let mut adapter = CoreDump::load(&get_path_for_test_files(
+            format!("debug-unwind-tests/{chip_name}.coredump").as_str(),
+        ))
+        .unwrap();
+
+        let initial_registers = adapter.debug_registers();
+
+        let snapshot_name = format!("{chip_name}__static_variables");
+
+        let mut static_variables = debug_info.create_static_scope_cache().unwrap();
+
+        static_variables.recurse_deferred_variables(
+            &debug_info,
+            &mut adapter,
+            None,
+            10,
+            0,
+            StackFrameInfo {
+                registers: &initial_registers,
+                frame_base: None,
+                canonical_frame_address: None,
+            },
+        );
+
+        // Using YAML output because it is easier to read than the default snapshot output,
+        // and also because they provide better diffs.
+        insta::assert_yaml_snapshot!(snapshot_name, static_variables);
     }
 }

@@ -21,7 +21,7 @@ use crate::{
 use anyhow::{anyhow, Result};
 use probe_rs::{
     debug::{
-        debug_info::DebugInfo, stack_frame::StackFrameInfo, ColumnType, ObjectRef,
+        debug_info::DebugInfo, stack_frame::StackFrameInfo, ColumnType, ObjectRef, VariableCache,
         VerifiedBreakpoint,
     },
     rtt::{Rtt, ScanRegion},
@@ -44,6 +44,7 @@ pub struct CoreData {
     pub last_known_status: CoreStatus,
     pub target_name: String,
     pub debug_info: DebugInfo,
+    pub static_variables: Option<VariableCache>,
     pub core_peripherals: Option<SvdCache>,
     pub stack_frames: Vec<probe_rs::debug::stack_frame::StackFrame>,
     pub breakpoints: Vec<session_data::ActiveBreakpoint>,
@@ -381,13 +382,29 @@ impl<'p> CoreHandle<'p> {
     /// required to resolve the values of these variables. This is used to provide the minimal
     /// memory ranges required to create a [`CoreDump`] for the current scope.
     pub(crate) fn get_memory_ranges(&mut self) -> Vec<Range<u64>> {
+        let recursion_limit = 10;
+
         let mut all_discrete_memory_ranges = Vec::new();
+
+        if let Some(static_variables) = &mut self.core_data.static_variables {
+            static_variables.recurse_deferred_variables(
+                &self.core_data.debug_info,
+                &mut self.core,
+                None,
+                recursion_limit,
+                0,
+                StackFrameInfo {
+                    registers: &self.core_data.stack_frames[0].registers,
+                    frame_base: self.core_data.stack_frames[0].frame_base,
+                    canonical_frame_address: self.core_data.stack_frames[0].canonical_frame_address,
+                },
+            );
+            all_discrete_memory_ranges.append(&mut static_variables.get_discrete_memory_ranges());
+        }
+
         // Expand and validate the static and local variables for each stack frame.
         for frame in self.core_data.stack_frames.iter_mut() {
             let mut variable_caches = Vec::new();
-            if let Some(static_variables) = &mut frame.static_variables {
-                variable_caches.push(static_variables);
-            }
             if let Some(local_variables) = &mut frame.local_variables {
                 variable_caches.push(local_variables);
             }

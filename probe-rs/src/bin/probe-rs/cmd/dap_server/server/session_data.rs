@@ -112,6 +112,7 @@ impl SessionData {
                     target_session.target().name
                 ),
                 debug_info: debug_info_from_binary(core_configuration)?,
+                static_variables: None,
                 core_peripherals: None,
                 stack_frames: vec![],
                 breakpoints: vec![],
