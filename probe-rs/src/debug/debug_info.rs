@@ -338,11 +338,11 @@ impl DebugInfo {
                     other => VariableName::Named(format!("Error: Unable to generate name, parent variable does not have a name but is special variable {other:?}")),
                 };
 
-                referenced_variable = unit_info.extract_type(
+                unit_info.extract_type(
                     self,
                     referenced_node,
                     parent_variable,
-                    referenced_variable,
+                    &mut referenced_variable,
                     memory,
                     cache,
                     frame_info,
@@ -369,10 +369,10 @@ impl DebugInfo {
                 temporary_variable.parent_key = parent_variable.variable_key;
                 cache.add_variable(parent_variable.variable_key, &mut temporary_variable)?;
 
-                temporary_variable = unit_info.process_tree(
+                unit_info.process_tree(
                     self,
                     parent_node,
-                    temporary_variable,
+                    &mut temporary_variable,
                     memory,
                     cache,
                     frame_info,
@@ -396,10 +396,10 @@ impl DebugInfo {
 
                 let parent_node = type_tree.root()?;
 
-                temporary_variable = unit_info.process_tree(
+                unit_info.process_tree(
                     self,
                     parent_node,
-                    temporary_variable,
+                    &mut temporary_variable,
                     memory,
                     cache,
                     frame_info,
