@@ -405,7 +405,7 @@ impl Variable {
                     let mut cache_variable = self.clone();
                     cache_variable.value = VariableValue::Valid(new_value.clone());
                     cache_variable.extract_value(memory, variable_cache);
-                    variable_cache.update_variable(&mut cache_variable)?;
+                    variable_cache.update_variable(&cache_variable)?;
                     new_value
                 }
                 Err(error) => {

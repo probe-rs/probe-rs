@@ -190,11 +190,11 @@ impl UnitInfo {
         debug_info: &DebugInfo,
         tree_node: &mut gimli::EntriesTreeNode<GimliReader>,
         parent_variable: &mut Variable,
-        mut child_variable: Variable,
+        child_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
         cache: &mut VariableCache,
         frame_info: StackFrameInfo<'_>,
-    ) -> Result<Variable, DebugError> {
+    ) -> Result<(), DebugError> {
         // Identify the parent.
         child_variable.parent_key = parent_variable.variable_key;
 
@@ -210,7 +210,7 @@ impl UnitInfo {
                         debug_info,
                         tree_node.entry(),
                         parent_variable,
-                        &mut child_variable,
+                        child_variable,
                         memory,
                         frame_info,
                     )?;
@@ -287,7 +287,7 @@ impl UnitInfo {
                             debug_info,
                             &attributes_entry,
                             parent_variable,
-                            &mut child_variable,
+                            child_variable,
                             memory,
                             frame_info,
                             cache,
@@ -346,11 +346,11 @@ impl UnitInfo {
                                 Some(discriminant_node.entry().offset()),
                                 Some(self),
                             )?;
-                            discriminant_variable = self.process_tree_node_attributes(
+                            self.process_tree_node_attributes(
                                 debug_info,
                                 &mut discriminant_node,
                                 parent_variable,
-                                discriminant_variable,
+                                &mut discriminant_variable,
                                 memory,
                                 cache,
                                 frame_info,
@@ -437,9 +437,9 @@ impl UnitInfo {
         }
 
         child_variable.extract_value(memory, cache);
-        cache.update_variable(&mut child_variable)?;
+        cache.update_variable(child_variable)?;
 
-        Ok(child_variable)
+        Ok(())
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -510,7 +510,7 @@ impl UnitInfo {
     ) -> Result<(), DebugError> {
         if !parent_variable.is_valid() {
             parent_variable.extract_value(memory, cache);
-            cache.update_variable(&parent_variable)?;
+            cache.update_variable(parent_variable)?;
             return Ok(());
         }
 
@@ -576,11 +576,11 @@ impl UnitInfo {
                         Some(child_node.entry().offset()),
                         Some(self),
                     )?;
-                    child_variable = self.process_tree_node_attributes(
+                    self.process_tree_node_attributes(
                         debug_info,
                         &mut child_node,
                         parent_variable,
-                        child_variable,
+                        &mut child_variable,
                         memory,
                         cache,
                         frame_info,
@@ -622,11 +622,11 @@ impl UnitInfo {
                     // - If there is a DW_AT_discr that has a value, then this is a reference to the member entry for the discriminant. This value will be resolved to match against the appropriate DW_TAG_variant.
                     // - TODO: The [DWARF] standard, 5.7.10, allows for a DW_AT_discr_list, but I have not seen that generated from RUST yet.
                     parent_variable.role = VariantRole::VariantPart(u64::MAX);
-                    child_variable = self.process_tree_node_attributes(
+                    self.process_tree_node_attributes(
                         debug_info,
                         &mut child_node,
                         parent_variable,
-                        child_variable,
+                        &mut child_variable,
                         memory,
                         cache,
                         frame_info,
@@ -646,18 +646,18 @@ impl UnitInfo {
                 // Variant is a child of a structure, and one of them should have a discriminant value to match the DW_TAG_variant_part
                 gimli::DW_TAG_variant => {
                     // We only need to do this if we have not already found our variant,
-                    if !cache.has_children(&parent_variable)? {
+                    if !cache.has_children(parent_variable)? {
                         let mut child_variable = cache.create_variable(
                             parent_variable.variable_key,
                             Some(child_node.entry().offset()),
                             Some(self),
                         )?;
                         self.extract_variant_discriminant(&child_node, &mut child_variable)?;
-                        child_variable = self.process_tree_node_attributes(
+                        self.process_tree_node_attributes(
                             debug_info,
                             &mut child_node,
                             parent_variable,
-                            child_variable,
+                            &mut child_variable,
                             memory,
                             cache,
                             frame_info,
@@ -671,7 +671,7 @@ impl UnitInfo {
                                     self.process_memory_location(
                                         debug_info,
                                         child_node.entry(),
-                                        &parent_variable,
+                                        parent_variable,
                                         &mut child_variable,
                                         memory,
                                         frame_info,
@@ -688,7 +688,7 @@ impl UnitInfo {
                                     if child_variable.is_valid() {
                                         // Eliminate intermediate DWARF nodes, but keep their children
                                         cache.adopt_grand_children(
-                                            &parent_variable,
+                                            parent_variable,
                                             &child_variable,
                                         )?;
                                     }
@@ -710,11 +710,11 @@ impl UnitInfo {
                         Some(self),
                     )?;
 
-                    range_variable = self.process_tree_node_attributes(
+                    self.process_tree_node_attributes(
                         debug_info,
                         &mut child_node,
                         parent_variable,
-                        range_variable,
+                        &mut range_variable,
                         memory,
                         cache,
                         frame_info,
@@ -1202,7 +1202,7 @@ impl UnitInfo {
                 // Recursively process a child types.
                 // TODO: The DWARF does not currently hold information that allows decoding of which UNION arm is instantiated, so we have to display all available.
                 self.process_tree(debug_info, node, child_variable, memory, cache, frame_info)?;
-                if child_variable.is_valid() && !cache.has_children(&child_variable)? {
+                if child_variable.is_valid() && !cache.has_children(child_variable)? {
                     // Empty structs don't have values.
                     child_variable.set_value(VariableValue::Valid(format!(
                         "{:?}",
@@ -1356,7 +1356,7 @@ impl UnitInfo {
             memory,
         );
         array_member_variable.extract_value(memory, cache);
-        cache.update_variable(&mut array_member_variable)?;
+        cache.update_variable(&array_member_variable)?;
 
         Ok(())
     }
