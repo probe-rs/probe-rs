@@ -401,6 +401,58 @@ impl UnitInfo {
                     gimli::DW_AT_address_class => {
                         // Processed by `extract_type()`
                     }
+                    // Available since DWARF 4+
+                    gimli::DW_AT_data_bit_offset => match attr.value().udata_value() {
+                        Some(offset) => {
+                            let bitfield_info = child_variable
+                                .bitfield
+                                .get_or_insert((BitOffset::FromLsb(0), 0));
+
+                            bitfield_info.0 = BitOffset::FromLsb(offset);
+                            child_variable.set_value(VariableValue::Empty);
+                        }
+                        None => {
+                            child_variable.set_value(VariableValue::Error(format!(
+                                "Unimplemented: Attribute Value for DW_AT_data_bit_offset: {:?}",
+                                attr.value()
+                            )));
+                        }
+                    },
+                    // Deprecated in DWARF 5, but still used by some compilers.
+                    // Specifies offset from MSB. We're handling this as a separate offset variant
+                    // because we haven't yet processed the byte size of the variable.
+                    gimli::DW_AT_bit_offset => match attr.value().udata_value() {
+                        Some(offset) => {
+                            let bitfield_info = child_variable
+                                .bitfield
+                                .get_or_insert((BitOffset::FromLsb(0), 0));
+
+                            bitfield_info.0 = BitOffset::FromMsb(offset);
+                            child_variable.set_value(VariableValue::Empty);
+                        }
+                        None => {
+                            child_variable.set_value(VariableValue::Error(format!(
+                                "Unimplemented: Attribute Value for DW_AT_bit_offset: {:?}",
+                                attr.value()
+                            )));
+                        }
+                    },
+                    gimli::DW_AT_bit_size => match attr.value().udata_value() {
+                        Some(size) => {
+                            let bitfield_info = child_variable
+                                .bitfield
+                                .get_or_insert((BitOffset::FromLsb(0), 0));
+
+                            bitfield_info.1 = size;
+                            child_variable.set_value(VariableValue::Empty);
+                        }
+                        None => {
+                            child_variable.set_value(VariableValue::Error(format!(
+                                "Unimplemented: Attribute Value for DW_AT_bit_size: {:?}",
+                                attr.value()
+                            )));
+                        }
+                    },
                     other_attribute => {
                         tracing::info!(
                             "Unimplemented: Variable Attribute {:.100} : {:.100}, with children = {}",

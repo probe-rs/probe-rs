@@ -328,6 +328,16 @@ impl std::fmt::Display for VariableLocation {
     }
 }
 
+/// The starting bit (and direction) of a bit field type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BitOffset {
+    /// The bit offset is from the least significant bit.
+    FromLsb(u64),
+
+    /// The bit offset is from the most significant bit.
+    FromMsb(u64),
+}
+
 /// The `Variable` struct is used in conjunction with `VariableCache` to cache data about variables.
 ///
 /// Any modifications to the `Variable` value will be transient (lost when it goes out of scope),
@@ -358,6 +368,8 @@ pub struct Variable {
     pub byte_size: Option<u64>,
     /// If this is a subrange (array, vector, etc.), is the ordinal position of this variable in that range
     pub member_index: Option<i64>,
+    /// If this is a bit field type, we need to store the offset and bit length.
+    pub bitfield: Option<(BitOffset, u64)>,
     /// The role of this variable.
     pub role: VariantRole,
 }
@@ -380,6 +392,7 @@ impl Variable {
             memory_location: Default::default(),
             byte_size: None,
             member_index: None,
+            bitfield: None,
             role: Default::default(),
         }
     }

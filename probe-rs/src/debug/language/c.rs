@@ -1,12 +1,11 @@
 use crate::{
     debug::{
         language::{
-            parsing::ParseToBytes,
             value::{format_float, Value},
             ProgrammingLanguage,
         },
-        DebugError, Variable, VariableCache, VariableLocation, VariableName, VariableType,
-        VariableValue,
+        BitOffset, DebugError, Variable, VariableCache, VariableLocation, VariableName,
+        VariableType, VariableValue,
     },
     MemoryInterface,
 };
@@ -189,14 +188,32 @@ impl Value for UnsignedInt {
     where
         Self: Sized,
     {
+        // Read the bits
         let mut buff = [0u8; 16];
         let bytes = variable.byte_size.unwrap_or(1).min(16) as usize;
         memory.read(
             variable.memory_location.memory_address()?,
             &mut buff[..bytes],
         )?;
+        let value = u128::from_le_bytes(buff);
 
-        Ok(Self(u128::from_le_bytes(buff)))
+        // Figure out the bitfield offset & bit count
+        let bitfield = match variable.bitfield {
+            Some((BitOffset::FromLsb(offset), size)) => Some((offset, size)),
+            Some((BitOffset::FromMsb(offset), size)) => {
+                let offset = (bytes as u64 * 8) - offset - size;
+                Some((offset, size))
+            }
+            None => None,
+        };
+
+        // Extract bitfield bits
+        let value = match bitfield {
+            Some((offset, size)) => (value >> offset) & ((1 << size) - 1),
+            None => value,
+        };
+
+        Ok(Self(value))
     }
 
     fn update_value(
@@ -204,14 +221,57 @@ impl Value for UnsignedInt {
         memory: &mut dyn MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        let buff = u128::parse_to_bytes(new_value)?;
-
-        // TODO: check that value actually fits into `bytes` number of bytes
-        let bytes = variable.byte_size.unwrap_or(1) as usize;
-        memory.write_8(variable.memory_location.memory_address()?, &buff[..bytes])?;
-
-        Ok(())
+        match parse_int::parse::<u128>(new_value) {
+            Ok(value) => write_unsigned_bytes(variable, memory, value),
+            Err(e) => Err(DebugError::UnwindIncompleteResults {
+                message: format!("Invalid data conversion from value: {new_value:?}. {e:?}"),
+            }),
+        }
     }
+}
+
+fn write_unsigned_bytes(
+    variable: &Variable,
+    memory: &mut dyn MemoryInterface,
+    unsigned: u128,
+) -> Result<(), DebugError> {
+    // TODO: check that value actually fits into `bytes` number of bytes
+    let bytes = variable.byte_size.unwrap_or(1) as usize;
+
+    // Figure out the bitfield offset & bit count
+    let (offset, size) = match variable.bitfield {
+        Some((BitOffset::FromLsb(offset), size)) => (offset, size),
+        Some((BitOffset::FromMsb(offset), size)) => {
+            let offset = (bytes as u64 * 8) - offset - size;
+            (offset, size)
+        }
+        None => {
+            let buff = unsigned.to_le_bytes();
+            memory.write_8(variable.memory_location.memory_address()?, &buff[..bytes])?;
+            return Ok(());
+        }
+    };
+
+    // We are writing a bitfield, we need to do a read-modify-write operation.
+
+    // Read the bits
+    let mut buff = [0u8; 16];
+    memory.read(
+        variable.memory_location.memory_address()?,
+        &mut buff[..bytes],
+    )?;
+    let mut read_value = u128::from_le_bytes(buff);
+
+    // Mask off the old value and write the new one
+    let value_mask = (1 << size) - 1;
+    read_value &= !(value_mask << offset);
+    read_value |= (unsigned & value_mask) << offset;
+
+    // Write the new value
+    let buff = read_value.to_le_bytes();
+    memory.write_8(variable.memory_location.memory_address()?, &buff[..bytes])?;
+
+    Ok(())
 }
 
 struct SignedInt(i128);
@@ -226,25 +286,29 @@ impl Value for SignedInt {
     fn get_value(
         variable: &Variable,
         memory: &mut dyn MemoryInterface,
-        _variable_cache: &VariableCache,
+        variable_cache: &VariableCache,
     ) -> Result<Self, DebugError>
     where
         Self: Sized,
     {
-        let mut buff = [0u8; 16];
+        // We read the number as Unsigned first, to avoid duplicating the bitfield handling.
+        let unsigned = UnsignedInt::get_value(variable, memory, variable_cache)?.0;
         let bytes = variable.byte_size.unwrap_or(1).min(16) as usize;
-        memory.read(
-            variable.memory_location.memory_address()?,
-            &mut buff[..bytes],
-        )?;
 
-        // sign extend
-        let negative = buff[bytes - 1] >= 0x80;
-        if negative {
-            buff[bytes..].fill(0xFF);
-        }
+        // Sign extend
+        let sign_bit_shift = match variable.bitfield {
+            Some((_, size)) => size as usize - 1,
+            None => (bytes * 8) - 1,
+        };
 
-        Ok(Self(i128::from_le_bytes(buff)))
+        let negative = unsigned & (1 << sign_bit_shift) != 0;
+        let value = if negative {
+            (unsigned | (!0 << sign_bit_shift)) as i128
+        } else {
+            unsigned as i128
+        };
+
+        Ok(Self(value))
     }
 
     fn update_value(
@@ -252,12 +316,11 @@ impl Value for SignedInt {
         memory: &mut dyn MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        let buff = i128::parse_to_bytes(new_value)?;
-
-        // TODO: check that value actually fits into `bytes` number of bytes
-        let bytes = variable.byte_size.unwrap_or(1) as usize;
-        memory.write_8(variable.memory_location.memory_address()?, &buff[..bytes])?;
-
-        Ok(())
+        match parse_int::parse::<i128>(new_value) {
+            Ok(value) => write_unsigned_bytes(variable, memory, value as u128),
+            Err(e) => Err(DebugError::UnwindIncompleteResults {
+                message: format!("Invalid data conversion from value: {new_value:?}. {e:?}"),
+            }),
+        }
     }
 }
