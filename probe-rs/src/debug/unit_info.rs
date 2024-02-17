@@ -474,7 +474,7 @@ impl UnitInfo {
         cache: &mut VariableCache,
         frame_info: StackFrameInfo<'_>,
         type_cache: &mut TypeCache,
-    ) -> Result<(), DebugError> {
+    ) -> Result<Variable, DebugError> {
         assert_eq!(tree_node.entry().tag(), gimli::DW_TAG_variable);
 
         // Identify the parent.
@@ -742,7 +742,7 @@ impl UnitInfo {
 
         cache.update_variable_and_value(&mut child_variable, memory)?;
 
-        Ok(())
+        Ok(child_variable)
     }
 
     fn handle_array_member_type_info(
@@ -1000,7 +1000,8 @@ impl UnitInfo {
 
                 gimli::DW_TAG_formal_parameter
                 | gimli::DW_TAG_member
-                | gimli::DW_TAG_enumerator => {
+                | gimli::DW_TAG_enumerator
+                | gimli::DW_TAG_variable => {
                     // This branch handles:
                     //  - Parameters to functions.
                     //  - Typical top-level variables.
@@ -1039,14 +1040,15 @@ impl UnitInfo {
                         )?;
                     }
                 }
-                // Typical top-level variables.
+                /*
+                // ypical top-level variables.
                 gimli::DW_TAG_variable => {
-                    let child_variable = cache.create_variable(
+                    let mut child_variable = cache.create_variable(
                         parent_variable.variable_key,
                         Some(child_node.entry().offset()),
                         Some(self),
                     )?;
-                    self.process_variable_attributes(
+                    child_variable = self.process_variable_attributes(
                         debug_info,
                         &mut child_node,
                         &mut parent_variable,
@@ -1056,7 +1058,25 @@ impl UnitInfo {
                         frame_info,
                         type_cache,
                     )?;
+                    // Do not keep or process PhantomData nodes, or variant parts that we have already used.
+                    if child_variable.type_name.is_phantom_data()
+                        || child_variable.name == VariableName::Artifical
+                    {
+                        cache.remove_cache_entry(child_variable.variable_key)?;
+                    } else if child_variable.is_valid() {
+                        // Recursively process each child.
+                        self.process_tree(
+                            debug_info,
+                            child_node,
+                            child_variable,
+                            memory,
+                            cache,
+                            frame_info,
+                            type_cache,
+                        )?;
+                    }
                 }
+                */
                 gimli::DW_TAG_variant_part => {
                     // We need to recurse through the children, to find the DW_TAG_variant with discriminant matching the DW_TAG_variant,
                     // and ONLY add it's children to the parent variable.
