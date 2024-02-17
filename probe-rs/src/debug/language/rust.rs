@@ -1,6 +1,9 @@
 use crate::{
     debug::{
-        language::{value::Value, ProgrammingLanguage},
+        language::{
+            value::{format_float, Value},
+            ProgrammingLanguage,
+        },
         DebugError, Variable, VariableCache, VariableLocation, VariableName, VariableType,
         VariableValue,
     },
@@ -44,8 +47,12 @@ impl ProgrammingLanguage for Rust {
                 "u128" => u128::get_value(variable, memory, variable_cache).into(),
                 // TODO: We can get the actual WORD length from DWARF instead of assuming `u32`
                 "usize" => u32::get_value(variable, memory, variable_cache).into(),
-                "f32" => f32::get_value(variable, memory, variable_cache).into(),
-                "f64" => f64::get_value(variable, memory, variable_cache).into(),
+                "f32" => f32::get_value(variable, memory, variable_cache)
+                    .map(|f| format_float(f as f64))
+                    .into(),
+                "f64" => f64::get_value(variable, memory, variable_cache)
+                    .map(format_float)
+                    .into(),
                 "None" => VariableValue::Valid("None".to_string()),
 
                 _undetermined_value => VariableValue::Empty,

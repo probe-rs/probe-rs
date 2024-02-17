@@ -447,13 +447,12 @@ impl UnitInfo {
                         // Processed by `extract_type()`
                     }
                     other_attribute => {
-                        // This follows the examples of the "format!" documenation as the way to limit string length of a {:?} parameter.
-                        child_variable.set_value(VariableValue::Error(format!(
+                        tracing::info!(
                             "Unimplemented: Variable Attribute {:.100} : {:.100}, with children = {}",
                             format!("{:?}", other_attribute.static_string()),
                             format!("{:?}", attributes_entry.attr_value(other_attribute)),
                             attributes_entry.has_children()
-                        )));
+                        );
                     }
                 }
             }
@@ -1362,7 +1361,7 @@ impl UnitInfo {
             }
             Ok(None) => None,
             Err(error) => {
-                let message = format!("Error: evaluating type name: {error:?} ");
+                let message = format!("Error: evaluating type name: {error:?}");
                 child_variable.set_value(VariableValue::Error(message.clone()));
                 Some(message)
             }
@@ -1684,7 +1683,7 @@ impl UnitInfo {
                     // Empty structs don't have values.
                     child_variable.set_value(VariableValue::Valid(format!(
                         "{:?}",
-                        child_variable.type_name.clone()
+                        child_variable.type_name
                     )));
                 }
             }
@@ -2485,13 +2484,13 @@ impl UnitInfo {
         // 3. Pointers to base types (includes &str types)
         // 4. Pointers to variable names that start with `*`
         // 5. Pointers to types with refrenced memory addresses (e.g. variants, generics, arrays, etc.)
-        (matches!(child_variable.name.clone(), VariableName::Named(var_name) if var_name.starts_with('*'))
+        (matches!(child_variable.name, VariableName::Named(ref var_name) if var_name.starts_with('*'))
                 && matches!(parent_variable.role, VariantRole::VariantPart(_)))
             || matches!(&parent_variable.type_name, VariableType::Pointer(Some(pointer_name)) if pointer_name.starts_with('*'))
             || (matches!(&parent_variable.type_name, VariableType::Pointer(_))
                 && (matches!(child_variable.type_name, VariableType::Base(_))
-                    || matches!(child_variable.type_name.clone(), VariableType::Struct(type_name) if type_name.starts_with("&str"))
-                    || matches!(child_variable.name.clone(), VariableName::Named(var_name) if var_name.starts_with('*'))
+                    || matches!(child_variable.type_name, VariableType::Struct(ref type_name) if type_name.starts_with("&str"))
+                    || matches!(child_variable.name, VariableName::Named(ref var_name) if var_name.starts_with('*'))
                     || self.has_address_pointer(unit_ref).unwrap_or_else(|error| {
                         child_variable.set_value(VariableValue::Error(format!("Failed to determine if a struct has variant or generic type fields: {error}")));
                         false
