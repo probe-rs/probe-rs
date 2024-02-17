@@ -362,23 +362,14 @@ impl DebugInfo {
                     .entries_tree(&unit_info.unit.abbreviations, Some(type_offset))?;
                 let parent_node = type_tree.root()?;
 
-                // For process_tree we need to create a temporary parent that will later be eliminated with VariableCache::adopt_grand_children
-                // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
-                let mut temporary_variable = parent_variable.clone();
-                temporary_variable.variable_key = ObjectRef::Invalid;
-                temporary_variable.parent_key = parent_variable.variable_key;
-                cache.add_variable(parent_variable.variable_key, &mut temporary_variable)?;
-
                 unit_info.process_tree(
                     self,
                     parent_node,
-                    &mut temporary_variable,
+                    parent_variable,
                     memory,
                     cache,
                     frame_info,
                 )?;
-
-                cache.adopt_grand_children(parent_variable, &temporary_variable)?;
             }
             VariableNodeType::DirectLookup => {
                 // Find the parent node
@@ -387,25 +378,16 @@ impl DebugInfo {
                     parent_variable.variable_unit_offset,
                 )?;
 
-                // For process_tree we need to create a temporary parent that will later be eliminated with VariableCache::adopt_grand_children
-                // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
-                let mut temporary_variable = parent_variable.clone();
-                temporary_variable.variable_key = ObjectRef::Invalid;
-                temporary_variable.parent_key = parent_variable.variable_key;
-                cache.add_variable(parent_variable.variable_key, &mut temporary_variable)?;
-
                 let parent_node = type_tree.root()?;
 
                 unit_info.process_tree(
                     self,
                     parent_node,
-                    &mut temporary_variable,
+                    parent_variable,
                     memory,
                     cache,
                     frame_info,
                 )?;
-
-                cache.adopt_grand_children(parent_variable, &temporary_variable)?;
             }
             _ => {
                 // Do nothing. These have already been recursed to their maximum.
