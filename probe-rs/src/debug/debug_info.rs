@@ -1,4 +1,3 @@
-use super::ObjectRef;
 use super::{
     function_die::FunctionDie, get_object_reference, unit_info::UnitInfo, variable::*, DebugError,
     DebugRegisters, SourceLocation, StackFrame, VariableCache,
