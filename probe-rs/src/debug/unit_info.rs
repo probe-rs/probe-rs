@@ -120,7 +120,7 @@ impl UnitInfo {
 
     /// Check if the function located at the given offset contains inlined functions at the
     /// given address.
-    pub(crate) fn find_inlined_functions(
+    fn find_inlined_functions(
         &self,
         debug_info: &DebugInfo,
         address: u64,
