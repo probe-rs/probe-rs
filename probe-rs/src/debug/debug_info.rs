@@ -2038,9 +2038,7 @@ mod test {
                 variable_cache.recurse_deferred_variables(
                     &debug_info,
                     &mut adapter,
-                    None,
                     10,
-                    0,
                     StackFrameInfo {
                         registers: &frame.registers,
                         frame_base: frame.frame_base,

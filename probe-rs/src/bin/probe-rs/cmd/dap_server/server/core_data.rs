@@ -396,9 +396,7 @@ impl<'p> CoreHandle<'p> {
                 variable_cache.recurse_deferred_variables(
                     &self.core_data.debug_info,
                     &mut self.core,
-                    None,
                     10,
-                    0,
                     StackFrameInfo {
                         registers: &frame.registers,
                         frame_base: frame.frame_base,

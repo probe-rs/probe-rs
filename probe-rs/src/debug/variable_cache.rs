@@ -378,12 +378,30 @@ impl VariableCache {
     /// Recursively process the deferred variables in the variable cache,
     /// and add their children to the cache.
     /// Enforce a max level, so that we don't recurse infinitely on circular references.
-    #[allow(clippy::too_many_arguments)]
     pub fn recurse_deferred_variables(
         &mut self,
         debug_info: &DebugInfo,
         memory: &mut dyn MemoryInterface,
-        parent_variable: Option<&mut Variable>,
+        max_recursion_depth: usize,
+        frame_info: StackFrameInfo<'_>,
+    ) {
+        let mut parent_variable = self.root_variable();
+
+        self.recurse_deferred_variables_internal(
+            debug_info,
+            memory,
+            &mut parent_variable,
+            max_recursion_depth,
+            0,
+            frame_info,
+        )
+    }
+
+    fn recurse_deferred_variables_internal(
+        &mut self,
+        debug_info: &DebugInfo,
+        memory: &mut dyn MemoryInterface,
+        parent_variable: &mut Variable,
         max_recursion_depth: usize,
         current_recursion_depth: usize,
         frame_info: StackFrameInfo<'_>,
@@ -391,28 +409,18 @@ impl VariableCache {
         if current_recursion_depth >= max_recursion_depth {
             return;
         }
-        let mut variable_to_recurse = if let Some(parent_variable) = parent_variable {
-            parent_variable
-        } else if let Some(parent_variable) = self.root_variable_mut() {
-            // This is the top-level variable, which has no parent.
-            parent_variable
-        } else {
-            // If the variable cache is empty, we have nothing to do.
-            return;
-        }
-        .clone();
 
         if debug_info
-            .cache_deferred_variables(self, memory, &mut variable_to_recurse, frame_info)
+            .cache_deferred_variables(self, memory, parent_variable, frame_info)
             .is_err()
         {
             return;
         };
-        for mut child in self.get_children(variable_to_recurse.variable_key).unwrap() {
-            self.recurse_deferred_variables(
+        for mut child in self.get_children(parent_variable.variable_key).unwrap() {
+            self.recurse_deferred_variables_internal(
                 debug_info,
                 memory,
-                Some(&mut child),
+                &mut child,
                 max_recursion_depth,
                 current_recursion_depth + 1,
                 frame_info,
