@@ -877,8 +877,6 @@ impl UnitInfo {
     /// Compute the type (base to complex) of a variable. Only base types have values.
     /// Complex types are references to node trees, that require traversal in similar ways to other DIE's like functions.
     /// This means both [`get_function_variables()`] and [`extract_type()`] will call the recursive [`process_tree()`] method to build an integrated `tree` of variables with types and values.
-    /// - Consumes the `child_variable`.
-    /// - Returns a clone of the most up-to-date `child_variable` in the cache.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn extract_type(
         &self,
@@ -1005,15 +1003,11 @@ impl UnitInfo {
                         child_variable.variable_node_type =
                             VariableNodeType::TypeOffset(node.entry().offset());
                         // In some cases, it really simplifies the UX if we can auto resolve the children and derive a value that is visible at first glance to the user.
-                        if name.starts_with("&str")
-                            || name.starts_with("Option")
-                            || name.starts_with("Some")
-                            || name.starts_with("Result")
-                            || name.starts_with("Ok")
-                            || name.starts_with("Err")
-                        {
-                            let temp_node_type = child_variable.variable_node_type.clone();
-                            child_variable.variable_node_type = VariableNodeType::RecurseToBaseType;
+                        if self.language.auto_resolve_children(name) {
+                            let temp_node_type = std::mem::replace(
+                                &mut child_variable.variable_node_type,
+                                VariableNodeType::RecurseToBaseType,
+                            );
                             self.process_tree(
                                 debug_info,
                                 node,
