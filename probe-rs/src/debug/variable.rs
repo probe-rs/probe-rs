@@ -143,7 +143,7 @@ impl VariableNodeType {
     }
 }
 
-/// A modifier to a variable type.
+/// A modifier to a variable type. Currently only used to format the type name.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Modifier {
     /// The type is declared as `volatile`.
@@ -151,6 +151,12 @@ pub enum Modifier {
 
     /// The type is declared as `const`.
     Const,
+
+    /// The type is declared as `restrict`.
+    Restrict,
+
+    /// The type is declared as `atomic`.
+    Atomic,
 
     /// The type is an alias with the given name.
     Typedef(String),

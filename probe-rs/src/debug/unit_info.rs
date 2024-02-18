@@ -1261,7 +1261,9 @@ impl UnitInfo {
 
             other @ (gimli::DW_TAG_typedef
             | gimli::DW_TAG_const_type
-            | gimli::DW_TAG_volatile_type) => match node.entry().attr(gimli::DW_AT_type) {
+            | gimli::DW_TAG_volatile_type
+            | gimli::DW_TAG_restrict_type
+            | gimli::DW_TAG_atomic_type) => match node.entry().attr(gimli::DW_AT_type) {
                 Ok(Some(attr)) => {
                     self.process_type_attribute(
                         &attr,
@@ -1287,6 +1289,8 @@ impl UnitInfo {
                         }
                         gimli::DW_TAG_const_type => Modifier::Const,
                         gimli::DW_TAG_volatile_type => Modifier::Volatile,
+                        gimli::DW_TAG_restrict_type => Modifier::Restrict,
+                        gimli::DW_TAG_atomic_type => Modifier::Atomic,
                         _ => unreachable!(),
                     };
 

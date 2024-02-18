@@ -63,6 +63,8 @@ pub trait ProgrammingLanguage {
         match modifier {
             Modifier::Const => format!("const {}", name),
             Modifier::Volatile => format!("volatile {}", name),
+            Modifier::Restrict => format!("restrict {}", name),
+            Modifier::Atomic => format!("_Atomic {}", name),
             Modifier::Typedef(ty) => ty.to_string(),
         }
     }
