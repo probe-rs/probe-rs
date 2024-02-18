@@ -345,7 +345,7 @@ pub(crate) fn halt_core(
 /// (`variable_reference`, `named_child_variables_cnt`, `indexed_child_variables_cnt`)
 pub(crate) fn get_variable_reference(
     parent_variable: &probe_rs::debug::Variable,
-    cache: &mut probe_rs::debug::VariableCache,
+    cache: &probe_rs::debug::VariableCache,
 ) -> (ObjectRef, i64, i64) {
     if !parent_variable.is_valid() {
         return (ObjectRef::Invalid, 0, 0);
@@ -353,15 +353,13 @@ pub(crate) fn get_variable_reference(
 
     let mut named_child_variables_cnt = 0;
     let mut indexed_child_variables_cnt = 0;
-    if let Ok(children) = cache.get_children(parent_variable.variable_key()) {
-        for child_variable in children {
-            if child_variable.is_indexed() {
-                indexed_child_variables_cnt += 1;
-            } else {
-                named_child_variables_cnt += 1;
-            }
+    for child_variable in cache.get_children(parent_variable.variable_key()) {
+        if child_variable.is_indexed() {
+            indexed_child_variables_cnt += 1;
+        } else {
+            named_child_variables_cnt += 1;
         }
-    };
+    }
 
     if named_child_variables_cnt > 0 || indexed_child_variables_cnt > 0 {
         (

@@ -556,7 +556,7 @@ impl UnitInfo {
                     )?;
 
                     // Do not keep empty namespaces around
-                    if !cache.has_children(&namespace_variable)? {
+                    if !cache.has_children(&namespace_variable) {
                         cache.remove_cache_entry(namespace_variable.variable_key)?;
                     }
                 }
@@ -645,7 +645,7 @@ impl UnitInfo {
                 // Variant is a child of a structure, and one of them should have a discriminant value to match the DW_TAG_variant_part
                 gimli::DW_TAG_variant => {
                     // We only need to do this if we have not already found our variant,
-                    if !cache.has_children(parent_variable)? {
+                    if !cache.has_children(parent_variable) {
                         let mut child_variable = cache.create_variable(
                             parent_variable.variable_key,
                             Some(child_node.entry().offset()),
@@ -1039,8 +1039,6 @@ impl UnitInfo {
                 // Recursively process a child types.
                 self.process_tree(debug_info, node, child_variable, memory, cache, frame_info)?;
                 if parent_variable.is_valid() && child_variable.is_valid() {
-                    let enumerator_values = cache.get_children(child_variable.variable_key)?;
-
                     let value = if let VariableLocation::Address(address) =
                         child_variable.memory_location
                     {
@@ -1049,17 +1047,18 @@ impl UnitInfo {
                         memory.read(address, std::slice::from_mut(&mut buff))?;
                         let this_enum_const_value = buff.to_string();
 
-                        let is_this_value = |enumerator_variable: &Variable| {
+                        let mut enumerator_values = cache.get_children(child_variable.variable_key);
+
+                        let is_this_value = |enumerator_variable: &&Variable| {
                             enumerator_variable.get_value(cache) == this_enum_const_value
                         };
 
-                        let enumumerator_value =
-                            match enumerator_values.into_iter().find(is_this_value) {
-                                Some(this_enum) => this_enum.name,
-                                None => VariableName::Named(
-                                    "<Error: Unresolved enum value>".to_string(),
-                                ),
-                            };
+                        let enumumerator_value = match enumerator_values.find(is_this_value) {
+                            Some(this_enum) => this_enum.name.clone(),
+                            None => {
+                                VariableName::Named("<Error: Unresolved enum value>".to_string())
+                            }
+                        };
 
                         self.language
                             .format_enum_value(&child_variable.type_name, &enumumerator_value)
@@ -1195,7 +1194,7 @@ impl UnitInfo {
                 // Recursively process a child types.
                 // TODO: The DWARF does not currently hold information that allows decoding of which UNION arm is instantiated, so we have to display all available.
                 self.process_tree(debug_info, node, child_variable, memory, cache, frame_info)?;
-                if child_variable.is_valid() && !cache.has_children(child_variable)? {
+                if child_variable.is_valid() && !cache.has_children(child_variable) {
                     // Empty structs don't have values.
                     child_variable.set_value(VariableValue::Valid(format!(
                         "{:?}",
