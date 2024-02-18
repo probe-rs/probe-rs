@@ -929,30 +929,35 @@ impl DebugInfo {
                         .unwrap();
                     ra.value = Some(RegisterValue::U32(value));
 
-                    // Now, how do we handle this.
-                    if let Some(details) =
-                        exception_handler.exception_details(memory, &unwind_registers)?
-                    {
-                        unwind_registers = details.calling_frame_registers;
-                        let address = frame_pc;
+                    match exception_handler.exception_details(memory, &unwind_registers) {
+                        Ok(Some(details)) => {
+                            unwind_registers = details.calling_frame_registers;
+                            let address = frame_pc;
 
-                        let exception_frame = StackFrame {
-                            id: get_object_reference(),
-                            function_name: details.description.clone(),
-                            source_location: None,
-                            registers: unwind_registers.clone(),
-                            pc: match unwind_registers.get_address_size_bytes() {
-                                4 => RegisterValue::U32(address as u32),
-                                8 => RegisterValue::U64(address),
-                                _ => RegisterValue::from(address),
-                            },
-                            frame_base: None,
-                            is_inlined: false,
-                            local_variables: None,
-                            canonical_frame_address: None,
-                        };
+                            let exception_frame = StackFrame {
+                                id: get_object_reference(),
+                                function_name: details.description.clone(),
+                                source_location: None,
+                                registers: unwind_registers.clone(),
+                                pc: match unwind_registers.get_address_size_bytes() {
+                                    4 => RegisterValue::U32(address as u32),
+                                    8 => RegisterValue::U64(address),
+                                    _ => RegisterValue::from(address),
+                                },
+                                frame_base: None,
+                                is_inlined: false,
+                                local_variables: None,
+                                canonical_frame_address: None,
+                            };
 
-                        stack_frames.push(exception_frame);
+                            stack_frames.push(exception_frame);
+                        }
+                        // We are not in an exception handler, so we can continue unwinding.
+                        Ok(None) => {}
+                        Err(e) => {
+                            tracing::error!("Error while checking for exception context: {}", e);
+                            break 'unwind;
+                        }
                     }
                 }
             }
