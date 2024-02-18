@@ -338,6 +338,57 @@ pub enum BitOffset {
     FromMsb(u64),
 }
 
+/// Bitfield information for a variable.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BitField {
+    /// The starting bit (and direction) of a bit field type.
+    pub offset: BitOffset,
+    /// The length of the bit field.
+    pub length: u64,
+}
+
+impl Default for BitField {
+    fn default() -> Self {
+        BitField {
+            offset: BitOffset::FromLsb(0),
+            length: 0,
+        }
+    }
+}
+
+impl BitField {
+    pub(crate) fn offset(&self, byte_size: usize) -> u64 {
+        match self.offset {
+            BitOffset::FromLsb(offset) => offset,
+            BitOffset::FromMsb(offset) => byte_size as u64 * 8 - offset - self.length,
+        }
+    }
+
+    pub(crate) fn length(&self) -> u64 {
+        self.length
+    }
+
+    pub(crate) fn mask(&self) -> u128 {
+        (1 << self.length) - 1
+    }
+
+    pub(crate) fn extract(&self, value: u128, byte_size: usize) -> u128 {
+        let offset = self.offset(byte_size);
+        let mask = self.mask();
+
+        (value >> offset) & mask
+    }
+
+    pub(crate) fn insert(&self, value: u128, byte_size: usize, new_value: u128) -> u128 {
+        let offset = self.offset(byte_size);
+        let mask = self.mask();
+
+        let shifted_mask = mask << offset;
+        let new_value = (new_value & mask) << offset;
+        (value & !shifted_mask) | new_value
+    }
+}
+
 /// The `Variable` struct is used in conjunction with `VariableCache` to cache data about variables.
 ///
 /// Any modifications to the `Variable` value will be transient (lost when it goes out of scope),
@@ -369,7 +420,7 @@ pub struct Variable {
     /// If this is a subrange (array, vector, etc.), is the ordinal position of this variable in that range
     pub member_index: Option<i64>,
     /// If this is a bit field type, we need to store the offset and bit length.
-    pub bitfield: Option<(BitOffset, u64)>,
+    pub bitfield: Option<BitField>,
     /// The role of this variable.
     pub role: VariantRole,
 }

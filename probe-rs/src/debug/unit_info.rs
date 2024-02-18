@@ -404,11 +404,10 @@ impl UnitInfo {
                     // Available since DWARF 4+
                     gimli::DW_AT_data_bit_offset => match attr.value().udata_value() {
                         Some(offset) => {
-                            let bitfield_info = child_variable
-                                .bitfield
-                                .get_or_insert((BitOffset::FromLsb(0), 0));
+                            let bitfield_info =
+                                child_variable.bitfield.get_or_insert(BitField::default());
 
-                            bitfield_info.0 = BitOffset::FromLsb(offset);
+                            bitfield_info.offset = BitOffset::FromLsb(offset);
                             child_variable.set_value(VariableValue::Empty);
                         }
                         None => {
@@ -423,11 +422,10 @@ impl UnitInfo {
                     // because we haven't yet processed the byte size of the variable.
                     gimli::DW_AT_bit_offset => match attr.value().udata_value() {
                         Some(offset) => {
-                            let bitfield_info = child_variable
-                                .bitfield
-                                .get_or_insert((BitOffset::FromLsb(0), 0));
+                            let bitfield_info =
+                                child_variable.bitfield.get_or_insert(BitField::default());
 
-                            bitfield_info.0 = BitOffset::FromMsb(offset);
+                            bitfield_info.offset = BitOffset::FromMsb(offset);
                             child_variable.set_value(VariableValue::Empty);
                         }
                         None => {
@@ -438,12 +436,11 @@ impl UnitInfo {
                         }
                     },
                     gimli::DW_AT_bit_size => match attr.value().udata_value() {
-                        Some(size) => {
-                            let bitfield_info = child_variable
-                                .bitfield
-                                .get_or_insert((BitOffset::FromLsb(0), 0));
+                        Some(length) => {
+                            let bitfield_info =
+                                child_variable.bitfield.get_or_insert(BitField::default());
 
-                            bitfield_info.1 = size;
+                            bitfield_info.length = length;
                             child_variable.set_value(VariableValue::Empty);
                         }
                         None => {

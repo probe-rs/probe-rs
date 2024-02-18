@@ -4,8 +4,8 @@ use crate::{
             value::{format_float, Value},
             ProgrammingLanguage,
         },
-        BitOffset, DebugError, Variable, VariableCache, VariableLocation, VariableName,
-        VariableType, VariableValue,
+        DebugError, Variable, VariableCache, VariableLocation, VariableName, VariableType,
+        VariableValue,
     },
     MemoryInterface,
 };
@@ -197,19 +197,9 @@ impl Value for UnsignedInt {
         )?;
         let value = u128::from_le_bytes(buff);
 
-        // Figure out the bitfield offset & bit count
-        let bitfield = match variable.bitfield {
-            Some((BitOffset::FromLsb(offset), size)) => Some((offset, size)),
-            Some((BitOffset::FromMsb(offset), size)) => {
-                let offset = (bytes as u64 * 8) - offset - size;
-                Some((offset, size))
-            }
-            None => None,
-        };
-
         // Extract bitfield bits
-        let value = match bitfield {
-            Some((offset, size)) => (value >> offset) & ((1 << size) - 1),
+        let value = match variable.bitfield {
+            Some(bitfield) => bitfield.extract(value, bytes),
             None => value,
         };
 
@@ -239,17 +229,10 @@ fn write_unsigned_bytes(
     let bytes = variable.byte_size.unwrap_or(1) as usize;
 
     // Figure out the bitfield offset & bit count
-    let (offset, size) = match variable.bitfield {
-        Some((BitOffset::FromLsb(offset), size)) => (offset, size),
-        Some((BitOffset::FromMsb(offset), size)) => {
-            let offset = (bytes as u64 * 8) - offset - size;
-            (offset, size)
-        }
-        None => {
-            let buff = unsigned.to_le_bytes();
-            memory.write_8(variable.memory_location.memory_address()?, &buff[..bytes])?;
-            return Ok(());
-        }
+    let Some(bitfield) = variable.bitfield else {
+        let buff = unsigned.to_le_bytes();
+        memory.write_8(variable.memory_location.memory_address()?, &buff[..bytes])?;
+        return Ok(());
     };
 
     // We are writing a bitfield, we need to do a read-modify-write operation.
@@ -260,15 +243,12 @@ fn write_unsigned_bytes(
         variable.memory_location.memory_address()?,
         &mut buff[..bytes],
     )?;
-    let mut read_value = u128::from_le_bytes(buff);
+    let read_value = u128::from_le_bytes(buff);
 
-    // Mask off the old value and write the new one
-    let value_mask = (1 << size) - 1;
-    read_value &= !(value_mask << offset);
-    read_value |= (unsigned & value_mask) << offset;
+    let new_value = bitfield.insert(read_value, bytes, unsigned);
 
     // Write the new value
-    let buff = read_value.to_le_bytes();
+    let buff = new_value.to_le_bytes();
     memory.write_8(variable.memory_location.memory_address()?, &buff[..bytes])?;
 
     Ok(())
@@ -297,7 +277,7 @@ impl Value for SignedInt {
 
         // Sign extend
         let sign_bit_shift = match variable.bitfield {
-            Some((_, size)) => size as usize - 1,
+            Some(bitfield) => bitfield.length() as usize - 1,
             None => (bytes * 8) - 1,
         };
 
