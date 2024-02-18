@@ -191,6 +191,20 @@ impl VariableType {
     pub fn is_array(&self) -> bool {
         matches!(self, VariableType::Array { .. })
     }
+
+    /// Returns the string representation of the variable type's kind.
+    pub fn kind(&self) -> &str {
+        match self {
+            VariableType::Base(_) => "base",
+            VariableType::Struct(_) => "struct",
+            VariableType::Enum(_) => "enum",
+            VariableType::Namespace => "namespace",
+            VariableType::Pointer(_) => "pointer",
+            VariableType::Array { .. } => "array",
+            VariableType::Unknown => "unknown",
+            VariableType::Other(_) => "other",
+        }
+    }
 }
 
 impl std::fmt::Display for VariableType {
@@ -373,12 +387,6 @@ impl Variable {
         variable_cache: &mut variable_cache::VariableCache,
         new_value: String,
     ) -> Result<(), DebugError> {
-        let is_pointer = if let VariableName::Named(variable_name) = &self.name {
-            variable_name.starts_with('*')
-        } else {
-            false
-        };
-
         if !self.is_valid()
                 // Need a valid type
                 || self.type_name == VariableType::Unknown
@@ -389,9 +397,6 @@ impl Variable {
             Err(anyhow!(
                 "Cannot update variable: {:?}, with supplied information (value={:?}, type={:?}, memory location={:#010x?}).",
                 self.name, self.value, self.type_name, self.memory_location).into())
-        } else if is_pointer {
-            // Writing the values of pointers is a bit more complex, and not currently supported.
-            Err(anyhow!("Please only update variables with a base data type. Updating pointer variable types is not yet supported.").into())
         } else {
             // We have everything we need to update the variable value.
             language::from_dwarf(self.language)

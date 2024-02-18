@@ -73,14 +73,11 @@ impl ProgrammingLanguage for C {
                 "float" => f32::update_value(variable, memory, new_value),
                 // TODO: doubles
                 other => Err(DebugError::UnwindIncompleteResults {
-                    message: format!("Unsupported data type: {other}. Please only update variables with a base data type."),
+                    message: format!("Updating {other} variables is not yet supported."),
                 }),
             },
             other => Err(DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Unsupported variable type {:?}. Only base variables can be updated.",
-                    other
-                ),
+                message: format!("Updating {} variables is not yet supported.", other.kind()),
             }),
         }
     }

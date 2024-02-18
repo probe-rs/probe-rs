@@ -91,14 +91,11 @@ impl ProgrammingLanguage for Rust {
                 "f32" => f32::update_value(variable, memory, new_value),
                 "f64" => f64::update_value(variable, memory, new_value),
                 other => Err(DebugError::UnwindIncompleteResults {
-                    message: format!("Unsupported data type: {other}. Please only update variables with a base data type."),
+                    message: format!("Updating {other} variables is not yet supported."),
                 }),
             },
             other => Err(DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Unsupported variable type {:?}. Only base variables can be updated.",
-                    other
-                ),
+                message: format!("Updating {} variables is not yet supported.", other.kind()),
             }),
         }
     }
