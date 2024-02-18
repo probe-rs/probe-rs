@@ -5,6 +5,7 @@ use super::{
 use crate::core::UnwindRule;
 use crate::debug::source_statement::SourceStatement;
 use crate::debug::stack_frame::StackFrameInfo;
+use crate::debug::unit_info::ProcessingContext;
 use crate::{
     core::{ExceptionInterface, RegisterRole, RegisterValue},
     debug::{registers, source_statement::SourceStatements},
@@ -337,14 +338,18 @@ impl DebugInfo {
                     other => VariableName::Named(format!("Error: Unable to generate name, parent variable does not have a name but is special variable {other:?}")),
                 };
 
+                let mut context = ProcessingContext {
+                    debug_info: self,
+                    memory,
+                    frame_info,
+                    cache,
+                };
+
                 unit_info.extract_type(
-                    self,
                     referenced_node,
                     parent_variable,
                     &mut referenced_variable,
-                    memory,
-                    cache,
-                    frame_info,
+                    &mut context,
                 )?;
 
                 if matches!(referenced_variable.type_name, VariableType::Base(ref name) if name == "()")
@@ -361,14 +366,14 @@ impl DebugInfo {
                     .entries_tree(&unit_info.unit.abbreviations, Some(type_offset))?;
                 let parent_node = type_tree.root()?;
 
-                unit_info.process_tree(
-                    self,
-                    parent_node,
-                    parent_variable,
+                let mut context = ProcessingContext {
+                    debug_info: self,
                     memory,
-                    cache,
                     frame_info,
-                )?;
+                    cache,
+                };
+
+                unit_info.process_tree(parent_node, parent_variable, &mut context)?;
             }
             VariableNodeType::DirectLookup => {
                 // Find the parent node
@@ -379,14 +384,14 @@ impl DebugInfo {
 
                 let parent_node = type_tree.root()?;
 
-                unit_info.process_tree(
-                    self,
-                    parent_node,
-                    parent_variable,
+                let mut context = ProcessingContext {
+                    debug_info: self,
                     memory,
-                    cache,
                     frame_info,
-                )?;
+                    cache,
+                };
+
+                unit_info.process_tree(parent_node, parent_variable, &mut context)?;
             }
             _ => {
                 // Do nothing. These have already been recursed to their maximum.

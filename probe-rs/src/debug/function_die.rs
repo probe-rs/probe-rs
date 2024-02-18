@@ -1,4 +1,7 @@
-use crate::{debug::stack_frame::StackFrameInfo, MemoryInterface};
+use crate::{
+    debug::{stack_frame::StackFrameInfo, unit_info::ProcessingContext, VariableCache},
+    MemoryInterface,
+};
 
 use super::{
     debug_info, extract_file,
@@ -182,12 +185,22 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info> FunctionDie<'abbrev, 'u
         memory: &mut impl MemoryInterface,
         frame_info: StackFrameInfo,
     ) -> Result<Option<u64>, DebugError> {
-        match self.unit_info.extract_location(
+        let mut fake_cache = VariableCache::new_dwarf_cache(
+            gimli::UnitOffset(0),
+            super::VariableName::Unknown,
+            None,
+        );
+        let mut context = ProcessingContext {
             debug_info,
-            &self.function_die,
-            &VariableLocation::Unknown,
             memory,
             frame_info,
+            cache: &mut fake_cache,
+        };
+
+        match self.unit_info.extract_location(
+            &self.function_die,
+            &VariableLocation::Unknown,
+            &mut context,
         )? {
             ExpressionResult::Location(VariableLocation::Address(address)) => Ok(Some(address)),
             _ => Ok(None),
