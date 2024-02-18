@@ -62,7 +62,6 @@ impl Serialize for VariableCache {
         ) -> Vec<VariableTreeNode> {
             variable_cache
                 .get_children(parent_variable_key)
-                .unwrap()
                 .into_iter()
                 .map(|child_variable: Variable| {
                     let value = if child_variable.range_upper_bound > 50 {
@@ -305,21 +304,17 @@ impl VariableCache {
 
     /// Retrieve `clone`d version of all the children of a `Variable`.
     /// If `parent_key == None`, it will return all the top level variables (no parents) in this cache.
-    pub fn get_children(&self, parent_key: ObjectRef) -> Result<Vec<Variable>, Error> {
-        let children: Vec<Variable> = self
-            .variable_hash_map
+    pub fn get_children(&self, parent_key: ObjectRef) -> Vec<Variable> {
+        self.variable_hash_map
             .values()
             .filter(|child_variable| child_variable.parent_key == parent_key)
             .cloned()
-            .collect::<Vec<Variable>>();
-
-        Ok(children)
+            .collect::<Vec<Variable>>()
     }
 
-    /// Check if a `Variable` has any children. This also validates that the parent exists in the cache, before attempting to check for children.
-    pub fn has_children(&self, parent_variable: &Variable) -> Result<bool, Error> {
-        self.get_children(parent_variable.variable_key)
-            .map(|children| !children.is_empty())
+    /// Check if variable has children. If the variable doesn't exist, it will return false.
+    pub fn has_children(&self, parent_variable: &Variable) -> bool {
+        !self.get_children(parent_variable.variable_key).is_empty()
     }
 
     /// Sometimes DWARF uses intermediate nodes that are not part of the coded variable structure.
@@ -408,7 +403,7 @@ impl VariableCache {
         {
             return;
         };
-        for mut child in self.get_children(variable_to_recurse.variable_key).unwrap() {
+        for mut child in self.get_children(variable_to_recurse.variable_key) {
             self.recurse_deferred_variables(
                 debug_info,
                 memory,
@@ -436,60 +431,54 @@ impl VariableCache {
             // The datatype &str is a special case, because it is stores a pointer to the string data,
             // and the length of the string.
             if variable.type_name == VariableType::Struct("&str".to_string()) {
-                if let Ok(children) = self.get_children(variable.variable_key) {
-                    if !children.is_empty() {
-                        let string_length = match children.iter().find(|child_variable| {
-                            child_variable.name == VariableName::Named("length".to_string())
-                        }) {
-                            Some(string_length) => {
-                                if string_length.is_valid() {
-                                    string_length.get_value(self).parse().unwrap_or(0_usize)
-                                } else {
-                                    0_usize
-                                }
-                            }
-                            None => 0_usize,
-                        };
-                        let string_location = match children.iter().find(|child_variable| {
-                            child_variable.name == VariableName::Named("data_ptr".to_string())
-                        }) {
-                            Some(location_value) => {
-                                if let Ok(child_variables) =
-                                    self.get_children(location_value.variable_key)
-                                {
-                                    if let Some(first_child) = child_variables.first() {
-                                        first_child
-                                            .memory_location
-                                            .memory_address()
-                                            .unwrap_or(0_u64)
-                                    } else {
-                                        0_u64
-                                    }
-                                } else {
-                                    0_u64
-                                }
-                            }
-                            None => 0_u64,
-                        };
-                        if string_location == 0 || string_length == 0 {
-                            // We don't have enough information to read the string from memory.
-                            // I've never seen an instance of this, but it is theoretically possible.
-                            tracing::warn!(
-                                "Failed to find string location or length for variable: {:?}",
-                                variable
-                            );
-                        } else {
-                            let mut memory_range =
-                                string_location..(string_location + string_length as u64);
-                            // This memory might need to be read by 32-bit aligned words, so make sure
-                            // the range is aligned to 32 bits.
-                            memory_range.align_to_32_bits();
-                            if !memory_ranges.contains(&memory_range) {
-                                memory_ranges.push(memory_range);
+                let children = self.get_children(variable.variable_key);
+                if !children.is_empty() {
+                    let string_length = match children.iter().find(|child_variable| {
+                        child_variable.name == VariableName::Named("length".to_string())
+                    }) {
+                        Some(string_length) => {
+                            if string_length.is_valid() {
+                                string_length.get_value(self).parse().unwrap_or(0_usize)
+                            } else {
+                                0_usize
                             }
                         }
+                        None => 0_usize,
+                    };
+                    let string_location = match children.iter().find(|child_variable| {
+                        child_variable.name == VariableName::Named("data_ptr".to_string())
+                    }) {
+                        Some(location_value) => {
+                            let child_variables = self.get_children(location_value.variable_key);
+                            if let Some(first_child) = child_variables.first() {
+                                first_child
+                                    .memory_location
+                                    .memory_address()
+                                    .unwrap_or(0_u64)
+                            } else {
+                                0_u64
+                            }
+                        }
+                        None => 0_u64,
+                    };
+                    if string_location == 0 || string_length == 0 {
+                        // We don't have enough information to read the string from memory.
+                        // I've never seen an instance of this, but it is theoretically possible.
+                        tracing::warn!(
+                            "Failed to find string location or length for variable: {:?}",
+                            variable
+                        );
+                    } else {
+                        let mut memory_range =
+                            string_location..(string_location + string_length as u64);
+                        // This memory might need to be read by 32-bit aligned words, so make sure
+                        // the range is aligned to 32 bits.
+                        memory_range.align_to_32_bits();
+                        if !memory_ranges.contains(&memory_range) {
+                            memory_ranges.push(memory_range);
+                        }
                     }
-                };
+                }
             }
         }
         memory_ranges
@@ -521,7 +510,7 @@ mod test {
             variable.get_value(cache)
         ));
 
-        let children = cache.get_children(variable.variable_key).unwrap();
+        let children = cache.get_children(variable.variable_key);
 
         for child in children {
             entry.push(build_tree(cache, child));
@@ -570,7 +559,7 @@ mod test {
 
         let var_2 = cache.create_variable(root_key, None, None).unwrap();
 
-        let children = cache.get_children(root_key).unwrap();
+        let children = cache.get_children(root_key);
 
         let expected_children = vec![var_1, var_2];
 
@@ -724,7 +713,7 @@ mod test {
 
         assert!(cache.get_variable_by_key(vars[3].variable_key).is_none());
 
-        let new_children = cache.get_children(vars[2].variable_key).unwrap();
+        let new_children = cache.get_children(vars[2].variable_key);
 
         vars[5].parent_key = vars[2].variable_key;
 
