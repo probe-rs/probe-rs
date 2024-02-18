@@ -435,7 +435,7 @@ impl UnitInfo {
             }
         }
 
-        child_variable.extract_value(memory, cache);
+        //child_variable.extract_value(memory, cache);
         cache.update_variable(child_variable)?;
 
         Ok(())
@@ -507,7 +507,6 @@ impl UnitInfo {
         frame_info: StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         if !parent_variable.is_valid() {
-            parent_variable.extract_value(memory, cache);
             cache.update_variable(parent_variable)?;
             return Ok(());
         }
@@ -556,7 +555,7 @@ impl UnitInfo {
                     )?;
 
                     // Do not keep empty namespaces around
-                    if !cache.has_children(&namespace_variable)? {
+                    if !cache.has_children(&namespace_variable) {
                         cache.remove_cache_entry(namespace_variable.variable_key)?;
                     }
                 }
@@ -645,7 +644,7 @@ impl UnitInfo {
                 // Variant is a child of a structure, and one of them should have a discriminant value to match the DW_TAG_variant_part
                 gimli::DW_TAG_variant => {
                     // We only need to do this if we have not already found our variant,
-                    if !cache.has_children(parent_variable)? {
+                    if !cache.has_children(parent_variable) {
                         let mut child_variable = cache.create_variable(
                             parent_variable.variable_key,
                             Some(child_node.entry().offset()),
@@ -845,7 +844,7 @@ impl UnitInfo {
             }
         }
 
-        parent_variable.extract_value(memory, cache);
+        //parent_variable.extract_value(memory, cache);
         cache.update_variable(parent_variable)?;
 
         Ok(())
@@ -890,8 +889,6 @@ impl UnitInfo {
     /// Compute the type (base to complex) of a variable. Only base types have values.
     /// Complex types are references to node trees, that require traversal in similar ways to other DIE's like functions.
     /// This means both [`get_function_variables()`] and [`extract_type()`] will call the recursive [`process_tree()`] method to build an integrated `tree` of variables with types and values.
-    /// - Consumes the `child_variable`.
-    /// - Returns a clone of the most up-to-date `child_variable` in the cache.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn extract_type(
         &self,
@@ -913,7 +910,6 @@ impl UnitInfo {
         };
 
         if !child_variable.is_valid() {
-            child_variable.extract_value(memory, cache);
             cache.update_variable(child_variable)?;
 
             return Ok(());
@@ -1018,15 +1014,11 @@ impl UnitInfo {
                         child_variable.variable_node_type =
                             VariableNodeType::TypeOffset(node.entry().offset());
                         // In some cases, it really simplifies the UX if we can auto resolve the children and derive a value that is visible at first glance to the user.
-                        if name.starts_with("&str")
-                            || name.starts_with("Option")
-                            || name.starts_with("Some")
-                            || name.starts_with("Result")
-                            || name.starts_with("Ok")
-                            || name.starts_with("Err")
-                        {
-                            let temp_node_type = child_variable.variable_node_type.clone();
-                            child_variable.variable_node_type = VariableNodeType::RecurseToBaseType;
+                        if self.language.auto_resolve_children(name) {
+                            let temp_node_type = std::mem::replace(
+                                &mut child_variable.variable_node_type,
+                                VariableNodeType::RecurseToBaseType,
+                            );
                             self.process_tree(
                                 debug_info,
                                 node,
@@ -1058,7 +1050,7 @@ impl UnitInfo {
                 // Recursively process a child types.
                 self.process_tree(debug_info, node, child_variable, memory, cache, frame_info)?;
                 if parent_variable.is_valid() && child_variable.is_valid() {
-                    let enumerator_values = cache.get_children(child_variable.variable_key)?;
+                    let enumerator_values = cache.get_children(child_variable.variable_key);
 
                     let value = if let VariableLocation::Address(address) =
                         child_variable.memory_location
@@ -1214,7 +1206,7 @@ impl UnitInfo {
                 // Recursively process a child types.
                 // TODO: The DWARF does not currently hold information that allows decoding of which UNION arm is instantiated, so we have to display all available.
                 self.process_tree(debug_info, node, child_variable, memory, cache, frame_info)?;
-                if child_variable.is_valid() && !cache.has_children(child_variable)? {
+                if child_variable.is_valid() && !cache.has_children(child_variable) {
                     // Empty structs don't have values.
                     child_variable.set_value(VariableValue::Valid(format!(
                         "{:?}",
@@ -1298,7 +1290,7 @@ impl UnitInfo {
             }
         }
 
-        child_variable.extract_value(memory, cache);
+        //child_variable.extract_value(memory, cache);
         cache.update_variable(child_variable)?;
 
         Ok(())
@@ -1367,7 +1359,7 @@ impl UnitInfo {
             child_variable,
             memory,
         );
-        array_member_variable.extract_value(memory, cache);
+        //array_member_variable.extract_value(memory, cache);
         cache.update_variable(&array_member_variable)?;
 
         Ok(())

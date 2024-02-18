@@ -50,6 +50,10 @@ pub trait ProgrammingLanguage {
     fn process_tag_with_no_type(&self, tag: gimli::DwTag) -> VariableValue {
         VariableValue::Error(format!("Error: Failed to decode {tag} type reference"))
     }
+
+    fn auto_resolve_children(&self, _name: &str) -> bool {
+        false
+    }
 }
 
 #[derive(Clone)]

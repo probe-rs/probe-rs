@@ -366,7 +366,7 @@ impl DebugInfo {
         }
 
         // Only attempt this part if we have not yet resolved the referenced children.
-        if cache.has_children(parent_variable)? {
+        if cache.has_children(parent_variable) {
             return Ok(());
         }
 
@@ -2108,7 +2108,7 @@ mod test {
 
         let root_variable = static_variables.root_variable().variable_key;
 
-        for child in static_variables.get_children(root_variable).unwrap() {
+        for child in static_variables.get_children(root_variable) {
             println!("{:?}", child.name);
         }
 

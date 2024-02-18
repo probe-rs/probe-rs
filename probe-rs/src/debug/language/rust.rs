@@ -91,19 +91,25 @@ impl ProgrammingLanguage for Rust {
                 "f32" => f32::update_value(variable, memory, new_value),
                 "f64" => f64::update_value(variable, memory, new_value),
                 other => Err(DebugError::UnwindIncompleteResults {
-                    message: format!("Unsupported data type: {other}. Please only update variables with a base data type."),
+                    message: format!("Updating {other} variables is not yet supported."),
                 }),
             },
             other => Err(DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Unsupported variable type {:?}. Only base variables can be updated.",
-                    other
-                ),
+                message: format!("Updating {} variables is not yet supported.", other.kind()),
             }),
         }
     }
 
     fn format_enum_value(&self, type_name: &VariableType, value: &VariableName) -> VariableValue {
         VariableValue::Valid(format!("{}::{}", type_name, value))
+    }
+
+    fn auto_resolve_children(&self, name: &str) -> bool {
+        name.starts_with("&str")
+            || name.starts_with("Option")
+            || name.starts_with("Some")
+            || name.starts_with("Result")
+            || name.starts_with("Ok")
+            || name.starts_with("Err")
     }
 }
