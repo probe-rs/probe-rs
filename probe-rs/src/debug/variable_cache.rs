@@ -42,11 +42,16 @@ impl Serialize for VariableCache {
         fn recurse_cache(variable_cache: &VariableCache) -> VariableTreeNode {
             let root_node = variable_cache.root_variable();
 
+            let children_count = variable_cache
+                .get_children(root_node.variable_key)
+                .unwrap()
+                .len();
+
             VariableTreeNode {
                 name: root_node.name.clone(),
                 type_name: root_node.type_name.clone(),
                 value: root_node.get_value(variable_cache),
-                children: if root_node.range_upper_bound > 50 {
+                children: if children_count > 50 {
                     // Empty Vec's will show as variables with no children.
                     Vec::new()
                 } else {
@@ -65,8 +70,13 @@ impl Serialize for VariableCache {
                 .unwrap()
                 .into_iter()
                 .map(|child_variable: Variable| {
-                    let value = if child_variable.range_upper_bound > 50 {
-                        format!("Data types with more than 50 members are excluded from this output. This variable has {} child members.", child_variable.range_upper_bound)
+
+
+                    let children_count = variable_cache
+                        .get_children(child_variable.variable_key).unwrap().len();
+
+                    let value = if children_count > 50 {
+                        format!("Data types with more than 50 members are excluded from this output. This variable has {} child members.", children_count)
                     } else {
                         child_variable.get_value(variable_cache)
                     };
@@ -75,7 +85,7 @@ impl Serialize for VariableCache {
                         name: child_variable.name,
                         type_name: child_variable.type_name,
                         value,
-                        children: if child_variable.range_upper_bound > 50 {
+                        children: if children_count > 50 {
                             // Empty Vec's will show as variables with no children.
                             Vec::new()
                         } else {
@@ -560,8 +570,6 @@ mod test {
         assert_eq!(cache_variable.memory_location, VariableLocation::Unknown);
         assert_eq!(cache_variable.byte_size, None);
         assert_eq!(cache_variable.member_index, None);
-        assert_eq!(cache_variable.range_lower_bound, 0);
-        assert_eq!(cache_variable.range_upper_bound, 0);
         assert_eq!(cache_variable.role, VariantRole::NonVariant);
     }
 
