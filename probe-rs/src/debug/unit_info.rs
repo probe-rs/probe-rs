@@ -1003,15 +1003,11 @@ impl UnitInfo {
                         child_variable.variable_node_type =
                             VariableNodeType::TypeOffset(node.entry().offset());
                         // In some cases, it really simplifies the UX if we can auto resolve the children and derive a value that is visible at first glance to the user.
-                        if name.starts_with("&str")
-                            || name.starts_with("Option")
-                            || name.starts_with("Some")
-                            || name.starts_with("Result")
-                            || name.starts_with("Ok")
-                            || name.starts_with("Err")
-                        {
-                            let temp_node_type = child_variable.variable_node_type.clone();
-                            child_variable.variable_node_type = VariableNodeType::RecurseToBaseType;
+                        if self.language.auto_resolve_children(name) {
+                            let temp_node_type = std::mem::replace(
+                                &mut child_variable.variable_node_type,
+                                VariableNodeType::RecurseToBaseType,
+                            );
                             self.process_tree(
                                 debug_info,
                                 node,

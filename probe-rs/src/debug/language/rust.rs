@@ -103,4 +103,13 @@ impl ProgrammingLanguage for Rust {
     fn format_enum_value(&self, type_name: &VariableType, value: &VariableName) -> VariableValue {
         VariableValue::Valid(format!("{}::{}", type_name, value))
     }
+
+    fn auto_resolve_children(&self, name: &str) -> bool {
+        name.starts_with("&str")
+            || name.starts_with("Option")
+            || name.starts_with("Some")
+            || name.starts_with("Result")
+            || name.starts_with("Ok")
+            || name.starts_with("Err")
+    }
 }
