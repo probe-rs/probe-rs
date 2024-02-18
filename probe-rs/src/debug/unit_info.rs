@@ -1,6 +1,6 @@
 use super::{
-    debug_info::*, extract_byte_size, extract_file, extract_line, function_die::FunctionDie,
-    variable::*, DebugError, DebugRegisters, EndianReader, VariableCache,
+    debug_info::*, extract_byte_size, extract_file, function_die::FunctionDie, variable::*,
+    DebugError, DebugRegisters, EndianReader, VariableCache,
 };
 use crate::{
     debug::{language, stack_frame::StackFrameInfo},
@@ -264,7 +264,7 @@ impl UnitInfo {
                         }
                     }
                     gimli::DW_AT_decl_line => {
-                        if let Some(line_number) = extract_line(attr.value()) {
+                        if let Some(line_number) = attr.value().udata_value() {
                             child_variable.source_location.line = Some(line_number);
                         }
                     }

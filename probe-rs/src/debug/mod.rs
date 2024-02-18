@@ -292,13 +292,6 @@ fn extract_byte_size(node_die: &DebuggingInformationEntry<GimliReader>) -> Optio
     }
 }
 
-fn extract_line(attribute_value: gimli::AttributeValue<GimliReader>) -> Option<u64> {
-    match attribute_value {
-        gimli::AttributeValue::Udata(line) => Some(line),
-        _ => None,
-    }
-}
-
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 pub(crate) fn _print_all_attributes(
     core: &mut Core<'_>,
