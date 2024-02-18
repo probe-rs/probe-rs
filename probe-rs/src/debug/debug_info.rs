@@ -1,4 +1,3 @@
-use super::ObjectRef;
 use super::{
     function_die::FunctionDie, get_object_reference, unit_info::UnitInfo, variable::*, DebugError,
     DebugRegisters, SourceLocation, StackFrame, VariableCache,
@@ -338,11 +337,11 @@ impl DebugInfo {
                     other => VariableName::Named(format!("Error: Unable to generate name, parent variable does not have a name but is special variable {other:?}")),
                 };
 
-                referenced_variable = unit_info.extract_type(
+                unit_info.extract_type(
                     self,
                     referenced_node,
                     parent_variable,
-                    referenced_variable,
+                    &mut referenced_variable,
                     memory,
                     cache,
                     frame_info,
@@ -362,23 +361,14 @@ impl DebugInfo {
                     .entries_tree(&unit_info.unit.abbreviations, Some(type_offset))?;
                 let parent_node = type_tree.root()?;
 
-                // For process_tree we need to create a temporary parent that will later be eliminated with VariableCache::adopt_grand_children
-                // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
-                let mut temporary_variable = parent_variable.clone();
-                temporary_variable.variable_key = ObjectRef::Invalid;
-                temporary_variable.parent_key = parent_variable.variable_key;
-                cache.add_variable(parent_variable.variable_key, &mut temporary_variable)?;
-
-                temporary_variable = unit_info.process_tree(
+                unit_info.process_tree(
                     self,
                     parent_node,
-                    temporary_variable,
+                    parent_variable,
                     memory,
                     cache,
                     frame_info,
                 )?;
-
-                cache.adopt_grand_children(parent_variable, &temporary_variable)?;
             }
             VariableNodeType::DirectLookup => {
                 // Find the parent node
@@ -387,25 +377,16 @@ impl DebugInfo {
                     parent_variable.variable_unit_offset,
                 )?;
 
-                // For process_tree we need to create a temporary parent that will later be eliminated with VariableCache::adopt_grand_children
-                // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
-                let mut temporary_variable = parent_variable.clone();
-                temporary_variable.variable_key = ObjectRef::Invalid;
-                temporary_variable.parent_key = parent_variable.variable_key;
-                cache.add_variable(parent_variable.variable_key, &mut temporary_variable)?;
-
                 let parent_node = type_tree.root()?;
 
-                temporary_variable = unit_info.process_tree(
+                unit_info.process_tree(
                     self,
                     parent_node,
-                    temporary_variable,
+                    parent_variable,
                     memory,
                     cache,
                     frame_info,
                 )?;
-
-                cache.adopt_grand_children(parent_variable, &temporary_variable)?;
             }
             _ => {
                 // Do nothing. These have already been recursed to their maximum.
