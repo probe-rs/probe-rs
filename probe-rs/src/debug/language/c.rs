@@ -11,7 +11,7 @@ use crate::{
     MemoryInterface,
 };
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct C;
 
 impl ProgrammingLanguage for C {

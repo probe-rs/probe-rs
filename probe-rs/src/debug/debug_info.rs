@@ -254,20 +254,81 @@ impl DebugInfo {
     /// We do not actually resolve the children of `[VariableName::StaticScope]` automatically, and only create the necessary header in the `VariableCache`.
     /// This allows us to resolve the `[VariableName::StaticScope]` on demand/lazily, when a user requests it from the debug client.
     /// This saves a lot of overhead when a user only wants to see the `[VariableName::LocalScope]` or `[VariableName::Registers]` while stepping through code (the most common use cases)
-    pub(crate) fn create_static_scope_cache(&self) -> Result<VariableCache, gimli::Error> {
+    pub(crate) fn create_static_scope_cache(
+        &self,
+        memory: &mut dyn MemoryInterface,
+        registers: &DebugRegisters,
+    ) -> Result<VariableCache, DebugError> {
         // TODO: Do this for all Units
 
-        let mut entries = self.unit_infos[0].unit.entries();
+        let mut unit_infos = self.unit_infos.iter();
+
+        let Some(unit_info) = unit_infos.next() else {
+            // No unit infos
+            return Err(DebugError::Other(anyhow::anyhow!("Missing unit infos")));
+        };
+
+        let mut entries = unit_info.unit.entries();
 
         // Only process statics for this unit header.
         // Navigate the current unit from the header down.
         let (_, unit_node) = entries.next_dfs()?.unwrap();
 
-        Ok(VariableCache::new_dwarf_cache(
+        let mut variable_cache = VariableCache::new_dwarf_cache(
             unit_node.offset(),
             VariableName::StaticScopeRoot,
             Some(&self.unit_infos[0]),
-        ))
+        );
+
+        let mut root = variable_cache.root_variable();
+
+        let mut tree = unit_info
+            .unit
+            .header
+            .entries_tree(&unit_info.unit.abbreviations, Some(unit_node.offset()))?;
+
+        root = unit_info.process_tree(
+            self,
+            tree.root()?,
+            root,
+            memory,
+            &mut variable_cache,
+            StackFrameInfo {
+                registers,
+                frame_base: None,
+                canonical_frame_address: None,
+            },
+        )?;
+
+        for unit in unit_infos {
+            let mut entries = unit.unit.entries();
+
+            // Only process statics for this unit header.
+            // Navigate the current unit from the header down.
+            let (_, unit_node) = entries.next_dfs()?.unwrap();
+
+            let mut tree = unit
+                .unit
+                .header
+                .entries_tree(&unit.unit.abbreviations, Some(unit_node.offset()))?;
+
+            root = unit.process_tree(
+                self,
+                tree.root()?,
+                root,
+                memory,
+                &mut variable_cache,
+                StackFrameInfo {
+                    registers,
+                    frame_base: None,
+                    canonical_frame_address: None,
+                },
+            )?;
+        }
+
+        variable_cache.update_variable(&root)?;
+
+        Ok(variable_cache)
     }
 
     /// Creates the unpopulated cache for `function` variables
@@ -2054,8 +2115,11 @@ mod test {
 
         let snapshot_name = format!("{chip_name}__static_variables");
 
-        let mut static_variables = debug_info.create_static_scope_cache().unwrap();
+        let mut static_variables = debug_info
+            .create_static_scope_cache(&mut adapter, &initial_registers)
+            .unwrap();
 
+        /*
         static_variables.recurse_deferred_variables(
             &debug_info,
             &mut adapter,
@@ -2068,6 +2132,8 @@ mod test {
                 canonical_frame_address: None,
             },
         );
+
+        */
 
         // Using YAML output because it is easier to read than the default snapshot output,
         // and also because they provide better diffs.

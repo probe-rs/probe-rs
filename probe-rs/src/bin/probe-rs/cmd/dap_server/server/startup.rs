@@ -5,7 +5,7 @@ use probe_rs::probe::list::Lister;
 use serde::Deserialize;
 use std::{
     fs,
-    net::{Ipv4Addr, TcpListener, TcpStream},
+    net::{Ipv4Addr, TcpListener},
     path::Path,
     time::{Duration, UNIX_EPOCH},
 };
@@ -100,10 +100,6 @@ pub fn debug(
 
     Ok(())
 }
-
-fn server_thread(socket: TcpStream, addr: SocketAddr) {}
-
-fn debugger_thread() {}
 
 /// All eprintln! messages are picked up by the VSCode extension and displayed in the debug console.
 /// We send these to stderr, in addition to logging them, so that they will show up, irrespective of

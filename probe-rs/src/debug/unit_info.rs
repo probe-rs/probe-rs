@@ -16,6 +16,7 @@ pub(crate) enum ExpressionResult {
 }
 
 /// A struct containing information about a single compilation unit.
+#[derive(Debug)]
 pub struct UnitInfo {
     pub(crate) unit: gimli::Unit<GimliReader, usize>,
     dwarf_language: gimli::DwLang,
@@ -496,7 +497,6 @@ impl UnitInfo {
     /// - Consumes the `parent_variable`.
     /// - Updates the `DebugInfo::VariableCache` with all descendant `Variable`s.
     /// - Returns a clone of the most up-to-date `parent_variable` in the cache.
-    #[allow(clippy::too_many_arguments)]
     pub(crate) fn process_tree(
         &self,
         debug_info: &DebugInfo,
@@ -529,19 +529,32 @@ impl UnitInfo {
         while let Some(mut child_node) = child_nodes.next()? {
             match child_node.entry().tag() {
                 gimli::DW_TAG_namespace => {
-                    // Use these parents to extract `statics`.
-                    let mut namespace_variable =
-                        Variable::new(Some(child_node.entry().offset()), Some(self));
-
-                    namespace_variable.name =
+                    let variable_name =
                         if let Ok(Some(name)) = extract_name(debug_info, child_node.entry()) {
                             VariableName::Namespace(name)
                         } else {
                             VariableName::AnonymousNamespace
                         };
-                    namespace_variable.type_name = VariableType::Namespace;
-                    namespace_variable.memory_location = VariableLocation::Unavailable;
-                    cache.add_variable(parent_variable.variable_key, &mut namespace_variable)?;
+
+                    // See if this namespace already exists in the cache.
+                    let mut namespace_variable = if let Some(existing_var) = cache
+                        .get_variable_by_name_and_parent(
+                            &variable_name,
+                            parent_variable.variable_key,
+                        ) {
+                        existing_var
+                    } else {
+                        let mut namespace_variable =
+                            Variable::new(Some(child_node.entry().offset()), Some(self));
+
+                        namespace_variable.name = variable_name;
+                        namespace_variable.type_name = VariableType::Namespace;
+                        namespace_variable.memory_location = VariableLocation::Unavailable;
+                        cache
+                            .add_variable(parent_variable.variable_key, &mut namespace_variable)?;
+
+                        namespace_variable
+                    };
 
                     // Recurse for additional namespace variables.
                     namespace_variable = self.process_tree(
