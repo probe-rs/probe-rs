@@ -1039,8 +1039,6 @@ impl UnitInfo {
                 // Recursively process a child types.
                 self.process_tree(debug_info, node, child_variable, memory, cache, frame_info)?;
                 if parent_variable.is_valid() && child_variable.is_valid() {
-                    let enumerator_values = cache.get_children(child_variable.variable_key);
-
                     let value = if let VariableLocation::Address(address) =
                         child_variable.memory_location
                     {
@@ -1049,17 +1047,18 @@ impl UnitInfo {
                         memory.read(address, std::slice::from_mut(&mut buff))?;
                         let this_enum_const_value = buff.to_string();
 
-                        let is_this_value = |enumerator_variable: &Variable| {
+                        let mut enumerator_values = cache.get_children(child_variable.variable_key);
+
+                        let is_this_value = |enumerator_variable: &&Variable| {
                             enumerator_variable.get_value(cache) == this_enum_const_value
                         };
 
-                        let enumumerator_value =
-                            match enumerator_values.into_iter().find(is_this_value) {
-                                Some(this_enum) => this_enum.name,
-                                None => VariableName::Named(
-                                    "<Error: Unresolved enum value>".to_string(),
-                                ),
-                            };
+                        let enumumerator_value = match enumerator_values.find(is_this_value) {
+                            Some(this_enum) => this_enum.name.clone(),
+                            None => {
+                                VariableName::Named("<Error: Unresolved enum value>".to_string())
+                            }
+                        };
 
                         self.language
                             .format_enum_value(&child_variable.type_name, &enumumerator_value)

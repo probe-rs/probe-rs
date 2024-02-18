@@ -1481,7 +1481,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
 
             let dap_variables: Vec<Variable> = variable_cache
                 .get_children(variable_ref)
-                .iter()
                 // Filter out requested children, then map them as DAP variables
                 .filter(|variable| match &arguments.filter {
                     Some(filter) => match filter.as_str() {

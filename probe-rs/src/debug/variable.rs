@@ -546,7 +546,7 @@ impl Variable {
         } else {
             // Infer a human readable value using the available children of this variable.
             let mut compound_value = String::new();
-            let children = variable_cache.get_children(self.variable_key);
+            let children: Vec<_> = variable_cache.get_children(self.variable_key).collect();
 
             // Make sure we can safely unwrap() children.
             match &self.type_name {
@@ -576,7 +576,7 @@ impl Variable {
                         compound_value, line_feed, "", self.type_name,
                     );
                     let mut child_count: usize = 0;
-                    for child in children.iter() {
+                    for child in &children {
                         child_count += 1;
 
                         compound_value = format!(

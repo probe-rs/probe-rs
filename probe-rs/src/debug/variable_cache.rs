@@ -62,8 +62,7 @@ impl Serialize for VariableCache {
         ) -> Vec<VariableTreeNode> {
             variable_cache
                 .get_children(parent_variable_key)
-                .into_iter()
-                .map(|child_variable: Variable| {
+                .map(|child_variable: &Variable| {
                     let value = if child_variable.range_upper_bound > 50 {
                         format!("Data types with more than 50 members are excluded from this output. This variable has {} child members.", child_variable.range_upper_bound)
                     } else {
@@ -71,8 +70,8 @@ impl Serialize for VariableCache {
                     };
 
                     VariableTreeNode {
-                        name: child_variable.name,
-                        type_name: child_variable.type_name,
+                        name: child_variable.name.clone(),
+                        type_name: child_variable.type_name.clone(),
                         value,
                         children: if child_variable.range_upper_bound > 50 {
                             // Empty Vec's will show as variables with no children.
@@ -304,17 +303,15 @@ impl VariableCache {
 
     /// Retrieve `clone`d version of all the children of a `Variable`.
     /// If `parent_key == None`, it will return all the top level variables (no parents) in this cache.
-    pub fn get_children(&self, parent_key: ObjectRef) -> Vec<Variable> {
+    pub fn get_children(&self, parent_key: ObjectRef) -> impl Iterator<Item = &Variable> {
         self.variable_hash_map
             .values()
-            .filter(|child_variable| child_variable.parent_key == parent_key)
-            .cloned()
-            .collect::<Vec<Variable>>()
+            .filter(move |child_variable| child_variable.parent_key == parent_key)
     }
 
     /// Check if variable has children. If the variable doesn't exist, it will return false.
     pub fn has_children(&self, parent_variable: &Variable) -> bool {
-        !self.get_children(parent_variable.variable_key).is_empty()
+        self.get_children(parent_variable.variable_key).count() > 0
     }
 
     /// Sometimes DWARF uses intermediate nodes that are not part of the coded variable structure.
@@ -403,7 +400,13 @@ impl VariableCache {
         {
             return;
         };
-        for mut child in self.get_children(variable_to_recurse.variable_key) {
+
+        let children: Vec<_> = self
+            .get_children(variable_to_recurse.variable_key)
+            .cloned()
+            .collect();
+
+        for mut child in children {
             self.recurse_deferred_variables(
                 debug_info,
                 memory,
@@ -431,7 +434,7 @@ impl VariableCache {
             // The datatype &str is a special case, because it is stores a pointer to the string data,
             // and the length of the string.
             if variable.type_name == VariableType::Struct("&str".to_string()) {
-                let children = self.get_children(variable.variable_key);
+                let children: Vec<_> = self.get_children(variable.variable_key).collect();
                 if !children.is_empty() {
                     let string_length = match children.iter().find(|child_variable| {
                         child_variable.name == VariableName::Named("length".to_string())
@@ -449,8 +452,9 @@ impl VariableCache {
                         child_variable.name == VariableName::Named("data_ptr".to_string())
                     }) {
                         Some(location_value) => {
-                            let child_variables = self.get_children(location_value.variable_key);
-                            if let Some(first_child) = child_variables.first() {
+                            let mut child_variables =
+                                self.get_children(location_value.variable_key);
+                            if let Some(first_child) = child_variables.next() {
                                 first_child
                                     .memory_location
                                     .memory_address()
@@ -496,12 +500,12 @@ mod test {
     };
 
     fn show_tree(cache: &VariableCache) {
-        let tree = build_tree(cache, cache.root_variable());
+        let tree = build_tree(cache, &cache.root_variable());
 
         println!("{}", tree);
     }
 
-    fn build_tree(cache: &VariableCache, variable: Variable) -> Tree<String> {
+    fn build_tree(cache: &VariableCache, variable: &Variable) -> Tree<String> {
         let mut entry = Tree::new(format!(
             "{:?}: name={:?}, type={:?}, value={:?}",
             variable.variable_key,
@@ -559,9 +563,9 @@ mod test {
 
         let var_2 = cache.create_variable(root_key, None, None).unwrap();
 
-        let children = cache.get_children(root_key);
+        let children: Vec<_> = cache.get_children(root_key).collect();
 
-        let expected_children = vec![var_1, var_2];
+        let expected_children = vec![&var_1, &var_2];
 
         assert_eq!(children, expected_children);
     }
@@ -713,10 +717,10 @@ mod test {
 
         assert!(cache.get_variable_by_key(vars[3].variable_key).is_none());
 
-        let new_children = cache.get_children(vars[2].variable_key);
+        let new_children: Vec<_> = cache.get_children(vars[2].variable_key).collect();
 
         vars[5].parent_key = vars[2].variable_key;
 
-        assert_eq!(new_children, vec![vars[4].clone(), vars[5].clone()]);
+        assert_eq!(new_children, vec![&vars[4], &vars[5]]);
     }
 }

@@ -745,7 +745,7 @@ impl DebugCli {
                         let mut locals = local_variable_cache.root_variable();
                         // By default, the first level children are always are lazy loaded, so we will force a load here.
                         if locals.variable_node_type.is_deferred()
-                            && !local_variable_cache.has_children(&locals)?
+                            && !local_variable_cache.has_children(&locals)
                         {
                             if let Err(error) = cli_data
                                 .debug_info
@@ -767,7 +767,7 @@ impl DebugCli {
                                 return Ok(CliState::Continue);
                             }
                         }
-                        let children = local_variable_cache.get_children(locals.variable_key())?;
+                        let children = local_variable_cache.get_children(locals.variable_key());
 
                         for child in children {
                             println!(
