@@ -181,9 +181,8 @@ impl UnitInfo {
         Ok(functions)
     }
 
-    /// Recurse the ELF structure below the `tree_node`, and ...
-    /// - Consumes the `child_variable`.
-    /// - Returns a clone of the most up-to-date `child_variable` in the cache.
+    /// Recurse the ELF structure below the `tree_node`,
+    /// and updates the `cache` with the updated value of the `child_variable`.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn process_tree_node_attributes(
         &self,

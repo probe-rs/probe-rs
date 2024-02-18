@@ -34,9 +34,7 @@ pub trait ProgrammingLanguage {
         _variable: &Variable,
         _memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
-    ) -> VariableValue {
-        VariableValue::Empty
-    }
+    ) -> VariableValue;
 
     fn update_variable(
         &self,
@@ -54,10 +52,22 @@ pub trait ProgrammingLanguage {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct UnknownLanguage(DwLang);
 
 impl ProgrammingLanguage for UnknownLanguage {
+    fn read_variable_value(
+        &self,
+        _variable: &Variable,
+        _memory: &mut dyn MemoryInterface,
+        _variable_cache: &VariableCache,
+    ) -> VariableValue {
+        VariableValue::Error(format!(
+            "Reading variables for language {} is not supported.",
+            self.0
+        ))
+    }
+
     fn update_variable(
         &self,
         _variable: &Variable,
