@@ -455,7 +455,7 @@ impl UnitInfo {
                     }
                 }
                 other_attribute => {
-                    tracing::info!(
+                    tracing::debug!(
                         "Unimplemented: Ignoring attribute {} while extracting array range",
                         other_attribute,
                     );

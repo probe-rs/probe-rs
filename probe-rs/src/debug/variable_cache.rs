@@ -51,8 +51,8 @@ impl Serialize for VariableCache {
                 name: root_node.name.clone(),
                 type_name: root_node.type_name.clone(),
                 value: root_node.get_value(variable_cache),
+                // Only expand the children if there are less than 50 children, to limit the size of the output.
                 children: if children_count > 50 {
-                    // Empty Vec's will show as variables with no children.
                     Vec::new()
                 } else {
                     recurse_variables(variable_cache, root_node.variable_key)
@@ -85,8 +85,8 @@ impl Serialize for VariableCache {
                         name: child_variable.name,
                         type_name: child_variable.type_name,
                         value,
+                        // Only expand the children if there are less than 50 children, to limit the size of the output.
                         children: if children_count > 50 {
-                            // Empty Vec's will show as variables with no children.
                             Vec::new()
                         } else {
                             recurse_variables(variable_cache, child_variable.variable_key)
