@@ -419,57 +419,6 @@ impl UnitInfo {
         Ok(())
     }
 
-    /// Extract the array range values
-    fn extract_array_range_attribute(
-        &self,
-        entry: &gimli::DebuggingInformationEntry<GimliReader>,
-    ) -> Result<Option<std::ops::Range<u64>>, DebugError> {
-        let mut variable_attributes = entry.attrs();
-
-        let mut lower_bound = None;
-        let mut upper_bound = None;
-
-        // Now loop through all the unit attributes to extract the remainder of the `Variable` definition.
-        while let Ok(Some(attr)) = variable_attributes.next() {
-            match attr.name() {
-                // Property of variables that are of DW_TAG_subrange_type.
-                gimli::DW_AT_lower_bound => match attr.value().udata_value() {
-                    Some(bound) => lower_bound = Some(bound),
-                    None => {
-                        return Err(DebugError::Other(anyhow::anyhow!(
-                            "Unimplemented: Attribute Value for DW_AT_lower_bound: {:?}",
-                            attr.value()
-                        )));
-                    }
-                },
-                // Property of variables that are of DW_TAG_subrange_type.
-                gimli::DW_AT_upper_bound | gimli::DW_AT_count => {
-                    match attr.value().udata_value() {
-                        Some(bound) => upper_bound = Some(bound), // child_variable.range_upper_bound = bound as i64,
-                        None => {
-                            return Err(DebugError::Other(anyhow::anyhow!(
-                                "Unimplemented: Attribute Value for DW_AT_upper_bound: {:?}",
-                                attr.value()
-                            )));
-                        }
-                    }
-                }
-                other_attribute => {
-                    tracing::debug!(
-                        "Unimplemented: Ignoring attribute {} while extracting array range",
-                        other_attribute,
-                    );
-                }
-            }
-        }
-
-        if let Some(upper_bound) = upper_bound {
-            Ok(Some(lower_bound.unwrap_or_default()..upper_bound))
-        } else {
-            Ok(None)
-        }
-    }
-
     #[allow(clippy::too_many_arguments)]
     fn process_type_attribute(
         &self,
@@ -585,7 +534,7 @@ impl UnitInfo {
                     )?;
 
                     // Do not keep empty namespaces around
-                    if !cache.has_children(&namespace_variable)? {
+                    if !cache.has_children(&namespace_variable) {
                         cache.remove_cache_entry(namespace_variable.variable_key)?;
                     }
                 }
@@ -674,7 +623,7 @@ impl UnitInfo {
                 // Variant is a child of a structure, and one of them should have a discriminant value to match the DW_TAG_variant_part
                 gimli::DW_TAG_variant => {
                     // We only need to do this if we have not already found our variant,
-                    if !cache.has_children(parent_variable)? {
+                    if !cache.has_children(parent_variable) {
                         let mut child_variable = cache.create_variable(
                             parent_variable.variable_key,
                             Some(child_node.entry().offset()),
@@ -840,7 +789,16 @@ impl UnitInfo {
         Ok(())
     }
 
-    /// Extract the range information for an array
+    /// Extract the range information for an array.
+    ///
+    /// This is expected to be contained in an entry with type `DW_TAG_subrange_type`,
+    /// looking like this:
+    ///
+    /// ```text
+    /// 0x00000133:     DW_TAG_subrange_type
+    ///                   DW_AT_type    (0x00000024 "unsigned int")
+    ///                   DW_AT_upper_bound (0x44)
+    /// ```
     fn extract_array_range(
         &self,
         array_parent_node: UnitOffset,
@@ -855,12 +813,76 @@ impl UnitInfo {
         let mut children = root.children();
 
         while let Some(child) = children.next()? {
-            if let Some(range) = self.extract_array_range_attribute(child.entry())? {
-                return Ok(Some(range));
+            match child.entry().tag() {
+                gimli::DW_TAG_subrange_type => {
+                    if let Some(range) = self.extract_array_range_attribute(child.entry())? {
+                        return Ok(Some(range));
+                    }
+                }
+                other => tracing::debug!(
+                    "Ignoring unexpected child tag {} while extracting array range",
+                    other
+                ),
             }
         }
 
         Ok(None)
+    }
+
+    /// Extract the array range values
+    ///
+    /// See [`extract_array_range()`](Self::extract_array_range()) for more information.
+    fn extract_array_range_attribute(
+        &self,
+        entry: &gimli::DebuggingInformationEntry<GimliReader>,
+    ) -> Result<Option<std::ops::Range<u64>>, DebugError> {
+        let mut variable_attributes = entry.attrs();
+
+        let mut lower_bound = None;
+        let mut upper_bound = None;
+
+        // Now loop through all the unit attributes to extract the remainder of the `Variable` definition.
+        while let Ok(Some(attr)) = variable_attributes.next() {
+            match attr.name() {
+                // Property of variables that are of DW_TAG_subrange_type.
+                gimli::DW_AT_lower_bound => match attr.value().udata_value() {
+                    Some(bound) => lower_bound = Some(bound),
+                    None => {
+                        return Err(DebugError::Other(anyhow::anyhow!(
+                            "Unimplemented: Attribute Value for DW_AT_lower_bound: {:?}",
+                            attr.value()
+                        )));
+                    }
+                },
+                // Property of variables that are of DW_TAG_subrange_type.
+                gimli::DW_AT_upper_bound | gimli::DW_AT_count => {
+                    match attr.value().udata_value() {
+                        Some(bound) => upper_bound = Some(bound), // child_variable.range_upper_bound = bound as i64,
+                        None => {
+                            return Err(DebugError::Other(anyhow::anyhow!(
+                                "Unimplemented: Attribute Value for DW_AT_upper_bound: {:?}",
+                                attr.value()
+                            )));
+                        }
+                    }
+                }
+                // Some compilers specify the type of the array size, but we don't use this information
+                // currently.
+                gimli::DW_AT_type => (),
+                other_attribute => {
+                    tracing::debug!(
+                        "Unimplemented: Ignoring attribute {} while extracting array range",
+                        other_attribute,
+                    );
+                }
+            }
+        }
+
+        if let Some(upper_bound) = upper_bound {
+            Ok(Some(lower_bound.unwrap_or_default()..upper_bound))
+        } else {
+            Ok(None)
+        }
     }
 
     /// Compute the discriminant value of a DW_TAG_variant variable. If it is not explicitly captured in the DWARF, then it is the default value.
@@ -1065,8 +1087,6 @@ impl UnitInfo {
                 // Recursively process a child types.
                 self.process_tree(debug_info, node, child_variable, memory, cache, frame_info)?;
                 if parent_variable.is_valid() && child_variable.is_valid() {
-                    let enumerator_values = cache.get_children(child_variable.variable_key)?;
-
                     let value = if let VariableLocation::Address(address) =
                         child_variable.memory_location
                     {
@@ -1075,17 +1095,18 @@ impl UnitInfo {
                         memory.read(address, std::slice::from_mut(&mut buff))?;
                         let this_enum_const_value = buff.to_string();
 
-                        let is_this_value = |enumerator_variable: &Variable| {
+                        let mut enumerator_values = cache.get_children(child_variable.variable_key);
+
+                        let is_this_value = |enumerator_variable: &&Variable| {
                             enumerator_variable.get_value(cache) == this_enum_const_value
                         };
 
-                        let enumumerator_value =
-                            match enumerator_values.into_iter().find(is_this_value) {
-                                Some(this_enum) => this_enum.name,
-                                None => VariableName::Named(
-                                    "<Error: Unresolved enum value>".to_string(),
-                                ),
-                            };
+                        let enumumerator_value = match enumerator_values.find(is_this_value) {
+                            Some(this_enum) => this_enum.name.clone(),
+                            None => {
+                                VariableName::Named("<Error: Unresolved enum value>".to_string())
+                            }
+                        };
 
                         self.language
                             .format_enum_value(&child_variable.type_name, &enumumerator_value)
@@ -1205,7 +1226,7 @@ impl UnitInfo {
                 // Recursively process a child types.
                 // TODO: The DWARF does not currently hold information that allows decoding of which UNION arm is instantiated, so we have to display all available.
                 self.process_tree(debug_info, node, child_variable, memory, cache, frame_info)?;
-                if child_variable.is_valid() && !cache.has_children(child_variable)? {
+                if child_variable.is_valid() && !cache.has_children(child_variable) {
                     // Empty structs don't have values.
                     child_variable.set_value(VariableValue::Valid(format!(
                         "{:?}",

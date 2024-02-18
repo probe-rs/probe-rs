@@ -306,7 +306,7 @@ impl DebugInfo {
         }
 
         // Only attempt this part if we have not yet resolved the referenced children.
-        if cache.has_children(parent_variable)? {
+        if cache.has_children(parent_variable) {
             return Ok(());
         }
 
