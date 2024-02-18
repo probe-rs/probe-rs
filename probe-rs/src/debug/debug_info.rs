@@ -286,10 +286,10 @@ impl DebugInfo {
             .header
             .entries_tree(&unit_info.unit.abbreviations, Some(unit_node.offset()))?;
 
-        root = unit_info.process_tree(
+        unit_info.process_tree(
             self,
             tree.root()?,
-            root,
+            &mut root,
             memory,
             &mut variable_cache,
             StackFrameInfo {
@@ -311,10 +311,10 @@ impl DebugInfo {
                 .header
                 .entries_tree(&unit.unit.abbreviations, Some(unit_node.offset()))?;
 
-            root = unit.process_tree(
+            unit.process_tree(
                 self,
                 tree.root()?,
-                root,
+                &mut root,
                 memory,
                 &mut variable_cache,
                 StackFrameInfo {

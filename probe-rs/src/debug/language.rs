@@ -28,7 +28,7 @@ pub fn from_dwarf(dwarf_language: DwLang) -> Box<dyn ProgrammingLanguage> {
 }
 
 /// Programming language specific operations.
-pub trait ProgrammingLanguage: std::fmt::Debug {
+pub trait ProgrammingLanguage {
     fn read_variable_value(
         &self,
         _variable: &Variable,

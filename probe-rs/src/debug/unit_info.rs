@@ -16,7 +16,6 @@ pub(crate) enum ExpressionResult {
 }
 
 /// A struct containing information about a single compilation unit.
-#[derive(Debug)]
 pub struct UnitInfo {
     pub(crate) unit: gimli::Unit<GimliReader, usize>,
     dwarf_language: gimli::DwLang,
