@@ -23,7 +23,10 @@ use dap_types::*;
 use num_traits::Zero;
 use parse_int::parse;
 use probe_rs::{
-    architecture::{arm::ArmError, riscv::communication_interface::RiscvError},
+    architecture::{
+        arm::ArmError, riscv::communication_interface::RiscvError,
+        xtensa::communication_interface::XtensaError,
+    },
     debug::{
         stack_frame::StackFrameInfo, ColumnType, ObjectRef, SourceLocation, SteppingMode,
         VariableName, VerifiedBreakpoint,
@@ -1572,7 +1575,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     Err(wait_error) => {
                         if matches!(
                             wait_error,
-                            Error::Arm(ArmError::Timeout) | Error::Riscv(RiscvError::Timeout)
+                            Error::Arm(ArmError::Timeout)
+                                | Error::Riscv(RiscvError::Timeout)
+                                | Error::Xtensa(XtensaError::Timeout)
                         ) {
                             // The core is still running.
                         } else {

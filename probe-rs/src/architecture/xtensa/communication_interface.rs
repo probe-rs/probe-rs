@@ -52,7 +52,6 @@ impl From<XtensaError> for ProbeRsError {
     fn from(err: XtensaError) -> Self {
         match err {
             XtensaError::DebugProbe(e) => e.into(),
-            XtensaError::Timeout => ProbeRsError::Timeout,
             other => ProbeRsError::Xtensa(other),
         }
     }
@@ -233,6 +232,7 @@ impl XtensaCommunicationInterface {
         let now = Instant::now();
         while !self.is_halted()? {
             if now.elapsed() > timeout {
+                tracing::warn!("Timeout waiting for core to halt");
                 return Err(XtensaError::Timeout);
             }
 

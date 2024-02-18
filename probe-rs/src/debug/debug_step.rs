@@ -4,7 +4,10 @@ use super::{
     {DebugError, SourceLocation},
 };
 use crate::{
-    architecture::{arm::ArmError, riscv::communication_interface::RiscvError},
+    architecture::{
+        arm::ArmError, riscv::communication_interface::RiscvError,
+        xtensa::communication_interface::XtensaError,
+    },
     CoreInterface, CoreStatus, HaltReason,
 };
 use std::{ops::RangeInclusive, time::Duration};
@@ -417,7 +420,9 @@ fn run_to_address(
                 core.clear_hw_breakpoint(0)?;
                 if matches!(
                     error,
-                    crate::Error::Arm(ArmError::Timeout) | crate::Error::Riscv(RiscvError::Timeout)
+                    crate::Error::Arm(ArmError::Timeout)
+                        | crate::Error::Riscv(RiscvError::Timeout)
+                        | crate::Error::Xtensa(XtensaError::Timeout)
                 ) {
                     // This is not a quick step and halt operation. Notify the user that we are not going to wait any longer, and then return the current program counter so that the debugger can show the user where the forced halt happened.
                     tracing::error!(
