@@ -52,7 +52,6 @@ impl From<XtensaError> for ProbeRsError {
     fn from(err: XtensaError) -> Self {
         match err {
             XtensaError::DebugProbe(e) => e.into(),
-            XtensaError::Timeout => ProbeRsError::Timeout,
             other => ProbeRsError::Xtensa(other),
         }
     }
