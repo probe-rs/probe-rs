@@ -511,18 +511,6 @@ impl UnitInfo {
             return Ok(parent_variable);
         }
 
-        let Some(program_counter) = frame_info
-            .registers
-            .get_program_counter()
-            .and_then(|reg| reg.value)
-        else {
-            return Err(DebugError::UnwindIncompleteResults {
-                message: "Cannot unwind `Variable` without a valid PC (program_counter)"
-                    .to_string(),
-            });
-        };
-        let program_counter = program_counter.try_into()?;
-
         tracing::trace!("process_tree for parent {:?}", parent_variable.variable_key);
 
         let mut child_nodes = parent_node.children();
@@ -739,6 +727,19 @@ impl UnitInfo {
                     cache.remove_cache_entry(range_variable.variable_key)?;
                 }
                 gimli::DW_TAG_lexical_block => {
+                    let Some(program_counter) = frame_info
+                        .registers
+                        .get_program_counter()
+                        .and_then(|reg| reg.value)
+                    else {
+                        return Err(DebugError::UnwindIncompleteResults {
+                            message:
+                                "Cannot unwind `Variable` without a valid PC (program_counter)"
+                                    .to_string(),
+                        });
+                    };
+                    let program_counter = program_counter.try_into()?;
+
                     // Determine the low and high ranges for which this DIE and children are in scope. These can be specified discreetly, or in ranges.
                     let mut in_scope = false;
                     if let Ok(Some(low_pc_attr)) = child_node.entry().attr(gimli::DW_AT_low_pc) {

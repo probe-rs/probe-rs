@@ -254,7 +254,7 @@ impl DebugInfo {
     /// We do not actually resolve the children of `[VariableName::StaticScope]` automatically, and only create the necessary header in the `VariableCache`.
     /// This allows us to resolve the `[VariableName::StaticScope]` on demand/lazily, when a user requests it from the debug client.
     /// This saves a lot of overhead when a user only wants to see the `[VariableName::LocalScope]` or `[VariableName::Registers]` while stepping through code (the most common use cases)
-    pub(crate) fn create_static_scope_cache(
+    pub fn create_static_scope_cache(
         &self,
         memory: &mut dyn MemoryInterface,
         registers: &DebugRegisters,
@@ -1545,7 +1545,9 @@ mod test {
     /// Load the DebugInfo from the `elf_file` for the test.
     /// `elf_file` should be the name of a file(or relative path) in the `tests` directory.
     fn load_test_elf_as_debug_info(elf_file: &str) -> DebugInfo {
-        DebugInfo::from_file(get_path_for_test_files(elf_file)).unwrap()
+        let path = get_path_for_test_files(elf_file);
+        DebugInfo::from_file(&path)
+            .unwrap_or_else(|err| panic!("Failed to open file {}: {:?}", path.display(), err))
     }
 
     #[test]
@@ -2105,40 +2107,29 @@ mod test {
 
     #[test_case("RP2040"; "Armv6-m using RP2040")]
     #[test_case("nRF52833_xxAA"; "Armv7-m using nRF52833_xxAA")]
+    #[test_case("nRF5340_lang_c"; "Armv8-m using nRF5340_xxAA")]
     //TODO:  #[test_case("esp32c3"; "RISC-V32E using esp32c3")]
     fn static_variables(chip_name: &str) {
         // TODO: Add RISC-V tests.
 
         let debug_info =
             load_test_elf_as_debug_info(format!("debug-unwind-tests/{chip_name}.elf").as_str());
-        let mut adapter = CoreDump::load(&get_path_for_test_files(
-            format!("debug-unwind-tests/{chip_name}.coredump").as_str(),
-        ))
-        .unwrap();
 
-        let initial_registers = adapter.debug_registers();
+        let mut memory = MockMemory::new();
+
+        let registers = DebugRegisters::default();
 
         let snapshot_name = format!("{chip_name}__static_variables");
 
-        let mut static_variables = debug_info
-            .create_static_scope_cache(&mut adapter, &initial_registers)
+        let static_variables = debug_info
+            .create_static_scope_cache(&mut memory, &registers)
             .unwrap();
 
-        /*
-        static_variables.recurse_deferred_variables(
-            &debug_info,
-            &mut adapter,
-            None,
-            10,
-            0,
-            StackFrameInfo {
-                registers: &initial_registers,
-                frame_base: None,
-                canonical_frame_address: None,
-            },
-        );
+        let root_variable = static_variables.root_variable().variable_key;
 
-        */
+        for child in static_variables.get_children(root_variable).unwrap() {
+            println!("{:?}", child.name);
+        }
 
         // Using YAML output because it is easier to read than the default snapshot output,
         // and also because they provide better diffs.

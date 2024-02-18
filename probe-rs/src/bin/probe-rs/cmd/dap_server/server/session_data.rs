@@ -258,6 +258,16 @@ impl SessionData {
                 let initial_registers = DebugRegisters::from_core(&mut target_core.core);
                 let exception_interface = exception_handler_for_core(target_core.core.core_type());
                 let instruction_set = target_core.core.instruction_set().ok();
+
+                target_core.core_data.static_variables = target_core
+                    .core_data
+                    .debug_info
+                    .create_static_scope_cache(&mut target_core.core, &initial_registers)
+                    .inspect_err(|err| {
+                        tracing::warn!("Failed to create static scope cache: {:?}", err)
+                    })
+                    .ok();
+
                 target_core.core_data.stack_frames = target_core.core_data.debug_info.unwind(
                     &mut target_core.core,
                     initial_registers,

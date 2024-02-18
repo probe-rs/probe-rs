@@ -1167,6 +1167,27 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             });
         };
 
+        if let Some(static_root_variable) = target_core
+            .core_data
+            .static_variables
+            .as_ref()
+            .map(|stack_frame| stack_frame.root_variable())
+        {
+            dap_scopes.push(Scope {
+                line: None,
+                column: None,
+                end_column: None,
+                end_line: None,
+                expensive: true, // VSCode won't open this tree by default.
+                indexed_variables: None,
+                name: "Static".to_string(),
+                presentation_hint: Some("statics".to_string()),
+                named_variables: None,
+                source: None,
+                variables_reference: static_root_variable.variable_key().into(),
+            });
+        };
+
         let frame_id: ObjectRef = arguments.frame_id.into();
 
         tracing::trace!("Getting scopes for frame {:?}", frame_id);
@@ -1186,27 +1207,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 // We use the stack_frame.id for registers, so that we don't need to cache copies of the registers.
                 variables_reference: stack_frame.id.into(),
             });
-
-            if let Some(static_root_variable) = target_core
-                .core_data
-                .static_variables
-                .as_ref()
-                .map(|stack_frame| stack_frame.root_variable())
-            {
-                dap_scopes.push(Scope {
-                    line: None,
-                    column: None,
-                    end_column: None,
-                    end_line: None,
-                    expensive: true, // VSCode won't open this tree by default.
-                    indexed_variables: None,
-                    name: "Static".to_string(),
-                    presentation_hint: Some("statics".to_string()),
-                    named_variables: None,
-                    source: None,
-                    variables_reference: static_root_variable.variable_key().into(),
-                });
-            };
 
             if let Some(locals_root_variable) = stack_frame
                 .local_variables
