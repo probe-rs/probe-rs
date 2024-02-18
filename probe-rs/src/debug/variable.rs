@@ -317,10 +317,6 @@ pub struct Variable {
     pub byte_size: Option<u64>,
     /// If this is a subrange (array, vector, etc.), is the ordinal position of this variable in that range
     pub member_index: Option<i64>,
-    /// If this is a subrange (array, vector, etc.), we need to temporarily store the lower bound.
-    pub range_lower_bound: i64,
-    /// If this is a subrange (array, vector, etc.), we need to temporarily store the the upper bound of the range.
-    pub range_upper_bound: i64,
     /// The role of this variable.
     pub role: VariantRole,
 }
@@ -346,8 +342,6 @@ impl Variable {
             memory_location: Default::default(),
             byte_size: None,
             member_index: None,
-            range_lower_bound: 0,
-            range_upper_bound: 0,
             role: Default::default(),
         }
     }
@@ -713,9 +707,5 @@ impl Variable {
         } else {
             None
         }
-    }
-
-    pub(crate) fn subrange_bounds(&self) -> Range<i64> {
-        self.range_lower_bound..self.range_upper_bound
     }
 }

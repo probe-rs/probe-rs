@@ -42,12 +42,14 @@ impl Serialize for VariableCache {
         fn recurse_cache(variable_cache: &VariableCache) -> VariableTreeNode {
             let root_node = variable_cache.root_variable();
 
+            let children_count = variable_cache.get_children(root_node.variable_key).count();
+
             VariableTreeNode {
                 name: root_node.name.clone(),
                 type_name: root_node.type_name.clone(),
                 value: root_node.get_value(variable_cache),
-                children: if root_node.range_upper_bound > 50 {
-                    // Empty Vec's will show as variables with no children.
+                // Only expand the children if there are less than 50, to limit the size of the output.
+                children: if children_count > 50 {
                     Vec::new()
                 } else {
                     recurse_variables(variable_cache, root_node.variable_key)
@@ -63,8 +65,11 @@ impl Serialize for VariableCache {
             variable_cache
                 .get_children(parent_variable_key)
                 .map(|child_variable: &Variable| {
-                    let value = if child_variable.range_upper_bound > 50 {
-                        format!("Data types with more than 50 members are excluded from this output. This variable has {} child members.", child_variable.range_upper_bound)
+                    let children_count = variable_cache
+                        .get_children(child_variable.variable_key).count();
+
+                    let value = if children_count > 50 {
+                        format!("Data types with more than 50 members are excluded from this output. This variable has {} child members.", children_count)
                     } else {
                         child_variable.get_value(variable_cache)
                     };
@@ -73,8 +78,8 @@ impl Serialize for VariableCache {
                         name: child_variable.name.clone(),
                         type_name: child_variable.type_name.clone(),
                         value,
-                        children: if child_variable.range_upper_bound > 50 {
-                            // Empty Vec's will show as variables with no children.
+                        // Only expand the children if there are less than 50, to limit the size of the output.
+                        children: if children_count > 50 {
                             Vec::new()
                         } else {
                             recurse_variables(variable_cache, child_variable.variable_key)
@@ -370,12 +375,30 @@ impl VariableCache {
     /// Recursively process the deferred variables in the variable cache,
     /// and add their children to the cache.
     /// Enforce a max level, so that we don't recurse infinitely on circular references.
-    #[allow(clippy::too_many_arguments)]
     pub fn recurse_deferred_variables(
         &mut self,
         debug_info: &DebugInfo,
         memory: &mut dyn MemoryInterface,
-        parent_variable: Option<&mut Variable>,
+        max_recursion_depth: usize,
+        frame_info: StackFrameInfo<'_>,
+    ) {
+        let mut parent_variable = self.root_variable();
+
+        self.recurse_deferred_variables_internal(
+            debug_info,
+            memory,
+            &mut parent_variable,
+            max_recursion_depth,
+            0,
+            frame_info,
+        )
+    }
+
+    fn recurse_deferred_variables_internal(
+        &mut self,
+        debug_info: &DebugInfo,
+        memory: &mut dyn MemoryInterface,
+        parent_variable: &mut Variable,
         max_recursion_depth: usize,
         current_recursion_depth: usize,
         frame_info: StackFrameInfo<'_>,
@@ -383,34 +406,24 @@ impl VariableCache {
         if current_recursion_depth >= max_recursion_depth {
             return;
         }
-        let mut variable_to_recurse = if let Some(parent_variable) = parent_variable {
-            parent_variable
-        } else if let Some(parent_variable) = self.root_variable_mut() {
-            // This is the top-level variable, which has no parent.
-            parent_variable
-        } else {
-            // If the variable cache is empty, we have nothing to do.
-            return;
-        }
-        .clone();
 
         if debug_info
-            .cache_deferred_variables(self, memory, &mut variable_to_recurse, frame_info)
+            .cache_deferred_variables(self, memory, parent_variable, frame_info)
             .is_err()
         {
             return;
         };
 
         let children: Vec<_> = self
-            .get_children(variable_to_recurse.variable_key)
+            .get_children(parent_variable.variable_key)
             .cloned()
             .collect();
 
         for mut child in children {
-            self.recurse_deferred_variables(
+            self.recurse_deferred_variables_internal(
                 debug_info,
                 memory,
-                Some(&mut child),
+                &mut child,
                 max_recursion_depth,
                 current_recursion_depth + 1,
                 frame_info,
@@ -545,8 +558,6 @@ mod test {
         assert_eq!(cache_variable.memory_location, VariableLocation::Unknown);
         assert_eq!(cache_variable.byte_size, None);
         assert_eq!(cache_variable.member_index, None);
-        assert_eq!(cache_variable.range_lower_bound, 0);
-        assert_eq!(cache_variable.range_upper_bound, 0);
         assert_eq!(cache_variable.role, VariantRole::NonVariant);
     }
 

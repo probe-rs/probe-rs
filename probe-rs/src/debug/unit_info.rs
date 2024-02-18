@@ -373,28 +373,6 @@ impl UnitInfo {
                             )));
                         }
                     },
-                    // Property of variables that are of DW_TAG_subrange_type.
-                    gimli::DW_AT_lower_bound => match attr.value().udata_value() {
-                        Some(bound) => child_variable.range_lower_bound = bound as i64,
-                        None => {
-                            child_variable.set_value(VariableValue::Error(format!(
-                                "Unimplemented: Attribute Value for DW_AT_lower_bound: {:?}",
-                                attr.value()
-                            )));
-                        }
-                    },
-                    // Property of variables that are of DW_TAG_subrange_type.
-                    gimli::DW_AT_upper_bound | gimli::DW_AT_count => {
-                        match attr.value().udata_value() {
-                            Some(bound) => child_variable.range_upper_bound = bound as i64,
-                            None => {
-                                child_variable.set_value(VariableValue::Error(format!(
-                                    "Unimplemented: Attribute Value for DW_AT_upper_bound: {:?}",
-                                    attr.value()
-                                )));
-                            }
-                        }
-                    }
                     gimli::DW_AT_accessibility => {
                         // Silently ignore these for now.
                         // TODO: Add flag for public/private/protected for `Variable`, once we have a use case.
@@ -700,33 +678,6 @@ impl UnitInfo {
                         }
                     }
                 }
-                gimli::DW_TAG_subrange_type => {
-                    // This tag is a child node fore parent types such as (array, vector, etc.).
-                    // Recursively process each node, but pass the parent_variable so that new children are caught despite missing these tags.
-                    let mut range_variable = cache.create_variable(
-                        parent_variable.variable_key,
-                        Some(child_node.entry().offset()),
-                        Some(self),
-                    )?;
-
-                    self.process_tree_node_attributes(
-                        debug_info,
-                        &mut child_node,
-                        parent_variable,
-                        &mut range_variable,
-                        memory,
-                        cache,
-                        frame_info,
-                    )?;
-                    // Determine if we should use the results ...
-                    if range_variable.is_valid() {
-                        // Pass the pertinent info up to the parent_variable.
-                        parent_variable.type_name = range_variable.type_name;
-                        parent_variable.range_lower_bound = range_variable.range_lower_bound;
-                        parent_variable.range_upper_bound = range_variable.range_upper_bound;
-                    }
-                    cache.remove_cache_entry(range_variable.variable_key)?;
-                }
                 gimli::DW_TAG_lexical_block => {
                     // Determine the low and high ranges for which this DIE and children are in scope. These can be specified discreetly, or in ranges.
                     let mut in_scope = false;
@@ -838,6 +789,102 @@ impl UnitInfo {
         Ok(())
     }
 
+    /// Extract the range information for an array.
+    ///
+    /// This is expected to be contained in an entry with type `DW_TAG_subrange_type`,
+    /// looking like this:
+    ///
+    /// ```text
+    /// 0x00000133:     DW_TAG_subrange_type
+    ///                   DW_AT_type    (0x00000024 "unsigned int")
+    ///                   DW_AT_upper_bound (0x44)
+    /// ```
+    fn extract_array_range(
+        &self,
+        array_parent_node: UnitOffset,
+    ) -> Result<Option<std::ops::Range<u64>>, DebugError> {
+        let mut tree = self
+            .unit
+            .header
+            .entries_tree(&self.unit.abbreviations, Some(array_parent_node))?;
+
+        let root = tree.root()?;
+
+        let mut children = root.children();
+
+        while let Some(child) = children.next()? {
+            match child.entry().tag() {
+                gimli::DW_TAG_subrange_type => {
+                    if let Some(range) = self.extract_array_range_attribute(child.entry())? {
+                        return Ok(Some(range));
+                    }
+                }
+                other => tracing::debug!(
+                    "Ignoring unexpected child tag {} while extracting array range",
+                    other
+                ),
+            }
+        }
+
+        Ok(None)
+    }
+
+    /// Extract the array range values
+    ///
+    /// See [`extract_array_range()`](Self::extract_array_range()) for more information.
+    fn extract_array_range_attribute(
+        &self,
+        entry: &gimli::DebuggingInformationEntry<GimliReader>,
+    ) -> Result<Option<std::ops::Range<u64>>, DebugError> {
+        let mut variable_attributes = entry.attrs();
+
+        let mut lower_bound = None;
+        let mut upper_bound = None;
+
+        // Now loop through all the unit attributes to extract the remainder of the `Variable` definition.
+        while let Ok(Some(attr)) = variable_attributes.next() {
+            match attr.name() {
+                // Property of variables that are of DW_TAG_subrange_type.
+                gimli::DW_AT_lower_bound => match attr.value().udata_value() {
+                    Some(bound) => lower_bound = Some(bound),
+                    None => {
+                        return Err(DebugError::Other(anyhow::anyhow!(
+                            "Unimplemented: Attribute Value for DW_AT_lower_bound: {:?}",
+                            attr.value()
+                        )));
+                    }
+                },
+                // Property of variables that are of DW_TAG_subrange_type.
+                gimli::DW_AT_upper_bound | gimli::DW_AT_count => {
+                    match attr.value().udata_value() {
+                        Some(bound) => upper_bound = Some(bound), // child_variable.range_upper_bound = bound as i64,
+                        None => {
+                            return Err(DebugError::Other(anyhow::anyhow!(
+                                "Unimplemented: Attribute Value for DW_AT_upper_bound: {:?}",
+                                attr.value()
+                            )));
+                        }
+                    }
+                }
+                // Some compilers specify the type of the array size, but we don't use this information
+                // currently.
+                gimli::DW_AT_type => (),
+                other_attribute => {
+                    tracing::debug!(
+                        "Unimplemented: Ignoring attribute {} while extracting array range",
+                        other_attribute,
+                    );
+                }
+            }
+        }
+
+        if let Some(upper_bound) = upper_bound {
+            Ok(Some(lower_bound.unwrap_or_default()..upper_bound))
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Compute the discriminant value of a DW_TAG_variant variable. If it is not explicitly captured in the DWARF, then it is the default value.
     pub(crate) fn extract_variant_discriminant(
         &self,
@@ -936,6 +983,7 @@ impl UnitInfo {
                                 // The default behaviour is to defer the processing of child types.
                                 child_variable.variable_node_type =
                                     VariableNodeType::ReferenceOffset(unit_ref);
+
                                 if let VariableType::Pointer(optional_name) =
                                     &child_variable.type_name
                                 {
@@ -1084,10 +1132,12 @@ impl UnitInfo {
                 // 2. The byte size of the array.
                 //   - The byte size of the array is the product of the number of elements and the byte size of the child node.
                 //   - This has to be calculated from the deepest level (the DWARF only encodes it there) of multi-dimensional arrays, upwards.
-                match node.entry().attr(gimli::DW_AT_type) {
-                    Ok(Some(data_type_attribute)) => {
-                        match data_type_attribute.value() {
-                            gimli::AttributeValue::UnitRef(unit_ref) => {
+
+                // First: extract sub range
+                match self.extract_array_range(node.entry().offset()) {
+                    Ok(Some(subrange)) => {
+                        match node.entry().attr_value(gimli::DW_AT_type) {
+                            Ok(Some(gimli::AttributeValue::UnitRef(unit_ref))) => {
                                 // The memory location of array members build on top of the memory location of the child_variable.
                                 self.process_memory_location(
                                     debug_info,
@@ -1098,36 +1148,8 @@ impl UnitInfo {
                                     frame_info,
                                 )?;
                                 // Now we can explode the array members.
-                                // First get the DW_TAG_subrange child of this node. It has a DW_AT_type that points to DW_TAG_base_type:__ARRAY_SIZE_TYPE__.
-                                let mut subrange_variable = cache.create_variable(
-                                    child_variable.variable_key,
-                                    Some(node.entry().offset()),
-                                    Some(self),
-                                )?;
-                                self.process_tree(
-                                    debug_info,
-                                    node,
-                                    &mut subrange_variable,
-                                    memory,
-                                    cache,
-                                    frame_info,
-                                )?;
-                                child_variable.range_lower_bound =
-                                    subrange_variable.range_lower_bound;
-                                child_variable.range_upper_bound =
-                                    subrange_variable.range_upper_bound;
-                                if child_variable.range_lower_bound < 0
-                                    || child_variable.range_upper_bound < 0
-                                {
-                                    child_variable.set_value(VariableValue::Error(format!(
-                                        "Unimplemented: Array has a sub-range of {}..{} for ",
-                                        child_variable.range_lower_bound,
-                                        child_variable.range_upper_bound
-                                    )));
-                                }
-                                cache.remove_cache_entry(subrange_variable.variable_key)?;
 
-                                if child_variable.subrange_bounds().count() == 0 {
+                                if subrange.is_empty() {
                                     // Gracefully handle the case where the array is empty.
                                     // - Resolve a 'dummy' child, to determine the type of child_variable.
                                     self.expand_array_member(
@@ -1136,6 +1158,7 @@ impl UnitInfo {
                                         cache,
                                         child_variable,
                                         memory,
+                                        subrange,
                                         0,
                                         frame_info,
                                     )?;
@@ -1145,39 +1168,48 @@ impl UnitInfo {
                                 } else {
                                     // - Next, process this DW_TAG_array_type's DW_AT_type full tree.
                                     // - We have to do this repeatedly, for every array member in the range.
-                                    for array_member_index in child_variable.subrange_bounds() {
+                                    for array_member_index in subrange.clone() {
                                         self.expand_array_member(
                                             debug_info,
                                             unit_ref,
                                             cache,
                                             child_variable,
                                             memory,
+                                            subrange.clone(),
                                             array_member_index,
                                             frame_info,
                                         )?;
                                     }
                                 }
                             }
-                            other_attribute_value => {
+                            Ok(Some(other_attribute_value)) => {
                                 child_variable.set_value(VariableValue::Error(
-                                    format!(
-                                        "Unimplemented: Attribute Value for DW_AT_type {other_attribute_value:?}"
-                                    ),
-                                ));
+                                            format!(
+                                                "Unimplemented: Attribute Value for DW_AT_type {other_attribute_value:?}"
+                                            ),
+                                        ));
+                            }
+                            Ok(None) => {
+                                child_variable.set_value(VariableValue::Error(format!(
+                                    "Error: No Attribute Value for DW_AT_type for variable {:?}",
+                                    child_variable.name
+                                )));
+                            }
+                            Err(error) => {
+                                child_variable.set_value(VariableValue::Error(format!(
+                                    "Error: Failed to decode pointer reference: {error:?}"
+                                )));
                             }
                         }
                     }
                     Ok(None) => {
-                        child_variable.set_value(VariableValue::Error(format!(
-                            "Error: No Attribute Value for DW_AT_type for variable {:?}",
-                            child_variable.name
-                        )));
+                        child_variable.set_value(VariableValue::Error(
+                            "Unable to retrieve array range information".to_string(),
+                        ));
                     }
-                    Err(error) => {
-                        child_variable.set_value(VariableValue::Error(format!(
-                            "Error: Failed to decode pointer reference: {error:?}"
-                        )));
-                    }
+                    Err(error) => child_variable.set_value(VariableValue::Error(format!(
+                        "Error: Failed to extract array range: {error:?}"
+                    ))),
                 }
             }
             gimli::DW_TAG_union_type => {
@@ -1293,7 +1325,8 @@ impl UnitInfo {
         cache: &mut VariableCache,
         child_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
-        array_member_index: i64,
+        subrange_bounds: std::ops::Range<u64>,
+        array_member_index: u64,
         frame_info: StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
         let mut array_member_type_tree = self
@@ -1306,7 +1339,7 @@ impl UnitInfo {
         };
         let mut array_member_variable =
             cache.create_variable(child_variable.variable_key, Some(unit_ref), Some(self))?;
-        array_member_variable.member_index = Some(array_member_index);
+        array_member_variable.member_index = Some(array_member_index as i64);
         // Override the calculated member name with a more 'array-like' name.
         array_member_variable.name = VariableName::Named(format!("__{array_member_index}"));
         array_member_variable.source_location = child_variable.source_location.clone();
@@ -1327,19 +1360,17 @@ impl UnitInfo {
             cache,
             frame_info,
         )?;
-        if array_member_index == child_variable.range_lower_bound {
+        if array_member_index == subrange_bounds.start {
             // Once we know the type of the first member, we can set the array type.
             child_variable.type_name = VariableType::Array {
-                count: child_variable.range_upper_bound as usize,
+                count: subrange_bounds.end as usize,
                 item_type_name: array_member_variable.type_name.to_string(),
             };
             // Once we know the byte_size of the first member, we can set the array byte_size.
             if let Some(array_member_byte_size) = array_member_variable.byte_size {
                 child_variable.byte_size =
-                    Some(array_member_byte_size * child_variable.subrange_bounds().count() as u64);
+                    Some(array_member_byte_size * subrange_bounds.count() as u64);
             }
-            // Make sure the array variable has no value if its own.
-            child_variable.set_value(VariableValue::Empty);
         }
         self.handle_memory_location_special_cases(
             unit_ref,
@@ -1370,9 +1401,9 @@ impl UnitInfo {
             .byte_size
             .or_else(|| extract_byte_size(node_die))
             .or_else(|| {
-                if let VariableType::Array { .. } = parent_variable.type_name {
+                if let VariableType::Array { count, .. } = parent_variable.type_name {
                     parent_variable.byte_size.map(|byte_size| {
-                        let array_member_count = parent_variable.subrange_bounds().count() as u64;
+                        let array_member_count = count as u64;
                         if array_member_count > 0 {
                             byte_size / array_member_count
                         } else {
