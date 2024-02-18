@@ -232,6 +232,7 @@ impl XtensaCommunicationInterface {
         let now = Instant::now();
         while !self.is_halted()? {
             if now.elapsed() > timeout {
+                tracing::warn!("Timeout waiting for core to halt");
                 return Err(XtensaError::Timeout);
             }
 
