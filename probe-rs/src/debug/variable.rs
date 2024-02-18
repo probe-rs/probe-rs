@@ -432,27 +432,24 @@ impl Variable {
             // We need to construct a 'human readable' value using `fmt::Display` to represent the values of complex types and pointers.
             if variable_cache.has_children(self) {
                 self.formatted_variable_value(variable_cache, 0_usize, false)
-            } else {
-                if self.type_name == VariableType::Unknown || !self.memory_location.valid() {
-                    if self.variable_node_type.is_deferred() {
-                        // When we will do a lazy-load of variable children, and they have not yet been requested by the user, just display the type_name as the value
-                        format!("{:?}", self.type_name.clone())
-                    } else {
-                        // This condition should only be true for intermediate nodes from DWARF. These should not show up in the final `VariableCache`
-                        // If a user sees this error, then there is a logic problem in the stack unwind
-                        "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location".to_string()
-                    }
-                } else if matches!(self.type_name, VariableType::Struct(ref name) if name == "None")
-                {
-                    "None".to_string()
-                } else if matches!(self.type_name, VariableType::Array { count: 0, .. }) {
-                    self.formatted_variable_value(variable_cache, 0_usize, false)
+            } else if self.type_name == VariableType::Unknown || !self.memory_location.valid() {
+                if self.variable_node_type.is_deferred() {
+                    // When we will do a lazy-load of variable children, and they have not yet been requested by the user, just display the type_name as the value
+                    format!("{:?}", self.type_name.clone())
                 } else {
-                    format!(
-                        "Unimplemented: Evaluate type {:?} of ({:?} bytes) at location 0x{:08x?}",
-                        self.type_name, self.byte_size, self.memory_location
-                    )
+                    // This condition should only be true for intermediate nodes from DWARF. These should not show up in the final `VariableCache`
+                    // If a user sees this error, then there is a logic problem in the stack unwind
+                    "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location".to_string()
                 }
+            } else if matches!(self.type_name, VariableType::Struct(ref name) if name == "None") {
+                "None".to_string()
+            } else if matches!(self.type_name, VariableType::Array { count: 0, .. }) {
+                self.formatted_variable_value(variable_cache, 0_usize, false)
+            } else {
+                format!(
+                    "Unimplemented: Evaluate type {:?} of ({:?} bytes) at location 0x{:08x?}",
+                    self.type_name, self.byte_size, self.memory_location
+                )
             }
         }
     }
