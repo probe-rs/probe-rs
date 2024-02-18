@@ -225,7 +225,7 @@ pub enum VariableLocation {
     /// The variable can be found in memory, at this address.
     Address(u64),
     /// The value of the variable is directly available.
-    Value,
+    Value(VariableValue),
     /// There was an error evaluating the variable location.
     Error(String),
     /// Support for handling the location of this variable is not (yet) implemented.
@@ -246,10 +246,19 @@ impl VariableLocation {
     /// Check if the location is valid, ie. not an error, unsupported, or unavailable.
     pub fn valid(&self) -> bool {
         match self {
-            VariableLocation::Address(_) | VariableLocation::Value | VariableLocation::Unknown => {
-                true
-            }
+            VariableLocation::Address(_)
+            | VariableLocation::Value(_)
+            | VariableLocation::Unknown => true,
             _other => false,
+        }
+    }
+
+    pub fn with_offset(&self, offset: i64) -> VariableLocation {
+        match self {
+            VariableLocation::Address(address) => {
+                VariableLocation::Address(address + offset as u64)
+            }
+            other => other.clone(),
         }
     }
 }
@@ -260,7 +269,7 @@ impl std::fmt::Display for VariableLocation {
             VariableLocation::Unknown => "<unknown value>".fmt(f),
             VariableLocation::Unavailable => "<value not available>".fmt(f),
             VariableLocation::Address(address) => write!(f, "{address:#010X}"),
-            VariableLocation::Value => "<not applicable - statically stored value>".fmt(f),
+            VariableLocation::Value(_) => "<not applicable - statically stored value>".fmt(f),
             VariableLocation::Error(error) => error.fmt(f),
             VariableLocation::Unsupported(reason) => reason.fmt(f),
         }
@@ -319,7 +328,7 @@ impl Variable {
                 .and_then(|info| info.unit.header.offset().as_debug_info_offset()),
             variable_unit_offset: entries_offset,
             language: unit_info
-                .map(|info| info.get_language())
+                .map(|info| info.language())
                 .unwrap_or(gimli::DW_LANG_Rust),
 
             variable_key: Default::default(),
@@ -443,7 +452,16 @@ impl Variable {
                         } else {
                             // This condition should only be true for intermediate nodes from DWARF. These should not show up in the final `VariableCache`
                             // If a user sees this error, then there is a logic problem in the stack unwind
-                            "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location".to_string()
+
+                            let offset = if let (Some(unit_offset), Some(variable_offset)) =
+                                (self.unit_header_offset, self.variable_unit_offset)
+                            {
+                                Some(unit_offset.0 + variable_offset.0)
+                            } else {
+                                None
+                            };
+
+                            format!("Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location. .debug_info_offset={:08x?}", offset)
                         }
                     } else if matches!(self.type_name, VariableType::Struct(ref name) if name == "None")
                     {
@@ -466,6 +484,7 @@ impl Variable {
     }
 
     /// Evaluate the variable's result if possible and set self.value, or else set self.value as the error String.
+    #[tracing::instrument(level = "trace", skip_all, fields(variable_key = ?self.variable_key))]
     pub fn extract_value(
         &mut self,
         memory: &mut dyn MemoryInterface,
@@ -487,7 +506,11 @@ impl Variable {
             return;
         }
 
-        if self.variable_node_type.is_deferred() {
+        // This is really ugly that we special case strings here...
+        if (self.variable_node_type.is_deferred()
+            || matches!(self.type_name, VariableType::Struct(_)))
+            && self.type_name != VariableType::Struct("&str".to_string())
+        {
             // And we have not previously assigned the value, then assign the type and address as the value
             self.value =
                 VariableValue::Valid(format!("{} @ {}", self.type_name, self.memory_location));

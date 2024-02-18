@@ -134,7 +134,9 @@ cargo_metadata = { version = "0.18", optional = true }
 clap = { version = "4", features = ["derive", "env"], optional = true }
 colored = { version = "2", optional = true }
 crossterm = { version = "<= 0.27", optional = true }
-defmt-decoder = { version = "=0.3.10", features = ["unstable"], optional = true } # pinned because "unstable" has potential for breaking changes
+defmt-decoder = { version = "=0.3.10", features = [
+    "unstable",
+], optional = true } # pinned because "unstable" has potential for breaking changes
 directories = { version = "5", optional = true }
 dunce = { version = "1" }
 figment = { version = "0.10", features = [
@@ -192,6 +194,7 @@ itm = { version = "0.9.0-rc.1", default-features = false }
 pretty_assertions = "1"
 test-case = "3"
 termtree = "0.4"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter", "ansi"] }
 
 [[package.metadata.release.pre-release-replacements]]
 file = "../CHANGELOG.md"

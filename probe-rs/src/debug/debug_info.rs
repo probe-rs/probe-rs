@@ -1,3 +1,4 @@
+use super::type_info::TypeCache;
 use super::ObjectRef;
 use super::{
     function_die::FunctionDie, get_object_reference, unit_info::UnitInfo, variable::*, DebugError,
@@ -294,6 +295,7 @@ impl DebugInfo {
     }
 
     /// This effects the on-demand expansion of lazy/deferred load of all the 'child' `Variable`s for a given 'parent'.
+    #[tracing::instrument(level = "trace", skip_all, fields(variable_key = ?parent_variable.variable_key))]
     pub fn cache_deferred_variables(
         &self,
         cache: &mut VariableCache,
@@ -317,6 +319,8 @@ impl DebugInfo {
 
         let unit_header = self.dwarf.debug_info.header_from_offset(header_offset)?;
         let unit_info = UnitInfo::new(gimli::Unit::new(&self.dwarf, unit_header)?);
+
+        let mut type_cache = TypeCache::new();
 
         match parent_variable.variable_node_type {
             VariableNodeType::ReferenceOffset(reference_offset) => {
@@ -346,6 +350,7 @@ impl DebugInfo {
                     memory,
                     cache,
                     frame_info,
+                    &mut type_cache,
                 )?;
 
                 if matches!(referenced_variable.type_name, VariableType::Base(ref name) if name == "()")
@@ -376,6 +381,7 @@ impl DebugInfo {
                     memory,
                     cache,
                     frame_info,
+                    &mut type_cache,
                 )?;
 
                 cache.adopt_grand_children(parent_variable, &temporary_variable)?;
@@ -403,6 +409,7 @@ impl DebugInfo {
                     memory,
                     cache,
                     frame_info,
+                    &mut type_cache,
                 )?;
 
                 cache.adopt_grand_children(parent_variable, &temporary_variable)?;
@@ -494,8 +501,6 @@ impl DebugInfo {
                 );
 
                 let inlined_caller_source_location = next_function.inline_call_location(self);
-
-                tracing::debug!("UNWIND: Call site: {:?}", inlined_caller_source_location);
 
                 // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
                 // Resolve the statics that belong to the compilation unit that this function is in.

@@ -96,7 +96,7 @@ pub fn setup_logging(
     default: Option<LevelFilter>,
 ) -> anyhow::Result<Option<FileLoggerGuard<'_>>> {
     let stdout_subscriber = tracing_subscriber::fmt::layer()
-        .compact()
+        .pretty()
         .without_time()
         .with_writer(|| ProgressBarWriter)
         .with_filter(match default {
