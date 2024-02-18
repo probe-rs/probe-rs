@@ -221,62 +221,6 @@ impl VariableCache {
         Ok(())
     }
 
-    /// Update a variable in the cache,
-    /// and update the value of the variable.
-    pub fn update_variable_and_value(
-        &mut self,
-        cache_variable: &mut Variable,
-        memory: &mut dyn MemoryInterface,
-    ) -> Result<(), Error> {
-        // Is this an *add* or *update* operation?
-        if cache_variable.variable_key == ObjectRef::Invalid {
-            return Err(anyhow!("Attempt to update an existing `Variable`:{:?} with an invalid cache key: {:?}. Please report this as a bug.", cache_variable.name, cache_variable.variable_key).into());
-        }
-
-        // Attempt to update an existing `Variable` in the cache
-        tracing::trace!(
-            "VariableCache: Update Variable, key={:?}, name={:?}",
-            cache_variable.variable_key,
-            &cache_variable.name
-        );
-
-        if let Some(prev_entry) = self.variable_hash_map.get_mut(&cache_variable.variable_key) {
-            if cache_variable != prev_entry {
-                tracing::trace!("Updated:  {:?}", cache_variable);
-                tracing::trace!("Previous: {:?}", prev_entry);
-            }
-
-            *prev_entry = cache_variable.clone();
-        } else {
-            return Err(anyhow!("Attempt to update an existing `Variable`:{:?} with a non-existent cache key: {:?}. Please report this as a bug.", cache_variable.name, cache_variable.variable_key).into());
-        }
-
-        // As the final act, we need to update the variable with an appropriate value.
-        // This requires distinct steps to ensure we don't get `borrow` conflicts on the variable cache.
-        let Some(mut stored_variable) = self.get_variable_by_key(cache_variable.variable_key)
-        else {
-            return Err(anyhow!(
-                "Failed to store variable at variable_cache_key: {:?}. Please report this as a bug.",
-                cache_variable.variable_key
-            )
-            .into());
-        };
-
-        // Only do this for non-SVD variables. Those will extract their value everytime they are read from the client.
-        stored_variable.extract_value(memory, self);
-
-        if self
-            .variable_hash_map
-            .insert(stored_variable.variable_key, stored_variable.clone())
-            .is_none()
-        {
-            Err(anyhow!("Failed to store variable at variable_cache_key: {:?}. Please report this as a bug.", cache_variable.variable_key).into())
-        } else {
-            *cache_variable = stored_variable;
-            Ok(())
-        }
-    }
-
     /// Update a variable in the cache
     ///
     /// This function does not update the value of the variable.
