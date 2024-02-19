@@ -158,6 +158,7 @@ impl Xdm {
         Ok(x)
     }
 
+    #[tracing::instrument(skip(self))]
     fn init(&mut self) -> Result<(), XtensaError> {
         let mut pwr_control = PowerControl(0);
 
