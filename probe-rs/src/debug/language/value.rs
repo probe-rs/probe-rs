@@ -115,7 +115,7 @@ impl Value for String {
         variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
         let mut str_value: String = "".to_owned();
-        let children = variable_cache.get_children(variable.variable_key);
+        let children: Vec<_> = variable_cache.get_children(variable.variable_key).collect();
         if !children.is_empty() {
             let mut string_length = match children.iter().find(|child_variable| {
                     matches!(child_variable.name, VariableName::Named(ref name) if name == "length")
@@ -130,12 +130,13 @@ impl Value for String {
                     }
                     None => 0_usize,
                 };
+
             let string_location = match children.iter().find(|child_variable| {
                     matches!(child_variable.name, VariableName::Named(ref name) if name == "data_ptr")
                 }) {
                     Some(location_value) => {
-                        let child_variables = variable_cache.get_children(location_value.variable_key);
-                        if let Some(first_child) = child_variables.first() {
+                        let mut child_variables = variable_cache.get_children(location_value.variable_key);
+                        if let Some(first_child) = child_variables.next() {
                             first_child.memory_location.memory_address()?
                         } else {
                             0_u64
@@ -170,7 +171,6 @@ impl Value for String {
         } else {
             str_value = "Error: Failed to evaluate &str value".to_string();
         }
-
         Ok(str_value)
     }
 

@@ -23,7 +23,10 @@ use dap_types::*;
 use num_traits::Zero;
 use parse_int::parse;
 use probe_rs::{
-    architecture::{arm::ArmError, riscv::communication_interface::RiscvError},
+    architecture::{
+        arm::ArmError, riscv::communication_interface::RiscvError,
+        xtensa::communication_interface::XtensaError,
+    },
     debug::{
         stack_frame::StackFrameInfo, ColumnType, ObjectRef, SourceLocation, SteppingMode,
         VariableName, VerifiedBreakpoint,
@@ -1450,7 +1453,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         if let Some(variable_cache) = variable_cache {
             if let Some(parent_variable) = parent_variable.as_mut() {
                 if parent_variable.variable_node_type.is_deferred()
-                    && !variable_cache.has_children(parent_variable)?
+                    && !variable_cache.has_children(parent_variable)
                 {
                     if let Some(frame_info) = frame_info {
                         target_core.core_data.debug_info.cache_deferred_variables(
@@ -1466,8 +1469,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
 
             let dap_variables: Vec<Variable> = variable_cache
-                .get_children(variable_ref)?
-                .iter()
+                .get_children(variable_ref)
                 // Filter out requested children, then map them as DAP variables
                 .filter(|variable| match &arguments.filter {
                     Some(filter) => match filter.as_str() {
@@ -1558,7 +1560,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     Err(wait_error) => {
                         if matches!(
                             wait_error,
-                            Error::Arm(ArmError::Timeout) | Error::Riscv(RiscvError::Timeout)
+                            Error::Arm(ArmError::Timeout)
+                                | Error::Riscv(RiscvError::Timeout)
+                                | Error::Xtensa(XtensaError::Timeout)
                         ) {
                             // The core is still running.
                         } else {

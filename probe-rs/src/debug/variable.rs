@@ -317,10 +317,6 @@ pub struct Variable {
     pub byte_size: Option<u64>,
     /// If this is a subrange (array, vector, etc.), is the ordinal position of this variable in that range
     pub member_index: Option<i64>,
-    /// If this is a subrange (array, vector, etc.), we need to temporarily store the lower bound.
-    pub range_lower_bound: i64,
-    /// If this is a subrange (array, vector, etc.), we need to temporarily store the the upper bound of the range.
-    pub range_upper_bound: i64,
     /// The role of this variable.
     pub role: VariantRole,
 }
@@ -346,8 +342,6 @@ impl Variable {
             memory_location: Default::default(),
             byte_size: None,
             member_index: None,
-            range_lower_bound: 0,
-            range_upper_bound: 0,
             role: Default::default(),
         }
     }
@@ -432,27 +426,24 @@ impl Variable {
             // We need to construct a 'human readable' value using `fmt::Display` to represent the values of complex types and pointers.
             if variable_cache.has_children(self) {
                 self.formatted_variable_value(variable_cache, 0_usize, false)
-            } else {
-                if self.type_name == VariableType::Unknown || !self.memory_location.valid() {
-                    if self.variable_node_type.is_deferred() {
-                        // When we will do a lazy-load of variable children, and they have not yet been requested by the user, just display the type_name as the value
-                        format!("{:?}", self.type_name.clone())
-                    } else {
-                        // This condition should only be true for intermediate nodes from DWARF. These should not show up in the final `VariableCache`
-                        // If a user sees this error, then there is a logic problem in the stack unwind
-                        "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location".to_string()
-                    }
-                } else if matches!(self.type_name, VariableType::Struct(ref name) if name == "None")
-                {
-                    "None".to_string()
-                } else if matches!(self.type_name, VariableType::Array { count: 0, .. }) {
-                    self.formatted_variable_value(variable_cache, 0_usize, false)
+            } else if self.type_name == VariableType::Unknown || !self.memory_location.valid() {
+                if self.variable_node_type.is_deferred() {
+                    // When we will do a lazy-load of variable children, and they have not yet been requested by the user, just display the type_name as the value
+                    format!("{:?}", self.type_name.clone())
                 } else {
-                    format!(
-                        "Unimplemented: Get value of type {:?} of ({:?} bytes) at location 0x{:08x?}",
-                        self.type_name, self.byte_size, self.memory_location
-                    )
+                    // This condition should only be true for intermediate nodes from DWARF. These should not show up in the final `VariableCache`
+                    // If a user sees this error, then there is a logic problem in the stack unwind
+                    "Error: This is a bug! Attempted to evaluate a Variable with no type or no memory location".to_string()
                 }
+            } else if matches!(self.type_name, VariableType::Struct(ref name) if name == "None") {
+                "None".to_string()
+            } else if matches!(self.type_name, VariableType::Array { count: 0, .. }) {
+                self.formatted_variable_value(variable_cache, 0_usize, false)
+            } else {
+                format!(
+                    "Unimplemented: Get value of type {:?} of ({:?} bytes) at location 0x{:08x?}",
+                    self.type_name, self.byte_size, self.memory_location
+                )
             }
         }
     }
@@ -546,7 +537,8 @@ impl Variable {
         } else {
             // Infer a human readable value using the available children of this variable.
             let mut compound_value = String::new();
-            let children = variable_cache.get_children(self.variable_key);
+            let children: Vec<_> = variable_cache.get_children(self.variable_key).collect();
+
             // Make sure we can safely unwrap() children.
             match &self.type_name {
                 VariableType::Pointer(_) => {
@@ -575,7 +567,7 @@ impl Variable {
                         compound_value, line_feed, "", self.type_name,
                     );
                     let mut child_count: usize = 0;
-                    for child in children.iter() {
+                    for child in &children {
                         child_count += 1;
 
                         compound_value = format!(
@@ -715,9 +707,5 @@ impl Variable {
         } else {
             None
         }
-    }
-
-    pub(crate) fn subrange_bounds(&self) -> Range<i64> {
-        self.range_lower_bound..self.range_upper_bound
     }
 }
