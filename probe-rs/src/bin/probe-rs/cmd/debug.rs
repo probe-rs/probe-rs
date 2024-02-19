@@ -742,7 +742,7 @@ impl DebugCli {
                             return Ok(CliState::Continue);
                         };
 
-                        let mut locals = local_variable_cache.root_variable();
+                        let mut locals = local_variable_cache.root_variable().clone();
                         // By default, the first level children are always are lazy loaded, so we will force a load here.
                         if locals.variable_node_type.is_deferred()
                             && !local_variable_cache.has_children(&locals)

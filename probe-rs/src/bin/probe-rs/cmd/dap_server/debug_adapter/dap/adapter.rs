@@ -445,37 +445,34 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         let mut variable: Option<probe_rs::debug::Variable> = None;
                         let mut variable_cache: Option<&mut probe_rs::debug::VariableCache> = None;
                         // Search through available caches and stop as soon as the variable is found
-                        #[allow(clippy::manual_flatten)]
-                        for variable_cache_entry in [stack_frame.local_variables.as_mut()] {
-                            if let Some(search_cache) = variable_cache_entry {
-                                if search_cache.len() == 1 {
-                                    // This is a special case where we have a single variable in the cache, and it is the root of a scope.
-                                    // These variables don't have cached children by default, so we need to resolve them before we proceed.
-                                    // We check for len() == 1, so unwrap() on first_mut() is safe.
-                                    target_core.core_data.debug_info.cache_deferred_variables(
-                                        search_cache,
-                                        &mut target_core.core,
-                                        &mut search_cache.root_variable(),
-                                        StackFrameInfo {
-                                            registers: &stack_frame.registers,
-                                            frame_base: stack_frame.frame_base,
-                                            canonical_frame_address: stack_frame
-                                                .canonical_frame_address,
-                                        },
-                                    )?;
-                                }
+                        if let Some(search_cache) = stack_frame.local_variables.as_mut() {
+                            if search_cache.len() == 1 {
+                                let mut root_variable = search_cache.root_variable().clone();
 
-                                if let Ok(expression_as_key) = expression.parse::<ObjectRef>() {
-                                    variable = search_cache.get_variable_by_key(expression_as_key);
-                                } else {
-                                    variable = search_cache.get_variable_by_name(
-                                        &VariableName::Named(expression.clone()),
-                                    );
-                                }
-                                if variable.is_some() {
-                                    variable_cache = Some(search_cache);
-                                    break;
-                                }
+                                // This is a special case where we have a single variable in the cache, and it is the root of a scope.
+                                // These variables don't have cached children by default, so we need to resolve them before we proceed.
+                                // We check for len() == 1, so unwrap() on first_mut() is safe.
+                                target_core.core_data.debug_info.cache_deferred_variables(
+                                    search_cache,
+                                    &mut target_core.core,
+                                    &mut root_variable,
+                                    StackFrameInfo {
+                                        registers: &stack_frame.registers,
+                                        frame_base: stack_frame.frame_base,
+                                        canonical_frame_address: stack_frame
+                                            .canonical_frame_address,
+                                    },
+                                )?;
+                            }
+
+                            if let Ok(expression_as_key) = expression.parse::<ObjectRef>() {
+                                variable = search_cache.get_variable_by_key(expression_as_key);
+                            } else {
+                                variable = search_cache
+                                    .get_variable_by_name(&VariableName::Named(expression.clone()));
+                            }
+                            if variable.is_some() {
+                                variable_cache = Some(search_cache);
                             }
                         }
                         // Check if we found a variable.

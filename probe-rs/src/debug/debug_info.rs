@@ -279,7 +279,7 @@ impl DebugInfo {
             Some(&self.unit_infos[0]),
         );
 
-        let mut root = variable_cache.root_variable();
+        let mut root = variable_cache.root_variable().clone();
 
         let mut tree = unit_info
             .unit
@@ -2116,7 +2116,6 @@ mod test {
                 canonical_frame_address: None,
             },
         );
-
         // Using YAML output because it is easier to read than the default snapshot output,
         // and also because they provide better diffs.
         insta::assert_yaml_snapshot!(snapshot_name, static_variables);
