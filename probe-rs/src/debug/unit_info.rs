@@ -413,7 +413,7 @@ impl UnitInfo {
             }
         }
 
-        //child_variable.extract_value(memory, cache);
+        child_variable.extract_value(memory, cache);
         cache.update_variable(child_variable)?;
 
         Ok(())
@@ -795,7 +795,7 @@ impl UnitInfo {
             }
         }
 
-        //parent_variable.extract_value(memory, cache);
+        parent_variable.extract_value(memory, cache);
         cache.update_variable(parent_variable)?;
 
         Ok(())
@@ -1321,7 +1321,7 @@ impl UnitInfo {
             }
         }
 
-        //child_variable.extract_value(memory, cache);
+        child_variable.extract_value(memory, cache);
         cache.update_variable(child_variable)?;
 
         Ok(())
@@ -1389,7 +1389,7 @@ impl UnitInfo {
             child_variable,
             memory,
         );
-        //array_member_variable.extract_value(memory, cache);
+        array_member_variable.extract_value(memory, cache);
         cache.update_variable(&array_member_variable)?;
 
         Ok(())

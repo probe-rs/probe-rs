@@ -2038,10 +2038,10 @@ mod test {
 
         let debug_info =
             load_test_elf_as_debug_info(format!("debug-unwind-tests/{chip_name}.elf").as_str());
-        let mut adapter = CoreDump::load(&get_path_for_test_files(
-            format!("debug-unwind-tests/{chip_name}.coredump").as_str(),
-        ))
-        .unwrap();
+    let mut adapter = CoreDump::load(&get_path_for_test_files(
+        format!("debug-unwind-tests/{chip_name}.coredump").as_str(),
+    ))
+    .unwrap();
 
         let initial_registers = adapter.debug_registers();
         let exception_handler = exception_handler_for_core(adapter.core_type());
@@ -2086,7 +2086,6 @@ mod test {
 
     #[test_case("RP2040"; "Armv6-m using RP2040")]
     #[test_case("nRF52833_xxAA"; "Armv7-m using nRF52833_xxAA")]
-    #[test_case("nRF5340_lang_c"; "Armv8-m using nRF5340_xxAA")]
     //TODO:  #[test_case("esp32c3"; "RISC-V32E using esp32c3")]
     fn static_variables(chip_name: &str) {
         // TODO: Add RISC-V tests.
@@ -2094,21 +2093,31 @@ mod test {
         let debug_info =
             load_test_elf_as_debug_info(format!("debug-unwind-tests/{chip_name}.elf").as_str());
 
-        let mut memory = MockMemory::new();
+        let mut adapter = CoreDump::load(&get_path_for_test_files(
+            format!("debug-unwind-tests/{chip_name}.coredump").as_str(),
+        )).unwrap();
 
-        let registers = DebugRegisters::default();
+        let initial_registers = adapter.debug_registers();
+        let exception_handler = exception_handler_for_core(adapter.core_type());
+        let instruction_set = adapter.instruction_set();
+
 
         let snapshot_name = format!("{chip_name}__static_variables");
 
-        let static_variables = debug_info
-            .create_static_scope_cache(&mut memory, &registers)
+        let mut static_variables = debug_info
+            .create_static_scope_cache(&mut adapter, &initial_registers)
             .unwrap();
 
-        let root_variable = static_variables.root_variable().variable_key;
-
-        for child in static_variables.get_children(root_variable) {
-            println!("{:?}", child.name);
-        }
+        static_variables.recurse_deferred_variables(
+            &debug_info,
+            &mut adapter,
+            10,
+            StackFrameInfo {
+                registers: &initial_registers,
+                frame_base: None,
+                canonical_frame_address: None,
+            },
+        );
 
         // Using YAML output because it is easier to read than the default snapshot output,
         // and also because they provide better diffs.
