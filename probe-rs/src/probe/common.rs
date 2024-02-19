@@ -728,6 +728,7 @@ impl<Probe: DebugProbe + RawJtagIo + 'static> JTAGAccess for Probe {
         Ok(result)
     }
 
+    #[tracing::instrument(skip(self, writes))]
     fn write_register_batch(
         &mut self,
         writes: &JtagCommandQueue,
