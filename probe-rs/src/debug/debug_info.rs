@@ -1,4 +1,3 @@
-use super::ObjectRef;
 use super::{
     function_die::FunctionDie, get_object_reference, unit_info::UnitInfo, variable::*, DebugError,
     DebugRegisters, SourceLocation, StackFrame, VariableCache,
@@ -307,7 +306,7 @@ impl DebugInfo {
         }
 
         // Only attempt this part if we have not yet resolved the referenced children.
-        if cache.has_children(parent_variable)? {
+        if cache.has_children(parent_variable) {
             return Ok(());
         }
 
@@ -338,17 +337,18 @@ impl DebugInfo {
                     other => VariableName::Named(format!("Error: Unable to generate name, parent variable does not have a name but is special variable {other:?}")),
                 };
 
-                referenced_variable = unit_info.extract_type(
+                unit_info.extract_type(
                     self,
                     referenced_node,
                     parent_variable,
-                    referenced_variable,
+                    &mut referenced_variable,
                     memory,
                     cache,
                     frame_info,
                 )?;
 
-                if referenced_variable.type_name == VariableType::Base("()".to_owned()) {
+                if matches!(referenced_variable.type_name, VariableType::Base(ref name) if name == "()")
+                {
                     // Only use this, if it is NOT a unit datatype.
                     cache.remove_cache_entry(referenced_variable.variable_key)?;
                 }
@@ -361,23 +361,14 @@ impl DebugInfo {
                     .entries_tree(&unit_info.unit.abbreviations, Some(type_offset))?;
                 let parent_node = type_tree.root()?;
 
-                // For process_tree we need to create a temporary parent that will later be eliminated with VariableCache::adopt_grand_children
-                // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
-                let mut temporary_variable = parent_variable.clone();
-                temporary_variable.variable_key = ObjectRef::Invalid;
-                temporary_variable.parent_key = parent_variable.variable_key;
-                cache.add_variable(parent_variable.variable_key, &mut temporary_variable)?;
-
-                temporary_variable = unit_info.process_tree(
+                unit_info.process_tree(
                     self,
                     parent_node,
-                    temporary_variable,
+                    parent_variable,
                     memory,
                     cache,
                     frame_info,
                 )?;
-
-                cache.adopt_grand_children(parent_variable, &temporary_variable)?;
             }
             VariableNodeType::DirectLookup => {
                 // Find the parent node
@@ -386,25 +377,16 @@ impl DebugInfo {
                     parent_variable.variable_unit_offset,
                 )?;
 
-                // For process_tree we need to create a temporary parent that will later be eliminated with VariableCache::adopt_grand_children
-                // TODO: Investigate if UnitInfo::process_tree can be modified to use `&mut parent_variable`, then we would not need this temporary variable.
-                let mut temporary_variable = parent_variable.clone();
-                temporary_variable.variable_key = ObjectRef::Invalid;
-                temporary_variable.parent_key = parent_variable.variable_key;
-                cache.add_variable(parent_variable.variable_key, &mut temporary_variable)?;
-
                 let parent_node = type_tree.root()?;
 
-                temporary_variable = unit_info.process_tree(
+                unit_info.process_tree(
                     self,
                     parent_node,
-                    temporary_variable,
+                    parent_variable,
                     memory,
                     cache,
                     frame_info,
                 )?;
-
-                cache.adopt_grand_children(parent_variable, &temporary_variable)?;
             }
             _ => {
                 // Do nothing. These have already been recursed to their maximum.
@@ -895,31 +877,36 @@ impl DebugInfo {
                         .unwrap();
                     ra.value = Some(RegisterValue::U32(value));
 
-                    // Now, how do we handle this.
-                    if let Some(details) =
-                        exception_handler.exception_details(memory, &unwind_registers)?
-                    {
-                        unwind_registers = details.calling_frame_registers;
-                        let address = frame_pc;
+                    match exception_handler.exception_details(memory, &unwind_registers) {
+                        Ok(Some(details)) => {
+                            unwind_registers = details.calling_frame_registers;
+                            let address = frame_pc;
 
-                        let exception_frame = StackFrame {
-                            id: get_object_reference(),
-                            function_name: details.description.clone(),
-                            source_location: None,
-                            registers: unwind_registers.clone(),
-                            pc: match unwind_registers.get_address_size_bytes() {
-                                4 => RegisterValue::U32(address as u32),
-                                8 => RegisterValue::U64(address),
-                                _ => RegisterValue::from(address),
-                            },
-                            frame_base: None,
-                            is_inlined: false,
-                            static_variables: None,
-                            local_variables: None,
-                            canonical_frame_address: None,
-                        };
+                            let exception_frame = StackFrame {
+                                id: get_object_reference(),
+                                function_name: details.description.clone(),
+                                source_location: None,
+                                registers: unwind_registers.clone(),
+                                pc: match unwind_registers.get_address_size_bytes() {
+                                    4 => RegisterValue::U32(address as u32),
+                                    8 => RegisterValue::U64(address),
+                                    _ => RegisterValue::from(address),
+                                },
+                                frame_base: None,
+                                is_inlined: false,
+                                static_variables: None,
+                                local_variables: None,
+                                canonical_frame_address: None,
+                            };
 
-                        stack_frames.push(exception_frame);
+                            stack_frames.push(exception_frame);
+                        }
+                        // We are not in an exception handler, so we can continue unwinding.
+                        Ok(None) => {}
+                        Err(e) => {
+                            tracing::error!("Error while checking for exception context: {}", e);
+                            break 'unwind;
+                        }
                     }
                 }
             }
@@ -2051,9 +2038,7 @@ mod test {
                 variable_cache.recurse_deferred_variables(
                     &debug_info,
                     &mut adapter,
-                    None,
                     10,
-                    0,
                     StackFrameInfo {
                         registers: &frame.registers,
                         frame_base: frame.frame_base,

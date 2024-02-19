@@ -79,10 +79,6 @@ impl RawJtagIo for EspUsbJtag {
     fn state(&self) -> &JtagDriverState {
         &self.jtag_state
     }
-
-    fn flush(&mut self) -> Result<(), DebugProbeError> {
-        self.protocol.flush()
-    }
 }
 
 impl DebugProbe for EspUsbJtag {
