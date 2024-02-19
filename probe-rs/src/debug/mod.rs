@@ -299,23 +299,6 @@ fn extract_line(attribute_value: gimli::AttributeValue<GimliReader>) -> Option<u
     }
 }
 
-fn extract_name(
-    debug_info: &DebugInfo,
-    attribute_value: gimli::AttributeValue<GimliReader>,
-) -> String {
-    match attribute_value {
-        gimli::AttributeValue::DebugStrRef(name_ref) => {
-            if let Ok(name_raw) = debug_info.dwarf.string(name_ref) {
-                String::from_utf8_lossy(&name_raw).to_string()
-            } else {
-                "Invalid DW_AT_name value".to_string()
-            }
-        }
-        gimli::AttributeValue::String(name) => String::from_utf8_lossy(&name).to_string(),
-        other => format!("Unimplemented: Evaluate name from {other:?}"),
-    }
-}
-
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 pub(crate) fn _print_all_attributes(
     core: &mut Core<'_>,

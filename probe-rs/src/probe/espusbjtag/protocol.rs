@@ -3,7 +3,10 @@ use nusb::{
     transfer::{Direction, EndpointType},
     DeviceInfo,
 };
-use std::{fmt::Debug, time::Duration};
+use std::{
+    fmt::Debug,
+    time::{Duration, Instant},
+};
 
 use crate::probe::{
     espusbjtag::EspUsbJtagFactory, usb_util::InterfaceExt, DebugProbeError, DebugProbeInfo,
@@ -136,14 +139,25 @@ impl ProtocolHandler {
             ));
         };
 
-        let buffer = device_handle
-            .get_descriptor(
-                DESCRIPTOR_JTAG_CAPABILITIES_TYPE,
-                DESCRIPTOR_JTAG_CAPABILITIES_INDEX,
-                0,
-                USB_TIMEOUT,
-            )
-            .map_err(ProbeCreationError::Usb)?;
+        let start = std::time::Instant::now();
+        let buffer = loop {
+            let buffer = device_handle
+                .get_descriptor(
+                    DESCRIPTOR_JTAG_CAPABILITIES_TYPE,
+                    DESCRIPTOR_JTAG_CAPABILITIES_INDEX,
+                    0,
+                    USB_TIMEOUT,
+                )
+                .map_err(ProbeCreationError::Usb)?;
+            if !buffer.is_empty() {
+                break buffer;
+            }
+            if Instant::now() - start > USB_TIMEOUT {
+                return Err(ProbeCreationError::Other(
+                    "Timeout accessing device descriptor",
+                ));
+            }
+        };
 
         let mut base_speed_khz = 1000;
         let mut div_min = 1;

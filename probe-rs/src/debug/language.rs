@@ -10,6 +10,9 @@ pub mod c;
 /// Rust
 pub mod rust;
 
+mod parsing;
+mod value;
+
 pub fn from_dwarf(dwarf_language: DwLang) -> Box<dyn ProgrammingLanguage> {
     match dwarf_language {
         // Handle all C-like languages the same now.
@@ -20,7 +23,7 @@ pub fn from_dwarf(dwarf_language: DwLang) -> Box<dyn ProgrammingLanguage> {
         | gimli::DW_LANG_C11
         | gimli::DW_LANG_C17 => Box::new(c::C),
         gimli::DW_LANG_Rust => Box::new(rust::Rust),
-        _ => Box::new(UnknownLanguage),
+        other => Box::new(UnknownLanguage(other)),
     }
 }
 
@@ -31,23 +34,14 @@ pub trait ProgrammingLanguage {
         _variable: &Variable,
         _memory: &mut dyn MemoryInterface,
         _variable_cache: &VariableCache,
-    ) -> VariableValue {
-        VariableValue::Empty
-    }
+    ) -> VariableValue;
 
     fn update_variable(
         &self,
         variable: &Variable,
         _memory: &mut dyn MemoryInterface,
         _new_value: &str,
-    ) -> Result<(), DebugError> {
-        Err(DebugError::UnwindIncompleteResults {
-            message: format!(
-                "Unsupported variable type {:?}. Only base variables can be updated.",
-                variable.type_name
-            ),
-        })
-    }
+    ) -> Result<(), DebugError>;
 
     fn format_enum_value(&self, type_name: &VariableType, value: &VariableName) -> VariableValue {
         VariableValue::Valid(format!("{}::{}", type_name, value))
@@ -56,9 +50,37 @@ pub trait ProgrammingLanguage {
     fn process_tag_with_no_type(&self, tag: gimli::DwTag) -> VariableValue {
         VariableValue::Error(format!("Error: Failed to decode {tag} type reference"))
     }
+
+    fn auto_resolve_children(&self, _name: &str) -> bool {
+        false
+    }
 }
 
 #[derive(Clone)]
-pub struct UnknownLanguage;
+pub struct UnknownLanguage(DwLang);
 
-impl ProgrammingLanguage for UnknownLanguage {}
+impl ProgrammingLanguage for UnknownLanguage {
+    fn read_variable_value(
+        &self,
+        _variable: &Variable,
+        _memory: &mut dyn MemoryInterface,
+        _variable_cache: &VariableCache,
+    ) -> VariableValue {
+        VariableValue::Error(format!(
+            "Reading variables for language {} is not supported.",
+            self.0
+        ))
+    }
+
+    fn update_variable(
+        &self,
+        _variable: &Variable,
+        _memory: &mut dyn MemoryInterface,
+        _new_value: &str,
+    ) -> Result<(), DebugError> {
+        Err(DebugError::Other(anyhow::anyhow!(
+            "Updating variables for language {} is not supported.",
+            self.0
+        )))
+    }
+}

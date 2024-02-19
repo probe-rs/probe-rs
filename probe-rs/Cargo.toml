@@ -47,7 +47,6 @@ cli = [
     "dep:indicatif",
     "dep:is-terminal",
     "dep:itm",
-    "dep:parse_int",
     "dep:rand",
     "dep:rustyline",
     "dep:sanitize-filename",
@@ -100,7 +99,7 @@ object = { version = "0.32", default-features = false, features = [
     "std",
 ] }
 paste = "1"
-nusb = { version = "0.1" }
+nusb = { version = "0.1.6" }
 futures-lite = "2"
 async-io = "2"
 scroll = "0.12"
@@ -135,7 +134,7 @@ cargo_metadata = { version = "0.18", optional = true }
 clap = { version = "4", features = ["derive", "env"], optional = true }
 colored = { version = "2", optional = true }
 crossterm = { version = "<= 0.27", optional = true }
-defmt-decoder = { version = "=0.3.9", features = ["unstable"], optional = true }
+defmt-decoder = { version = "=0.3.10", features = ["unstable"], optional = true } # pinned because "unstable" has potential for breaking changes
 directories = { version = "5", optional = true }
 dunce = { version = "1" }
 figment = { version = "0.10", features = [
@@ -149,7 +148,7 @@ indicatif = { version = "0.17", optional = true }
 insta = { version = "1", features = ["yaml", "filters"] }
 is-terminal = { version = "0.4", optional = true }
 itm = { version = "0.9.0-rc.1", default-features = false, optional = true }
-parse_int = { version = "0.6", optional = true }
+parse_int = "0.6"
 rand = { version = "0.8", optional = true }
 rustyline = { version = "13", optional = true }
 sanitize-filename = { version = "0.5", optional = true }

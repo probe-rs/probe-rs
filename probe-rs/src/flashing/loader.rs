@@ -129,7 +129,7 @@ impl FlashLoader {
         file: &mut T,
         options: IdfOptions,
     ) -> Result<(), FileDownloadError> {
-        let target = session.target();
+        let target = session.target().clone();
         let target_name = target
             .name
             .split_once('-')
@@ -142,16 +142,18 @@ impl FlashLoader {
         let mut buf = Vec::new();
         file.read_to_end(&mut buf)?;
 
-        // Figure out flash size from the memory map. We need a different bootloader for each size.
-        let flash_size_result = match target.debug_sequence.clone() {
-            DebugSequence::Riscv(sequence) => {
-                sequence.detect_flash_size(session.get_riscv_interface().unwrap())
-            }
-            DebugSequence::Xtensa(sequence) => {
-                sequence.detect_flash_size(session.get_xtensa_interface().unwrap())
-            }
-            DebugSequence::Arm(_) => panic!("There are no ARM ESP targets."),
-        };
+        let flash_size_result = session.halted_access(|sess| {
+            // Figure out flash size from the memory map. We need a different bootloader for each size.
+            Ok(match target.debug_sequence.clone() {
+                DebugSequence::Riscv(sequence) => {
+                    sequence.detect_flash_size(sess.get_riscv_interface()?)
+                }
+                DebugSequence::Xtensa(sequence) => {
+                    sequence.detect_flash_size(sess.get_xtensa_interface()?)
+                }
+                DebugSequence::Arm(_) => panic!("There are no ARM ESP targets."),
+            })
+        })?;
 
         let flash_size = match flash_size_result {
             Ok(size) => size,

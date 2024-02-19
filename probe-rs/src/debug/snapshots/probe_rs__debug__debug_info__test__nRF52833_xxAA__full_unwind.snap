@@ -352,7 +352,7 @@ expression: stack_frames
                             Base: i16
                           value: "26"
             - name:
-                Namespace: "common_testing_code::setup_data_types"
+                Namespace: setup_data_types
               type_name: Namespace
               value: ""
               children:
@@ -1107,7 +1107,7 @@ expression: stack_frames
                             Base: i16
                           value: "26"
             - name:
-                Namespace: "common_testing_code::setup_data_types"
+                Namespace: setup_data_types
               type_name: Namespace
               value: ""
               children:
@@ -1862,7 +1862,7 @@ expression: stack_frames
                             Base: i16
                           value: "26"
             - name:
-                Namespace: "common_testing_code::setup_data_types"
+                Namespace: setup_data_types
               type_name: Namespace
               value: ""
               children:
@@ -2617,7 +2617,7 @@ expression: stack_frames
                             Base: i16
                           value: "26"
             - name:
-                Namespace: "common_testing_code::setup_data_types"
+                Namespace: setup_data_types
               type_name: Namespace
               value: ""
               children:
@@ -3372,7 +3372,7 @@ expression: stack_frames
                             Base: i16
                           value: "26"
             - name:
-                Namespace: "common_testing_code::setup_data_types"
+                Namespace: setup_data_types
               type_name: Namespace
               value: ""
               children:
@@ -4127,7 +4127,7 @@ expression: stack_frames
                             Base: i16
                           value: "26"
             - name:
-                Namespace: "common_testing_code::setup_data_types"
+                Namespace: setup_data_types
               type_name: Namespace
               value: ""
               children:
@@ -4882,7 +4882,7 @@ expression: stack_frames
                             Base: i16
                           value: "26"
             - name:
-                Namespace: "common_testing_code::setup_data_types"
+                Namespace: setup_data_types
               type_name: Namespace
               value: ""
               children:
@@ -8048,7 +8048,7 @@ expression: stack_frames
           value: ""
           children:
             - name:
-                Namespace: "nRF52833_xxAA::__cortex_m_rt_SysTick_trampoline"
+                Namespace: __cortex_m_rt_SysTick_trampoline
               type_name: Namespace
               value: ""
               children:
@@ -8275,7 +8275,7 @@ expression: stack_frames
           value: ""
           children:
             - name:
-                Namespace: "nRF52833_xxAA::__cortex_m_rt_SysTick_trampoline"
+                Namespace: __cortex_m_rt_SysTick_trampoline
               type_name: Namespace
               value: ""
               children:
@@ -8495,7 +8495,7 @@ expression: stack_frames
           value: ""
           children:
             - name:
-                Namespace: "nrf_hal_common::pwm"
+                Namespace: pwm
               type_name: Namespace
               value: ""
               children:

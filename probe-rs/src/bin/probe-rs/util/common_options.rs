@@ -239,7 +239,7 @@ impl LoadedProbeOptions {
     /// Attaches to specified probe and configures it.
     pub fn attach_probe(&self, lister: &Lister) -> Result<Probe, OperationError> {
         let mut probe = if self.0.dry_run {
-            Probe::from_specific_probe(Box::new(FakeProbe::new()))
+            Probe::from_specific_probe(Box::new(FakeProbe::with_mocked_core()))
         } else {
             // If we got a probe selector as an argument, open the probe
             // matching the selector if possible.
