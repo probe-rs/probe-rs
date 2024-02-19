@@ -2038,10 +2038,10 @@ mod test {
 
         let debug_info =
             load_test_elf_as_debug_info(format!("debug-unwind-tests/{chip_name}.elf").as_str());
-    let mut adapter = CoreDump::load(&get_path_for_test_files(
-        format!("debug-unwind-tests/{chip_name}.coredump").as_str(),
-    ))
-    .unwrap();
+        let mut adapter = CoreDump::load(&get_path_for_test_files(
+            format!("debug-unwind-tests/{chip_name}.coredump").as_str(),
+        ))
+        .unwrap();
 
         let initial_registers = adapter.debug_registers();
         let exception_handler = exception_handler_for_core(adapter.core_type());
@@ -2095,12 +2095,10 @@ mod test {
 
         let mut adapter = CoreDump::load(&get_path_for_test_files(
             format!("debug-unwind-tests/{chip_name}.coredump").as_str(),
-        )).unwrap();
+        ))
+        .unwrap();
 
         let initial_registers = adapter.debug_registers();
-        let exception_handler = exception_handler_for_core(adapter.core_type());
-        let instruction_set = adapter.instruction_set();
-
 
         let snapshot_name = format!("{chip_name}__static_variables");
 
