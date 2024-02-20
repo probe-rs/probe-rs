@@ -347,7 +347,7 @@ impl DebugInfo {
                     frame_info,
                 )?;
 
-                if matches!(referenced_variable.type_name, VariableType::Base(ref name) if name == "()")
+                if matches!(referenced_variable.type_name.inner(), VariableType::Base(name) if name == "()")
                 {
                     // Only use this, if it is NOT a unit datatype.
                     cache.remove_cache_entry(referenced_variable.variable_key)?;

@@ -90,13 +90,13 @@ pub(crate) fn get_local_variable(
                 variable.name,
                 variable.get_value(variable_cache)
             );
-            response_body.type_ = Some(variable.type_name.to_string());
+            response_body.type_ = Some(variable.type_name());
             response_body.variables_reference = variable.variable_key().into();
         } else {
             response_body.result.push_str(&format!(
                 "\n{} [{} @ {}]: {} ",
                 variable.name,
-                variable.type_name,
+                variable.type_name(),
                 variable.memory_location,
                 variable.get_value(variable_cache)
             ));

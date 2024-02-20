@@ -1,7 +1,9 @@
 use gimli::DwLang;
 
 use crate::{
-    debug::{DebugError, Variable, VariableCache, VariableName, VariableType, VariableValue},
+    debug::{
+        DebugError, Modifier, Variable, VariableCache, VariableName, VariableType, VariableValue,
+    },
     MemoryInterface,
 };
 
@@ -43,16 +45,28 @@ pub trait ProgrammingLanguage {
         _new_value: &str,
     ) -> Result<(), DebugError>;
 
-    fn format_enum_value(&self, type_name: &VariableType, value: &VariableName) -> VariableValue {
-        VariableValue::Valid(format!("{}::{}", type_name, value))
-    }
+    fn format_enum_value(&self, type_name: &VariableType, value: &VariableName) -> VariableValue;
 
-    fn process_tag_with_no_type(&self, tag: gimli::DwTag) -> VariableValue {
+    fn format_array_type(&self, item_type: &str, length: usize) -> String;
+
+    fn format_pointer_type(&self, pointee: Option<&str>) -> String;
+
+    fn process_tag_with_no_type(&self, _variable: &Variable, tag: gimli::DwTag) -> VariableValue {
         VariableValue::Error(format!("Error: Failed to decode {tag} type reference"))
     }
 
     fn auto_resolve_children(&self, _name: &str) -> bool {
         false
+    }
+
+    fn modified_type_name(&self, modifier: &Modifier, name: &str) -> String {
+        match modifier {
+            Modifier::Const => format!("const {}", name),
+            Modifier::Volatile => format!("volatile {}", name),
+            Modifier::Restrict => format!("restrict {}", name),
+            Modifier::Atomic => format!("_Atomic {}", name),
+            Modifier::Typedef(ty) => ty.to_string(),
+        }
     }
 }
 
@@ -82,5 +96,17 @@ impl ProgrammingLanguage for UnknownLanguage {
             "Updating variables for language {} is not supported.",
             self.0
         )))
+    }
+
+    fn format_enum_value(&self, type_name: &VariableType, value: &VariableName) -> VariableValue {
+        VariableValue::Valid(format!("{}::{}", type_name.display_name(self), value))
+    }
+
+    fn format_array_type(&self, item_type: &str, length: usize) -> String {
+        format!("[{item_type}; {length}]")
+    }
+
+    fn format_pointer_type(&self, pointee: Option<&str>) -> String {
+        pointee.unwrap_or("<unknown pointer>").to_string()
     }
 }
