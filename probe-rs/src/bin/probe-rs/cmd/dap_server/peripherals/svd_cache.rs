@@ -190,7 +190,7 @@ impl Variable {
 
     /// Value of the variable, compatible with DAP
     ///
-    /// The value might be retrieved usng the `MemoryInterface` to read the value from the target.
+    /// The value might be retrieved using the `MemoryInterface` to read the value from the target.
     pub fn get_value(&self, memory: &mut dyn MemoryInterface) -> String {
         self.variable_kind.get_value(memory)
     }

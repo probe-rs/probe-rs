@@ -299,10 +299,8 @@ impl UnitInfo {
                     }
                     gimli::DW_AT_enum_class => match attr.value() {
                         gimli::AttributeValue::Flag(true) => {
-                            child_variable.set_value(VariableValue::Valid(format!(
-                                "{:?}",
-                                child_variable.type_name
-                            )));
+                            child_variable
+                                .set_value(VariableValue::Valid(child_variable.type_name()));
                         }
                         gimli::AttributeValue::Flag(false) => {
                             child_variable.set_value(VariableValue::Error(
@@ -939,7 +937,7 @@ impl UnitInfo {
         cache: &mut VariableCache,
         frame_info: StackFrameInfo<'_>,
     ) -> Result<(), DebugError> {
-        let type_name = match extract_name(debug_info, node.entry()) {
+        let type_name = match self.extract_type_name(debug_info, node.entry()) {
             Ok(name) => name,
             Err(error) => {
                 let message = format!("Error: evaluating type name: {error:?}");
@@ -956,8 +954,9 @@ impl UnitInfo {
 
         match node.entry().tag() {
             gimli::DW_TAG_base_type => {
-                child_variable.type_name =
-                    VariableType::Base(type_name.unwrap_or_else(|| "<unnamed>".to_string()));
+                child_variable.type_name = VariableType::Base(
+                    type_name.unwrap_or_else(|| "<unnamed base type>".to_string()),
+                );
                 self.process_memory_location(
                     debug_info,
                     node.entry(),
@@ -980,57 +979,39 @@ impl UnitInfo {
 
                 // This needs to resolve the pointer before the regular recursion can continue.
                 match node.entry().attr(gimli::DW_AT_type) {
-                    Ok(Some(data_type_attribute)) => {
-                        match data_type_attribute.value() {
-                            gimli::AttributeValue::UnitRef(unit_ref) => {
-                                // The default behaviour is to defer the processing of child types.
-                                child_variable.variable_node_type =
-                                    VariableNodeType::ReferenceOffset(
-                                        self.debug_info_offset()?,
-                                        unit_ref,
-                                    );
+                    Ok(Some(data_type_attribute)) => match data_type_attribute.value() {
+                        // NOTE: surprisingly, as opposed to `void*`, this can be a `const void*`.
+                        gimli::AttributeValue::UnitRef(unit_ref) => {
+                            child_variable.variable_node_type = VariableNodeType::ReferenceOffset(
+                                self.debug_info_offset()?,
+                                unit_ref,
+                            );
 
-                                if let VariableType::Pointer(optional_name) =
-                                    &child_variable.type_name
-                                {
-                                    #[allow(clippy::unwrap_used)]
-                                    // Use of `unwrap` below is safe because we first check for `is_none()`.
-                                    if optional_name.is_none()
-                                        || optional_name.as_ref().unwrap().starts_with("*const")
-                                        || optional_name.as_ref().unwrap().starts_with("*mut")
-                                    {
-                                        // Resolve the children of this variable, because they contain essential information required to resolve the value
-                                        debug_info.cache_deferred_variables(
-                                            cache,
-                                            memory,
-                                            child_variable,
-                                            frame_info,
-                                        )?;
-                                    } else {
-                                        // This is the case where we defer the processing of child types.
-                                    }
-                                } else {
-                                    debug_info.cache_deferred_variables(
-                                        cache,
-                                        memory,
-                                        child_variable,
-                                        frame_info,
-                                    )?;
-                                }
-                            }
-                            other_attribute_value => {
-                                child_variable.set_value(VariableValue::Error(format!(
-                                    "Unimplemented: Attribute Value for DW_AT_type {:.100}",
-                                    format!("{other_attribute_value:?}")
-                                )));
-                            }
+                            debug_info.cache_deferred_variables(
+                                cache,
+                                memory,
+                                child_variable,
+                                frame_info,
+                            )?;
                         }
-                    }
+                        other_attribute_value => {
+                            child_variable.set_value(VariableValue::Error(format!(
+                                "Unimplemented: Attribute Value for DW_AT_type {:.100}",
+                                format!("{other_attribute_value:?}")
+                            )));
+                        }
+                    },
                     Ok(None) => {
-                        child_variable.set_value(VariableValue::Error(format!(
-                            "Error: No Attribute Value for DW_AT_type for variable {:?}",
-                            child_variable.name
-                        )));
+                        // NOTE: this can be a `void*` pointer. Some C compilers model `void` as
+                        // a type without `DW_AT_type`.
+                        // FIXME: this differs from `const void*` which may be surprising. Should we
+                        // add a dummy child variable?
+                        child_variable.set_value(
+                            self.language.process_tag_with_no_type(
+                                child_variable,
+                                gimli::DW_TAG_pointer_type,
+                            ),
+                        );
                     }
                     Err(error) => {
                         child_variable.set_value(VariableValue::Error(format!(
@@ -1040,8 +1021,9 @@ impl UnitInfo {
                 }
             }
             gimli::DW_TAG_structure_type => {
-                child_variable.type_name =
-                    VariableType::Struct(type_name.unwrap_or_else(|| "<unnamed>".to_string()));
+                child_variable.type_name = VariableType::Struct(
+                    type_name.unwrap_or_else(|| "<unnamed struct>".to_string()),
+                );
                 self.process_memory_location(
                     debug_info,
                     node.entry(),
@@ -1082,7 +1064,7 @@ impl UnitInfo {
             }
             gimli::DW_TAG_enumeration_type => {
                 child_variable.type_name =
-                    VariableType::Enum(type_name.unwrap_or_else(|| "<unnamed>".to_string()));
+                    VariableType::Enum(type_name.unwrap_or_else(|| "<unnamed enum>".to_string()));
                 self.process_memory_location(
                     debug_info,
                     node.entry(),
@@ -1198,10 +1180,10 @@ impl UnitInfo {
                                         ));
                             }
                             Ok(None) => {
-                                child_variable.set_value(VariableValue::Error(format!(
-                                    "Error: No Attribute Value for DW_AT_type for variable {:?}",
-                                    child_variable.name
-                                )));
+                                child_variable.set_value(self.language.process_tag_with_no_type(
+                                    child_variable,
+                                    gimli::DW_TAG_array_type,
+                                ));
                             }
                             Err(error) => {
                                 child_variable.set_value(VariableValue::Error(format!(
@@ -1222,7 +1204,7 @@ impl UnitInfo {
             }
             gimli::DW_TAG_union_type => {
                 child_variable.type_name =
-                    VariableType::Base(type_name.unwrap_or_else(|| "<unnamed>".to_string()));
+                    VariableType::Base(type_name.unwrap_or_else(|| "<unnamed union>".to_string()));
                 self.process_memory_location(
                     debug_info,
                     node.entry(),
@@ -1236,10 +1218,7 @@ impl UnitInfo {
                 self.process_tree(debug_info, node, child_variable, memory, cache, frame_info)?;
                 if child_variable.is_valid() && !cache.has_children(child_variable) {
                     // Empty structs don't have values.
-                    child_variable.set_value(VariableValue::Valid(format!(
-                        "{:?}",
-                        child_variable.type_name
-                    )));
+                    child_variable.set_value(VariableValue::Valid(child_variable.type_name()));
                 }
             }
             gimli::DW_TAG_subroutine_type => {
@@ -1250,6 +1229,7 @@ impl UnitInfo {
                         gimli::AttributeValue::UnitRef(unit_ref) => {
                             let subroutine_type_node =
                                 self.unit.header.entry(&self.unit.abbreviations, unit_ref)?;
+
                             child_variable.type_name =
                                 match extract_name(debug_info, &subroutine_type_node) {
                                     Ok(Some(name_attr)) => VariableType::Other(name_attr),
@@ -1288,19 +1268,52 @@ impl UnitInfo {
 
             other @ (gimli::DW_TAG_typedef
             | gimli::DW_TAG_const_type
-            | gimli::DW_TAG_volatile_type) => match node.entry().attr(gimli::DW_AT_type) {
-                Ok(Some(attr)) => self.process_type_attribute(
-                    &attr,
-                    debug_info,
-                    node.entry(),
-                    parent_variable,
-                    child_variable,
-                    memory,
-                    frame_info,
-                    cache,
-                )?,
+            | gimli::DW_TAG_volatile_type
+            | gimli::DW_TAG_restrict_type
+            | gimli::DW_TAG_atomic_type) => match node.entry().attr(gimli::DW_AT_type) {
+                Ok(Some(attr)) => {
+                    self.process_type_attribute(
+                        &attr,
+                        debug_info,
+                        node.entry(),
+                        parent_variable,
+                        child_variable,
+                        memory,
+                        frame_info,
+                        cache,
+                    )?;
 
-                Ok(None) => child_variable.set_value(self.language.process_tag_with_no_type(other)),
+                    let modifier = match other {
+                        gimli::DW_TAG_typedef => {
+                            if child_variable.variable_node_type.is_deferred() {
+                                // Invalidate the value so we can read it again using the resolved
+                                // type information.
+                                child_variable.value = VariableValue::Empty;
+                            }
+                            Modifier::Typedef(
+                                type_name.unwrap_or_else(|| "<unnamed typedef>".to_string()),
+                            )
+                        }
+                        gimli::DW_TAG_const_type => Modifier::Const,
+                        gimli::DW_TAG_volatile_type => Modifier::Volatile,
+                        gimli::DW_TAG_restrict_type => Modifier::Restrict,
+                        gimli::DW_TAG_atomic_type => Modifier::Atomic,
+                        _ => unreachable!(),
+                    };
+
+                    child_variable.type_name = VariableType::Modified(
+                        modifier,
+                        Box::new(std::mem::replace(
+                            &mut child_variable.type_name,
+                            VariableType::Unknown,
+                        )),
+                    );
+                }
+
+                Ok(None) => child_variable.set_value(
+                    self.language
+                        .process_tag_with_no_type(child_variable, other),
+                ),
 
                 Err(error) => child_variable.set_value(VariableValue::Error(format!(
                     "Error: Failed to decode {other:?} type reference: {error:?}"
@@ -1372,7 +1385,7 @@ impl UnitInfo {
             // Once we know the type of the first member, we can set the array type.
             child_variable.type_name = VariableType::Array {
                 count: subrange_bounds.end as usize,
-                item_type_name: array_member_variable.type_name.to_string(),
+                item_type_name: Box::new(array_member_variable.type_name.clone()),
             };
             // Once we know the byte_size of the first member, we can set the array byte_size.
             if let Some(array_member_byte_size) = array_member_variable.byte_size {
@@ -1890,6 +1903,49 @@ impl UnitInfo {
             }
         }
         Ok(false)
+    }
+
+    /// Returns the `DW_AT_name` attribute in the subtree of a given node or recurses into the node referenced by the `DW_AT_type` attribute.
+    fn extract_type_name(
+        &self,
+        debug_info: &DebugInfo,
+        entry: &gimli::DebuggingInformationEntry<GimliReader>,
+    ) -> Result<Option<String>, gimli::Error> {
+        match entry.attr(gimli::DW_AT_name) {
+            Ok(Some(attr)) => {
+                let name = match attr.value() {
+                    gimli::AttributeValue::DebugStrRef(name_ref) => {
+                        if let Ok(name_raw) = debug_info.dwarf.string(name_ref) {
+                            String::from_utf8_lossy(&name_raw).to_string()
+                        } else {
+                            "Invalid DW_AT_name value".to_string()
+                        }
+                    }
+                    gimli::AttributeValue::String(name) => {
+                        String::from_utf8_lossy(&name).to_string()
+                    }
+                    other => format!("Unimplemented: Evaluate name from {other:?}"),
+                };
+
+                Ok(Some(name))
+            }
+            Ok(None) => {
+                let Ok(Some(attr)) = entry.attr(gimli::DW_AT_type) else {
+                    // No type attribute.
+                    return Ok(None);
+                };
+
+                let gimli::AttributeValue::UnitRef(unit_ref) = attr.value() else {
+                    // TODO: should we handle other types of references?
+                    return Ok(None);
+                };
+
+                // Try to read the name of the referenced type node.
+                let node = self.unit.header.entry(&self.unit.abbreviations, unit_ref)?;
+                self.extract_type_name(debug_info, &node)
+            }
+            Err(error) => Err(error),
+        }
     }
 }
 

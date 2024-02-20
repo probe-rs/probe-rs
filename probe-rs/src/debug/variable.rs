@@ -1,4 +1,4 @@
-use crate::debug::unit_info::UnitInfo;
+use crate::debug::{language::ProgrammingLanguage, unit_info::UnitInfo};
 
 use super::*;
 use anyhow::anyhow;
@@ -41,7 +41,7 @@ impl std::fmt::Display for VariableValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             VariableValue::Valid(value) => value.fmt(f),
-            VariableValue::Error(error) => write!(f, "< {error} >",),
+            VariableValue::Error(error) => write!(f, "< {error} >"),
             VariableValue::Empty => write!(
                 f,
                 "Value not set. Please use Variable::get_value() to infer a human readable variable value"
@@ -146,6 +146,25 @@ impl VariableNodeType {
     }
 }
 
+/// A modifier to a variable type. Currently only used to format the type name.
+#[derive(Debug, Clone, Eq, PartialEq, Serialize)]
+pub enum Modifier {
+    /// The type is declared as `volatile`.
+    Volatile,
+
+    /// The type is declared as `const`.
+    Const,
+
+    /// The type is declared as `restrict`.
+    Restrict,
+
+    /// The type is declared as `atomic`.
+    Atomic,
+
+    /// The type is an alias with the given name.
+    Typedef(String),
+}
+
 /// The variants of VariableType allows us to streamline the conditional logic that requires specific handling depending on the nature of the variable.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
 pub enum VariableType {
@@ -162,10 +181,12 @@ pub enum VariableType {
     /// A Rust array.
     Array {
         /// The type name of the variable.
-        item_type_name: String,
+        item_type_name: Box<VariableType>,
         /// The number of entries in the array.
         count: usize,
     },
+    /// A type alias.
+    Modified(Modifier, Box<VariableType>),
     /// When we are unable to determine the name of a variable.
     #[default]
     Unknown,
@@ -174,18 +195,19 @@ pub enum VariableType {
 }
 
 impl VariableType {
+    /// Get the inner type of a modified type.
+    pub fn inner(&self) -> &Self {
+        if let Self::Modified(_, ty) = self {
+            ty.inner()
+        } else {
+            self
+        }
+    }
+
     /// Is this variable of a Rust PhantomData marker type?
     pub fn is_phantom_data(&self) -> bool {
         match self {
             VariableType::Struct(name) => name.starts_with("PhantomData"),
-            _ => false,
-        }
-    }
-
-    /// Is this variable is a reference to another variable?
-    pub fn is_reference(&self) -> bool {
-        match self {
-            VariableType::Pointer(Some(name)) => name.starts_with('&'),
             _ => false,
         }
     }
@@ -206,28 +228,50 @@ impl VariableType {
             VariableType::Array { .. } => "array",
             VariableType::Unknown => "unknown",
             VariableType::Other(_) => "other",
+            VariableType::Modified(_, inner) => inner.kind(),
         }
     }
-}
 
-impl std::fmt::Display for VariableType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    pub(crate) fn display_name(&self, language: &dyn ProgrammingLanguage) -> String {
         match self {
-            VariableType::Base(base) => base.fmt(f),
-            VariableType::Struct(struct_name) => struct_name.fmt(f),
-            VariableType::Enum(enum_name) => enum_name.fmt(f),
-            VariableType::Namespace => "<namespace>".fmt(f),
-            VariableType::Pointer(pointer_name) => pointer_name
-                .clone()
-                .unwrap_or_else(|| "<referenced type>".to_string())
-                .fmt(f),
+            VariableType::Modified(Modifier::Typedef(name), _) => name.clone(),
+            VariableType::Modified(modifier, ty) => {
+                language.modified_type_name(modifier, &ty.display_name(language))
+            }
+
             VariableType::Array {
-                item_type_name: entry_type,
+                item_type_name,
                 count,
-            } => write!(f, "[{entry_type}; {count}]"),
-            VariableType::Unknown => "<unknown>".fmt(f),
-            VariableType::Other(other) => other.fmt(f),
+            } => language.format_array_type(&item_type_name.display_name(language), *count),
+
+            _ => self.type_name(language),
         }
+    }
+
+    /// Returns the type name after resolving aliases.
+    pub(crate) fn type_name(&self, language: &dyn ProgrammingLanguage) -> String {
+        let type_name = match self {
+            VariableType::Base(name)
+            | VariableType::Struct(name)
+            | VariableType::Enum(name)
+            | VariableType::Other(name) => Some(name.as_str()),
+            VariableType::Namespace => Some("namespace"),
+            VariableType::Unknown => None,
+
+            VariableType::Pointer(pointee) => {
+                // TODO: we should also carry the constness
+                return language.format_pointer_type(pointee.as_deref());
+            }
+
+            VariableType::Array {
+                item_type_name,
+                count,
+            } => return language.format_array_type(&item_type_name.type_name(language), *count),
+
+            VariableType::Modified(_, ty) => return ty.type_name(language),
+        };
+
+        type_name.unwrap_or("<unknown>").to_string()
     }
 }
 
@@ -340,6 +384,12 @@ impl Variable {
         }
     }
 
+    /// Returns the readable name of the variable type.
+    pub fn type_name(&self) -> String {
+        self.type_name
+            .display_name(language::from_dwarf(self.language).as_ref())
+    }
+
     /// Get a unique key for this variable.
     pub fn variable_key(&self) -> ObjectRef {
         self.variable_key
@@ -423,7 +473,8 @@ impl Variable {
             } else if self.type_name == VariableType::Unknown || !self.memory_location.valid() {
                 if self.variable_node_type.is_deferred() {
                     // When we will do a lazy-load of variable children, and they have not yet been requested by the user, just display the type_name as the value
-                    format!("{:?}", self.type_name.clone())
+                    self.type_name
+                        .display_name(language::from_dwarf(self.language).as_ref())
                 } else {
                     // This condition should only be true for intermediate nodes from DWARF. These should not show up in the final `VariableCache`
                     // If a user sees this error, then there is a logic problem in the stack unwind
@@ -457,7 +508,7 @@ impl Variable {
         // The value was set explicitly, so just leave it as is, or it was an error, so don't attempt anything else
         || !self.memory_location.valid()
         // This may just be that we are early on in the process of `Variable` evaluation
-        || self.type_name == VariableType::Unknown
+        || matches!(self.type_name.inner(), VariableType::Unknown)
         // This may just be that we are early on in the process of `Variable` evaluation
         {
             // Quick exit if we don't really need to do much more.
@@ -466,8 +517,12 @@ impl Variable {
 
         if self.variable_node_type.is_deferred() {
             // And we have not previously assigned the value, then assign the type and address as the value
-            self.value =
-                VariableValue::Valid(format!("{} @ {}", self.type_name, self.memory_location));
+            self.value = VariableValue::Valid(format!(
+                "{} @ {}",
+                self.type_name
+                    .display_name(language::from_dwarf(self.language).as_ref()),
+                self.memory_location
+            ));
             return;
         }
 
@@ -497,7 +552,7 @@ impl Variable {
     }
 
     /// `true` if the Variable has a valid value, or an empty value.
-    /// `false` if the Variable has a VariableValue::Error(_)value
+    /// `false` if the Variable has a VariableValue::Error(_) value
     pub fn is_valid(&self) -> bool {
         self.value.is_valid()
     }
@@ -509,6 +564,8 @@ impl Variable {
         show_name: bool,
     ) -> String {
         let line_feed = if indentation == 0 { "" } else { "\n" };
+        let type_name = self.type_name();
+
         // Allow for chained `if let` without complaining
         #[allow(clippy::if_same_then_else)]
         if !self.value.is_empty() {
@@ -516,7 +573,7 @@ impl Variable {
                 // Use the supplied value or error message.
                 format!(
                     "{}{:\t<indentation$}{}: {} = {}",
-                    line_feed, "", self.name, self.type_name, self.value
+                    line_feed, "", self.name, type_name, self.value
                 )
             } else {
                 // Use the supplied value or error message.
@@ -558,7 +615,7 @@ impl Variable {
                     // Arrays
                     compound_value = format!(
                         "{}{}{:\t<indentation$}: {} = [",
-                        compound_value, line_feed, "", self.type_name,
+                        compound_value, line_feed, "", type_name,
                     );
                     let mut child_count: usize = 0;
                     for child in &children {
@@ -582,7 +639,7 @@ impl Variable {
                     // Handle special structure types like the variant values of `Option<>` and `Result<>`
                     compound_value = format!(
                         "{}{:\t<indentation$}{}: {} = {}(",
-                        line_feed, "", self.name, self.type_name, compound_value
+                        line_feed, "", self.name, type_name, compound_value
                     );
                     for child in children {
                         compound_value = format!(
@@ -623,9 +680,9 @@ impl Variable {
                                             line_feed,
                                             "",
                                             self.name,
-                                            self.type_name,
-                                            child.type_name,
-                                            self.type_name,
+                                            type_name,
+                                            child.type_name(),
+                                            type_name,
                                         ));
                                         post_fix =
                                             Some(format!("{}{:\t<indentation$})", line_feed, ""));
@@ -635,16 +692,12 @@ impl Variable {
                                         if show_name {
                                             pre_fix = Some(format!(
                                                 "{}{:\t<indentation$}{}: {} = {} {{",
-                                                line_feed,
-                                                "",
-                                                self.name,
-                                                self.type_name,
-                                                self.type_name,
+                                                line_feed, "", self.name, type_name, type_name,
                                             ));
                                         } else {
                                             pre_fix = Some(format!(
                                                 "{}{:\t<indentation$}{} {{",
-                                                line_feed, "", self.type_name,
+                                                line_feed, "", type_name,
                                             ));
                                         }
                                         post_fix =

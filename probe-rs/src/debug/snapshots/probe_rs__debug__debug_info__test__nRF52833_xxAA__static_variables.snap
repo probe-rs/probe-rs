@@ -235,21 +235,22 @@ Child Variables:
             Named: __INTERRUPTS
           type_name:
             Array:
-              item_type_name: Vector
+              item_type_name:
+                Base: Vector
               count: 48
-          value: ": [Vector; 48] = [\n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000040, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x40 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000044, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x44 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000048, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x48 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x0000004C, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x4c of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000050, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x50 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000054, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x54 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000058, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x58 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x0000005C, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x5c of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000060, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x60 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000064, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x64 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000068, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x68 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x0000006C, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x6c of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000070, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x70 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000074, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x74 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000078, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x78 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x0000007C, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x7c of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000080, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x80 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000084, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x84 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000088, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x88 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x0000008C, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x8c of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000090, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x90 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000094, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x94 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000098, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x98 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x0000009C, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x9c of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000A0, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xa0 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000A4, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xa4 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000A8, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xa8 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000AC, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xac of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000B0, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xb0 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000B4, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xb4 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000B8, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xb8 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000BC, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xbc of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000C0, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xc0 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000C4, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xc4 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000C8, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xc8 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000CC, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xcc of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000D0, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xd0 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000D4, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xd4 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000D8, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xd8 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000DC, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xdc of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000E0, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xe0 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000E4, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xe4 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000E8, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xe8 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000EC, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xec of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000F0, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xf0 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000F4, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xf4 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000F8, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xf8 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000FC, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xfc of size 0x4)) >\n\t}]"
+          value: ": [Vector; 48] = [\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000040, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x40 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000044, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x44 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000048, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x48 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000004C, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x4c of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000050, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x50 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000054, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x54 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000058, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x58 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000005C, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x5c of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000060, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x60 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000064, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x64 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000068, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x68 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000006C, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x6c of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000070, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x70 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000074, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x74 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000078, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x78 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000007C, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x7c of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000080, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x80 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000084, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x84 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000088, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x88 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000008C, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x8c of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000090, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x90 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000094, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x94 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000098, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x98 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000009C, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x9c of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000A0, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xa0 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000A4, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xa4 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000A8, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xa8 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000AC, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xac of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000B0, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xb0 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000B4, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xb4 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000B8, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xb8 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000BC, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xbc of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000C0, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xc0 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000C4, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xc4 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000C8, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xc8 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000CC, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xcc of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000D0, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xd0 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000D4, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xd4 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000D8, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xd8 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000DC, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xdc of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000E0, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xe0 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000E4, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xe4 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000E8, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xe8 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000EC, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xec of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000F0, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xf0 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000F4, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xf4 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000F8, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xf8 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000FC, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xfc of size 0x4)) >\n\t}]"
           children:
             - name:
                 Named: __0
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000040, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x40 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000040, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x40 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000040"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000040"
                   children:
                     - name:
                         Named: "*_handler"
@@ -264,13 +265,13 @@ Child Variables:
                 Named: __1
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000044, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x44 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000044, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x44 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000044"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000044"
                   children:
                     - name:
                         Named: "*_handler"
@@ -285,13 +286,13 @@ Child Variables:
                 Named: __2
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000048, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x48 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000048, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x48 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000048"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000048"
                   children:
                     - name:
                         Named: "*_handler"
@@ -306,13 +307,13 @@ Child Variables:
                 Named: __3
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x0000004C, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x4c of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000004C, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x4c of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x0000004C"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x0000004C"
                   children:
                     - name:
                         Named: "*_handler"
@@ -327,13 +328,13 @@ Child Variables:
                 Named: __4
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000050, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x50 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000050, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x50 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000050"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000050"
                   children:
                     - name:
                         Named: "*_handler"
@@ -348,13 +349,13 @@ Child Variables:
                 Named: __5
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000054, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x54 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000054, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x54 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000054"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000054"
                   children:
                     - name:
                         Named: "*_handler"
@@ -369,13 +370,13 @@ Child Variables:
                 Named: __6
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000058, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x58 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000058, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x58 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000058"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000058"
                   children:
                     - name:
                         Named: "*_handler"
@@ -390,13 +391,13 @@ Child Variables:
                 Named: __7
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x0000005C, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x5c of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000005C, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x5c of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x0000005C"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x0000005C"
                   children:
                     - name:
                         Named: "*_handler"
@@ -411,13 +412,13 @@ Child Variables:
                 Named: __8
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000060, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x60 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000060, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x60 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000060"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000060"
                   children:
                     - name:
                         Named: "*_handler"
@@ -432,13 +433,13 @@ Child Variables:
                 Named: __9
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000064, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x64 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000064, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x64 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000064"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000064"
                   children:
                     - name:
                         Named: "*_handler"
@@ -453,13 +454,13 @@ Child Variables:
                 Named: __10
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000068, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x68 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000068, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x68 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000068"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000068"
                   children:
                     - name:
                         Named: "*_handler"
@@ -474,13 +475,13 @@ Child Variables:
                 Named: __11
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x0000006C, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x6c of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000006C, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x6c of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x0000006C"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x0000006C"
                   children:
                     - name:
                         Named: "*_handler"
@@ -495,13 +496,13 @@ Child Variables:
                 Named: __12
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000070, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x70 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000070, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x70 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000070"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000070"
                   children:
                     - name:
                         Named: "*_handler"
@@ -516,13 +517,13 @@ Child Variables:
                 Named: __13
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000074, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x74 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000074, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x74 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000074"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000074"
                   children:
                     - name:
                         Named: "*_handler"
@@ -537,13 +538,13 @@ Child Variables:
                 Named: __14
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000078, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x78 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000078, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x78 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000078"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000078"
                   children:
                     - name:
                         Named: "*_handler"
@@ -558,13 +559,13 @@ Child Variables:
                 Named: __15
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x0000007C, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x7c of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000007C, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x7c of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x0000007C"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x0000007C"
                   children:
                     - name:
                         Named: "*_handler"
@@ -579,13 +580,13 @@ Child Variables:
                 Named: __16
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000080, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x80 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000080, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x80 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000080"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000080"
                   children:
                     - name:
                         Named: "*_handler"
@@ -600,13 +601,13 @@ Child Variables:
                 Named: __17
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000084, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x84 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000084, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x84 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000084"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000084"
                   children:
                     - name:
                         Named: "*_handler"
@@ -621,13 +622,13 @@ Child Variables:
                 Named: __18
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000088, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x88 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000088, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x88 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000088"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000088"
                   children:
                     - name:
                         Named: "*_handler"
@@ -642,13 +643,13 @@ Child Variables:
                 Named: __19
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x0000008C, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x8c of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000008C, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x8c of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x0000008C"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x0000008C"
                   children:
                     - name:
                         Named: "*_handler"
@@ -663,13 +664,13 @@ Child Variables:
                 Named: __20
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000090, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x90 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000090, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x90 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000090"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000090"
                   children:
                     - name:
                         Named: "*_handler"
@@ -684,13 +685,13 @@ Child Variables:
                 Named: __21
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000094, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x94 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000094, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x94 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000094"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000094"
                   children:
                     - name:
                         Named: "*_handler"
@@ -705,13 +706,13 @@ Child Variables:
                 Named: __22
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000098, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x98 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000098, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x98 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000098"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000098"
                   children:
                     - name:
                         Named: "*_handler"
@@ -726,13 +727,13 @@ Child Variables:
                 Named: __23
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x0000009C, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x9c of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000009C, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x9c of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x0000009C"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x0000009C"
                   children:
                     - name:
                         Named: "*_handler"
@@ -747,13 +748,13 @@ Child Variables:
                 Named: __24
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000A0, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xa0 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000A0, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xa0 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x000000A0"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x000000A0"
                   children:
                     - name:
                         Named: "*_handler"
@@ -768,13 +769,13 @@ Child Variables:
                 Named: __25
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000A4, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xa4 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000A4, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xa4 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x000000A4"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x000000A4"
                   children:
                     - name:
                         Named: "*_handler"
@@ -789,13 +790,13 @@ Child Variables:
                 Named: __26
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000A8, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xa8 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000A8, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xa8 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x000000A8"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x000000A8"
                   children:
                     - name:
                         Named: "*_handler"
@@ -810,13 +811,13 @@ Child Variables:
                 Named: __27
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000AC, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xac of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000AC, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xac of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x000000AC"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x000000AC"
                   children:
                     - name:
                         Named: "*_handler"
@@ -831,13 +832,13 @@ Child Variables:
                 Named: __28
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000B0, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xb0 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000B0, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xb0 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x000000B0"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x000000B0"
                   children:
                     - name:
                         Named: "*_handler"
@@ -852,13 +853,13 @@ Child Variables:
                 Named: __29
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000B4, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xb4 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000B4, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xb4 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x000000B4"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x000000B4"
                   children:
                     - name:
                         Named: "*_handler"
@@ -873,13 +874,13 @@ Child Variables:
                 Named: __30
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000B8, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xb8 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000B8, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xb8 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x000000B8"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x000000B8"
                   children:
                     - name:
                         Named: "*_handler"
@@ -894,13 +895,13 @@ Child Variables:
                 Named: __31
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000BC, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xbc of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000BC, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xbc of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x000000BC"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x000000BC"
                   children:
                     - name:
                         Named: "*_handler"
@@ -915,13 +916,13 @@ Child Variables:
                 Named: __32
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000C0, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xc0 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000C0, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xc0 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x000000C0"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x000000C0"
                   children:
                     - name:
                         Named: "*_handler"
@@ -936,13 +937,13 @@ Child Variables:
                 Named: __33
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000C4, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xc4 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000C4, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xc4 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x000000C4"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x000000C4"
                   children:
                     - name:
                         Named: "*_handler"
@@ -957,13 +958,13 @@ Child Variables:
                 Named: __34
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000C8, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xc8 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000C8, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xc8 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x000000C8"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x000000C8"
                   children:
                     - name:
                         Named: "*_handler"
@@ -978,13 +979,13 @@ Child Variables:
                 Named: __35
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000CC, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xcc of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000CC, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xcc of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x000000CC"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x000000CC"
                   children:
                     - name:
                         Named: "*_handler"
@@ -999,13 +1000,13 @@ Child Variables:
                 Named: __36
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000D0, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xd0 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000D0, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xd0 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x000000D0"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x000000D0"
                   children:
                     - name:
                         Named: "*_handler"
@@ -1020,13 +1021,13 @@ Child Variables:
                 Named: __37
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000D4, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xd4 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000D4, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xd4 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x000000D4"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x000000D4"
                   children:
                     - name:
                         Named: "*_handler"
@@ -1041,13 +1042,13 @@ Child Variables:
                 Named: __38
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000D8, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xd8 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000D8, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xd8 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x000000D8"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x000000D8"
                   children:
                     - name:
                         Named: "*_handler"
@@ -1062,13 +1063,13 @@ Child Variables:
                 Named: __39
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000DC, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xdc of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000DC, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xdc of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x000000DC"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x000000DC"
                   children:
                     - name:
                         Named: "*_handler"
@@ -1083,13 +1084,13 @@ Child Variables:
                 Named: __40
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000E0, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xe0 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000E0, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xe0 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x000000E0"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x000000E0"
                   children:
                     - name:
                         Named: "*_handler"
@@ -1104,13 +1105,13 @@ Child Variables:
                 Named: __41
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000E4, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xe4 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000E4, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xe4 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x000000E4"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x000000E4"
                   children:
                     - name:
                         Named: "*_handler"
@@ -1125,13 +1126,13 @@ Child Variables:
                 Named: __42
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000E8, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xe8 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000E8, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xe8 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x000000E8"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x000000E8"
                   children:
                     - name:
                         Named: "*_handler"
@@ -1146,13 +1147,13 @@ Child Variables:
                 Named: __43
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000EC, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xec of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000EC, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xec of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x000000EC"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x000000EC"
                   children:
                     - name:
                         Named: "*_handler"
@@ -1167,13 +1168,13 @@ Child Variables:
                 Named: __44
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000F0, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xf0 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000F0, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xf0 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x000000F0"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x000000F0"
                   children:
                     - name:
                         Named: "*_handler"
@@ -1188,13 +1189,13 @@ Child Variables:
                 Named: __45
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000F4, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xf4 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000F4, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xf4 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x000000F4"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x000000F4"
                   children:
                     - name:
                         Named: "*_handler"
@@ -1209,13 +1210,13 @@ Child Variables:
                 Named: __46
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000F8, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xf8 of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000F8, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xf8 of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x000000F8"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x000000F8"
                   children:
                     - name:
                         Named: "*_handler"
@@ -1230,13 +1231,13 @@ Child Variables:
                 Named: __47
               type_name:
                 Base: Vector
-              value: "Vector {\n\t_handler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x000000FC, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xfc of size 0x4)) >}"
+              value: "Vector {\n\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000FC, \n\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xfc of size 0x4)) >}"
               children:
                 - name:
                     Named: _handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x000000FC"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x000000FC"
                   children:
                     - name:
                         Named: "*_handler"
@@ -1265,7 +1266,7 @@ Child Variables:
             Named: __RESET_VECTOR
           type_name:
             Pointer: "unsafe extern \"C\" fn() -> !"
-          value: "unsafe extern \"C\" fn() -> ! @ 0x00000004"
+          value: "*raw unsafe extern \"C\" fn() -> ! @ 0x00000004"
           children:
             - name:
                 Named: "*__RESET_VECTOR"
@@ -1276,21 +1277,22 @@ Child Variables:
             Named: __EXCEPTIONS
           type_name:
             Array:
-              item_type_name: Vector
+              item_type_name:
+                Base: Vector
               count: 14
-          value: ": [Vector; 14] = [\n\tVector {\n\t\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000008, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x8 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x0000000C, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0xc of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000010, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x10 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000014, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x14 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000018, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x18 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x0000001C, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x1c of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000020, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x20 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000024, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x24 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000028, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x28 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x0000002C, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x2c of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000030, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x30 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000034, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x34 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000038, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x38 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x0000003C, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x3c of size 0x4)) >\n\t}]"
+          value: ": [Vector; 14] = [\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000008, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x8 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000000C, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0xc of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000010, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x10 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000014, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x14 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000018, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x18 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000001C, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x1c of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000020, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x20 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000024, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x24 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000028, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x28 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000002C, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x2c of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000030, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x30 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000034, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x34 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000038, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x38 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000003C, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x3c of size 0x4)) >\n\t}]"
           children:
             - name:
                 Named: __0
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000008, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x8 of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000008, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x8 of size 0x4)) >}"
               children:
                 - name:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000008"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000008"
                   children:
                     - name:
                         Named: "*handler"
@@ -1305,13 +1307,13 @@ Child Variables:
                 Named: __1
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x0000000C, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0xc of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000000C, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0xc of size 0x4)) >}"
               children:
                 - name:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x0000000C"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x0000000C"
                   children:
                     - name:
                         Named: "*handler"
@@ -1326,13 +1328,13 @@ Child Variables:
                 Named: __2
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000010, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x10 of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000010, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x10 of size 0x4)) >}"
               children:
                 - name:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000010"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000010"
                   children:
                     - name:
                         Named: "*handler"
@@ -1347,13 +1349,13 @@ Child Variables:
                 Named: __3
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000014, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x14 of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000014, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x14 of size 0x4)) >}"
               children:
                 - name:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000014"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000014"
                   children:
                     - name:
                         Named: "*handler"
@@ -1368,13 +1370,13 @@ Child Variables:
                 Named: __4
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000018, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x18 of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000018, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x18 of size 0x4)) >}"
               children:
                 - name:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000018"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000018"
                   children:
                     - name:
                         Named: "*handler"
@@ -1389,13 +1391,13 @@ Child Variables:
                 Named: __5
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x0000001C, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x1c of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000001C, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x1c of size 0x4)) >}"
               children:
                 - name:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x0000001C"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x0000001C"
                   children:
                     - name:
                         Named: "*handler"
@@ -1410,13 +1412,13 @@ Child Variables:
                 Named: __6
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000020, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x20 of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000020, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x20 of size 0x4)) >}"
               children:
                 - name:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000020"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000020"
                   children:
                     - name:
                         Named: "*handler"
@@ -1431,13 +1433,13 @@ Child Variables:
                 Named: __7
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000024, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x24 of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000024, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x24 of size 0x4)) >}"
               children:
                 - name:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000024"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000024"
                   children:
                     - name:
                         Named: "*handler"
@@ -1452,13 +1454,13 @@ Child Variables:
                 Named: __8
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000028, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x28 of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000028, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x28 of size 0x4)) >}"
               children:
                 - name:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000028"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000028"
                   children:
                     - name:
                         Named: "*handler"
@@ -1473,13 +1475,13 @@ Child Variables:
                 Named: __9
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x0000002C, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x2c of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000002C, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x2c of size 0x4)) >}"
               children:
                 - name:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x0000002C"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x0000002C"
                   children:
                     - name:
                         Named: "*handler"
@@ -1494,13 +1496,13 @@ Child Variables:
                 Named: __10
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000030, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x30 of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000030, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x30 of size 0x4)) >}"
               children:
                 - name:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000030"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000030"
                   children:
                     - name:
                         Named: "*handler"
@@ -1515,13 +1517,13 @@ Child Variables:
                 Named: __11
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000034, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x34 of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000034, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x34 of size 0x4)) >}"
               children:
                 - name:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000034"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000034"
                   children:
                     - name:
                         Named: "*handler"
@@ -1536,13 +1538,13 @@ Child Variables:
                 Named: __12
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x00000038, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x38 of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000038, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x38 of size 0x4)) >}"
               children:
                 - name:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x00000038"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x00000038"
                   children:
                     - name:
                         Named: "*handler"
@@ -1557,13 +1559,13 @@ Child Variables:
                 Named: __13
               type_name:
                 Base: Vector
-              value: "Vector {\n\thandler: unsafe extern \"C\" fn() = unsafe extern \"C\" fn() @ 0x0000003C, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x3c of size 0x4)) >}"
+              value: "Vector {\n\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000003C, \n\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x3c of size 0x4)) >}"
               children:
                 - name:
                     Named: handler
                   type_name:
                     Pointer: "unsafe extern \"C\" fn()"
-                  value: "unsafe extern \"C\" fn() @ 0x0000003C"
+                  value: "*raw unsafe extern \"C\" fn() @ 0x0000003C"
                   children:
                     - name:
                         Named: "*handler"
@@ -1743,8 +1745,8 @@ Child Variables:
             - name:
                 Named: data_ptr
               type_name:
-                Pointer: ~
-              value: "<referenced type> @ 0x20000040"
+                Pointer: u8
+              value: "*raw u8 @ 0x20000040"
               children:
                 - name:
                     Named: "*data_ptr"
@@ -1808,8 +1810,8 @@ Child Variables:
                 - name:
                     Named: data_ptr
                   type_name:
-                    Pointer: ~
-                  value: "<referenced type> @ 0x20000068"
+                    Pointer: u8
+                  value: "*raw u8 @ 0x20000068"
                   children:
                     - name:
                         Named: "*data_ptr"
@@ -1854,7 +1856,8 @@ Child Variables:
                                 Named: id
                               type_name:
                                 Array:
-                                  item_type_name: u8
+                                  item_type_name:
+                                    Base: u8
                                   count: 16
                               value: ": [u8; 16] = [\n\t83, \n\t69, \n\t71, \n\t71, \n\t69, \n\t82, \n\t32, \n\t82, \n\t84, \n\t84, \n\t0, \n\t0, \n\t0, \n\t0, \n\t0, \n\t0]"
                               children:
@@ -1952,7 +1955,8 @@ Child Variables:
                             Named: up_channels
                           type_name:
                             Array:
-                              item_type_name: RttChannel
+                              item_type_name:
+                                Struct: RttChannel
                               count: 2
                           value: ": [RttChannel; 2] = [\n\tRttChannel @ 0x20000090, \n\tRttChannel @ 0x200000A8]"
                           children:
@@ -2128,7 +2132,8 @@ Child Variables:
                             Named: down_channels
                           type_name:
                             Array:
-                              item_type_name: RttChannel
+                              item_type_name:
+                                Struct: RttChannel
                               count: 0
                           value: ": [RttChannel; 0] = []"
             - name:
@@ -2152,7 +2157,8 @@ Child Variables:
                         Named: value
                       type_name:
                         Array:
-                          item_type_name: u8
+                          item_type_name:
+                            Base: u8
                           count: 1024
                       value: Data types with more than 50 members are excluded from this output. This variable has 1024 child members.
             - name:
@@ -2176,7 +2182,8 @@ Child Variables:
                         Named: value
                       type_name:
                         Array:
-                          item_type_name: u8
+                          item_type_name:
+                            Base: u8
                           count: 1024
                       value: Data types with more than 50 members are excluded from this output. This variable has 1024 child members.
     - name:

@@ -1532,8 +1532,8 @@ expression: stack_frames
             - name:
                 Named: data_ptr
               type_name:
-                Pointer: ~
-              value: "<referenced type> @ 0x20003400"
+                Pointer: u8
+              value: "*raw u8 @ 0x20003400"
               children:
                 - name:
                     Named: "*data_ptr"
@@ -1554,8 +1554,8 @@ expression: stack_frames
             - name:
                 Named: data_ptr
               type_name:
-                Pointer: ~
-              value: "<referenced type> @ 0x20003CB4"
+                Pointer: u8
+              value: "*raw u8 @ 0x20003CB4"
               children:
                 - name:
                     Named: "*data_ptr"
@@ -1625,8 +1625,8 @@ expression: stack_frames
             - name:
                 Named: data_ptr
               type_name:
-                Pointer: ~
-              value: "<referenced type> @ 0x2000340C"
+                Pointer: u8
+              value: "*raw u8 @ 0x2000340C"
               children:
                 - name:
                     Named: "*data_ptr"
@@ -1699,8 +1699,8 @@ expression: stack_frames
             - name:
                 Named: data_ptr
               type_name:
-                Pointer: ~
-              value: "<referenced type> @ 0x20003430"
+                Pointer: u8
+              value: "*raw u8 @ 0x20003430"
               children:
                 - name:
                     Named: "*data_ptr"
@@ -1733,8 +1733,8 @@ expression: stack_frames
                     - name:
                         Named: data_ptr
                       type_name:
-                        Pointer: ~
-                      value: "<referenced type> @ 0x20003CDC"
+                        Pointer: u8
+                      value: "*raw u8 @ 0x20003CDC"
                       children:
                         - name:
                             Named: "*data_ptr"
@@ -1832,7 +1832,14 @@ expression: stack_frames
                 Named: raw
               type_name:
                 Array:
-                  item_type_name: "[[i32; 3]; 2]"
+                  item_type_name:
+                    Array:
+                      item_type_name:
+                        Array:
+                          item_type_name:
+                            Base: i32
+                          count: 3
+                      count: 2
                   count: 4
               value: ": [[[i32; 3]; 2]; 4] = [\n\t: [[i32; 3]; 2] = [\n\t\t: [i32; 3] = [\n\t\t\t0, \n\t\t\t1, \n\t\t\t2\n\t\t], \n\t\t: [i32; 3] = [\n\t\t\t3, \n\t\t\t4, \n\t\t\t5\n\t\t]\n\t], \n\t: [[i32; 3]; 2] = [\n\t\t: [i32; 3] = [\n\t\t\t6, \n\t\t\t7, \n\t\t\t8\n\t\t], \n\t\t: [i32; 3] = [\n\t\t\t9, \n\t\t\t10, \n\t\t\t11\n\t\t]\n\t], \n\t: [[i32; 3]; 2] = [\n\t\t: [i32; 3] = [\n\t\t\t12, \n\t\t\t13, \n\t\t\t14\n\t\t], \n\t\t: [i32; 3] = [\n\t\t\t15, \n\t\t\t16, \n\t\t\t17\n\t\t]\n\t], \n\t: [[i32; 3]; 2] = [\n\t\t: [i32; 3] = [\n\t\t\t18, \n\t\t\t19, \n\t\t\t20\n\t\t], \n\t\t: [i32; 3] = [\n\t\t\t21, \n\t\t\t22, \n\t\t\t23\n\t\t]\n\t]]"
               children:
@@ -1840,7 +1847,11 @@ expression: stack_frames
                     Named: __0
                   type_name:
                     Array:
-                      item_type_name: "[i32; 3]"
+                      item_type_name:
+                        Array:
+                          item_type_name:
+                            Base: i32
+                          count: 3
                       count: 2
                   value: ": [[i32; 3]; 2] = [\n\t: [i32; 3] = [\n\t\t0, \n\t\t1, \n\t\t2\n\t], \n\t: [i32; 3] = [\n\t\t3, \n\t\t4, \n\t\t5\n\t]]"
                   children:
@@ -1848,7 +1859,8 @@ expression: stack_frames
                         Named: __0
                       type_name:
                         Array:
-                          item_type_name: i32
+                          item_type_name:
+                            Base: i32
                           count: 3
                       value: ": [i32; 3] = [\n\t0, \n\t1, \n\t2]"
                       children:
@@ -1871,7 +1883,8 @@ expression: stack_frames
                         Named: __1
                       type_name:
                         Array:
-                          item_type_name: i32
+                          item_type_name:
+                            Base: i32
                           count: 3
                       value: ": [i32; 3] = [\n\t3, \n\t4, \n\t5]"
                       children:
@@ -1894,7 +1907,11 @@ expression: stack_frames
                     Named: __1
                   type_name:
                     Array:
-                      item_type_name: "[i32; 3]"
+                      item_type_name:
+                        Array:
+                          item_type_name:
+                            Base: i32
+                          count: 3
                       count: 2
                   value: ": [[i32; 3]; 2] = [\n\t: [i32; 3] = [\n\t\t6, \n\t\t7, \n\t\t8\n\t], \n\t: [i32; 3] = [\n\t\t9, \n\t\t10, \n\t\t11\n\t]]"
                   children:
@@ -1902,7 +1919,8 @@ expression: stack_frames
                         Named: __0
                       type_name:
                         Array:
-                          item_type_name: i32
+                          item_type_name:
+                            Base: i32
                           count: 3
                       value: ": [i32; 3] = [\n\t6, \n\t7, \n\t8]"
                       children:
@@ -1925,7 +1943,8 @@ expression: stack_frames
                         Named: __1
                       type_name:
                         Array:
-                          item_type_name: i32
+                          item_type_name:
+                            Base: i32
                           count: 3
                       value: ": [i32; 3] = [\n\t9, \n\t10, \n\t11]"
                       children:
@@ -1948,7 +1967,11 @@ expression: stack_frames
                     Named: __2
                   type_name:
                     Array:
-                      item_type_name: "[i32; 3]"
+                      item_type_name:
+                        Array:
+                          item_type_name:
+                            Base: i32
+                          count: 3
                       count: 2
                   value: ": [[i32; 3]; 2] = [\n\t: [i32; 3] = [\n\t\t12, \n\t\t13, \n\t\t14\n\t], \n\t: [i32; 3] = [\n\t\t15, \n\t\t16, \n\t\t17\n\t]]"
                   children:
@@ -1956,7 +1979,8 @@ expression: stack_frames
                         Named: __0
                       type_name:
                         Array:
-                          item_type_name: i32
+                          item_type_name:
+                            Base: i32
                           count: 3
                       value: ": [i32; 3] = [\n\t12, \n\t13, \n\t14]"
                       children:
@@ -1979,7 +2003,8 @@ expression: stack_frames
                         Named: __1
                       type_name:
                         Array:
-                          item_type_name: i32
+                          item_type_name:
+                            Base: i32
                           count: 3
                       value: ": [i32; 3] = [\n\t15, \n\t16, \n\t17]"
                       children:
@@ -2002,7 +2027,11 @@ expression: stack_frames
                     Named: __3
                   type_name:
                     Array:
-                      item_type_name: "[i32; 3]"
+                      item_type_name:
+                        Array:
+                          item_type_name:
+                            Base: i32
+                          count: 3
                       count: 2
                   value: ": [[i32; 3]; 2] = [\n\t: [i32; 3] = [\n\t\t18, \n\t\t19, \n\t\t20\n\t], \n\t: [i32; 3] = [\n\t\t21, \n\t\t22, \n\t\t23\n\t]]"
                   children:
@@ -2010,7 +2039,8 @@ expression: stack_frames
                         Named: __0
                       type_name:
                         Array:
-                          item_type_name: i32
+                          item_type_name:
+                            Base: i32
                           count: 3
                       value: ": [i32; 3] = [\n\t18, \n\t19, \n\t20]"
                       children:
@@ -2033,7 +2063,8 @@ expression: stack_frames
                         Named: __1
                       type_name:
                         Array:
-                          item_type_name: i32
+                          item_type_name:
+                            Base: i32
                           count: 3
                       value: ": [i32; 3] = [\n\t21, \n\t22, \n\t23]"
                       children:
@@ -2062,7 +2093,14 @@ expression: stack_frames
                 Named: raw
               type_name:
                 Array:
-                  item_type_name: "[[&str; 3]; 2]"
+                  item_type_name:
+                    Array:
+                      item_type_name:
+                        Array:
+                          item_type_name:
+                            Struct: "&str"
+                          count: 3
+                      count: 2
                   count: 6
               value: ": [[[&str; 3]; 2]; 6] = [\n\t: [[&str; 3]; 2] = [\n\t\t: [&str; 3] = [\n\t\t\tApple, \n\t\t\tBanana, \n\t\t\tCherry\n\t\t], \n\t\t: [&str; 3] = [\n\t\t\tDog, \n\t\t\tElephant, \n\t\t\tFish\n\t\t]\n\t], \n\t: [[&str; 3]; 2] = [\n\t\t: [&str; 3] = [\n\t\t\tGuitar, \n\t\t\tHorse, \n\t\t\tIce Cream\n\t\t], \n\t\t: [&str; 3] = [\n\t\t\tJaguar, \n\t\t\tKangaroo, \n\t\t\tLion\n\t\t]\n\t], \n\t: [[&str; 3]; 2] = [\n\t\t: [&str; 3] = [\n\t\t\tMoon, \n\t\t\tNewton, \n\t\t\tOwl\n\t\t], \n\t\t: [&str; 3] = [\n\t\t\tPencil, \n\t\t\tQueen, \n\t\t\tRainbow\n\t\t]\n\t], \n\t: [[&str; 3]; 2] = [\n\t\t: [&str; 3] = [\n\t\t\tSun, \n\t\t\tTree, \n\t\t\tUmbrella\n\t\t], \n\t\t: [&str; 3] = [\n\t\t\tViolin, \n\t\t\tWatch, \n\t\t\tXylophone\n\t\t]\n\t], \n\t: [[&str; 3]; 2] = [\n\t\t: [&str; 3] = [\n\t\t\tYellow, \n\t\t\tZebra, \n\t\t\tAlpha\n\t\t], \n\t\t: [&str; 3] = [\n\t\t\tBravo, \n\t\t\tCharlie, \n\t\t\tDelta\n\t\t]\n\t], \n\t: [[&str; 3]; 2] = [\n\t\t: [&str; 3] = [\n\t\t\tEcho, \n\t\t\tFoxtrot, \n\t\t\tGolf\n\t\t], \n\t\t: [&str; 3] = [\n\t\t\tHotel, \n\t\t\tIndia, \n\t\t\tJuliet\n\t\t]\n\t]]"
               children:
@@ -2070,7 +2108,11 @@ expression: stack_frames
                     Named: __0
                   type_name:
                     Array:
-                      item_type_name: "[&str; 3]"
+                      item_type_name:
+                        Array:
+                          item_type_name:
+                            Struct: "&str"
+                          count: 3
                       count: 2
                   value: ": [[&str; 3]; 2] = [\n\t: [&str; 3] = [\n\t\tApple, \n\t\tBanana, \n\t\tCherry\n\t], \n\t: [&str; 3] = [\n\t\tDog, \n\t\tElephant, \n\t\tFish\n\t]]"
                   children:
@@ -2078,7 +2120,8 @@ expression: stack_frames
                         Named: __0
                       type_name:
                         Array:
-                          item_type_name: "&str"
+                          item_type_name:
+                            Struct: "&str"
                           count: 3
                       value: ": [&str; 3] = [\n\tApple, \n\tBanana, \n\tCherry]"
                       children:
@@ -2091,8 +2134,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x2000360C"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x2000360C"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2113,8 +2156,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x20003614"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x20003614"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2135,8 +2178,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x2000361C"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x2000361C"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2152,7 +2195,8 @@ expression: stack_frames
                         Named: __1
                       type_name:
                         Array:
-                          item_type_name: "&str"
+                          item_type_name:
+                            Struct: "&str"
                           count: 3
                       value: ": [&str; 3] = [\n\tDog, \n\tElephant, \n\tFish]"
                       children:
@@ -2165,8 +2209,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x20003624"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x20003624"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2187,8 +2231,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x2000362C"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x2000362C"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2209,8 +2253,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x20003634"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x20003634"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2226,7 +2270,11 @@ expression: stack_frames
                     Named: __1
                   type_name:
                     Array:
-                      item_type_name: "[&str; 3]"
+                      item_type_name:
+                        Array:
+                          item_type_name:
+                            Struct: "&str"
+                          count: 3
                       count: 2
                   value: ": [[&str; 3]; 2] = [\n\t: [&str; 3] = [\n\t\tGuitar, \n\t\tHorse, \n\t\tIce Cream\n\t], \n\t: [&str; 3] = [\n\t\tJaguar, \n\t\tKangaroo, \n\t\tLion\n\t]]"
                   children:
@@ -2234,7 +2282,8 @@ expression: stack_frames
                         Named: __0
                       type_name:
                         Array:
-                          item_type_name: "&str"
+                          item_type_name:
+                            Struct: "&str"
                           count: 3
                       value: ": [&str; 3] = [\n\tGuitar, \n\tHorse, \n\tIce Cream]"
                       children:
@@ -2247,8 +2296,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x2000363C"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x2000363C"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2269,8 +2318,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x20003644"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x20003644"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2291,8 +2340,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x2000364C"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x2000364C"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2308,7 +2357,8 @@ expression: stack_frames
                         Named: __1
                       type_name:
                         Array:
-                          item_type_name: "&str"
+                          item_type_name:
+                            Struct: "&str"
                           count: 3
                       value: ": [&str; 3] = [\n\tJaguar, \n\tKangaroo, \n\tLion]"
                       children:
@@ -2321,8 +2371,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x20003654"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x20003654"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2343,8 +2393,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x2000365C"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x2000365C"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2365,8 +2415,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x20003664"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x20003664"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2382,7 +2432,11 @@ expression: stack_frames
                     Named: __2
                   type_name:
                     Array:
-                      item_type_name: "[&str; 3]"
+                      item_type_name:
+                        Array:
+                          item_type_name:
+                            Struct: "&str"
+                          count: 3
                       count: 2
                   value: ": [[&str; 3]; 2] = [\n\t: [&str; 3] = [\n\t\tMoon, \n\t\tNewton, \n\t\tOwl\n\t], \n\t: [&str; 3] = [\n\t\tPencil, \n\t\tQueen, \n\t\tRainbow\n\t]]"
                   children:
@@ -2390,7 +2444,8 @@ expression: stack_frames
                         Named: __0
                       type_name:
                         Array:
-                          item_type_name: "&str"
+                          item_type_name:
+                            Struct: "&str"
                           count: 3
                       value: ": [&str; 3] = [\n\tMoon, \n\tNewton, \n\tOwl]"
                       children:
@@ -2403,8 +2458,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x2000366C"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x2000366C"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2425,8 +2480,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x20003674"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x20003674"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2447,8 +2502,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x2000367C"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x2000367C"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2464,7 +2519,8 @@ expression: stack_frames
                         Named: __1
                       type_name:
                         Array:
-                          item_type_name: "&str"
+                          item_type_name:
+                            Struct: "&str"
                           count: 3
                       value: ": [&str; 3] = [\n\tPencil, \n\tQueen, \n\tRainbow]"
                       children:
@@ -2477,8 +2533,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x20003684"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x20003684"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2499,8 +2555,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x2000368C"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x2000368C"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2521,8 +2577,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x20003694"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x20003694"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2538,7 +2594,11 @@ expression: stack_frames
                     Named: __3
                   type_name:
                     Array:
-                      item_type_name: "[&str; 3]"
+                      item_type_name:
+                        Array:
+                          item_type_name:
+                            Struct: "&str"
+                          count: 3
                       count: 2
                   value: ": [[&str; 3]; 2] = [\n\t: [&str; 3] = [\n\t\tSun, \n\t\tTree, \n\t\tUmbrella\n\t], \n\t: [&str; 3] = [\n\t\tViolin, \n\t\tWatch, \n\t\tXylophone\n\t]]"
                   children:
@@ -2546,7 +2606,8 @@ expression: stack_frames
                         Named: __0
                       type_name:
                         Array:
-                          item_type_name: "&str"
+                          item_type_name:
+                            Struct: "&str"
                           count: 3
                       value: ": [&str; 3] = [\n\tSun, \n\tTree, \n\tUmbrella]"
                       children:
@@ -2559,8 +2620,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x2000369C"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x2000369C"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2581,8 +2642,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x200036A4"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x200036A4"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2603,8 +2664,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x200036AC"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x200036AC"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2620,7 +2681,8 @@ expression: stack_frames
                         Named: __1
                       type_name:
                         Array:
-                          item_type_name: "&str"
+                          item_type_name:
+                            Struct: "&str"
                           count: 3
                       value: ": [&str; 3] = [\n\tViolin, \n\tWatch, \n\tXylophone]"
                       children:
@@ -2633,8 +2695,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x200036B4"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x200036B4"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2655,8 +2717,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x200036BC"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x200036BC"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2677,8 +2739,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x200036C4"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x200036C4"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2694,7 +2756,11 @@ expression: stack_frames
                     Named: __4
                   type_name:
                     Array:
-                      item_type_name: "[&str; 3]"
+                      item_type_name:
+                        Array:
+                          item_type_name:
+                            Struct: "&str"
+                          count: 3
                       count: 2
                   value: ": [[&str; 3]; 2] = [\n\t: [&str; 3] = [\n\t\tYellow, \n\t\tZebra, \n\t\tAlpha\n\t], \n\t: [&str; 3] = [\n\t\tBravo, \n\t\tCharlie, \n\t\tDelta\n\t]]"
                   children:
@@ -2702,7 +2768,8 @@ expression: stack_frames
                         Named: __0
                       type_name:
                         Array:
-                          item_type_name: "&str"
+                          item_type_name:
+                            Struct: "&str"
                           count: 3
                       value: ": [&str; 3] = [\n\tYellow, \n\tZebra, \n\tAlpha]"
                       children:
@@ -2715,8 +2782,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x200036CC"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x200036CC"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2737,8 +2804,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x200036D4"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x200036D4"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2759,8 +2826,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x200036DC"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x200036DC"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2776,7 +2843,8 @@ expression: stack_frames
                         Named: __1
                       type_name:
                         Array:
-                          item_type_name: "&str"
+                          item_type_name:
+                            Struct: "&str"
                           count: 3
                       value: ": [&str; 3] = [\n\tBravo, \n\tCharlie, \n\tDelta]"
                       children:
@@ -2789,8 +2857,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x200036E4"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x200036E4"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2811,8 +2879,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x200036EC"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x200036EC"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2833,8 +2901,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x200036F4"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x200036F4"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2850,7 +2918,11 @@ expression: stack_frames
                     Named: __5
                   type_name:
                     Array:
-                      item_type_name: "[&str; 3]"
+                      item_type_name:
+                        Array:
+                          item_type_name:
+                            Struct: "&str"
+                          count: 3
                       count: 2
                   value: ": [[&str; 3]; 2] = [\n\t: [&str; 3] = [\n\t\tEcho, \n\t\tFoxtrot, \n\t\tGolf\n\t], \n\t: [&str; 3] = [\n\t\tHotel, \n\t\tIndia, \n\t\tJuliet\n\t]]"
                   children:
@@ -2858,7 +2930,8 @@ expression: stack_frames
                         Named: __0
                       type_name:
                         Array:
-                          item_type_name: "&str"
+                          item_type_name:
+                            Struct: "&str"
                           count: 3
                       value: ": [&str; 3] = [\n\tEcho, \n\tFoxtrot, \n\tGolf]"
                       children:
@@ -2871,8 +2944,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x200036FC"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x200036FC"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2893,8 +2966,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x20003704"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x20003704"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2915,8 +2988,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x2000370C"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x2000370C"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2932,7 +3005,8 @@ expression: stack_frames
                         Named: __1
                       type_name:
                         Array:
-                          item_type_name: "&str"
+                          item_type_name:
+                            Struct: "&str"
                           count: 3
                       value: ": [&str; 3] = [\n\tHotel, \n\tIndia, \n\tJuliet]"
                       children:
@@ -2945,8 +3019,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x20003714"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x20003714"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2967,8 +3041,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x2000371C"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x2000371C"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -2989,8 +3063,8 @@ expression: stack_frames
                             - name:
                                 Named: data_ptr
                               type_name:
-                                Pointer: ~
-                              value: "<referenced type> @ 0x20003724"
+                                Pointer: u8
+                              value: "*raw u8 @ 0x20003724"
                               children:
                                 - name:
                                     Named: "*data_ptr"
@@ -3438,7 +3512,8 @@ expression: stack_frames
             Named: my_array
           type_name:
             Array:
-              item_type_name: i32
+              item_type_name:
+                Base: i32
               count: 10
           value: ": [i32; 10] = [\n\t55, \n\t55, \n\t55, \n\t55, \n\t55, \n\t55, \n\t55, \n\t55, \n\t55, \n\t55]"
           children:
@@ -3502,7 +3577,8 @@ expression: stack_frames
                 Named: "*my_array_ptr"
               type_name:
                 Array:
-                  item_type_name: i32
+                  item_type_name:
+                    Base: i32
                   count: 10
               value: ": [i32; 10] = [\n\t55, \n\t55, \n\t55, \n\t55, \n\t55, \n\t55, \n\t55, \n\t55, \n\t55, \n\t55]"
               children:
@@ -3560,7 +3636,8 @@ expression: stack_frames
             Named: my_array_of_i8
           type_name:
             Array:
-              item_type_name: i8
+              item_type_name:
+                Base: i8
               count: 10
           value: ": [i8; 10] = [\n\t1, \n\t2, \n\t3, \n\t4, \n\t5, \n\t6, \n\t7, \n\t8, \n\t9, \n\t0]"
           children:
@@ -3629,7 +3706,8 @@ expression: stack_frames
                 Named: buffer
               type_name:
                 Array:
-                  item_type_name: MaybeUninit<i8>
+                  item_type_name:
+                    Base: MaybeUninit<i8>
                   count: 10
               value: ": [MaybeUninit<i8>; 10] = [\n\tMaybeUninit<i8> {\n\t\tuninit: () = (), \n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3C\n\t}, \n\tMaybeUninit<i8> {\n\t\tuninit: () = (), \n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3D\n\t}, \n\tMaybeUninit<i8> {\n\t\tuninit: () = (), \n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3E\n\t}, \n\tMaybeUninit<i8> {\n\t\tuninit: () = (), \n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3F\n\t}, \n\tMaybeUninit<i8> {\n\t\tuninit: () = (), \n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C40\n\t}, \n\tMaybeUninit<i8> {\n\t\tuninit: () = (), \n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C41\n\t}, \n\tMaybeUninit<i8> {\n\t\tuninit: () = (), \n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C42\n\t}, \n\tMaybeUninit<i8> {\n\t\tuninit: () = (), \n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C43\n\t}, \n\tMaybeUninit<i8> {\n\t\tuninit: () = (), \n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C44\n\t}, \n\tMaybeUninit<i8> {\n\t\tuninit: () = (), \n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C45\n\t}]"
               children:
@@ -4273,7 +4351,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: Unknown
+      value: "<unknown>"
   canonical_frame_address: 536887288
 - function_name: __cortex_m_rt_main_trampoline
   source_location:
@@ -4479,7 +4557,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: Unknown
+      value: "<unknown>"
   canonical_frame_address: 536887296
 - function_name: "<unknown function @ 0x100001e6>"
   source_location: ~
