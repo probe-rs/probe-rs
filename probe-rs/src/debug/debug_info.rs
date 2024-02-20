@@ -253,81 +253,8 @@ impl DebugInfo {
     /// We do not actually resolve the children of `[VariableName::StaticScope]` automatically, and only create the necessary header in the `VariableCache`.
     /// This allows us to resolve the `[VariableName::StaticScope]` on demand/lazily, when a user requests it from the debug client.
     /// This saves a lot of overhead when a user only wants to see the `[VariableName::LocalScope]` or `[VariableName::Registers]` while stepping through code (the most common use cases)
-    pub fn create_static_scope_cache(
-        &self,
-        memory: &mut dyn MemoryInterface,
-        registers: &DebugRegisters,
-    ) -> Result<VariableCache, DebugError> {
-        // TODO: Do this for all Units
-
-        let mut unit_infos = self.unit_infos.iter();
-
-        let Some(unit_info) = unit_infos.next() else {
-            // No unit infos
-            return Err(DebugError::Other(anyhow::anyhow!("Missing unit infos")));
-        };
-
-        let mut entries = unit_info.unit.entries();
-
-        // Only process statics for this unit header.
-        // Navigate the current unit from the header down.
-        let (_, unit_node) = entries.next_dfs()?.unwrap();
-
-        let mut variable_cache = VariableCache::new_dwarf_cache(
-            unit_node.offset(),
-            VariableName::StaticScopeRoot,
-            Some(&self.unit_infos[0]),
-        );
-
-        let mut root = variable_cache.root_variable().clone();
-
-        let mut tree = unit_info
-            .unit
-            .header
-            .entries_tree(&unit_info.unit.abbreviations, Some(unit_node.offset()))?;
-
-        unit_info.process_tree(
-            self,
-            tree.root()?,
-            &mut root,
-            memory,
-            &mut variable_cache,
-            StackFrameInfo {
-                registers,
-                frame_base: None,
-                canonical_frame_address: None,
-            },
-        )?;
-
-        for unit in unit_infos {
-            let mut entries = unit.unit.entries();
-
-            // Only process statics for this unit header.
-            // Navigate the current unit from the header down.
-            let (_, unit_node) = entries.next_dfs()?.unwrap();
-
-            let mut tree = unit
-                .unit
-                .header
-                .entries_tree(&unit.unit.abbreviations, Some(unit_node.offset()))?;
-
-            unit.process_tree(
-                self,
-                tree.root()?,
-                &mut root,
-                memory,
-                &mut variable_cache,
-                StackFrameInfo {
-                    registers,
-                    frame_base: None,
-                    canonical_frame_address: None,
-                },
-            )?;
-        }
-
-        variable_cache.update_variable(&root)?;
-
-        Ok(variable_cache)
+    pub fn create_static_scope_cache(&self) -> VariableCache {
+        VariableCache::new_static_cache()
     }
 
     /// Creates the unpopulated cache for `function` variables
@@ -346,13 +273,14 @@ impl DebugInfo {
         let function_variable_cache = VariableCache::new_dwarf_cache(
             function_node.entry().offset(),
             VariableName::LocalScopeRoot,
-            Some(unit_info),
-        );
+            unit_info,
+        )?;
 
         Ok(function_variable_cache)
     }
 
     /// This effects the on-demand expansion of lazy/deferred load of all the 'child' `Variable`s for a given 'parent'.
+    #[tracing::instrument(level = "trace", skip_all, fields(parent_variable = ?parent_variable.variable_key()))]
     pub fn cache_deferred_variables(
         &self,
         cache: &mut VariableCache,
@@ -370,26 +298,19 @@ impl DebugInfo {
             return Ok(());
         }
 
-        let Some(header_offset) = parent_variable.unit_header_offset else {
-            return Ok(());
-        };
-
-        let unit_header = self.dwarf.debug_info.header_from_offset(header_offset)?;
-        let unit_info = UnitInfo::new(gimli::Unit::new(&self.dwarf, unit_header)?);
-
         match parent_variable.variable_node_type {
-            VariableNodeType::ReferenceOffset(reference_offset) => {
+            VariableNodeType::ReferenceOffset(header_offset, reference_offset) => {
+                let unit_header = self.dwarf.debug_info.header_from_offset(header_offset)?;
+                let unit_info = UnitInfo::new(gimli::Unit::new(&self.dwarf, unit_header)?);
+
                 // Reference to a type, or an node.entry() to another type or a type modifier which will point to another type.
                 let mut type_tree = unit_info
                     .unit
                     .header
                     .entries_tree(&unit_info.unit.abbreviations, Some(reference_offset))?;
                 let referenced_node = type_tree.root()?;
-                let mut referenced_variable = cache.create_variable(
-                    parent_variable.variable_key,
-                    Some(referenced_node.entry().offset()),
-                    Some(&unit_info),
-                )?;
+                let mut referenced_variable =
+                    cache.create_variable(parent_variable.variable_key, Some(&unit_info))?;
 
                 referenced_variable.name = match &parent_variable.name {
                     VariableName::Named(name) if name.starts_with("Some ") => VariableName::Named(name.replacen('&', "*", 1)) ,
@@ -413,7 +334,10 @@ impl DebugInfo {
                     cache.remove_cache_entry(referenced_variable.variable_key)?;
                 }
             }
-            VariableNodeType::TypeOffset(type_offset) => {
+            VariableNodeType::TypeOffset(header_offset, type_offset) => {
+                let unit_header = self.dwarf.debug_info.header_from_offset(header_offset)?;
+                let unit_info = UnitInfo::new(gimli::Unit::new(&self.dwarf, unit_header)?);
+
                 // Find the parent node
                 let mut type_tree = unit_info
                     .unit
@@ -430,12 +354,15 @@ impl DebugInfo {
                     frame_info,
                 )?;
             }
-            VariableNodeType::DirectLookup => {
+            VariableNodeType::DirectLookup(header_offset, unit_offset) => {
+                let unit_header = self.dwarf.debug_info.header_from_offset(header_offset)?;
+                let unit_info = UnitInfo::new(gimli::Unit::new(&self.dwarf, unit_header)?);
+
                 // Find the parent node
-                let mut type_tree = unit_info.unit.header.entries_tree(
-                    &unit_info.unit.abbreviations,
-                    parent_variable.variable_unit_offset,
-                )?;
+                let mut type_tree = unit_info
+                    .unit
+                    .header
+                    .entries_tree(&unit_info.unit.abbreviations, Some(unit_offset))?;
 
                 let parent_node = type_tree.root()?;
 
@@ -447,6 +374,57 @@ impl DebugInfo {
                     cache,
                     frame_info,
                 )?;
+            }
+            VariableNodeType::UnitsLookup => {
+                // Look up static variables from all units
+                let mut unit_infos = self.unit_infos.iter();
+
+                let Some(unit_info) = unit_infos.next() else {
+                    // No unit infos
+                    return Err(DebugError::Other(anyhow::anyhow!("Missing unit infos")));
+                };
+
+                let mut entries = unit_info.unit.entries();
+
+                // Only process statics for this unit header.
+                // Navigate the current unit from the header down.
+                let (_, unit_node) = entries.next_dfs()?.unwrap();
+
+                let mut tree = unit_info
+                    .unit
+                    .header
+                    .entries_tree(&unit_info.unit.abbreviations, Some(unit_node.offset()))?;
+
+                unit_info.process_tree(
+                    self,
+                    tree.root()?,
+                    parent_variable,
+                    memory,
+                    cache,
+                    frame_info,
+                )?;
+
+                for unit in unit_infos {
+                    let mut entries = unit.unit.entries();
+
+                    // Only process statics for this unit header.
+                    // Navigate the current unit from the header down.
+                    let (_, unit_node) = entries.next_dfs()?.unwrap();
+
+                    let mut tree = unit
+                        .unit
+                        .header
+                        .entries_tree(&unit.unit.abbreviations, Some(unit_node.offset()))?;
+
+                    unit.process_tree(
+                        self,
+                        tree.root()?,
+                        parent_variable,
+                        memory,
+                        cache,
+                        frame_info,
+                    )?;
+                }
             }
             _ => {
                 // Do nothing. These have already been recursed to their maximum.
@@ -2102,9 +2080,7 @@ mod test {
 
         let snapshot_name = format!("{chip_name}__static_variables");
 
-        let mut static_variables = debug_info
-            .create_static_scope_cache(&mut adapter, &initial_registers)
-            .unwrap();
+        let mut static_variables = debug_info.create_static_scope_cache();
 
         static_variables.recurse_deferred_variables(
             &debug_info,

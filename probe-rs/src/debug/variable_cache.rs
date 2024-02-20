@@ -111,11 +111,23 @@ impl VariableCache {
     pub fn new_dwarf_cache(
         entries_offset: UnitOffset,
         name: VariableName,
-        unit_info: Option<&UnitInfo>,
-    ) -> Self {
-        let mut static_root_variable = Variable::new(Some(entries_offset), unit_info);
-        static_root_variable.variable_node_type = VariableNodeType::DirectLookup;
+        unit_info: &UnitInfo,
+    ) -> Result<Self, DebugError> {
+        let mut static_root_variable = Variable::new(Some(unit_info));
+        static_root_variable.variable_node_type =
+            VariableNodeType::DirectLookup(unit_info.debug_info_offset()?, entries_offset);
         static_root_variable.name = name;
+
+        Ok(VariableCache::new(static_root_variable))
+    }
+
+    /// Create a cache for static variables.
+    ///
+    /// This will be filled with static variables when `cache_deferred_variables` is called.
+    pub fn new_static_cache() -> Self {
+        let mut static_root_variable = Variable::new(None);
+        static_root_variable.variable_node_type = VariableNodeType::UnitsLookup;
+        static_root_variable.name = VariableName::StaticScopeRoot;
 
         VariableCache::new(static_root_variable)
     }
@@ -140,7 +152,6 @@ impl VariableCache {
     pub fn create_variable(
         &mut self,
         parent_key: ObjectRef,
-        entries_offset: Option<UnitOffset>,
         unit_info: Option<&UnitInfo>,
     ) -> Result<Variable, Error> {
         // Validate that the parent_key exists ...
@@ -148,7 +159,7 @@ impl VariableCache {
             return Err(anyhow!("VariableCache: Attempted to add a new variable with non existent `parent_key`: {:?}. Please report this as a bug", parent_key).into());
         }
 
-        let mut variable_to_add = Variable::new(entries_offset, unit_info);
+        let mut variable_to_add = Variable::new(unit_info);
         variable_to_add.parent_key = parent_key;
 
         // The caller is telling us this is definitely a new `Variable`
@@ -493,7 +504,6 @@ impl VariableCache {
 
 #[cfg(test)]
 mod test {
-    use gimli::UnitOffset;
     use termtree::Tree;
 
     use crate::debug::{
@@ -527,7 +537,7 @@ mod test {
 
     #[test]
     fn static_cache() {
-        let c = VariableCache::new_dwarf_cache(UnitOffset(0), VariableName::StaticScopeRoot, None);
+        let c = VariableCache::new_static_cache();
 
         let cache_variable = c.root_variable();
 
@@ -538,7 +548,7 @@ mod test {
         assert_eq!(cache_variable.type_name, VariableType::Unknown);
         assert_eq!(
             cache_variable.variable_node_type,
-            VariableNodeType::DirectLookup
+            VariableNodeType::UnitsLookup
         );
 
         assert_eq!(cache_variable.get_value(&c), "Unknown");
@@ -552,16 +562,12 @@ mod test {
 
     #[test]
     fn find_children() {
-        let mut cache = VariableCache::new_dwarf_cache(
-            UnitOffset(0),
-            VariableName::Named("root".to_string()),
-            None,
-        );
+        let mut cache = VariableCache::new_static_cache();
         let root_key = cache.root_variable().variable_key;
 
-        let var_1 = cache.create_variable(root_key, None, None).unwrap();
+        let var_1 = cache.create_variable(root_key, None).unwrap();
 
-        let var_2 = cache.create_variable(root_key, None, None).unwrap();
+        let var_2 = cache.create_variable(root_key, None).unwrap();
 
         let children: Vec<_> = cache.get_children(root_key).collect();
 
@@ -572,16 +578,12 @@ mod test {
 
     #[test]
     fn find_entry() {
-        let mut cache = VariableCache::new_dwarf_cache(
-            UnitOffset(0),
-            VariableName::Named("root".to_string()),
-            None,
-        );
+        let mut cache = VariableCache::new_static_cache();
         let root_key = cache.root_variable().variable_key;
 
-        let var_1 = cache.create_variable(root_key, None, None).unwrap();
+        let var_1 = cache.create_variable(root_key, None).unwrap();
 
-        let _var_2 = cache.create_variable(root_key, None, None).unwrap();
+        let _var_2 = cache.create_variable(root_key, None).unwrap();
 
         assert_eq!(cache.get_variable_by_key(var_1.variable_key), Some(var_1));
     }
@@ -603,34 +605,22 @@ mod test {
     ///     |
     ///     +-- [var_7]
     fn build_test_tree() -> (VariableCache, Vec<Variable>) {
-        let mut cache = VariableCache::new_dwarf_cache(
-            UnitOffset(0),
-            VariableName::Named("root".to_string()),
-            None,
-        );
+        let mut cache = VariableCache::new_static_cache();
         let root_key = cache.root_variable().variable_key;
 
-        let var_1 = cache.create_variable(root_key, None, None).unwrap();
+        let var_1 = cache.create_variable(root_key, None).unwrap();
 
-        let var_2 = cache.create_variable(root_key, None, None).unwrap();
+        let var_2 = cache.create_variable(root_key, None).unwrap();
 
-        let var_3 = cache
-            .create_variable(var_2.variable_key, None, None)
-            .unwrap();
+        let var_3 = cache.create_variable(var_2.variable_key, None).unwrap();
 
-        let var_4 = cache
-            .create_variable(var_2.variable_key, None, None)
-            .unwrap();
+        let var_4 = cache.create_variable(var_2.variable_key, None).unwrap();
 
-        let var_5 = cache
-            .create_variable(var_3.variable_key, None, None)
-            .unwrap();
+        let var_5 = cache.create_variable(var_3.variable_key, None).unwrap();
 
-        let var_6 = cache.create_variable(root_key, None, None).unwrap();
+        let var_6 = cache.create_variable(root_key, None).unwrap();
 
-        let var_7 = cache
-            .create_variable(var_6.variable_key, None, None)
-            .unwrap();
+        let var_7 = cache.create_variable(var_6.variable_key, None).unwrap();
 
         assert_eq!(cache.len(), 8);
 
