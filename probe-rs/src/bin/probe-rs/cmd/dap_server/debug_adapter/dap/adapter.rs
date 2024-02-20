@@ -1394,10 +1394,22 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let mut variable_cache: Option<&mut probe_rs::debug::VariableCache> = None;
         let mut frame_info: Option<StackFrameInfo<'_>> = None;
 
+        let registers;
+
         if let Some(search_cache) = &mut target_core.core_data.static_variables {
             if let Some(search_variable) = search_cache.get_variable_by_key(variable_ref) {
                 parent_variable = Some(search_variable);
                 variable_cache = Some(search_cache);
+
+                if let Some(top_level_frame) = target_core.core_data.stack_frames.first() {
+                    registers = top_level_frame.registers.clone();
+
+                    frame_info = Some(StackFrameInfo {
+                        registers: &registers,
+                        frame_base: top_level_frame.frame_base,
+                        canonical_frame_address: top_level_frame.canonical_frame_address,
+                    });
+                }
             }
         }
 
