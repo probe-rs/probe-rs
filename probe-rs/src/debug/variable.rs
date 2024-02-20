@@ -108,13 +108,15 @@ pub enum VariableNodeType {
     /// For pointer values, their referenced variables are found at an [gimli::UnitOffset] in the [DebugInfo].
     /// - Rule: Pointers to `struct` variables WILL NOT BE recursed, because  this may lead to infinite loops/stack overflows in `struct`s that self-reference.
     /// - Rule: Pointers to "base" datatypes SHOULD BE, but ARE NOT resolved, because it would keep the UX simple, but DWARF doesn't make it easy to determine when a pointer points to a base data type. We can read ahead in the DIE children, but that feels rather inefficient.
-    ReferenceOffset(UnitOffset),
+    ReferenceOffset(DebugInfoOffset, UnitOffset),
     /// Use the `header_offset` and `type_offset` as direct references for recursing the variable children. With the current implementation, the `type_offset` will point to a DIE with a tag of `DW_TAG_structure_type`.
     /// - Rule: For structured variables, we WILL NOT automatically expand their children, but we have enough information to expand it on demand. Except if they fall into one of the special cases handled by [VariableNodeType::RecurseToBaseType]
-    TypeOffset(UnitOffset),
+    TypeOffset(DebugInfoOffset, UnitOffset),
     /// Use the `header_offset` and `entries_offset` as direct references for recursing the variable children.
-    /// - Rule: All top level variables in a [StackFrame] are automatically deferred, i.e [VariableName::LocalScopeRoot], [VariableName::RegistersRoot], [VariableName::LocalScopeRoot].
-    DirectLookup,
+    /// - Rule: All top level variables in a [StackFrame] are automatically deferred, i.e [VariableName::LocalScopeRoot], [VariableName::RegistersRoot].
+    DirectLookup(DebugInfoOffset, UnitOffset),
+    /// Look up information from all compilation units. This is used to resolve static variables, so when [`VariableName::StaticScopeRoot`] is used.
+    UnitsLookup,
     /// Sometimes it doesn't make sense to recurse the children of a specific node type
     /// - Rule: Pointers to `unit` datatypes WILL NOT BE resolved, because it doesn't make sense.
     /// - Rule: Once we determine that a variable can not be recursed further, we update the variable_node_type to indicate that no further recursion is possible/required. This can be because the variable is a 'base' data type, or because there was some kind of error in processing the current node, so we don't want to incur cascading errors.
@@ -135,10 +137,11 @@ impl VariableNodeType {
     /// Will return true if any of the `variable_node_type` value implies that the variable will be 'lazy' resolved.
     pub fn is_deferred(&self) -> bool {
         match self {
-            VariableNodeType::ReferenceOffset(_)
-            | VariableNodeType::TypeOffset(_)
-            | VariableNodeType::DirectLookup => true,
-            _other => false,
+            VariableNodeType::ReferenceOffset(_, _)
+            | VariableNodeType::TypeOffset(_, _)
+            | VariableNodeType::DirectLookup(_, _)
+            | VariableNodeType::UnitsLookup => true,
+            VariableNodeType::DoNotRecurse | VariableNodeType::RecurseToBaseType => false,
         }
     }
 }
@@ -346,12 +349,6 @@ pub struct Variable {
 
     /// The name of the type of this variable.
     pub type_name: VariableType,
-    /// The unit_header_offset and variable_unit_offset are cached to allow on-demand access to the variable's gimli::Unit, through functions like:
-    ///   `gimli::Read::DebugInfo.header_from_offset()`, and
-    ///   `gimli::Read::UnitHeader.entries_tree()`
-    pub unit_header_offset: Option<DebugInfoOffset>,
-    /// The offset of this variable into the compilation unit debug information.
-    pub variable_unit_offset: Option<UnitOffset>,
     /// For 'lazy loading' of certain variable types we have to determine if the variable recursion should be deferred, and if so, how to resolve it when the request for further recursion happens.
     /// See [VariableNodeType] for more information.
     pub variable_node_type: VariableNodeType,
@@ -367,11 +364,8 @@ pub struct Variable {
 
 impl Variable {
     /// In most cases, Variables will be initialized with their ELF references so that we resolve their data types and values on demand.
-    pub fn new(entries_offset: Option<UnitOffset>, unit_info: Option<&UnitInfo>) -> Variable {
+    pub fn new(unit_info: Option<&UnitInfo>) -> Variable {
         Variable {
-            unit_header_offset: unit_info
-                .and_then(|info| info.unit.header.offset().as_debug_info_offset()),
-            variable_unit_offset: entries_offset,
             language: unit_info
                 .map(|info| info.get_language())
                 .unwrap_or(gimli::DW_LANG_Rust),
@@ -492,7 +486,7 @@ impl Variable {
                 self.formatted_variable_value(variable_cache, 0_usize, false)
             } else {
                 format!(
-                    "Unimplemented: Evaluate type {:?} of ({:?} bytes) at location 0x{:08x?}",
+                    "Unimplemented: Get value of type {:?} of ({:?} bytes) at location 0x{:08x?}",
                     self.type_name, self.byte_size, self.memory_location
                 )
             }

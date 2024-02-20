@@ -12,7 +12,7 @@ use crate::{
 };
 use std::fmt::{Display, Write};
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct C;
 
 impl ProgrammingLanguage for C {

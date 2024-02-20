@@ -29,31 +29,25 @@ impl Serialize for VariableCache {
 
         /// This is a modified version of the [`Variable`] struct, to be used for serialization as a recursive tree node.
         #[derive(Serialize)]
-        struct VariableTreeNode {
-            name: VariableName,
-            type_name: VariableType,
+        struct VariableTreeNode<'c> {
+            name: &'c VariableName,
+            type_name: &'c VariableType,
             /// To eliminate noise, we will only show values for base data types and strings.
             value: String,
             /// ONLY If there are children.
             #[serde(skip_serializing_if = "Vec::is_empty")]
-            children: Vec<VariableTreeNode>,
+            children: Vec<VariableTreeNode<'c>>,
         }
 
         fn recurse_cache(variable_cache: &VariableCache) -> VariableTreeNode {
             let root_node = variable_cache.root_variable();
 
-            let children_count = variable_cache.get_children(root_node.variable_key).count();
-
             VariableTreeNode {
-                name: root_node.name.clone(),
-                type_name: root_node.type_name.clone(),
+                name: &root_node.name,
+                type_name: &root_node.type_name,
                 value: root_node.get_value(variable_cache),
                 // Only expand the children if there are less than 50, to limit the size of the output.
-                children: if children_count > 50 {
-                    Vec::new()
-                } else {
-                    recurse_variables(variable_cache, root_node.variable_key)
-                },
+                children: recurse_variables(variable_cache, root_node.variable_key),
             }
         }
 
@@ -75,8 +69,8 @@ impl Serialize for VariableCache {
                     };
 
                     VariableTreeNode {
-                        name: child_variable.name.clone(),
-                        type_name: child_variable.type_name.clone(),
+                        name: &child_variable.name,
+                        type_name: &child_variable.type_name,
                         value,
                         // Only expand the children if there are less than 50, to limit the size of the output.
                         children: if children_count > 50 {
@@ -117,23 +111,30 @@ impl VariableCache {
     pub fn new_dwarf_cache(
         entries_offset: UnitOffset,
         name: VariableName,
-        unit_info: Option<&UnitInfo>,
-    ) -> Self {
-        let mut static_root_variable = Variable::new(Some(entries_offset), unit_info);
-        static_root_variable.variable_node_type = VariableNodeType::DirectLookup;
+        unit_info: &UnitInfo,
+    ) -> Result<Self, DebugError> {
+        let mut static_root_variable = Variable::new(Some(unit_info));
+        static_root_variable.variable_node_type =
+            VariableNodeType::DirectLookup(unit_info.debug_info_offset()?, entries_offset);
         static_root_variable.name = name;
+
+        Ok(VariableCache::new(static_root_variable))
+    }
+
+    /// Create a cache for static variables.
+    ///
+    /// This will be filled with static variables when `cache_deferred_variables` is called.
+    pub fn new_static_cache() -> Self {
+        let mut static_root_variable = Variable::new(None);
+        static_root_variable.variable_node_type = VariableNodeType::UnitsLookup;
+        static_root_variable.name = VariableName::StaticScopeRoot;
 
         VariableCache::new(static_root_variable)
     }
 
     /// Get the root variable of the cache
-    pub fn root_variable(&self) -> Variable {
-        self.variable_hash_map[&self.root_variable_key].clone()
-    }
-
-    /// Get a mutable reference to the root variable of the cache
-    pub fn root_variable_mut(&mut self) -> Option<&mut Variable> {
-        self.variable_hash_map.get_mut(&self.root_variable_key)
+    pub fn root_variable(&self) -> &Variable {
+        &self.variable_hash_map[&self.root_variable_key]
     }
 
     /// Returns the number of `Variable`s in the cache.
@@ -151,7 +152,6 @@ impl VariableCache {
     pub fn create_variable(
         &mut self,
         parent_key: ObjectRef,
-        entries_offset: Option<UnitOffset>,
         unit_info: Option<&UnitInfo>,
     ) -> Result<Variable, Error> {
         // Validate that the parent_key exists ...
@@ -159,7 +159,7 @@ impl VariableCache {
             return Err(anyhow!("VariableCache: Attempted to add a new variable with non existent `parent_key`: {:?}. Please report this as a bug", parent_key).into());
         }
 
-        let mut variable_to_add = Variable::new(entries_offset, unit_info);
+        let mut variable_to_add = Variable::new(unit_info);
         variable_to_add.parent_key = parent_key;
 
         // The caller is telling us this is definitely a new `Variable`
@@ -382,7 +382,7 @@ impl VariableCache {
         max_recursion_depth: usize,
         frame_info: StackFrameInfo<'_>,
     ) {
-        let mut parent_variable = self.root_variable();
+        let mut parent_variable = self.root_variable().clone();
 
         self.recurse_deferred_variables_internal(
             debug_info,
@@ -505,7 +505,6 @@ impl VariableCache {
 
 #[cfg(test)]
 mod test {
-    use gimli::UnitOffset;
     use termtree::Tree;
 
     use crate::debug::{
@@ -514,7 +513,7 @@ mod test {
     };
 
     fn show_tree(cache: &VariableCache) {
-        let tree = build_tree(cache, &cache.root_variable());
+        let tree = build_tree(cache, cache.root_variable());
 
         println!("{}", tree);
     }
@@ -539,7 +538,7 @@ mod test {
 
     #[test]
     fn static_cache() {
-        let c = VariableCache::new_dwarf_cache(UnitOffset(0), VariableName::StaticScopeRoot, None);
+        let c = VariableCache::new_static_cache();
 
         let cache_variable = c.root_variable();
 
@@ -550,7 +549,7 @@ mod test {
         assert_eq!(cache_variable.type_name, VariableType::Unknown);
         assert_eq!(
             cache_variable.variable_node_type,
-            VariableNodeType::DirectLookup
+            VariableNodeType::UnitsLookup
         );
 
         assert_eq!(cache_variable.get_value(&c), "<unknown>");
@@ -564,16 +563,12 @@ mod test {
 
     #[test]
     fn find_children() {
-        let mut cache = VariableCache::new_dwarf_cache(
-            UnitOffset(0),
-            VariableName::Named("root".to_string()),
-            None,
-        );
+        let mut cache = VariableCache::new_static_cache();
         let root_key = cache.root_variable().variable_key;
 
-        let var_1 = cache.create_variable(root_key, None, None).unwrap();
+        let var_1 = cache.create_variable(root_key, None).unwrap();
 
-        let var_2 = cache.create_variable(root_key, None, None).unwrap();
+        let var_2 = cache.create_variable(root_key, None).unwrap();
 
         let children: Vec<_> = cache.get_children(root_key).collect();
 
@@ -584,16 +579,12 @@ mod test {
 
     #[test]
     fn find_entry() {
-        let mut cache = VariableCache::new_dwarf_cache(
-            UnitOffset(0),
-            VariableName::Named("root".to_string()),
-            None,
-        );
+        let mut cache = VariableCache::new_static_cache();
         let root_key = cache.root_variable().variable_key;
 
-        let var_1 = cache.create_variable(root_key, None, None).unwrap();
+        let var_1 = cache.create_variable(root_key, None).unwrap();
 
-        let _var_2 = cache.create_variable(root_key, None, None).unwrap();
+        let _var_2 = cache.create_variable(root_key, None).unwrap();
 
         assert_eq!(cache.get_variable_by_key(var_1.variable_key), Some(var_1));
     }
@@ -615,39 +606,27 @@ mod test {
     ///     |
     ///     +-- [var_7]
     fn build_test_tree() -> (VariableCache, Vec<Variable>) {
-        let mut cache = VariableCache::new_dwarf_cache(
-            UnitOffset(0),
-            VariableName::Named("root".to_string()),
-            None,
-        );
+        let mut cache = VariableCache::new_static_cache();
         let root_key = cache.root_variable().variable_key;
 
-        let var_1 = cache.create_variable(root_key, None, None).unwrap();
+        let var_1 = cache.create_variable(root_key, None).unwrap();
 
-        let var_2 = cache.create_variable(root_key, None, None).unwrap();
+        let var_2 = cache.create_variable(root_key, None).unwrap();
 
-        let var_3 = cache
-            .create_variable(var_2.variable_key, None, None)
-            .unwrap();
+        let var_3 = cache.create_variable(var_2.variable_key, None).unwrap();
 
-        let var_4 = cache
-            .create_variable(var_2.variable_key, None, None)
-            .unwrap();
+        let var_4 = cache.create_variable(var_2.variable_key, None).unwrap();
 
-        let var_5 = cache
-            .create_variable(var_3.variable_key, None, None)
-            .unwrap();
+        let var_5 = cache.create_variable(var_3.variable_key, None).unwrap();
 
-        let var_6 = cache.create_variable(root_key, None, None).unwrap();
+        let var_6 = cache.create_variable(root_key, None).unwrap();
 
-        let var_7 = cache
-            .create_variable(var_6.variable_key, None, None)
-            .unwrap();
+        let var_7 = cache.create_variable(var_6.variable_key, None).unwrap();
 
         assert_eq!(cache.len(), 8);
 
         let variables = vec![
-            cache.root_variable(),
+            cache.root_variable().clone(),
             var_1,
             var_2,
             var_3,

@@ -10,7 +10,7 @@ use crate::{
     MemoryInterface,
 };
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Rust;
 
 impl ProgrammingLanguage for Rust {

@@ -112,6 +112,7 @@ impl SessionData {
                     target_session.target().name
                 ),
                 debug_info: debug_info_from_binary(core_configuration)?,
+                static_variables: None,
                 core_peripherals: None,
                 stack_frames: vec![],
                 breakpoints: vec![],
@@ -257,6 +258,10 @@ impl SessionData {
                 let initial_registers = DebugRegisters::from_core(&mut target_core.core);
                 let exception_interface = exception_handler_for_core(target_core.core.core_type());
                 let instruction_set = target_core.core.instruction_set().ok();
+
+                target_core.core_data.static_variables =
+                    Some(target_core.core_data.debug_info.create_static_scope_cache());
+
                 target_core.core_data.stack_frames = target_core.core_data.debug_info.unwind(
                     &mut target_core.core,
                     initial_registers,

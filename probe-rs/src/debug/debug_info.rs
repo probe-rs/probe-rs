@@ -253,21 +253,8 @@ impl DebugInfo {
     /// We do not actually resolve the children of `[VariableName::StaticScope]` automatically, and only create the necessary header in the `VariableCache`.
     /// This allows us to resolve the `[VariableName::StaticScope]` on demand/lazily, when a user requests it from the debug client.
     /// This saves a lot of overhead when a user only wants to see the `[VariableName::LocalScope]` or `[VariableName::Registers]` while stepping through code (the most common use cases)
-    pub(crate) fn create_static_scope_cache(
-        &self,
-        unit_info: &UnitInfo,
-    ) -> Result<VariableCache, gimli::Error> {
-        // Only process statics for this unit header.
-        let abbrevs = &unit_info.unit.abbreviations;
-        // Navigate the current unit from the header down.
-        let mut header_tree = unit_info.unit.header.entries_tree(abbrevs, None)?;
-        let unit_node = header_tree.root()?;
-
-        Ok(VariableCache::new_dwarf_cache(
-            unit_node.entry().offset(),
-            VariableName::StaticScopeRoot,
-            Some(unit_info),
-        ))
+    pub fn create_static_scope_cache(&self) -> VariableCache {
+        VariableCache::new_static_cache()
     }
 
     /// Creates the unpopulated cache for `function` variables
@@ -286,13 +273,14 @@ impl DebugInfo {
         let function_variable_cache = VariableCache::new_dwarf_cache(
             function_node.entry().offset(),
             VariableName::LocalScopeRoot,
-            Some(unit_info),
-        );
+            unit_info,
+        )?;
 
         Ok(function_variable_cache)
     }
 
     /// This effects the on-demand expansion of lazy/deferred load of all the 'child' `Variable`s for a given 'parent'.
+    #[tracing::instrument(level = "trace", skip_all, fields(parent_variable = ?parent_variable.variable_key()))]
     pub fn cache_deferred_variables(
         &self,
         cache: &mut VariableCache,
@@ -310,26 +298,19 @@ impl DebugInfo {
             return Ok(());
         }
 
-        let Some(header_offset) = parent_variable.unit_header_offset else {
-            return Ok(());
-        };
-
-        let unit_header = self.dwarf.debug_info.header_from_offset(header_offset)?;
-        let unit_info = UnitInfo::new(gimli::Unit::new(&self.dwarf, unit_header)?);
-
         match parent_variable.variable_node_type {
-            VariableNodeType::ReferenceOffset(reference_offset) => {
+            VariableNodeType::ReferenceOffset(header_offset, reference_offset) => {
+                let unit_header = self.dwarf.debug_info.header_from_offset(header_offset)?;
+                let unit_info = UnitInfo::new(gimli::Unit::new(&self.dwarf, unit_header)?);
+
                 // Reference to a type, or an node.entry() to another type or a type modifier which will point to another type.
                 let mut type_tree = unit_info
                     .unit
                     .header
                     .entries_tree(&unit_info.unit.abbreviations, Some(reference_offset))?;
                 let referenced_node = type_tree.root()?;
-                let mut referenced_variable = cache.create_variable(
-                    parent_variable.variable_key,
-                    Some(referenced_node.entry().offset()),
-                    Some(&unit_info),
-                )?;
+                let mut referenced_variable =
+                    cache.create_variable(parent_variable.variable_key, Some(&unit_info))?;
 
                 referenced_variable.name = match &parent_variable.name {
                     VariableName::Named(name) if name.starts_with("Some ") => VariableName::Named(name.replacen('&', "*", 1)) ,
@@ -353,7 +334,10 @@ impl DebugInfo {
                     cache.remove_cache_entry(referenced_variable.variable_key)?;
                 }
             }
-            VariableNodeType::TypeOffset(type_offset) => {
+            VariableNodeType::TypeOffset(header_offset, type_offset) => {
+                let unit_header = self.dwarf.debug_info.header_from_offset(header_offset)?;
+                let unit_info = UnitInfo::new(gimli::Unit::new(&self.dwarf, unit_header)?);
+
                 // Find the parent node
                 let mut type_tree = unit_info
                     .unit
@@ -370,12 +354,15 @@ impl DebugInfo {
                     frame_info,
                 )?;
             }
-            VariableNodeType::DirectLookup => {
+            VariableNodeType::DirectLookup(header_offset, unit_offset) => {
+                let unit_header = self.dwarf.debug_info.header_from_offset(header_offset)?;
+                let unit_info = UnitInfo::new(gimli::Unit::new(&self.dwarf, unit_header)?);
+
                 // Find the parent node
-                let mut type_tree = unit_info.unit.header.entries_tree(
-                    &unit_info.unit.abbreviations,
-                    parent_variable.variable_unit_offset,
-                )?;
+                let mut type_tree = unit_info
+                    .unit
+                    .header
+                    .entries_tree(&unit_info.unit.abbreviations, Some(unit_offset))?;
 
                 let parent_node = type_tree.root()?;
 
@@ -387,6 +374,57 @@ impl DebugInfo {
                     cache,
                     frame_info,
                 )?;
+            }
+            VariableNodeType::UnitsLookup => {
+                // Look up static variables from all units
+                let mut unit_infos = self.unit_infos.iter();
+
+                let Some(unit_info) = unit_infos.next() else {
+                    // No unit infos
+                    return Err(DebugError::Other(anyhow::anyhow!("Missing unit infos")));
+                };
+
+                let mut entries = unit_info.unit.entries();
+
+                // Only process statics for this unit header.
+                // Navigate the current unit from the header down.
+                let (_, unit_node) = entries.next_dfs()?.unwrap();
+
+                let mut tree = unit_info
+                    .unit
+                    .header
+                    .entries_tree(&unit_info.unit.abbreviations, Some(unit_node.offset()))?;
+
+                unit_info.process_tree(
+                    self,
+                    tree.root()?,
+                    parent_variable,
+                    memory,
+                    cache,
+                    frame_info,
+                )?;
+
+                for unit in unit_infos {
+                    let mut entries = unit.unit.entries();
+
+                    // Only process statics for this unit header.
+                    // Navigate the current unit from the header down.
+                    let (_, unit_node) = entries.next_dfs()?.unwrap();
+
+                    let mut tree = unit
+                        .unit
+                        .header
+                        .entries_tree(&unit.unit.abbreviations, Some(unit_node.offset()))?;
+
+                    unit.process_tree(
+                        self,
+                        tree.root()?,
+                        parent_variable,
+                        memory,
+                        cache,
+                        frame_info,
+                    )?;
+                }
             }
             _ => {
                 // Do nothing. These have already been recursed to their maximum.
@@ -480,17 +518,6 @@ impl DebugInfo {
 
                 // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
                 // Resolve the statics that belong to the compilation unit that this function is in.
-                let static_variables = self.create_static_scope_cache(unit_info).map_or_else(
-                    |error| {
-                        tracing::error!(
-                            "Could not resolve static variables. {}. Continuing...",
-                            error
-                        );
-                        None
-                    },
-                    Some,
-                );
-
                 // Next, resolve and cache the function variables.
                 let local_variables = self
                     .create_function_scope_cache(function_die, unit_info)
@@ -513,7 +540,6 @@ impl DebugInfo {
                     pc: inlined_call_site,
                     frame_base,
                     is_inlined: function_die.is_inline(),
-                    static_variables,
                     local_variables,
                     canonical_frame_address: cfa,
                 });
@@ -537,19 +563,7 @@ impl DebugInfo {
         let function_location = self.get_source_location(address);
 
         // Now that we have the function_name and function_source_location, we can create the appropriate variable caches for this stack frame.
-        // Resolve the statics that belong to the compilation unit that this function is in.
-        let static_variables = self.create_static_scope_cache(unit_info).map_or_else(
-            |error| {
-                tracing::error!(
-                    "Could not resolve static variables. {}. Continuing...",
-                    error
-                );
-                None
-            },
-            Some,
-        );
-
-        // Next, resolve and cache the function variables.
+        // Resolve and cache the function variables.
         let local_variables = self
             .create_function_scope_cache(last_function, unit_info)
             .map_or_else(
@@ -575,7 +589,6 @@ impl DebugInfo {
             },
             frame_base,
             is_inlined: last_function.is_inline(),
-            static_variables,
             local_variables,
             canonical_frame_address: cfa,
         });
@@ -709,7 +722,6 @@ impl DebugInfo {
                             },
                             frame_base: None,
                             is_inlined: false,
-                            static_variables: None,
                             local_variables: None,
                             canonical_frame_address: None,
                         }
@@ -736,7 +748,6 @@ impl DebugInfo {
                             },
                             frame_base: None,
                             is_inlined: false,
-                            static_variables: None,
                             local_variables: None,
                             canonical_frame_address: None,
                         }
@@ -894,7 +905,6 @@ impl DebugInfo {
                                 },
                                 frame_base: None,
                                 is_inlined: false,
-                                static_variables: None,
                                 local_variables: None,
                                 canonical_frame_address: None,
                             };
@@ -1494,7 +1504,9 @@ mod test {
     /// Load the DebugInfo from the `elf_file` for the test.
     /// `elf_file` should be the name of a file(or relative path) in the `tests` directory.
     fn load_test_elf_as_debug_info(elf_file: &str) -> DebugInfo {
-        DebugInfo::from_file(get_path_for_test_files(elf_file)).unwrap()
+        let path = get_path_for_test_files(elf_file);
+        DebugInfo::from_file(&path)
+            .unwrap_or_else(|err| panic!("Failed to open file {}: {:?}", path.display(), err))
     }
 
     #[test]
@@ -2027,9 +2039,6 @@ mod test {
         // Expand and validate the static and local variables for each stack frame.
         for frame in stack_frames.iter_mut() {
             let mut variable_caches = Vec::new();
-            if let Some(static_variables) = &mut frame.static_variables {
-                variable_caches.push(static_variables);
-            }
             if let Some(local_variables) = &mut frame.local_variables {
                 variable_caches.push(local_variables);
             }
@@ -2051,5 +2060,40 @@ mod test {
         // Using YAML output because it is easier to read than the default snapshot output,
         // and also because they provide better diffs.
         insta::assert_yaml_snapshot!(snapshot_name, stack_frames);
+    }
+
+    #[test_case("RP2040"; "Armv6-m using RP2040")]
+    #[test_case("nRF52833_xxAA"; "Armv7-m using nRF52833_xxAA")]
+    //TODO:  #[test_case("esp32c3"; "RISC-V32E using esp32c3")]
+    fn static_variables(chip_name: &str) {
+        // TODO: Add RISC-V tests.
+
+        let debug_info =
+            load_test_elf_as_debug_info(format!("debug-unwind-tests/{chip_name}.elf").as_str());
+
+        let mut adapter = CoreDump::load(&get_path_for_test_files(
+            format!("debug-unwind-tests/{chip_name}.coredump").as_str(),
+        ))
+        .unwrap();
+
+        let initial_registers = adapter.debug_registers();
+
+        let snapshot_name = format!("{chip_name}__static_variables");
+
+        let mut static_variables = debug_info.create_static_scope_cache();
+
+        static_variables.recurse_deferred_variables(
+            &debug_info,
+            &mut adapter,
+            10,
+            StackFrameInfo {
+                registers: &initial_registers,
+                frame_base: None,
+                canonical_frame_address: None,
+            },
+        );
+        // Using YAML output because it is easier to read than the default snapshot output,
+        // and also because they provide better diffs.
+        insta::assert_yaml_snapshot!(snapshot_name, static_variables);
     }
 }
