@@ -419,14 +419,7 @@ fn log_row_eval(
     row: &gimli::LineRow,
     status: &str,
 ) {
-    tracing::trace!("Sequence row {:#010X}<={:#010X}<{:#010X}: addr={:#010X} stmt={:5}  ep={:5}  es={:5}  line={:04}  col={:05}  f={:02} : {}",
-        active_sequence.start,
-        pc,
-        active_sequence.end,
-        row.address(),
-        row.is_stmt(),
-        row.prologue_end(),
-        row.end_sequence(),
+    tracing::trace!("Sequence: line={:04} col={:05} f={:02} addr={:#010X} stmt={:5} ep={:5} es={:5} eb={:5} : {:#010X}<={:#010X}<{:#010X} : {}",
         match row.line() {
             Some(line) => line.get(),
             None => 0,
@@ -436,5 +429,13 @@ fn log_row_eval(
             gimli::ColumnType::Column(column) => column.get(),
         },
         row.file_index(),
+        row.address(),
+        row.is_stmt(),
+        row.prologue_end(),
+        row.end_sequence(),
+        row.epilogue_begin(),
+        active_sequence.start,
+        pc,
+        active_sequence.end,
         status);
 }
