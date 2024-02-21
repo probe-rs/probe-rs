@@ -780,16 +780,18 @@ impl UnitInfo {
                 | gimli::DW_TAG_array_type
                 | gimli::DW_TAG_subroutine_type
                 | gimli::DW_TAG_subprogram
-                | gimli::DW_TAG_union_type => {
+                | gimli::DW_TAG_union_type
+                | gimli::DW_TAG_typedef
+                | gimli::DW_TAG_const_type
+                | gimli::DW_TAG_volatile_type => {
                     // These will be processed elsewhere, or not at all, until we discover a use case that needs to be implemented.
                 }
                 unimplemented => {
-                    let error = format!(
+                    tracing::debug!(
                         "Unimplemented: Encountered unimplemented DwTag {:?} for Variable {:?}",
                         unimplemented.static_string(),
                         parent_variable.name
-                    );
-                    parent_variable.set_value(VariableValue::Error(error));
+                    )
                 }
             }
         }

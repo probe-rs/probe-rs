@@ -573,7 +573,7 @@ impl Variable {
                 self.formatted_variable_value(variable_cache, 0_usize, false)
             } else {
                 format!(
-                    "Unimplemented: Get value of type {:?} of ({:?} bytes) at location 0x{:08x?}",
+                    "Unimplemented: Get value of type {:?} of ({:?} bytes) at location {}",
                     self.type_name, self.byte_size, self.memory_location
                 )
             }
