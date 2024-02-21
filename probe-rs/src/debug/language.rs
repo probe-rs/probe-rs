@@ -2,7 +2,8 @@ use gimli::DwLang;
 
 use crate::{
     debug::{
-        DebugError, Modifier, Variable, VariableCache, VariableName, VariableType, VariableValue,
+        Bitfield, DebugError, Modifier, Variable, VariableCache, VariableName, VariableType,
+        VariableValue,
     },
     MemoryInterface,
 };
@@ -48,7 +49,13 @@ pub trait ProgrammingLanguage {
     fn format_enum_value(&self, type_name: &VariableType, value: &VariableName) -> VariableValue;
 
     fn format_array_type(&self, item_type: &str, length: usize) -> String;
-
+    fn format_bitfield_type(&self, item_type: &str, bitfield: Bitfield) -> String {
+        format!(
+            "{item_type} {{{}..{}}}",
+            bitfield.normalized_offset(),
+            bitfield.normalized_offset() + bitfield.length()
+        )
+    }
     fn format_pointer_type(&self, pointee: Option<&str>) -> String;
 
     fn process_tag_with_no_type(&self, _variable: &Variable, tag: gimli::DwTag) -> VariableValue {
