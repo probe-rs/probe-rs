@@ -5,7 +5,7 @@ use super::{
 use crate::core::UnwindRule;
 use crate::debug::source_statement::SourceStatement;
 use crate::debug::stack_frame::StackFrameInfo;
-use crate::debug::ColumnType;
+use crate::debug::{ColumnType, SourceLocation, VerifiedBreakpoint};
 use crate::{
     core::{ExceptionInterface, RegisterRole, RegisterValue},
     debug::{registers, source_statement::SourceStatements},
