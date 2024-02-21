@@ -121,8 +121,6 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info> FunctionDie<'abbrev, 'u
             column,
             file: Some(file),
             directory: Some(directory),
-            low_pc: Some(self.low_pc as u32),
-            high_pc: Some(self.high_pc as u32),
         })
     }
 

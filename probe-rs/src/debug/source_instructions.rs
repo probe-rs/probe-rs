@@ -31,8 +31,7 @@ where
 }
 
 /// A specific location in source code.
-/// Each unique line, column, file and directory combination is a unique source location,
-/// and maps to a contiguous and monotonic range of machine instructions (i.e. a sequence of instructions).
+/// Each unique line, column, file and directory combination is a unique source location.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct SourceLocation {
     /// The line number in the source file with zero based indexing.
@@ -44,10 +43,6 @@ pub struct SourceLocation {
     /// The directory of the source file.
     #[serde(serialize_with = "serialize_typed_path")]
     pub directory: Option<TypedPathBuf>,
-    /// The address of the first instruction associated with the source code
-    pub low_pc: Option<u32>,
-    /// The address of the first location past the last instruction associated with the source code
-    pub high_pc: Option<u32>,
 }
 
 impl SourceLocation {
@@ -72,8 +67,6 @@ impl SourceLocation {
                 column: Some(instruction_location.column),
                 file,
                 directory,
-                low_pc: Some(instruction_location.low_pc() as u32),
-                high_pc: Some(instruction_location.instruction_range.end as u32),
             })
     }
 

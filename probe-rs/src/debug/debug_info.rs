@@ -210,8 +210,6 @@ impl DebugInfo {
                                             column: Some(previous_row.column().into()),
                                             file,
                                             directory,
-                                            low_pc: Some(target_seq.start as u32),
-                                            high_pc: Some(target_seq.end as u32),
                                         });
                                     }
                                 }
@@ -230,8 +228,6 @@ impl DebugInfo {
                                         column: Some(row.column().into()),
                                         file,
                                         directory,
-                                        low_pc: Some(target_seq.start as u32),
-                                        high_pc: Some(target_seq.end as u32),
                                     });
                                 }
                             }
@@ -1026,8 +1022,6 @@ impl DebugInfo {
                                 column: Some(instruction_location.column),
                                 file,
                                 directory,
-                                low_pc: Some(instruction_location.low_pc() as u32),
-                                high_pc: Some(instruction_location.instruction_range.end as u32),
                             })
                         }),
                 )

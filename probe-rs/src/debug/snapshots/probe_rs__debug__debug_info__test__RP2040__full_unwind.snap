@@ -9,8 +9,6 @@ expression: stack_frames
       Column: 13
     file: common_testing_code.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
-    low_pc: 268468400
-    high_pc: 268468588
   registers:
     - core_register:
         id: 0
@@ -234,8 +232,6 @@ expression: stack_frames
       Column: 9
     file: common_testing_code.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
-    low_pc: 268468400
-    high_pc: 268468588
   registers:
     - core_register:
         id: 0
@@ -451,8 +447,6 @@ expression: stack_frames
       Column: 9
     file: common_testing_code.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
-    low_pc: 268468400
-    high_pc: 268468588
   registers:
     - core_register:
         id: 0
@@ -668,8 +662,6 @@ expression: stack_frames
       Column: 9
     file: common_testing_code.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
-    low_pc: 268468400
-    high_pc: 268468588
   registers:
     - core_register:
         id: 0
@@ -885,8 +877,6 @@ expression: stack_frames
       Column: 9
     file: common_testing_code.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
-    low_pc: 268468400
-    high_pc: 268468588
   registers:
     - core_register:
         id: 0
@@ -1102,8 +1092,6 @@ expression: stack_frames
       Column: 9
     file: common_testing_code.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
-    low_pc: 268468400
-    high_pc: 268468588
   registers:
     - core_register:
         id: 0
@@ -1319,8 +1307,6 @@ expression: stack_frames
       Column: 5
     file: common_testing_code.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
-    low_pc: 268465168
-    high_pc: 268468400
   registers:
     - core_register:
         id: 0
@@ -4154,8 +4140,6 @@ expression: stack_frames
       Column: 54
     file: RP2040.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/thumbv6m-none-eabi
-    low_pc: 268436744
-    high_pc: 268437052
   registers:
     - core_register:
         id: 0
@@ -4360,8 +4344,6 @@ expression: stack_frames
       Column: 1
     file: RP2040.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/thumbv6m-none-eabi
-    low_pc: 268436732
-    high_pc: 268436742
   registers:
     - core_register:
         id: 0

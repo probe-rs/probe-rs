@@ -94,8 +94,6 @@ fn source_location() {
                 column: Some(*col),
                 directory: Some(dir.clone()),
                 file: Some(file.to_owned()),
-                low_pc: Some(0x80006DE),
-                high_pc: Some(0x8000E0C),
             }),
             di.get_source_location(*addr)
         );
