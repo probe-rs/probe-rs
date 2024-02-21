@@ -146,6 +146,83 @@ impl VariableNodeType {
     }
 }
 
+/// The starting bit (and direction) of a bit field type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum BitOffset {
+    /// The bit offset is from the least significant bit.
+    FromLsb(u64),
+
+    /// The bit offset is from the most significant bit.
+    FromMsb(u64),
+}
+
+/// Bitfield information for a variable.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct Bitfield {
+    /// The starting bit (and direction) of a bit field type.
+    pub offset: BitOffset,
+    /// The length of the bit field.
+    pub length: u64,
+}
+
+impl Default for Bitfield {
+    fn default() -> Self {
+        Bitfield {
+            offset: BitOffset::FromLsb(0),
+            length: 0,
+        }
+    }
+}
+
+impl Bitfield {
+    /// Returns a Bitfield that has a FromLsb offset.
+    pub(crate) fn normalize(&self, byte_size: u64) -> Self {
+        let offset = self.offset(byte_size);
+        Bitfield {
+            offset: BitOffset::FromLsb(offset),
+            length: self.length,
+        }
+    }
+
+    pub(crate) fn offset(&self, byte_size: u64) -> u64 {
+        match self.offset {
+            BitOffset::FromLsb(offset) => offset,
+            BitOffset::FromMsb(offset) => byte_size * 8 - offset - self.length,
+        }
+    }
+
+    pub(crate) fn normalized_offset(&self) -> u64 {
+        match self.offset {
+            BitOffset::FromLsb(offset) => offset,
+            BitOffset::FromMsb(_) => unreachable!("Bitfield should have been normalized first"),
+        }
+    }
+
+    pub(crate) fn length(&self) -> u64 {
+        self.length
+    }
+
+    pub(crate) fn mask(&self) -> u128 {
+        (1 << self.length) - 1
+    }
+
+    pub(crate) fn extract(&self, value: u128) -> u128 {
+        let offset = self.normalized_offset();
+        let mask = self.mask();
+
+        (value >> offset) & mask
+    }
+
+    pub(crate) fn insert(&self, value: u128, new_value: u128) -> u128 {
+        let offset = self.normalized_offset();
+        let mask = self.mask();
+
+        let shifted_mask = mask << offset;
+        let new_value = (new_value & mask) << offset;
+        (value & !shifted_mask) | new_value
+    }
+}
+
 /// A modifier to a variable type. Currently only used to format the type name.
 #[derive(Debug, Clone, Eq, PartialEq, Serialize)]
 pub enum Modifier {
@@ -170,6 +247,8 @@ pub enum Modifier {
 pub enum VariableType {
     /// A variable with a Rust base datatype.
     Base(String),
+    /// The variable is a range of bits in a wider (integer) type.
+    Bitfield(Bitfield, Box<VariableType>),
     /// A Rust struct.
     Struct(String),
     /// A Rust enum.
@@ -221,6 +300,7 @@ impl VariableType {
     pub fn kind(&self) -> &str {
         match self {
             VariableType::Base(_) => "base",
+            VariableType::Bitfield(..) => "bitfield",
             VariableType::Struct(_) => "struct",
             VariableType::Enum(_) => "enum",
             VariableType::Namespace => "namespace",
@@ -244,6 +324,10 @@ impl VariableType {
                 count,
             } => language.format_array_type(&item_type_name.display_name(language), *count),
 
+            VariableType::Bitfield(bitfield, name) => {
+                language.format_bitfield_type(&name.display_name(language), *bitfield)
+            }
+
             _ => self.type_name(language),
         }
     }
@@ -255,6 +339,7 @@ impl VariableType {
             | VariableType::Struct(name)
             | VariableType::Enum(name)
             | VariableType::Other(name) => Some(name.as_str()),
+
             VariableType::Namespace => Some("namespace"),
             VariableType::Unknown => None,
 
@@ -268,7 +353,9 @@ impl VariableType {
                 count,
             } => return language.format_array_type(&item_type_name.type_name(language), *count),
 
-            VariableType::Modified(_, ty) => return ty.type_name(language),
+            VariableType::Bitfield(_, ty) | VariableType::Modified(_, ty) => {
+                return ty.type_name(language)
+            }
         };
 
         type_name.unwrap_or("<unknown>").to_string()
@@ -328,67 +415,6 @@ impl std::fmt::Display for VariableLocation {
     }
 }
 
-/// The starting bit (and direction) of a bit field type.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BitOffset {
-    /// The bit offset is from the least significant bit.
-    FromLsb(u64),
-
-    /// The bit offset is from the most significant bit.
-    FromMsb(u64),
-}
-
-/// Bitfield information for a variable.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct BitField {
-    /// The starting bit (and direction) of a bit field type.
-    pub offset: BitOffset,
-    /// The length of the bit field.
-    pub length: u64,
-}
-
-impl Default for BitField {
-    fn default() -> Self {
-        BitField {
-            offset: BitOffset::FromLsb(0),
-            length: 0,
-        }
-    }
-}
-
-impl BitField {
-    pub(crate) fn offset(&self, byte_size: usize) -> u64 {
-        match self.offset {
-            BitOffset::FromLsb(offset) => offset,
-            BitOffset::FromMsb(offset) => byte_size as u64 * 8 - offset - self.length,
-        }
-    }
-
-    pub(crate) fn length(&self) -> u64 {
-        self.length
-    }
-
-    pub(crate) fn mask(&self) -> u128 {
-        (1 << self.length) - 1
-    }
-
-    pub(crate) fn extract(&self, value: u128, byte_size: usize) -> u128 {
-        let offset = self.offset(byte_size);
-        let mask = self.mask();
-
-        (value >> offset) & mask
-    }
-
-    pub(crate) fn insert(&self, value: u128, byte_size: usize, new_value: u128) -> u128 {
-        let offset = self.offset(byte_size);
-        let mask = self.mask();
-
-        let shifted_mask = mask << offset;
-        let new_value = (new_value & mask) << offset;
-        (value & !shifted_mask) | new_value
-    }
-}
-
 /// The `Variable` struct is used in conjunction with `VariableCache` to cache data about variables.
 ///
 /// Any modifications to the `Variable` value will be transient (lost when it goes out of scope),
@@ -419,8 +445,6 @@ pub struct Variable {
     pub byte_size: Option<u64>,
     /// If this is a subrange (array, vector, etc.), is the ordinal position of this variable in that range
     pub member_index: Option<i64>,
-    /// If this is a bit field type, we need to store the offset and bit length.
-    pub bitfield: Option<BitField>,
     /// The role of this variable.
     pub role: VariantRole,
 }
@@ -443,7 +467,6 @@ impl Variable {
             memory_location: Default::default(),
             byte_size: None,
             member_index: None,
-            bitfield: None,
             role: Default::default(),
         }
     }
