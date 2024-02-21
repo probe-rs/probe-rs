@@ -115,10 +115,10 @@ impl Value for String {
         variable_cache: &VariableCache,
     ) -> Result<Self, DebugError> {
         let mut str_value: String = "".to_owned();
-        if let Ok(children) = variable_cache.get_children(variable.variable_key) {
-            if !children.is_empty() {
-                let mut string_length = match children.iter().find(|child_variable| {
-                    child_variable.name == VariableName::Named("length".to_string())
+        let children: Vec<_> = variable_cache.get_children(variable.variable_key).collect();
+        if !children.is_empty() {
+            let mut string_length = match children.iter().find(|child_variable| {
+                    matches!(child_variable.name, VariableName::Named(ref name) if name == "length")
                 }) {
                     Some(string_length) => {
                         // TODO: maybe avoid accessing value directly?
@@ -130,52 +130,47 @@ impl Value for String {
                     }
                     None => 0_usize,
                 };
-                let string_location = match children.iter().find(|child_variable| {
-                    child_variable.name == VariableName::Named("data_ptr".to_string())
+
+            let string_location = match children.iter().find(|child_variable| {
+                    matches!(child_variable.name, VariableName::Named(ref name) if name == "data_ptr")
                 }) {
                     Some(location_value) => {
-                        if let Ok(child_variables) =
-                            variable_cache.get_children(location_value.variable_key)
-                        {
-                            if let Some(first_child) = child_variables.first() {
-                                first_child.memory_location.memory_address()?
-                            } else {
-                                0_u64
-                            }
+                        let mut child_variables = variable_cache.get_children(location_value.variable_key);
+                        if let Some(first_child) = child_variables.next() {
+                            first_child.memory_location.memory_address()?
                         } else {
                             0_u64
                         }
                     }
                     None => 0_u64,
                 };
-                if string_location == 0 {
-                    str_value = "Error: Failed to determine &str memory location".to_string();
-                } else {
-                    // Limit string length to work around buggy information, otherwise the debugger
-                    // can hang due to buggy debug information.
-                    //
-                    // TODO: If implemented, the variable should not be fetched automatically,
-                    // but only when requested by the user. This workaround can then be removed.
-                    if string_length > 200 {
-                        tracing::warn!(
-                            "Very long string ({} bytes), truncating to 200 bytes.",
-                            string_length
-                        );
-                        string_length = 200;
-                    }
-
-                    if string_length == 0 {
-                        // A string with length 0 doesn't need to be read from memory.
-                    } else {
-                        let mut buff = vec![0u8; string_length];
-                        memory.read(string_location, &mut buff)?;
-                        str_value = core::str::from_utf8(&buff)?.to_owned();
-                    }
-                }
+            if string_location == 0 {
+                str_value = "Error: Failed to determine &str memory location".to_string();
             } else {
-                str_value = "Error: Failed to evaluate &str value".to_string();
+                // Limit string length to work around buggy information, otherwise the debugger
+                // can hang due to buggy debug information.
+                //
+                // TODO: If implemented, the variable should not be fetched automatically,
+                // but only when requested by the user. This workaround can then be removed.
+                if string_length > 200 {
+                    tracing::warn!(
+                        "Very long string ({} bytes), truncating to 200 bytes.",
+                        string_length
+                    );
+                    string_length = 200;
+                }
+
+                if string_length == 0 {
+                    // A string with length 0 doesn't need to be read from memory.
+                } else {
+                    let mut buff = vec![0u8; string_length];
+                    memory.read(string_location, &mut buff)?;
+                    str_value = core::str::from_utf8(&buff)?.to_owned();
+                }
             }
-        };
+        } else {
+            str_value = "Error: Failed to evaluate &str value".to_string();
+        }
         Ok(str_value)
     }
 
@@ -486,4 +481,20 @@ impl Value for f64 {
                 message: format!("{error:?}"),
             })
     }
+}
+
+/// Format a float value to a string, preserving at least one fractional digit.
+pub fn format_float(value: f64) -> String {
+    let mut s = format!("{}", value);
+    if !s.contains('.') {
+        s.push('.');
+    }
+    while s.ends_with('0') {
+        s.pop();
+    }
+    if s.ends_with('.') {
+        s.push('0');
+    }
+
+    s
 }

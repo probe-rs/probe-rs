@@ -52,7 +52,6 @@ impl From<XtensaError> for ProbeRsError {
     fn from(err: XtensaError) -> Self {
         match err {
             XtensaError::DebugProbe(e) => e.into(),
-            XtensaError::Timeout => ProbeRsError::Timeout,
             other => ProbeRsError::Xtensa(other),
         }
     }
@@ -233,6 +232,7 @@ impl XtensaCommunicationInterface {
         let now = Instant::now();
         while !self.is_halted()? {
             if now.elapsed() > timeout {
+                tracing::warn!("Timeout waiting for core to halt");
                 return Err(XtensaError::Timeout);
             }
 
@@ -320,6 +320,7 @@ impl XtensaCommunicationInterface {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
     fn schedule_write_cpu_register(
         &mut self,
         register: CpuRegister,
@@ -412,11 +413,14 @@ impl XtensaCommunicationInterface {
         self.xdm.execute()
     }
 
+    #[tracing::instrument(skip(self, register), fields(register))]
     fn save_register(
         &mut self,
         register: impl Into<Register>,
     ) -> Result<Option<Register>, XtensaError> {
         let register = register.into();
+
+        tracing::Span::current().record("register", &format!("{register:?}"));
 
         if matches!(
             register,
@@ -441,6 +445,7 @@ impl XtensaCommunicationInterface {
         Ok(Some(register))
     }
 
+    #[tracing::instrument(skip(self))]
     fn restore_register(&mut self, key: Option<Register>) -> Result<(), XtensaError> {
         let Some(key) = key else {
             return Ok(());
@@ -459,6 +464,7 @@ impl XtensaCommunicationInterface {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
     fn restore_registers(&mut self) -> Result<(), XtensaError> {
         tracing::debug!("Restoring registers");
 

@@ -23,7 +23,10 @@ use dap_types::*;
 use num_traits::Zero;
 use parse_int::parse;
 use probe_rs::{
-    architecture::{arm::ArmError, riscv::communication_interface::RiscvError},
+    architecture::{
+        arm::ArmError, riscv::communication_interface::RiscvError,
+        xtensa::communication_interface::XtensaError,
+    },
     debug::{
         stack_frame::StackFrameInfo, ColumnType, ObjectRef, SourceLocation, SteppingMode,
         VariableName, VerifiedBreakpoint,
@@ -442,40 +445,34 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         let mut variable: Option<probe_rs::debug::Variable> = None;
                         let mut variable_cache: Option<&mut probe_rs::debug::VariableCache> = None;
                         // Search through available caches and stop as soon as the variable is found
-                        #[allow(clippy::manual_flatten)]
-                        for variable_cache_entry in [
-                            stack_frame.local_variables.as_mut(),
-                            stack_frame.static_variables.as_mut(),
-                        ] {
-                            if let Some(search_cache) = variable_cache_entry {
-                                if search_cache.len() == 1 {
-                                    // This is a special case where we have a single variable in the cache, and it is the root of a scope.
-                                    // These variables don't have cached children by default, so we need to resolve them before we proceed.
-                                    // We check for len() == 1, so unwrap() on first_mut() is safe.
-                                    target_core.core_data.debug_info.cache_deferred_variables(
-                                        search_cache,
-                                        &mut target_core.core,
-                                        &mut search_cache.root_variable(),
-                                        StackFrameInfo {
-                                            registers: &stack_frame.registers,
-                                            frame_base: stack_frame.frame_base,
-                                            canonical_frame_address: stack_frame
-                                                .canonical_frame_address,
-                                        },
-                                    )?;
-                                }
+                        if let Some(search_cache) = stack_frame.local_variables.as_mut() {
+                            if search_cache.len() == 1 {
+                                let mut root_variable = search_cache.root_variable().clone();
 
-                                if let Ok(expression_as_key) = expression.parse::<ObjectRef>() {
-                                    variable = search_cache.get_variable_by_key(expression_as_key);
-                                } else {
-                                    variable = search_cache.get_variable_by_name(
-                                        &VariableName::Named(expression.clone()),
-                                    );
-                                }
-                                if variable.is_some() {
-                                    variable_cache = Some(search_cache);
-                                    break;
-                                }
+                                // This is a special case where we have a single variable in the cache, and it is the root of a scope.
+                                // These variables don't have cached children by default, so we need to resolve them before we proceed.
+                                // We check for len() == 1, so unwrap() on first_mut() is safe.
+                                target_core.core_data.debug_info.cache_deferred_variables(
+                                    search_cache,
+                                    &mut target_core.core,
+                                    &mut root_variable,
+                                    StackFrameInfo {
+                                        registers: &stack_frame.registers,
+                                        frame_base: stack_frame.frame_base,
+                                        canonical_frame_address: stack_frame
+                                            .canonical_frame_address,
+                                    },
+                                )?;
+                            }
+
+                            if let Ok(expression_as_key) = expression.parse::<ObjectRef>() {
+                                variable = search_cache.get_variable_by_key(expression_as_key);
+                            } else {
+                                variable = search_cache
+                                    .get_variable_by_name(&VariableName::Named(expression.clone()));
+                            }
+                            if variable.is_some() {
+                                variable_cache = Some(search_cache);
                             }
                         }
                         // Check if we found a variable.
@@ -490,7 +487,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                                 Some(variable.memory_location.to_string());
                             response_body.named_variables = Some(named_child_variables_cnt);
                             response_body.result = variable.get_value(variable_cache);
-                            response_body.type_ = Some(variable.type_name.to_string());
+                            response_body.type_ = Some(variable.type_name());
                             response_body.variables_reference = variables_reference.into();
                         } else {
                             // If we made it to here, no register or variable matched the expression.
@@ -610,15 +607,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             break;
                         }
                     }
-                    if let Some(search_cache) = &mut search_frame.static_variables {
-                        if let Some(search_variable) =
-                            search_cache.get_variable_by_name_and_parent(&variable_name, parent_key)
-                        {
-                            cache_variable = Some(search_variable);
-                            variable_cache = Some(search_cache);
-                            break;
-                        }
-                    }
                 }
 
                 if let (Some(cache_variable), Some(variable_cache)) =
@@ -630,7 +618,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         variable_cache,
                         new_value.clone(),
                     ) {
-                        Ok(updated_value) => {
+                        Ok(()) => {
                             let (
                                 variables_reference,
                                 named_child_variables_cnt,
@@ -640,7 +628,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                             response_body.named_variables = Some(named_child_variables_cnt);
                             response_body.indexed_variables = Some(indexed_child_variables_cnt);
                             response_body.type_ = Some(format!("{:?}", cache_variable.type_name));
-                            response_body.value = updated_value;
+                            response_body.value = new_value.clone();
                         }
                         Err(error) => {
                             return self.send_response::<SetVariableResponseBody>(
@@ -1179,6 +1167,27 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             });
         };
 
+        if let Some(static_root_variable) = target_core
+            .core_data
+            .static_variables
+            .as_ref()
+            .map(|stack_frame| stack_frame.root_variable())
+        {
+            dap_scopes.push(Scope {
+                line: None,
+                column: None,
+                end_column: None,
+                end_line: None,
+                expensive: true, // VSCode won't open this tree by default.
+                indexed_variables: None,
+                name: "Static".to_string(),
+                presentation_hint: Some("statics".to_string()),
+                named_variables: None,
+                source: None,
+                variables_reference: static_root_variable.variable_key().into(),
+            });
+        };
+
         let frame_id: ObjectRef = arguments.frame_id.into();
 
         tracing::trace!("Getting scopes for frame {:?}", frame_id);
@@ -1198,26 +1207,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 // We use the stack_frame.id for registers, so that we don't need to cache copies of the registers.
                 variables_reference: stack_frame.id.into(),
             });
-
-            if let Some(static_root_variable) = stack_frame
-                .static_variables
-                .as_ref()
-                .map(|stack_frame| stack_frame.root_variable())
-            {
-                dap_scopes.push(Scope {
-                    line: None,
-                    column: None,
-                    end_column: None,
-                    end_line: None,
-                    expensive: true, // VSCode won't open this tree by default.
-                    indexed_variables: None,
-                    name: "Static".to_string(),
-                    presentation_hint: Some("statics".to_string()),
-                    named_variables: None,
-                    source: None,
-                    variables_reference: static_root_variable.variable_key().into(),
-                });
-            };
 
             if let Some(locals_root_variable) = stack_frame
                 .local_variables
@@ -1405,57 +1394,66 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let mut variable_cache: Option<&mut probe_rs::debug::VariableCache> = None;
         let mut frame_info: Option<StackFrameInfo<'_>> = None;
 
-        for stack_frame in target_core.core_data.stack_frames.iter_mut() {
-            if let Some(search_cache) = &mut stack_frame.local_variables {
-                if let Some(search_variable) = search_cache.get_variable_by_key(variable_ref) {
-                    parent_variable = Some(search_variable);
-                    variable_cache = Some(search_cache);
+        let registers;
+
+        if let Some(search_cache) = &mut target_core.core_data.static_variables {
+            if let Some(search_variable) = search_cache.get_variable_by_key(variable_ref) {
+                parent_variable = Some(search_variable);
+                variable_cache = Some(search_cache);
+
+                if let Some(top_level_frame) = target_core.core_data.stack_frames.first() {
+                    registers = top_level_frame.registers.clone();
+
                     frame_info = Some(StackFrameInfo {
-                        registers: &stack_frame.registers,
-                        frame_base: stack_frame.frame_base,
-                        canonical_frame_address: stack_frame.canonical_frame_address,
+                        registers: &registers,
+                        frame_base: top_level_frame.frame_base,
+                        canonical_frame_address: top_level_frame.canonical_frame_address,
                     });
-                    break;
                 }
             }
-            if let Some(search_cache) = &mut stack_frame.static_variables {
-                if let Some(search_variable) = search_cache.get_variable_by_key(variable_ref) {
-                    parent_variable = Some(search_variable);
-                    variable_cache = Some(search_cache);
-                    frame_info = Some(StackFrameInfo {
-                        registers: &stack_frame.registers,
-                        frame_base: stack_frame.frame_base,
-                        canonical_frame_address: stack_frame.canonical_frame_address,
-                    });
-                    break;
+        }
+
+        if parent_variable.is_none() {
+            for stack_frame in target_core.core_data.stack_frames.iter_mut() {
+                if let Some(search_cache) = &mut stack_frame.local_variables {
+                    if let Some(search_variable) = search_cache.get_variable_by_key(variable_ref) {
+                        parent_variable = Some(search_variable);
+                        variable_cache = Some(search_cache);
+                        frame_info = Some(StackFrameInfo {
+                            registers: &stack_frame.registers,
+                            frame_base: stack_frame.frame_base,
+                            canonical_frame_address: stack_frame.canonical_frame_address,
+                        });
+                        break;
+                    }
                 }
-            }
 
-            if stack_frame.id == variable_ref {
-                // This is a special case, where we just want to return the stack frame registers.
+                if stack_frame.id == variable_ref {
+                    // This is a special case, where we just want to return the stack frame registers.
 
-                let dap_variables: Vec<Variable> = stack_frame
-                    .registers
-                    .0
-                    .iter()
-                    .map(|register| Variable {
-                        name: register.get_register_name(),
-                        evaluate_name: Some(register.get_register_name()),
-                        memory_reference: None,
-                        indexed_variables: None,
-                        named_variables: None,
-                        presentation_hint: None, // TODO: Implement hint as Hex for registers
-                        type_: Some(format!("{}", VariableName::RegistersRoot)),
-                        value: register.value.unwrap_or_default().to_string(),
-                        variables_reference: 0,
-                    })
-                    .collect();
-                return self.send_response(
-                    request,
-                    Ok(Some(VariablesResponseBody {
-                        variables: dap_variables,
-                    })),
-                );
+                    let dap_variables: Vec<Variable> = stack_frame
+                        .registers
+                        .0
+                        .iter()
+                        .map(|register| Variable {
+                            name: register.get_register_name(),
+                            evaluate_name: Some(register.get_register_name()),
+                            memory_reference: None,
+                            indexed_variables: None,
+                            named_variables: None,
+                            presentation_hint: None, // TODO: Implement hint as Hex for registers
+                            type_: Some(format!("{}", VariableName::RegistersRoot)),
+                            value: register.value.unwrap_or_default().to_string(),
+                            variables_reference: 0,
+                        })
+                        .collect();
+                    return self.send_response(
+                        request,
+                        Ok(Some(VariablesResponseBody {
+                            variables: dap_variables,
+                        })),
+                    );
+                }
             }
         }
 
@@ -1464,7 +1462,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         if let Some(variable_cache) = variable_cache {
             if let Some(parent_variable) = parent_variable.as_mut() {
                 if parent_variable.variable_node_type.is_deferred()
-                    && !variable_cache.has_children(parent_variable)?
+                    && !variable_cache.has_children(parent_variable)
                 {
                     if let Some(frame_info) = frame_info {
                         target_core.core_data.debug_info.cache_deferred_variables(
@@ -1480,8 +1478,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             }
 
             let dap_variables: Vec<Variable> = variable_cache
-                .get_children(variable_ref)?
-                .iter()
+                .get_children(variable_ref)
                 // Filter out requested children, then map them as DAP variables
                 .filter(|variable| match &arguments.filter {
                     Some(filter) => match filter.as_str() {
@@ -1512,7 +1509,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                         indexed_variables: Some(indexed_child_variables_cnt),
                         named_variables: Some(named_child_variables_cnt),
                         presentation_hint: None,
-                        type_: Some(variable.type_name.to_string()),
+                        type_: Some(variable.type_name()),
                         value: variable.get_value(variable_cache),
                         variables_reference: variables_reference.into(),
                     }
@@ -1572,7 +1569,9 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                     Err(wait_error) => {
                         if matches!(
                             wait_error,
-                            Error::Arm(ArmError::Timeout) | Error::Riscv(RiscvError::Timeout)
+                            Error::Arm(ArmError::Timeout)
+                                | Error::Riscv(RiscvError::Timeout)
+                                | Error::Xtensa(XtensaError::Timeout)
                         ) {
                             // The core is still running.
                         } else {

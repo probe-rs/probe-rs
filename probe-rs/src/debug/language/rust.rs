@@ -1,13 +1,16 @@
 use crate::{
     debug::{
-        language::{value::Value, ProgrammingLanguage},
+        language::{
+            value::{format_float, Value},
+            ProgrammingLanguage,
+        },
         DebugError, Variable, VariableCache, VariableLocation, VariableName, VariableType,
         VariableValue,
     },
     MemoryInterface,
 };
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Rust;
 
 impl ProgrammingLanguage for Rust {
@@ -17,7 +20,7 @@ impl ProgrammingLanguage for Rust {
         memory: &mut dyn MemoryInterface,
         variable_cache: &VariableCache,
     ) -> VariableValue {
-        match &variable.type_name {
+        match variable.type_name.inner() {
             VariableType::Base(_) if variable.memory_location == VariableLocation::Unknown => {
                 VariableValue::Empty
             }
@@ -44,8 +47,12 @@ impl ProgrammingLanguage for Rust {
                 "u128" => u128::get_value(variable, memory, variable_cache).into(),
                 // TODO: We can get the actual WORD length from DWARF instead of assuming `u32`
                 "usize" => u32::get_value(variable, memory, variable_cache).into(),
-                "f32" => f32::get_value(variable, memory, variable_cache).into(),
-                "f64" => f64::get_value(variable, memory, variable_cache).into(),
+                "f32" => f32::get_value(variable, memory, variable_cache)
+                    .map(|f| format_float(f as f64))
+                    .into(),
+                "f64" => f64::get_value(variable, memory, variable_cache)
+                    .map(format_float)
+                    .into(),
                 "None" => VariableValue::Valid("None".to_string()),
 
                 _undetermined_value => VariableValue::Empty,
@@ -63,7 +70,7 @@ impl ProgrammingLanguage for Rust {
         memory: &mut dyn MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        match &variable.type_name {
+        match variable.type_name.inner() {
             VariableType::Base(name) => match name.as_str() {
                 "bool" => bool::update_value(variable, memory, new_value),
                 "char" => char::update_value(variable, memory, new_value),
@@ -84,19 +91,40 @@ impl ProgrammingLanguage for Rust {
                 "f32" => f32::update_value(variable, memory, new_value),
                 "f64" => f64::update_value(variable, memory, new_value),
                 other => Err(DebugError::UnwindIncompleteResults {
-                    message: format!("Unsupported data type: {other}. Please only update variables with a base data type."),
+                    message: format!("Updating {other} variables is not yet supported."),
                 }),
             },
             other => Err(DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Unsupported variable type {:?}. Only base variables can be updated.",
-                    other
-                ),
+                message: format!("Updating {} variables is not yet supported.", other.kind()),
             }),
         }
     }
 
     fn format_enum_value(&self, type_name: &VariableType, value: &VariableName) -> VariableValue {
-        VariableValue::Valid(format!("{}::{}", type_name, value))
+        VariableValue::Valid(format!("{}::{}", type_name.display_name(self), value))
+    }
+
+    fn format_array_type(&self, item_type: &str, length: usize) -> String {
+        format!("[{item_type}; {length}]")
+    }
+
+    fn format_pointer_type(&self, pointee: Option<&str>) -> String {
+        let ptr_type = pointee.unwrap_or("<unknown pointer>");
+
+        if ptr_type.starts_with(['*', '&']) {
+            ptr_type.to_string()
+        } else {
+            // FIXME: we should track where the type name came from - the pointer node, or the pointee.
+            format!("*raw {}", ptr_type)
+        }
+    }
+
+    fn auto_resolve_children(&self, name: &str) -> bool {
+        name.starts_with("&str")
+            || name.starts_with("Option")
+            || name.starts_with("Some")
+            || name.starts_with("Result")
+            || name.starts_with("Ok")
+            || name.starts_with("Err")
     }
 }

@@ -28,7 +28,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM2
     range:
       start: 0x20004000
@@ -60,7 +60,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM2
     range:
       start: 0x20004000
@@ -92,7 +92,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM2
     range:
       start: 0x20004000
@@ -124,7 +124,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM2
     range:
       start: 0x20004000
@@ -156,7 +156,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM2
     range:
       start: 0x20004000
@@ -188,7 +188,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM3
     range:
       start: 0x20050000
@@ -221,7 +221,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM3
     range:
       start: 0x20050000
@@ -254,7 +254,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM3
     range:
       start: 0x20050000
@@ -287,7 +287,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM3
     range:
       start: 0x20050000
@@ -320,7 +320,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM3
     range:
       start: 0x20050000
@@ -353,7 +353,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM3
     range:
       start: 0x20050000
@@ -386,7 +386,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM3
     range:
       start: 0x20050000
@@ -419,7 +419,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM3
     range:
       start: 0x20050000
@@ -452,7 +452,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM3
     range:
       start: 0x20050000
@@ -485,7 +485,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM3
     range:
       start: 0x20050000
@@ -518,7 +518,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM3
     range:
       start: 0x20050000
@@ -551,7 +551,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM3
     range:
       start: 0x20050000
@@ -584,7 +584,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM3
     range:
       start: 0x20050000
@@ -617,7 +617,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM3
     range:
       start: 0x20050000
@@ -650,7 +650,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM3
     range:
       start: 0x20050000
@@ -683,7 +683,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM3
     range:
       start: 0x20050000
@@ -716,7 +716,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM3
     range:
       start: 0x20050000
@@ -749,7 +749,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM3
     range:
       start: 0x20050000
@@ -782,7 +782,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM3
     range:
       start: 0x20050000
@@ -815,7 +815,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM3
     range:
       start: 0x20050000
@@ -848,7 +848,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM3
     range:
       start: 0x20050000
@@ -881,7 +881,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM3
     range:
       start: 0x20050000
@@ -914,7 +914,7 @@ variants:
     is_boot_memory: true
     cores:
     - main
-  - !Generic
+  - !Ram
     name: SRAM3
     range:
       start: 0x20050000

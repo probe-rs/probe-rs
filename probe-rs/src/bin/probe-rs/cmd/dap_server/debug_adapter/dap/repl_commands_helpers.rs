@@ -67,12 +67,8 @@ pub(crate) fn get_local_variable(
     let variable_list = if variable.name == VariableName::LocalScopeRoot {
         variable_cache
             .get_children(variable.variable_key())
-            .map_err(|_| {
-                DebuggerError::UserMessage(format!(
-                    "No local variables available for frame : {}",
-                    stack_frame.function_name
-                ))
-            })?
+            .cloned()
+            .collect()
     } else {
         vec![variable]
     };
@@ -94,13 +90,13 @@ pub(crate) fn get_local_variable(
                 variable.name,
                 variable.get_value(variable_cache)
             );
-            response_body.type_ = Some(variable.type_name.to_string());
+            response_body.type_ = Some(variable.type_name());
             response_body.variables_reference = variable.variable_key().into();
         } else {
             response_body.result.push_str(&format!(
                 "\n{} [{} @ {}]: {} ",
                 variable.name,
-                variable.type_name,
+                variable.type_name(),
                 variable.memory_location,
                 variable.get_value(variable_cache)
             ));

@@ -269,7 +269,7 @@ fn build_aarch64_registers(desc: &mut TargetDescription, regs: &CoreRegisters) {
     // AArch64 always has FP support
     desc.add_gdb_feature("org.gnu.gdb.aarch64.fpu");
     desc.add_registers(regs.fpu_registers().unwrap());
-    desc.add_register(regs.other_by_name("FPCR").unwrap());
+    desc.add_register(regs.other_by_name("Floating Point Control").unwrap());
     desc.add_register(regs.fpsr().unwrap());
 
     // GDB expects PSTATE to be called CPSR, even though that's the old v7 name

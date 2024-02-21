@@ -509,7 +509,7 @@ impl<'probe> Core<'probe> {
     /// length registers.
     ///
     /// To add support to convert to a custom type implement [`TryInto<CustomType>`]
-    /// for [RegisterValue]].
+    /// for [RegisterValue].
     ///
     /// # Errors
     ///

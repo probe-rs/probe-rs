@@ -1,13 +1,18 @@
 use crate::{
     debug::{
-        language::{parsing::ParseToBytes, value::Value, ProgrammingLanguage},
+        language::{
+            parsing::ParseToBytes,
+            value::{format_float, Value},
+            ProgrammingLanguage,
+        },
         DebugError, Variable, VariableCache, VariableLocation, VariableName, VariableType,
         VariableValue,
     },
     MemoryInterface,
 };
+use std::fmt::{Display, Write};
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct C;
 
 impl ProgrammingLanguage for C {
@@ -17,12 +22,12 @@ impl ProgrammingLanguage for C {
         memory: &mut dyn MemoryInterface,
         variable_cache: &VariableCache,
     ) -> VariableValue {
-        match &variable.type_name {
+        match variable.type_name.inner() {
             VariableType::Base(_) if variable.memory_location == VariableLocation::Unknown => {
                 VariableValue::Empty
             }
 
-            VariableType::Base(type_name) => match type_name.as_str() {
+            VariableType::Base(name) => match name.as_str() {
                 "_Bool" => UnsignedInt::get_value(variable, memory, variable_cache).into(),
                 "char" => CChar::get_value(variable, memory, variable_cache).into(),
 
@@ -35,7 +40,9 @@ impl ProgrammingLanguage for C {
                 }
 
                 "float" => match variable.byte_size {
-                    Some(4) | None => f32::get_value(variable, memory, variable_cache).into(),
+                    Some(4) | None => f32::get_value(variable, memory, variable_cache)
+                        .map(|f| format_float(f as f64))
+                        .into(),
                     Some(size) => {
                         VariableValue::Error(format!("Invalid byte size for float: {size}"))
                     }
@@ -53,7 +60,7 @@ impl ProgrammingLanguage for C {
         memory: &mut dyn MemoryInterface,
         new_value: &str,
     ) -> Result<(), DebugError> {
-        match &variable.type_name {
+        match variable.type_name.inner() {
             VariableType::Base(name) => match name.as_str() {
                 "_Bool" => UnsignedInt::update_value(variable, memory, new_value),
                 "char" => CChar::update_value(variable, memory, new_value),
@@ -67,25 +74,39 @@ impl ProgrammingLanguage for C {
                 "float" => f32::update_value(variable, memory, new_value),
                 // TODO: doubles
                 other => Err(DebugError::UnwindIncompleteResults {
-                    message: format!("Unsupported data type: {other}. Please only update variables with a base data type."),
+                    message: format!("Updating {other} variables is not yet supported."),
                 }),
             },
             other => Err(DebugError::UnwindIncompleteResults {
-                message: format!(
-                    "Unsupported variable type {:?}. Only base variables can be updated.",
-                    other
-                ),
+                message: format!("Updating {} variables is not yet supported.", other.kind()),
             }),
         }
+    }
+
+    fn format_array_type(&self, item_type: &str, length: usize) -> String {
+        format!("{item_type}[{length}]")
     }
 
     fn format_enum_value(&self, _type_name: &VariableType, value: &VariableName) -> VariableValue {
         VariableValue::Valid(value.to_string())
     }
 
-    fn process_tag_with_no_type(&self, tag: gimli::DwTag) -> VariableValue {
+    fn format_pointer_type(&self, pointee: Option<&str>) -> String {
+        format!("{}*", pointee.unwrap_or("void"))
+    }
+
+    fn process_tag_with_no_type(&self, variable: &Variable, tag: gimli::DwTag) -> VariableValue {
         match tag {
-            gimli::DW_TAG_const_type => VariableValue::Valid("<void>".to_string()),
+            gimli::DW_TAG_const_type => VariableValue::Valid("const void".to_string()),
+            gimli::DW_TAG_pointer_type => {
+                let name = if let VariableLocation::Address(addr) = variable.memory_location {
+                    format!("void* @ {addr:X}")
+                } else {
+                    "void*".to_string()
+                };
+
+                VariableValue::Valid(name)
+            }
             _ => VariableValue::Error(format!("Error: Failed to decode {tag} type reference")),
         }
     }
@@ -93,13 +114,13 @@ impl ProgrammingLanguage for C {
 
 struct CChar(u8);
 
-impl ToString for CChar {
-    fn to_string(&self) -> String {
+impl Display for CChar {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let c = self.0;
         if c.is_ascii() {
-            (c as char).to_string()
+            f.write_char(c as char)
         } else {
-            format!("\\x{:02x}", c)
+            f.write_fmt(format_args!("\\x{:02x}", c))
         }
     }
 }
@@ -153,9 +174,9 @@ impl Value for CChar {
 
 struct UnsignedInt(u128);
 
-impl ToString for UnsignedInt {
-    fn to_string(&self) -> String {
-        self.0.to_string()
+impl Display for UnsignedInt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.0))
     }
 }
 
@@ -195,9 +216,9 @@ impl Value for UnsignedInt {
 
 struct SignedInt(i128);
 
-impl ToString for SignedInt {
-    fn to_string(&self) -> String {
-        self.0.to_string()
+impl Display for SignedInt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.0))
     }
 }
 

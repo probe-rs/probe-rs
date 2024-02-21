@@ -12,6 +12,8 @@ use std::io::ErrorKind;
 use std::str::Utf8Error;
 use std::time::Duration;
 
+const USB_TIMEOUT: Duration = Duration::from_millis(1000);
+
 #[derive(Debug, thiserror::Error)]
 pub enum CmsisDapError {
     #[error("Error handling CMSIS-DAP command {command_id:?}")]
@@ -95,17 +97,16 @@ impl CmsisDapDevice {
     /// Read from the probe into `buf`, returning the number of bytes read on success.
     fn read(&self, buf: &mut [u8]) -> Result<usize, SendError> {
         match self {
-            CmsisDapDevice::V1 { handle, .. } => match handle.read_timeout(buf, 1000)? {
-                // Timeout is not indicated by error, but by returning 0 read bytes
-                0 => Err(SendError::Timeout),
-                n => Ok(n),
-            },
-            CmsisDapDevice::V2 { handle, in_ep, .. } => {
-                let timeout = Duration::from_millis(100);
-                handle
-                    .read_bulk(*in_ep, buf, timeout)
-                    .map_err(SendError::UsbError)
+            CmsisDapDevice::V1 { handle, .. } => {
+                match handle.read_timeout(buf, USB_TIMEOUT.as_millis() as i32)? {
+                    // Timeout is not indicated by error, but by returning 0 read bytes
+                    0 => Err(SendError::Timeout),
+                    n => Ok(n),
+                }
             }
+            CmsisDapDevice::V2 { handle, in_ep, .. } => handle
+                .read_bulk(*in_ep, buf, USB_TIMEOUT)
+                .map_err(SendError::UsbError),
         }
     }
 
@@ -114,10 +115,9 @@ impl CmsisDapDevice {
         match self {
             CmsisDapDevice::V1 { handle, .. } => Ok(handle.write(buf)?),
             CmsisDapDevice::V2 { handle, out_ep, .. } => {
-                let timeout = Duration::from_millis(100);
                 // Skip first byte as it's set to 0 for HID transfers
                 handle
-                    .write_bulk(*out_ep, &buf[1..], timeout)
+                    .write_bulk(*out_ep, &buf[1..], USB_TIMEOUT)
                     .map_err(SendError::UsbError)
             }
         }
