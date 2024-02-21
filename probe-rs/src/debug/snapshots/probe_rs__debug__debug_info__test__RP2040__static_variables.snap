@@ -2085,7 +2085,7 @@ Child Variables:
                 Named: "*__RESET_VECTOR"
               type_name:
                 Other: "!"
-              value: "Unimplemented: Get value of type Other(\"!\") of (None bytes) at location 0xUnknown"
+              value: "Unimplemented: Get value of type Other(\"!\") of (None bytes) at location <unknown value>"
         - name:
             Named: __EXCEPTIONS
           type_name:

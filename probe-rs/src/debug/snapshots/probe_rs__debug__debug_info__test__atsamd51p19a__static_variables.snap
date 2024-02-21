@@ -15,7 +15,7 @@ Child Variables:
           - Modified:
               - Typedef: __uint32_t
               - Base: long unsigned int
-      value: "Unimplemented: Get value of type Modified(Typedef(\"uint32_t\"), Modified(Typedef(\"__uint32_t\"), Base(\"long unsigned int\"))) of (Some(4) bytes) at location 0xUnknown"
+      value: "Unimplemented: Get value of type Modified(Typedef(\"uint32_t\"), Modified(Typedef(\"__uint32_t\"), Base(\"long unsigned int\"))) of (Some(4) bytes) at location <unknown value>"
     - name:
         Named: _etext
       type_name:
@@ -24,7 +24,7 @@ Child Variables:
           - Modified:
               - Typedef: __uint32_t
               - Base: long unsigned int
-      value: "Unimplemented: Get value of type Modified(Typedef(\"uint32_t\"), Modified(Typedef(\"__uint32_t\"), Base(\"long unsigned int\"))) of (Some(4) bytes) at location 0xUnknown"
+      value: "Unimplemented: Get value of type Modified(Typedef(\"uint32_t\"), Modified(Typedef(\"__uint32_t\"), Base(\"long unsigned int\"))) of (Some(4) bytes) at location <unknown value>"
     - name:
         Named: _srelocate
       type_name:
@@ -33,7 +33,7 @@ Child Variables:
           - Modified:
               - Typedef: __uint32_t
               - Base: long unsigned int
-      value: "Unimplemented: Get value of type Modified(Typedef(\"uint32_t\"), Modified(Typedef(\"__uint32_t\"), Base(\"long unsigned int\"))) of (Some(4) bytes) at location 0xUnknown"
+      value: "Unimplemented: Get value of type Modified(Typedef(\"uint32_t\"), Modified(Typedef(\"__uint32_t\"), Base(\"long unsigned int\"))) of (Some(4) bytes) at location <unknown value>"
     - name:
         Named: _erelocate
       type_name:
@@ -42,7 +42,7 @@ Child Variables:
           - Modified:
               - Typedef: __uint32_t
               - Base: long unsigned int
-      value: "Unimplemented: Get value of type Modified(Typedef(\"uint32_t\"), Modified(Typedef(\"__uint32_t\"), Base(\"long unsigned int\"))) of (Some(4) bytes) at location 0xUnknown"
+      value: "Unimplemented: Get value of type Modified(Typedef(\"uint32_t\"), Modified(Typedef(\"__uint32_t\"), Base(\"long unsigned int\"))) of (Some(4) bytes) at location <unknown value>"
     - name:
         Named: _szero
       type_name:
@@ -51,7 +51,7 @@ Child Variables:
           - Modified:
               - Typedef: __uint32_t
               - Base: long unsigned int
-      value: "Unimplemented: Get value of type Modified(Typedef(\"uint32_t\"), Modified(Typedef(\"__uint32_t\"), Base(\"long unsigned int\"))) of (Some(4) bytes) at location 0xUnknown"
+      value: "Unimplemented: Get value of type Modified(Typedef(\"uint32_t\"), Modified(Typedef(\"__uint32_t\"), Base(\"long unsigned int\"))) of (Some(4) bytes) at location <unknown value>"
     - name:
         Named: _ezero
       type_name:
@@ -60,7 +60,7 @@ Child Variables:
           - Modified:
               - Typedef: __uint32_t
               - Base: long unsigned int
-      value: "Unimplemented: Get value of type Modified(Typedef(\"uint32_t\"), Modified(Typedef(\"__uint32_t\"), Base(\"long unsigned int\"))) of (Some(4) bytes) at location 0xUnknown"
+      value: "Unimplemented: Get value of type Modified(Typedef(\"uint32_t\"), Modified(Typedef(\"__uint32_t\"), Base(\"long unsigned int\"))) of (Some(4) bytes) at location <unknown value>"
     - name:
         Named: _estack
       type_name:
@@ -69,7 +69,7 @@ Child Variables:
           - Modified:
               - Typedef: __uint32_t
               - Base: long unsigned int
-      value: "Unimplemented: Get value of type Modified(Typedef(\"uint32_t\"), Modified(Typedef(\"__uint32_t\"), Base(\"long unsigned int\"))) of (Some(4) bytes) at location 0xUnknown"
+      value: "Unimplemented: Get value of type Modified(Typedef(\"uint32_t\"), Modified(Typedef(\"__uint32_t\"), Base(\"long unsigned int\"))) of (Some(4) bytes) at location <unknown value>"
     - name:
         Named: exception_table
       type_name: Unknown
@@ -170,12 +170,12 @@ Child Variables:
             Named: MaxNumUpBuffers
           type_name:
             Base: int
-          value: "Unimplemented: Get value of type Base(\"int\") of (Some(4) bytes) at location 0xUnknown"
+          value: "Unimplemented: Get value of type Base(\"int\") of (Some(4) bytes) at location <unknown value>"
         - name:
             Named: MaxNumDownBuffers
           type_name:
             Base: int
-          value: "Unimplemented: Get value of type Base(\"int\") of (Some(4) bytes) at location 0xUnknown"
+          value: "Unimplemented: Get value of type Base(\"int\") of (Some(4) bytes) at location <unknown value>"
         - name:
             Named: aUp
           type_name:
@@ -307,7 +307,7 @@ Child Variables:
           - Modified:
               - Typedef: __uint32_t
               - Base: long unsigned int
-      value: "Unimplemented: Get value of type Modified(Typedef(\"uint32_t\"), Modified(Typedef(\"__uint32_t\"), Base(\"long unsigned int\"))) of (Some(4) bytes) at location 0xUnknown"
+      value: "Unimplemented: Get value of type Modified(Typedef(\"uint32_t\"), Modified(Typedef(\"__uint32_t\"), Base(\"long unsigned int\"))) of (Some(4) bytes) at location <unknown value>"
     - name:
         Named: _ertt
       type_name:
@@ -316,7 +316,7 @@ Child Variables:
           - Modified:
               - Typedef: __uint32_t
               - Base: long unsigned int
-      value: "Unimplemented: Get value of type Modified(Typedef(\"uint32_t\"), Modified(Typedef(\"__uint32_t\"), Base(\"long unsigned int\"))) of (Some(4) bytes) at location 0xUnknown"
+      value: "Unimplemented: Get value of type Modified(Typedef(\"uint32_t\"), Modified(Typedef(\"__uint32_t\"), Base(\"long unsigned int\"))) of (Some(4) bytes) at location <unknown value>"
     - name:
         Named: foo
       type_name:
