@@ -6,7 +6,9 @@ use crate::{
     debug::{language, stack_frame::StackFrameInfo},
     MemoryInterface,
 };
-use gimli::{AttributeValue, DebugInfoOffset, EvaluationResult, Location, UnitOffset};
+use gimli::{
+    AttributeValue, DW_AT_specification, DebugInfoOffset, EvaluationResult, Location, UnitOffset,
+};
 use num_traits::Zero;
 
 /// The result of `UnitInfo::evaluate_expression()` can be the value of a variable, or a memory location.
@@ -566,8 +568,18 @@ impl UnitInfo {
                         frame_info,
                     )?;
 
+                    // We don't do anything with the declaration right now, so we remove it from the cache.
+                    let is_declaration = if let Ok(Some(AttributeValue::Flag(value))) =
+                        child_node.entry().attr_value(gimli::DW_AT_declaration)
+                    {
+                        value
+                    } else {
+                        false
+                    };
+
                     // Do not keep or process PhantomData nodes, or variant parts that we have already used.
-                    if child_variable.type_name.is_phantom_data()
+                    if is_declaration
+                        || child_variable.type_name.is_phantom_data()
                         || child_variable.name == VariableName::Artifical
                     {
                         cache.remove_cache_entry(child_variable.variable_key)?;
@@ -578,6 +590,7 @@ impl UnitInfo {
                             child_node,
                             &mut child_variable,
                             memory,
+                            // In the case of C code, we can have entries for both the declaration and the definition of a variable.
                             cache,
                             frame_info,
                         )?;
