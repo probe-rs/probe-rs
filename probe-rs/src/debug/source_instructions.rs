@@ -63,17 +63,17 @@ impl SourceLocation {
             gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>,
             usize,
         >,
-        source_statement: super::source_statement::SourceStatement,
+        instruction_location: super::source_instructions::InstructionLocation,
     ) -> Option<SourceLocation> {
         debug_info
             .find_file_and_directory(&program_unit.unit, line_program.header(), file_entry)
             .map(|(file, directory)| SourceLocation {
-                line: source_statement.line.map(std::num::NonZeroU64::get),
-                column: Some(source_statement.column),
+                line: instruction_location.line.map(std::num::NonZeroU64::get),
+                column: Some(instruction_location.column),
                 file,
                 directory,
-                low_pc: Some(source_statement.low_pc() as u32),
-                high_pc: Some(source_statement.instruction_range.end as u32),
+                low_pc: Some(instruction_location.low_pc() as u32),
+                high_pc: Some(instruction_location.instruction_range.end as u32),
             })
     }
 
@@ -107,12 +107,15 @@ impl SourceLocation {
 }
 
 /// Keep track of all the source statements required to satisfy the operations of [`SteppingMode`].
-pub struct SourceStatements {
+/// This is a list of target instructions, belonging to a [`gimli::LineSequence`],
+/// and filters it to only user code instructions (no prologue code, and no non-statement instructions),
+/// so that we are left only with valid halt locations.
+pub struct InstructionSequence {
     // NOTE: Use Vec as a container, because we will have relatively few statements per sequence, and we need to maintain the order.
-    pub(crate) statements: Vec<SourceStatement>,
+    pub(crate) statements: Vec<InstructionLocation>,
 }
 
-impl Debug for SourceStatements {
+impl Debug for InstructionSequence {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         for statement in &self.statements {
             writeln!(f, "{statement:?}")?;
@@ -121,13 +124,13 @@ impl Debug for SourceStatements {
     }
 }
 
-impl SourceStatements {
+impl InstructionSequence {
     /// Extract all the source statements, belonging to the active sequence (i.e. the sequence that contains the `program_counter`).
     pub(crate) fn for_address(
         debug_info: &DebugInfo,
         program_counter: u64,
     ) -> Result<Self, DebugError> {
-        let mut source_statements = SourceStatements {
+        let mut instruction_sequence = InstructionSequence {
             statements: Vec::new(),
         };
         let source_sequence = get_program_and_sequence_for_pc(debug_info, program_counter)?;
@@ -136,9 +139,9 @@ impl SourceStatements {
             .resume_from(&source_sequence.line_sequence);
         let program_language = source_sequence.program_unit.get_language();
         let mut prologue_completed = false;
-        let mut source_statement: Option<SourceStatement> = None;
+        let mut instruction_location: Option<InstructionLocation> = None;
         while let Ok(Some((_, row))) = sequence_rows.next_row() {
-            if let Some(source_row) = source_statement.as_mut() {
+            if let Some(source_row) = instruction_location.as_mut() {
                 if source_row.line.is_none()
                     && row.line().is_some()
                     && row.file_index() == source_row.file_index
@@ -151,7 +154,7 @@ impl SourceStatements {
                 }
             } else {
                 // Start tracking the source statement using this row.
-                source_statement = Some(SourceStatement::from(row));
+                instruction_location = Some(InstructionLocation::from(row));
             }
 
             // Don't do anything until we are at least at the prologue_end() of a function.
@@ -167,7 +170,7 @@ impl SourceStatements {
                     gimli::DW_LANG_C99 | gimli::DW_LANG_C11 | gimli::DW_LANG_C17
                 )
             {
-                if let Some(source_row) = source_statement.as_mut() {
+                if let Some(source_row) = instruction_location.as_mut() {
                     if row.end_sequence()
                         || (row.is_stmt()
                             && (row.file_index() == source_row.file_index
@@ -198,11 +201,11 @@ impl SourceStatements {
             // Notes about the process of building the source statement:
             // 1. Start a new (and close off the previous) source statement, when we encounter end of sequence OR change of file/line/column.
             // 2. The starting range of the first source statement will always be greater than or equal to the program_counter.
-            // 3. The values in the `source_statement` are only updated before we exit the current iteration of the loop,
+            // 3. The values in the `instruction_location` are only updated before we exit the current iteration of the loop,
             // so that we can retroactively close off and store the source statement that belongs to previous `rows`.
             // 4. The debug_info sometimes has a `None` value for the `row.line` that was started in the previous row, in which case we need to carry the previous row `line` number forward. GDB ignores this fact, and it shows up during debug as stepping to the top of the file (line 0) unexpectedly.
 
-            if let Some(source_row) = source_statement.as_mut() {
+            if let Some(source_row) = instruction_location.as_mut() {
                 // Update the instruction_range.end value.
                 source_row.instruction_range = source_row.low_pc()..row.address();
 
@@ -216,14 +219,14 @@ impl SourceStatements {
                         // We need to close off the "current" source statement and add it to the list.
                         source_row.statement_range =
                             program_counter..source_sequence.line_sequence.end;
-                        source_statements.add(source_row.clone());
+                        instruction_sequence.add(source_row.clone());
                     }
 
                     if row.end_sequence() {
                         // If we hit the end of the sequence, we can get out of here.
                         break;
                     }
-                    source_statement = Some(SourceStatement::from(row));
+                    instruction_location = Some(InstructionLocation::from(row));
                 } else if row.address() == program_counter {
                     // If we encounter the program_counter after the prologue, then we need to use this address as the low_pc, or else we run the risk of setting a breakpoint before the current program counter.
                     source_row.instruction_range = row.address()..row.address();
@@ -231,7 +234,7 @@ impl SourceStatements {
             }
         }
 
-        if source_statements.len() == 0 {
+        if instruction_sequence.len() == 0 {
             Err(DebugError::IncompleteDebugInfo{
                 message: "Could not find valid source statements for this address. Consider using instruction level stepping.".to_string(),
                 pc_at_error: program_counter,
@@ -240,9 +243,9 @@ impl SourceStatements {
             tracing::trace!(
                 "Source statements for pc={:#010x}\n{:?}",
                 program_counter,
-                source_statements
+                instruction_sequence
             );
-            Ok(source_statements)
+            Ok(instruction_sequence)
         }
     }
 
@@ -265,7 +268,7 @@ impl SourceStatements {
     }
 
     /// Add a new source statement to the list.
-    pub(crate) fn add(&mut self, statement: SourceStatement) {
+    pub(crate) fn add(&mut self, statement: InstructionLocation) {
         self.statements.push(statement);
     }
 
@@ -286,20 +289,15 @@ struct ProgramLineSequence<'a> {
 }
 
 #[derive(Clone)]
-/// Keep track of the boundaries of a source statement inside [`gimli::LineSequence`].
-/// The `file_index`, `line` and `column` fields from a [`gimli::LineRow`] are used to identify the source statement UNIQUELY in a sequence.
-/// Terminology note:
-/// - An `instruction` maps to a single machine instruction on target.
-/// - A `row` (a [`gimli::LineRow`]) describes the role of an `instruction` in the boundaries of a `sequence`.
-/// - A `sequence`( [`gimli::LineSequence`] ) is a series of contiguous `rows`/`instructions`.
-/// - A `source_statement` is a range of rows where the addresses of the machine instructions are increasing,
-/// but not necessarily contiguous. In other words, can span multiple `sequences` of `rows`.
-/// - A line of code in a source file may contain multiple source statements, in which case
-/// a new source statement with unique `column` is created.
-/// - The [`gimli::LineRow`] entries for a source statement does not have to be contiguous
-/// where they appear in a [`gimli::LineSequence`]. In other words, there are often gaps where
-/// the DWARFv5 standard, section 6.2, allows omissions based on certain conditions.
-pub(crate) struct SourceStatement {
+/// - A [`InstructionLocation`] filters and maps [`gimli::LineRow`] entries to be used for determining valid halt points.
+///   - Each [`InstructionLocation`] maps to a single machine instruction on target.
+///   - For establishing valid halt locations (breakpoint or stepping), we are only interested,
+///     in the [`InstructionLocation`]'s that represent DWARF defined `statements`,
+///     which are not part of the prologue or epilogue.
+/// - A line of code in a source file may contain multiple instruction locations, in which case
+///     a new [`InstructionLocation`] with unique `column` is created.
+/// - A [`InstructionSequence`] is a series of contiguous [`InstructionLocation`]'s.
+pub(crate) struct InstructionLocation {
     pub(crate) file_index: u64,
     pub(crate) line: Option<NonZeroU64>,
     pub(crate) column: ColumnType,
@@ -316,7 +314,7 @@ pub(crate) struct SourceStatement {
     pub(crate) statement_range: Range<u64>,
 }
 
-impl Debug for SourceStatement {
+impl Debug for InstructionLocation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -339,7 +337,7 @@ impl Debug for SourceStatement {
     }
 }
 
-impl SourceStatement {
+impl InstructionLocation {
     /// Return the first valid halt address of the statement that is greater than or equal to `address`.
     pub(crate) fn get_first_halt_address(&self, address: u64) -> Option<u64> {
         if self.instruction_range.start == address
@@ -351,15 +349,15 @@ impl SourceStatement {
         }
     }
 
-    /// Get the low_pc of this source_statement.
+    /// Get the low_pc of this instruction_location.
     pub(crate) fn low_pc(&self) -> u64 {
         self.instruction_range.start
     }
 }
 
-impl From<&gimli::LineRow> for SourceStatement {
+impl From<&gimli::LineRow> for InstructionLocation {
     fn from(line_row: &gimli::LineRow) -> Self {
-        SourceStatement {
+        InstructionLocation {
             file_index: line_row.file_index(),
             line: line_row.line(),
             column: line_row.column().into(),

@@ -1,6 +1,6 @@
 use super::{
     debug_info::DebugInfo,
-    source_statement::SourceStatements,
+    source_instructions::InstructionSequence,
     {DebugError, SourceLocation},
 };
 use crate::{
@@ -187,12 +187,12 @@ impl SteppingMode {
         match self {
             SteppingMode::BreakPoint => {
                 // Find the first_breakpoint_address
-                // TODO: Move this to a method on SourceStatements
-                for source_statement in
-                    SourceStatements::for_address(debug_info, program_counter)?.statements
+                // TODO: Move this to a method on InstructionSequence
+                for instruction_location in
+                    InstructionSequence::for_address(debug_info, program_counter)?.statements
                 {
                     if let Some(halt_address) =
-                        source_statement.get_first_halt_address(program_counter)
+                        instruction_location.get_first_halt_address(program_counter)
                     {
                         tracing::debug!(
                             "Found first breakpoint {:#010x} for address: {:#010x}",
@@ -208,14 +208,14 @@ impl SteppingMode {
                             .and_then(|line_program| {
                                 line_program
                                     .header()
-                                    .file(source_statement.file_index)
+                                    .file(instruction_location.file_index)
                                     .and_then(|file_entry| {
                                         SourceLocation::from_source_statement(
                                             debug_info,
                                             program_unit,
                                             line_program,
                                             file_entry,
-                                            source_statement,
+                                            instruction_location,
                                         )
                                     })
                             });
@@ -230,17 +230,17 @@ impl SteppingMode {
                 //    -- Find the starting address of the next `statement` in the source statements.
                 //    -- If there is one, it means the step over target is in the current sequence, so we get the get_first_halt_address() for this next statement.
                 //    -- Otherwise the step over target is the same as the step out target.
-                let source_statements =
-                    SourceStatements::for_address(debug_info, program_counter)?.statements;
-                let mut source_statements_iter = source_statements.iter();
+                let instruction_sequence =
+                    InstructionSequence::for_address(debug_info, program_counter)?.statements;
+                let mut source_statements_iter = instruction_sequence.iter();
                 if let Some((target_address, target_location)) = source_statements_iter
-                    .find(|source_statement| {
-                        source_statement
+                    .find(|instruction_location| {
+                        instruction_location
                             .instruction_range
                             .contains(&program_counter)
                     })
                     .and_then(|_| {
-                        if source_statements.len() == 1 {
+                        if instruction_sequence.len() == 1 {
                             // Force a SteppingMode::OutOfStatement below.
                             None
                         } else {
@@ -271,12 +271,12 @@ impl SteppingMode {
                 //   (b) We hit a PC that matches the end of the address range, which means there was nothing to step into, so the target is now halted (correctly) at the next statement.
                 // TODO: In theory, we could disassemble the instructions in this statement's address range, and find branching instructions, then we would not need to single step the core past the original haltpoint.
 
-                let source_statements =
-                    SourceStatements::for_address(debug_info, program_counter)?.statements;
-                let mut source_statements_iter = source_statements.iter();
+                let instruction_sequence =
+                    InstructionSequence::for_address(debug_info, program_counter)?.statements;
+                let mut source_statements_iter = instruction_sequence.iter();
                 if let Some(current_source_statement) =
-                    source_statements_iter.find(|source_statement| {
-                        source_statement
+                    source_statements_iter.find(|instruction_location| {
+                        instruction_location
                             .instruction_range
                             .contains(&program_counter)
                     })

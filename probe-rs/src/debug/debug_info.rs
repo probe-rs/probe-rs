@@ -3,12 +3,12 @@ use super::{
     DebugRegisters, StackFrame, VariableCache,
 };
 use crate::core::UnwindRule;
-use crate::debug::source_statement::SourceStatement;
+use crate::debug::source_instructions::InstructionLocation;
 use crate::debug::stack_frame::StackFrameInfo;
 use crate::debug::{ColumnType, SourceLocation, VerifiedBreakpoint};
 use crate::{
     core::{ExceptionInterface, RegisterRole, RegisterValue},
-    debug::{registers, source_statement::SourceStatements},
+    debug::{registers, source_instructions::InstructionSequence},
     MemoryInterface,
 };
 use anyhow::anyhow;
@@ -1003,17 +1003,18 @@ impl DebugInfo {
                 continue;
             }
 
-            let source_statements = SourceStatements::for_address(self, row.address())?.statements;
+            let instruction_sequence =
+                InstructionSequence::for_address(self, row.address())?.statements;
 
-            // The first match of the file and row will be used to build the SourceStatements, and then:
+            // The first match of the file and row will be used to build the InstructionSequence, and then:
             // 1. If there is an exact column match, we will use the low_pc of the statement at that column and line.
             // 2. If there is no exact column match, we use the first available statement in the line.
-            let halt_address_and_location = |source_statement: &SourceStatement| {
+            let halt_address_and_location = |instruction_location: &InstructionLocation| {
                 (
-                    source_statement.low_pc(),
+                    instruction_location.low_pc(),
                     line_program
                         .header()
-                        .file(source_statement.file_index)
+                        .file(instruction_location.file_index)
                         .and_then(|file_entry| {
                             self.find_file_and_directory(
                                 &unit_header.unit,
@@ -1021,19 +1022,19 @@ impl DebugInfo {
                                 file_entry,
                             )
                             .map(|(file, directory)| SourceLocation {
-                                line: source_statement.line.map(std::num::NonZeroU64::get),
-                                column: Some(source_statement.column),
+                                line: instruction_location.line.map(std::num::NonZeroU64::get),
+                                column: Some(instruction_location.column),
                                 file,
                                 directory,
-                                low_pc: Some(source_statement.low_pc() as u32),
-                                high_pc: Some(source_statement.instruction_range.end as u32),
+                                low_pc: Some(instruction_location.low_pc() as u32),
+                                high_pc: Some(instruction_location.instruction_range.end as u32),
                             })
                         }),
                 )
             };
 
             // The case where we have exact match on file, line AND column.
-            let first_find = source_statements.iter().find(|statement| {
+            let first_find = instruction_sequence.iter().find(|statement| {
                 column
                     .map(ColumnType::Column)
                     .map_or(false, |col| col == statement.column)
@@ -1049,7 +1050,7 @@ impl DebugInfo {
             }
 
             // The fallback case where we have exact match on file and line, but no column.
-            let second_find = source_statements
+            let second_find = instruction_sequence
                 .iter()
                 .find(|statement| statement.line == Some(cur_line));
 
