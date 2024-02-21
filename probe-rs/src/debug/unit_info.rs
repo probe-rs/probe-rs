@@ -568,6 +568,7 @@ impl UnitInfo {
                         frame_info,
                     )?;
 
+                    // In the case of C code, we can have entries for both the declaration and the definition of a variable.
                     // We don't do anything with the declaration right now, so we remove it from the cache.
                     let is_declaration = if let Ok(Some(AttributeValue::Flag(value))) =
                         child_node.entry().attr_value(gimli::DW_AT_declaration)
@@ -590,7 +591,6 @@ impl UnitInfo {
                             child_node,
                             &mut child_variable,
                             memory,
-                            // In the case of C code, we can have entries for both the declaration and the definition of a variable.
                             cache,
                             frame_info,
                         )?;
