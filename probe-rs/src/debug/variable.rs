@@ -665,6 +665,7 @@ impl Variable {
         show_name: bool,
     ) -> String {
         let line_feed = if indentation == 0 { "" } else { "\n" };
+        let line_start = format!("{}{:\t<indentation$}", line_feed, "");
         let type_name = self.type_name();
 
         // Allow for chained `if let` without complaining
@@ -672,13 +673,10 @@ impl Variable {
         if !self.value.is_empty() {
             if show_name {
                 // Use the supplied value or error message.
-                format!(
-                    "{}{:\t<indentation$}{}: {} = {}",
-                    line_feed, "", self.name, type_name, self.value
-                )
+                format!("{line_start}{}: {} = {}", self.name, type_name, self.value)
             } else {
                 // Use the supplied value or error message.
-                format!("{}{:\t<indentation$}{}", line_feed, "", self.value)
+                format!("{line_start}{}", self.value)
             }
         } else if let VariableName::AnonymousNamespace = self.name {
             // Namespaces do not have values
@@ -688,7 +686,6 @@ impl Variable {
             String::new()
         } else {
             // Infer a human readable value using the available children of this variable.
-            let line_start = format!("{}{:\t<indentation$}", line_feed, "");
             let mut compound_value = String::new();
             let children: Vec<_> = variable_cache.get_children(self.variable_key).collect();
 
