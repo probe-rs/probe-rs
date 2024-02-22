@@ -712,15 +712,12 @@ impl Variable {
                 VariableType::Array { .. } => {
                     // Arrays
                     compound_value = format!("{compound_value}{type_name} = [");
-                    let mut child_count: usize = 0;
-                    for child in &children {
-                        child_count += 1;
-
+                    for (idx, child) in children.iter().enumerate() {
                         compound_value = format!(
                             "{}{}{}",
                             compound_value,
                             child.formatted_variable_value(variable_cache, indentation + 1, false),
-                            if child_count == children.len() {
+                            if idx == children.len() - 1 {
                                 // Do not add a separator at the end of the list
                                 ""
                             } else {
@@ -751,15 +748,11 @@ impl Variable {
                         // This is for example the None value of an Option.
                         compound_value
                     } else {
-                        let (mut pre_fix, mut post_fix): (Option<String>, Option<String>) =
-                            (None, None);
-
-                        let mut child_count: usize = 0;
+                        let (mut pre_fix, mut post_fix) = (None, None);
 
                         let mut is_tuple = false;
 
-                        for child in children.iter() {
-                            child_count += 1;
+                        for (idx, child) in children.iter().enumerate() {
                             if pre_fix.is_none() && post_fix.is_none() {
                                 if let VariableName::Named(child_name) = &child.name {
                                     if child_name.starts_with("__0") {
@@ -808,7 +801,7 @@ impl Variable {
                                     indentation + 1,
                                     print_name
                                 ),
-                                if child_count == children.len() {
+                                if idx == children.len() - 1 {
                                     // Do not add a separator at the end of the list
                                     ""
                                 } else {
