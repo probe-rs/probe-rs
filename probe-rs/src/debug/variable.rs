@@ -674,18 +674,15 @@ impl Variable {
             String::new()
         } else {
             // Infer a human readable value using the available children of this variable.
-            let mut compound_value = String::new();
+            let mut compound_value = format!("{}{:\t<indentation$}", line_feed, "");
             let children: Vec<_> = variable_cache.get_children(self.variable_key).collect();
 
             // Make sure we can safely unwrap() children.
-            match &self.type_name {
+            match self.type_name.inner() {
                 VariableType::Pointer(_) => {
                     // Pointers
                     compound_value = format!(
-                        "{}{}{:\t<indentation$}{}",
-                        compound_value,
-                        line_feed,
-                        "",
+                        "{compound_value}{}",
                         if let Some(first_child) = children.first() {
                             first_child.formatted_variable_value(
                                 variable_cache,
@@ -700,10 +697,7 @@ impl Variable {
                 }
                 VariableType::Array { .. } => {
                     // Arrays
-                    compound_value = format!(
-                        "{}{}{:\t<indentation$}: {} = [",
-                        compound_value, line_feed, "", type_name,
-                    );
+                    compound_value = format!("{compound_value}{type_name} = [");
                     let mut child_count: usize = 0;
                     for child in &children {
                         child_count += 1;
@@ -724,18 +718,14 @@ impl Variable {
                 }
                 VariableType::Struct(name) if name == "Ok" || name == "Err" => {
                     // Handle special structure types like the variant values of `Option<>` and `Result<>`
-                    compound_value = format!(
-                        "{}{:\t<indentation$}{}: {} = {}(",
-                        line_feed, "", self.name, type_name, compound_value
-                    );
+                    compound_value = format!("{compound_value}{} = {}(", type_name, compound_value);
                     for child in children {
                         compound_value = format!(
-                            "{}{}",
-                            compound_value,
+                            "{compound_value}{}",
                             child.formatted_variable_value(variable_cache, indentation + 1, false)
                         );
                     }
-                    format!("{}{}{:\t<indentation$})", compound_value, line_feed, "")
+                    format!("{compound_value}{}{:\t<indentation$})", line_feed, "")
                 }
                 _ => {
                     // Generic handling of other structured types.
@@ -745,8 +735,7 @@ impl Variable {
                     if children.is_empty() {
                         // Struct with no children -> just print type name
                         // This is for example the None value of an Option.
-
-                        format!("{}{:\t<indentation$}{}", line_feed, "", self.name)
+                        compound_value
                     } else {
                         let (mut pre_fix, mut post_fix): (Option<String>, Option<String>) =
                             (None, None);
@@ -799,8 +788,7 @@ impl Variable {
                             let print_name = !is_tuple;
 
                             compound_value = format!(
-                                "{}{}{}",
-                                compound_value,
+                                "{compound_value}{}{}",
                                 child.formatted_variable_value(
                                     variable_cache,
                                     indentation + 1,
