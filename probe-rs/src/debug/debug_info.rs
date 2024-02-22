@@ -2024,6 +2024,7 @@ mod test {
 
     #[test_case("RP2040"; "Armv6-m using RP2040")]
     #[test_case("nRF52833_xxAA"; "Armv7-m using nRF52833_xxAA")]
+    #[test_case("atsamd51p19a"; "Armv7-em from C source code")]
     //TODO:  #[test_case("esp32c3"; "RISC-V32E using esp32c3")]
     fn full_unwind(chip_name: &str) {
         // TODO: Add RISC-V tests.
@@ -2078,6 +2079,7 @@ mod test {
 
     #[test_case("RP2040"; "Armv6-m using RP2040")]
     #[test_case("nRF52833_xxAA"; "Armv7-m using nRF52833_xxAA")]
+    #[test_case("atsamd51p19a"; "Armv7-em from C source code")]
     //TODO:  #[test_case("esp32c3"; "RISC-V32E using esp32c3")]
     fn static_variables(chip_name: &str) {
         // TODO: Add RISC-V tests.

@@ -7,7 +7,6 @@ use crate::{
     MemoryInterface,
 };
 use gimli::{AttributeValue, DebugInfoOffset, EvaluationResult, Location, UnitOffset};
-use num_traits::Zero;
 
 /// The result of `UnitInfo::evaluate_expression()` can be the value of a variable, or a memory location.
 pub(crate) enum ExpressionResult {
@@ -401,6 +400,11 @@ impl UnitInfo {
                     gimli::DW_AT_address_class => {
                         // Processed by `extract_type()`
                     }
+                    gimli::DW_AT_data_bit_offset
+                    | gimli::DW_AT_bit_offset
+                    | gimli::DW_AT_bit_size => {
+                        // Processed by `extract_bitfield_info()`
+                    }
                     other_attribute => {
                         tracing::info!(
                             "Unimplemented: Variable Attribute {:.100} : {:.100}, with children = {}",
@@ -412,6 +416,9 @@ impl UnitInfo {
                 }
             }
         }
+
+        // Need to process bitfields last as they need type information to be resolved first.
+        self.process_bitfield_info(child_variable, tree_node.entry(), cache)?;
 
         child_variable.extract_value(memory, cache);
         cache.update_variable(child_variable)?;
@@ -557,8 +564,20 @@ impl UnitInfo {
                         cache,
                         frame_info,
                     )?;
+
+                    // In the case of C code, we can have entries for both the declaration and the definition of a variable.
+                    // We don't do anything with the declaration right now, so we remove it from the cache.
+                    let is_declaration = if let Ok(Some(AttributeValue::Flag(value))) =
+                        child_node.entry().attr_value(gimli::DW_AT_declaration)
+                    {
+                        value
+                    } else {
+                        false
+                    };
+
                     // Do not keep or process PhantomData nodes, or variant parts that we have already used.
-                    if child_variable.type_name.is_phantom_data()
+                    if is_declaration
+                        || child_variable.type_name.is_phantom_data()
                         || child_variable.name == VariableName::Artifical
                     {
                         cache.remove_cache_entry(child_variable.variable_key)?;
@@ -771,16 +790,18 @@ impl UnitInfo {
                 | gimli::DW_TAG_array_type
                 | gimli::DW_TAG_subroutine_type
                 | gimli::DW_TAG_subprogram
-                | gimli::DW_TAG_union_type => {
+                | gimli::DW_TAG_union_type
+                | gimli::DW_TAG_typedef
+                | gimli::DW_TAG_const_type
+                | gimli::DW_TAG_volatile_type => {
                     // These will be processed elsewhere, or not at all, until we discover a use case that needs to be implemented.
                 }
                 unimplemented => {
-                    let error = format!(
+                    tracing::debug!(
                         "Unimplemented: Encountered unimplemented DwTag {:?} for Variable {:?}",
                         unimplemented.static_string(),
                         parent_variable.name
-                    );
-                    parent_variable.set_value(VariableValue::Error(error));
+                    )
                 }
             }
         }
@@ -856,10 +877,19 @@ impl UnitInfo {
                         )));
                     }
                 },
-                // Property of variables that are of DW_TAG_subrange_type.
-                gimli::DW_AT_upper_bound | gimli::DW_AT_count => {
+                gimli::DW_AT_count => match attr.value().udata_value() {
+                    Some(count) => upper_bound = Some(count),
+                    None => {
+                        return Err(DebugError::Other(anyhow::anyhow!(
+                            "Unimplemented: Attribute Value for DW_AT_count: {:?}",
+                            attr.value()
+                        )));
+                    }
+                },
+                gimli::DW_AT_upper_bound => {
                     match attr.value().udata_value() {
-                        Some(bound) => upper_bound = Some(bound), // child_variable.range_upper_bound = bound as i64,
+                        // Rust ranges are exclusive, but the DWARF upper bound is inclusive.
+                        Some(bound) => upper_bound = Some(bound + 1),
                         None => {
                             return Err(DebugError::Other(anyhow::anyhow!(
                                 "Unimplemented: Attribute Value for DW_AT_upper_bound: {:?}",
@@ -1704,7 +1734,7 @@ impl UnitInfo {
                 // This means the value was optimized away.
                 ExpressionResult::Location(VariableLocation::Unavailable)
             }
-            Location::Address { address } if address.is_zero() => {
+            Location::Address { address: 0 } => {
                 let error = "The value of this variable may have been optimized out of the debug info, by the compiler.".to_string();
                 ExpressionResult::Location(VariableLocation::Error(error))
             }
@@ -1946,6 +1976,105 @@ impl UnitInfo {
             }
             Err(error) => Err(error),
         }
+    }
+
+    fn process_bitfield_info(
+        &self,
+        child_variable: &mut Variable,
+        entry: &gimli::DebuggingInformationEntry<GimliReader>,
+        cache: &mut VariableCache,
+    ) -> Result<(), DebugError> {
+        if !child_variable.is_valid() {
+            // Only bother with bitfields if we haven't encountered an error yet
+            return Ok(());
+        }
+        match self.extract_bitfield_info(child_variable, entry) {
+            Ok(Some(bitfield)) => {
+                if let Some(byte_size) = child_variable.byte_size {
+                    let bitfield = bitfield.normalize(byte_size);
+                    child_variable.type_name = VariableType::Bitfield(
+                        bitfield,
+                        Box::new(std::mem::replace(
+                            &mut child_variable.type_name,
+                            VariableType::Unknown,
+                        )),
+                    );
+                    // Invalidate value that was read before we knew about the bitfield.
+                    child_variable.value = VariableValue::Empty;
+                    cache.update_variable(child_variable)?;
+                } else {
+                    child_variable.set_value(VariableValue::Error(
+                        "Error: Failed to decode bitfield information: byte_size not found"
+                            .to_string(),
+                    ));
+                }
+            }
+            Ok(None) => {}
+            Err(e) => child_variable.set_value(VariableValue::Error(format!(
+                "Error: Failed to decode bitfield information: {e:?}"
+            ))),
+        }
+
+        Ok(())
+    }
+
+    fn extract_bitfield_info(
+        &self,
+        child_variable: &mut Variable,
+        entry: &gimli::DebuggingInformationEntry<GimliReader>,
+    ) -> Result<Option<Bitfield>, gimli::Error> {
+        let offset = if let Some(attr) = entry.attr(gimli::DW_AT_data_bit_offset)? {
+            // Available since DWARF 4+
+            match attr.value().udata_value() {
+                Some(offset) => Some(BitOffset::FromLsb(offset)),
+                None => {
+                    child_variable.set_value(VariableValue::Error(format!(
+                        "Unimplemented: Attribute Value for DW_AT_data_bit_offset: {:?}",
+                        attr.value()
+                    )));
+                    return Ok(None);
+                }
+            }
+        } else if let Some(attr) = entry.attr(gimli::DW_AT_bit_offset)? {
+            // Deprecated in DWARF 5, but still used by some compilers.
+            // Specifies offset from MSB. We're handling this as a separate offset variant
+            // because we haven't yet processed the byte size of the variable.
+            if let Some(offset) = attr.value().udata_value() {
+                Some(BitOffset::FromMsb(offset))
+            } else {
+                child_variable.set_value(VariableValue::Error(format!(
+                    "Unimplemented: Attribute Value for DW_AT_bit_offset: {:?}",
+                    attr.value()
+                )));
+                return Ok(None);
+            }
+        } else {
+            None
+        };
+
+        let size = if let Some(attr) = entry.attr(gimli::DW_AT_bit_size)? {
+            match attr.value().udata_value() {
+                Some(length) => Some(length),
+                None => {
+                    child_variable.set_value(VariableValue::Error(format!(
+                        "Unimplemented: Attribute Value for DW_AT_bit_size: {:?}",
+                        attr.value()
+                    )));
+                    return Ok(None);
+                }
+            }
+        } else {
+            None
+        };
+
+        if let (None, None) = (size, offset) {
+            return Ok(None);
+        }
+
+        Ok(Some(Bitfield {
+            length: size.unwrap_or(0),
+            offset: offset.unwrap_or(BitOffset::FromLsb(0)),
+        }))
     }
 }
 
