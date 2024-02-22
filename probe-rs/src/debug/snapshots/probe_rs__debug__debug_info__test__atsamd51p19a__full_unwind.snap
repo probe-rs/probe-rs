@@ -9,8 +9,6 @@ expression: stack_frames
       Column: 5
     file: main.c
     directory: "C:\\_Hobby\\probe-rs-test-c-firmware"
-    low_pc: 5172
-    high_pc: 5272
   registers:
     - core_register:
         id: 0
@@ -246,8 +244,6 @@ expression: stack_frames
       Column: 1
     file: main.c
     directory: "C:\\_Hobby\\probe-rs-test-c-firmware"
-    low_pc: 5272
-    high_pc: 5376
   registers:
     - core_register:
         id: 0
@@ -465,8 +461,6 @@ expression: stack_frames
       Column: 9
     file: main.c
     directory: "C:\\_Hobby\\probe-rs-test-c-firmware"
-    low_pc: 5376
-    high_pc: 5488
   registers:
     - core_register:
         id: 0
@@ -685,8 +679,6 @@ expression: stack_frames
       Column: 15
     file: startup_samd51.c
     directory: "C:\\_Hobby\\probe-rs-test-c-firmware\\Atmel\\Device_Startup"
-    low_pc: 2304
-    high_pc: 2464
   registers:
     - core_register:
         id: 0
