@@ -740,6 +740,37 @@ impl Variable {
                     // This is for example the None value of an Option.
                     compound_value
                 }
+
+                _ if matches!(
+                    self.name,
+                    VariableName::StaticScopeRoot
+                        | VariableName::LocalScopeRoot
+                        | VariableName::RegistersRoot
+                ) =>
+                {
+                    compound_value = format!("{compound_value}{line_start}{type_name} {{");
+
+                    for (idx, child) in children.iter().enumerate() {
+                        let formatted =
+                            child.formatted_variable_value(variable_cache, indentation + 1, true);
+                        if formatted.is_empty() {
+                            // Avoid printing empty commas
+                            continue;
+                        }
+                        compound_value = format!(
+                            "{compound_value}{}{}",
+                            formatted,
+                            if idx == children.len() - 1 {
+                                // Do not add a separator at the end of the list
+                                ""
+                            } else {
+                                ", "
+                            }
+                        );
+                    }
+                    format!("{compound_value}{line_start}}}")
+                }
+
                 _ => {
                     // Generic handling of other structured types.
                     // The pre- and post- fix is determined by the type of children.
