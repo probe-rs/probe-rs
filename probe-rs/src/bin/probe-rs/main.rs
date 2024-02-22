@@ -118,6 +118,7 @@ pub struct FormatOptions {
     /// The number of bytes to skip at the start of the binary file. This is only considered when `bin` is selected as the format.
     #[clap(long, value_parser = parse_u32, default_value = "0")]
     pub skip: u32,
+    // TODO can we merge these into `format`?
     /// The idf bootloader path
     #[clap(long)]
     pub idf_bootloader: Option<PathBuf>,
@@ -142,26 +143,10 @@ impl FormatOptions {
             }),
             Format::Hex => Format::Hex,
             Format::Elf => Format::Elf,
-            Format::Idf(_) => {
-                let bootloader = if let Some(path) = self.idf_bootloader {
-                    Some(std::fs::read(path)?)
-                } else {
-                    None
-                };
-
-                let partition_table = if let Some(path) = self.idf_partition_table {
-                    Some(esp_idf_part::PartitionTable::try_from(std::fs::read(
-                        path,
-                    )?)?)
-                } else {
-                    None
-                };
-
-                Format::Idf(IdfOptions {
-                    bootloader,
-                    partition_table,
-                })
-            }
+            Format::Idf(_) => Format::Idf(IdfOptions {
+                bootloader: self.idf_bootloader,
+                partition_table: self.idf_partition_table,
+            }),
             Format::Uf2 => Format::Uf2,
         })
     }

@@ -1,5 +1,6 @@
 use std::time::Duration;
 
+use espflash::flasher::FlashSize;
 use probe_rs_target::{Chip, MemoryRegion};
 
 use crate::{
@@ -10,7 +11,7 @@ use crate::{
             communication_interface::XtensaCommunicationInterface,
         },
     },
-    MemoryInterface,
+    Error, MemoryInterface,
 };
 
 #[derive(Debug)]
@@ -45,7 +46,7 @@ impl EspFlashSizeDetector {
     pub fn detect_flash_size_esp32(
         &self,
         interface: &mut XtensaCommunicationInterface,
-    ) -> Result<Option<usize>, crate::Error> {
+    ) -> Result<Option<FlashSize>, crate::Error> {
         tracing::info!("Detecting flash size");
         attach_flash_xtensa(
             interface,
@@ -59,7 +60,7 @@ impl EspFlashSizeDetector {
     pub fn detect_flash_size_xtensa(
         &self,
         interface: &mut XtensaCommunicationInterface,
-    ) -> Result<Option<usize>, crate::Error> {
+    ) -> Result<Option<FlashSize>, Error> {
         tracing::info!("Detecting flash size");
         attach_flash_xtensa(
             interface,
@@ -74,7 +75,7 @@ impl EspFlashSizeDetector {
     pub fn detect_flash_size_riscv(
         &self,
         interface: &mut RiscvCommunicationInterface,
-    ) -> Result<Option<usize>, crate::Error> {
+    ) -> Result<Option<FlashSize>, Error> {
         interface.halt(Duration::from_millis(100))?;
 
         tracing::info!("Detecting flash size");
@@ -87,7 +88,7 @@ fn attach_flash_riscv(
     interface: &mut RiscvCommunicationInterface,
     stack_pointer: u32,
     attach_fn: u32,
-) -> Result<(), crate::Error> {
+) -> Result<(), Error> {
     use crate::architecture::riscv::{
         assembly,
         communication_interface::{AccessRegisterCommand, RiscvBusAccess},
@@ -125,7 +126,7 @@ fn attach_flash_xtensa(
     stack_pointer: u32,
     load_addr: u32,
     attach_fn: u32,
-) -> Result<(), crate::Error> {
+) -> Result<(), Error> {
     // We're very intrusive here but the flashing process should reset the MCU again anyway
     interface.reset_and_halt(Duration::from_millis(500))?;
 
@@ -203,7 +204,7 @@ fn execute_flash_command_generic(
     regs: &SpiRegisters,
     command: u8,
     miso_bits: u32,
-) -> Result<u32, crate::Error> {
+) -> Result<u32, Error> {
     // Save registers
     let old_ctrl_reg = interface.read_word_32(regs.ctrl())?;
     let old_user_reg = interface.read_word_32(regs.user())?;
@@ -254,7 +255,7 @@ fn execute_flash_command_generic(
 fn detect_flash_size(
     interface: &mut impl MemoryInterface,
     spiflash_addr: u32,
-) -> Result<Option<usize>, crate::Error> {
+) -> Result<Option<FlashSize>, Error> {
     const RDID: u8 = 0x9F;
 
     let value = execute_flash_command_generic(
@@ -280,7 +281,7 @@ fn detect_flash_size(
 fn detect_flash_size_esp32(
     interface: &mut impl MemoryInterface,
     spiflash_addr: u32,
-) -> Result<Option<usize>, crate::Error> {
+) -> Result<Option<FlashSize>, crate::Error> {
     const RDID: u8 = 0x9F;
 
     let value = execute_flash_command_generic(
@@ -303,51 +304,21 @@ fn detect_flash_size_esp32(
     Ok(decode_flash_size(value))
 }
 
-fn decode_flash_size(value: u32) -> Option<usize> {
-    let [manufacturer, memory_type, capacity, _] = value.to_le_bytes();
+fn decode_flash_size(value: u32) -> Option<FlashSize> {
+    let [manufacturer, memory_type, raw_capacity, _] = value.to_le_bytes();
 
     tracing::debug!(
         "Detected manufacturer = {:x} memory_type = {:x} capacity = {:x}",
         manufacturer,
         memory_type,
-        capacity
+        raw_capacity
     );
 
-    const KB: usize = 1024;
-    const MB: usize = 1024 * KB;
-
-    // TODO: replace with `espflash::flasher::FlashSize::from_detected` when
-    // https://github.com/esp-rs/espflash/pull/530 gets released.
-    let capacity = match (manufacturer, memory_type, capacity) {
-        (_, _, 0x12) => 256 * KB,
-        (_, _, 0x13) => 512 * KB,
-        (_, _, 0x14) => MB,
-        (_, _, 0x15) => 2 * MB,
-        (_, _, 0x16) => 4 * MB,
-        (_, _, 0x17) => 8 * MB,
-        (_, _, 0x18) => 16 * MB,
-        (_, _, 0x19) => 32 * MB,
-        (_, _, 0x1A) => 64 * MB,
-        (_, _, 0x1B) => 128 * MB,
-        (_, _, 0x1C) => 256 * MB,
-        (_, _, 0x20) => 64 * MB,
-        (_, _, 0x21) => 128 * MB,
-        (_, _, 0x22) => 256 * MB,
-        (_, _, 0x32) => 256 * KB,
-        (_, _, 0x33) => 512 * KB,
-        (_, _, 0x34) => MB,
-        (_, _, 0x35) => 2 * MB,
-        (_, _, 0x36) => 4 * MB,
-        (_, _, 0x37) => 8 * MB,
-        (_, _, 0x38) => 16 * MB,
-        (_, _, 0x39) => 32 * MB,
-        (_, _, 0x3A) => 64 * MB,
+    match FlashSize::from_detected(raw_capacity) {
+        Ok(capacity) => Some(capacity),
         _ => {
-            tracing::warn!("Unknown flash capacity byte: {:x}", capacity);
-            return None;
+            tracing::warn!("Unknown raw flash capacity byte: {:x}", raw_capacity);
+            None
         }
-    };
-    tracing::info!("Detected flash capacity: {:x}", capacity);
-
-    Some(capacity)
+    }
 }

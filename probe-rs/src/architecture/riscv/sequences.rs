@@ -1,5 +1,7 @@
 //! Debug sequences to operate special requirements RISC-V targets.
 
+use crate::architecture::esp32::EspDebugSequence;
+
 use super::communication_interface::RiscvCommunicationInterface;
 use std::fmt::Debug;
 use std::sync::Arc;
@@ -13,12 +15,11 @@ pub trait RiscvDebugSequence: Send + Sync + Debug {
         Ok(())
     }
 
-    /// Detects the flash size of the target.
-    fn detect_flash_size(
+    /// Returns the ESP-specific debug sequences if available.
+    fn as_esp_sequence(
         &self,
-        _interface: &mut RiscvCommunicationInterface,
-    ) -> Result<Option<usize>, crate::Error> {
-        Ok(None)
+    ) -> Option<&dyn EspDebugSequence<Interface = RiscvCommunicationInterface>> {
+        None
     }
 }
 

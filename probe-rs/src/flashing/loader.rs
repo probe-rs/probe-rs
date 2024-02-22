@@ -1,3 +1,4 @@
+use espflash::flasher::{FlashData, FlashSettings};
 use ihex::Record;
 use probe_rs_target::{
     MemoryRange, MemoryRegion, NvmRegion, RawFlashAlgorithm, TargetDescriptionSource,
@@ -129,66 +130,65 @@ impl FlashLoader {
         file: &mut T,
         options: IdfOptions,
     ) -> Result<(), FileDownloadError> {
-        let target = session.target().clone();
+        let target = session.target();
         let target_name = target
             .name
             .split_once('-')
             .map(|(name, _)| name)
             .unwrap_or(target.name.as_str());
         let chip = espflash::targets::Chip::from_str(target_name)
-            .map_err(|_| FileDownloadError::IdfUnsupported(target.name.clone()))?
+            .map_err(|_| FileDownloadError::IdfUnsupported(target_name.to_string()))?
             .into_target();
 
         let mut buf = Vec::new();
         file.read_to_end(&mut buf)?;
 
-        let flash_size_result = session.halted_access(|sess| {
+        // We need a different bootloader for each flash size and crystal frequency.
+        let (flash_size, xtal_frequency) = session.halted_access(|sess| {
             // Figure out flash size from the memory map. We need a different bootloader for each size.
-            Ok(match target.debug_sequence.clone() {
+            Ok(match sess.target().debug_sequence.clone() {
                 DebugSequence::Riscv(sequence) => {
-                    sequence.detect_flash_size(sess.get_riscv_interface()?)
+                    let esp_sequence = sequence.as_esp_sequence().unwrap();
+                    let interface = sess.get_riscv_interface()?;
+                    let flash_size = esp_sequence.detect_flash_size(interface)?;
+
+                    let xtal_frequency = esp_sequence.detect_xtal_frequency(interface)?;
+
+                    (flash_size, xtal_frequency)
                 }
                 DebugSequence::Xtensa(sequence) => {
-                    sequence.detect_flash_size(sess.get_xtensa_interface()?)
+                    let esp_sequence = sequence.as_esp_sequence().unwrap();
+                    let interface = sess.get_xtensa_interface()?;
+                    let flash_size = esp_sequence.detect_flash_size(interface)?;
+
+                    let xtal_frequency = esp_sequence.detect_xtal_frequency(interface)?;
+
+                    (flash_size, xtal_frequency)
                 }
                 DebugSequence::Arm(_) => panic!("There are no ARM ESP targets."),
             })
         })?;
 
-        let flash_size = match flash_size_result {
-            Ok(size) => size,
-            Err(err) => return Err(FileDownloadError::FlashSizeDetection(err)),
-        };
-
-        let flash_size = match flash_size {
-            Some(0x40000) => Some(espflash::flasher::FlashSize::_256Kb),
-            Some(0x80000) => Some(espflash::flasher::FlashSize::_512Kb),
-            Some(0x100000) => Some(espflash::flasher::FlashSize::_1Mb),
-            Some(0x200000) => Some(espflash::flasher::FlashSize::_2Mb),
-            Some(0x400000) => Some(espflash::flasher::FlashSize::_4Mb),
-            Some(0x800000) => Some(espflash::flasher::FlashSize::_8Mb),
-            Some(0x1000000) => Some(espflash::flasher::FlashSize::_16Mb),
-            Some(0x2000000) => Some(espflash::flasher::FlashSize::_32Mb),
-            Some(0x4000000) => Some(espflash::flasher::FlashSize::_64Mb),
-            Some(0x8000000) => Some(espflash::flasher::FlashSize::_128Mb),
-            Some(0x10000000) => Some(espflash::flasher::FlashSize::_256Mb),
-            _ => None,
-        };
-
         let firmware = espflash::elf::ElfFirmwareImage::try_from(&buf[..])?;
-        let image = chip.get_flash_image(
-            &firmware,
-            options.bootloader,
-            options.partition_table,
-            None,
-            None,
-            None,
-            flash_size,
-            None,
-        )?;
-        let parts: Vec<_> = image.flash_segments().collect();
 
-        for data in parts {
+        let flash_data = FlashData::new(
+            options.bootloader.as_deref(),
+            options.partition_table.as_deref(),
+            None,
+            None,
+            {
+                let mut settings = FlashSettings::default();
+
+                settings.size = flash_size;
+
+                settings
+            },
+            0,
+        )?;
+
+        let image = chip.get_flash_image(&firmware, flash_data, None, xtal_frequency)?;
+
+        for data in image.flash_segments() {
             self.add_data(data.addr.into(), &data.data)?;
         }
 

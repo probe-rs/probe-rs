@@ -4,7 +4,11 @@ use object::{
 };
 use probe_rs_target::MemoryRange;
 
-use std::{fs::File, path::Path, str::FromStr};
+use std::{
+    fs::File,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 use super::*;
 use crate::session::Session;
@@ -22,9 +26,9 @@ pub struct BinOptions {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]
 pub struct IdfOptions {
     /// The bootloader
-    pub bootloader: Option<Vec<u8>>,
+    pub bootloader: Option<PathBuf>,
     /// The partition table
-    pub partition_table: Option<esp_idf_part::PartitionTable>,
+    pub partition_table: Option<PathBuf>,
 }
 
 /// A finite list of all the available binary formats probe-rs understands.
@@ -99,8 +103,8 @@ pub enum FileDownloadError {
     #[error("No loadable ELF sections were found.")]
     NoLoadableSegments,
     /// Some error returned by the flash size detection.
-    #[error("Could not determine flash size.")]
-    FlashSizeDetection(#[from] crate::Error),
+    #[error("Could not determine target device property.")]
+    PropertyDetection(#[from] crate::Error)
 }
 
 /// Options for downloading a file onto a target chip.

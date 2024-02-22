@@ -2,11 +2,15 @@
 
 use std::sync::Arc;
 
+use espflash::flasher::FlashSize;
 use probe_rs_target::Chip;
 
 use crate::{
-    architecture::xtensa::{
-        communication_interface::XtensaCommunicationInterface, sequences::XtensaDebugSequence,
+    architecture::{
+        esp32::EspDebugSequence,
+        xtensa::{
+            communication_interface::XtensaCommunicationInterface, sequences::XtensaDebugSequence,
+        }
     },
     config::sequences::esp::EspFlashSizeDetector,
     MemoryInterface,
@@ -64,11 +68,15 @@ impl XtensaDebugSequence for ESP32 {
 
         Ok(())
     }
+}
+
+impl EspDebugSequence for ESP32 {
+    type Interface = XtensaCommunicationInterface;
 
     fn detect_flash_size(
         &self,
         interface: &mut XtensaCommunicationInterface,
-    ) -> Result<Option<usize>, crate::Error> {
+    ) -> Result<Option<FlashSize>, crate::Error> {
         self.inner.detect_flash_size_esp32(interface)
     }
 }
