@@ -1,6 +1,6 @@
-use probe_rs::rtt::{Channels, Rtt, RttChannel, ScanRegion};
-use probe_rs::{config::TargetSelector, probe::DebugProbeInfo};
-use probe_rs::{probe::list::Lister, Permissions};
+use probe_rs::probe::list;
+use probe_rs::rtt::host::{parse_scan_region, Attach, RttHost};
+use probe_rs::rtt::ScanRegion;
 
 use anyhow::{bail, Result};
 use clap::Parser;
@@ -26,32 +26,6 @@ impl std::str::FromStr for ProbeInfo {
         } else {
             Err("Invalid probe number.")
         }
-    }
-}
-
-fn parse_scan_region(
-    mut src: &str,
-) -> Result<ScanRegion, Box<dyn std::error::Error + Send + Sync + 'static>> {
-    src = src.trim();
-    if src.is_empty() {
-        return Ok(ScanRegion::Ram);
-    }
-
-    let parts = src
-        .split("..")
-        .map(|p| {
-            if p.starts_with("0x") || p.starts_with("0X") {
-                u32::from_str_radix(&p[2..], 16)
-            } else {
-                p.parse()
-            }
-        })
-        .collect::<Result<Vec<_>, _>>()?;
-
-    match *parts.as_slice() {
-        [addr] => Ok(ScanRegion::Exact(addr)),
-        [start, end] => Ok(ScanRegion::Range(start..end)),
-        _ => Err("Invalid range: multiple '..'s".into()),
     }
 }
 
@@ -109,186 +83,70 @@ fn main() -> Result<()> {
     pretty_env_logger::init();
     let opts = Opts::parse();
 
-    let lister = Lister::new();
-
-    let probes = lister.list_all();
-
-    if probes.is_empty() {
-        bail!("No debug probes available. Make sure your probe is plugged in, supported and up-to-date.");
-    }
-
     let probe_number = match opts.probe {
         ProbeInfo::List => {
-            list_probes(std::io::stdout(), &probes);
+            list::list_all_probes(std::io::stdout());
             return Ok(());
         }
         ProbeInfo::Number(i) => i,
     };
 
-    if probe_number >= probes.len() {
-        list_probes(std::io::stderr(), &probes);
-        bail!("Probe {probe_number} does not exist.");
-    }
-
-    let probe = match probes[probe_number].open(&lister) {
-        Ok(probe) => probe,
-        Err(err) => {
-            bail!("Error opening probe: {err}");
-        }
-    };
-
-    let target_selector = TargetSelector::from(opts.chip.as_deref());
-
-    let mut session = match probe.attach(target_selector, Permissions::default()) {
-        Ok(session) => session,
-        Err(err) => {
-            let mut err_str = format!("Error creating debug session: {err}");
-
-            if opts.chip.is_none() {
-                if let probe_rs::Error::ChipNotFound(_) = err {
-                    err_str
-                        .push_str("\nHint: Use '--chip' to specify the target chip type manually");
-                }
-            }
-
-            bail!("{err}");
-        }
-    };
-
-    let memory_map = session.target().memory_map.clone();
-
-    let mut core = match session.core(0) {
-        Ok(core) => core,
-        Err(err) => {
-            bail!("Error attaching to core # 0 {err}");
-        }
-    };
-
-    eprintln!("Attaching to RTT...");
-
-    let mut rtt = match Rtt::attach_region(&mut core, &memory_map, &opts.scan_region) {
-        Ok(rtt) => rtt,
-        Err(err) => {
-            bail!("Error attaching to RTT: {err}");
-        }
-    };
+    let mut rtthost = RttHost::new(probe_number, opts.chip.as_deref(), Some(opts.scan_region))?;
 
     if opts.list {
         println!("Up channels:");
-        list_channels(rtt.up_channels());
+        let up_channels = rtthost.up_channel_list()?;
+        for chan in up_channels.iter() {
+            println!("  {chan}");
+        }
 
         println!("Down channels:");
-        list_channels(rtt.down_channels());
+        let down_channels = rtthost.down_channel_list()?;
+        for chan in down_channels.iter() {
+            println!("  {chan}");
+        }
 
         return Ok(());
     }
 
-    let up_channel = if let Some(up) = opts.up {
-        let chan = rtt.up_channels().take(up);
+    eprintln!(
+        "Found control block at 0x{:08x}",
+        rtthost.ctrl_block().unwrap_or_default()
+    );
 
-        if chan.is_none() {
-            bail!("Error: up channel {up} does not exist.");
-        }
-
-        chan
+    let attach_behavior = if opts.reset {
+        eprintln!("Attaching under reset");
+        Attach::UnderReset
     } else {
-        rtt.up_channels().take(0)
+        Attach::Running
     };
 
-    let down_channel = if let Some(down) = opts.down {
-        let chan = rtt.down_channels().take(down);
+    let spawn_result = rtthost.spawn_channels(attach_behavior)?;
+    let stdin = stdin_channel();
 
-        if chan.is_none() {
-            bail!("Error: up channel {down} does not exist.");
-        }
-
-        chan
-    } else {
-        rtt.down_channels().take(0)
-    };
-
-    let stdin = down_channel.as_ref().map(|_| stdin_channel());
-
-    eprintln!("Found control block at 0x{:08x}", rtt.ptr());
-
-    let mut up_buf = [0u8; 1024];
-    let mut down_buf = vec![];
-
-    if opts.reset {
-        core.reset()?;
+    if spawn_result.handle.is_err() {
+        bail!("Error spawning RTT thread");
     }
 
     loop {
-        if let Some(up_channel) = up_channel.as_ref() {
-            let count = match up_channel.read(&mut core, up_buf.as_mut()) {
-                Ok(count) => count,
-                Err(err) => {
-                    bail!("\nError reading from RTT: {err}");
-                }
-            };
-
-            match stdout().write_all(&up_buf[..count]) {
+        match spawn_result.target_to_host.recv() {
+            Ok(data) => {
+                stdout().write_all(&data)?;
+                stdout().flush()?;
+            }
+            Err(e) => match spawn_result.handle.unwrap().join().unwrap() {
                 Ok(_) => {
-                    stdout().flush().ok();
+                    bail!("Error reading from target: {e}");
                 }
-                Err(err) => {
-                    bail!("Error writing to stdout: {err}");
+                Err(e) => {
+                    bail!("Error reading from target: {e:?}");
                 }
-            }
+            },
         }
 
-        if let (Some(down_channel), Some(stdin)) = (down_channel.as_ref(), &stdin) {
-            if let Ok(bytes) = stdin.try_recv() {
-                down_buf.extend_from_slice(bytes.as_slice());
-            }
-
-            if !down_buf.is_empty() {
-                let count = match down_channel.write(&mut core, down_buf.as_mut()) {
-                    Ok(count) => count,
-                    Err(err) => {
-                        bail!("\nError writing to RTT: {err}");
-                    }
-                };
-
-                if count > 0 {
-                    down_buf.drain(..count);
-                }
-            }
+        if let Ok(data) = stdin.try_recv() {
+            spawn_result.host_to_target.send(data)?;
         }
-    }
-}
-
-fn list_probes(mut stream: impl std::io::Write, probes: &[DebugProbeInfo]) {
-    writeln!(stream, "Available probes:").unwrap();
-
-    for (i, probe) in probes.iter().enumerate() {
-        writeln!(
-            stream,
-            "  {}: {} {}",
-            i,
-            probe.identifier,
-            probe
-                .serial_number
-                .as_deref()
-                .unwrap_or("(no serial number)")
-        )
-        .unwrap();
-    }
-}
-
-fn list_channels(channels: &Channels<impl RttChannel>) {
-    if channels.is_empty() {
-        println!("  (none)");
-        return;
-    }
-
-    for chan in channels.iter() {
-        println!(
-            "  {}: {} (buffer size {})",
-            chan.number(),
-            chan.name().unwrap_or("(no name)"),
-            chan.buffer_size(),
-        );
     }
 }
 
@@ -300,9 +158,13 @@ fn stdin_channel() -> Receiver<Vec<u8>> {
 
         loop {
             match stdin().read(&mut buf[..]) {
-                Ok(count) => {
-                    tx.send(buf[..count].to_vec()).unwrap();
-                }
+                Ok(count) => match tx.send(buf[..count].to_vec()) {
+                    Ok(_) => {}
+                    Err(err) => {
+                        eprintln!("Error sending to target: {err}");
+                        break;
+                    }
+                },
                 Err(err) => {
                     eprintln!("Error reading from stdin, input disabled: {err}");
                     break;

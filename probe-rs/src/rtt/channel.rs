@@ -4,7 +4,7 @@ use scroll::{Pread, LE};
 use std::cmp::min;
 
 /// Trait for channel information shared between up and down channels.
-pub trait RttChannel {
+pub trait RttChannel: std::fmt::Display {
     /// Returns the number of the channel.
     fn number(&self) -> usize;
 
@@ -96,6 +96,10 @@ impl Channel {
         } else {
             Err(Error::IncorrectCoreSpecified(self.core_id, core.id()))
         }
+    }
+
+    pub fn number(&self) -> usize {
+        self.number
     }
 
     pub fn name(&self) -> Option<&str> {
@@ -269,6 +273,12 @@ impl RttChannel for UpChannel {
     }
 }
 
+impl std::fmt::Display for UpChannel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        friendly_display(&self.0, f)
+    }
+}
+
 /// RTT down (host to target) channel.
 #[derive(Debug)]
 pub struct DownChannel(pub(crate) Channel);
@@ -355,6 +365,22 @@ impl RttChannel for DownChannel {
     fn buffer_size(&self) -> usize {
         self.0.buffer_size()
     }
+}
+
+impl std::fmt::Display for DownChannel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        friendly_display(&self.0, f)
+    }
+}
+
+fn friendly_display(channel: &Channel, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(
+        f,
+        "{}: {} ({} bytes)",
+        channel.number(),
+        channel.name().unwrap_or("(no name)"),
+        channel.buffer_size(),
+    )
 }
 
 /// Reads a null-terminated string from target memory. Lossy UTF-8 decoding is used.

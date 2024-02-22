@@ -114,3 +114,25 @@ impl AllProbesLister {
         list
     }
 }
+
+/// List all available probes on the provided Write impl.
+pub fn list_all_probes(mut stream: impl std::io::Write) {
+    let lister = Lister::new();
+    let probes = lister.list_all();
+
+    writeln!(stream, "Available probes:").expect("Writing to the output stream failed.");
+
+    for (i, probe) in probes.iter().enumerate() {
+        writeln!(
+            stream,
+            "  {}: {} {}",
+            i,
+            probe.identifier,
+            probe
+                .serial_number
+                .as_deref()
+                .unwrap_or("(no serial number)")
+        )
+        .expect("Writing to the output stream failed.");
+    }
+}
