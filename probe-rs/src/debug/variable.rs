@@ -738,82 +738,81 @@ impl Variable {
                     }
                     format!("{compound_value}{}{:\t<indentation$})", line_feed, "")
                 }
+
+                _ if children.is_empty() => {
+                    // Struct with no children -> just print type name
+                    // This is for example the None value of an Option.
+                    compound_value
+                }
                 _ => {
                     // Generic handling of other structured types.
                     // The pre- and post- fix is determined by the type of children.
                     // compound_value = format!("{} {}", compound_value, self.type_name);
+                    let (mut pre_fix, mut post_fix) = (None, None);
 
-                    if children.is_empty() {
-                        // Struct with no children -> just print type name
-                        // This is for example the None value of an Option.
-                        compound_value
-                    } else {
-                        let (mut pre_fix, mut post_fix) = (None, None);
+                    let mut is_tuple = false;
 
-                        let mut is_tuple = false;
-
-                        for (idx, child) in children.iter().enumerate() {
-                            if pre_fix.is_none() && post_fix.is_none() {
-                                if let VariableName::Named(child_name) = &child.name {
-                                    if child_name.starts_with("__0") {
-                                        is_tuple = true;
-                                        // Treat this structure as a tuple
-                                        pre_fix = Some(format!(
-                                            "{}{:\t<indentation$}{}: {}({}) = {}(",
-                                            line_feed,
-                                            "",
-                                            self.name,
-                                            type_name,
-                                            child.type_name(),
-                                            type_name,
-                                        ));
-                                        post_fix =
-                                            Some(format!("{}{:\t<indentation$})", line_feed, ""));
-                                    } else {
-                                        // Treat this structure as a `struct`
-
-                                        if show_name {
-                                            pre_fix = Some(format!(
-                                                "{}{:\t<indentation$}{}: {} = {} {{",
-                                                line_feed, "", self.name, type_name, type_name,
-                                            ));
-                                        } else {
-                                            pre_fix = Some(format!(
-                                                "{}{:\t<indentation$}{} {{",
-                                                line_feed, "", type_name,
-                                            ));
-                                        }
-                                        post_fix =
-                                            Some(format!("{}{:\t<indentation$}}}", line_feed, ""));
-                                    }
-                                };
-                                if let Some(pre_fix) = &pre_fix {
-                                    compound_value = format!("{compound_value}{pre_fix}");
-                                };
-                            }
-
-                            let print_name = !is_tuple;
-
-                            compound_value = format!(
-                                "{compound_value}{}{}",
-                                child.formatted_variable_value(
-                                    variable_cache,
-                                    indentation + 1,
-                                    print_name
-                                ),
-                                if idx == children.len() - 1 {
-                                    // Do not add a separator at the end of the list
-                                    ""
+                    for (idx, child) in children.iter().enumerate() {
+                        if pre_fix.is_none() && post_fix.is_none() {
+                            if let VariableName::Named(child_name) = &child.name {
+                                if child_name.starts_with("__0") {
+                                    is_tuple = true;
+                                    // Treat this structure as a tuple
+                                    pre_fix = Some(format!(
+                                        "{}{:\t<indentation$}{}: {}({}) = {}(",
+                                        line_feed,
+                                        "",
+                                        self.name,
+                                        type_name,
+                                        child.type_name(),
+                                        type_name,
+                                    ));
+                                    post_fix =
+                                        Some(format!("{}{:\t<indentation$})", line_feed, ""));
                                 } else {
-                                    ", "
+                                    // Treat this structure as a `struct`
+
+                                    if show_name {
+                                        pre_fix = Some(format!(
+                                            "{}{:\t<indentation$}{}: {} = {} {{",
+                                            line_feed, "", self.name, type_name, type_name,
+                                        ));
+                                    } else {
+                                        pre_fix = Some(format!(
+                                            "{}{:\t<indentation$}{} {{",
+                                            line_feed, "", type_name,
+                                        ));
+                                    }
+                                    post_fix =
+                                        Some(format!("{}{:\t<indentation$}}}", line_feed, ""));
                                 }
-                            );
+                            };
+                            if let Some(pre_fix) = &pre_fix {
+                                compound_value = format!("{compound_value}{pre_fix}");
+                            };
                         }
-                        if let Some(post_fix) = &post_fix {
-                            compound_value = format!("{compound_value}{post_fix}");
-                        };
-                        compound_value
+
+                        let print_name = !is_tuple;
+
+                        compound_value = format!(
+                            "{compound_value}{}{}",
+                            child.formatted_variable_value(
+                                variable_cache,
+                                indentation + 1,
+                                print_name
+                            ),
+                            if idx == children.len() - 1 {
+                                // Do not add a separator at the end of the list
+                                ""
+                            } else {
+                                ", "
+                            }
+                        );
                     }
+                    if let Some(post_fix) = &post_fix {
+                        compound_value = format!("{compound_value}{post_fix}");
+                    };
+                    compound_value
                 }
             }
         }
