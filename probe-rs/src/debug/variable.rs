@@ -668,20 +668,17 @@ impl Variable {
         let line_start = format!("{}{:\t<indentation$}", line_feed, "");
         let type_name = self.type_name();
 
-        // Allow for chained `if let` without complaining
-        #[allow(clippy::if_same_then_else)]
         if !self.value.is_empty() {
+            // Use the supplied value or error message.
             if show_name {
-                // Use the supplied value or error message.
                 format!("{line_start}{}: {} = {}", self.name, type_name, self.value)
             } else {
-                // Use the supplied value or error message.
                 format!("{line_start}{}", self.value)
             }
-        } else if let VariableName::AnonymousNamespace = self.name {
-            // Namespaces do not have values
-            String::new()
-        } else if let VariableName::Namespace(_) = self.name {
+        } else if matches!(
+            self.name,
+            VariableName::AnonymousNamespace | VariableName::Namespace(_)
+        ) {
             // Namespaces do not have values
             String::new()
         } else {
