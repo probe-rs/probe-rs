@@ -726,7 +726,10 @@ impl Variable {
                     }
                     format!("{compound_value}{line_start}]")
                 }
-                VariableType::Struct(name) if name == "Ok" || name == "Err" => {
+
+                VariableType::Struct(name) if name == "Some" || name == "Ok" || name == "Err" => {
+                    // FIXME: this is not hit by any of the unwind tests, which is weird because
+                    // some of them contain `Some` structs.
                     // Handle special structure types like the variant values of `Option<>` and `Result<>`
                     compound_value = format!("{line_start}{} = (", type_name);
                     for child in children {
