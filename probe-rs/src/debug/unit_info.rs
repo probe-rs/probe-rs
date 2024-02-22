@@ -191,7 +191,7 @@ impl UnitInfo {
     pub(crate) fn process_tree_node_attributes(
         &self,
         debug_info: &DebugInfo,
-        tree_node: &mut gimli::EntriesTreeNode<GimliReader>,
+        tree_node: &gimli::DebuggingInformationEntry<GimliReader>,
         parent_variable: &mut Variable,
         child_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
@@ -201,9 +201,11 @@ impl UnitInfo {
         // Identify the parent.
         child_variable.parent_key = parent_variable.variable_key;
 
+        let abstract_entry;
+
         // We need to determine if we are working with a 'abstract` location, and use that node for the attributes we need
         let attributes_entry = if let Ok(Some(abstract_origin)) =
-            tree_node.entry().attr(gimli::DW_AT_abstract_origin)
+            tree_node.attr(gimli::DW_AT_abstract_origin)
         {
             match abstract_origin.value() {
                 gimli::AttributeValue::UnitRef(unit_ref) => {
@@ -211,20 +213,16 @@ impl UnitInfo {
                     // but first we need to process the (optional) memory location using the current DIE.
                     self.process_memory_location(
                         debug_info,
-                        tree_node.entry(),
+                        &tree_node,
                         parent_variable,
                         child_variable,
                         memory,
                         frame_info,
                     )?;
-                    Some(
-                        self.unit
-                            .header
-                            .entries_tree(&self.unit.abbreviations, Some(unit_ref))?
-                            .root()?
-                            .entry()
-                            .clone(),
-                    )
+
+                    abstract_entry = self.unit.entry(unit_ref)?;
+
+                    Some(&abstract_entry)
                 }
                 other_attribute_value => {
                     child_variable.set_value(VariableValue::Error(format!(
@@ -234,7 +232,7 @@ impl UnitInfo {
                 }
             }
         } else {
-            Some(tree_node.entry().clone())
+            Some(tree_node)
         };
 
         // For variable attribute resolution, we need to resolve a few attributes in advance of looping through all the other ones.
@@ -337,16 +335,12 @@ impl UnitInfo {
                     gimli::DW_AT_discr => match attr.value() {
                         // This calculates the active discriminant value for the `VariantPart`.
                         gimli::AttributeValue::UnitRef(unit_ref) => {
-                            let mut type_tree = self
-                                .unit
-                                .header
-                                .entries_tree(&self.unit.abbreviations, Some(unit_ref))?;
-                            let mut discriminant_node = type_tree.root()?;
+                            let discriminant_node = self.unit.entry(unit_ref)?;
                             let mut discriminant_variable =
                                 cache.create_variable(parent_variable.variable_key, Some(self))?;
                             self.process_tree_node_attributes(
                                 debug_info,
-                                &mut discriminant_node,
+                                &discriminant_node,
                                 parent_variable,
                                 &mut discriminant_variable,
                                 memory,
@@ -418,7 +412,7 @@ impl UnitInfo {
         }
 
         // Need to process bitfields last as they need type information to be resolved first.
-        self.process_bitfield_info(child_variable, tree_node.entry(), cache)?;
+        self.process_bitfield_info(child_variable, tree_node, cache)?;
 
         child_variable.extract_value(memory, cache);
         cache.update_variable(child_variable)?;
@@ -499,7 +493,7 @@ impl UnitInfo {
         tracing::trace!("process_tree for parent {:?}", parent_variable.variable_key);
 
         let mut child_nodes = parent_node.children();
-        while let Some(mut child_node) = child_nodes.next()? {
+        while let Some(child_node) = child_nodes.next()? {
             match child_node.entry().tag() {
                 gimli::DW_TAG_namespace => {
                     let variable_name =
@@ -557,7 +551,7 @@ impl UnitInfo {
                         cache.create_variable(parent_variable.variable_key, Some(self))?;
                     self.process_tree_node_attributes(
                         debug_info,
-                        &mut child_node,
+                        child_node.entry(),
                         parent_variable,
                         &mut child_variable,
                         memory,
@@ -612,7 +606,7 @@ impl UnitInfo {
                     parent_variable.role = VariantRole::VariantPart(u64::MAX);
                     self.process_tree_node_attributes(
                         debug_info,
-                        &mut child_node,
+                        &child_node.entry(),
                         parent_variable,
                         &mut child_variable,
                         memory,
@@ -640,7 +634,7 @@ impl UnitInfo {
                         self.extract_variant_discriminant(&child_node, &mut child_variable)?;
                         self.process_tree_node_attributes(
                             debug_info,
-                            &mut child_node,
+                            &child_node.entry(),
                             parent_variable,
                             &mut child_variable,
                             memory,
