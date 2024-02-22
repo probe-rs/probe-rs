@@ -790,16 +790,18 @@ impl UnitInfo {
                 | gimli::DW_TAG_array_type
                 | gimli::DW_TAG_subroutine_type
                 | gimli::DW_TAG_subprogram
-                | gimli::DW_TAG_union_type => {
+                | gimli::DW_TAG_union_type
+                | gimli::DW_TAG_typedef
+                | gimli::DW_TAG_const_type
+                | gimli::DW_TAG_volatile_type => {
                     // These will be processed elsewhere, or not at all, until we discover a use case that needs to be implemented.
                 }
                 unimplemented => {
-                    let error = format!(
+                    tracing::debug!(
                         "Unimplemented: Encountered unimplemented DwTag {:?} for Variable {:?}",
                         unimplemented.static_string(),
                         parent_variable.name
-                    );
-                    parent_variable.set_value(VariableValue::Error(error));
+                    )
                 }
             }
         }
@@ -875,10 +877,19 @@ impl UnitInfo {
                         )));
                     }
                 },
-                // Property of variables that are of DW_TAG_subrange_type.
-                gimli::DW_AT_upper_bound | gimli::DW_AT_count => {
+                gimli::DW_AT_count => match attr.value().udata_value() {
+                    Some(count) => upper_bound = Some(count),
+                    None => {
+                        return Err(DebugError::Other(anyhow::anyhow!(
+                            "Unimplemented: Attribute Value for DW_AT_count: {:?}",
+                            attr.value()
+                        )));
+                    }
+                },
+                gimli::DW_AT_upper_bound => {
                     match attr.value().udata_value() {
-                        Some(bound) => upper_bound = Some(bound), // child_variable.range_upper_bound = bound as i64,
+                        // Rust ranges are exclusive, but the DWARF upper bound is inclusive.
+                        Some(bound) => upper_bound = Some(bound + 1),
                         None => {
                             return Err(DebugError::Other(anyhow::anyhow!(
                                 "Unimplemented: Attribute Value for DW_AT_upper_bound: {:?}",
