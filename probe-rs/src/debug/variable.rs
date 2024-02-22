@@ -688,15 +688,16 @@ impl Variable {
             String::new()
         } else {
             // Infer a human readable value using the available children of this variable.
-            let mut compound_value = format!("{}{:\t<indentation$}", line_feed, "");
+            let line_start = format!("{}{:\t<indentation$}", line_feed, "");
+            let mut compound_value = String::new();
             let children: Vec<_> = variable_cache.get_children(self.variable_key).collect();
 
             // Make sure we can safely unwrap() children.
             match self.type_name.inner() {
                 VariableType::Pointer(_) => {
                     // Pointers
-                    compound_value = format!(
-                        "{compound_value}{}",
+                    format!(
+                        "{line_start}{}",
                         if let Some(first_child) = children.first() {
                             first_child.formatted_variable_value(
                                 variable_cache,
@@ -706,16 +707,14 @@ impl Variable {
                         } else {
                             "Unable to resolve referenced variable value".to_string()
                         }
-                    );
-                    compound_value
+                    )
                 }
                 VariableType::Array { .. } => {
                     // Arrays
-                    compound_value = format!("{compound_value}{type_name} = [");
+                    compound_value = format!("{line_start}{type_name} = [");
                     for (idx, child) in children.iter().enumerate() {
                         compound_value = format!(
-                            "{}{}{}",
-                            compound_value,
+                            "{compound_value}{}{}",
                             child.formatted_variable_value(variable_cache, indentation + 1, false),
                             if idx == children.len() - 1 {
                                 // Do not add a separator at the end of the list
@@ -725,18 +724,18 @@ impl Variable {
                             }
                         );
                     }
-                    format!("{}{}{:\t<indentation$}]", compound_value, line_feed, "")
+                    format!("{compound_value}{line_start}]")
                 }
                 VariableType::Struct(name) if name == "Ok" || name == "Err" => {
                     // Handle special structure types like the variant values of `Option<>` and `Result<>`
-                    compound_value = format!("{compound_value}{} = {}(", type_name, compound_value);
+                    compound_value = format!("{line_start}{} = (", type_name);
                     for child in children {
                         compound_value = format!(
                             "{compound_value}{}",
                             child.formatted_variable_value(variable_cache, indentation + 1, false)
                         );
                     }
-                    format!("{compound_value}{}{:\t<indentation$})", line_feed, "")
+                    format!("{compound_value}{line_start})")
                 }
 
                 _ if children.is_empty() => {
@@ -763,30 +762,25 @@ impl Variable {
                             is_tuple = true;
                             // Treat this structure as a tuple
                             pre_fix = Some(format!(
-                                "{}{:\t<indentation$}{}: {}({}) = {}(",
-                                line_feed,
-                                "",
+                                "{line_start}{}: {}({}) = {}(",
                                 self.name,
                                 type_name,
                                 child.type_name(),
                                 type_name,
                             ));
-                            post_fix = Some(format!("{}{:\t<indentation$})", line_feed, ""));
+                            post_fix = Some(format!("{line_start})"));
                         } else {
                             // Treat this structure as a `struct`
 
                             if show_name {
                                 pre_fix = Some(format!(
-                                    "{}{:\t<indentation$}{}: {} = {} {{",
-                                    line_feed, "", self.name, type_name, type_name,
+                                    "{line_start}{}: {} = {} {{",
+                                    self.name, type_name, type_name,
                                 ));
                             } else {
-                                pre_fix = Some(format!(
-                                    "{}{:\t<indentation$}{} {{",
-                                    line_feed, "", type_name,
-                                ));
+                                pre_fix = Some(format!("{line_start}{} {{", type_name,));
                             }
-                            post_fix = Some(format!("{}{:\t<indentation$}}}", line_feed, ""));
+                            post_fix = Some(format!("{line_start}}}"));
                         }
                     }
                     if let Some(pre_fix) = &pre_fix {
@@ -813,7 +807,7 @@ impl Variable {
                     }
                     if let Some(post_fix) = &post_fix {
                         compound_value = format!("{compound_value}{post_fix}");
-                    };
+                    }
                     compound_value
                 }
             }
