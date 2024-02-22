@@ -7,7 +7,6 @@ use crate::{
     MemoryInterface,
 };
 use gimli::{AttributeValue, DebugInfoOffset, EvaluationResult, Location, UnitOffset};
-use num_traits::Zero;
 
 /// The result of `UnitInfo::evaluate_expression()` can be the value of a variable, or a memory location.
 pub(crate) enum ExpressionResult {
@@ -566,8 +565,19 @@ impl UnitInfo {
                         frame_info,
                     )?;
 
+                    // In the case of C code, we can have entries for both the declaration and the definition of a variable.
+                    // We don't do anything with the declaration right now, so we remove it from the cache.
+                    let is_declaration = if let Ok(Some(AttributeValue::Flag(value))) =
+                        child_node.entry().attr_value(gimli::DW_AT_declaration)
+                    {
+                        value
+                    } else {
+                        false
+                    };
+
                     // Do not keep or process PhantomData nodes, or variant parts that we have already used.
-                    if child_variable.type_name.is_phantom_data()
+                    if is_declaration
+                        || child_variable.type_name.is_phantom_data()
                         || child_variable.name == VariableName::Artifical
                     {
                         cache.remove_cache_entry(child_variable.variable_key)?;
@@ -1724,7 +1734,7 @@ impl UnitInfo {
                 // This means the value was optimized away.
                 ExpressionResult::Location(VariableLocation::Unavailable)
             }
-            Location::Address { address } if address.is_zero() => {
+            Location::Address { address: 0 } => {
                 let error = "The value of this variable may have been optimized out of the debug info, by the compiler.".to_string();
                 ExpressionResult::Location(VariableLocation::Error(error))
             }
