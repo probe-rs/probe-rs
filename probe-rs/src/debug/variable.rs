@@ -283,6 +283,15 @@ impl VariableType {
         }
     }
 
+    /// Get the inner type of a modified type, stopping at typedef aliases.
+    fn skip_modifiers(&self) -> &Self {
+        match self {
+            Self::Modified(Modifier::Typedef(_), _) => self,
+            Self::Modified(_, ty) => ty.skip_modifiers(),
+            _ => self,
+        }
+    }
+
     /// Is this variable of a Rust PhantomData marker type?
     pub fn is_phantom_data(&self) -> bool {
         match self {
@@ -322,7 +331,12 @@ impl VariableType {
             VariableType::Array {
                 item_type_name,
                 count,
-            } => language.format_array_type(&item_type_name.display_name(language), *count),
+            } => language.format_array_type(
+                // In case the compiler points at a modified item type (e.g. const), skip the
+                // modifier.
+                &item_type_name.skip_modifiers().display_name(language),
+                *count,
+            ),
 
             VariableType::Bitfield(bitfield, name) => {
                 language.format_bitfield_type(&name.display_name(language), *bitfield)
