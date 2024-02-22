@@ -917,6 +917,7 @@ impl DebugInfo {
 
     /// Find the program counter where a breakpoint should be set,
     /// given a source file, a line and optionally a column.
+    /// TODO: Move (and fix) this to the [`InstructionSequence::for_source_location`] method.
     pub fn get_breakpoint_location(
         &self,
         path: &TypedPathBuf,
@@ -999,15 +1000,14 @@ impl DebugInfo {
                 continue;
             }
 
-            let instruction_sequence =
-                InstructionSequence::for_address(self, row.address())?.statements;
+            let instruction_sequence = InstructionSequence::for_address(self, row.address())?;
 
             // The first match of the file and row will be used to build the InstructionSequence, and then:
             // 1. If there is an exact column match, we will use the low_pc of the statement at that column and line.
             // 2. If there is no exact column match, we use the first available statement in the line.
             let halt_address_and_location = |instruction_location: &InstructionLocation| {
                 (
-                    instruction_location.low_pc(),
+                    instruction_location.address,
                     line_program
                         .header()
                         .file(instruction_location.file_index)
@@ -1028,7 +1028,7 @@ impl DebugInfo {
             };
 
             // The case where we have exact match on file, line AND column.
-            let first_find = instruction_sequence.iter().find(|statement| {
+            let first_find = instruction_sequence.instructions.iter().find(|statement| {
                 column
                     .map(ColumnType::Column)
                     .map_or(false, |col| col == statement.column)
@@ -1045,6 +1045,7 @@ impl DebugInfo {
 
             // The fallback case where we have exact match on file and line, but no column.
             let second_find = instruction_sequence
+                .instructions
                 .iter()
                 .find(|statement| statement.line == Some(cur_line));
 
