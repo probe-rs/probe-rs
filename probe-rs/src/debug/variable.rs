@@ -738,7 +738,7 @@ impl Variable {
                 _ if children.is_empty() => {
                     // Struct with no children -> just print type name
                     // This is for example the None value of an Option.
-                    compound_value
+                    format!("{compound_value}{type_name}")
                 }
 
                 _ if matches!(
