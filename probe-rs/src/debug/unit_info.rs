@@ -6,10 +6,7 @@ use crate::{
     debug::{language, stack_frame::StackFrameInfo},
     MemoryInterface,
 };
-use gimli::{
-    AttributeValue, DW_AT_specification, DebugInfoOffset, EvaluationResult, Location, UnitOffset,
-};
-use num_traits::Zero;
+use gimli::{AttributeValue, DebugInfoOffset, EvaluationResult, Location, UnitOffset};
 
 /// The result of `UnitInfo::evaluate_expression()` can be the value of a variable, or a memory location.
 pub(crate) enum ExpressionResult {
@@ -1726,7 +1723,7 @@ impl UnitInfo {
                 // This means the value was optimized away.
                 ExpressionResult::Location(VariableLocation::Unavailable)
             }
-            Location::Address { address } if address.is_zero() => {
+            Location::Address { address: 0 } => {
                 let error = "The value of this variable may have been optimized out of the debug info, by the compiler.".to_string();
                 ExpressionResult::Location(VariableLocation::Error(error))
             }
