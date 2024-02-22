@@ -762,29 +762,25 @@ impl Variable {
                             is_tuple = true;
                             // Treat this structure as a tuple
                             pre_fix = Some(format!(
-                                "{line_start}{}: {}({}) = {}(",
+                                "{}: {}({}) = {}(",
                                 self.name,
                                 type_name,
                                 child.type_name(),
                                 type_name,
                             ));
-                            post_fix = Some(format!("{line_start})"));
+                            post_fix = Some(')');
                         } else {
                             // Treat this structure as a `struct`
-
-                            if show_name {
-                                pre_fix = Some(format!(
-                                    "{line_start}{}: {} = {} {{",
-                                    self.name, type_name, type_name,
-                                ));
+                            pre_fix = if show_name {
+                                Some(format!("{}: {} = {} {{", self.name, type_name, type_name))
                             } else {
-                                pre_fix = Some(format!("{line_start}{} {{", type_name,));
-                            }
-                            post_fix = Some(format!("{line_start}}}"));
+                                Some(format!("{} {{", type_name))
+                            };
+                            post_fix = Some('}');
                         }
                     }
                     if let Some(pre_fix) = &pre_fix {
-                        compound_value = format!("{compound_value}{pre_fix}");
+                        compound_value = format!("{compound_value}{line_start}{pre_fix}");
                     }
 
                     let print_name = !is_tuple;
@@ -806,7 +802,7 @@ impl Variable {
                         );
                     }
                     if let Some(post_fix) = &post_fix {
-                        compound_value = format!("{compound_value}{post_fix}");
+                        compound_value = format!("{compound_value}{line_start}{post_fix}");
                     }
                     compound_value
                 }
