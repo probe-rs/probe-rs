@@ -1,7 +1,5 @@
 use super::{
-    debug_info::DebugInfo,
-    source_statement::SourceStatements,
-    {DebugError, SourceLocation},
+    debug_info::DebugInfo, source_instructions::InstructionSequence, DebugError, VerifiedBreakpoint,
 };
 use crate::{
     architecture::{
@@ -73,7 +71,7 @@ impl SteppingMode {
                     return Ok((core_status, program_counter));
                 }
                 SteppingMode::IntoStatement => {
-                    self.get_halt_location(core, debug_info, program_counter, None)
+                    self.get_halt_location(core, debug_info, program_counter, Some(return_address))
                 }
                 SteppingMode::BreakPoint => {
                     self.get_halt_location(core, debug_info, program_counter, None)
@@ -82,8 +80,8 @@ impl SteppingMode {
                     self.get_halt_location(core, debug_info, program_counter, Some(return_address))
                 }
             } {
-                Ok((post_step_target_address, _)) => {
-                    target_address = post_step_target_address;
+                Ok(post_step_target) => {
+                    target_address = Some(post_step_target.address);
                     // Re-read the program_counter, because it may have changed during the `get_halt_location` call.
                     program_counter = core
                         .read_core_reg(core.program_counter().id())?
@@ -91,7 +89,7 @@ impl SteppingMode {
                     break;
                 }
                 Err(error) => match error {
-                    DebugError::NoValidHaltLocation {
+                    DebugError::IncompleteDebugInfo {
                         message,
                         pc_at_error,
                     } => {
@@ -144,7 +142,7 @@ impl SteppingMode {
                 run_to_address(program_counter, target_address, core)?
             }
             None => {
-                return Err(DebugError::NoValidHaltLocation {
+                return Err(DebugError::IncompleteDebugInfo {
                     message: "Unable to determine target address for this step request."
                         .to_string(),
                     pc_at_error: program_counter,
@@ -156,23 +154,17 @@ impl SteppingMode {
 
     /// To understand how this method works, use the following framework:
     /// - Everything is calculated from a given machine instruction address, usually the current program counter.
-    /// - To calculate where the user might step to (step-over, step-into, step-out), we start from the given instruction address/program counter, and work our way through all the rows in the sequence of instructions it is part of.
-    ///   - A sequence of instructions represents a series of contiguous target machine instructions, and does not necessarily represent the whole of a function.
-    ///   - Similarly, the instructions belonging to a source statement are not necessarily contiguous inside the sequence of instructions (e.g. conditional branching inside the sequence).
-    ///
-    ///
-    /// - The next row address in the target processor's instruction sequence may qualify as (one, or more) of the following:
-    ///   - The start of a new source statement (a source file may have multiple statements on a single line)
-    ///   - Another instruction that is part of the source statement started previously
-    ///   - The first instruction after the end of the sequence epilogue.
-    ///   - The end of the current sequence of instructions.
-    ///   - DWARF defines other flags that are not relevant/used here.
-    ///
-    ///
-    /// - Depending on the combinations of the above, we only use instructions that qualify as:
+    /// - To calculate where the user might step to (step-over, step-into, step-out), we start from the given instruction
+    ///     address/program counter, and work our way through all the rows in the sequence of instructions it is part of.
+    ///   - A sequence of instructions represents a series of monotonically increasing target machine instructions,
+    ///     and does not necessarily represent the whole of a function.
+    ///   - Similarly, the instructions belonging to a sequence are not necessarily contiguous inside the sequence of instructions,
+    ///     e.g. conditional branching inside the sequence.
+    /// - To determine valid halt points for breakpoints and stepping, we only use instructions that qualify as:
     ///   - The beginning of a statement that is neither inside the prologue, nor inside the epilogue.
     /// - Based on this, we will attempt to return the "most appropriate" address for the [`SteppingMode`], given the available information in the instruction sequence.
     /// All data is calculated using the [`gimli::read::CompleteLineProgram`] as well as, function call data from the debug info frame section.
+    ///
     /// NOTE about errors returned: Sometimes the target program_counter is at a location where the debug_info program row data does not contain valid statements
     /// for halt points, and we will return a `DebugError::NoValidHaltLocation`. In this case, we recommend the consumer of this API step the core to the next instruction
     /// and try again, with a reasonable retry limit. All other error kinds are should be treated as non recoverable errors.
@@ -182,145 +174,100 @@ impl SteppingMode {
         debug_info: &DebugInfo,
         program_counter: u64,
         return_address: Option<u64>,
-    ) -> Result<(Option<u64>, Option<SourceLocation>), DebugError> {
-        let program_unit = get_compile_unit_info(debug_info, program_counter)?;
+    ) -> Result<VerifiedBreakpoint, DebugError> {
+        let program_unit = debug_info.compile_unit_info(program_counter)?;
         match self {
             SteppingMode::BreakPoint => {
                 // Find the first_breakpoint_address
-                for source_statement in
-                    SourceStatements::new(debug_info, program_unit, program_counter)?.statements
-                {
-                    if let Some(halt_address) =
-                        source_statement.get_first_halt_address(program_counter)
-                    {
-                        tracing::debug!(
-                            "Found first breakpoint {:#010x} for address: {:#010x}",
-                            halt_address,
-                            program_counter
-                        );
-                        // We have a good first halt address.
-                        let first_breakpoint_address = Some(halt_address);
-                        let first_breakpoint_source_location = program_unit
-                            .unit
-                            .line_program
-                            .as_ref()
-                            .and_then(|line_program| {
-                                line_program
-                                    .header()
-                                    .file(source_statement.file_index)
-                                    .and_then(|file_entry| {
-                                        debug_info
-                                            .find_file_and_directory(
-                                                &program_unit.unit,
-                                                line_program.header(),
-                                                file_entry,
-                                            )
-                                            .map(|(file, directory)| SourceLocation {
-                                                line: source_statement
-                                                    .line
-                                                    .map(std::num::NonZeroU64::get),
-                                                column: Some(source_statement.column.into()),
-                                                file,
-                                                directory,
-                                                low_pc: Some(source_statement.low_pc() as u32),
-                                                high_pc: Some(
-                                                    source_statement.instruction_range.end as u32,
-                                                ),
-                                            })
-                                    })
-                            });
-                        return Ok((first_breakpoint_address, first_breakpoint_source_location));
-                    }
-                }
+                let instruction_sequence =
+                    InstructionSequence::for_address(debug_info, program_counter)?;
+                return instruction_sequence.get_first_breakpoint(program_counter);
             }
             SteppingMode::OverStatement => {
                 // Find the next_statement_address
-                // - The instructions in a source statement are not necessarily contiguous in the sequence, and the next_statement_address may be affected by conditonal branching at runtime.
-                // - Therefore, in order to find the correct next_statement_address, we iterate through the source statements, and :
-                //    -- Find the starting address of the next `statement` in the source statements.
-                //    -- If there is one, it means the step over target is in the current sequence, so we get the get_first_halt_address() for this next statement.
-                //    -- Otherwise the step over target is the same as the step out target.
-                let source_statements =
-                    SourceStatements::new(debug_info, program_unit, program_counter)?.statements;
-                let mut source_statements_iter = source_statements.iter();
-                if let Some((target_address, target_location)) = source_statements_iter
-                    .find(|source_statement| {
-                        source_statement
-                            .instruction_range
-                            .contains(&program_counter)
-                    })
-                    .and_then(|_| {
-                        if source_statements.len() == 1 {
-                            // Force a SteppingMode::OutOfStatement below.
-                            None
-                        } else {
-                            source_statements_iter.next().and_then(|next_line| {
-                                SteppingMode::BreakPoint
-                                    .get_halt_location(core, debug_info, next_line.low_pc(), None)
-                                    .ok()
-                            })
-                        }
-                    })
-                    .or_else(|| {
-                        SteppingMode::OutOfStatement
-                            .get_halt_location(core, debug_info, program_counter, return_address)
-                            .ok()
-                    })
-                {
-                    return Ok((target_address, target_location));
-                }
+                // - The instructions in a sequence do not necessarily have contiguous addresses,
+                //   and the next instruction address may be affected by conditonal branching at runtime.
+                // - Therefore, in order to find the correct next_statement_address, we iterate through the
+                //   instructions to find the starting address of the next halt location in the source instructions.
+                //    -- If there is one, it means the step over target is in the current sequence,
+                //       so we get the valid breakpoint location for this next location.
+                //    -- If there is not one, the step over target is the same as the step out target.
+                let instruction_sequence =
+                    InstructionSequence::for_address(debug_info, program_counter)?;
+
+                // Find the breakpoint_address where the address is > program_counter (not inclusive).
+                // We do this by by forcing the `get_first_breakpoint` method to look for an address
+                // that is greater than the current program_counter.
+                return instruction_sequence
+                    .get_first_breakpoint(program_counter.checked_add(1).unwrap_or(program_counter))
+                    .or_else(|_| {
+                        // If we cannot find a valid breakpoint in the current sequence, we will step out of the current sequence.
+                        SteppingMode::OutOfStatement.get_halt_location(
+                            core,
+                            debug_info,
+                            program_counter,
+                            return_address,
+                        )
+                    });
             }
             SteppingMode::IntoStatement => {
-                // This is a tricky case because the current RUST generated DWARF, does not store the DW_TAG_call_site information described in the DWARF 5 standard. It is not a mandatory attribute, so not sure if we can ever expect it.
+                // This is a tricky case because the current RUST generated DWARF, does not store the DW_TAG_call_site information described in the DWARF 5 standard.
+                // - It is not a mandatory attribute, so not sure if we can ever expect it.
                 // To find if any functions are called from the current program counter:
-                // 1. Find the statement with the address corresponding to the current PC,
-                // 2. Single step the target core, until either ...
-                //   (a) We hit a PC that is NOT in the address range of the current statement. This location, which could be any of the following:
-                //      (a.i)  A legitimate branch outside the current sequence (call to another instruction) such as a explicit call to a function, or something the compiler injected, like a `drop()`,
-                //      (a.ii) An interrupt handler diverted the processing.
-                //   (b) We hit a PC that matches the end of the address range, which means there was nothing to step into, so the target is now halted (correctly) at the next statement.
-                // TODO: In theory, we could disassemble the instructions in this statement's address range, and find branching instructions, then we would not need to single step the core past the original haltpoint.
-
-                let source_statements =
-                    SourceStatements::new(debug_info, program_unit, program_counter)?.statements;
-                let mut source_statements_iter = source_statements.iter();
-                if let Some(current_source_statement) =
-                    source_statements_iter.find(|source_statement| {
-                        source_statement
-                            .instruction_range
-                            .contains(&program_counter)
-                    })
+                // 1. Identify the next instruction location after the instruction corresponding to the current PC,
+                // 2. Single step the target core, until either of the following:
+                //   (a) We hit a PC that is NOT in the range between the current PC and the next instruction location.
+                //       This location, which could be any of the following:
+                //          (a.i)  A legitimate branch outside the current sequence (call to another instruction) such as
+                //                 an explicit call to a function, or something the compiler injected, like a `drop()`,
+                //          (a.ii) An interrupt handler diverted the processing.
+                //   (b) We hit a PC at the address of the identified next instruction location,
+                //       which means there was nothing to step into, so the target is now halted (correctly) at the next statement.
+                let instruction_sequence =
+                    InstructionSequence::for_address(debug_info, program_counter)?;
+                let target_pc = match instruction_sequence
+                    .get_first_breakpoint(program_counter.checked_add(1).unwrap_or(program_counter))
                 {
-                    let inclusive_range = current_source_statement.instruction_range.start
-                        ..=current_source_statement.instruction_range.end;
-                    let (core_status, new_pc) = step_to_address(inclusive_range, core)?;
-                    if new_pc == current_source_statement.instruction_range.end {
-                        // We have halted at the address after the current statement, so we can conclude there was no branching calls in this sequence.
-                        tracing::debug!("Stepping into next statement, but no branching calls found. Stepped to next available statement.");
-                    } else if new_pc < current_source_statement.instruction_range.end
-                        && matches!(core_status, CoreStatus::Halted(HaltReason::Breakpoint(_)))
-                    {
-                        // We have halted at a PC that is within the current statement, so there must be another breakpoint.
-                        tracing::debug!(
-                            "Stepping into next statement, but encountered a breakpoint."
-                        );
-                    } else {
-                        // We have reached a location that is not in the current statement range (branch instruction or breakpoint in an interrupt handler).
-                        tracing::debug!(
-                            "Stepping into next statement at address: {:#010x}.",
-                            new_pc
-                        );
+                    Ok(identified_next_breakpoint) => identified_next_breakpoint.address,
+                    Err(DebugError::IncompleteDebugInfo { .. }) => {
+                        // There are no next statements in this sequence, so we will use the return address as the target.
+                        if let Some(return_address) = return_address {
+                            return_address
+                        } else {
+                            return Err(DebugError::IncompleteDebugInfo {
+                                message:
+                                    "Could not determine a 'step in' target. Please use 'step over'."
+                                        .to_string(),
+                                pc_at_error: program_counter,
+                            });
+                        }
                     }
+                    Err(other_error) => {
+                        return Err(other_error);
+                    }
+                };
 
-                    return SteppingMode::BreakPoint
-                        .get_halt_location(core, debug_info, new_pc, None);
+                let (core_status, new_pc) =
+                    step_to_address(instruction_sequence.address_range.start..=target_pc, core)?;
+                if (program_counter..instruction_sequence.address_range.end).contains(&new_pc) {
+                    // We have halted at an address after the current instruction, but inside the same sequence,
+                    // so we can conclude there were no branching calls in this instruction.
+                    tracing::debug!("Stepping into next statement, but no branching calls found. Stepped to next available statement.");
+                } else if matches!(core_status, CoreStatus::Halted(HaltReason::Breakpoint(_))) {
+                    // We have halted at a PC that is within the current statement, so there must be another breakpoint.
+                    tracing::debug!("Stepping into next statement, but encountered a breakpoint.");
+                } else {
+                    tracing::debug!("Stepping into next statement at address: {:#010x}.", new_pc);
                 }
+
+                return SteppingMode::BreakPoint.get_halt_location(core, debug_info, new_pc, None);
             }
             SteppingMode::OutOfStatement => {
                 if let Ok(function_dies) =
                     program_unit.get_function_dies(debug_info, program_counter, true)
                 {
-                    // We want the first qualifying (PC is in range) function from the back of this list, to access the 'innermost' functions first.
+                    // We want the first qualifying (PC is in range) function from the back of this list,
+                    // to access the 'innermost' functions first.
                     if let Some(function) = function_dies.iter().next_back() {
                         tracing::trace!(
                             "Step Out target: Evaluating function {:?}, low_pc={:?}, high_pc={:?}",
@@ -369,10 +316,10 @@ impl SteppingMode {
             }
         }
 
-        Err(DebugError::NoValidHaltLocation{
+        Err(DebugError::IncompleteDebugInfo{
                 message: "Could not determine valid halt locations for this request. Please consider using instruction level stepping.".to_string(),
                 pc_at_error: program_counter,
-            })
+        })
     }
 }
 
@@ -389,7 +336,7 @@ fn run_to_address(
 ) -> Result<(CoreStatus, u64), DebugError> {
     Ok(if target_address < program_counter {
         // We are not able to calculate a step_out_address. Notify the user to try something else.
-        return Err(DebugError::NoValidHaltLocation {
+        return Err(DebugError::IncompleteDebugInfo {
             message: "Unable to determine target address for this step request. Please try a different form of stepping.".to_string(),
             pc_at_error: program_counter,
         });
@@ -450,10 +397,12 @@ fn run_to_address(
 }
 
 /// In some cases, we need to single-step the core, until ONE of the following conditions are met:
-/// - We reach the `target_address_range.end()` (inclusive)
-/// - We reach an address that is not in the sequential range of `target_address_range` (inclusive), i.e. we stepped to some kind of branch instruction.
-/// - We reach some other legitimate halt point (e.g. the user tries to step past a series of statements, but there is another breakpoint active in that "gap")
-/// - We encounter an error (e.g. the core locks up)
+/// - We reach the `target_address_range.end()`
+/// - We reach an address that is not in the sequential range of `target_address_range`,
+///     i.e. we stepped to some kind of branch instruction, or diversion to an interrupt handler.
+/// - We reach some other legitimate halt point (e.g. the user tries to step past a series of statements,
+///     but there is another breakpoint active in that "gap")
+/// - We encounter an error (e.g. the core locks up).
 fn step_to_address(
     target_address_range: RangeInclusive<u64>,
     core: &mut impl CoreInterface,
@@ -471,10 +420,15 @@ fn step_to_address(
                     break;
                 }
                 // This is a recoverable error kind, and can be reported to the user higher up in the call stack.
-                other_halt_reason => return Err(DebugError::NoValidHaltLocation{message: format!("Target halted unexpectedly before we reached the destination address of a step operation: {other_halt_reason:?}"), pc_at_error: core.read_core_reg(core.program_counter().id())?.try_into()?}),
+                other_halt_reason => return Err(DebugError::IncompleteDebugInfo{message:
+                    format!("Target halted unexpectedly before we reached the destination address of a step operation: {other_halt_reason:?}"),
+                        pc_at_error: core.read_core_reg(core.program_counter().id())?.try_into()?}
+                    ),
             },
             // This is not a recoverable error, and will result in the debug session ending (we have no predicatable way of successfully continuing the session)
-            other_status => return Err(DebugError::Other(anyhow::anyhow!("Target failed to reach the destination address of a step operation: {:?}", other_status))),
+            other_status => return Err(DebugError::Other(
+                anyhow::anyhow!("Target failed to reach the destination address of a step operation: {:?}", other_status))
+            ),
         }
     }
     Ok((
@@ -482,27 +436,4 @@ fn step_to_address(
         core.read_core_reg(core.program_counter().id())?
             .try_into()?,
     ))
-}
-
-/// Find the compile unit at the current address.
-fn get_compile_unit_info(
-    debug_info: &DebugInfo,
-    program_counter: u64,
-) -> Result<&super::unit_info::UnitInfo, DebugError> {
-    for header in &debug_info.unit_infos {
-        match debug_info.dwarf.unit_ranges(&header.unit) {
-            Ok(mut ranges) => {
-                while let Ok(Some(range)) = ranges.next() {
-                    if (range.begin <= program_counter) && (range.end > program_counter) {
-                        return Ok(header);
-                    }
-                }
-            }
-            Err(_) => continue,
-        };
-    }
-    Err(DebugError::NoValidHaltLocation{
-        message: "The specified source location does not have any debug information available. Please consider using instruction level stepping.".to_string(),
-        pc_at_error: program_counter,
-    })
 }

@@ -2225,7 +2225,7 @@ fn read_memory(
     Ok(evaluation.resume_with_memory(val)?)
 }
 
-trait RangeExt {
+pub(crate) trait RangeExt {
     fn contains(self, addr: u64) -> bool;
 }
 

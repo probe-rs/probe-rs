@@ -1,19 +1,21 @@
 use super::{
     function_die::FunctionDie, get_object_reference, unit_info::UnitInfo, variable::*, DebugError,
-    DebugRegisters, SourceLocation, StackFrame, VariableCache,
+    DebugRegisters, StackFrame, VariableCache,
 };
 use crate::core::UnwindRule;
-use crate::debug::source_statement::SourceStatement;
+use crate::debug::source_instructions::InstructionLocation;
 use crate::debug::stack_frame::StackFrameInfo;
+use crate::debug::unit_info::RangeExt;
+use crate::debug::{ColumnType, SourceLocation, VerifiedBreakpoint};
 use crate::{
     core::{ExceptionInterface, RegisterRole, RegisterValue},
-    debug::{registers, source_statement::SourceStatements},
+    debug::{registers, source_instructions::InstructionSequence},
     MemoryInterface,
 };
 use anyhow::anyhow;
 use gimli::{
-    BaseAddresses, ColumnType, DebugFrame, FileEntry, LineProgramHeader, UnwindContext,
-    UnwindSection, UnwindTableRow,
+    BaseAddresses, DebugFrame, FileEntry, LineProgramHeader, UnwindContext, UnwindSection,
+    UnwindTableRow,
 };
 use object::read::{Object, ObjectSection};
 use probe_rs_target::InstructionSet;
@@ -29,18 +31,6 @@ pub(crate) type GimliReader = gimli::EndianReader<gimli::LittleEndian, std::rc::
 pub(crate) type GimliAttribute = gimli::Attribute<GimliReader>;
 
 pub(crate) type DwarfReader = gimli::read::EndianRcSlice<gimli::LittleEndian>;
-
-/// Capture the required information when a breakpoint is set based on a requested source location.
-/// It is possible that the requested source location cannot be resolved to a valid instruction address,
-/// in which case the first 'valid' instruction address will be used, and the source location will be
-/// updated to reflect the actual source location, not the requested source location.
-#[derive(Clone, Debug)]
-pub struct VerifiedBreakpoint {
-    /// The address in target memory, where the breakpoint was set.
-    pub address: u64,
-    /// If the breakpoint request was for a specific source location, then this field will contain the resolved source location.
-    pub source_location: SourceLocation,
-}
 
 /// Debug information which is parsed from DWARF debugging information.
 pub struct DebugInfo {
@@ -95,8 +85,14 @@ impl DebugInfo {
 
         while let Ok(Some(header)) = iter.next() {
             if let Ok(unit) = dwarf_cow.unit(header) {
-                // TODO: maybe it's not correct to read from arbitrary units
+                // The DWARF V5 standard, section 2.4 specifies that the address size
+                // for the object file (or the target architecture default) will be used for
+                // DWARF debugging information.
+                // The following line is a workaround for instances where the address size of the
+                // CIE (Common Information Entry) is not correctly set.
+                // The frame section address size is only used for CIE versions before 4.
                 frame_section.set_address_size(unit.encoding().address_size);
+
                 unit_infos.push(UnitInfo::new(unit));
             };
         }
@@ -152,8 +148,8 @@ impl DebugInfo {
                 Ok(ranges) => ranges,
                 Err(error) => {
                     tracing::warn!(
-                        "No valid source code ranges found for address {}: {:?}",
-                        address,
+                        "No valid source code ranges found for unit {:?}: {:?}",
+                        unit.dwo_name(),
                         error
                     );
                     continue;
@@ -164,8 +160,7 @@ impl DebugInfo {
                 if !(range.begin <= address && address < range.end) {
                     continue;
                 }
-                // Get the function name.
-
+                // Get the DWARF LineProgram.
                 let ilnp = unit.line_program.as_ref()?.clone();
 
                 let (program, sequences) = match ilnp.sequences() {
@@ -216,8 +211,6 @@ impl DebugInfo {
                                             column: Some(previous_row.column().into()),
                                             file,
                                             directory,
-                                            low_pc: Some(target_seq.start as u32),
-                                            high_pc: Some(target_seq.end as u32),
                                         });
                                     }
                                 }
@@ -236,8 +229,6 @@ impl DebugInfo {
                                         column: Some(row.column().into()),
                                         file,
                                         directory,
-                                        low_pc: Some(target_seq.start as u32),
-                                        high_pc: Some(target_seq.end as u32),
                                     });
                                 }
                             }
@@ -873,6 +864,7 @@ impl DebugInfo {
 
     /// Find the program counter where a breakpoint should be set,
     /// given a source file, a line and optionally a column.
+    // TODO: Move (and fix) this to the [`InstructionSequence::for_source_location`] method.
     pub fn get_breakpoint_location(
         &self,
         path: &TypedPathBuf,
@@ -888,25 +880,25 @@ impl DebugInfo {
                 .unwrap_or_else(|| "-".to_owned())
         );
 
-        for unit_header in &self.unit_infos {
-            let Some(ref line_program) = &unit_header.unit.line_program else {
+        // We need to look through all the compilation units, and inspect their line programs,
+        // to determine the correct address for the breakpoint.
+        for progam_unit in &self.unit_infos {
+            // TODO: We do NOT need to look up the line program here.
+            let Some(ref line_program) = &progam_unit.unit.line_program else {
                 continue;
             };
 
             if let Some(location) =
-                self.get_breakpoint_location_in_unit(unit_header, line_program, path, line, column)?
+                self.get_breakpoint_location_in_unit(progam_unit, line_program, path, line, column)?
             {
                 return Ok(location);
             };
         }
 
-        let p = path.to_path();
-
+        // If we get here, it means we didn't find any valid breakpoint locations.
         Err(DebugError::Other(anyhow::anyhow!(
-            "No valid breakpoint information found for file: {}, line: {:?}, column: {:?}",
-            p.display(),
-            line,
-            column
+            "No valid breakpoint information found for file: {}, line: {line:?}, column: {column:?}",
+            path.to_path().display()
         )))
     }
 
@@ -921,7 +913,7 @@ impl DebugInfo {
         let unit = &unit_header.unit;
         let header: &LineProgramHeader<GimliReader, usize> = line_program.header();
 
-        // Check if any of the file names in the header match the path we are looking for.
+        // Early return, if none of the file names in the header match the path we are looking for.
         if !header.file_names().iter().any(|file_name| {
             let combined_path = self.get_path(unit, header, file_name);
 
@@ -935,12 +927,13 @@ impl DebugInfo {
         let mut rows = line_program.clone().rows();
 
         while let Some((header, row)) = rows.next_row()? {
+            // If the row is not in the same file, we can skip it.
             let row_path = row
                 .file(header)
                 .and_then(|file_entry| self.get_path(unit, header, file_entry));
-
             if row_path
-                .map(|p| !canonical_path_eq(path, &p))
+                .as_ref()
+                .map(|p| !canonical_path_eq(path, p))
                 .unwrap_or(true)
             {
                 continue;
@@ -954,18 +947,17 @@ impl DebugInfo {
                 continue;
             }
 
-            // The first match of the file and row will be used to build the SourceStatements, and then:
+            let instruction_sequence = InstructionSequence::for_address(self, row.address())?;
+
+            // The first match of the file and row will be used to build the InstructionSequence, and then:
             // 1. If there is an exact column match, we will use the low_pc of the statement at that column and line.
             // 2. If there is no exact column match, we use the first available statement in the line.
-            let source_statements =
-                SourceStatements::new(self, unit_header, row.address())?.statements;
-
-            let halt_address_and_location = |source_statement: &SourceStatement| {
+            let halt_address_and_location = |instruction_location: &InstructionLocation| {
                 (
-                    source_statement.low_pc(),
+                    instruction_location.address,
                     line_program
                         .header()
-                        .file(source_statement.file_index)
+                        .file(instruction_location.file_index)
                         .and_then(|file_entry| {
                             self.find_file_and_directory(
                                 &unit_header.unit,
@@ -973,25 +965,22 @@ impl DebugInfo {
                                 file_entry,
                             )
                             .map(|(file, directory)| SourceLocation {
-                                line: source_statement.line.map(std::num::NonZeroU64::get),
-                                column: Some(source_statement.column.into()),
+                                line: instruction_location.line.map(std::num::NonZeroU64::get),
+                                column: Some(instruction_location.column),
                                 file,
                                 directory,
-                                low_pc: Some(source_statement.low_pc() as u32),
-                                high_pc: Some(source_statement.instruction_range.end as u32),
                             })
                         }),
                 )
             };
 
-            let first_find = source_statements.iter().find(|statement| {
+            // The case where we have exact match on file, line AND column.
+            let first_find = instruction_sequence.instructions.iter().find(|statement| {
                 column
-                    .and_then(NonZeroU64::new)
                     .map(ColumnType::Column)
                     .map_or(false, |col| col == statement.column)
                     && statement.line == Some(cur_line)
             });
-
             if let Some((halt_address, Some(halt_location))) =
                 first_find.map(halt_address_and_location)
             {
@@ -1000,7 +989,10 @@ impl DebugInfo {
                     source_location: halt_location,
                 }));
             }
-            let second_find = source_statements
+
+            // The fallback case where we have exact match on file and line, but no column.
+            let second_find = instruction_sequence
+                .instructions
                 .iter()
                 .find(|statement| statement.line == Some(cur_line));
 
@@ -1074,6 +1066,29 @@ impl DebugInfo {
         let directory = combined_path.parent().map(|p| p.to_path_buf());
 
         Some((file_name, directory))
+    }
+
+    // Return the compilation unit that contains the given address
+    pub(crate) fn compile_unit_info(
+        &self,
+        address: u64,
+    ) -> Result<&super::unit_info::UnitInfo, DebugError> {
+        for header in &self.unit_infos {
+            match self.dwarf.unit_ranges(&header.unit) {
+                Ok(mut ranges) => {
+                    while let Ok(Some(range)) = ranges.next() {
+                        if range.contains(address) {
+                            return Ok(header);
+                        }
+                    }
+                }
+                Err(_) => continue,
+            };
+        }
+        Err(DebugError::IncompleteDebugInfo{
+            message: "No debug information available for the specified instruction address. Please consider using instruction level stepping.".to_string(),
+            pc_at_error: address,
+        })
     }
 }
 

@@ -1655,7 +1655,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         {
             Ok((new_status, program_counter)) => (new_status, program_counter),
             Err(error) => match &error {
-                probe_rs::debug::DebugError::NoValidHaltLocation {
+                probe_rs::debug::DebugError::IncompleteDebugInfo {
                     message,
                     pc_at_error,
                 } => {

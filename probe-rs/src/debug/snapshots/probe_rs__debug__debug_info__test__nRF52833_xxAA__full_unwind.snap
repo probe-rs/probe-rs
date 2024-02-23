@@ -9,8 +9,6 @@ expression: stack_frames
       Column: 13
     file: common_testing_code.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
-    low_pc: 7284
-    high_pc: 7494
   registers:
     - core_register:
         id: 0
@@ -234,8 +232,6 @@ expression: stack_frames
       Column: 9
     file: common_testing_code.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
-    low_pc: 7284
-    high_pc: 7494
   registers:
     - core_register:
         id: 0
@@ -451,8 +447,6 @@ expression: stack_frames
       Column: 9
     file: common_testing_code.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
-    low_pc: 7284
-    high_pc: 7494
   registers:
     - core_register:
         id: 0
@@ -668,8 +662,6 @@ expression: stack_frames
       Column: 9
     file: common_testing_code.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
-    low_pc: 7284
-    high_pc: 7494
   registers:
     - core_register:
         id: 0
@@ -885,8 +877,6 @@ expression: stack_frames
       Column: 9
     file: common_testing_code.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
-    low_pc: 7284
-    high_pc: 7494
   registers:
     - core_register:
         id: 0
@@ -1102,8 +1092,6 @@ expression: stack_frames
       Column: 9
     file: common_testing_code.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
-    low_pc: 7284
-    high_pc: 7494
   registers:
     - core_register:
         id: 0
@@ -1319,8 +1307,6 @@ expression: stack_frames
       Column: 5
     file: common_testing_code.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src
-    low_pc: 3816
-    high_pc: 7284
   registers:
     - core_register:
         id: 0
@@ -4154,8 +4140,6 @@ expression: stack_frames
       Column: 10
     file: nRF52833_xxAA.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/thumbv7em-none-eabihf
-    low_pc: 1344
-    high_pc: 1666
   registers:
     - core_register:
         id: 0
@@ -4361,8 +4345,6 @@ expression: stack_frames
       Column: 1
     file: nRF52833_xxAA.rs
     directory: /Users/jacknoppe/dev/debug/probe-rs-debugger-test/src/thumbv7em-none-eabihf
-    low_pc: 1334
-    high_pc: 1344
   registers:
     - core_register:
         id: 0

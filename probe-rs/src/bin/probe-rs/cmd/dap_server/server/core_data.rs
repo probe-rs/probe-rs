@@ -19,10 +19,10 @@ use crate::{
     util::rtt::RttConfig,
 };
 use anyhow::{anyhow, Result};
+use probe_rs::debug::VerifiedBreakpoint;
 use probe_rs::{
     debug::{
         debug_info::DebugInfo, stack_frame::StackFrameInfo, ColumnType, ObjectRef, VariableCache,
-        VerifiedBreakpoint,
     },
     rtt::{Rtt, ScanRegion},
     Core, CoreStatus, Error, HaltReason,
