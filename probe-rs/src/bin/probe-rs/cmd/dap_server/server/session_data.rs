@@ -2,11 +2,15 @@ use super::{
     configuration::{self, CoreConfig, SessionConfig},
     core_data::{CoreData, CoreHandle},
 };
-use crate::cmd::dap_server::{
-    debug_adapter::{
-        dap::adapter::DebugAdapter, dap::dap_types::Source, protocol::ProtocolAdapter,
+use crate::{
+    cmd::dap_server::{
+        debug_adapter::{
+            dap::{adapter::DebugAdapter, dap_types::Source},
+            protocol::ProtocolAdapter,
+        },
+        DebuggerError,
     },
-    DebuggerError,
+    util::common_options::OperationError,
 };
 use anyhow::{anyhow, Result};
 use probe_rs::{
@@ -71,7 +75,27 @@ impl SessionData {
 
         let options = config.probe_options().load()?;
         let target_probe = options.attach_probe(lister)?;
-        let target_session = options.attach_session(target_probe, target_selector)?;
+        let target_session = options
+            .attach_session(target_probe, target_selector)
+            .map_err(|operation_error| {
+                match operation_error {
+                    OperationError::AttachingFailed {
+                        source,
+                        connect_under_reset,
+                    } => match source {
+                        probe_rs::Error::Timeout => {
+                            if !connect_under_reset {
+                                DebuggerError::UserMessage(format!("{source} This can happen if the target is not in a state where it can be attached to. A hard reset during attaching might help. If your probe supports this option, try using the `connect_under_reset` option."))
+                            } else {
+                                DebuggerError::UserMessage(format!("{source} This can happen if you are using the `connect_under_reset` option, and your probe does not have support for it."))
+                            }
+                        }
+                        other_attach_error => other_attach_error.into(),
+                    },
+                    // Return the orginal error.
+                    other => other.into(),
+                }
+            })?;
 
         // Change the current working directory if `config.cwd` is `Some(T)`.
         if let Some(new_cwd) = config.cwd.clone() {

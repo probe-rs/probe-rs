@@ -22,6 +22,8 @@ use tracing_subscriber::{
     EnvFilter, Layer,
 };
 
+use crate::util::common_options::OperationError;
+
 #[derive(Debug, thiserror::Error)]
 pub enum DebuggerError {
     #[error(transparent)]
@@ -44,7 +46,8 @@ pub enum DebuggerError {
     Other(#[from] anyhow::Error),
     #[error(transparent)]
     ProbeRs(#[from] Error),
-
+    #[error(transparent)]
+    OperationError(#[from] OperationError),
     /// Errors related to the handling of core dumps.
     #[error("An error with a CoreDump occured")]
     CoreDump(#[from] CoreDumpError),

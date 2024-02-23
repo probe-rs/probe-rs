@@ -35,10 +35,7 @@ use super::ArtifactError;
 
 use std::{fs::File, path::Path, path::PathBuf};
 
-use crate::{
-    cmd::dap_server::DebuggerError,
-    util::{logging::LevelFilter, parse_u64},
-};
+use crate::util::{logging::LevelFilter, parse_u64};
 use clap;
 use probe_rs::{
     config::{RegistryError, TargetSelector},
@@ -564,27 +561,6 @@ fn print_list(list: &[impl std::fmt::Debug]) -> String {
 impl From<std::io::Error> for OperationError {
     fn from(e: std::io::Error) -> Self {
         OperationError::IOError(e)
-    }
-}
-
-impl From<OperationError> for DebuggerError {
-    fn from(e: OperationError) -> Self {
-        match e {
-            OperationError::AttachingFailed {
-                source,
-                connect_under_reset,
-            } => match source {
-                probe_rs::Error::Timeout => {
-                    if !connect_under_reset {
-                        DebuggerError::UserMessage(format!("{source} This can happen if the target is not in a state where it can be attached to. A hard reset during attaching might help. If your probe supports this option, try setting `connectUnderReset=true` in your `launch.json`."))
-                    } else {
-                        DebuggerError::UserMessage(format!("{source} This can happen if your probe does not support the `connectUnderReset` option. Try setting `connectUnderReset=false` in your `launch.json`."))
-                    }
-                }
-                other_attach_error => DebuggerError::Other(other_attach_error.into()),
-            },
-            other => DebuggerError::Other(other.into()),
-        }
     }
 }
 
