@@ -569,7 +569,26 @@ impl From<std::io::Error> for OperationError {
 
 impl From<OperationError> for DebuggerError {
     fn from(e: OperationError) -> Self {
-        DebuggerError::Other(e.into())
+        match e {
+            OperationError::AttachingFailed {
+                source,
+                connect_under_reset,
+            } => match source {
+                probe_rs::Error::Timeout => {
+                    if !connect_under_reset {
+                        DebuggerError::UserMessage(
+                        format!("{source} : This can happen if the target is not in a state where it can be attached to. A hard reset during attaching might help. This will reset the entire chip. If your probe supports this option, try setting `connectUnderReset=true` in your `launch.json`."),
+                    )
+                    } else {
+                        DebuggerError::UserMessage(
+                        format!("{source} : This can happen if your probe does not support the `connectUnderReset` option. Try setting `connectUnderReset=false` in your `launch.json`."),
+                    )
+                    }
+                }
+                other_attach_error => DebuggerError::Other(other_attach_error.into()),
+            },
+            other => DebuggerError::Other(other.into()),
+        }
     }
 }
 
