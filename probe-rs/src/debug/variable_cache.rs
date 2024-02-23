@@ -63,7 +63,11 @@ impl Serialize for VariableCache {
             loop {
                 if let Some(max_count) = max_children {
                     if out.len() >= max_count {
-                        break;
+                        // Be a bit lenient with the limit, avoid showing "1 more" for a single child.
+                        let remaining = children.clone().count();
+                        if remaining > 1 {
+                            break;
+                        }
                     }
                 }
                 let Some(child_variable) = children.next() else {
@@ -77,7 +81,7 @@ impl Serialize for VariableCache {
                     children: recurse_variables(
                         variable_cache,
                         child_variable.variable_key,
-                        // Limit arrays to 50 elements
+                        // Limit arrays to 50(+1) elements
                         child_variable.type_name.inner().is_array().then_some(50),
                     ),
                 });
@@ -325,7 +329,7 @@ impl VariableCache {
 
     /// Retrieve `clone`d version of all the children of a `Variable`.
     /// If `parent_key == None`, it will return all the top level variables (no parents) in this cache.
-    pub fn get_children(&self, parent_key: ObjectRef) -> impl Iterator<Item = &Variable> {
+    pub fn get_children(&self, parent_key: ObjectRef) -> impl Iterator<Item = &Variable> + Clone {
         self.variable_hash_map
             .values()
             .filter(move |child_variable| child_variable.parent_key == parent_key)

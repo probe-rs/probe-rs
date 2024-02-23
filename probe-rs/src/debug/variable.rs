@@ -704,10 +704,16 @@ impl Variable {
                     )
                 }
                 VariableType::Array { .. } => {
-                    // Limit arrays to 10 elements
+                    // Limit arrays to 10(+1) elements
                     const ARRAY_MAX_LENGTH: usize = 10;
                     compound_value = format!("{line_start}{type_name} = [");
-                    for (idx, child) in children.iter().take(ARRAY_MAX_LENGTH).enumerate() {
+                    // Be lenient, allow for 1 more than the max length
+                    let display_count = if children.len() > ARRAY_MAX_LENGTH + 1 {
+                        ARRAY_MAX_LENGTH
+                    } else {
+                        children.len()
+                    };
+                    for (idx, child) in children.iter().take(display_count).enumerate() {
                         compound_value = format!(
                             "{compound_value}{}{}",
                             child.formatted_variable_value(variable_cache, indentation + 1, false),
@@ -720,10 +726,10 @@ impl Variable {
                         );
                     }
 
-                    if children.len() > ARRAY_MAX_LENGTH {
+                    if children.len() > display_count {
                         compound_value = format!(
                             "{compound_value}\n{line_start}\t... and {} more",
-                            children.len() - ARRAY_MAX_LENGTH
+                            children.len() - display_count
                         );
                     }
 
