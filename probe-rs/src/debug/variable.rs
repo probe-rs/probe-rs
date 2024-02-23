@@ -684,7 +684,8 @@ impl Variable {
         } else {
             // Infer a human readable value using the available children of this variable.
             let mut compound_value = String::new();
-            let children: Vec<_> = variable_cache.get_children(self.variable_key).collect();
+            let children = variable_cache.get_children(self.variable_key);
+            let first_child = children.clone().next();
 
             // Make sure we can safely unwrap() children.
             match self.type_name.inner() {
@@ -692,7 +693,7 @@ impl Variable {
                     // Pointers
                     format!(
                         "{line_start}{}",
-                        if let Some(first_child) = children.first() {
+                        if let Some(first_child) = first_child {
                             first_child.formatted_variable_value(
                                 variable_cache,
                                 indentation + 1,
@@ -706,27 +707,38 @@ impl Variable {
                 VariableType::Array { .. } => {
                     // Limit arrays to 10(+1) elements
                     const ARRAY_MAX_LENGTH: usize = 10;
-                    compound_value = format!("{line_start}{type_name} = [");
-                    // Be lenient, allow for 1 more than the max length
-                    let child_count = children.len();
-                    let display_count = if child_count > ARRAY_MAX_LENGTH + 1 {
-                        ARRAY_MAX_LENGTH
-                    } else {
-                        child_count
-                    };
+
                     let mut comma = "";
-                    for child in children.iter().take(display_count) {
+                    let mut printed_count = 0;
+                    let mut children = children.clone();
+
+                    compound_value = format!("{line_start}{type_name} = [");
+                    loop {
+                        if printed_count >= ARRAY_MAX_LENGTH {
+                            // Be a bit lenient with the limit, avoid showing "1 more" for a single child.
+                            let remaining = children.clone().count();
+                            if remaining > 1 {
+                                break;
+                            }
+                            break;
+                        }
+                        let Some(child) = children.next() else {
+                            break;
+                        };
+
                         compound_value = format!(
                             "{compound_value}{comma}{}",
                             child.formatted_variable_value(variable_cache, indentation + 1, false),
                         );
+                        printed_count += 1;
                         comma = ",";
                     }
 
-                    if child_count > display_count {
+                    let remaining = children.count();
+                    if remaining > 0 {
                         compound_value = format!(
                             "{compound_value},\n{line_start}\t... and {} more",
-                            child_count - display_count
+                            remaining
                         );
                     }
 
@@ -747,7 +759,7 @@ impl Variable {
                     format!("{compound_value}{line_start})")
                 }
 
-                _ if children.is_empty() => {
+                _ if first_child.is_none() => {
                     // Struct with no children -> just print type name
                     // This is for example the None value of an Option.
                     format!("{compound_value}{type_name}")
@@ -763,7 +775,7 @@ impl Variable {
                     compound_value = format!("{compound_value}{line_start}{type_name} {{");
 
                     let mut comma = "";
-                    for child in children.iter() {
+                    for child in children {
                         let formatted =
                             child.formatted_variable_value(variable_cache, indentation + 1, true);
                         if formatted.is_empty() {
@@ -784,7 +796,7 @@ impl Variable {
 
                     let mut is_tuple = false;
 
-                    if let Some((child, child_name)) = children.iter().find_map(|&c| {
+                    if let Some((child, child_name)) = children.clone().find_map(|c| {
                         if let VariableName::Named(child_name) = &c.name {
                             Some((c, child_name))
                         } else {
@@ -819,7 +831,7 @@ impl Variable {
                     let print_name = !is_tuple;
 
                     let mut comma = "";
-                    for child in children.iter() {
+                    for child in children {
                         compound_value = format!(
                             "{compound_value}{comma}{}",
                             child.formatted_variable_value(
