@@ -212,7 +212,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tstack_depth: usize = 5, \n\tinternal_depth_measure: usize = 6}"
+      value: "<unknown> {\n\tstack_depth: usize = 5,\n\tinternal_depth_measure: usize = 6}"
       children:
         - name:
             Named: stack_depth
@@ -427,7 +427,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tstack_depth: usize = 4, \n\tinternal_depth_measure: usize = 5}"
+      value: "<unknown> {\n\tstack_depth: usize = 4,\n\tinternal_depth_measure: usize = 5}"
       children:
         - name:
             Named: stack_depth
@@ -642,7 +642,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tstack_depth: usize = 3, \n\tinternal_depth_measure: usize = 4}"
+      value: "<unknown> {\n\tstack_depth: usize = 3,\n\tinternal_depth_measure: usize = 4}"
       children:
         - name:
             Named: stack_depth
@@ -857,7 +857,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tstack_depth: usize = 2, \n\tinternal_depth_measure: usize = 3}"
+      value: "<unknown> {\n\tstack_depth: usize = 2,\n\tinternal_depth_measure: usize = 3}"
       children:
         - name:
             Named: stack_depth
@@ -1072,7 +1072,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tstack_depth: usize = 1, \n\tinternal_depth_measure: usize = 2}"
+      value: "<unknown> {\n\tstack_depth: usize = 1,\n\tinternal_depth_measure: usize = 2}"
       children:
         - name:
             Named: stack_depth
@@ -1287,7 +1287,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tstack_depth: usize = 0, \n\tinternal_depth_measure: usize = 1}"
+      value: "<unknown> {\n\tstack_depth: usize = 0,\n\tinternal_depth_measure: usize = 1}"
       children:
         - name:
             Named: stack_depth
@@ -1502,7 +1502,7 @@ expression: stack_frames
     Child Variables:
       name: LocalScopeRoot
       type_name: Unknown
-      value: "<unknown> {\n\tint8_minus_twenty_three: i8 = -23, \n\tlocal_reference_to_global_const: &str = This global `const` value will only show up in the debugger in the variables where it is referenced, \n\tlocal_reference_to_global_static: &str = A 'global' static variable, \n\tlocal_reference_to_global_static_struct: &common_testing_code::ComplexEnum = &common_testing_code::ComplexEnum @ 0x20003CBC, \n\tghosted_variable: usize = 0, \n\tghosted_variable: &str = New value and type for a different name, \n\tint8_twenty_six: i8 = 26, \n\tint128: i128 = -196710231994021419720322, \n\tu_int128: u128 = 340282366920938266753142613410348491134, \n\tfloat64: f64 = 1.7608695652173911, \n\tfloat64_ptr: &f64 = &f64 @ 0x20003CD4, \n\temoji: char = 💩, \n\temoji_ptr: &char = &char @ 0x20003CD8, \n\ttrue_bool: bool = true, \n\tany_old_string_slice: &str = How long is a piece of String., \n\tfunction_result: Result<(), &str> = Result<(), &str> @ 0x20003CDC, \n\tglobal_types: (bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) = (bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) @ 0x20003450, \n\tthree_d_usize_array: Matrix<i32, 2, 3, 4> = Matrix<i32, 2, 3, 4> @ 0x2000348C, \n\tthree_d_string_array: Matrix<&str, 2, 3, 6> = Matrix<&str, 2, 3, 6> @ 0x2000360C, \n\tthree: SimpleEnum = SimpleEnum::Two, \n\tsimple_enum_pointer: &common_testing_code::SimpleEnum = &common_testing_code::SimpleEnum @ 0x20003A90, \n\tthree_level_recursive_struct: RecursiveStruct = RecursiveStruct @ 0x20003A94, \n\tfirst_case_of_struct_variants: ComplexEnum = ComplexEnum @ 0x20003AB8, \n\tsecond_case_of_struct_variants: ComplexEnum = ComplexEnum @ 0x20003AE8, \n\tstruct_with_one_variant: Option<common_testing_code::Univariant> = Option<common_testing_code::Univariant> @ 0x20003B08, \n\tstuct_with_one_variant_pointer: &core::option::Option<common_testing_code::Univariant> = &core::option::Option<common_testing_code::Univariant> @ 0x20003CE4, \n\tlong_lived: ComplexStruct = ComplexStruct @ 0x20003B70, \n\tshort_lived: ComplexStruct = ComplexStruct @ 0x20003B80, \n\ta1: Struct<i32> = Struct<i32> @ 0x20003CE8, \n\ta2: i64 = 1, \n\ta3: i64 = 2, \n\ta4: i64 = 3, \n\ta5: (i32, i64) = (i32, i64) @ 0x20003D10, \n\ta6: Enum<i32> = Enum<i32> @ 0x20003BC0, \n\ta7: Enum<i32> = Enum<i32> @ 0x20003BE0, \n\t: [i32; 10] = [\n\t\t55, \n\t\t55, \n\t\t55, \n\t\t55, \n\t\t55, \n\t\t55, \n\t\t55, \n\t\t55, \n\t\t55, \n\t\t55\n\t], \n\tmy_array_ptr: &[i32; 10] = &[i32; 10] @ 0x20003D24, \n\t: [i8; 10] = [\n\t\t1, \n\t\t2, \n\t\t3, \n\t\t4, \n\t\t5, \n\t\t6, \n\t\t7, \n\t\t8, \n\t\t9, \n\t\t0\n\t], \n\theapless_vec: Vec<i8, 10> = Vec<i8, 10> @ 0x20003C38, \n\tloop_counter: Wrapping<u8> = Wrapping<u8> @ 0x20003C48, \n\trtt_channels: Channels = Channels @ 0x20003C4C}"
+      value: "<unknown> {\n\tint8_minus_twenty_three: i8 = -23,\n\tlocal_reference_to_global_const: &str = This global `const` value will only show up in the debugger in the variables where it is referenced,\n\tlocal_reference_to_global_static: &str = A 'global' static variable,\n\tlocal_reference_to_global_static_struct: &common_testing_code::ComplexEnum = &common_testing_code::ComplexEnum @ 0x20003CBC,\n\tghosted_variable: usize = 0,\n\tghosted_variable: &str = New value and type for a different name,\n\tint8_twenty_six: i8 = 26,\n\tint128: i128 = -196710231994021419720322,\n\tu_int128: u128 = 340282366920938266753142613410348491134,\n\tfloat64: f64 = 1.7608695652173911,\n\tfloat64_ptr: &f64 = &f64 @ 0x20003CD4,\n\temoji: char = 💩,\n\temoji_ptr: &char = &char @ 0x20003CD8,\n\ttrue_bool: bool = true,\n\tany_old_string_slice: &str = How long is a piece of String.,\n\tfunction_result: Result<(), &str> = Result<(), &str> @ 0x20003CDC,\n\tglobal_types: (bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) = (bool, isize, char, i8, i16, i32, i64, usize, u8, u16, u32, u64, f32, f64) @ 0x20003450,\n\tthree_d_usize_array: Matrix<i32, 2, 3, 4> = Matrix<i32, 2, 3, 4> @ 0x2000348C,\n\tthree_d_string_array: Matrix<&str, 2, 3, 6> = Matrix<&str, 2, 3, 6> @ 0x2000360C,\n\tthree: SimpleEnum = SimpleEnum::Two,\n\tsimple_enum_pointer: &common_testing_code::SimpleEnum = &common_testing_code::SimpleEnum @ 0x20003A90,\n\tthree_level_recursive_struct: RecursiveStruct = RecursiveStruct @ 0x20003A94,\n\tfirst_case_of_struct_variants: ComplexEnum = ComplexEnum @ 0x20003AB8,\n\tsecond_case_of_struct_variants: ComplexEnum = ComplexEnum @ 0x20003AE8,\n\tstruct_with_one_variant: Option<common_testing_code::Univariant> = Option<common_testing_code::Univariant> @ 0x20003B08,\n\tstuct_with_one_variant_pointer: &core::option::Option<common_testing_code::Univariant> = &core::option::Option<common_testing_code::Univariant> @ 0x20003CE4,\n\tlong_lived: ComplexStruct = ComplexStruct @ 0x20003B70,\n\tshort_lived: ComplexStruct = ComplexStruct @ 0x20003B80,\n\ta1: Struct<i32> = Struct<i32> @ 0x20003CE8,\n\ta2: i64 = 1,\n\ta3: i64 = 2,\n\ta4: i64 = 3,\n\ta5: (i32, i64) = (i32, i64) @ 0x20003D10,\n\ta6: Enum<i32> = Enum<i32> @ 0x20003BC0,\n\ta7: Enum<i32> = Enum<i32> @ 0x20003BE0,\n\t[i32; 10] = [\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55,\n\t\t55\n\t],\n\tmy_array_ptr: &[i32; 10] = &[i32; 10] @ 0x20003D24,\n\t[i8; 10] = [\n\t\t1,\n\t\t2,\n\t\t3,\n\t\t4,\n\t\t5,\n\t\t6,\n\t\t7,\n\t\t8,\n\t\t9,\n\t\t0\n\t],\n\theapless_vec: Vec<i8, 10> = Vec<i8, 10> @ 0x20003C38,\n\tloop_counter: Wrapping<u8> = Wrapping<u8> @ 0x20003C48,\n\trtt_channels: Channels = Channels @ 0x20003C4C}"
       children:
         - name:
             Named: int8_minus_twenty_three
@@ -1827,7 +1827,7 @@ expression: stack_frames
                           count: 3
                       count: 2
                   count: 4
-              value: ": [[[i32; 3]; 2]; 4] = [\n\t: [[i32; 3]; 2] = [\n\t\t: [i32; 3] = [\n\t\t\t0, \n\t\t\t1, \n\t\t\t2\n\t\t], \n\t\t: [i32; 3] = [\n\t\t\t3, \n\t\t\t4, \n\t\t\t5\n\t\t]\n\t], \n\t: [[i32; 3]; 2] = [\n\t\t: [i32; 3] = [\n\t\t\t6, \n\t\t\t7, \n\t\t\t8\n\t\t], \n\t\t: [i32; 3] = [\n\t\t\t9, \n\t\t\t10, \n\t\t\t11\n\t\t]\n\t], \n\t: [[i32; 3]; 2] = [\n\t\t: [i32; 3] = [\n\t\t\t12, \n\t\t\t13, \n\t\t\t14\n\t\t], \n\t\t: [i32; 3] = [\n\t\t\t15, \n\t\t\t16, \n\t\t\t17\n\t\t]\n\t], \n\t: [[i32; 3]; 2] = [\n\t\t: [i32; 3] = [\n\t\t\t18, \n\t\t\t19, \n\t\t\t20\n\t\t], \n\t\t: [i32; 3] = [\n\t\t\t21, \n\t\t\t22, \n\t\t\t23\n\t\t]\n\t]]"
+              value: "[[[i32; 3]; 2]; 4] = [\n\t[[i32; 3]; 2] = [\n\t\t[i32; 3] = [\n\t\t\t0,\n\t\t\t1,\n\t\t\t2\n\t\t],\n\t\t[i32; 3] = [\n\t\t\t3,\n\t\t\t4,\n\t\t\t5\n\t\t]\n\t],\n\t[[i32; 3]; 2] = [\n\t\t[i32; 3] = [\n\t\t\t6,\n\t\t\t7,\n\t\t\t8\n\t\t],\n\t\t[i32; 3] = [\n\t\t\t9,\n\t\t\t10,\n\t\t\t11\n\t\t]\n\t],\n\t[[i32; 3]; 2] = [\n\t\t[i32; 3] = [\n\t\t\t12,\n\t\t\t13,\n\t\t\t14\n\t\t],\n\t\t[i32; 3] = [\n\t\t\t15,\n\t\t\t16,\n\t\t\t17\n\t\t]\n\t],\n\t[[i32; 3]; 2] = [\n\t\t[i32; 3] = [\n\t\t\t18,\n\t\t\t19,\n\t\t\t20\n\t\t],\n\t\t[i32; 3] = [\n\t\t\t21,\n\t\t\t22,\n\t\t\t23\n\t\t]\n\t]]"
               children:
                 - name:
                     Named: __0
@@ -1839,7 +1839,7 @@ expression: stack_frames
                             Base: i32
                           count: 3
                       count: 2
-                  value: ": [[i32; 3]; 2] = [\n\t: [i32; 3] = [\n\t\t0, \n\t\t1, \n\t\t2\n\t], \n\t: [i32; 3] = [\n\t\t3, \n\t\t4, \n\t\t5\n\t]]"
+                  value: "[[i32; 3]; 2] = [\n\t[i32; 3] = [\n\t\t0,\n\t\t1,\n\t\t2\n\t],\n\t[i32; 3] = [\n\t\t3,\n\t\t4,\n\t\t5\n\t]]"
                   children:
                     - name:
                         Named: __0
@@ -1848,7 +1848,7 @@ expression: stack_frames
                           item_type_name:
                             Base: i32
                           count: 3
-                      value: ": [i32; 3] = [\n\t0, \n\t1, \n\t2]"
+                      value: "[i32; 3] = [\n\t0,\n\t1,\n\t2]"
                       children:
                         - name:
                             Named: __0
@@ -1872,7 +1872,7 @@ expression: stack_frames
                           item_type_name:
                             Base: i32
                           count: 3
-                      value: ": [i32; 3] = [\n\t3, \n\t4, \n\t5]"
+                      value: "[i32; 3] = [\n\t3,\n\t4,\n\t5]"
                       children:
                         - name:
                             Named: __0
@@ -1899,7 +1899,7 @@ expression: stack_frames
                             Base: i32
                           count: 3
                       count: 2
-                  value: ": [[i32; 3]; 2] = [\n\t: [i32; 3] = [\n\t\t6, \n\t\t7, \n\t\t8\n\t], \n\t: [i32; 3] = [\n\t\t9, \n\t\t10, \n\t\t11\n\t]]"
+                  value: "[[i32; 3]; 2] = [\n\t[i32; 3] = [\n\t\t6,\n\t\t7,\n\t\t8\n\t],\n\t[i32; 3] = [\n\t\t9,\n\t\t10,\n\t\t11\n\t]]"
                   children:
                     - name:
                         Named: __0
@@ -1908,7 +1908,7 @@ expression: stack_frames
                           item_type_name:
                             Base: i32
                           count: 3
-                      value: ": [i32; 3] = [\n\t6, \n\t7, \n\t8]"
+                      value: "[i32; 3] = [\n\t6,\n\t7,\n\t8]"
                       children:
                         - name:
                             Named: __0
@@ -1932,7 +1932,7 @@ expression: stack_frames
                           item_type_name:
                             Base: i32
                           count: 3
-                      value: ": [i32; 3] = [\n\t9, \n\t10, \n\t11]"
+                      value: "[i32; 3] = [\n\t9,\n\t10,\n\t11]"
                       children:
                         - name:
                             Named: __0
@@ -1959,7 +1959,7 @@ expression: stack_frames
                             Base: i32
                           count: 3
                       count: 2
-                  value: ": [[i32; 3]; 2] = [\n\t: [i32; 3] = [\n\t\t12, \n\t\t13, \n\t\t14\n\t], \n\t: [i32; 3] = [\n\t\t15, \n\t\t16, \n\t\t17\n\t]]"
+                  value: "[[i32; 3]; 2] = [\n\t[i32; 3] = [\n\t\t12,\n\t\t13,\n\t\t14\n\t],\n\t[i32; 3] = [\n\t\t15,\n\t\t16,\n\t\t17\n\t]]"
                   children:
                     - name:
                         Named: __0
@@ -1968,7 +1968,7 @@ expression: stack_frames
                           item_type_name:
                             Base: i32
                           count: 3
-                      value: ": [i32; 3] = [\n\t12, \n\t13, \n\t14]"
+                      value: "[i32; 3] = [\n\t12,\n\t13,\n\t14]"
                       children:
                         - name:
                             Named: __0
@@ -1992,7 +1992,7 @@ expression: stack_frames
                           item_type_name:
                             Base: i32
                           count: 3
-                      value: ": [i32; 3] = [\n\t15, \n\t16, \n\t17]"
+                      value: "[i32; 3] = [\n\t15,\n\t16,\n\t17]"
                       children:
                         - name:
                             Named: __0
@@ -2019,7 +2019,7 @@ expression: stack_frames
                             Base: i32
                           count: 3
                       count: 2
-                  value: ": [[i32; 3]; 2] = [\n\t: [i32; 3] = [\n\t\t18, \n\t\t19, \n\t\t20\n\t], \n\t: [i32; 3] = [\n\t\t21, \n\t\t22, \n\t\t23\n\t]]"
+                  value: "[[i32; 3]; 2] = [\n\t[i32; 3] = [\n\t\t18,\n\t\t19,\n\t\t20\n\t],\n\t[i32; 3] = [\n\t\t21,\n\t\t22,\n\t\t23\n\t]]"
                   children:
                     - name:
                         Named: __0
@@ -2028,7 +2028,7 @@ expression: stack_frames
                           item_type_name:
                             Base: i32
                           count: 3
-                      value: ": [i32; 3] = [\n\t18, \n\t19, \n\t20]"
+                      value: "[i32; 3] = [\n\t18,\n\t19,\n\t20]"
                       children:
                         - name:
                             Named: __0
@@ -2052,7 +2052,7 @@ expression: stack_frames
                           item_type_name:
                             Base: i32
                           count: 3
-                      value: ": [i32; 3] = [\n\t21, \n\t22, \n\t23]"
+                      value: "[i32; 3] = [\n\t21,\n\t22,\n\t23]"
                       children:
                         - name:
                             Named: __0
@@ -2088,7 +2088,7 @@ expression: stack_frames
                           count: 3
                       count: 2
                   count: 6
-              value: ": [[[&str; 3]; 2]; 6] = [\n\t: [[&str; 3]; 2] = [\n\t\t: [&str; 3] = [\n\t\t\tApple, \n\t\t\tBanana, \n\t\t\tCherry\n\t\t], \n\t\t: [&str; 3] = [\n\t\t\tDog, \n\t\t\tElephant, \n\t\t\tFish\n\t\t]\n\t], \n\t: [[&str; 3]; 2] = [\n\t\t: [&str; 3] = [\n\t\t\tGuitar, \n\t\t\tHorse, \n\t\t\tIce Cream\n\t\t], \n\t\t: [&str; 3] = [\n\t\t\tJaguar, \n\t\t\tKangaroo, \n\t\t\tLion\n\t\t]\n\t], \n\t: [[&str; 3]; 2] = [\n\t\t: [&str; 3] = [\n\t\t\tMoon, \n\t\t\tNewton, \n\t\t\tOwl\n\t\t], \n\t\t: [&str; 3] = [\n\t\t\tPencil, \n\t\t\tQueen, \n\t\t\tRainbow\n\t\t]\n\t], \n\t: [[&str; 3]; 2] = [\n\t\t: [&str; 3] = [\n\t\t\tSun, \n\t\t\tTree, \n\t\t\tUmbrella\n\t\t], \n\t\t: [&str; 3] = [\n\t\t\tViolin, \n\t\t\tWatch, \n\t\t\tXylophone\n\t\t]\n\t], \n\t: [[&str; 3]; 2] = [\n\t\t: [&str; 3] = [\n\t\t\tYellow, \n\t\t\tZebra, \n\t\t\tAlpha\n\t\t], \n\t\t: [&str; 3] = [\n\t\t\tBravo, \n\t\t\tCharlie, \n\t\t\tDelta\n\t\t]\n\t], \n\t: [[&str; 3]; 2] = [\n\t\t: [&str; 3] = [\n\t\t\tEcho, \n\t\t\tFoxtrot, \n\t\t\tGolf\n\t\t], \n\t\t: [&str; 3] = [\n\t\t\tHotel, \n\t\t\tIndia, \n\t\t\tJuliet\n\t\t]\n\t]]"
+              value: "[[[&str; 3]; 2]; 6] = [\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\tApple,\n\t\t\tBanana,\n\t\t\tCherry\n\t\t],\n\t\t[&str; 3] = [\n\t\t\tDog,\n\t\t\tElephant,\n\t\t\tFish\n\t\t]\n\t],\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\tGuitar,\n\t\t\tHorse,\n\t\t\tIce Cream\n\t\t],\n\t\t[&str; 3] = [\n\t\t\tJaguar,\n\t\t\tKangaroo,\n\t\t\tLion\n\t\t]\n\t],\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\tMoon,\n\t\t\tNewton,\n\t\t\tOwl\n\t\t],\n\t\t[&str; 3] = [\n\t\t\tPencil,\n\t\t\tQueen,\n\t\t\tRainbow\n\t\t]\n\t],\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\tSun,\n\t\t\tTree,\n\t\t\tUmbrella\n\t\t],\n\t\t[&str; 3] = [\n\t\t\tViolin,\n\t\t\tWatch,\n\t\t\tXylophone\n\t\t]\n\t],\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\tYellow,\n\t\t\tZebra,\n\t\t\tAlpha\n\t\t],\n\t\t[&str; 3] = [\n\t\t\tBravo,\n\t\t\tCharlie,\n\t\t\tDelta\n\t\t]\n\t],\n\t[[&str; 3]; 2] = [\n\t\t[&str; 3] = [\n\t\t\tEcho,\n\t\t\tFoxtrot,\n\t\t\tGolf\n\t\t],\n\t\t[&str; 3] = [\n\t\t\tHotel,\n\t\t\tIndia,\n\t\t\tJuliet\n\t\t]\n\t]]"
               children:
                 - name:
                     Named: __0
@@ -2100,7 +2100,7 @@ expression: stack_frames
                             Struct: "&str"
                           count: 3
                       count: 2
-                  value: ": [[&str; 3]; 2] = [\n\t: [&str; 3] = [\n\t\tApple, \n\t\tBanana, \n\t\tCherry\n\t], \n\t: [&str; 3] = [\n\t\tDog, \n\t\tElephant, \n\t\tFish\n\t]]"
+                  value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\tApple,\n\t\tBanana,\n\t\tCherry\n\t],\n\t[&str; 3] = [\n\t\tDog,\n\t\tElephant,\n\t\tFish\n\t]]"
                   children:
                     - name:
                         Named: __0
@@ -2109,7 +2109,7 @@ expression: stack_frames
                           item_type_name:
                             Struct: "&str"
                           count: 3
-                      value: ": [&str; 3] = [\n\tApple, \n\tBanana, \n\tCherry]"
+                      value: "[&str; 3] = [\n\tApple,\n\tBanana,\n\tCherry]"
                       children:
                         - name:
                             Named: __0
@@ -2184,7 +2184,7 @@ expression: stack_frames
                           item_type_name:
                             Struct: "&str"
                           count: 3
-                      value: ": [&str; 3] = [\n\tDog, \n\tElephant, \n\tFish]"
+                      value: "[&str; 3] = [\n\tDog,\n\tElephant,\n\tFish]"
                       children:
                         - name:
                             Named: __0
@@ -2262,7 +2262,7 @@ expression: stack_frames
                             Struct: "&str"
                           count: 3
                       count: 2
-                  value: ": [[&str; 3]; 2] = [\n\t: [&str; 3] = [\n\t\tGuitar, \n\t\tHorse, \n\t\tIce Cream\n\t], \n\t: [&str; 3] = [\n\t\tJaguar, \n\t\tKangaroo, \n\t\tLion\n\t]]"
+                  value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\tGuitar,\n\t\tHorse,\n\t\tIce Cream\n\t],\n\t[&str; 3] = [\n\t\tJaguar,\n\t\tKangaroo,\n\t\tLion\n\t]]"
                   children:
                     - name:
                         Named: __0
@@ -2271,7 +2271,7 @@ expression: stack_frames
                           item_type_name:
                             Struct: "&str"
                           count: 3
-                      value: ": [&str; 3] = [\n\tGuitar, \n\tHorse, \n\tIce Cream]"
+                      value: "[&str; 3] = [\n\tGuitar,\n\tHorse,\n\tIce Cream]"
                       children:
                         - name:
                             Named: __0
@@ -2346,7 +2346,7 @@ expression: stack_frames
                           item_type_name:
                             Struct: "&str"
                           count: 3
-                      value: ": [&str; 3] = [\n\tJaguar, \n\tKangaroo, \n\tLion]"
+                      value: "[&str; 3] = [\n\tJaguar,\n\tKangaroo,\n\tLion]"
                       children:
                         - name:
                             Named: __0
@@ -2424,7 +2424,7 @@ expression: stack_frames
                             Struct: "&str"
                           count: 3
                       count: 2
-                  value: ": [[&str; 3]; 2] = [\n\t: [&str; 3] = [\n\t\tMoon, \n\t\tNewton, \n\t\tOwl\n\t], \n\t: [&str; 3] = [\n\t\tPencil, \n\t\tQueen, \n\t\tRainbow\n\t]]"
+                  value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\tMoon,\n\t\tNewton,\n\t\tOwl\n\t],\n\t[&str; 3] = [\n\t\tPencil,\n\t\tQueen,\n\t\tRainbow\n\t]]"
                   children:
                     - name:
                         Named: __0
@@ -2433,7 +2433,7 @@ expression: stack_frames
                           item_type_name:
                             Struct: "&str"
                           count: 3
-                      value: ": [&str; 3] = [\n\tMoon, \n\tNewton, \n\tOwl]"
+                      value: "[&str; 3] = [\n\tMoon,\n\tNewton,\n\tOwl]"
                       children:
                         - name:
                             Named: __0
@@ -2508,7 +2508,7 @@ expression: stack_frames
                           item_type_name:
                             Struct: "&str"
                           count: 3
-                      value: ": [&str; 3] = [\n\tPencil, \n\tQueen, \n\tRainbow]"
+                      value: "[&str; 3] = [\n\tPencil,\n\tQueen,\n\tRainbow]"
                       children:
                         - name:
                             Named: __0
@@ -2586,7 +2586,7 @@ expression: stack_frames
                             Struct: "&str"
                           count: 3
                       count: 2
-                  value: ": [[&str; 3]; 2] = [\n\t: [&str; 3] = [\n\t\tSun, \n\t\tTree, \n\t\tUmbrella\n\t], \n\t: [&str; 3] = [\n\t\tViolin, \n\t\tWatch, \n\t\tXylophone\n\t]]"
+                  value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\tSun,\n\t\tTree,\n\t\tUmbrella\n\t],\n\t[&str; 3] = [\n\t\tViolin,\n\t\tWatch,\n\t\tXylophone\n\t]]"
                   children:
                     - name:
                         Named: __0
@@ -2595,7 +2595,7 @@ expression: stack_frames
                           item_type_name:
                             Struct: "&str"
                           count: 3
-                      value: ": [&str; 3] = [\n\tSun, \n\tTree, \n\tUmbrella]"
+                      value: "[&str; 3] = [\n\tSun,\n\tTree,\n\tUmbrella]"
                       children:
                         - name:
                             Named: __0
@@ -2670,7 +2670,7 @@ expression: stack_frames
                           item_type_name:
                             Struct: "&str"
                           count: 3
-                      value: ": [&str; 3] = [\n\tViolin, \n\tWatch, \n\tXylophone]"
+                      value: "[&str; 3] = [\n\tViolin,\n\tWatch,\n\tXylophone]"
                       children:
                         - name:
                             Named: __0
@@ -2748,7 +2748,7 @@ expression: stack_frames
                             Struct: "&str"
                           count: 3
                       count: 2
-                  value: ": [[&str; 3]; 2] = [\n\t: [&str; 3] = [\n\t\tYellow, \n\t\tZebra, \n\t\tAlpha\n\t], \n\t: [&str; 3] = [\n\t\tBravo, \n\t\tCharlie, \n\t\tDelta\n\t]]"
+                  value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\tYellow,\n\t\tZebra,\n\t\tAlpha\n\t],\n\t[&str; 3] = [\n\t\tBravo,\n\t\tCharlie,\n\t\tDelta\n\t]]"
                   children:
                     - name:
                         Named: __0
@@ -2757,7 +2757,7 @@ expression: stack_frames
                           item_type_name:
                             Struct: "&str"
                           count: 3
-                      value: ": [&str; 3] = [\n\tYellow, \n\tZebra, \n\tAlpha]"
+                      value: "[&str; 3] = [\n\tYellow,\n\tZebra,\n\tAlpha]"
                       children:
                         - name:
                             Named: __0
@@ -2832,7 +2832,7 @@ expression: stack_frames
                           item_type_name:
                             Struct: "&str"
                           count: 3
-                      value: ": [&str; 3] = [\n\tBravo, \n\tCharlie, \n\tDelta]"
+                      value: "[&str; 3] = [\n\tBravo,\n\tCharlie,\n\tDelta]"
                       children:
                         - name:
                             Named: __0
@@ -2910,7 +2910,7 @@ expression: stack_frames
                             Struct: "&str"
                           count: 3
                       count: 2
-                  value: ": [[&str; 3]; 2] = [\n\t: [&str; 3] = [\n\t\tEcho, \n\t\tFoxtrot, \n\t\tGolf\n\t], \n\t: [&str; 3] = [\n\t\tHotel, \n\t\tIndia, \n\t\tJuliet\n\t]]"
+                  value: "[[&str; 3]; 2] = [\n\t[&str; 3] = [\n\t\tEcho,\n\t\tFoxtrot,\n\t\tGolf\n\t],\n\t[&str; 3] = [\n\t\tHotel,\n\t\tIndia,\n\t\tJuliet\n\t]]"
                   children:
                     - name:
                         Named: __0
@@ -2919,7 +2919,7 @@ expression: stack_frames
                           item_type_name:
                             Struct: "&str"
                           count: 3
-                      value: ": [&str; 3] = [\n\tEcho, \n\tFoxtrot, \n\tGolf]"
+                      value: "[&str; 3] = [\n\tEcho,\n\tFoxtrot,\n\tGolf]"
                       children:
                         - name:
                             Named: __0
@@ -2994,7 +2994,7 @@ expression: stack_frames
                           item_type_name:
                             Struct: "&str"
                           count: 3
-                      value: ": [&str; 3] = [\n\tHotel, \n\tIndia, \n\tJuliet]"
+                      value: "[&str; 3] = [\n\tHotel,\n\tIndia,\n\tJuliet]"
                       children:
                         - name:
                             Named: __0
@@ -3501,7 +3501,7 @@ expression: stack_frames
               item_type_name:
                 Base: i32
               count: 10
-          value: ": [i32; 10] = [\n\t55, \n\t55, \n\t55, \n\t55, \n\t55, \n\t55, \n\t55, \n\t55, \n\t55, \n\t55]"
+          value: "[i32; 10] = [\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55]"
           children:
             - name:
                 Named: __0
@@ -3566,7 +3566,7 @@ expression: stack_frames
                   item_type_name:
                     Base: i32
                   count: 10
-              value: ": [i32; 10] = [\n\t55, \n\t55, \n\t55, \n\t55, \n\t55, \n\t55, \n\t55, \n\t55, \n\t55, \n\t55]"
+              value: "[i32; 10] = [\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55,\n\t55]"
               children:
                 - name:
                     Named: __0
@@ -3625,7 +3625,7 @@ expression: stack_frames
               item_type_name:
                 Base: i8
               count: 10
-          value: ": [i8; 10] = [\n\t1, \n\t2, \n\t3, \n\t4, \n\t5, \n\t6, \n\t7, \n\t8, \n\t9, \n\t0]"
+          value: "[i8; 10] = [\n\t1,\n\t2,\n\t3,\n\t4,\n\t5,\n\t6,\n\t7,\n\t8,\n\t9,\n\t0]"
           children:
             - name:
                 Named: __0
@@ -3695,13 +3695,13 @@ expression: stack_frames
                   item_type_name:
                     Base: MaybeUninit<i8>
                   count: 10
-              value: ": [MaybeUninit<i8>; 10] = [\n\tMaybeUninit<i8> {\n\t\tuninit: () = (), \n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3C\n\t}, \n\tMaybeUninit<i8> {\n\t\tuninit: () = (), \n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3D\n\t}, \n\tMaybeUninit<i8> {\n\t\tuninit: () = (), \n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3E\n\t}, \n\tMaybeUninit<i8> {\n\t\tuninit: () = (), \n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3F\n\t}, \n\tMaybeUninit<i8> {\n\t\tuninit: () = (), \n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C40\n\t}, \n\tMaybeUninit<i8> {\n\t\tuninit: () = (), \n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C41\n\t}, \n\tMaybeUninit<i8> {\n\t\tuninit: () = (), \n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C42\n\t}, \n\tMaybeUninit<i8> {\n\t\tuninit: () = (), \n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C43\n\t}, \n\tMaybeUninit<i8> {\n\t\tuninit: () = (), \n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C44\n\t}, \n\tMaybeUninit<i8> {\n\t\tuninit: () = (), \n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C45\n\t}]"
+              value: "[MaybeUninit<i8>; 10] = [\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3C\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3D\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3E\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3F\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C40\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C41\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C42\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C43\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C44\n\t},\n\tMaybeUninit<i8> {\n\t\tuninit: () = (),\n\t\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C45\n\t}]"
               children:
                 - name:
                     Named: __0
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (), \n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3C}"
+                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3C}"
                   children:
                     - name:
                         Named: uninit
@@ -3723,7 +3723,7 @@ expression: stack_frames
                     Named: __1
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (), \n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3D}"
+                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3D}"
                   children:
                     - name:
                         Named: uninit
@@ -3745,7 +3745,7 @@ expression: stack_frames
                     Named: __2
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (), \n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3E}"
+                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3E}"
                   children:
                     - name:
                         Named: uninit
@@ -3767,7 +3767,7 @@ expression: stack_frames
                     Named: __3
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (), \n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3F}"
+                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C3F}"
                   children:
                     - name:
                         Named: uninit
@@ -3789,7 +3789,7 @@ expression: stack_frames
                     Named: __4
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (), \n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C40}"
+                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C40}"
                   children:
                     - name:
                         Named: uninit
@@ -3811,7 +3811,7 @@ expression: stack_frames
                     Named: __5
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (), \n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C41}"
+                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C41}"
                   children:
                     - name:
                         Named: uninit
@@ -3833,7 +3833,7 @@ expression: stack_frames
                     Named: __6
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (), \n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C42}"
+                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C42}"
                   children:
                     - name:
                         Named: uninit
@@ -3855,7 +3855,7 @@ expression: stack_frames
                     Named: __7
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (), \n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C43}"
+                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C43}"
                   children:
                     - name:
                         Named: uninit
@@ -3877,7 +3877,7 @@ expression: stack_frames
                     Named: __8
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (), \n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C44}"
+                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C44}"
                   children:
                     - name:
                         Named: uninit
@@ -3899,7 +3899,7 @@ expression: stack_frames
                     Named: __9
                   type_name:
                     Base: MaybeUninit<i8>
-                  value: "MaybeUninit<i8> {\n\tuninit: () = (), \n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C45}"
+                  value: "MaybeUninit<i8> {\n\tuninit: () = (),\n\tvalue: ManuallyDrop<i8> = ManuallyDrop<i8> @ 0x20003C45}"
                   children:
                     - name:
                         Named: uninit

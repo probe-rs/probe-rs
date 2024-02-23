@@ -283,6 +283,15 @@ impl VariableType {
         }
     }
 
+    /// Get the inner type of a modified type, stopping at typedef aliases.
+    fn skip_modifiers(&self) -> &Self {
+        match self {
+            Self::Modified(Modifier::Typedef(_), _) => self,
+            Self::Modified(_, ty) => ty.skip_modifiers(),
+            _ => self,
+        }
+    }
+
     /// Is this variable of a Rust PhantomData marker type?
     pub fn is_phantom_data(&self) -> bool {
         match self {
@@ -322,7 +331,12 @@ impl VariableType {
             VariableType::Array {
                 item_type_name,
                 count,
-            } => language.format_array_type(&item_type_name.display_name(language), *count),
+            } => language.format_array_type(
+                // In case the compiler points at a modified item type (e.g. const), skip the
+                // modifier.
+                &item_type_name.skip_modifiers().display_name(language),
+                *count,
+            ),
 
             VariableType::Bitfield(bitfield, name) => {
                 language.format_bitfield_type(&name.display_name(language), *bitfield)
@@ -556,7 +570,7 @@ impl Variable {
         } else {
             // We need to construct a 'human readable' value using `fmt::Display` to represent the values of complex types and pointers.
             if variable_cache.has_children(self) {
-                self.formatted_variable_value(variable_cache, 0_usize, false)
+                self.formatted_variable_value(variable_cache, 0, false)
             } else if self.type_name == VariableType::Unknown || !self.memory_location.valid() {
                 if self.variable_node_type.is_deferred() {
                     // When we will do a lazy-load of variable children, and they have not yet been requested by the user, just display the type_name as the value
@@ -570,7 +584,7 @@ impl Variable {
             } else if matches!(self.type_name, VariableType::Struct(ref name) if name == "None") {
                 "None".to_string()
             } else if matches!(self.type_name, VariableType::Array { count: 0, .. }) {
-                self.formatted_variable_value(variable_cache, 0_usize, false)
+                self.formatted_variable_value(variable_cache, 0, false)
             } else {
                 format!(
                     "Unimplemented: Get value of type {:?} of ({:?} bytes) at location {}",
@@ -651,42 +665,35 @@ impl Variable {
         show_name: bool,
     ) -> String {
         let line_feed = if indentation == 0 { "" } else { "\n" };
+        let line_start = format!("{}{:\t<indentation$}", line_feed, "");
         let type_name = self.type_name();
 
-        // Allow for chained `if let` without complaining
-        #[allow(clippy::if_same_then_else)]
         if !self.value.is_empty() {
+            // Use the supplied value or error message.
             if show_name {
-                // Use the supplied value or error message.
-                format!(
-                    "{}{:\t<indentation$}{}: {} = {}",
-                    line_feed, "", self.name, type_name, self.value
-                )
+                format!("{line_start}{}: {} = {}", self.name, type_name, self.value)
             } else {
-                // Use the supplied value or error message.
-                format!("{}{:\t<indentation$}{}", line_feed, "", self.value)
+                format!("{line_start}{}", self.value)
             }
-        } else if let VariableName::AnonymousNamespace = self.name {
-            // Namespaces do not have values
-            String::new()
-        } else if let VariableName::Namespace(_) = self.name {
+        } else if matches!(
+            self.name,
+            VariableName::AnonymousNamespace | VariableName::Namespace(_)
+        ) {
             // Namespaces do not have values
             String::new()
         } else {
             // Infer a human readable value using the available children of this variable.
             let mut compound_value = String::new();
-            let children: Vec<_> = variable_cache.get_children(self.variable_key).collect();
+            let children = variable_cache.get_children(self.variable_key);
+            let first_child = children.clone().next();
 
             // Make sure we can safely unwrap() children.
-            match &self.type_name {
+            match self.type_name.inner() {
                 VariableType::Pointer(_) => {
                     // Pointers
-                    compound_value = format!(
-                        "{}{}{:\t<indentation$}{}",
-                        compound_value,
-                        line_feed,
-                        "",
-                        if let Some(first_child) = children.first() {
+                    format!(
+                        "{line_start}{}",
+                        if let Some(first_child) = first_child {
                             first_child.formatted_variable_value(
                                 variable_cache,
                                 indentation + 1,
@@ -695,130 +702,150 @@ impl Variable {
                         } else {
                             "Unable to resolve referenced variable value".to_string()
                         }
-                    );
-                    compound_value
+                    )
                 }
                 VariableType::Array { .. } => {
-                    // Arrays
-                    compound_value = format!(
-                        "{}{}{:\t<indentation$}: {} = [",
-                        compound_value, line_feed, "", type_name,
-                    );
-                    let mut child_count: usize = 0;
-                    for child in &children {
-                        child_count += 1;
+                    // Limit arrays to 10(+1) elements
+                    const ARRAY_MAX_LENGTH: usize = 10;
+
+                    let mut comma = "";
+                    let mut printed_count = 0;
+                    let mut children = children.clone();
+
+                    compound_value = format!("{line_start}{type_name} = [");
+                    loop {
+                        if printed_count >= ARRAY_MAX_LENGTH {
+                            // Be a bit lenient with the limit, avoid showing "1 more" for a single child.
+                            let remaining = children.clone().count();
+                            if remaining > 1 {
+                                break;
+                            }
+                            break;
+                        }
+                        let Some(child) = children.next() else {
+                            break;
+                        };
 
                         compound_value = format!(
-                            "{}{}{}",
-                            compound_value,
+                            "{compound_value}{comma}{}",
                             child.formatted_variable_value(variable_cache, indentation + 1, false),
-                            if child_count == children.len() {
-                                // Do not add a separator at the end of the list
-                                ""
-                            } else {
-                                ", "
-                            }
+                        );
+                        printed_count += 1;
+                        comma = ",";
+                    }
+
+                    let remaining = children.count();
+                    if remaining > 0 {
+                        compound_value = format!(
+                            "{compound_value},\n{line_start}\t... and {} more",
+                            remaining
                         );
                     }
-                    format!("{}{}{:\t<indentation$}]", compound_value, line_feed, "")
+
+                    format!("{compound_value}{line_start}]")
                 }
-                VariableType::Struct(name) if name == "Ok" || name == "Err" => {
+
+                VariableType::Struct(name) if name == "Some" || name == "Ok" || name == "Err" => {
+                    // FIXME: this is not hit by any of the unwind tests, which is weird because
+                    // some of them contain `Some` structs.
                     // Handle special structure types like the variant values of `Option<>` and `Result<>`
-                    compound_value = format!(
-                        "{}{:\t<indentation$}{}: {} = {}(",
-                        line_feed, "", self.name, type_name, compound_value
-                    );
+                    compound_value = format!("{line_start}{} = (", type_name);
                     for child in children {
                         compound_value = format!(
-                            "{}{}",
-                            compound_value,
+                            "{compound_value}{}",
                             child.formatted_variable_value(variable_cache, indentation + 1, false)
                         );
                     }
-                    format!("{}{}{:\t<indentation$})", compound_value, line_feed, "")
+                    format!("{compound_value}{line_start})")
                 }
+
+                _ if first_child.is_none() => {
+                    // Struct with no children -> just print type name
+                    // This is for example the None value of an Option.
+                    format!("{compound_value}{type_name}")
+                }
+
+                _ if matches!(
+                    self.name,
+                    VariableName::StaticScopeRoot
+                        | VariableName::LocalScopeRoot
+                        | VariableName::RegistersRoot
+                ) =>
+                {
+                    compound_value = format!("{compound_value}{line_start}{type_name} {{");
+
+                    let mut comma = "";
+                    for child in children {
+                        let formatted =
+                            child.formatted_variable_value(variable_cache, indentation + 1, true);
+                        if formatted.is_empty() {
+                            // Avoid printing empty commas
+                            continue;
+                        }
+                        compound_value = format!("{compound_value}{comma}{formatted}");
+                        comma = ",";
+                    }
+                    format!("{compound_value}{line_start}}}")
+                }
+
                 _ => {
                     // Generic handling of other structured types.
                     // The pre- and post- fix is determined by the type of children.
                     // compound_value = format!("{} {}", compound_value, self.type_name);
+                    let (mut pre_fix, mut post_fix) = (None, None);
 
-                    if children.is_empty() {
-                        // Struct with no children -> just print type name
-                        // This is for example the None value of an Option.
+                    let mut is_tuple = false;
 
-                        format!("{}{:\t<indentation$}{}", line_feed, "", self.name)
-                    } else {
-                        let (mut pre_fix, mut post_fix): (Option<String>, Option<String>) =
-                            (None, None);
-
-                        let mut child_count: usize = 0;
-
-                        let mut is_tuple = false;
-
-                        for child in children.iter() {
-                            child_count += 1;
-                            if pre_fix.is_none() && post_fix.is_none() {
-                                if let VariableName::Named(child_name) = &child.name {
-                                    if child_name.starts_with("__0") {
-                                        is_tuple = true;
-                                        // Treat this structure as a tuple
-                                        pre_fix = Some(format!(
-                                            "{}{:\t<indentation$}{}: {}({}) = {}(",
-                                            line_feed,
-                                            "",
-                                            self.name,
-                                            type_name,
-                                            child.type_name(),
-                                            type_name,
-                                        ));
-                                        post_fix =
-                                            Some(format!("{}{:\t<indentation$})", line_feed, ""));
-                                    } else {
-                                        // Treat this structure as a `struct`
-
-                                        if show_name {
-                                            pre_fix = Some(format!(
-                                                "{}{:\t<indentation$}{}: {} = {} {{",
-                                                line_feed, "", self.name, type_name, type_name,
-                                            ));
-                                        } else {
-                                            pre_fix = Some(format!(
-                                                "{}{:\t<indentation$}{} {{",
-                                                line_feed, "", type_name,
-                                            ));
-                                        }
-                                        post_fix =
-                                            Some(format!("{}{:\t<indentation$}}}", line_feed, ""));
-                                    }
-                                };
-                                if let Some(pre_fix) = &pre_fix {
-                                    compound_value = format!("{compound_value}{pre_fix}");
-                                };
-                            }
-
-                            let print_name = !is_tuple;
-
-                            compound_value = format!(
-                                "{}{}{}",
-                                compound_value,
-                                child.formatted_variable_value(
-                                    variable_cache,
-                                    indentation + 1,
-                                    print_name
-                                ),
-                                if child_count == children.len() {
-                                    // Do not add a separator at the end of the list
-                                    ""
-                                } else {
-                                    ", "
-                                }
-                            );
+                    if let Some((child, child_name)) = children.clone().find_map(|c| {
+                        if let VariableName::Named(child_name) = &c.name {
+                            Some((c, child_name))
+                        } else {
+                            None
                         }
-                        if let Some(post_fix) = &post_fix {
-                            compound_value = format!("{compound_value}{post_fix}");
-                        };
-                        compound_value
+                    }) {
+                        if child_name.starts_with("__0") {
+                            is_tuple = true;
+                            // Treat this structure as a tuple
+                            pre_fix = Some(format!(
+                                "{}: {}({}) = {}(",
+                                self.name,
+                                type_name,
+                                child.type_name(),
+                                type_name,
+                            ));
+                            post_fix = Some(')');
+                        } else {
+                            // Treat this structure as a `struct`
+                            pre_fix = if show_name {
+                                Some(format!("{}: {} = {} {{", self.name, type_name, type_name))
+                            } else {
+                                Some(format!("{} {{", type_name))
+                            };
+                            post_fix = Some('}');
+                        }
                     }
+                    if let Some(pre_fix) = &pre_fix {
+                        compound_value = format!("{compound_value}{line_start}{pre_fix}");
+                    }
+
+                    let print_name = !is_tuple;
+
+                    let mut comma = "";
+                    for child in children {
+                        compound_value = format!(
+                            "{compound_value}{comma}{}",
+                            child.formatted_variable_value(
+                                variable_cache,
+                                indentation + 1,
+                                print_name
+                            ),
+                        );
+                        comma = ",";
+                    }
+                    if let Some(post_fix) = &post_fix {
+                        compound_value = format!("{compound_value}{line_start}{post_fix}");
+                    }
+                    compound_value
                 }
             }
         }
