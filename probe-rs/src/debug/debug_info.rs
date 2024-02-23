@@ -263,15 +263,8 @@ impl DebugInfo {
         die_cursor_state: &FunctionDie,
         unit_info: &UnitInfo,
     ) -> Result<VariableCache, DebugError> {
-        let abbrevs = &unit_info.unit.abbreviations;
-        let mut tree = unit_info
-            .unit
-            .header
-            .entries_tree(abbrevs, Some(die_cursor_state.function_die.offset()))?;
-        let function_node = tree.root()?;
-
         let function_variable_cache = VariableCache::new_dwarf_cache(
-            function_node.entry().offset(),
+            die_cursor_state.function_die.offset(),
             VariableName::LocalScopeRoot,
             unit_info,
         )?;
@@ -304,11 +297,7 @@ impl DebugInfo {
                 let unit_info = UnitInfo::new(gimli::Unit::new(&self.dwarf, unit_header)?);
 
                 // Reference to a type, or an node.entry() to another type or a type modifier which will point to another type.
-                let mut type_tree = unit_info
-                    .unit
-                    .header
-                    .entries_tree(&unit_info.unit.abbreviations, Some(reference_offset))?;
-                let referenced_node = type_tree.root()?;
+                let referenced_node = unit_info.unit.entry(reference_offset)?;
                 let mut referenced_variable =
                     cache.create_variable(parent_variable.variable_key, Some(&unit_info))?;
 
@@ -320,7 +309,7 @@ impl DebugInfo {
 
                 unit_info.extract_type(
                     self,
-                    referenced_node,
+                    &referenced_node,
                     parent_variable,
                     &mut referenced_variable,
                     memory,
@@ -339,10 +328,7 @@ impl DebugInfo {
                 let unit_info = UnitInfo::new(gimli::Unit::new(&self.dwarf, unit_header)?);
 
                 // Find the parent node
-                let mut type_tree = unit_info
-                    .unit
-                    .header
-                    .entries_tree(&unit_info.unit.abbreviations, Some(type_offset))?;
+                let mut type_tree = unit_info.unit.entries_tree(Some(type_offset))?;
                 let parent_node = type_tree.root()?;
 
                 unit_info.process_tree(
@@ -359,10 +345,7 @@ impl DebugInfo {
                 let unit_info = UnitInfo::new(gimli::Unit::new(&self.dwarf, unit_header)?);
 
                 // Find the parent node
-                let mut type_tree = unit_info
-                    .unit
-                    .header
-                    .entries_tree(&unit_info.unit.abbreviations, Some(unit_offset))?;
+                let mut type_tree = unit_info.unit.entries_tree(Some(unit_offset))?;
 
                 let parent_node = type_tree.root()?;
 
@@ -390,10 +373,7 @@ impl DebugInfo {
                 // Navigate the current unit from the header down.
                 let (_, unit_node) = entries.next_dfs()?.unwrap();
 
-                let mut tree = unit_info
-                    .unit
-                    .header
-                    .entries_tree(&unit_info.unit.abbreviations, Some(unit_node.offset()))?;
+                let mut tree = unit_info.unit.entries_tree(Some(unit_node.offset()))?;
 
                 unit_info.process_tree(
                     self,
@@ -411,10 +391,7 @@ impl DebugInfo {
                     // Navigate the current unit from the header down.
                     let (_, unit_node) = entries.next_dfs()?.unwrap();
 
-                    let mut tree = unit
-                        .unit
-                        .header
-                        .entries_tree(&unit.unit.abbreviations, Some(unit_node.offset()))?;
+                    let mut tree = unit.unit.entries_tree(Some(unit_node.offset()))?;
 
                     unit.process_tree(
                         self,
