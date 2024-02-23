@@ -570,7 +570,7 @@ impl Variable {
         } else {
             // We need to construct a 'human readable' value using `fmt::Display` to represent the values of complex types and pointers.
             if variable_cache.has_children(self) {
-                self.formatted_variable_value(variable_cache, 0_usize, false)
+                self.formatted_variable_value(variable_cache, 0, false)
             } else if self.type_name == VariableType::Unknown || !self.memory_location.valid() {
                 if self.variable_node_type.is_deferred() {
                     // When we will do a lazy-load of variable children, and they have not yet been requested by the user, just display the type_name as the value
@@ -584,7 +584,7 @@ impl Variable {
             } else if matches!(self.type_name, VariableType::Struct(ref name) if name == "None") {
                 "None".to_string()
             } else if matches!(self.type_name, VariableType::Array { count: 0, .. }) {
-                self.formatted_variable_value(variable_cache, 0_usize, false)
+                self.formatted_variable_value(variable_cache, 0, false)
             } else {
                 format!(
                     "Unimplemented: Get value of type {:?} of ({:?} bytes) at location {}",
@@ -704,9 +704,10 @@ impl Variable {
                     )
                 }
                 VariableType::Array { .. } => {
-                    // Arrays
+                    // Limit arrays to 10 elements
+                    const ARRAY_MAX_LENGTH: usize = 10;
                     compound_value = format!("{line_start}{type_name} = [");
-                    for (idx, child) in children.iter().enumerate() {
+                    for (idx, child) in children.iter().take(ARRAY_MAX_LENGTH).enumerate() {
                         compound_value = format!(
                             "{compound_value}{}{}",
                             child.formatted_variable_value(variable_cache, indentation + 1, false),
@@ -718,6 +719,14 @@ impl Variable {
                             }
                         );
                     }
+
+                    if children.len() > ARRAY_MAX_LENGTH {
+                        compound_value = format!(
+                            "{compound_value}\n{line_start}\t... and {} more",
+                            children.len() - ARRAY_MAX_LENGTH
+                        );
+                    }
+
                     format!("{compound_value}{line_start}]")
                 }
 

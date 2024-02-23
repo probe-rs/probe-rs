@@ -5,7 +5,7 @@ expression: static_variables
 Child Variables:
   name: StaticScopeRoot
   type_name: Unknown
-  value: "<unknown> {\n\texception_table: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >, \n\t_aTerminalId: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >, <unknown>, \n\tchar[1024] = [\n\t\tH, \n\t\te, \n\t\tl, \n\t\tl, \n\t\to, \n\t\t , \n\t\tH, \n\t\te, \n\t\tl, \n\t\tl, \n\t\to, \n\t\t,, \n\t\t , \n\t\tW, \n\t\to, \n\t\tr, \n\t\tl, \n\t\td, \n\t\t!, \n\t\t\r, \n\t\t\n, \n\t\tv, \n\t\to, \n\t\ti, \n\t\td, \n\t\t*, \n\t\t , \n\t\t5, \n\t\t3, \n\t\t6, \n\t\t8, \n\t\t7, \n\t\t0, \n\t\t9, \n\t\t1, \n\t\t2, \n\t\t\r, \n\t\t\n, \n\t\tv, \n\t\to, \n\t\ti, \n\t\td, \n\t\t*, \n\t\t , \n\t\tc, \n\t\to, \n\t\tn, \n\t\ts, \n\t\tt, \n\t\t , \n\t\t5, \n\t\t3, \n\t\t6, \n\t\t8, \n\t\t7, \n\t\t0, \n\t\t9, \n\t\t1, \n\t\t2, \n\t\t\r, \n\t\t\n, \n\t\tc, \n\t\to, \n\t\tn, \n\t\ts, \n\t\tt, \n\t\t , \n\t\tv, \n\t\to, \n\t\ti, \n\t\td, \n\t\t*, \n\t\t , \n\t\t5, \n\t\t3, \n\t\t6, \n\t\t8, \n\t\t7, \n\t\t0, \n\t\t9, \n\t\t1, \n\t\t2, \n\t\t\r, \n\t\t\n, \n\t\tc, \n\t\to, \n\t\tn, \n\t\ts, \n\t\tt, \n\t\t , \n\t\tv, \n\t\to, \n\t\ti, \n\t\td, \n\t\t*, \n\t\t , \n\t\tc, \n\t\to, \n\t\tn, \n\t\ts, \n\t\tt, \n\t\t , \n\t\t5, \n\t\t3, \n\t\t6, \n\t\t8, \n\t\t7, \n\t\t0, \n\t\t9, \n\t\t1, \n\t\t2, \n\t\t\r, \n\t\t\n, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000\n\t], \n\tchar[16] = [\n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000\n\t], \n\t_ActiveTerminal: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >, \n\tfoo: Foo_t = Foo_t @ 0x20000000, \n\tconst Foo_t[2] = [\n\t\tFoo_t @ 0x0000165C, \n\t\tFoo_t @ 0x00001664\n\t]}"
+  value: "<unknown> {\n\texception_table: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >, \n\t_aTerminalId: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >, <unknown>, \n\tchar[1024] = [\n\t\tH, \n\t\te, \n\t\tl, \n\t\tl, \n\t\to, \n\t\t , \n\t\tH, \n\t\te, \n\t\tl, \n\t\tl, \n\n\t\t... and 1014 more\n\t], \n\tchar[16] = [\n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\t\t\u0000, \n\n\t\t... and 6 more\n\t], \n\t_ActiveTerminal: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >, \n\tfoo: Foo_t = Foo_t @ 0x20000000, \n\tconst Foo_t[2] = [\n\t\tFoo_t @ 0x0000165C, \n\t\tFoo_t @ 0x00001664\n\t]}"
   children:
     - name:
         Named: exception_table
@@ -25,7 +25,261 @@ Child Variables:
           item_type_name:
             Base: char
           count: 1024
-      value: Data types with more than 50 members are excluded from this output. This variable has 1024 child members.
+      value: "char[1024] = [\n\tH, \n\te, \n\tl, \n\tl, \n\to, \n\t , \n\tH, \n\te, \n\tl, \n\tl, \n\t... and 1014 more]"
+      children:
+        - name:
+            Named: __0
+          type_name:
+            Base: char
+          value: H
+        - name:
+            Named: __1
+          type_name:
+            Base: char
+          value: e
+        - name:
+            Named: __2
+          type_name:
+            Base: char
+          value: l
+        - name:
+            Named: __3
+          type_name:
+            Base: char
+          value: l
+        - name:
+            Named: __4
+          type_name:
+            Base: char
+          value: o
+        - name:
+            Named: __5
+          type_name:
+            Base: char
+          value: " "
+        - name:
+            Named: __6
+          type_name:
+            Base: char
+          value: H
+        - name:
+            Named: __7
+          type_name:
+            Base: char
+          value: e
+        - name:
+            Named: __8
+          type_name:
+            Base: char
+          value: l
+        - name:
+            Named: __9
+          type_name:
+            Base: char
+          value: l
+        - name:
+            Named: __10
+          type_name:
+            Base: char
+          value: o
+        - name:
+            Named: __11
+          type_name:
+            Base: char
+          value: ","
+        - name:
+            Named: __12
+          type_name:
+            Base: char
+          value: " "
+        - name:
+            Named: __13
+          type_name:
+            Base: char
+          value: W
+        - name:
+            Named: __14
+          type_name:
+            Base: char
+          value: o
+        - name:
+            Named: __15
+          type_name:
+            Base: char
+          value: r
+        - name:
+            Named: __16
+          type_name:
+            Base: char
+          value: l
+        - name:
+            Named: __17
+          type_name:
+            Base: char
+          value: d
+        - name:
+            Named: __18
+          type_name:
+            Base: char
+          value: "!"
+        - name:
+            Named: __19
+          type_name:
+            Base: char
+          value: "\r"
+        - name:
+            Named: __20
+          type_name:
+            Base: char
+          value: "\n"
+        - name:
+            Named: __21
+          type_name:
+            Base: char
+          value: v
+        - name:
+            Named: __22
+          type_name:
+            Base: char
+          value: o
+        - name:
+            Named: __23
+          type_name:
+            Base: char
+          value: i
+        - name:
+            Named: __24
+          type_name:
+            Base: char
+          value: d
+        - name:
+            Named: __25
+          type_name:
+            Base: char
+          value: "*"
+        - name:
+            Named: __26
+          type_name:
+            Base: char
+          value: " "
+        - name:
+            Named: __27
+          type_name:
+            Base: char
+          value: "5"
+        - name:
+            Named: __28
+          type_name:
+            Base: char
+          value: "3"
+        - name:
+            Named: __29
+          type_name:
+            Base: char
+          value: "6"
+        - name:
+            Named: __30
+          type_name:
+            Base: char
+          value: "8"
+        - name:
+            Named: __31
+          type_name:
+            Base: char
+          value: "7"
+        - name:
+            Named: __32
+          type_name:
+            Base: char
+          value: "0"
+        - name:
+            Named: __33
+          type_name:
+            Base: char
+          value: "9"
+        - name:
+            Named: __34
+          type_name:
+            Base: char
+          value: "1"
+        - name:
+            Named: __35
+          type_name:
+            Base: char
+          value: "2"
+        - name:
+            Named: __36
+          type_name:
+            Base: char
+          value: "\r"
+        - name:
+            Named: __37
+          type_name:
+            Base: char
+          value: "\n"
+        - name:
+            Named: __38
+          type_name:
+            Base: char
+          value: v
+        - name:
+            Named: __39
+          type_name:
+            Base: char
+          value: o
+        - name:
+            Named: __40
+          type_name:
+            Base: char
+          value: i
+        - name:
+            Named: __41
+          type_name:
+            Base: char
+          value: d
+        - name:
+            Named: __42
+          type_name:
+            Base: char
+          value: "*"
+        - name:
+            Named: __43
+          type_name:
+            Base: char
+          value: " "
+        - name:
+            Named: __44
+          type_name:
+            Base: char
+          value: c
+        - name:
+            Named: __45
+          type_name:
+            Base: char
+          value: o
+        - name:
+            Named: __46
+          type_name:
+            Base: char
+          value: n
+        - name:
+            Named: __47
+          type_name:
+            Base: char
+          value: s
+        - name:
+            Named: __48
+          type_name:
+            Base: char
+          value: t
+        - name:
+            Named: __49
+          type_name:
+            Base: char
+          value: " "
+        - name: Artifical
+          type_name: Unknown
+          value: "... and 974 more"
     - name:
         Named: _acDownBuffer
       type_name:
@@ -33,7 +287,7 @@ Child Variables:
           item_type_name:
             Base: char
           count: 16
-      value: "char[16] = [\n\t\u0000, \n\t\u0000, \n\t\u0000, \n\t\u0000, \n\t\u0000, \n\t\u0000, \n\t\u0000, \n\t\u0000, \n\t\u0000, \n\t\u0000, \n\t\u0000, \n\t\u0000, \n\t\u0000, \n\t\u0000, \n\t\u0000, \n\t\u0000]"
+      value: "char[16] = [\n\t\u0000, \n\t\u0000, \n\t\u0000, \n\t\u0000, \n\t\u0000, \n\t\u0000, \n\t\u0000, \n\t\u0000, \n\t\u0000, \n\t\u0000, \n\t... and 6 more]"
       children:
         - name:
             Named: __0

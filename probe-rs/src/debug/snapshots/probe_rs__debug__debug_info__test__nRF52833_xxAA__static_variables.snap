@@ -238,7 +238,7 @@ Child Variables:
               item_type_name:
                 Base: Vector
               count: 48
-          value: "[Vector; 48] = [\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000040, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x40 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000044, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x44 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000048, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x48 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000004C, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x4c of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000050, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x50 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000054, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x54 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000058, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x58 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000005C, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x5c of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000060, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x60 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000064, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x64 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000068, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x68 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000006C, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x6c of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000070, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x70 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000074, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x74 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000078, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x78 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000007C, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x7c of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000080, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x80 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000084, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x84 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000088, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x88 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000008C, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x8c of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000090, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x90 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000094, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x94 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000098, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x98 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000009C, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x9c of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000A0, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xa0 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000A4, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xa4 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000A8, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xa8 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000AC, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xac of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000B0, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xb0 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000B4, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xb4 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000B8, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xb8 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000BC, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xbc of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000C0, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xc0 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000C4, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xc4 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000C8, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xc8 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000CC, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xcc of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000D0, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xd0 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000D4, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xd4 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000D8, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xd8 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000DC, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xdc of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000E0, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xe0 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000E4, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xe4 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000E8, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xe8 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000EC, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xec of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000F0, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xf0 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000F4, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xf4 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000F8, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xf8 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x000000FC, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0xfc of size 0x4)) >\n\t}]"
+          value: "[Vector; 48] = [\n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000040, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x40 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000044, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x44 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000048, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x48 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000004C, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x4c of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000050, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x50 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000054, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x54 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000058, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x58 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000005C, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x5c of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000060, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x60 of size 0x4)) >\n\t}, \n\tVector {\n\t\t_handler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000064, \n\t\t_reserved: u32 = < Probe(Other(The coredump does not include the memory for address 0x64 of size 0x4)) >\n\t}, \n\t... and 38 more]"
           children:
             - name:
                 Named: __0
@@ -1280,7 +1280,7 @@ Child Variables:
               item_type_name:
                 Base: Vector
               count: 14
-          value: "[Vector; 14] = [\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000008, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x8 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000000C, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0xc of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000010, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x10 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000014, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x14 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000018, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x18 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000001C, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x1c of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000020, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x20 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000024, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x24 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000028, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x28 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000002C, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x2c of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000030, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x30 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000034, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x34 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000038, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x38 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000003C, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x3c of size 0x4)) >\n\t}]"
+          value: "[Vector; 14] = [\n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000008, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x8 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000000C, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0xc of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000010, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x10 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000014, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x14 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000018, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x18 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000001C, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x1c of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000020, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x20 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000024, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x24 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x00000028, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x28 of size 0x4)) >\n\t}, \n\tVector {\n\t\thandler: *raw unsafe extern \"C\" fn() = *raw unsafe extern \"C\" fn() @ 0x0000002C, \n\t\treserved: usize = < Probe(Other(The coredump does not include the memory for address 0x2c of size 0x4)) >\n\t}, \n\t... and 4 more]"
           children:
             - name:
                 Named: __0
@@ -1859,7 +1859,7 @@ Child Variables:
                                   item_type_name:
                                     Base: u8
                                   count: 16
-                              value: "[u8; 16] = [\n\t83, \n\t69, \n\t71, \n\t71, \n\t69, \n\t82, \n\t32, \n\t82, \n\t84, \n\t84, \n\t0, \n\t0, \n\t0, \n\t0, \n\t0, \n\t0]"
+                              value: "[u8; 16] = [\n\t83, \n\t69, \n\t71, \n\t71, \n\t69, \n\t82, \n\t32, \n\t82, \n\t84, \n\t84, \n\t... and 6 more]"
                               children:
                                 - name:
                                     Named: __0
@@ -2160,7 +2160,261 @@ Child Variables:
                           item_type_name:
                             Base: u8
                           count: 1024
-                      value: Data types with more than 50 members are excluded from this output. This variable has 1024 child members.
+                      value: "[u8; 1024] = [\n\t70, \n\t111, \n\t114, \n\t99, \n\t105, \n\t110, \n\t103, \n\t32, \n\t117, \n\t115, \n\t... and 1014 more]"
+                      children:
+                        - name:
+                            Named: __0
+                          type_name:
+                            Base: u8
+                          value: "70"
+                        - name:
+                            Named: __1
+                          type_name:
+                            Base: u8
+                          value: "111"
+                        - name:
+                            Named: __2
+                          type_name:
+                            Base: u8
+                          value: "114"
+                        - name:
+                            Named: __3
+                          type_name:
+                            Base: u8
+                          value: "99"
+                        - name:
+                            Named: __4
+                          type_name:
+                            Base: u8
+                          value: "105"
+                        - name:
+                            Named: __5
+                          type_name:
+                            Base: u8
+                          value: "110"
+                        - name:
+                            Named: __6
+                          type_name:
+                            Base: u8
+                          value: "103"
+                        - name:
+                            Named: __7
+                          type_name:
+                            Base: u8
+                          value: "32"
+                        - name:
+                            Named: __8
+                          type_name:
+                            Base: u8
+                          value: "117"
+                        - name:
+                            Named: __9
+                          type_name:
+                            Base: u8
+                          value: "115"
+                        - name:
+                            Named: __10
+                          type_name:
+                            Base: u8
+                          value: "101"
+                        - name:
+                            Named: __11
+                          type_name:
+                            Base: u8
+                          value: "32"
+                        - name:
+                            Named: __12
+                          type_name:
+                            Base: u8
+                          value: "111"
+                        - name:
+                            Named: __13
+                          type_name:
+                            Base: u8
+                          value: "102"
+                        - name:
+                            Named: __14
+                          type_name:
+                            Base: u8
+                          value: "32"
+                        - name:
+                            Named: __15
+                          type_name:
+                            Base: u8
+                          value: "58"
+                        - name:
+                            Named: __16
+                          type_name:
+                            Base: u8
+                          value: "32"
+                        - name:
+                            Named: __17
+                          type_name:
+                            Base: u8
+                          value: "84"
+                        - name:
+                            Named: __18
+                          type_name:
+                            Base: u8
+                          value: "119"
+                        - name:
+                            Named: __19
+                          type_name:
+                            Base: u8
+                          value: "111"
+                        - name:
+                            Named: __20
+                          type_name:
+                            Base: u8
+                          value: "10"
+                        - name:
+                            Named: __21
+                          type_name:
+                            Base: u8
+                          value: "70"
+                        - name:
+                            Named: __22
+                          type_name:
+                            Base: u8
+                          value: "111"
+                        - name:
+                            Named: __23
+                          type_name:
+                            Base: u8
+                          value: "114"
+                        - name:
+                            Named: __24
+                          type_name:
+                            Base: u8
+                          value: "99"
+                        - name:
+                            Named: __25
+                          type_name:
+                            Base: u8
+                          value: "105"
+                        - name:
+                            Named: __26
+                          type_name:
+                            Base: u8
+                          value: "110"
+                        - name:
+                            Named: __27
+                          type_name:
+                            Base: u8
+                          value: "103"
+                        - name:
+                            Named: __28
+                          type_name:
+                            Base: u8
+                          value: "32"
+                        - name:
+                            Named: __29
+                          type_name:
+                            Base: u8
+                          value: "117"
+                        - name:
+                            Named: __30
+                          type_name:
+                            Base: u8
+                          value: "115"
+                        - name:
+                            Named: __31
+                          type_name:
+                            Base: u8
+                          value: "101"
+                        - name:
+                            Named: __32
+                          type_name:
+                            Base: u8
+                          value: "32"
+                        - name:
+                            Named: __33
+                          type_name:
+                            Base: u8
+                          value: "111"
+                        - name:
+                            Named: __34
+                          type_name:
+                            Base: u8
+                          value: "102"
+                        - name:
+                            Named: __35
+                          type_name:
+                            Base: u8
+                          value: "32"
+                        - name:
+                            Named: __36
+                          type_name:
+                            Base: u8
+                          value: "58"
+                        - name:
+                            Named: __37
+                          type_name:
+                            Base: u8
+                          value: "65"
+                        - name:
+                            Named: __38
+                          type_name:
+                            Base: u8
+                          value: "32"
+                        - name:
+                            Named: __39
+                          type_name:
+                            Base: u8
+                          value: "39"
+                        - name:
+                            Named: __40
+                          type_name:
+                            Base: u8
+                          value: "108"
+                        - name:
+                            Named: __41
+                          type_name:
+                            Base: u8
+                          value: "111"
+                        - name:
+                            Named: __42
+                          type_name:
+                            Base: u8
+                          value: "99"
+                        - name:
+                            Named: __43
+                          type_name:
+                            Base: u8
+                          value: "97"
+                        - name:
+                            Named: __44
+                          type_name:
+                            Base: u8
+                          value: "108"
+                        - name:
+                            Named: __45
+                          type_name:
+                            Base: u8
+                          value: "39"
+                        - name:
+                            Named: __46
+                          type_name:
+                            Base: u8
+                          value: "32"
+                        - name:
+                            Named: __47
+                          type_name:
+                            Base: u8
+                          value: "116"
+                        - name:
+                            Named: __48
+                          type_name:
+                            Base: u8
+                          value: "111"
+                        - name:
+                            Named: __49
+                          type_name:
+                            Base: u8
+                          value: "32"
+                        - name: Artifical
+                          type_name: Unknown
+                          value: "... and 974 more"
             - name:
                 Named: _RTT_CHANNEL_BUFFER
               type_name:
@@ -2185,7 +2439,261 @@ Child Variables:
                           item_type_name:
                             Base: u8
                           count: 1024
-                      value: Data types with more than 50 members are excluded from this output. This variable has 1024 child members.
+                      value: "[u8; 1024] = [\n\t0, \n\t0, \n\t0, \n\t0, \n\t0, \n\t0, \n\t0, \n\t0, \n\t0, \n\t0, \n\t... and 1014 more]"
+                      children:
+                        - name:
+                            Named: __0
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __1
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __2
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __3
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __4
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __5
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __6
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __7
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __8
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __9
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __10
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __11
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __12
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __13
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __14
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __15
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __16
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __17
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __18
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __19
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __20
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __21
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __22
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __23
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __24
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __25
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __26
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __27
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __28
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __29
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __30
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __31
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __32
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __33
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __34
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __35
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __36
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __37
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __38
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __39
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __40
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __41
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __42
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __43
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __44
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __45
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __46
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __47
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __48
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name:
+                            Named: __49
+                          type_name:
+                            Base: u8
+                          value: "0"
+                        - name: Artifical
+                          type_name: Unknown
+                          value: "... and 974 more"
     - name:
         Named: "<i64 as core::fmt::Debug>::{vtable}"
       type_name: Unknown

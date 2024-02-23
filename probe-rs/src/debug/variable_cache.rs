@@ -46,8 +46,7 @@ impl Serialize for VariableCache {
                 name: &root_node.name,
                 type_name: &root_node.type_name,
                 value: root_node.get_value(variable_cache),
-                // Only expand the children if there are less than 50, to limit the size of the output.
-                children: recurse_variables(variable_cache, root_node.variable_key),
+                children: recurse_variables(variable_cache, root_node.variable_key, None),
             }
         }
 
@@ -55,32 +54,46 @@ impl Serialize for VariableCache {
         fn recurse_variables(
             variable_cache: &VariableCache,
             parent_variable_key: ObjectRef,
+            max_children: Option<usize>,
         ) -> Vec<VariableTreeNode> {
-            variable_cache
-                .get_children(parent_variable_key)
-                .map(|child_variable: &Variable| {
-                    let children_count = variable_cache
-                        .get_children(child_variable.variable_key).count();
+            let mut children = variable_cache.get_children(parent_variable_key);
 
-                    let value = if children_count > 50 {
-                        format!("Data types with more than 50 members are excluded from this output. This variable has {} child members.", children_count)
-                    } else {
-                        child_variable.get_value(variable_cache)
-                    };
+            let mut out = Vec::new();
 
-                    VariableTreeNode {
-                        name: &child_variable.name,
-                        type_name: &child_variable.type_name,
-                        value,
-                        // Only expand the children if there are less than 50, to limit the size of the output.
-                        children: if children_count > 50 {
-                            Vec::new()
-                        } else {
-                            recurse_variables(variable_cache, child_variable.variable_key)
-                        },
+            loop {
+                if let Some(max_count) = max_children {
+                    if out.len() >= max_count {
+                        break;
                     }
-                })
-                .collect::<Vec<VariableTreeNode>>()
+                }
+                let Some(child_variable) = children.next() else {
+                    break;
+                };
+
+                out.push(VariableTreeNode {
+                    name: &child_variable.name,
+                    type_name: &child_variable.type_name,
+                    value: child_variable.get_value(variable_cache),
+                    children: recurse_variables(
+                        variable_cache,
+                        child_variable.variable_key,
+                        // Limit arrays to 50 elements
+                        child_variable.type_name.inner().is_array().then_some(50),
+                    ),
+                });
+            }
+
+            let remaining = children.count();
+            if remaining > 0 {
+                out.push(VariableTreeNode {
+                    name: &VariableName::Artifical,
+                    type_name: &VariableType::Unknown,
+                    value: format!("... and {} more", remaining),
+                    children: Vec::new(),
+                });
+            }
+
+            out
         }
 
         let mut state = serializer.serialize_struct("Variables", 1)?;
