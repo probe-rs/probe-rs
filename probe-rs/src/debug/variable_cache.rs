@@ -194,11 +194,11 @@ impl VariableCache {
         cache_variable: &mut Variable,
     ) -> Result<(), Error> {
         // Validate that the parent_key exists ...
-        if self.variable_hash_map.contains_key(&parent_key) {
-            cache_variable.parent_key = parent_key;
-        } else {
+        if !self.variable_hash_map.contains_key(&parent_key) {
             return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with non existent `parent_key`: {:?}. Please report this as a bug", cache_variable.name, parent_key).into());
         }
+
+        cache_variable.parent_key = parent_key;
 
         if cache_variable.variable_key != ObjectRef::Invalid {
             return Err(anyhow!("VariableCache: Attempted to add a new variable: {} with already set key: {:?}. Please report this as a bug", cache_variable.name, cache_variable.variable_key).into());
@@ -239,14 +239,14 @@ impl VariableCache {
             &cache_variable.name
         );
 
-        if let Some(prev_entry) = self.variable_hash_map.get_mut(&cache_variable.variable_key) {
-            if cache_variable != prev_entry {
-                tracing::trace!("Updated:  {:?}", cache_variable);
-                tracing::trace!("Previous: {:?}", prev_entry);
-                *prev_entry = cache_variable.clone();
-            }
-        } else {
+        let Some(prev_entry) = self.variable_hash_map.get_mut(&cache_variable.variable_key) else {
             return Err(anyhow!("Attempt to update an existing `Variable`:{:?} with a non-existent cache key: {:?}. Please report this as a bug.", cache_variable.name, cache_variable.variable_key).into());
+        };
+
+        if cache_variable != prev_entry {
+            tracing::trace!("Updated:  {:?}", cache_variable);
+            tracing::trace!("Previous: {:?}", prev_entry);
+            *prev_entry = cache_variable.clone();
         }
 
         Ok(())
@@ -264,21 +264,26 @@ impl VariableCache {
         variable_name: &VariableName,
         parent_key: ObjectRef,
     ) -> Option<Variable> {
-        let child_variables = self
-            .variable_hash_map
-            .values()
-            .filter(|child_variable| {
-                &child_variable.name == variable_name && child_variable.parent_key == parent_key
-            })
-            .collect::<Vec<&Variable>>();
+        let child_variables = self.variable_hash_map.values().filter(|child_variable| {
+            &child_variable.name == variable_name && child_variable.parent_key == parent_key
+        });
 
-        match &child_variables[..] {
-            [] => None,
-            [variable] => Some((*variable).clone()),
-            [.., last] => {
-                tracing::error!("Found {} variables with parent_key={:?} and name={}. Please report this as a bug.", child_variables.len(), parent_key, variable_name);
-                Some((*last).clone())
-            }
+        // Clone the iterator. This is cheap and makes rewinding easier.
+        let mut first_iter = child_variables.clone();
+        let first = first_iter.next();
+        let more = first_iter.next().is_some();
+
+        if more {
+            let (last_index, last) = child_variables.enumerate().last().unwrap();
+            tracing::error!(
+                "Found {} variables with parent_key={:?} and name={}. Please report this as a bug.",
+                last_index + 1,
+                parent_key,
+                variable_name
+            );
+            Some(last.clone())
+        } else {
+            first.cloned()
         }
     }
 
@@ -286,24 +291,23 @@ impl VariableCache {
     /// If there is more than one, it will be logged (tracing::warn!), and only the first will be returned.
     /// It is possible for a hierarchy of variables in a cache to have duplicate names under different parents.
     pub fn get_variable_by_name(&self, variable_name: &VariableName) -> Option<Variable> {
-        let child_variables = self
+        let mut child_variables = self
             .variable_hash_map
             .values()
-            .filter(|child_variable| child_variable.name.eq(variable_name))
-            .collect::<Vec<&Variable>>();
+            .filter(|child_variable| child_variable.name.eq(variable_name));
 
-        match &child_variables[..] {
-            [] => None,
-            [variable] => Some((*variable).clone()),
-            [first, ..] => {
-                tracing::warn!(
-                    "Found {} variables with name={}. Please report this as a bug.",
-                    child_variables.len(),
-                    variable_name
-                );
-                Some((*first).clone())
-            }
+        let first = child_variables.next();
+        let more = child_variables.next().is_some();
+
+        if more {
+            tracing::warn!(
+                "Found {} variables with name={}. Please report this as a bug.",
+                self.variable_hash_map.len(),
+                variable_name
+            );
         }
+
+        first.cloned()
     }
 
     /// Retrieve `clone`d version of all the children of a `Variable`.
@@ -316,7 +320,9 @@ impl VariableCache {
 
     /// Check if variable has children. If the variable doesn't exist, it will return false.
     pub fn has_children(&self, parent_variable: &Variable) -> bool {
-        self.get_children(parent_variable.variable_key).count() > 0
+        self.get_children(parent_variable.variable_key)
+            .next()
+            .is_some()
     }
 
     /// Sometimes DWARF uses intermediate nodes that are not part of the coded variable structure.
