@@ -708,28 +708,25 @@ impl Variable {
                     const ARRAY_MAX_LENGTH: usize = 10;
                     compound_value = format!("{line_start}{type_name} = [");
                     // Be lenient, allow for 1 more than the max length
-                    let display_count = if children.len() > ARRAY_MAX_LENGTH + 1 {
+                    let child_count = children.len();
+                    let display_count = if child_count > ARRAY_MAX_LENGTH + 1 {
                         ARRAY_MAX_LENGTH
                     } else {
-                        children.len()
+                        child_count
                     };
-                    for (idx, child) in children.iter().take(display_count).enumerate() {
+                    let mut comma = "";
+                    for child in children.iter().take(display_count) {
                         compound_value = format!(
-                            "{compound_value}{}{}",
+                            "{compound_value}{comma}{}",
                             child.formatted_variable_value(variable_cache, indentation + 1, false),
-                            if idx == children.len() - 1 {
-                                // Do not add a separator at the end of the list
-                                ""
-                            } else {
-                                ", "
-                            }
                         );
+                        comma = ", ";
                     }
 
-                    if children.len() > display_count {
+                    if child_count > display_count {
                         compound_value = format!(
-                            "{compound_value}\n{line_start}\t... and {} more",
-                            children.len() - display_count
+                            "{compound_value}, \n{line_start}\t... and {} more",
+                            child_count - display_count
                         );
                     }
 
@@ -765,23 +762,16 @@ impl Variable {
                 {
                     compound_value = format!("{compound_value}{line_start}{type_name} {{");
 
-                    for (idx, child) in children.iter().enumerate() {
+                    let mut comma = "";
+                    for child in children.iter() {
                         let formatted =
                             child.formatted_variable_value(variable_cache, indentation + 1, true);
                         if formatted.is_empty() {
                             // Avoid printing empty commas
                             continue;
                         }
-                        compound_value = format!(
-                            "{compound_value}{}{}",
-                            formatted,
-                            if idx == children.len() - 1 {
-                                // Do not add a separator at the end of the list
-                                ""
-                            } else {
-                                ", "
-                            }
-                        );
+                        compound_value = format!("{compound_value}{comma}{formatted}");
+                        comma = ", ";
                     }
                     format!("{compound_value}{line_start}}}")
                 }
@@ -828,21 +818,17 @@ impl Variable {
 
                     let print_name = !is_tuple;
 
-                    for (idx, child) in children.iter().enumerate() {
+                    let mut comma = "";
+                    for child in children.iter() {
                         compound_value = format!(
-                            "{compound_value}{}{}",
+                            "{compound_value}{comma}{}",
                             child.formatted_variable_value(
                                 variable_cache,
                                 indentation + 1,
                                 print_name
                             ),
-                            if idx == children.len() - 1 {
-                                // Do not add a separator at the end of the list
-                                ""
-                            } else {
-                                ", "
-                            }
                         );
+                        comma = ", ";
                     }
                     if let Some(post_fix) = &post_fix {
                         compound_value = format!("{compound_value}{line_start}{post_fix}");
