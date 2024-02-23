@@ -1,1 +1,0 @@
-Fixes [probe-rs/probe-rs#2180](https://github.com/probe-rs/probe-rs/issues/2180)

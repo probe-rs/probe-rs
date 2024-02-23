@@ -236,7 +236,7 @@ impl SteppingMode {
                         } else {
                             return Err(DebugError::IncompleteDebugInfo {
                                 message:
-                                    "Could not determine a step in target. Please use step over."
+                                    "Could not determine a 'step in' target. Please use 'step over'."
                                         .to_string(),
                                 pc_at_error: program_counter,
                             });
