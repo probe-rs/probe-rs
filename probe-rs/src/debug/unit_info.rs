@@ -991,16 +991,17 @@ impl UnitInfo {
                     child_variable,
                     memory,
                     frame_info,
-                    // NOTE: surprisingly, as opposed to `void*`, this can be a `const void*`.
                 )?;
 
                 // This needs to resolve the pointer before the regular recursion can continue.
                 match node.attr_value(gimli::DW_AT_type) {
                     Ok(Some(gimli::AttributeValue::UnitRef(unit_ref))) => {
+                        // NOTE: surprisingly, as opposed to `void*`, this can be a `const void*`.
                         if !cache.has_children(child_variable) {
                             let mut referenced_variable =
                                 cache.create_variable(child_variable.variable_key, Some(self))?;
 
+                            // TODO: This is langauge specific, and should be moved to the language implementations.
                             referenced_variable.name = match &child_variable.name {
                                     VariableName::Named(name) if name.starts_with("Some ") => VariableName::Named(name.replacen('&', "*", 1)) ,
                                     VariableName::Named(name) => VariableName::Named(format!("*{name}")),
