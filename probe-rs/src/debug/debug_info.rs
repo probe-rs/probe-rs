@@ -5,6 +5,7 @@ use super::{
 use crate::core::UnwindRule;
 use crate::debug::source_instructions::InstructionLocation;
 use crate::debug::stack_frame::StackFrameInfo;
+use crate::debug::unit_info::RangeExt;
 use crate::debug::{ColumnType, SourceLocation, VerifiedBreakpoint};
 use crate::{
     core::{ExceptionInterface, RegisterRole, RegisterValue},
@@ -1130,7 +1131,7 @@ impl DebugInfo {
             match self.dwarf.unit_ranges(&header.unit) {
                 Ok(mut ranges) => {
                     while let Ok(Some(range)) = ranges.next() {
-                        if (range.begin <= address) && (range.end > address) {
+                        if range.contains(address) {
                             return Ok(header);
                         }
                     }
