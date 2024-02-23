@@ -720,12 +720,12 @@ impl Variable {
                             "{compound_value}{comma}{}",
                             child.formatted_variable_value(variable_cache, indentation + 1, false),
                         );
-                        comma = ", ";
+                        comma = ",";
                     }
 
                     if child_count > display_count {
                         compound_value = format!(
-                            "{compound_value}, \n{line_start}\t... and {} more",
+                            "{compound_value},\n{line_start}\t... and {} more",
                             child_count - display_count
                         );
                     }
@@ -771,7 +771,7 @@ impl Variable {
                             continue;
                         }
                         compound_value = format!("{compound_value}{comma}{formatted}");
-                        comma = ", ";
+                        comma = ",";
                     }
                     format!("{compound_value}{line_start}}}")
                 }
@@ -828,7 +828,7 @@ impl Variable {
                                 print_name
                             ),
                         );
-                        comma = ", ";
+                        comma = ",";
                     }
                     if let Some(post_fix) = &post_fix {
                         compound_value = format!("{compound_value}{line_start}{post_fix}");
