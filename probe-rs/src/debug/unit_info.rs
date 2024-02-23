@@ -212,7 +212,7 @@ impl UnitInfo {
                     // but first we need to process the (optional) memory location using the current DIE.
                     self.process_memory_location(
                         debug_info,
-                        &tree_node,
+                        tree_node,
                         parent_variable,
                         child_variable,
                         memory,
@@ -285,7 +285,7 @@ impl UnitInfo {
                         self.process_type_attribute(
                             &attr,
                             debug_info,
-                            &attributes_entry,
+                            attributes_entry,
                             parent_variable,
                             child_variable,
                             memory,
@@ -601,7 +601,7 @@ impl UnitInfo {
                     parent_variable.role = VariantRole::VariantPart(u64::MAX);
                     self.process_tree_node_attributes(
                         debug_info,
-                        &child_node.entry(),
+                        child_node.entry(),
                         parent_variable,
                         &mut child_variable,
                         memory,
@@ -629,7 +629,7 @@ impl UnitInfo {
                         self.extract_variant_discriminant(&child_node, &mut child_variable)?;
                         self.process_tree_node_attributes(
                             debug_info,
-                            &child_node.entry(),
+                            child_node.entry(),
                             parent_variable,
                             &mut child_variable,
                             memory,
@@ -943,7 +943,7 @@ impl UnitInfo {
     /// Complex types are references to node trees, that require traversal in similar ways to other DIE's like functions.
     /// This means both [`get_function_variables()`] and [`extract_type()`] will call the recursive [`process_tree()`] method to build an integrated `tree` of variables with types and values.
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn extract_type(
+    fn extract_type(
         &self,
         debug_info: &DebugInfo,
         node: &gimli::DebuggingInformationEntry<GimliReader>,
@@ -995,50 +995,43 @@ impl UnitInfo {
                 )?;
 
                 // This needs to resolve the pointer before the regular recursion can continue.
-                match node.attr(gimli::DW_AT_type) {
-                    Ok(Some(data_type_attribute)) => match data_type_attribute.value() {
-                        gimli::AttributeValue::UnitRef(unit_ref) => {
-                            child_variable.variable_node_type = VariableNodeType::ReferenceOffset(
-                                self.debug_info_offset()?,
-                                unit_ref,
-                            );
+                match node.attr_value(gimli::DW_AT_type) {
+                    Ok(Some(gimli::AttributeValue::UnitRef(unit_ref))) => {
+                        if !cache.has_children(child_variable) {
+                            let mut referenced_variable =
+                                cache.create_variable(child_variable.variable_key, Some(self))?;
 
-                            if !cache.has_children(child_variable) {
-                                let mut referenced_variable = cache
-                                    .create_variable(child_variable.variable_key, Some(&self))?;
-
-                                referenced_variable.name = match &child_variable.name {
+                            referenced_variable.name = match &child_variable.name {
                                     VariableName::Named(name) if name.starts_with("Some ") => VariableName::Named(name.replacen('&', "*", 1)) ,
                                     VariableName::Named(name) => VariableName::Named(format!("*{name}")),
                                     other => VariableName::Named(format!("Error: Unable to generate name, parent variable does not have a name but is special variable {other:?}")),
                                 };
 
-                                let referenced_node = self.unit.entry(unit_ref)?;
+                            let referenced_node = self.unit.entry(unit_ref)?;
 
-                                self.extract_type(
-                                    debug_info,
-                                    &referenced_node,
-                                    child_variable,
-                                    &mut referenced_variable,
-                                    memory,
-                                    cache,
-                                    frame_info,
-                                )?;
+                            self.extract_type(
+                                debug_info,
+                                &referenced_node,
+                                child_variable,
+                                &mut referenced_variable,
+                                memory,
+                                cache,
+                                frame_info,
+                            )?;
 
-                                if matches!(referenced_variable.type_name.inner(), VariableType::Base(name) if name == "()")
-                                {
-                                    // Only use this, if it is NOT a unit datatype.
-                                    cache.remove_cache_entry(referenced_variable.variable_key)?;
-                                }
+                            if matches!(referenced_variable.type_name.inner(), VariableType::Base(name) if name == "()")
+                            {
+                                // Only use this, if it is NOT a unit datatype.
+                                cache.remove_cache_entry(referenced_variable.variable_key)?;
                             }
                         }
-                        other_attribute_value => {
-                            child_variable.set_value(VariableValue::Error(format!(
-                                "Unimplemented: Attribute Value for DW_AT_type {:.100}",
-                                format!("{other_attribute_value:?}")
-                            )));
-                        }
-                    },
+                    }
+                    Ok(Some(other_attribute_value)) => {
+                        child_variable.set_value(VariableValue::Error(format!(
+                            "Unimplemented: Attribute Value for DW_AT_type {:.100}",
+                            format!("{other_attribute_value:?}")
+                        )));
+                    }
                     Ok(None) => {
                         // NOTE: this can be a `void*` pointer. Some C compilers model `void` as
                         // a type without `DW_AT_type`.

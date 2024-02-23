@@ -292,37 +292,6 @@ impl DebugInfo {
         }
 
         match parent_variable.variable_node_type {
-            VariableNodeType::ReferenceOffset(header_offset, reference_offset) => {
-                let unit_header = self.dwarf.debug_info.header_from_offset(header_offset)?;
-                let unit_info = UnitInfo::new(gimli::Unit::new(&self.dwarf, unit_header)?);
-
-                // Reference to a type, or an node.entry() to another type or a type modifier which will point to another type.
-                let referenced_node = unit_info.unit.entry(reference_offset)?;
-                let mut referenced_variable =
-                    cache.create_variable(parent_variable.variable_key, Some(&unit_info))?;
-
-                referenced_variable.name = match &parent_variable.name {
-                    VariableName::Named(name) if name.starts_with("Some ") => VariableName::Named(name.replacen('&', "*", 1)) ,
-                    VariableName::Named(name) => VariableName::Named(format!("*{name}")),
-                    other => VariableName::Named(format!("Error: Unable to generate name, parent variable does not have a name but is special variable {other:?}")),
-                };
-
-                unit_info.extract_type(
-                    self,
-                    &referenced_node,
-                    parent_variable,
-                    &mut referenced_variable,
-                    memory,
-                    cache,
-                    frame_info,
-                )?;
-
-                if matches!(referenced_variable.type_name.inner(), VariableType::Base(name) if name == "()")
-                {
-                    // Only use this, if it is NOT a unit datatype.
-                    cache.remove_cache_entry(referenced_variable.variable_key)?;
-                }
-            }
             VariableNodeType::TypeOffset(header_offset, type_offset) => {
                 let unit_header = self.dwarf.debug_info.header_from_offset(header_offset)?;
                 let unit_info = UnitInfo::new(gimli::Unit::new(&self.dwarf, unit_header)?);
