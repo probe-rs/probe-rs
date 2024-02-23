@@ -105,10 +105,6 @@ impl std::fmt::Display for VariableName {
 /// The rules for 'lazy loading'/deferred recursion of [Variable] children are described under each of the enum values.
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub enum VariableNodeType {
-    /// For pointer values, their referenced variables are found at an [gimli::UnitOffset] in the [DebugInfo].
-    /// - Rule: Pointers to `struct` variables WILL NOT BE recursed, because  this may lead to infinite loops/stack overflows in `struct`s that self-reference.
-    /// - Rule: Pointers to "base" datatypes SHOULD BE, but ARE NOT resolved, because it would keep the UX simple, but DWARF doesn't make it easy to determine when a pointer points to a base data type. We can read ahead in the DIE children, but that feels rather inefficient.
-    ReferenceOffset(DebugInfoOffset, UnitOffset),
     /// Use the `header_offset` and `type_offset` as direct references for recursing the variable children. With the current implementation, the `type_offset` will point to a DIE with a tag of `DW_TAG_structure_type`.
     /// - Rule: For structured variables, we WILL NOT automatically expand their children, but we have enough information to expand it on demand. Except if they fall into one of the special cases handled by [VariableNodeType::RecurseToBaseType]
     TypeOffset(DebugInfoOffset, UnitOffset),
@@ -137,8 +133,7 @@ impl VariableNodeType {
     /// Will return true if any of the `variable_node_type` value implies that the variable will be 'lazy' resolved.
     pub fn is_deferred(&self) -> bool {
         match self {
-            VariableNodeType::ReferenceOffset(_, _)
-            | VariableNodeType::TypeOffset(_, _)
+            VariableNodeType::TypeOffset(_, _)
             | VariableNodeType::DirectLookup(_, _)
             | VariableNodeType::UnitsLookup => true,
             VariableNodeType::DoNotRecurse | VariableNodeType::RecurseToBaseType => false,
@@ -616,7 +611,9 @@ impl Variable {
             return;
         }
 
-        if self.variable_node_type.is_deferred() {
+        if self.variable_node_type.is_deferred()
+            || matches!(self.type_name, VariableType::Pointer(_))
+        {
             // And we have not previously assigned the value, then assign the type and address as the value
             self.value = VariableValue::Valid(format!(
                 "{} @ {}",
