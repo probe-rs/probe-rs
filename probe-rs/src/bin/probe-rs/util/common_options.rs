@@ -577,11 +577,11 @@ impl From<OperationError> for DebuggerError {
                 probe_rs::Error::Timeout => {
                     if !connect_under_reset {
                         DebuggerError::UserMessage(
-                        format!("{source} : This can happen if the target is not in a state where it can be attached to. A hard reset during attaching might help. This will reset the entire chip. If your probe supports this option, try setting `connectUnderReset=true` in your `launch.json`."),
+                        format!("{source} This can happen if the target is not in a state where it can be attached to. A hard reset during attaching might help. This will reset the entire chip. If your probe supports this option, try setting `connectUnderReset=true` in your `launch.json`."),
                     )
                     } else {
                         DebuggerError::UserMessage(
-                        format!("{source} : This can happen if your probe does not support the `connectUnderReset` option. Try setting `connectUnderReset=false` in your `launch.json`."),
+                        format!("{source} This can happen if your probe does not support the `connectUnderReset` option. Try setting `connectUnderReset=false` in your `launch.json`."),
                     )
                     }
                 }
