@@ -84,10 +84,11 @@ impl SessionData {
                         connect_under_reset,
                     } => match source {
                         probe_rs::Error::Timeout => {
+                            let shared_cause = "This can happen if the target is in a state where it can not be attached to. A hard reset during attach usually helps. For probes that support this option, please try using the `connect_under_reset` option.";
                             if !connect_under_reset {
-                                DebuggerError::UserMessage(format!("{source} This can happen if the target is not in a state where it can be attached to. A hard reset during attaching might help. If your probe supports this option, try using the `connect_under_reset` option."))
+                                DebuggerError::UserMessage(format!("{source} {shared_cause}"))
                             } else {
-                                DebuggerError::UserMessage(format!("{source} This can happen if you are using the `connect_under_reset` option, and your probe does not have support for it."))
+                                DebuggerError::UserMessage(format!("{source} {shared_cause} It is possible that your probe does not support this behaviour, or something else is preventing the attach.Please try again without `connect_under_reset`."))
                             }
                         }
                         other_attach_error => other_attach_error.into(),
