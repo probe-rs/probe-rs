@@ -325,7 +325,7 @@ impl FlashAlgorithm {
             page_buffers: page_buffers.clone(),
             rtt_control_block: raw.rtt_location,
             flash_properties: raw.flash_properties.clone(),
-            transfer_encoding: raw.transfer_encoding,
+            transfer_encoding: raw.transfer_encoding.unwrap_or_default(),
         })
     }
 }

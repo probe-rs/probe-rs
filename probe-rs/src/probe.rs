@@ -1,5 +1,6 @@
 pub(crate) mod arm_jtag;
 pub(crate) mod common;
+pub(crate) mod usb_util;
 
 pub(crate) mod cmsisdap;
 pub(crate) mod espusbjtag;
@@ -15,6 +16,7 @@ use crate::architecture::arm::ArmError;
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::xtensa::communication_interface::XtensaCommunicationInterface;
 use crate::error::Error;
+use crate::probe::common::IdCode;
 use crate::{
     architecture::arm::communication_interface::UninitializedArmProbe,
     config::{RegistryError, TargetSelector},
@@ -102,7 +104,7 @@ impl fmt::Display for BatchCommand {
 pub enum DebugProbeError {
     /// Something with the USB communication went wrong.
     #[error("USB Communication Error")]
-    Usb(#[source] Option<Box<dyn std::error::Error + Send + Sync>>),
+    Usb(#[source] std::io::Error),
     /// The firmware of the probe is outdated. This error is especially prominent with ST-Links.
     /// You can use their official updater utility to update your probe firmware.
     #[error("The firmware on the probe is outdated, and not supported by probe-rs.")]
@@ -185,9 +187,9 @@ pub enum ProbeCreationError {
     /// Some error with HID API occurred.
     #[error("{0}")]
     HidApi(#[from] hidapi::HidError),
-    /// Some error with rusb occurred.
+    /// Some USB error occurred.
     #[error("{0}")]
-    Rusb(#[from] rusb::Error),
+    Usb(std::io::Error),
     /// An error specific with the selected probe occurred.
     #[error("An error specific to a probe type occurred: {0}")]
     ProbeSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
@@ -482,19 +484,23 @@ impl Probe {
     }
 }
 
-/// An abstraction over general debug probe functionality.
+/// An abstraction over a probe driver type.
 ///
 /// This trait has to be implemented by ever debug probe driver.
-pub trait DebugProbe: Send + fmt::Debug {
+pub trait ProbeDriver: std::any::Any + std::fmt::Debug {
     /// Creates a new boxed [`DebugProbe`] from a given [`DebugProbeSelector`].
     /// This will be called for all available debug drivers when discovering probes.
     /// When opening, it will open the first probe which succeeds during this call.
-    fn new_from_selector(
-        selector: impl Into<DebugProbeSelector>,
-    ) -> Result<Box<Self>, DebugProbeError>
-    where
-        Self: Sized;
+    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError>;
 
+    /// Returns a list of all available debug probes of the current type.
+    fn list_probes(&self) -> Vec<DebugProbeInfo>;
+}
+
+/// An abstraction over general debug probe.
+///
+/// This trait has to be implemented by ever debug probe driver.
+pub trait DebugProbe: Send + fmt::Debug {
     /// Get human readable name for the probe.
     fn get_name(&self) -> &str;
 
@@ -644,25 +650,21 @@ pub trait DebugProbe: Send + fmt::Debug {
     }
 }
 
-/// Denotes the type of a given [`DebugProbe`].
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
-pub enum DebugProbeType {
-    /// CMSIS-DAP
-    CmsisDap,
-    /// FTDI based debug probe
-    Ftdi,
-    /// ST-Link
-    StLink,
-    /// J-Link
-    JLink,
-    /// Built in RISC-V ESP JTAG debug probe
-    EspJtag,
-    /// WCH-Link
-    WchLink,
+impl PartialEq for dyn ProbeDriver {
+    fn eq(&self, other: &Self) -> bool {
+        // Consider ProbeDriver objects equal when their types and data pointers are equal.
+        // Pointer equality is insufficient, because ZST objects may have the same dangling pointer
+        // as their address.
+        self.type_id() == other.type_id()
+            && std::ptr::eq(
+                self as *const _ as *const (),
+                other as *const _ as *const (),
+            )
+    }
 }
 
 /// Gathers some information about a debug probe which was found during a scan.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq)]
 pub struct DebugProbeInfo {
     /// The name of the debug probe.
     pub identifier: String,
@@ -673,7 +675,7 @@ pub struct DebugProbeInfo {
     /// The serial number of the debug probe.
     pub serial_number: Option<String>,
     /// The probe type of the debug probe.
-    pub probe_type: DebugProbeType,
+    pub probe_type: &'static dyn ProbeDriver,
 
     /// The USB HID interface which should be used.
     /// This is necessary for composite HID devices.
@@ -689,7 +691,7 @@ impl std::fmt::Debug for DebugProbeInfo {
             self.vendor_id,
             self.product_id,
             self.serial_number
-                .clone()
+                .as_ref()
                 .map_or("".to_owned(), |v| format!("Serial: {v}, ")),
             self.probe_type
         )
@@ -703,8 +705,8 @@ impl DebugProbeInfo {
         vendor_id: u16,
         product_id: u16,
         serial_number: Option<String>,
-        probe_type: DebugProbeType,
-        usb_hid_interface: Option<u8>,
+        probe_type: &'static dyn ProbeDriver,
+        hid_interface: Option<u8>,
     ) -> Self {
         Self {
             identifier: identifier.into(),
@@ -712,7 +714,7 @@ impl DebugProbeInfo {
             product_id,
             serial_number,
             probe_type,
-            hid_interface: usb_hid_interface,
+            hid_interface,
         }
     }
 
@@ -895,18 +897,41 @@ pub struct JtagWriteCommand {
 /// Represents a Jtag Tap within the chain.
 #[derive(Debug)]
 pub struct JtagChainItem {
-    pub idcode: u32,
+    pub idcode: Option<IdCode>,
     pub irlen: usize,
 }
 
 /// Chain parameters to select a target tap within the chain.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct ChainParams {
     pub irpre: usize,
     pub irpost: usize,
     pub drpre: usize,
     pub drpost: usize,
     pub irlen: usize,
+}
+
+impl ChainParams {
+    fn from_jtag_chain(chain: &[JtagChainItem], selected: usize) -> Option<Self> {
+        let mut params = Self::default();
+
+        let mut found = false;
+        for (index, tap) in chain.iter().enumerate() {
+            tracing::info!("{:?}", tap);
+            if index == selected {
+                params.irlen = tap.irlen;
+                found = true;
+            } else if found {
+                params.irpost += tap.irlen;
+                params.drpost += 1;
+            } else {
+                params.irpre += tap.irlen;
+                params.drpre += 1;
+            }
+        }
+
+        found.then_some(params)
+    }
 }
 
 #[derive(thiserror::Error, Debug)]

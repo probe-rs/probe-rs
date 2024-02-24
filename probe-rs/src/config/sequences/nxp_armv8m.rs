@@ -8,15 +8,356 @@ use std::{
 
 use crate::{
     architecture::arm::{
-        ap::{AccessPort, MemoryAp},
-        communication_interface::Initialized,
+        ap::{AccessPort, ApAccess, GenericAp, MemoryAp, CSW, IDR},
+        communication_interface::{FlushableArmAccess, Initialized},
         core::armv8m::{Aircr, Demcr, Dhcsr},
+        dp::{Abort, Ctrl, DpAccess, Select, DPIDR},
         memory::adi_v5_memory_interface::ArmProbe,
         sequences::ArmDebugSequence,
         ApAddress, ArmCommunicationInterface, ArmError, DapAccess, DpAddress, Pins,
     },
     core::MemoryMappedRegister,
 };
+
+/// Start the debug port, and return if the device was (true) or wasn't (false)
+/// powered down.
+///
+/// Note that this routine only supports SWD protocols. See the inline TODOs to
+/// understand where JTAG support should go.
+fn debug_port_start(
+    interface: &mut ArmCommunicationInterface<Initialized>,
+    dp: DpAddress,
+    select: Select,
+) -> Result<bool, ArmError> {
+    interface.write_dp_register(dp, select)?;
+
+    let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
+
+    let powered_down = !(ctrl.csyspwrupack() && ctrl.cdbgpwrupack());
+
+    if powered_down {
+        let mut ctrl = Ctrl(0);
+        ctrl.set_cdbgpwrupreq(true);
+        ctrl.set_csyspwrupreq(true);
+
+        interface.write_dp_register(dp, ctrl)?;
+
+        let start = Instant::now();
+
+        let mut timeout = true;
+
+        while start.elapsed() < Duration::from_micros(1_000_000) {
+            let ctrl = interface.read_dp_register::<Ctrl>(dp)?;
+
+            if ctrl.csyspwrupack() && ctrl.cdbgpwrupack() {
+                timeout = false;
+                break;
+            }
+        }
+
+        if timeout {
+            return Err(ArmError::Timeout);
+        }
+
+        // TODO: Handle JTAG Specific part
+
+        // TODO: Only run the following code when the SWD protocol is used
+
+        // Init AP Transfer Mode, Transaction Counter, and Lane Mask (Normal Transfer Mode, Include all Byte Lanes)
+        let mut ctrl = Ctrl(0);
+
+        ctrl.set_cdbgpwrupreq(true);
+        ctrl.set_csyspwrupreq(true);
+
+        ctrl.set_mask_lane(0b1111);
+
+        interface.write_dp_register(dp, ctrl)?;
+
+        let mut abort = Abort(0);
+
+        abort.set_orunerrclr(true);
+        abort.set_wderrclr(true);
+        abort.set_stkerrclr(true);
+        abort.set_stkcmpclr(true);
+
+        interface.write_dp_register(dp, abort)?;
+    }
+
+    Ok(powered_down)
+}
+
+/// The sequence handle for the LPC55Sxx family.
+#[derive(Debug)]
+pub struct LPC55Sxx(());
+
+impl LPC55Sxx {
+    /// Create a sequence handle for the LPC55Sxx.
+    pub fn create() -> Arc<dyn ArmDebugSequence> {
+        Arc::new(Self(()))
+    }
+}
+
+impl ArmDebugSequence for LPC55Sxx {
+    fn debug_port_start(
+        &self,
+        interface: &mut ArmCommunicationInterface<Initialized>,
+        dp: DpAddress,
+    ) -> Result<(), ArmError> {
+        tracing::info!("debug_port_start");
+
+        let _powered_down = self::debug_port_start(interface, dp, Select(0))?;
+
+        // Per 51.6.2 and 51.6.3 there is no need to issue a debug mailbox
+        // command if we're attaching to a valid target. In fact, running
+        // the debug mailbox _prevents_ this from attaching to a running
+        // target since the debug mailbox is a separate code path.
+        // if _powered_down {
+        //     enable_debug_mailbox(interface, dp)?;
+        // }
+
+        Ok(())
+    }
+
+    fn reset_catch_set(
+        &self,
+        interface: &mut dyn ArmProbe,
+        _core_type: crate::CoreType,
+        _debug_base: Option<u64>,
+    ) -> Result<(), ArmError> {
+        let mut reset_vector: u32 = 0xffff_ffff;
+        let mut reset_vector_addr = 0x0000_0004;
+        let mut demcr = Demcr(interface.read_word_32(Demcr::get_mmio_address())?);
+
+        demcr.set_vc_corereset(false);
+
+        interface.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
+
+        // Write some stuff
+        interface.write_word_32(0x40034010, 0x00000000)?; // Program Flash Word Start Address to 0x0 to read reset vector (STARTA)
+        interface.write_word_32(0x40034014, 0x00000000)?; // Program Flash Word Stop Address to 0x0 to read reset vector (STOPA)
+        interface.write_word_32(0x40034080, 0x00000000)?; // DATAW0: Prepare for read
+        interface.write_word_32(0x40034084, 0x00000000)?; // DATAW1: Prepare for read
+        interface.write_word_32(0x40034088, 0x00000000)?; // DATAW2: Prepare for read
+        interface.write_word_32(0x4003408C, 0x00000000)?; // DATAW3: Prepare for read
+        interface.write_word_32(0x40034090, 0x00000000)?; // DATAW4: Prepare for read
+        interface.write_word_32(0x40034094, 0x00000000)?; // DATAW5: Prepare for read
+        interface.write_word_32(0x40034098, 0x00000000)?; // DATAW6: Prepare for read
+        interface.write_word_32(0x4003409C, 0x00000000)?; // DATAW7: Prepare for read
+
+        interface.write_word_32(0x40034FE8, 0x0000000F)?; // Clear FLASH Controller Status (INT_CLR_STATUS)
+        interface.write_word_32(0x40034000, 0x00000003)?; // Read single Flash Word (CMD_READ_SINGLE_WORD)
+        interface.flush()?;
+
+        let start = Instant::now();
+
+        let mut timeout = true;
+
+        while start.elapsed() < Duration::from_micros(100_000) {
+            let value = interface.read_word_32(0x40034FE0)?;
+
+            if (value & 0x4) == 0x4 {
+                timeout = false;
+                break;
+            }
+        }
+
+        if timeout {
+            tracing::warn!("Failed: Wait for flash word read to finish");
+            return Err(ArmError::Timeout);
+        }
+
+        if (interface.read_word_32(0x4003_4fe0)? & 0xB) == 0 {
+            tracing::info!("No Error reading Flash Word with Reset Vector");
+
+            if (interface.read_word_32(0x400a_cffc)? & 0xC != 0x8)
+                || (interface.read_word_32(0x400a_cff8)? & 0xC != 0x8)
+            {
+                // ENABLE_SECURE_CHECKING is set to restrictive mode, access secure addresses
+                reset_vector_addr = 0x10000004;
+            }
+
+            reset_vector = interface.read_word_32(reset_vector_addr)?;
+        }
+
+        if reset_vector != 0xffff_ffff {
+            tracing::info!("Breakpoint on user application reset vector: {reset_vector:#010x}");
+
+            interface.write_word_32(0xE000_2008, reset_vector | 1)?;
+            interface.write_word_32(0xE000_2000, 3)?;
+        }
+
+        if reset_vector == 0xffff_ffff {
+            tracing::info!("Enable reset vector catch");
+
+            let mut demcr = Demcr(interface.read_word_32(Demcr::get_mmio_address())?);
+
+            demcr.set_vc_corereset(true);
+
+            interface.write_word_32(Demcr::get_mmio_address(), demcr.into())?;
+        }
+
+        let _ = interface.read_word_32(Dhcsr::get_mmio_address())?;
+
+        tracing::debug!("reset_catch_set -- done");
+
+        Ok(())
+    }
+
+    fn reset_catch_clear(
+        &self,
+        interface: &mut dyn ArmProbe,
+        _core_type: crate::CoreType,
+        _debug_base: Option<u64>,
+    ) -> Result<(), ArmError> {
+        interface.write_word_32(0xE000_2008, 0x0)?;
+        interface.write_word_32(0xE000_2000, 0x2)?;
+
+        let mut demcr = Demcr(interface.read_word_32(Demcr::get_mmio_address())?);
+
+        demcr.set_vc_corereset(false);
+
+        interface.write_word_32(Demcr::get_mmio_address(), demcr.into())
+    }
+
+    fn reset_system(
+        &self,
+        interface: &mut dyn ArmProbe,
+        _core_type: crate::CoreType,
+        _debug_base: Option<u64>,
+    ) -> Result<(), ArmError> {
+        let mut aircr = Aircr(0);
+        aircr.vectkey();
+        aircr.set_sysresetreq(true);
+
+        let mut result = interface.write_word_32(Aircr::get_mmio_address(), aircr.into());
+
+        if result.is_ok() {
+            result = interface.flush();
+        }
+
+        if let Err(e) = result {
+            tracing::warn!("Error requesting reset: {:?}", e);
+        }
+
+        tracing::info!("Waiting after reset");
+        thread::sleep(Duration::from_millis(10));
+
+        let start = Instant::now();
+
+        let mut timeout = true;
+
+        while start.elapsed() < Duration::from_micros(500_000) {
+            if let Ok(v) = interface.read_word_32(Dhcsr::get_mmio_address()) {
+                let dhcsr = Dhcsr(v);
+
+                // Wait until the S_RESET_ST bit is cleared on a read
+                if !dhcsr.s_reset_st() {
+                    timeout = false;
+                    break;
+                }
+            }
+        }
+
+        if timeout {
+            wait_for_stop_after_reset(interface)
+        } else {
+            Ok(())
+        }
+    }
+}
+
+fn wait_for_stop_after_reset(memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
+    tracing::info!("Wait for stop after reset");
+
+    thread::sleep(Duration::from_millis(10));
+
+    let dp = memory.ap().ap_address().dp;
+    let ap = memory.ap();
+    let interface = memory.get_arm_communication_interface()?;
+
+    let ap0_csw: CSW = interface.read_ap_register(ap)?;
+
+    let ap0_disabled = ap0_csw.DeviceEn == 0;
+
+    if ap0_disabled {
+        enable_debug_mailbox(interface, dp)?;
+    }
+
+    let mut timeout = true;
+
+    let start = Instant::now();
+
+    tracing::info!("Polling for reset");
+
+    while start.elapsed() < Duration::from_micros(500_000) {
+        if let Ok(v) = memory.read_word_32(Dhcsr::get_mmio_address()) {
+            let dhcsr = Dhcsr(v);
+
+            // Wait until the S_RESET_ST bit is cleared on a read
+            if !dhcsr.s_reset_st() {
+                timeout = false;
+                break;
+            }
+        }
+    }
+
+    if timeout {
+        return Err(ArmError::Timeout);
+    }
+
+    let dhcsr = Dhcsr(memory.read_word_32(Dhcsr::get_mmio_address())?);
+
+    if !dhcsr.s_halt() {
+        let mut dhcsr = Dhcsr(0);
+        dhcsr.enable_write();
+        dhcsr.set_c_halt(true);
+        dhcsr.set_c_debugen(true);
+
+        tracing::debug!("Force halt until finding a proper catch.");
+        memory.write_word_32(Dhcsr::get_mmio_address(), dhcsr.into())?;
+    }
+
+    Ok(())
+}
+
+fn enable_debug_mailbox(
+    interface: &mut ArmCommunicationInterface<Initialized>,
+    dp: DpAddress,
+) -> Result<(), ArmError> {
+    tracing::info!("LPC55xx connect script start");
+
+    let ap = ApAddress { dp, ap: 2 };
+
+    let status: IDR = interface.read_ap_register(GenericAp::new(ap))?;
+
+    tracing::info!("APIDR: {:?}", status);
+    tracing::info!("APIDR: 0x{:08X}", u32::from(status));
+
+    let status: u32 = interface.read_dp_register::<DPIDR>(dp)?.into();
+
+    tracing::info!("DPIDR: 0x{:08X}", status);
+
+    // Active DebugMailbox
+    interface.write_raw_ap_register(ap, 0x0, 0x0000_0021)?;
+    interface.flush()?;
+
+    // DAP_Delay(30000)
+    thread::sleep(Duration::from_micros(30_000));
+
+    let _ = interface.read_raw_ap_register(ap, 0)?;
+
+    // Enter Debug session
+    interface.write_raw_ap_register(ap, 0x4, 0x0000_0007)?;
+    interface.flush()?;
+
+    // DAP_Delay(30000)
+    thread::sleep(Duration::from_micros(30_000));
+
+    let _ = interface.read_raw_ap_register(ap, 8)?;
+
+    tracing::info!("LPC55xx connect srcipt end");
+    Ok(())
+}
 
 /// Debug sequences for MIMXRT5xxS MCUs.
 ///
@@ -347,7 +688,7 @@ impl ArmDebugSequence for MIMXRT5xxS {
             }
         } else {
             assert_n_reset()?;
-            thread::sleep(Duration::from_micros(100000));
+            thread::sleep(Duration::from_micros(100_000));
         }
 
         Ok(())

@@ -47,4 +47,103 @@ pub const FP: CoreRegister = CoreRegister {
 pub(crate) static XTENSA_CORE_REGSISTERS: Lazy<CoreRegisters> =
     Lazy::new(|| CoreRegisters::new(XTENSA_REGISTERS_SET.iter().collect()));
 
-static XTENSA_REGISTERS_SET: &[CoreRegister] = &[RA, PC, SP, FP];
+static XTENSA_REGISTERS_SET: &[CoreRegister] = &[
+    RA,
+    PC,
+    SP,
+    FP,
+    CoreRegister {
+        roles: &[
+            RegisterRole::Core("a2"),
+            RegisterRole::Argument("a2"),
+            RegisterRole::Return("a2"),
+        ],
+        id: crate::RegisterId(0x0002),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[
+            RegisterRole::Core("a3"),
+            RegisterRole::Argument("a3"),
+            RegisterRole::Return("a3"),
+        ],
+        id: crate::RegisterId(0x0003),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[
+            RegisterRole::Core("a4"),
+            RegisterRole::Argument("a4"),
+            RegisterRole::Return("a4"),
+        ],
+        id: crate::RegisterId(0x0004),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[
+            RegisterRole::Core("a5"),
+            RegisterRole::Argument("a5"),
+            RegisterRole::Return("a5"),
+        ],
+        id: crate::RegisterId(0x0005),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("a6"), RegisterRole::Argument("a6")],
+        id: crate::RegisterId(0x0006),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("a8")],
+        id: crate::RegisterId(0x0008),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("a9")],
+        id: crate::RegisterId(0x0009),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("a10")],
+        id: crate::RegisterId(0x000A),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("a11")],
+        id: crate::RegisterId(0x000B),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("a12")],
+        id: crate::RegisterId(0x000C),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("a13")],
+        id: crate::RegisterId(0x000D),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("a14")],
+        id: crate::RegisterId(0x000E),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+    CoreRegister {
+        roles: &[RegisterRole::Core("a15")],
+        id: crate::RegisterId(0x000F),
+        data_type: RegisterDataType::UnsignedInteger(32),
+        unwind_rule: UnwindRule::Clear,
+    },
+];

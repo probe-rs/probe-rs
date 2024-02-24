@@ -9,8 +9,8 @@ use crate::{
     architecture::xtensa::arch::{
         instruction::Instruction, CpuRegister, Register, SpecialRegister,
     },
-    probe::JTAGAccess,
-    BreakpointCause, DebugProbeError, Error as ProbeRsError, HaltReason, MemoryInterface,
+    probe::{DeferredResultIndex, JTAGAccess},
+    BreakpointCause, DebugProbeError, Error as ProbeRsError, HaltReason, MemoryInterface, Probe,
 };
 
 use super::xdm::{Error as XdmError, Xdm};
@@ -91,10 +91,8 @@ impl DebugLevel {
 }
 
 struct XtensaCommunicationInterfaceState {
-    /// Pairs of (register, value).
-    saved_registers: HashMap<Register, u32>,
-
-    print_exception_cause: bool,
+    /// Pairs of (register, deferred value). The value is optional where None means "being restored"
+    saved_registers: HashMap<Register, Option<DeferredResultIndex>>,
 
     is_halted: bool,
 }
@@ -118,7 +116,6 @@ impl XtensaCommunicationInterface {
             xdm,
             state: XtensaCommunicationInterfaceState {
                 saved_registers: Default::default(),
-                print_exception_cause: true,
                 is_halted: false,
             },
             // TODO chip-specific configuration
@@ -131,6 +128,16 @@ impl XtensaCommunicationInterface {
 
             Err(e) => Err((s.xdm.free(), e.into())),
         }
+    }
+
+    /// Destruct the interface and return the stored probe driver.
+    pub fn close(self) -> Probe {
+        Probe::from_attached_probe(self.xdm.probe.into_probe())
+    }
+
+    /// Read the targets IDCODE.
+    pub fn read_idcode(&mut self) -> Result<u32, DebugProbeError> {
+        Ok(self.xdm.read_idcode()?)
     }
 
     fn init(&mut self) -> Result<(), XtensaError> {
@@ -209,7 +216,11 @@ impl XtensaCommunicationInterface {
 
     /// Returns whether the core is halted.
     pub fn is_halted(&mut self) -> Result<bool, XtensaError> {
-        self.xdm.is_halted()
+        if !self.state.is_halted {
+            self.state.is_halted = self.xdm.is_halted()?;
+        }
+
+        Ok(self.state.is_halted)
     }
 
     /// Waits until the core is halted.
@@ -225,29 +236,30 @@ impl XtensaCommunicationInterface {
             std::thread::sleep(Duration::from_millis(1));
         }
         tracing::debug!("Core halted");
-        self.state.is_halted = true;
 
         // Force a low INTLEVEL to allow halting on debug exceptions
         // TODO: do this only if we set a breakpoint or watchpoint or single step
         let mut ps = self.read_register::<ProgramStatus>()?;
         ps.set_intlevel(1);
-        self.write_register(ps)?;
+        self.schedule_write_register(ps)?;
 
         Ok(())
     }
 
     /// Steps the core by one instruction.
     pub fn step(&mut self) -> Result<(), XtensaError> {
-        self.write_register(ICountLevel(self.debug_level as u32))?;
+        self.schedule_write_register(ICountLevel(self.debug_level as u32))?;
 
         // An exception is generated at the beginning of an instruction that would overflow ICOUNT.
-        self.write_register(ICount(-2_i32 as u32))?;
+        self.schedule_write_register(ICount(-2_i32 as u32))?;
+
+        self.xdm.execute()?;
 
         self.resume()?;
         self.wait_for_core_halted(Duration::from_millis(100))?;
 
         // Avoid stopping again
-        self.write_register(ICountLevel(self.debug_level as u32 + 1))?;
+        self.schedule_write_register(ICountLevel(self.debug_level as u32 + 1))?;
 
         Ok(())
     }
@@ -261,26 +273,30 @@ impl XtensaCommunicationInterface {
         Ok(())
     }
 
-    fn read_cpu_register(&mut self, register: CpuRegister) -> Result<u32, XtensaError> {
-        self.execute_instruction(Instruction::Wsr(SpecialRegister::Ddr, register))?;
-        self.xdm.read_ddr()
+    fn schedule_read_cpu_register(&mut self, register: CpuRegister) -> DeferredResultIndex {
+        self.xdm
+            .schedule_execute_instruction(Instruction::Wsr(SpecialRegister::Ddr, register));
+        self.xdm.schedule_read_ddr()
     }
 
-    fn read_special_register(&mut self, register: SpecialRegister) -> Result<u32, XtensaError> {
+    fn schedule_read_special_register(
+        &mut self,
+        register: SpecialRegister,
+    ) -> Result<DeferredResultIndex, XtensaError> {
         let save_key = self.save_register(CpuRegister::A3)?;
 
         // Read special register into the scratch register
-        self.execute_instruction(Instruction::Rsr(register, CpuRegister::A3))?;
+        self.xdm
+            .schedule_execute_instruction(Instruction::Rsr(register, CpuRegister::A3));
 
-        // Read the scratch register
-        let result = self.read_cpu_register(CpuRegister::A3)?;
+        let reader = self.schedule_read_cpu_register(CpuRegister::A3);
 
         self.restore_register(save_key)?;
 
-        Ok(result)
+        Ok(reader)
     }
 
-    fn write_special_register(
+    fn schedule_write_special_register(
         &mut self,
         register: SpecialRegister,
         value: u32,
@@ -288,87 +304,33 @@ impl XtensaCommunicationInterface {
         tracing::debug!("Writing special register: {:?}", register);
         let save_key = self.save_register(CpuRegister::A3)?;
 
-        self.xdm.write_ddr(value)?;
+        self.xdm.schedule_write_ddr(value);
 
         // DDR -> scratch
         self.xdm
-            .execute_instruction(Instruction::Rsr(SpecialRegister::Ddr, CpuRegister::A3))?;
+            .schedule_execute_instruction(Instruction::Rsr(SpecialRegister::Ddr, CpuRegister::A3));
 
         // scratch -> target special register
         self.xdm
-            .execute_instruction(Instruction::Wsr(register, CpuRegister::A3))?;
+            .schedule_execute_instruction(Instruction::Wsr(register, CpuRegister::A3));
 
         self.restore_register(save_key)?;
 
         Ok(())
     }
 
-    fn write_cpu_register(&mut self, register: CpuRegister, value: u32) -> Result<(), XtensaError> {
+    fn schedule_write_cpu_register(
+        &mut self,
+        register: CpuRegister,
+        value: u32,
+    ) -> Result<(), XtensaError> {
         tracing::debug!("Writing {:x} to register: {:?}", value, register);
 
-        self.xdm.write_ddr(value)?;
+        self.xdm.schedule_write_ddr(value);
         self.xdm
-            .execute_instruction(Instruction::Rsr(SpecialRegister::Ddr, register))?;
+            .schedule_execute_instruction(Instruction::Rsr(SpecialRegister::Ddr, register));
 
         Ok(())
-    }
-
-    fn debug_execution_error_impl(&mut self, status: XdmError) -> Result<(), XtensaError> {
-        if let XdmError::ExecExeception = status {
-            if !self.state.print_exception_cause {
-                tracing::warn!("Instruction exception while reading previous exception");
-                return Ok(());
-            }
-
-            tracing::warn!("Failed to execute instruction, attempting to read debug info");
-
-            // clear ExecException to allow new instructions to run
-            self.xdm.clear_exec_exception()?;
-
-            for (name, reg) in [
-                ("EXCCAUSE", SpecialRegister::ExcCause),
-                ("EXCVADDR", SpecialRegister::ExcVaddr),
-                ("DEBUGCAUSE", SpecialRegister::DebugCause),
-            ] {
-                let register = self.read_register_untyped(reg)?;
-
-                tracing::info!("{}: {:08x}", name, register);
-            }
-        }
-
-        Ok(())
-    }
-
-    fn debug_execution_error(&mut self, status: XdmError) -> Result<(), XtensaError> {
-        self.state.print_exception_cause = false;
-        let result = self.debug_execution_error_impl(status);
-        self.state.print_exception_cause = true;
-
-        result
-    }
-
-    fn execute_instruction(&mut self, inst: Instruction) -> Result<(), XtensaError> {
-        let status = self.xdm.execute_instruction(inst);
-        if let Err(XtensaError::XdmError(err)) = status {
-            self.debug_execution_error(err)?
-        }
-        status
-    }
-
-    fn read_ddr_and_execute(&mut self) -> Result<u32, XtensaError> {
-        let status = self.xdm.read_ddr_and_execute();
-        if let Err(XtensaError::XdmError(err)) = status {
-            self.debug_execution_error(err)?
-        }
-        status
-    }
-
-    fn write_ddr_and_execute(&mut self, value: u32) -> Result<(), XtensaError> {
-        let status = self.xdm.write_ddr_and_execute(value);
-        if let Err(XtensaError::XdmError(err)) = status {
-            self.debug_execution_error(err)?
-        }
-        status
     }
 
     /// Read a register.
@@ -378,6 +340,13 @@ impl XtensaCommunicationInterface {
         Ok(R::from_u32(value))
     }
 
+    /// Schedules reading a register.
+    pub fn schedule_read_register<R: TypedRegister>(
+        &mut self,
+    ) -> Result<DeferredResultIndex, XtensaError> {
+        self.schedule_read_register_untyped(R::register())
+    }
+
     /// Write a register.
     pub fn write_register<R: TypedRegister>(&mut self, reg: R) -> Result<(), XtensaError> {
         self.write_register_untyped(R::register(), reg.as_u32())?;
@@ -385,16 +354,50 @@ impl XtensaCommunicationInterface {
         Ok(())
     }
 
+    /// Schedules writing a register.
+    pub fn schedule_write_register<R: TypedRegister>(&mut self, reg: R) -> Result<(), XtensaError> {
+        self.schedule_write_register_untyped(R::register(), reg.as_u32())?;
+
+        Ok(())
+    }
+
+    /// Schedules reading a register.
+    pub fn schedule_read_register_untyped(
+        &mut self,
+        register: impl Into<Register>,
+    ) -> Result<DeferredResultIndex, XtensaError> {
+        match register.into() {
+            Register::Cpu(register) => Ok(self.schedule_read_cpu_register(register)),
+            Register::Special(register) => self.schedule_read_special_register(register),
+            Register::CurrentPc => self.schedule_read_special_register(self.debug_level.pc()),
+            Register::CurrentPs => self.schedule_read_special_register(self.debug_level.ps()),
+        }
+    }
+
     /// Read a register.
     pub fn read_register_untyped(
         &mut self,
         register: impl Into<Register>,
     ) -> Result<u32, XtensaError> {
+        let reader = self.schedule_read_register_untyped(register)?;
+        Ok(self.xdm.read_deferred_result(reader)?.as_u32())
+    }
+
+    /// Schedules writing a register.
+    pub fn schedule_write_register_untyped(
+        &mut self,
+        register: impl Into<Register>,
+        value: u32,
+    ) -> Result<(), XtensaError> {
         match register.into() {
-            Register::Cpu(register) => self.read_cpu_register(register),
-            Register::Special(register) => self.read_special_register(register),
-            Register::CurrentPc => self.read_special_register(self.debug_level.pc()),
-            Register::CurrentPs => self.read_special_register(self.debug_level.ps()),
+            Register::Cpu(register) => self.schedule_write_cpu_register(register, value),
+            Register::Special(register) => self.schedule_write_special_register(register, value),
+            Register::CurrentPc => {
+                self.schedule_write_special_register(self.debug_level.pc(), value)
+            }
+            Register::CurrentPs => {
+                self.schedule_write_special_register(self.debug_level.ps(), value)
+            }
         }
     }
 
@@ -404,12 +407,8 @@ impl XtensaCommunicationInterface {
         register: impl Into<Register>,
         value: u32,
     ) -> Result<(), XtensaError> {
-        match register.into() {
-            Register::Cpu(register) => self.write_cpu_register(register, value),
-            Register::Special(register) => self.write_special_register(register, value),
-            Register::CurrentPc => self.write_special_register(self.debug_level.pc(), value),
-            Register::CurrentPs => self.write_special_register(self.debug_level.ps(), value),
-        }
+        self.schedule_write_register_untyped(register, value)?;
+        self.xdm.execute()
     }
 
     fn save_register(
@@ -435,8 +434,8 @@ impl XtensaCommunicationInterface {
         }
 
         tracing::debug!("Saving register: {:?}", register);
-        let value = self.read_register_untyped(register)?;
-        self.state.saved_registers.insert(register, value);
+        let value = self.schedule_read_register_untyped(register)?;
+        self.state.saved_registers.insert(register, Some(value));
 
         Ok(Some(register))
     }
@@ -448,8 +447,10 @@ impl XtensaCommunicationInterface {
 
         tracing::debug!("Restoring register: {:?}", key);
 
-        if let Some(value) = self.state.saved_registers.get(&key) {
-            self.write_register_untyped(key, *value)?;
+        if let Some(value) = self.state.saved_registers.get_mut(&key) {
+            let reader = value.take().unwrap();
+            let value = self.xdm.read_deferred_result(reader)?.as_u32();
+            self.write_register_untyped(key, value)?;
 
             self.state.saved_registers.remove(&key);
         }
@@ -466,37 +467,59 @@ impl XtensaCommunicationInterface {
         // Currently, restoring registers may only use the scratch register which is already saved
         // if we access special registers. This means the register list won't actually change in the
         // next loop.
-        let dirty_regs = self.state.saved_registers.clone();
+        let dirty_regs = self
+            .state
+            .saved_registers
+            .keys()
+            .copied()
+            .collect::<Vec<_>>();
+
+        let dirty_count = dirty_regs.len();
 
         let mut restore_scratch = None;
 
-        for (register, value) in dirty_regs.iter().map(|(k, v)| (*k, *v)) {
+        for register in dirty_regs {
+            let reader = self
+                .state
+                .saved_registers
+                .get_mut(&register)
+                .unwrap()
+                .take()
+                .unwrap();
+            let value = self.xdm.read_deferred_result(reader)?.as_u32();
+
             if register == Register::Cpu(CpuRegister::A3) {
                 // We need to handle the scratch register (A3) separately as restoring a special
                 // register will overwrite it.
                 restore_scratch = Some(value);
             } else {
-                self.write_register_untyped(register, value)?;
+                self.schedule_write_register_untyped(register, value)?;
             }
         }
 
-        if self.state.saved_registers.len() != dirty_regs.len() {
-            // The scratch register wasn't saved before, but has to be saved now. This case should
+        if self.state.saved_registers.len() != dirty_count {
+            // The scratch register wasn't saved before, but has to be restored now. This case should
             // not currently be reachable.
-            restore_scratch = self
+            // TODO: we shouldn't special-case the A3 register, I think
+            if let Some(reader) = self
                 .state
                 .saved_registers
-                .get(&Register::Cpu(CpuRegister::A3))
-                .copied();
+                .get_mut(&Register::Cpu(CpuRegister::A3))
+            {
+                if let Some(reader) = reader.take() {
+                    let value = self.xdm.read_deferred_result(reader)?.as_u32();
+
+                    restore_scratch = Some(value);
+                }
+            }
         }
 
         if let Some(value) = restore_scratch {
-            self.write_register_untyped(CpuRegister::A3, value)?;
+            self.schedule_write_register_untyped(CpuRegister::A3, value)?;
         }
 
         self.state.saved_registers.clear();
-
-        Ok(())
+        self.xdm.execute()
     }
 
     fn read_memory(&mut self, address: u64, mut dst: &mut [u8]) -> Result<(), XtensaError> {
@@ -507,50 +530,69 @@ impl XtensaCommunicationInterface {
 
         let was_halted = self.is_halted()?;
         if !was_halted {
-            self.halt()?;
+            self.xdm.schedule_halt();
             self.wait_for_core_halted(Duration::from_millis(100))?;
         }
 
         // Write aligned address to the scratch register
         let key = self.save_register(CpuRegister::A3)?;
-        self.write_cpu_register(CpuRegister::A3, address as u32 & !0x3)?;
+        self.schedule_write_cpu_register(CpuRegister::A3, address as u32 & !0x3)?;
 
         // Read from address in the scratch register
-        self.execute_instruction(Instruction::Lddr32P(CpuRegister::A3))?;
+        self.xdm
+            .schedule_execute_instruction(Instruction::Lddr32P(CpuRegister::A3));
+
+        let mut to_read = dst.len();
 
         // Let's assume we can just do 32b reads, so let's do some pre-massaging on unaligned reads
-        if address % 4 != 0 {
+        let first_read = if address % 4 != 0 {
             let offset = address as usize % 4;
 
             // Avoid executing another read if we only have to read a single word
-            let word = if offset + dst.len() <= 4 {
-                self.xdm.read_ddr()?
+            let first_read = if offset + to_read <= 4 {
+                self.xdm.schedule_read_ddr()
             } else {
-                self.read_ddr_and_execute()?
+                self.xdm.schedule_read_ddr_and_execute()
             };
 
-            let word = word.to_le_bytes();
+            let bytes_to_copy = (4 - offset).min(to_read);
 
-            let bytes_to_copy = (4 - offset).min(dst.len());
+            to_read -= bytes_to_copy;
+
+            Some((first_read, offset, bytes_to_copy))
+        } else {
+            None
+        };
+
+        let mut aligned_reads = vec![];
+        if to_read > 0 {
+            let words = if to_read % 4 == 0 {
+                to_read / 4
+            } else {
+                to_read / 4 + 1
+            };
+
+            for _ in 0..words - 1 {
+                aligned_reads.push(self.xdm.schedule_read_ddr_and_execute());
+            }
+            aligned_reads.push(self.xdm.schedule_read_ddr());
+        };
+
+        if let Some((read, offset, bytes_to_copy)) = first_read {
+            let word = self.xdm.read_deferred_result(read)?.as_u32().to_le_bytes();
 
             dst[..bytes_to_copy].copy_from_slice(&word[offset..][..bytes_to_copy]);
             dst = &mut dst[bytes_to_copy..];
-
-            if dst.is_empty() {
-                return Ok(());
-            }
         }
 
-        while dst.len() > 4 {
-            let word = self.read_ddr_and_execute()?.to_le_bytes();
-            dst[..4].copy_from_slice(&word);
-            dst = &mut dst[4..];
+        for read in aligned_reads {
+            let word = self.xdm.read_deferred_result(read)?.as_u32().to_le_bytes();
+
+            let bytes = dst.len().min(4);
+
+            dst[..bytes].copy_from_slice(&word[..bytes]);
+            dst = &mut dst[bytes..];
         }
-
-        let remaining_bytes = dst.len();
-
-        let word = self.xdm.read_ddr()?;
-        dst.copy_from_slice(&word.to_le_bytes()[..remaining_bytes]);
 
         self.restore_register(key)?;
 
@@ -579,12 +621,13 @@ impl XtensaCommunicationInterface {
         word[offset..][..data.len()].copy_from_slice(data);
 
         // Write the word back
-        self.write_register_untyped(CpuRegister::A3, aligned_address)?;
-        self.xdm.write_ddr(u32::from_le_bytes(word))?;
-        self.execute_instruction(Instruction::Sddr32P(CpuRegister::A3))?;
+        self.schedule_write_register_untyped(CpuRegister::A3, aligned_address)?;
+        self.xdm.schedule_write_ddr(u32::from_le_bytes(word));
+        self.xdm
+            .schedule_execute_instruction(Instruction::Sddr32P(CpuRegister::A3));
         self.restore_register(key)?;
 
-        Ok(())
+        self.xdm.execute()
     }
 
     fn write_memory(&mut self, address: u64, data: &[u8]) -> Result<(), XtensaError> {
@@ -595,7 +638,7 @@ impl XtensaCommunicationInterface {
 
         let was_halted = self.is_halted()?;
         if !was_halted {
-            self.halt()?;
+            self.xdm.schedule_halt();
             self.wait_for_core_halted(Duration::from_millis(100))?;
         }
 
@@ -618,10 +661,10 @@ impl XtensaCommunicationInterface {
 
         if buffer.len() > 4 {
             // Prepare store instruction
-            self.write_register_untyped(CpuRegister::A3, addr)?;
+            self.schedule_write_register_untyped(CpuRegister::A3, addr)?;
 
             self.xdm
-                .write_instruction(Instruction::Sddr32P(CpuRegister::A3))?;
+                .schedule_write_instruction(Instruction::Sddr32P(CpuRegister::A3));
 
             while buffer.len() > 4 {
                 let mut word = [0; 4];
@@ -629,7 +672,7 @@ impl XtensaCommunicationInterface {
                 let word = u32::from_le_bytes(word);
 
                 // Write data to DDR and store
-                self.write_ddr_and_execute(word)?;
+                self.xdm.schedule_write_ddr_and_execute(word);
 
                 buffer = &buffer[4..];
                 addr += 4;
@@ -642,6 +685,8 @@ impl XtensaCommunicationInterface {
         }
 
         self.restore_register(key)?;
+
+        self.xdm.execute()?;
 
         if !was_halted {
             self.resume()?;

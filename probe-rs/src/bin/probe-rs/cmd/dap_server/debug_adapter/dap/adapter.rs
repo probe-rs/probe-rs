@@ -542,7 +542,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         // The arguments.variables_reference contains the reference of the variable container. This can be:
         // - The `StackFrame.id` for register variables - we will warn the user that updating these are not yet supported.
         // - The `Variable.parent_key` for a local or static variable - If these are base data types, we will attempt to update their value, otherwise we will warn the user that updating complex / structure variables are not yet supported.
-        let parent_key: ObjectRef = arguments.variables_reference.try_into()?;
+        let parent_key: ObjectRef = arguments.variables_reference.into();
         let new_value = &arguments.value;
 
         //TODO: Check for, and prevent SVD Peripheral/Register/Field values from being updated, until such time as we can do it safely.
@@ -1128,7 +1128,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.send_response(request, Ok(Some(body)))
     }
 
-    /// Retrieve available scopes  
+    /// Retrieve available scopes
     /// - static scope  : Variables with `static` modifier
     /// - registers     : The [probe_rs::Core::registers] for the target [probe_rs::CoreType]
     /// - local scope   : Variables defined between start of current frame, and the current pc (program counter)
@@ -1154,7 +1154,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             });
         };
 
-        let frame_id: ObjectRef = arguments.frame_id.try_into()?;
+        let frame_id: ObjectRef = arguments.frame_id.into();
 
         tracing::trace!("Getting scopes for frame {:?}", frame_id);
 
@@ -1324,7 +1324,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     ) -> Result<()> {
         let arguments: VariablesArguments = get_arguments(self, request)?;
 
-        let variable_ref: ObjectRef = arguments.variables_reference.try_into()?;
+        let variable_ref: ObjectRef = arguments.variables_reference.into();
 
         if let Some(core_peripherals) = &mut target_core.core_data.core_peripherals {
             // First we check the SVD VariableCache, we do this first because it is the lowest computational overhead.

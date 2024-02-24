@@ -40,8 +40,8 @@ use clap;
 use probe_rs::{
     config::{RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError},
-    DebugProbeError, DebugProbeSelector, FakeProbe, Lister, Permissions, Probe, Session, Target,
-    WireProtocol,
+    integration::FakeProbe,
+    DebugProbeError, DebugProbeSelector, Lister, Permissions, Probe, Session, Target, WireProtocol,
 };
 use serde::{Deserialize, Serialize};
 
@@ -123,7 +123,7 @@ pub struct ReadWriteOptions {
 /// Common options and logic when interfacing with a [Probe].
 #[derive(clap::Parser, Debug)]
 pub struct ProbeOptions {
-    #[arg(long)]
+    #[arg(long, env = "PROBE_RS_CHIP")]
     pub chip: Option<String>,
     #[arg(value_name = "chip description file path", long)]
     pub chip_description_path: Option<PathBuf>,

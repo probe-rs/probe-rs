@@ -864,6 +864,11 @@ impl<'probe> ActiveFlasher<'probe, Erase> {
 impl<'p> ActiveFlasher<'p, Program> {
     /// Transfers the buffer bytes to RAM.
     fn load_data(&mut self, address: u64, bytes: &[u8]) -> Result<(), FlashError> {
+        tracing::debug!(
+            "Loading {} bytes of data into RAM at address {:#08x}\n",
+            bytes.len(),
+            address
+        );
         // TODO: Prevent security settings from locking the device.
 
         // In case some of the previous preprocessing forgets to pad the last page,
@@ -941,11 +946,7 @@ impl<'p> ActiveFlasher<'p, Program> {
         }
     }
 
-    pub(super) fn start_program_page_with_buffer(
-        &mut self,
-        address: u64,
-        buffer_number: usize,
-    ) -> Result<(), FlashError> {
+    fn buffer_address(&self, buffer_number: usize) -> u64 {
         // Ensure the buffer number is valid, otherwise there is a bug somewhere
         // in the flashing code.
         assert!(
@@ -954,12 +955,22 @@ impl<'p> ActiveFlasher<'p, Program> {
             buffer_number, self.flash_algorithm.page_buffers.len()
         );
 
+        self.flash_algorithm.page_buffers[buffer_number]
+    }
+
+    pub(super) fn start_program_page_with_buffer(
+        &mut self,
+        address: u64,
+        buffer_number: usize,
+    ) -> Result<(), FlashError> {
+        let buffer_address = self.buffer_address(buffer_number);
+
         self.call_function(
             &Registers {
                 pc: into_reg(self.flash_algorithm.pc_program_page)?,
                 r0: Some(into_reg(address)?),
                 r1: Some(self.flash_algorithm.flash_properties.page_size),
-                r2: Some(into_reg(self.flash_algorithm.page_buffers[buffer_number])?),
+                r2: Some(into_reg(buffer_address)?),
                 r3: None,
             },
             false,
@@ -978,17 +989,8 @@ impl<'p> ActiveFlasher<'p, Program> {
         bytes: &[u8],
         buffer_number: usize,
     ) -> Result<(), FlashError> {
-        let algo = &self.flash_algorithm;
-
-        // Ensure the buffer number is valid, otherwise there is a bug somewhere
-        // in the flashing code.
-        assert!(
-            buffer_number < algo.page_buffers.len(),
-            "Trying to use non-existing buffer ({}/{}) for flashing. This is a bug. Please report it.",
-            buffer_number, algo.page_buffers.len()
-        );
-
-        self.load_data(algo.page_buffers[buffer_number], bytes)?;
+        let buffer_address = self.buffer_address(buffer_number);
+        self.load_data(buffer_address, bytes)?;
 
         Ok(())
     }

@@ -1,13 +1,9 @@
 use crate::{
-    DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe, ProbeCreationError,
+    probe::ProbeDriver, DebugProbeError, DebugProbeInfo, DebugProbeSelector, Probe,
+    ProbeCreationError,
 };
 
-use super::{
-    cmsisdap,
-    espusbjtag::{self, list_espjtag_devices},
-    jlink::{self, list_jlink_devices},
-    stlink, wlink,
-};
+use super::{cmsisdap, espusbjtag, jlink, stlink, wlink};
 
 #[cfg(feature = "ftdi")]
 use super::ftdi;
@@ -79,43 +75,30 @@ impl Default for AllProbesLister {
 }
 
 impl AllProbesLister {
-    pub fn new() -> Self {
+    const DRIVERS: &'static [&'static dyn ProbeDriver] = &[
+        &cmsisdap::CmsisDapSource,
+        #[cfg(feature = "ftdi")]
+        &ftdi::FtdiProbeSource,
+        &stlink::StLinkSource,
+        &jlink::JLinkSource,
+        &espusbjtag::EspUsbJtagSource,
+        &wlink::WchLinkSource,
+    ];
+
+    pub const fn new() -> Self {
         Self
     }
 
     fn open(selector: impl Into<DebugProbeSelector>) -> Result<Probe, DebugProbeError> {
         let selector = selector.into();
-        match cmsisdap::CmsisDap::new_from_selector(selector.clone()) {
-            Ok(link) => return Ok(Probe::from_specific_probe(link)),
-            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
-            Err(e) => return Err(e),
-        };
-        #[cfg(feature = "ftdi")]
-        match ftdi::FtdiProbe::new_from_selector(selector.clone()) {
-            Ok(link) => return Ok(Probe::from_specific_probe(link)),
-            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
-            Err(e) => return Err(e),
-        };
-        match stlink::StLink::new_from_selector(selector.clone()) {
-            Ok(link) => return Ok(Probe::from_specific_probe(link)),
-            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
-            Err(e) => return Err(e),
-        };
-        match jlink::JLink::new_from_selector(selector.clone()) {
-            Ok(link) => return Ok(Probe::from_specific_probe(link)),
-            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
-            Err(e) => return Err(e),
-        };
-        match espusbjtag::EspUsbJtag::new_from_selector(selector.clone()) {
-            Ok(link) => return Ok(Probe::from_specific_probe(link)),
-            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
-            Err(e) => return Err(e),
-        };
-        match wlink::WchLink::new_from_selector(selector) {
-            Ok(link) => return Ok(Probe::from_specific_probe(link)),
-            Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
-            Err(e) => return Err(e),
-        };
+
+        for probe_ctor in Self::DRIVERS {
+            match probe_ctor.open(&selector) {
+                Ok(link) => return Ok(Probe::from_specific_probe(link)),
+                Err(DebugProbeError::ProbeCouldNotBeCreated(ProbeCreationError::NotFound)) => {}
+                Err(e) => return Err(e),
+            };
+        }
 
         Err(DebugProbeError::ProbeCouldNotBeCreated(
             ProbeCreationError::NotFound,
@@ -123,18 +106,11 @@ impl AllProbesLister {
     }
 
     fn list_all() -> Vec<DebugProbeInfo> {
-        let mut list = cmsisdap::tools::list_cmsisdap_devices();
-        #[cfg(feature = "ftdi")]
-        {
-            list.extend(ftdi::list_ftdi_devices());
+        let mut list = vec![];
+
+        for driver in Self::DRIVERS {
+            list.extend(driver.list_probes());
         }
-        list.extend(stlink::tools::list_stlink_devices());
-
-        list.extend(list_jlink_devices());
-
-        list.extend(list_espjtag_devices());
-
-        list.extend(wlink::list_wlink_devices());
 
         list
     }

@@ -1,5 +1,5 @@
 [workspace.package]
-version = "0.21.1"
+version = "0.22.0"
 edition = "2021"
 
 documentation = "https://docs.rs/probe-rs/"
@@ -22,13 +22,13 @@ members = [
 exclude = ["probe-rs/tests/gpio-hal-blinky"]
 
 [workspace.dependencies]
-probe-rs = { path = "probe-rs", version = "0.21.1" }
-probe-rs-target = { path = "probe-rs-target", version = "0.21.1" }
+probe-rs = { path = "probe-rs", version = "0.22.0" }
+probe-rs-target = { path = "probe-rs-target", version = "0.22.0" }
 
 log = "0.4.20"
 pretty_env_logger = "0.5.0"
 thiserror = "1.0"
-anyhow = "1.0.77"
+anyhow = "1.0.78"
 
 [workspace.metadata.release]
 shared-version = true

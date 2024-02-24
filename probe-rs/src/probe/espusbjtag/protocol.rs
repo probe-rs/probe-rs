@@ -1,10 +1,13 @@
+use bitvec::{prelude::*, slice::BitSlice, vec::BitVec};
+use nusb::{
+    transfer::{ControlIn, Direction, EndpointType},
+    DeviceInfo,
+};
 use std::{fmt::Debug, time::Duration};
 
-use bitvec::{prelude::*, slice::BitSlice, vec::BitVec};
-use rusb::{request_type, Context, Device, Direction, TransferType, UsbContext};
-
 use crate::{
-    DebugProbeError, DebugProbeInfo, DebugProbeSelector, DebugProbeType, ProbeCreationError,
+    probe::common::JtagState, probe::espusbjtag::EspUsbJtagSource, probe::usb_util::InterfaceExt,
+    DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
 };
 
 const JTAG_PROTOCOL_CAPABILITIES_VERSION: u8 = 1;
@@ -21,122 +24,18 @@ const USB_TIMEOUT: Duration = Duration::from_millis(5000);
 const USB_DEVICE_CLASS: u8 = 0xFF;
 const USB_DEVICE_SUBCLASS: u8 = 0xFF;
 const USB_DEVICE_PROTOCOL: u8 = 0x01;
-const USB_DEVICE_TRANSFER_TYPE: TransferType = TransferType::Bulk;
-
-const USB_CONFIGURATION: u8 = 0x0;
+const USB_DEVICE_TRANSFER_TYPE: EndpointType = EndpointType::Bulk;
 
 const USB_VID: u16 = 0x303A;
 const USB_PID: u16 = 0x1001;
 
 const VENDOR_DESCRIPTOR_JTAG_CAPABILITIES: u16 = 0x2000;
 
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub(super) enum RegisterState {
-    Select,
-    Capture,
-    Shift,
-    Exit1,
-    Pause,
-    Exit2,
-    Update,
-}
-
-impl RegisterState {
-    fn step_toward(self, target: Self) -> bool {
-        match self {
-            Self::Select => false,
-            Self::Capture if target == Self::Shift => false,
-            Self::Exit1 if target == Self::Pause => false,
-            Self::Exit2 if target == Self::Shift => false,
-            Self::Update => unreachable!(),
-            _ => true,
-        }
-    }
-
-    fn update(self, tms: bool) -> Self {
-        if tms {
-            match self {
-                Self::Capture | Self::Shift => Self::Exit1,
-                Self::Exit1 | Self::Exit2 => Self::Update,
-                Self::Pause => Self::Exit2,
-                Self::Select => unreachable!(),
-                Self::Update => unreachable!(),
-            }
-        } else {
-            match self {
-                Self::Select => Self::Capture,
-                Self::Capture | Self::Shift => Self::Shift,
-                Self::Exit1 | Self::Pause => Self::Pause,
-                Self::Exit2 => Self::Shift,
-                Self::Update => unreachable!(),
-            }
-        }
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Debug)]
-pub(super) enum JtagState {
-    Reset,
-    Idle,
-    Dr(RegisterState),
-    Ir(RegisterState),
-}
-
-impl JtagState {
-    fn step_toward(self, target: Self) -> Option<bool> {
-        let tms = match self {
-            state if target == state => return None,
-            Self::Reset => true,
-            Self::Idle => true,
-            Self::Dr(RegisterState::Select) => !matches!(target, Self::Dr(_)),
-            Self::Ir(RegisterState::Select) => !matches!(target, Self::Ir(_)),
-            Self::Dr(RegisterState::Update) | Self::Ir(RegisterState::Update) => {
-                matches!(target, Self::Ir(_) | Self::Dr(_))
-            }
-            Self::Dr(state) => {
-                let next = if let Self::Dr(target) = target {
-                    target
-                } else {
-                    RegisterState::Update
-                };
-                state.step_toward(next)
-            }
-            Self::Ir(state) => {
-                let next = if let Self::Ir(target) = target {
-                    target
-                } else {
-                    RegisterState::Update
-                };
-                state.step_toward(next)
-            }
-        };
-        Some(tms)
-    }
-
-    fn update(&mut self, tms: bool) {
-        *self = match *self {
-            Self::Reset if tms => Self::Idle,
-            Self::Reset => Self::Reset,
-            Self::Idle if tms => Self::Dr(RegisterState::Select),
-            Self::Idle => Self::Idle,
-            Self::Dr(RegisterState::Select) if tms => Self::Ir(RegisterState::Select),
-            Self::Ir(RegisterState::Select) if tms => Self::Reset,
-            Self::Dr(RegisterState::Update) | Self::Ir(RegisterState::Update) => {
-                if tms {
-                    Self::Dr(RegisterState::Select)
-                } else {
-                    Self::Idle
-                }
-            }
-            Self::Dr(state) => Self::Dr(state.update(tms)),
-            Self::Ir(state) => Self::Ir(state.update(tms)),
-        };
-    }
-}
+const USB_REQUEST_GET_DESCRIPTOR: u8 = 0x06;
 
 pub(super) struct ProtocolHandler {
-    /// The USB device handle.
-    device_handle: rusb::DeviceHandle<rusb::Context>,
+    // The USB device handle.
+    device_handle: nusb::Interface,
 
     /// The command in the queue and their additional repetitions.
     /// For now we do one command at a time.
@@ -176,29 +75,18 @@ impl Debug for ProtocolHandler {
 }
 
 impl ProtocolHandler {
-    pub fn new_from_selector(
-        selector: impl Into<DebugProbeSelector>,
-    ) -> Result<Self, ProbeCreationError> {
-        let selector = selector.into();
-
-        let context = Context::new()?;
-
-        tracing::debug!("Acquired libusb context.");
-
-        let device = context
-            .devices()?
-            .iter()
+    pub fn new_from_selector(selector: &DebugProbeSelector) -> Result<Self, ProbeCreationError> {
+        let device = nusb::list_devices()
+            .map_err(ProbeCreationError::Usb)?
             .filter(is_espjtag_device)
             .find_map(|device| {
-                let descriptor = device.device_descriptor().ok()?;
                 // First match the VID & PID.
-                if selector.vendor_id == descriptor.vendor_id()
-                    && selector.product_id == descriptor.product_id()
+                if selector.vendor_id == device.vendor_id()
+                    && selector.product_id == device.product_id()
                 {
                     // If the VID & PID match, match the serial if one was given.
                     if let Some(serial) = &selector.serial_number {
-                        let sn_str = read_serial_number(&device, &descriptor).ok();
-                        if sn_str.as_ref() == Some(serial) {
+                        if device.serial_number() == Some(serial) {
                             Some(device)
                         } else {
                             None
@@ -213,31 +101,30 @@ impl ProtocolHandler {
             })
             .map_or(Err(ProbeCreationError::NotFound), Ok)?;
 
-        let mut device_handle = device.open()?;
+        let device_handle = device.open().map_err(ProbeCreationError::Usb)?;
 
         tracing::debug!("Aquired handle for probe");
 
-        let config = device.config_descriptor(USB_CONFIGURATION)?;
+        let config = device_handle.configurations().next().unwrap();
 
         tracing::debug!("Active config descriptor: {:?}", &config);
 
-        let descriptor = device.device_descriptor()?;
-
-        tracing::debug!("Device descriptor: {:?}", &descriptor);
-
-        let mut ep_out = None;
-        let mut ep_in = None;
+        let mut found = None;
 
         for interface in config.interfaces() {
-            tracing::trace!("Interface {}", interface.number());
-            let descriptor = interface.descriptors().next();
+            tracing::trace!("Interface {}", interface.interface_number());
+
+            let mut ep_out = None;
+            let mut ep_in = None;
+
+            let descriptor = interface.alt_settings().next();
             if let Some(descriptor) = descriptor {
-                if descriptor.class_code() == USB_DEVICE_CLASS
-                    && descriptor.sub_class_code() == USB_DEVICE_SUBCLASS
-                    && descriptor.protocol_code() == USB_DEVICE_PROTOCOL
+                if descriptor.class() == USB_DEVICE_CLASS
+                    && descriptor.subclass() == USB_DEVICE_SUBCLASS
+                    && descriptor.protocol() == USB_DEVICE_PROTOCOL
                 {
-                    for endpoint in descriptor.endpoint_descriptors() {
-                        tracing::trace!("Endpoint {}: {}", endpoint.number(), endpoint.address());
+                    for endpoint in descriptor.endpoints() {
+                        tracing::trace!("Endpoint {}", endpoint.address());
                         if endpoint.transfer_type() == USB_DEVICE_TRANSFER_TYPE {
                             if endpoint.direction() == Direction::In {
                                 ep_in = Some(endpoint.address());
@@ -252,34 +139,37 @@ impl ProtocolHandler {
             if let (Some(ep_in), Some(ep_out)) = (ep_in, ep_out) {
                 tracing::debug!(
                     "Claiming interface {} with IN EP {} and OUT EP {}.",
-                    interface.number(),
+                    interface.interface_number(),
                     ep_in,
                     ep_out
                 );
-                device_handle.claim_interface(interface.number())?;
+
+                let iface = device_handle
+                    .claim_interface(interface.interface_number())
+                    .map_err(ProbeCreationError::Usb)?;
+
+                found = Some((iface, ep_in, ep_out));
+                break;
             }
         }
 
-        if let (Some(_), Some(_)) = (ep_in, ep_out) {
-        } else {
+        let Some((iface, ep_in, ep_out)) = found else {
             return Err(ProbeCreationError::ProbeSpecific(
                 "USB interface or endpoints could not be found.".into(),
             ));
-        }
+        };
 
-        let mut buffer = [0; 255];
-        device_handle.read_control(
-            request_type(
-                rusb::Direction::In,
-                rusb::RequestType::Standard,
-                rusb::Recipient::Device,
-            ),
-            rusb::constants::LIBUSB_REQUEST_GET_DESCRIPTOR,
-            VENDOR_DESCRIPTOR_JTAG_CAPABILITIES,
-            0,
-            &mut buffer,
-            USB_TIMEOUT,
-        )?;
+        let control = ControlIn {
+            recipient: nusb::transfer::Recipient::Device,
+            control_type: nusb::transfer::ControlType::Standard,
+            request: USB_REQUEST_GET_DESCRIPTOR,
+            value: VENDOR_DESCRIPTOR_JTAG_CAPABILITIES,
+            index: 0,
+            length: 255,
+        };
+        let buffer = iface
+            .read_control(control, USB_TIMEOUT)
+            .map_err(ProbeCreationError::Usb)?;
 
         let mut base_speed_khz = 1000;
         let mut div_min = 1;
@@ -317,13 +207,12 @@ impl ProtocolHandler {
         tracing::debug!("Succesfully attached to ESP USB JTAG.");
 
         Ok(Self {
-            device_handle,
+            device_handle: iface,
             command_queue: None,
             output_buffer: Vec::with_capacity(OUT_BUFFER_SIZE),
             response: BitVec::new(),
-            // The following expects are okay as we check that the values we call them on are `Some`.
-            ep_out: ep_out.expect("This is a bug. Please report it."),
-            ep_in: ep_in.expect("This is a bug. Please report it."),
+            ep_out,
+            ep_in,
             pending_in_bits: 0,
 
             base_speed_khz,
@@ -335,42 +224,19 @@ impl ProtocolHandler {
     }
 
     pub(super) fn jtag_move_to_state(&mut self, target: JtagState) -> Result<(), DebugProbeError> {
+        tracing::trace!("Changing state: {:?} -> {:?}", self.jtag_state, target);
         while let Some(tms) = self.jtag_state.step_toward(target) {
-            self.jtag_io_async([tms], [false], false)?;
+            self.schedule_jtag_scan([tms], [false], [false])?;
         }
-        tracing::debug!("In state: {:?}", self.jtag_state);
+        tracing::trace!("In state: {:?}", self.jtag_state);
         Ok(())
     }
 
     /// Put a bit on TDI and possibly read one from TDO.
-    pub fn jtag_io(
-        &mut self,
-        tms: impl IntoIterator<Item = bool>,
-        tdi: impl IntoIterator<Item = bool>,
-        cap: bool,
-    ) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
-        self.jtag_io_async(tms, tdi, cap)?;
-        self.flush()
-    }
-
-    /// Put a bit on TDI and possibly read one from TDO.
     /// to receive the bytes from this operations call [`ProtocolHandler::flush`]
     ///
     /// Note that if the internal buffer is exceeded bytes will be automatically flushed to usb device
-    pub fn jtag_io_async(
-        &mut self,
-        tms: impl IntoIterator<Item = bool>,
-        tdi: impl IntoIterator<Item = bool>,
-        cap: bool,
-    ) -> Result<(), DebugProbeError> {
-        self.jtag_io_async2(tms, tdi, std::iter::repeat(cap))
-    }
-
-    /// Put a bit on TDI and possibly read one from TDO.
-    /// to receive the bytes from this operations call [`ProtocolHandler::flush`]
-    ///
-    /// Note that if the internal buffer is exceeded bytes will be automatically flushed to usb device
-    pub fn jtag_io_async2(
+    pub fn schedule_jtag_scan(
         &mut self,
         tms: impl IntoIterator<Item = bool>,
         tdi: impl IntoIterator<Item = bool>,
@@ -529,7 +395,7 @@ impl ProtocolHandler {
             let bytes = self
                 .device_handle
                 .write_bulk(self.ep_out, commands, USB_TIMEOUT)
-                .map_err(|e| DebugProbeError::Usb(Some(Box::new(e))))?;
+                .map_err(DebugProbeError::Usb)?;
 
             commands = &commands[bytes..];
         }
@@ -566,7 +432,7 @@ impl ProtocolHandler {
                     count,
                     self.pending_in_bits,
                 );
-                DebugProbeError::Usb(Some(Box::new(e)))
+                DebugProbeError::Usb(e)
             })?;
 
         let bits_in_buffer = self.pending_in_bits.min(read_bytes * 8);
@@ -616,68 +482,28 @@ impl From<Command> for u8 {
     }
 }
 
-/// Try to read the serial number of a USB device.
-fn read_serial_number<T: rusb::UsbContext>(
-    device: &rusb::Device<T>,
-    descriptor: &rusb::DeviceDescriptor,
-) -> Result<String, rusb::Error> {
-    let timeout = Duration::from_millis(100);
-
-    let handle = device.open()?;
-    let language = handle
-        .read_languages(timeout)?
-        .get(0)
-        .cloned()
-        .ok_or(rusb::Error::BadDescriptor)?;
-    handle.read_serial_number_string(language, descriptor, timeout)
-}
-
-pub(super) fn is_espjtag_device<T: UsbContext>(device: &Device<T>) -> bool {
+pub(super) fn is_espjtag_device(device: &DeviceInfo) -> bool {
     // Check the VID/PID.
-    if let Ok(descriptor) = device.device_descriptor() {
-        descriptor.vendor_id() == USB_VID && descriptor.product_id() == USB_PID
-    } else {
-        false
-    }
+    device.vendor_id() == USB_VID && device.product_id() == USB_PID
 }
 
 #[tracing::instrument(skip_all)]
-pub fn list_espjtag_devices() -> Vec<DebugProbeInfo> {
-    rusb::Context::new()
-        .and_then(|context| context.devices())
-        .map_or(vec![], |devices| {
-            devices
-                .iter()
-                .filter(is_espjtag_device)
-                .filter_map(|device| {
-                    let descriptor = device.device_descriptor().ok()?;
+pub(super) fn list_espjtag_devices() -> Vec<DebugProbeInfo> {
+    let Ok(devices) = nusb::list_devices() else {
+        return vec![];
+    };
 
-                    let sn_str = match read_serial_number(&device, &descriptor) {
-                        Ok(serial_number) => Some(serial_number),
-                        Err(e) => {
-                            // Reading the serial number can fail, e.g. if the driver for the probe
-                            // is not installed. In this case we can still list the probe,
-                            // just without serial number.
-                            tracing::debug!(
-                                "Failed to read serial number of device {:04x}:{:04x} : {}",
-                                descriptor.vendor_id(),
-                                descriptor.product_id(),
-                                e
-                            );
-                            tracing::debug!("This might be happening because of a missing driver.");
-                            None
-                        }
-                    };
-
-                    Some(DebugProbeInfo::new(
-                        "ESP JTAG".to_string(),
-                        descriptor.vendor_id(),
-                        descriptor.product_id(),
-                        sn_str,
-                        DebugProbeType::EspJtag,
-                        None,
-                    ))
-                })
-                .collect::<Vec<_>>()
+    devices
+        .filter(is_espjtag_device)
+        .map(|device| {
+            DebugProbeInfo::new(
+                "ESP JTAG".to_string(),
+                device.vendor_id(),
+                device.product_id(),
+                device.serial_number().map(Into::into),
+                &EspUsbJtagSource,
+                None,
+            )
         })
+        .collect()
 }
