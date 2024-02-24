@@ -3,8 +3,6 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
 ## [0.22.0]
 
 Released 2024-01-03
@@ -16,7 +14,7 @@ Released 2024-01-03
  - target-gen: Add support for Cortex-M55 and Cortex-M85 (#1959) by @Tiwalun
  - Add OpenTitan target file with description of the Earl Grey chip. (#1980) by @jwnrt
  - Added support for riscv semihosting SYS_EXIT syscall.
-   
+
    Please note that probe-rs with espflash < 3.0 will probably fail to flash a binary containing semihosting calls due to https://github.com/esp-rs/espflash/issues/522 (#1901) by @t-moe
 
  - Add support for the esp32c2 target (#1869) (#1869) by @SergioGasquez
@@ -26,7 +24,7 @@ Released 2024-01-03
  - Xtensa: Add flashing support for the esp32s3 (#1956) by @bugadani
  - The debugger REPL commands now have an implementation for `backtrace`. The stacktrace is serialized using the yaml format. (#1918) by @noppej
  - Allow specifying the default `Format` for a target
-       
+
    Refactor the target definition to allow specifying the default Format
    for a given target. By default all targets `default_target` is `Elf`,
    except for the esp32* targets which are now `Idf`. (#1886) by @MabezDev
@@ -48,7 +46,7 @@ Released 2024-01-03
 ### Changed
 
  - Continue running the core if an unsupported semihosting call occured.
-   
+
    Previously, `probe-rs run` would exit with "the CPU halted unexpectedly", whenever an unknown semihosting operation occurred.
    With this change, `probe-rs run` will print a warning and then automatically continue the core. (#1901) by @t-moe
 
@@ -56,7 +54,7 @@ Released 2024-01-03
  - Renamed `JTAGAccess::get_idle_cycles` to `idle_cycles` and removed redundant inherent fns (#1924) by @bugadani
  - Reduced logging level for custom debug sequences (#1882) by @ianrrees
  - The `dump` command that is used by the VSCode REPL can now be used without specifying memory regions.
-   
+
    The resulting coredump will include all the memory regions required to unwind the in-scope functions and variables. (#1930) by @noppej
 
  - For CLI builds, statically link to libusb to make installation of precompiled binaries easier. (#1830) by @Tiwalun
@@ -78,7 +76,7 @@ Released 2024-01-03
 ### Fixed
 
  - Disable the second core on LPC55S69 to fix #1802. (#1823) by @Tiwalun
- - Fix LPC55S69 reset sequence 
+ - Fix LPC55S69 reset sequence
    Fix LPC55S69 attach without disturbing target (#1907) by @9names
 
  - * Improved handling of source file paths in debugger, don't assume paths in the debug information
@@ -96,8 +94,8 @@ Released 2024-01-03
  - Fix minor bugs of WCH-Link implementation, add new probe varient. (#1875) by @andelf
  - Flash loader will now properly flash all bytes (#1951) by @bugadani
  - Update debug sequence for LPC55S69 with newest from pack, fixes an issue where the chip would not reset properly. (#1832) by @Tiwalun
- - Change from openSSL to rustls. 
-   
+ - Change from openSSL to rustls.
+
    The prebuilt binaries depended on the system openSSL installation on Linux.
    This meant that they required openSSL1, which is not supported e.g. on Ubuntu 22.04.
    Changing to rustls removes this dependency. (#1828) by @Tiwalun
@@ -140,7 +138,7 @@ Released 2023-10-04
 
 ### Added
 
-- Added Target for MSPM0L (#1789) 
+- Added Target for MSPM0L (#1789)
 - Support for EFM32 Happy Gecko MCUs (#1747)
 - Added RA4M1 series target, R7FA4M1AB. (#1706)
 - Support for NXP i.MX RT500 series chips: MIMXRT595S, MIMXRT555S, MIMXRT533S (#1642)
