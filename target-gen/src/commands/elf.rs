@@ -88,7 +88,6 @@ pub fn cmd_elf(
                     }),
                 }],
                 part: None,
-                svd: None,
                 name: "<chip name>".to_owned(),
                 memory_map: vec![
                     MemoryRegion::Nvm(NvmRegion {
@@ -109,6 +108,7 @@ pub fn cmd_elf(
                 rtt_scan_ranges: None,
                 jtag: None,
                 default_binary_format: None,
+                svd: None,
             }],
             flash_algorithms: vec![algorithm],
             source: BuiltIn,

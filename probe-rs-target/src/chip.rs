@@ -45,7 +45,7 @@ pub struct Chip {
     /// The `PART` register of the chip.
     /// This value can be determined via the `cli info` command.
     pub part: Option<u16>,
-    /// An URL to the SVD file for this chip.
+    /// A URI to an SVD file.
     pub svd: Option<String>,
     /// The cores available on the chip.
     #[serde(default)]
@@ -91,7 +91,6 @@ impl Chip {
         Chip {
             name: name.to_string(),
             part: None,
-            svd: None,
             cores: vec![Core {
                 name: "main".to_string(),
                 core_type,
@@ -102,6 +101,7 @@ impl Chip {
             rtt_scan_ranges: None,
             jtag: None,
             default_binary_format: Some(BinaryFormat::Raw),
+            svd: None,
         }
     }
 }

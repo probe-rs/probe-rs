@@ -188,6 +188,7 @@ cargo-config2 = { version = "0.1.24", optional = true }
 bincode = "1"
 probe-rs-target = { workspace = true }
 serde_yaml = "0.9"
+anyhow = "1"
 
 # CLI-only
 git-version = { version = "0.3", optional = true }

@@ -1,10 +1,18 @@
+use std::{
+    collections::HashMap,
+    fs::{read, read_to_string},
+    path::{Path, PathBuf},
+};
+
 use crate::CoreAccessOptions;
 
 use super::chip::Chip;
 use super::flash_algorithm::RawFlashAlgorithm;
+use base64::Engine;
 use jep106::JEP106Code;
 
 use serde::{Deserialize, Serialize};
+use serde_yaml::{Mapping, Value};
 
 /// Source of a target description.
 ///
@@ -185,6 +193,132 @@ fn default_source() -> TargetDescriptionSource {
 }
 
 impl ChipFamily {
+    /// Loads a `ChipFamily` from a file or directory.
+    pub fn load(path: impl AsRef<Path>) -> Result<Self, LoadError> {
+        let path = path.as_ref();
+        let value = if path.is_dir() {
+            // We found a compound target definition, so we fetch all the target yamls,
+            // merge them in order and load them finally.
+            let mut config_parts = HashMap::new();
+            let mut flash_algorithms = HashMap::new();
+            for entry in
+                std::fs::read_dir(path).map_err(|_| LoadError::TargetDirRead(path.into()))?
+            {
+                let entry = entry.map_err(LoadError::DirEntryRead)?;
+                let path = entry.path();
+                // We only grab yaml files. Directories are ignored.
+                if let Some(extension) = path.extension() {
+                    if extension.eq_ignore_ascii_case("yaml") {
+                        let path_clone = path.clone();
+                        let string = read_to_string(&path)
+                            .map_err(|_| LoadError::TargetDefinitionFileRead(path_clone))?;
+                        let yaml: Result<Value, _> = serde_yaml::from_str(&string);
+                        config_parts.insert(
+                            path.file_stem()
+                                .map(|s: &std::ffi::OsStr| s.to_string_lossy())
+                                .unwrap_or_else(|| "<unknown>".into())
+                                .to_string(),
+                            yaml.map_err(|parent| LoadError::TargetDefinitionFileParse {
+                                path: path.clone(),
+                                parent,
+                            })?,
+                        );
+                    }
+
+                    if extension.eq_ignore_ascii_case("elf") {
+                        let path_clone = path.clone();
+                        let string = read(&path)
+                            .map_err(|_| LoadError::TargetDefinitionFileRead(path_clone))?;
+                        flash_algorithms.insert(
+                            path.file_stem()
+                                .map(|s: &std::ffi::OsStr| s.to_string_lossy())
+                                .unwrap_or_else(|| "<unknown>".into())
+                                .to_string(),
+                            string,
+                        );
+                    }
+                }
+            }
+            let mut to_merge = vec![];
+            if let Some(yaml) = config_parts.remove("generated") {
+                to_merge.push(yaml)
+            }
+            for (_, yaml) in config_parts {
+                to_merge.push(yaml)
+            }
+
+            let mut family: Value = Self::merge(to_merge)?;
+
+            for (name, bytes) in flash_algorithms {
+                let algorithm = family["flash_algorithms"]
+                    .as_sequence_mut()
+                    .unwrap()
+                    .iter_mut()
+                    .find(|a| a.get("name").unwrap().as_str().unwrap() == name);
+                let Some(algorithm) = algorithm else {
+                    return Err(LoadError::ExcessFlashAlgorithm(name));
+                };
+                algorithm["instructions"] =
+                    Value::String(base64::engine::general_purpose::STANDARD.encode(bytes));
+            }
+
+            family
+        } else if let Some(extension) = path.extension() {
+            if extension.eq_ignore_ascii_case("yaml") {
+                // We found a bare target yaml (old style) so we load it.
+                let string = read_to_string(path)
+                    .map_err(|_| LoadError::TargetDefinitionFileRead(path.into()))?;
+
+                serde_yaml::from_str(&string).map_err(|parent| {
+                    LoadError::TargetDefinitionFileParse {
+                        path: path.into(),
+                        parent,
+                    }
+                })?
+            } else {
+                return Err(LoadError::NotAYaml(path.into()));
+            }
+        } else {
+            return Err(LoadError::UnrecongnizedFile(path.into()));
+        };
+
+        serde_yaml::from_value(value).map_err(LoadError::UnexpectedYamlFormat)
+    }
+
+    /// Merges all given yaml payloads.
+    fn merge(files: Vec<Value>) -> Result<Value, LoadError> {
+        let mut value = Value::Null;
+        for new in files {
+            if let Value::Mapping(new) = &new {
+                if let Value::Mapping(old) = &mut value {
+                    Self::merge_object(old, new);
+                    continue;
+                }
+            }
+            value = new;
+        }
+        Ok(value)
+    }
+
+    /// Merges two yaml mappings.
+    fn merge_object(value: &mut Mapping, insert: &Mapping) {
+        for (key, new) in insert.into_iter() {
+            let old = value.entry(key.clone()).or_insert(Value::Null);
+
+            if let Value::Mapping(old) = old {
+                if let Value::Mapping(new) = new {
+                    Self::merge_object(old, new);
+                    continue;
+                }
+            }
+            if &Value::Null == new {
+                value.remove(key);
+                continue;
+            }
+            *old = new.clone();
+        }
+    }
+
     /// Validates the [`ChipFamily`] such that probe-rs can make assumptions about the correctness without validating thereafter.
     ///
     /// This method should be called right after the [`ChipFamily`] is created!
@@ -301,9 +435,7 @@ impl ChipFamily {
 
         Ok(())
     }
-}
 
-impl ChipFamily {
     /// Get the different [Chip]s which are part of this
     /// family.
     pub fn variants(&self) -> &[Chip] {
@@ -319,5 +451,48 @@ impl ChipFamily {
     pub fn get_algorithm(&self, name: impl AsRef<str>) -> Option<&RawFlashAlgorithm> {
         let name = name.as_ref();
         self.flash_algorithms.iter().find(|elem| elem.name == name)
+    }
+}
+
+/// An error while loading a chip family ocurred.
+#[derive(Debug, thiserror::Error)]
+pub enum LoadError {
+    #[error("flash algorithm ELF ({0}) found without an entry in the yaml")]
+    ExcessFlashAlgorithm(String),
+    #[error("target dir at {0:?} could not be read")]
+    TargetDirRead(PathBuf),
+    #[error("dir entry could not be read")]
+    DirEntryRead(#[source] std::io::Error),
+    #[error("target definition file at {0:?} could not be read")]
+    TargetDefinitionFileRead(PathBuf),
+    #[error("target definition file at {path:?} could not be parsed")]
+    TargetDefinitionFileParse {
+        path: PathBuf,
+        #[source]
+        parent: serde_yaml::Error,
+    },
+    #[error("target file at {0:?} is not a yaml")]
+    NotAYaml(PathBuf),
+    #[error("target file at {0:?} could not be read")]
+    TargetFileRead(PathBuf),
+    #[error("unrecognized target file at {0:?}")]
+    UnrecongnizedFile(PathBuf),
+    #[error("The yaml format did not match the expected one")]
+    UnexpectedYamlFormat(#[source] serde_yaml::Error),
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::ChipFamily;
+
+    #[test]
+    fn basic_merge() {
+        let values = vec![
+            serde_yaml::from_str(r#"{ a: 65, b: { b: 66 }, c: { c: 67 } }"#).unwrap(),
+            serde_yaml::from_str(r#"{ a: null, b: { a: 65 }, c: 67 }"#).unwrap(),
+        ];
+
+        let merged = ChipFamily::merge(values).unwrap();
+        insta::assert_yaml_snapshot!(merged);
     }
 }
