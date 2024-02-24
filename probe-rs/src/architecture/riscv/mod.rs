@@ -77,6 +77,7 @@ impl<'probe> Riscv32<'probe> {
 
         // set resume request.
         let mut dmcontrol: Dmcontrol = self.interface.read_dm_register()?;
+        dmcontrol.set_dmactive(true);
         dmcontrol.set_resumereq(true);
         self.interface.write_dm_register(dmcontrol)?;
 
@@ -262,6 +263,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         tracing::debug!("Resetting core, setting hartreset bit");
 
         let mut dmcontrol: Dmcontrol = self.interface.read_dm_register()?;
+        dmcontrol.set_dmactive(true);
         dmcontrol.set_hartreset(true);
         dmcontrol.set_haltreq(true);
 
@@ -274,6 +276,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             tracing::debug!("Clearing hartreset bit");
             // Reset is performed by setting the bit high, and then low again
             let mut dmcontrol = readback;
+            dmcontrol.set_dmactive(true);
             dmcontrol.set_hartreset(false);
 
             self.interface.write_dm_register(dmcontrol)?;
@@ -738,6 +741,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
         let mut dmcontrol: Dmcontrol = self.interface.read_dm_register()?;
 
+        dmcontrol.set_dmactive(true);
         dmcontrol.set_resethaltreq(true);
 
         self.interface.write_dm_register(dmcontrol)?;
@@ -754,6 +758,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
 
         let mut dmcontrol: Dmcontrol = self.interface.read_dm_register()?;
 
+        dmcontrol.set_dmactive(true);
         dmcontrol.set_clrresethaltreq(true);
 
         self.interface.write_dm_register(dmcontrol)?;
