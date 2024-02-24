@@ -74,10 +74,6 @@ Released 2024-02-24
 - Removed the `ftdi` and `ftdi-vendored` features (#2077) by @bugadani
 - Removed (hidden) private Xtensa APIs (#2051) by @bugadani
 
-## [0.23.0]
-
-Released 2024-02-24
-
 ## [0.22.0]
 
 Released 2024-01-03
