@@ -426,8 +426,6 @@ impl RiscvCommunicationInterface {
     }
 
     fn enter_debug_mode(&mut self) -> Result<(), RiscvError> {
-        // We need a jtag interface
-
         tracing::debug!("Building RISC-V interface");
 
         // Reset error bits from previous connections

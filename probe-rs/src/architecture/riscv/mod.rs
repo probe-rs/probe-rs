@@ -311,7 +311,6 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         }
 
         // acknowledge the reset, clear the halt request
-        let mut dmcontrol = Dmcontrol(0);
         dmcontrol.set_hartreset(false);
         dmcontrol.set_ndmreset(false);
         dmcontrol.set_ackhavereset(true);
