@@ -593,8 +593,6 @@ pub struct Armv7m<'probe> {
     state: &'probe mut CortexMState,
 
     sequence: Arc<dyn ArmDebugSequence>,
-
-    id: usize,
 }
 
 impl<'probe> Armv7m<'probe> {
@@ -602,7 +600,6 @@ impl<'probe> Armv7m<'probe> {
         mut memory: Box<dyn ArmProbe + 'probe>,
         state: &'probe mut CortexMState,
         sequence: Arc<dyn ArmDebugSequence>,
-        id: usize,
     ) -> Result<Self, Error> {
         if !state.initialized() {
             // determine current state
@@ -638,7 +635,6 @@ impl<'probe> Armv7m<'probe> {
             memory,
             state,
             sequence,
-            id,
         })
     }
 
@@ -828,15 +824,15 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
 
     fn step(&mut self) -> Result<CoreInformation, Error> {
         // First check if we stopped on a breakpoint, because this requires special handling before we can continue.
-        let pc_before_step = self.read_core_reg(self.program_counter().into())?;
-        let was_breakpoint = if matches!(
+        let breakpoint_at_pc = if matches!(
             self.state.current_state,
             CoreStatus::Halted(HaltReason::Breakpoint(_))
         ) {
+            let pc_before_step = self.read_core_reg(self.program_counter().into())?;
             self.enable_breakpoints(false)?;
-            true
+            Some(pc_before_step)
         } else {
-            false
+            None
         };
 
         let mut dhcsr = Dhcsr(self.memory.read_word_32(Dhcsr::get_mmio_address())?);
@@ -868,7 +864,7 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         let mut pc_after_step = self.read_core_reg(self.program_counter().into())?;
 
         // Re-enable breakpoints before we continue.
-        if was_breakpoint {
+        if let Some(pc_before_step) = breakpoint_at_pc {
             // If we were stopped on a software breakpoint, then we need to manually advance the PC, or else we will be stuck here forever.
             if pc_before_step == pc_after_step
                 && !self
@@ -1051,16 +1047,12 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
         Ok(InstructionSet::Thumb2)
     }
 
-    fn fpu_support(&mut self) -> Result<bool, crate::error::Error> {
+    fn fpu_support(&mut self) -> Result<bool, Error> {
         Ok(self.state.fp_present)
     }
 
-    fn floating_point_register_count(&mut self) -> Result<usize, crate::error::Error> {
+    fn floating_point_register_count(&mut self) -> Result<usize, Error> {
         Ok(32)
-    }
-
-    fn id(&self) -> usize {
-        self.id
     }
 
     #[tracing::instrument(skip(self))]
@@ -1136,7 +1128,7 @@ impl<'probe> MemoryInterface for Armv7m<'probe> {
         self.memory.supports_native_64bit_access()
     }
 
-    fn read_word_64(&mut self, address: u64) -> Result<u64, crate::error::Error> {
+    fn read_word_64(&mut self, address: u64) -> Result<u64, Error> {
         self.memory
             .read_word_64(address)
             .map_err(From::<ArmError>::from)
@@ -1148,13 +1140,19 @@ impl<'probe> MemoryInterface for Armv7m<'probe> {
             .map_err(From::<ArmError>::from)
     }
 
+    fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
+        self.memory
+            .read_word_16(address)
+            .map_err(From::<ArmError>::from)
+    }
+
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
         self.memory
             .read_word_8(address)
             .map_err(From::<ArmError>::from)
     }
 
-    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), crate::error::Error> {
+    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), Error> {
         self.memory
             .read_64(address, data)
             .map_err(From::<ArmError>::from)
@@ -1166,13 +1164,19 @@ impl<'probe> MemoryInterface for Armv7m<'probe> {
             .map_err(From::<ArmError>::from)
     }
 
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
+        self.memory
+            .read_16(address, data)
+            .map_err(From::<ArmError>::from)
+    }
+
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
         self.memory
             .read_8(address, data)
             .map_err(From::<ArmError>::from)
     }
 
-    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), crate::error::Error> {
+    fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
         self.memory
             .write_word_64(address, data)
             .map_err(From::<ArmError>::from)
@@ -1184,13 +1188,19 @@ impl<'probe> MemoryInterface for Armv7m<'probe> {
             .map_err(From::<ArmError>::from)
     }
 
+    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
+        self.memory
+            .write_word_16(address, data)
+            .map_err(From::<ArmError>::from)
+    }
+
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
         self.memory
             .write_word_8(address, data)
             .map_err(From::<ArmError>::from)
     }
 
-    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), crate::error::Error> {
+    fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), Error> {
         self.memory
             .write_64(address, data)
             .map_err(From::<ArmError>::from)
@@ -1199,6 +1209,12 @@ impl<'probe> MemoryInterface for Armv7m<'probe> {
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
         self.memory
             .write_32(address, data)
+            .map_err(From::<ArmError>::from)
+    }
+
+    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
+        self.memory
+            .write_16(address, data)
             .map_err(From::<ArmError>::from)
     }
 

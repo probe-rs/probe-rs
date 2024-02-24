@@ -242,31 +242,36 @@ impl Xdm {
         // We take now to avoid a possibly recursive call to clear before it's time.
         let _idxs = std::mem::take(&mut self.status_idxs);
 
-        match self.probe.write_register_batch(&queue) {
-            Ok(result) => self.jtag_results.merge_from(result),
-            Err(e) => {
-                match e.error {
-                    ProbeRsError::Xtensa(XtensaError::XdmError(Error::Xdm(
-                        DebugRegisterError::Busy,
-                    ))) => {
-                        // The specific nexus register may need some longer delay. For now we just
-                        // retry, but we should probably add some no-ops later.
-                    }
-                    ProbeRsError::Xtensa(XtensaError::XdmError(Error::ExecBusy)) => {
-                        // The instruction is still executing. We don't do anything except clear the
-                        // error and retry.
-                        // While this is recursive, this register read-write does not involve
-                        // instructions so we can't end up with an unbounded recursion here.
-                        self.clear_exec_exception()?;
-                    }
-                    ProbeRsError::Probe(error) => return Err(error.into()),
-                    ProbeRsError::Xtensa(error) => return Err(error),
-                    other => panic!("Unexpected error: {other}"),
+        while !queue.is_empty() {
+            match self.probe.write_register_batch(&queue) {
+                Ok(result) => {
+                    self.jtag_results.merge_from(result);
+                    return Ok(());
                 }
+                Err(e) => {
+                    match e.error {
+                        ProbeRsError::Xtensa(XtensaError::XdmError(Error::Xdm(
+                            DebugRegisterError::Busy,
+                        ))) => {
+                            // The specific nexus register may need some longer delay. For now we just
+                            // retry, but we should probably add some no-ops later.
+                        }
+                        ProbeRsError::Xtensa(XtensaError::XdmError(Error::ExecBusy)) => {
+                            // The instruction is still executing. We don't do anything except clear the
+                            // error and retry.
+                            // While this is recursive, this register read-write does not involve
+                            // instructions so we can't end up with an unbounded recursion here.
+                            self.clear_exec_exception()?;
+                        }
+                        ProbeRsError::Probe(error) => return Err(error.into()),
+                        ProbeRsError::Xtensa(error) => return Err(error),
+                        other => panic!("Unexpected error: {other}"),
+                    }
 
-                // queue up the remaining commands when we retry
-                queue.consume(e.results.len());
-                self.jtag_results.merge_from(e.results);
+                    // queue up the remaining commands when we retry
+                    queue.consume(e.results.len());
+                    self.jtag_results.merge_from(e.results);
+                }
             }
         }
 
@@ -277,15 +282,16 @@ impl Xdm {
         &mut self,
         index: DeferredResultIndex,
     ) -> Result<CommandResult, XtensaError> {
-        let result = match self.jtag_results.take(index) {
-            Ok(result) => result,
+        match self.jtag_results.take(index) {
+            Ok(result) => Ok(result),
             Err(index) => {
                 self.execute()?;
-                self.jtag_results.take(index).expect("This is a bug")
+                // We can lose data if `execute` fails.
+                self.jtag_results
+                    .take(index)
+                    .map_err(|_| XtensaError::BatchedResultNotAvailable)
             }
-        };
-
-        Ok(result)
+        }
     }
 
     fn do_nexus_op(&mut self, nar: u8, ndr: u32, transform: TransformFn) -> DeferredResultIndex {
@@ -379,7 +385,7 @@ impl Xdm {
     fn read_nexus_register<R: NexusRegister>(&mut self) -> Result<R, XtensaError> {
         let bits_reader = self.schedule_read_nexus_register::<R>();
 
-        let bits = self.read_deferred_result(bits_reader)?.as_u32();
+        let bits = self.read_deferred_result(bits_reader)?.into_u32();
         let reg = R::from_bits(bits)?;
         tracing::trace!("Read: {:?}", reg);
         Ok(reg)

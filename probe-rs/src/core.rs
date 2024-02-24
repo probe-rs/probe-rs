@@ -21,7 +21,8 @@ use crate::{
 use anyhow::anyhow;
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
 use probe_rs_target::{
-    ArmCoreAccessOptions, MemoryRange, RiscvCoreAccessOptions, XtensaCoreAccessOptions,
+    ArmCoreAccessOptions, MemoryRange, MemoryRegion, RiscvCoreAccessOptions,
+    XtensaCoreAccessOptions,
 };
 use scroll::Pread;
 use std::{
@@ -53,9 +54,6 @@ pub struct CoreInformation {
 
 /// A generic interface to control a MCU core.
 pub trait CoreInterface: MemoryInterface {
-    /// Numerical ID of the core. Can be used as an argument to `Session::core()`.
-    fn id(&self) -> usize;
-
     /// Wait until the core is halted. If the core does not halt on its own,
     /// a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) error will be returned.
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), error::Error>;
@@ -375,6 +373,12 @@ impl MemoryInterface for CoreDump {
         Ok(data[0])
     }
 
+    fn read_word_16(&mut self, address: u64) -> Result<u16, crate::Error> {
+        let mut data = [0u16; 1];
+        self.read_memory_range(address, &mut data)?;
+        Ok(data[0])
+    }
+
     fn read_word_8(&mut self, address: u64) -> Result<u8, crate::Error> {
         let mut data = [0u8; 1];
         self.read_memory_range(address, &mut data)?;
@@ -387,6 +391,11 @@ impl MemoryInterface for CoreDump {
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), crate::Error> {
+        self.read_memory_range(address, data)?;
+        Ok(())
+    }
+
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), crate::Error> {
         self.read_memory_range(address, data)?;
         Ok(())
     }
@@ -404,6 +413,10 @@ impl MemoryInterface for CoreDump {
         todo!()
     }
 
+    fn write_word_16(&mut self, _address: u64, _data: u16) -> Result<(), crate::Error> {
+        todo!()
+    }
+
     fn write_word_8(&mut self, _address: u64, _data: u8) -> Result<(), crate::Error> {
         todo!()
     }
@@ -413,6 +426,10 @@ impl MemoryInterface for CoreDump {
     }
 
     fn write_32(&mut self, _address: u64, _data: &[u32]) -> Result<(), crate::Error> {
+        todo!()
+    }
+
+    fn write_16(&mut self, _address: u64, _data: &[u16]) -> Result<(), crate::Error> {
         todo!()
     }
 
@@ -459,6 +476,10 @@ impl<'probe> MemoryInterface for Core<'probe> {
         self.inner.read_word_32(address)
     }
 
+    fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
+        self.inner.read_word_16(address)
+    }
+
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
         self.inner.read_word_8(address)
     }
@@ -469,6 +490,10 @@ impl<'probe> MemoryInterface for Core<'probe> {
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
         self.inner.read_32(address, data)
+    }
+
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
+        self.inner.read_16(address, data)
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
@@ -487,6 +512,10 @@ impl<'probe> MemoryInterface for Core<'probe> {
         self.inner.write_word_32(addr, data)
     }
 
+    fn write_word_16(&mut self, addr: u64, data: u16) -> Result<(), Error> {
+        self.inner.write_word_16(addr, data)
+    }
+
     fn write_word_8(&mut self, addr: u64, data: u8) -> Result<(), Error> {
         self.inner.write_word_8(addr, data)
     }
@@ -497,6 +526,10 @@ impl<'probe> MemoryInterface for Core<'probe> {
 
     fn write_32(&mut self, addr: u64, data: &[u32]) -> Result<(), Error> {
         self.inner.write_32(addr, data)
+    }
+
+    fn write_16(&mut self, addr: u64, data: &[u16]) -> Result<(), Error> {
+        self.inner.write_16(addr, data)
     }
 
     fn write_8(&mut self, addr: u64, data: &[u8]) -> Result<(), Error> {
@@ -620,6 +653,10 @@ pub fn exception_handler_for_core(core_type: CoreType) -> Box<dyn ExceptionInter
 /// As soon as you did your atomic task (e.g. halt the core, read the core state and all other debug relevant info) you should drop this object,
 /// to allow potential other shareholders of the session struct to grab a core handle too.
 pub struct Core<'probe> {
+    id: usize,
+    name: &'probe str,
+    memory_regions: &'probe [MemoryRegion],
+
     inner: Box<dyn CoreInterface + 'probe>,
 }
 
@@ -630,10 +667,25 @@ impl<'probe> Core<'probe> {
     }
 
     /// Create a new [`Core`].
-    pub(crate) fn new(core: impl CoreInterface + 'probe) -> Core<'probe> {
+    pub(crate) fn new(
+        id: usize,
+        name: &'probe str,
+        memory_regions: &'probe [MemoryRegion],
+        core: impl CoreInterface + 'probe,
+    ) -> Core<'probe> {
         Self {
+            id,
+            name,
+            memory_regions,
             inner: Box::new(core),
         }
+    }
+
+    /// Return the memory regions associated with this core.
+    pub fn memory_regions(&self) -> impl Iterator<Item = &MemoryRegion> {
+        self.memory_regions
+            .iter()
+            .filter(|r| r.cores().iter().any(|m| m == self.name))
     }
 
     /// Creates a new [`CoreState`]
@@ -682,7 +734,7 @@ impl<'probe> Core<'probe> {
 
     /// Returns the ID of this core.
     pub fn id(&self) -> usize {
-        self.inner.id()
+        self.id
     }
 
     /// Wait until the core is halted. If the core does not halt on its own,
@@ -1011,10 +1063,6 @@ impl<'probe> Core<'probe> {
 }
 
 impl<'probe> CoreInterface for Core<'probe> {
-    fn id(&self) -> usize {
-        self.id()
-    }
-
     fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), error::Error> {
         self.wait_for_core_halted(timeout)
     }

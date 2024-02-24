@@ -34,6 +34,9 @@ pub enum XtensaError {
     /// The requested register is not available.
     #[error("The requested register is not available.")]
     RegisterNotAvailable,
+    /// The result index of a batched command is not available.
+    #[error("The requested data is not available due to a previous error.")]
+    BatchedResultNotAvailable,
 }
 
 impl From<XtensaError> for DebugProbeError {
@@ -182,7 +185,7 @@ impl XtensaCommunicationInterface {
                 Ok(())
             }
             Err(error) => Err(XtensaError::DebugProbe(DebugProbeError::Other(
-                anyhow::anyhow!("Error during reset: {:?}", error),
+                anyhow::anyhow!("Error during reset").context(error),
             ))),
         }
     }
@@ -252,8 +255,6 @@ impl XtensaCommunicationInterface {
 
         // An exception is generated at the beginning of an instruction that would overflow ICOUNT.
         self.schedule_write_register(ICount(-2_i32 as u32))?;
-
-        self.xdm.execute()?;
 
         self.resume()?;
         self.wait_for_core_halted(Duration::from_millis(100))?;
@@ -380,7 +381,7 @@ impl XtensaCommunicationInterface {
         register: impl Into<Register>,
     ) -> Result<u32, XtensaError> {
         let reader = self.schedule_read_register_untyped(register)?;
-        Ok(self.xdm.read_deferred_result(reader)?.as_u32())
+        Ok(self.xdm.read_deferred_result(reader)?.into_u32())
     }
 
     /// Schedules writing a register.
@@ -447,12 +448,12 @@ impl XtensaCommunicationInterface {
 
         tracing::debug!("Restoring register: {:?}", key);
 
-        if let Some(value) = self.state.saved_registers.get_mut(&key) {
-            let reader = value.take().unwrap();
-            let value = self.xdm.read_deferred_result(reader)?.as_u32();
-            self.write_register_untyped(key, value)?;
+        // Remove the result early, so an error here will not cause a panic in `restore_registers`.
+        if let Some(value) = self.state.saved_registers.remove(&key) {
+            let reader = value.unwrap();
+            let value = self.xdm.read_deferred_result(reader)?.into_u32();
 
-            self.state.saved_registers.remove(&key);
+            self.write_register_untyped(key, value)?;
         }
 
         Ok(())
@@ -485,8 +486,13 @@ impl XtensaCommunicationInterface {
                 .get_mut(&register)
                 .unwrap()
                 .take()
-                .unwrap();
-            let value = self.xdm.read_deferred_result(reader)?.as_u32();
+                .unwrap_or_else(|| {
+                    panic!(
+                        "Failed to get original value of dirty register {:?}. This is a bug.",
+                        register
+                    )
+                });
+            let value = self.xdm.read_deferred_result(reader)?.into_u32();
 
             if register == Register::Cpu(CpuRegister::A3) {
                 // We need to handle the scratch register (A3) separately as restoring a special
@@ -507,7 +513,7 @@ impl XtensaCommunicationInterface {
                 .get_mut(&Register::Cpu(CpuRegister::A3))
             {
                 if let Some(reader) = reader.take() {
-                    let value = self.xdm.read_deferred_result(reader)?.as_u32();
+                    let value = self.xdm.read_deferred_result(reader)?.into_u32();
 
                     restore_scratch = Some(value);
                 }
@@ -579,14 +585,22 @@ impl XtensaCommunicationInterface {
         };
 
         if let Some((read, offset, bytes_to_copy)) = first_read {
-            let word = self.xdm.read_deferred_result(read)?.as_u32().to_le_bytes();
+            let word = self
+                .xdm
+                .read_deferred_result(read)?
+                .into_u32()
+                .to_le_bytes();
 
             dst[..bytes_to_copy].copy_from_slice(&word[offset..][..bytes_to_copy]);
             dst = &mut dst[bytes_to_copy..];
         }
 
         for read in aligned_reads {
-            let word = self.xdm.read_deferred_result(read)?.as_u32().to_le_bytes();
+            let word = self
+                .xdm
+                .read_deferred_result(read)?
+                .into_u32()
+                .to_le_bytes();
 
             let bytes = dst.len().min(4);
 
@@ -613,16 +627,28 @@ impl XtensaCommunicationInterface {
         let offset = address as usize % 4;
         let aligned_address = address & !0x3;
 
-        // Read the aligned word
-        let mut word = [0; 4];
-        self.read_memory(aligned_address as u64, &mut word)?;
+        assert!(
+            offset + data.len() <= 4,
+            "Trying to write data crossing a word boundary"
+        );
 
-        // Replace the written bytes. This will also panic if the input is crossing a word boundary
-        word[offset..][..data.len()].copy_from_slice(data);
+        // Avoid reading back if we have a complete word
+        let data = if offset == 0 && data.len() == 4 {
+            data.try_into().unwrap()
+        } else {
+            // Read the aligned word
+            let mut word = [0; 4];
+            self.read_memory(aligned_address as u64, &mut word)?;
+
+            // Replace the written bytes. This will also panic if the input is crossing a word boundary
+            word[offset..][..data.len()].copy_from_slice(data);
+
+            word
+        };
 
         // Write the word back
         self.schedule_write_register_untyped(CpuRegister::A3, aligned_address)?;
-        self.xdm.schedule_write_ddr(u32::from_le_bytes(word));
+        self.xdm.schedule_write_ddr(u32::from_le_bytes(data));
         self.xdm
             .schedule_execute_instruction(Instruction::Sddr32P(CpuRegister::A3));
         self.restore_register(key)?;
@@ -704,6 +730,7 @@ impl XtensaCommunicationInterface {
 /// Don't implement this trait
 unsafe trait DataType: Sized {}
 unsafe impl DataType for u8 {}
+unsafe impl DataType for u16 {}
 unsafe impl DataType for u32 {}
 unsafe impl DataType for u64 {}
 
@@ -724,13 +751,6 @@ impl MemoryInterface for XtensaCommunicationInterface {
         Ok(())
     }
 
-    fn read_word_32(&mut self, address: u64) -> Result<u32, crate::Error> {
-        let mut out = [0; 4];
-        self.read(address, &mut out)?;
-
-        Ok(u32::from_le_bytes(out))
-    }
-
     fn supports_native_64bit_access(&mut self) -> bool {
         false
     }
@@ -740,6 +760,20 @@ impl MemoryInterface for XtensaCommunicationInterface {
         self.read(address, &mut out)?;
 
         Ok(u64::from_le_bytes(out))
+    }
+
+    fn read_word_32(&mut self, address: u64) -> Result<u32, crate::Error> {
+        let mut out = [0; 4];
+        self.read(address, &mut out)?;
+
+        Ok(u32::from_le_bytes(out))
+    }
+
+    fn read_word_16(&mut self, address: u64) -> Result<u16, crate::Error> {
+        let mut out = [0; 2];
+        self.read(address, &mut out)?;
+
+        Ok(u16::from_le_bytes(out))
     }
 
     fn read_word_8(&mut self, address: u64) -> anyhow::Result<u8, crate::Error> {
@@ -753,6 +787,10 @@ impl MemoryInterface for XtensaCommunicationInterface {
     }
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> anyhow::Result<(), crate::Error> {
+        self.read_8(address, as_bytes_mut(data))
+    }
+
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> anyhow::Result<(), crate::Error> {
         self.read_8(address, as_bytes_mut(data))
     }
 
@@ -774,6 +812,10 @@ impl MemoryInterface for XtensaCommunicationInterface {
         self.write(address, &data.to_le_bytes())
     }
 
+    fn write_word_16(&mut self, address: u64, data: u16) -> anyhow::Result<(), crate::Error> {
+        self.write(address, &data.to_le_bytes())
+    }
+
     fn write_word_8(&mut self, address: u64, data: u8) -> anyhow::Result<(), crate::Error> {
         self.write(address, &[data])
     }
@@ -783,6 +825,10 @@ impl MemoryInterface for XtensaCommunicationInterface {
     }
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> anyhow::Result<(), crate::Error> {
+        self.write_8(address, as_bytes(data))
+    }
+
+    fn write_16(&mut self, address: u64, data: &[u16]) -> anyhow::Result<(), crate::Error> {
         self.write_8(address, as_bytes(data))
     }
 

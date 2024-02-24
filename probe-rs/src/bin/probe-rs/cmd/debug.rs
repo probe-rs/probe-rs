@@ -343,36 +343,7 @@ impl DebugCli {
         });
 
         cli.add_command(Command {
-            name: "read",
-            help_text: "Read 32bit value from memory",
-
-            function: |cli_data, args| {
-                let address = get_int_argument(args, 0)?;
-
-                let num_words = if args.len() > 1 {
-                    get_int_argument(args, 1)?
-                } else {
-                    1
-                };
-
-                let mut buff = vec![0u32; num_words];
-
-                if num_words > 1 {
-                    cli_data.core.read_32(address, &mut buff)?;
-                } else {
-                    buff[0] = cli_data.core.read_word_32(address)?;
-                }
-
-                for (offset, word) in buff.iter().enumerate() {
-                    println!("0x{:08x} = 0x{:08x}", address + (offset * 4) as u64, word);
-                }
-
-                Ok(CliState::Continue)
-            },
-        });
-
-        cli.add_command(Command {
-            name: "read_byte",
+            name: "read8",
             help_text: "Read 8bit value from memory",
 
             function: |cli_data, args| {
@@ -401,7 +372,65 @@ impl DebugCli {
         });
 
         cli.add_command(Command {
-            name: "read_64",
+            name: "read16",
+            help_text: "Read 16bit value from memory",
+
+            function: |cli_data, args| {
+                let address = get_int_argument(args, 0)?;
+
+                let num_words = if args.len() > 1 {
+                    get_int_argument(args, 1)?
+                } else {
+                    1
+                };
+
+                let mut buff = vec![0u16; num_words];
+
+                if num_words > 1 {
+                    cli_data.core.read_16(address, &mut buff)?;
+                } else {
+                    buff[0] = cli_data.core.read_word_16(address)?;
+                }
+
+                for (offset, word) in buff.iter().enumerate() {
+                    println!("0x{:08x} = 0x{:04x}", address + (offset * 2) as u64, word);
+                }
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
+            name: "read32",
+            help_text: "Read 32bit value from memory",
+
+            function: |cli_data, args| {
+                let address = get_int_argument(args, 0)?;
+
+                let num_words = if args.len() > 1 {
+                    get_int_argument(args, 1)?
+                } else {
+                    1
+                };
+
+                let mut buff = vec![0u32; num_words];
+
+                if num_words > 1 {
+                    cli_data.core.read_32(address, &mut buff)?;
+                } else {
+                    buff[0] = cli_data.core.read_word_32(address)?;
+                }
+
+                for (offset, word) in buff.iter().enumerate() {
+                    println!("0x{:08x} = 0x{:08x}", address + (offset * 4) as u64, word);
+                }
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
+            name: "read64",
             help_text: "Read 64bit value from memory",
 
             function: |cli_data, args| {
@@ -430,21 +459,7 @@ impl DebugCli {
         });
 
         cli.add_command(Command {
-            name: "write",
-            help_text: "Write a 32bit value to memory",
-
-            function: |cli_data, args| {
-                let address = get_int_argument(args, 0)?;
-                let data = get_int_argument(args, 1)?;
-
-                cli_data.core.write_word_32(address, data)?;
-
-                Ok(CliState::Continue)
-            },
-        });
-
-        cli.add_command(Command {
-            name: "write_byte",
+            name: "write8",
             help_text: "Write a 8bit value to memory",
 
             function: |cli_data, args| {
@@ -458,7 +473,35 @@ impl DebugCli {
         });
 
         cli.add_command(Command {
-            name: "write_64",
+            name: "write16",
+            help_text: "Write a 16bit value to memory",
+
+            function: |cli_data, args| {
+                let address = get_int_argument(args, 0)?;
+                let data = get_int_argument(args, 1)?;
+
+                cli_data.core.write_word_16(address, data)?;
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
+            name: "write32",
+            help_text: "Write a 32bit value to memory",
+
+            function: |cli_data, args| {
+                let address = get_int_argument(args, 0)?;
+                let data = get_int_argument(args, 1)?;
+
+                cli_data.core.write_word_32(address, data)?;
+
+                Ok(CliState::Continue)
+            },
+        });
+
+        cli.add_command(Command {
+            name: "write64",
             help_text: "Write a 64bit value to memory",
 
             function: |cli_data, args| {

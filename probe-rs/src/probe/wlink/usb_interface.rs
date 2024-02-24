@@ -27,7 +27,7 @@ impl WchLinkUsbDevice {
                     && device.product_id() == selector.product_id
             })
             .find(|device| get_wlink_info(device).is_some())
-            .map_or(Err(ProbeCreationError::NotFound), Ok)?;
+            .ok_or(ProbeCreationError::NotFound)?;
 
         let mut endpoint_out = false;
         let mut endpoint_in = false;

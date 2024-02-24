@@ -4,43 +4,71 @@ use crate::architecture::{
     arm::communication_interface::UninitializedArmProbe,
     riscv::communication_interface::RiscvCommunicationInterface,
 };
-use crate::probe::common::{common_sequence, extract_idcodes, extract_ir_lengths};
-use crate::probe::{
-    DebugProbe, DeferredResultSet, JTAGAccess, JtagCommandQueue, ProbeCreationError, ProbeDriver,
-    ScanChainElement,
+use crate::probe::common::{JtagState, RegisterState};
+use crate::probe::{BatchExecutionError, DeferredResultSet, JtagCommandQueue};
+use crate::{
+    probe::{
+        common::{common_sequence, extract_idcodes, extract_ir_lengths},
+        DebugProbe, JTAGAccess, ProbeCreationError, ProbeDriver, ScanChainElement,
+    },
+    DebugProbeError, DebugProbeInfo, DebugProbeSelector, WireProtocol,
 };
-use crate::{DebugProbeError, DebugProbeInfo, DebugProbeSelector, WireProtocol};
 use anyhow::anyhow;
-use bitvec::{order::Lsb0, slice::BitSlice, vec::BitVec};
+use bitvec::prelude::*;
 use nusb::DeviceInfo;
-use std::io::{self, Read, Write};
+use std::io::{Read, Write};
 use std::iter;
 use std::time::Duration;
 
 mod ftdi_impl;
 use ftdi_impl as ftdi;
 
-mod commands;
+mod command_compacter;
 
-use self::commands::{JtagCommand, WriteRegisterCommand};
+use super::{ChainParams, JtagChainItem};
 
-use super::{BatchExecutionError, ChainParams, CommandResult, JtagChainItem};
+use command_compacter::Command;
 
 #[derive(Debug)]
-pub struct JtagAdapter {
+struct JtagAdapter {
     device: ftdi::Device,
-    chain_params: Option<ChainParams>,
+
+    chain_params: ChainParams,
+    jtag_idle_cycles: u8,
+
+    current_ir_reg: u32,
+    max_ir_address: u32,
+
+    buffer_size: usize,
+    jtag_state: JtagState,
+
+    command: Command,
+    commands: Vec<u8>,
+    in_bit_counts: Vec<usize>,
+    in_bits: BitVec<u8, Lsb0>,
+
+    scan_chain: Option<Vec<ScanChainElement>>,
 }
 
 impl JtagAdapter {
-    pub fn open(vid: u16, pid: u16) -> Result<Self, ftdi::Error> {
+    fn open(ftdi: &FtdiDevice) -> Result<Self, ftdi::Error> {
         let mut builder = ftdi::Builder::new();
         builder.set_interface(ftdi::Interface::A)?;
-        let device = builder.usb_open(vid, pid)?;
+        let device = builder.usb_open(ftdi.id.0, ftdi.id.1)?;
 
         Ok(Self {
             device,
-            chain_params: None,
+            chain_params: ChainParams::default(),
+            jtag_idle_cycles: 0,
+            buffer_size: ftdi.buffer_size,
+            jtag_state: JtagState::Reset,
+            current_ir_reg: 1,
+            max_ir_address: 0x1F,
+            command: Command::default(),
+            commands: vec![],
+            in_bit_counts: vec![],
+            in_bits: BitVec::new(),
+            scan_chain: None,
         })
     }
 
@@ -67,217 +95,374 @@ impl JtagAdapter {
         Ok(())
     }
 
-    fn read_response(&mut self, size: usize) -> Result<Vec<u8>, DebugProbeError> {
-        let timeout = Duration::from_millis(10);
-        let mut result = Vec::new();
+    fn read_response(&mut self) -> Result<(), DebugProbeError> {
+        if self.in_bit_counts.is_empty() {
+            return Ok(());
+        }
 
-        let t0 = std::time::Instant::now();
-        while result.len() < size {
+        let mut t0 = std::time::Instant::now();
+        let timeout = Duration::from_millis(10);
+
+        let mut reply = Vec::with_capacity(self.in_bit_counts.len());
+        while reply.len() < self.in_bit_counts.len() {
             if t0.elapsed() > timeout {
+                tracing::warn!(
+                    "Read {} bytes, expected {}",
+                    reply.len(),
+                    self.in_bit_counts.len()
+                );
                 return Err(DebugProbeError::Timeout);
             }
 
-            self.device
-                .read_to_end(&mut result)
+            let read = self
+                .device
+                .read_to_end(&mut reply)
                 .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
+
+            if read > 0 {
+                t0 = std::time::Instant::now();
+            }
         }
 
-        if result.len() > size {
+        if reply.len() != self.in_bit_counts.len() {
             return Err(DebugProbeError::Other(anyhow!(
-                "Read more data than expected"
+                "Read more data than expected. Expected {} bytes, got {} bytes",
+                self.in_bit_counts.len(),
+                reply.len()
             )));
         }
 
-        Ok(result)
-    }
-
-    fn shift_tms(&mut self, mut data: &[u8], mut bits: usize) -> Result<(), DebugProbeError> {
-        assert!(bits > 0);
-        assert!((bits + 7) / 8 <= data.len());
-
-        let mut command = vec![];
-
-        while bits > 0 {
-            if bits >= 8 {
-                command.extend_from_slice(&[0x4b, 0x07, data[0]]);
-                data = &data[1..];
-                bits -= 8;
-            } else {
-                command.extend_from_slice(&[0x4b, (bits - 1) as u8, data[0]]);
-                bits = 0;
-            }
-        }
-        self.device
-            .write_all(&command)
-            .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))
-    }
-
-    fn shift_tdi(&mut self, mut data: &[u8], mut bits: usize) -> Result<(), DebugProbeError> {
-        assert!(bits > 0);
-        assert!((bits + 7) / 8 <= data.len());
-
-        let mut command = vec![];
-
-        let full_bytes = (bits - 1) / 8;
-        if full_bytes > 0 {
-            assert!(full_bytes <= 65536);
-
-            command.extend_from_slice(&[0x19]);
-            let n: u16 = (full_bytes - 1) as u16;
-            command.extend_from_slice(&n.to_le_bytes());
-            command.extend_from_slice(&data[..full_bytes]);
-
-            bits -= full_bytes * 8;
-            data = &data[full_bytes..];
-        }
-        assert!(bits <= 8);
-
-        if bits > 0 {
-            let byte = data[0];
-            if bits > 1 {
-                let n = (bits - 2) as u8;
-                command.extend_from_slice(&[0x1b, n, byte]);
-            }
-
-            let last_bit = (byte >> (bits - 1)) & 0x01;
-            let tms_byte = 0x01 | (last_bit << 7);
-            command.extend_from_slice(&[0x4b, 0x00, tms_byte]);
+        for (byte, count) in reply.into_iter().zip(self.in_bit_counts.drain(..)) {
+            let bits = byte >> (8 - count);
+            self.in_bits
+                .extend_from_bitslice(&bits.view_bits::<Lsb0>()[..count]);
         }
 
-        self.device
-            .write_all(&command)
-            .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))
-    }
-
-    fn tranfer_tdi(
-        &mut self,
-        mut data: &[u8],
-        mut bits: usize,
-    ) -> Result<Vec<u8>, DebugProbeError> {
-        assert!(bits > 0);
-        assert!((bits + 7) / 8 <= data.len());
-
-        let mut command = vec![];
-
-        let full_bytes = (bits - 1) / 8;
-        if full_bytes > 0 {
-            assert!(full_bytes <= 65536);
-
-            command.extend_from_slice(&[0x39]);
-            let n: u16 = (full_bytes - 1) as u16;
-            command.extend_from_slice(&n.to_le_bytes());
-            command.extend_from_slice(&data[..full_bytes]);
-
-            bits -= full_bytes * 8;
-            data = &data[full_bytes..];
-        }
-        assert!(0 < bits && bits <= 8);
-
-        let byte = data[0];
-        if bits > 1 {
-            let n = (bits - 2) as u8;
-            command.extend_from_slice(&[0x3b, n, byte]);
-        }
-
-        let last_bit = (byte >> (bits - 1)) & 0x01;
-        let tms_byte = 0x01 | (last_bit << 7);
-        command.extend_from_slice(&[0x6b, 0x00, tms_byte]);
-
-        self.device
-            .write_all(&command)
-            .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
-
-        let mut expect_bytes = full_bytes + 1;
-        if bits > 1 {
-            expect_bytes += 1;
-        }
-
-        let mut reply = self.read_response(expect_bytes)?;
-
-        let mut last_byte = reply[reply.len() - 1] >> 7;
-        if bits > 1 {
-            let byte = reply[reply.len() - 2] >> (8 - (bits - 1));
-            last_byte = byte | (last_byte << (bits - 1));
-        }
-        reply[full_bytes] = last_byte;
-        reply.truncate(full_bytes + 1);
-
-        Ok(reply)
+        Ok(())
     }
 
     /// Reset and go to RUN-TEST/IDLE
     pub fn reset(&mut self) -> Result<(), DebugProbeError> {
-        self.shift_tms(&[0xff, 0xff, 0xff, 0xff, 0x7f], 40)
-    }
+        tracing::debug!("Resetting JTAG chain by setting tms high for 5 bits");
 
-    /// Execute RUN-TEST/IDLE for a number of cycles
-    pub fn idle(&mut self, cycles: usize) -> Result<(), DebugProbeError> {
-        if cycles == 0 {
-            return Ok(());
-        }
-        let buf = vec![0; (cycles + 7) / 8];
-        self.shift_tms(&buf, cycles)
-    }
+        // Reset JTAG chain (5 times TMS high), and enter idle state afterwards
+        let tms = [true, true, true, true, true, false];
+        let tdi = iter::repeat(false);
 
-    /// Shift to IR and return to IDLE
-    pub fn shift_ir(&mut self, data: &[u8], bits: usize) -> Result<(), DebugProbeError> {
-        self.shift_tms(&[0b0011], 4)?;
-        self.shift_tdi(data, bits)?;
-        self.shift_tms(&[0b01], 2)?;
+        let response = self.jtag_scan(tms, tdi, iter::repeat(true))?;
+
+        tracing::debug!("Response to reset: {:?}", response);
+
         Ok(())
     }
 
-    /// Shift to IR and return to IDLE
-    pub fn transfer_ir(&mut self, data: &[u8], bits: usize) -> Result<Vec<u8>, DebugProbeError> {
-        self.shift_tms(&[0b0011], 4)?;
-        let r = self.tranfer_tdi(data, bits)?;
-        self.shift_tms(&[0b01], 2)?;
-        Ok(r)
+    fn jtag_move_to_state(&mut self, target: JtagState) -> Result<(), DebugProbeError> {
+        tracing::trace!("Changing state: {:?} -> {:?}", self.jtag_state, target);
+        while let Some(tms) = self.jtag_state.step_toward(target) {
+            self.schedule_jtag_scan([tms], [false], [false])?;
+        }
+        tracing::trace!("In state: {:?}", self.jtag_state);
+        Ok(())
     }
 
-    /// Shift to DR and return to IDLE
-    pub fn transfer_dr(&mut self, data: &[u8], bits: usize) -> Result<Vec<u8>, DebugProbeError> {
-        self.shift_tms(&[0b001], 3)?;
-        let r = self.tranfer_tdi(data, bits)?;
-        self.shift_tms(&[0b01], 2)?;
-        Ok(r)
+    fn do_io(&mut self) -> Result<(), DebugProbeError> {
+        self.send_buffer()?;
+        self.read_response()
+            .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
+
+        Ok(())
+    }
+
+    fn append_command(&mut self, command: Command) -> Result<(), DebugProbeError> {
+        tracing::debug!("Appending {:?}", command);
+        // 1 byte is reserved for the send immediate command
+        if self.commands.len() + command.len() + 1 >= self.buffer_size {
+            self.do_io()?;
+        }
+
+        command.add_captured_bits(&mut self.in_bit_counts);
+        command.encode(&mut self.commands);
+
+        Ok(())
+    }
+
+    fn finalize_command(&mut self) -> Result<(), DebugProbeError> {
+        if let Some(command) = self.command.take() {
+            self.append_command(command)?;
+        }
+
+        Ok(())
+    }
+
+    fn schedule_bit(&mut self, tms: bool, tdi: bool, capture: bool) -> Result<(), DebugProbeError> {
+        if let Some(command) = self.command.append_jtag_bit(tms, tdi, capture) {
+            self.append_command(command)?;
+        }
+
+        Ok(())
+    }
+
+    fn schedule_jtag_scan(
+        &mut self,
+        tms: impl IntoIterator<Item = bool>,
+        tdi: impl IntoIterator<Item = bool>,
+        cap: impl IntoIterator<Item = bool>,
+    ) -> Result<(), DebugProbeError> {
+        for ((tms, tdi), cap) in tms.into_iter().zip(tdi.into_iter()).zip(cap.into_iter()) {
+            self.schedule_bit(tms, tdi, cap)?;
+            self.jtag_state.update(tms);
+        }
+
+        Ok(())
+    }
+
+    fn send_buffer(&mut self) -> Result<(), DebugProbeError> {
+        if self.commands.is_empty() {
+            return Ok(());
+        }
+
+        // Send Immediate: This will make the FTDI chip flush its buffer back to the PC.
+        // See https://www.ftdichip.com/Support/Documents/AppNotes/AN_108_Command_Processor_for_MPSSE_and_MCU_Host_Bus_Emulation_Modes.pdf
+        // section 5.1
+        self.commands.push(0x87);
+
+        tracing::trace!("Sending buffer: {:X?}", self.commands);
+
+        self.device
+            .write_all(&self.commands)
+            .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
+
+        self.commands.clear();
+
+        Ok(())
+    }
+
+    fn flush(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
+        self.finalize_command()?;
+        self.do_io()?;
+
+        Ok(std::mem::take(&mut self.in_bits))
+    }
+
+    fn jtag_scan(
+        &mut self,
+        tms: impl IntoIterator<Item = bool>,
+        tdi: impl IntoIterator<Item = bool>,
+        capture: impl IntoIterator<Item = bool>,
+    ) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
+        self.schedule_jtag_scan(tms, tdi, capture)?;
+        self.flush()
+    }
+
+    fn idle_cycles(&self) -> u8 {
+        self.jtag_idle_cycles
+    }
+
+    /// Write IR register with the specified data. The
+    /// IR register might have an odd length, so the data
+    /// will be truncated to `len` bits. If data has less
+    /// than `len` bits, an error will be returned.
+    fn scan_ir(
+        &mut self,
+        data: &[u8],
+        len: usize,
+        capture_response: bool,
+    ) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
+        self.schedule_ir_scan(data, len, capture_response)?;
+        let response = self.flush()?;
+        tracing::trace!("Response: {:?}", response);
+
+        Ok(response)
+    }
+
+    fn schedule_ir_scan(
+        &mut self,
+        data: &[u8],
+        len: usize,
+        capture_data: bool,
+    ) -> Result<(), DebugProbeError> {
+        tracing::debug!("Write IR: {:?}, len={}", data, len);
+
+        // Check the bit length, enough data has to be available
+        if data.len() * 8 < len || len == 0 {
+            return Err(DebugProbeError::Other(anyhow!("Invalid data length")));
+        }
+
+        // BYPASS commands before and after shifting out data where required
+        let pre_bits = self.chain_params.irpre;
+        let post_bits = self.chain_params.irpost;
+
+        // The last bit will be transmitted when exiting the shift state,
+        // so we need to stay in the shift state for one period less than
+        // we have bits to transmit.
+        let tms_data = iter::repeat(false).take(len - 1);
+
+        // Enter IR shift
+        self.jtag_move_to_state(JtagState::Ir(RegisterState::Shift))?;
+
+        let tms = iter::repeat(false)
+            .take(pre_bits)
+            .chain(tms_data)
+            .chain(iter::repeat(false).take(post_bits))
+            .chain(iter::once(true));
+
+        let tdi = iter::repeat(true)
+            .take(pre_bits)
+            .chain(data.as_bits::<Lsb0>()[..len].iter().map(|b| *b))
+            .chain(iter::repeat(true).take(post_bits));
+
+        let capture = iter::repeat(false)
+            .take(pre_bits)
+            .chain(iter::repeat(capture_data).take(len))
+            .chain(iter::repeat(false));
+
+        self.schedule_jtag_scan(tms, tdi, capture)?;
+
+        self.jtag_move_to_state(JtagState::Ir(RegisterState::Update))?;
+
+        Ok(())
+    }
+
+    fn scan_dr(&mut self, data: &[u8], register_bits: usize) -> Result<Vec<u8>, DebugProbeError> {
+        self.schedule_dr_scan(data, register_bits, true)?;
+        let response = self.flush()?;
+        self.recieve_dr_scan(response)
+    }
+
+    fn recieve_dr_scan(
+        &mut self,
+        mut response: BitVec<u8, Lsb0>,
+    ) -> Result<Vec<u8>, DebugProbeError> {
+        response.force_align();
+        let result = response.into_vec();
+        tracing::trace!("recieve_write_dr result: {:?}", result);
+        Ok(result)
+    }
+
+    fn schedule_dr_scan(
+        &mut self,
+        data: &[u8],
+        register_bits: usize,
+        capture_data: bool,
+    ) -> Result<usize, DebugProbeError> {
+        tracing::debug!("Write DR: {:?}, len={}", data, register_bits);
+
+        // Check the bit length, enough data has to be available
+        if data.len() * 8 < register_bits || register_bits == 0 {
+            return Err(DebugProbeError::Other(anyhow!("Invalid data length")));
+        }
+
+        // Last bit of data is shifted out when we exit the SHIFT-DR State
+        let tms_shift_out_value = iter::repeat(false).take(register_bits - 1);
+
+        // Enter DR shift
+        self.jtag_move_to_state(JtagState::Dr(RegisterState::Shift))?;
+
+        // dummy bits to account for bypasses
+        let pre_bits = self.chain_params.drpre;
+        let post_bits = self.chain_params.drpost;
+
+        let tms = iter::repeat(false)
+            .take(pre_bits)
+            .chain(tms_shift_out_value)
+            .chain(iter::repeat(false).take(post_bits))
+            .chain(iter::once(true));
+
+        let tdi = iter::repeat(false)
+            .take(pre_bits)
+            .chain(data.as_bits::<Lsb0>()[..register_bits].iter().map(|b| *b))
+            .chain(iter::repeat(false).take(post_bits));
+
+        let capture = iter::repeat(false)
+            .take(pre_bits)
+            .chain(iter::repeat(capture_data).take(register_bits))
+            .chain(iter::repeat(false));
+
+        self.schedule_jtag_scan(tms, tdi, capture)?;
+
+        self.jtag_move_to_state(JtagState::Dr(RegisterState::Update))?;
+
+        if self.idle_cycles() > 0 {
+            self.jtag_move_to_state(JtagState::Idle)?;
+
+            // We need to stay in the idle cycle a bit
+            let tms = iter::repeat(false).take(self.idle_cycles() as usize);
+            let tdi = iter::repeat(false).take(self.idle_cycles() as usize);
+
+            self.schedule_jtag_scan(tms, tdi, iter::repeat(false))?;
+        }
+
+        if capture_data {
+            Ok(register_bits)
+        } else {
+            Ok(0)
+        }
     }
 
     fn scan(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError> {
-        let max_device_count = 8;
+        const MAX_CHAIN: usize = 8;
 
         self.reset()?;
 
-        let cmd = vec![0xff; max_device_count * 4];
-        let r = self.transfer_dr(&cmd, cmd.len() * 8)?;
+        self.chain_params = ChainParams::default();
 
-        let idcodes = extract_idcodes(BitSlice::<u8, Lsb0>::from_slice(&r))
+        let input = vec![0xFF; 4 * MAX_CHAIN];
+        let response = self.scan_dr(&input, input.len() * 8)?;
+
+        tracing::debug!("DR: {:?}", response);
+
+        let idcodes = extract_idcodes(BitSlice::<u8, Lsb0>::from_slice(&response))
             .map_err(|e| DebugProbeError::Other(e.into()))?;
 
+        tracing::info!(
+            "JTAG DR scan complete, found {} TAPs. {:?}",
+            idcodes.len(),
+            idcodes
+        );
+
         self.reset()?;
 
+        // First shift out all ones
         let input = vec![0xff; idcodes.len()];
-        let r = self.transfer_ir(&input, input.len() * 8)?;
+        let response = self.scan_ir(&input, input.len() * 8, true)?;
 
+        tracing::debug!("IR scan: {}", response);
+
+        self.reset()?;
+
+        // Next, shift out same amount of zeros, then ones to make sure the IRs contain BYPASS.
         let input = iter::repeat(0)
             .take(idcodes.len())
             .chain(input.iter().copied())
             .collect::<Vec<_>>();
-        let r_zeros = self.transfer_ir(&input, input.len() * 8)?;
+        let response_zeros = self.scan_ir(&input, input.len() * 8, true)?;
 
-        let response = BitSlice::<u8, Lsb0>::from_slice(&r);
-        let response_zeros = BitSlice::<u8, Lsb0>::from_slice(&r_zeros);
+        tracing::debug!("IR scan: {}", response_zeros);
 
-        let response = common_sequence(response, response_zeros);
-        tracing::debug!("IR scan: {:?}", response);
+        let expected = if let Some(ref chain) = self.scan_chain {
+            let expected = chain
+                .iter()
+                .filter_map(|s| s.ir_len)
+                .map(|s| s as usize)
+                .collect::<Vec<usize>>();
+            Some(expected)
+        } else {
+            None
+        };
 
-        let lengths = extract_ir_lengths(response, idcodes.len(), None).unwrap();
-        tracing::debug!("Detected IR lens: {:?}", lengths);
+        let response = response.as_bitslice();
+        let response = common_sequence(response, response_zeros.as_bitslice());
+
+        tracing::debug!("IR scan: {}", response);
+
+        let ir_lens = extract_ir_lengths(response, idcodes.len(), expected.as_deref())
+            .map_err(|e| DebugProbeError::Other(e.into()))?;
+        tracing::debug!("Detected IR lens: {:?}", ir_lens);
 
         Ok(idcodes
             .into_iter()
-            .zip(lengths)
-            .map(|(idcode, irlen)| JtagChainItem { idcode, irlen })
+            .zip(ir_lens)
+            .map(|(idcode, irlen)| JtagChainItem { irlen, idcode })
             .collect())
     }
 
@@ -291,65 +476,45 @@ impl JtagAdapter {
         };
 
         tracing::debug!("Target chain params: {:?}", params);
-        self.chain_params = Some(params);
+        self.chain_params = params;
+
+        self.max_ir_address = (1 << params.irlen) - 1;
+        tracing::debug!("Setting max_ir_address to {}", self.max_ir_address);
+
         Ok(())
     }
 
-    fn get_chain_params(&self) -> Result<ChainParams, DebugProbeError> {
-        match &self.chain_params {
-            Some(params) => Ok(*params),
-            None => Err(DebugProbeError::Other(anyhow!("target is not selected"))),
-        }
-    }
-
-    fn target_transfer(
+    /// Write the data register
+    fn prepare_write_register(
         &mut self,
         address: u32,
-        data: Option<&[u8]>,
-        len_bits: usize,
-    ) -> Result<Vec<u8>, DebugProbeError> {
-        let params = self.get_chain_params()?;
-        let max_address = (1 << params.irlen) - 1;
-        if address > max_address {
-            return Err(DebugProbeError::Other(anyhow!("invalid register address")));
+        data: &[u8],
+        len: u32,
+        capture_data: bool,
+    ) -> Result<DeferredRegisterWrite, DebugProbeError> {
+        if address > self.max_ir_address {
+            return Err(DebugProbeError::Other(anyhow!(
+                "Invalid instruction register access: {}",
+                address
+            )));
+        }
+        let address_bytes = address.to_le_bytes();
+
+        if self.current_ir_reg != address {
+            // Write IR register
+            self.schedule_ir_scan(&address_bytes, self.chain_params.irlen, false)?;
+            self.current_ir_reg = address;
         }
 
-        // Write IR register
-        let irbits = params.irpre + params.irlen + params.irpost;
-        assert!(irbits <= 32);
-        let mut ir: u32 = (1 << params.irpre) - 1;
-        ir |= address << params.irpre;
-        ir |= ((1 << params.irpost) - 1) << (params.irpre + params.irlen);
-        self.shift_ir(&ir.to_le_bytes(), irbits)?;
+        // write DR register
+        let len = self.schedule_dr_scan(data, len as usize, capture_data)?;
 
-        let drbits = params.drpre + len_bits + params.drpost;
-        let request = if let Some(data_slice) = data {
-            let data = BitSlice::<u8, Lsb0>::from_slice(data_slice);
-            let mut data = BitVec::<u8, Lsb0>::from_bitslice(data);
-            data.truncate(len_bits);
-
-            let mut buf = BitVec::<u8, Lsb0>::new();
-            buf.resize(params.drpre, false);
-            buf.append(&mut data);
-            buf.resize(buf.len() + params.drpost, false);
-
-            buf.into_vec()
-        } else {
-            vec![0; (drbits + 7) / 8]
-        };
-        let reply = self.transfer_dr(&request, drbits)?;
-
-        // Process the reply
-        let mut reply = BitVec::<u8, Lsb0>::from_vec(reply);
-        if params.drpre > 0 {
-            reply = reply.split_off(params.drpre);
-        }
-        reply.truncate(len_bits);
-        reply.force_align();
-        let reply = reply.into_vec();
-
-        Ok(reply)
+        Ok(DeferredRegisterWrite { len })
     }
+}
+
+struct DeferredRegisterWrite {
+    len: usize,
 }
 
 pub struct FtdiProbeSource;
@@ -363,20 +528,48 @@ impl std::fmt::Debug for FtdiProbeSource {
 impl ProbeDriver for FtdiProbeSource {
     fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
         // Only open FTDI-compatible probes
-        if !FTDI_COMPAT_DEVICE_IDS.contains(&(selector.vendor_id, selector.product_id)) {
+
+        let device = match nusb::list_devices() {
+            Ok(devices) => {
+                let mut matched = None;
+                for device in devices {
+                    // Is this the device we're looking for?
+                    if (device.product_id(), device.vendor_id())
+                        != (selector.product_id, selector.vendor_id)
+                    {
+                        continue;
+                    }
+
+                    // FTDI devices don't have serial numbers, so we can only match on VID/PID.
+                    // Bail if we find more than one matching device.
+                    if matched.is_some() {
+                        return Err(DebugProbeError::ProbeCouldNotBeCreated(
+                            ProbeCreationError::Other("Multiple FTDI devices found. Please unplug all but one FTDI device."),
+                        ));
+                    }
+
+                    matched = FTDI_COMPAT_DEVICES
+                        .iter()
+                        .find(|ftdi| ftdi.matches(&device));
+                }
+
+                matched
+            }
+            Err(_) => None,
+        };
+
+        let Some(device) = device else {
             return Err(DebugProbeError::ProbeCouldNotBeCreated(
                 ProbeCreationError::NotFound,
             ));
-        }
+        };
 
-        let adapter = JtagAdapter::open(selector.vendor_id, selector.product_id)
-            .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
+        let adapter =
+            JtagAdapter::open(device).map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
 
         let probe = FtdiProbe {
             adapter,
             speed_khz: 0,
-            idle_cycles: 0,
-            scan_chain: None,
         };
         tracing::debug!("opened probe: {:?}", probe);
         Ok(Box::new(probe))
@@ -391,8 +584,6 @@ impl ProbeDriver for FtdiProbeSource {
 pub struct FtdiProbe {
     adapter: JtagAdapter,
     speed_khz: u32,
-    idle_cycles: u8,
-    scan_chain: Option<Vec<ScanChainElement>>,
 }
 
 impl DebugProbe for FtdiProbe {
@@ -412,7 +603,7 @@ impl DebugProbe for FtdiProbe {
 
     fn set_scan_chain(&mut self, scan_chain: Vec<ScanChainElement>) -> Result<(), DebugProbeError> {
         tracing::info!("Setting scan chain to {:?}", scan_chain);
-        self.scan_chain = Some(scan_chain);
+        self.adapter.scan_chain = Some(scan_chain);
         Ok(())
     }
 
@@ -531,205 +722,180 @@ impl DebugProbe for FtdiProbe {
 }
 
 impl JTAGAccess for FtdiProbe {
-    fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
-        tracing::debug!("read_register({:#x}, {})", address, len);
-        let r = self
-            .adapter
-            .target_transfer(address, None, len as usize)
-            .map_err(|e| {
-                tracing::debug!("target_transfer error: {:?}", e);
-                DebugProbeError::ProbeSpecific(Box::new(e))
-            })?;
-        self.adapter
-            .idle(self.idle_cycles as usize)
-            .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
-        tracing::debug!("read_register result: {:?})", r);
-        Ok(r)
-    }
-
     fn set_idle_cycles(&mut self, idle_cycles: u8) {
         tracing::debug!("set_idle_cycles({})", idle_cycles);
-        self.idle_cycles = idle_cycles;
+        self.adapter.jtag_idle_cycles = idle_cycles;
     }
 
+    fn idle_cycles(&self) -> u8 {
+        self.adapter.jtag_idle_cycles
+    }
+
+    /// Write the data register
     fn write_register(
         &mut self,
         address: u32,
         data: &[u8],
         len: u32,
     ) -> Result<Vec<u8>, DebugProbeError> {
-        tracing::debug!("write_register({:#x}, {:?}, {})", address, data, len);
-        let r = self
-            .adapter
-            .target_transfer(address, Some(data), len as usize)
-            .map_err(|e| {
-                tracing::debug!("target_transfer error: {:?}", e);
-                DebugProbeError::ProbeSpecific(Box::new(e))
-            })?;
-        self.adapter
-            .idle(self.idle_cycles as usize)
-            .map_err(|e| DebugProbeError::ProbeSpecific(Box::new(e)))?;
-        tracing::debug!("write_register result: {:?})", r);
-        Ok(r)
-    }
+        if address > self.adapter.max_ir_address {
+            return Err(DebugProbeError::Other(anyhow!(
+                "JTAG Register addresses are fixed to {} bits",
+                self.adapter.chain_params.irlen
+            )));
+        }
+        let address_bytes = address.to_le_bytes();
 
-    fn idle_cycles(&self) -> u8 {
-        self.idle_cycles
+        if self.adapter.current_ir_reg != address {
+            // Write IR register
+            self.adapter.schedule_ir_scan(
+                &address_bytes,
+                self.adapter.chain_params.irlen,
+                false,
+            )?;
+            self.adapter.current_ir_reg = address;
+        }
+
+        // write DR register
+        self.adapter.scan_dr(data, len as usize)
     }
 
     fn write_register_batch(
         &mut self,
         writes: &JtagCommandQueue,
     ) -> Result<DeferredResultSet, BatchExecutionError> {
-        // this value was determined by experimenting and doesn't match e.g
-        // the libftdi read/write chunk size - it is hopefully useful for every setup
-        // max value seems to be different for different adapters, e.g. for the Sipeed JTAG adapter
-        // 40 works but for the Pine64 adapter it doesn't
-        const CHUNK_SIZE: usize = 30;
+        let mut bits = Vec::with_capacity(writes.len());
+        let t1 = std::time::Instant::now();
+        tracing::debug!("Preparing {} writes...", writes.len());
+        for (idx, write) in writes.iter() {
+            // If an error happens during prep, return no results as chip will be in an inconsistent state
+            let op = self
+                .adapter
+                .prepare_write_register(write.address, &write.data, write.len, idx.should_capture())
+                .map_err(|e| BatchExecutionError::new(e.into(), DeferredResultSet::new()))?;
 
-        let mut results = DeferredResultSet::new();
-
-        let chain_params = match self.adapter.get_chain_params() {
-            Ok(params) => params,
-            Err(e) => {
-                return Err(BatchExecutionError::new(
-                    crate::Error::Probe(DebugProbeError::ProbeSpecific(Box::new(e))),
-                    results,
-                ));
-            }
-        };
-
-        let commands: Result<Vec<_>, _> = writes
-            .iter()
-            .map(|(idx, w)| {
-                WriteRegisterCommand::new(
-                    w.address,
-                    w.data.clone(),
-                    w.len as usize,
-                    self.idle_cycles as usize,
-                    chain_params,
-                )
-                .map(|c| (c, idx, w.transform))
-            })
-            .collect();
-
-        let mut commands = match commands {
-            Ok(cmds) => cmds,
-            Err(e) => {
-                return Err(BatchExecutionError::new(
-                    crate::Error::Probe(DebugProbeError::ProbeSpecific(Box::new(e))),
-                    results,
-                ))
-            }
-        };
-
-        for cmd_chunk in commands.chunks_mut(CHUNK_SIZE) {
-            let mut out_buffer = Vec::<u8>::new();
-            let mut size = 0;
-            for (cmd, _, _) in cmd_chunk.iter_mut() {
-                cmd.add_bytes(&mut out_buffer);
-                size += cmd.bytes_to_read();
-            }
-
-            // Send Immediate: This will make the FTDI chip flush its buffer back to the PC.
-            // See https://www.ftdichip.com/Support/Documents/AppNotes/AN_108_Command_Processor_for_MPSSE_and_MCU_Host_Bus_Emulation_Modes.pdf
-            // section 5.1
-            out_buffer.push(0x87);
-
-            let write_res = self.adapter.device.write_all(&out_buffer);
-            if let Err(e) = write_res {
-                return Err(BatchExecutionError::new(
-                    crate::Error::Probe(DebugProbeError::ProbeSpecific(Box::new(e))),
-                    results,
-                ));
-            }
-
-            let timeout = Duration::from_millis(10);
-            let mut result = Vec::new();
-
-            let t0 = std::time::Instant::now();
-            while result.len() < size {
-                if t0.elapsed() > timeout {
-                    return Err(BatchExecutionError::new(
-                        crate::Error::Probe(DebugProbeError::Timeout),
-                        results,
-                    ));
-                }
-
-                let read_res = self.adapter.device.read_to_end(&mut result);
-                match read_res {
-                    Ok(_) => (),
-                    Err(e) => {
-                        return Err(BatchExecutionError::new(
-                            crate::Error::Probe(DebugProbeError::ProbeSpecific(Box::new(e))),
-                            results,
-                        ));
-                    }
-                }
-            }
-
-            if result.len() > size {
-                return Err(BatchExecutionError::new(
-                    crate::Error::Probe(DebugProbeError::ProbeSpecific(Box::new(io::Error::new(
-                        io::ErrorKind::InvalidData,
-                        "Read more data than expected",
-                    )))),
-                    results,
-                ));
-            }
-
-            let mut pos = 0;
-            for (cmd, idx, transformer) in cmd_chunk.iter() {
-                let len = cmd.bytes_to_read();
-                let mut data = Vec::<u8>::new();
-                data.extend_from_slice(&result[pos..][..len]);
-
-                let result = cmd.process_output(&data);
-
-                match result {
-                    Ok(data) => {
-                        let data = match data {
-                            CommandResult::VecU8(data) => data,
-                            _ => panic!("Internal error occurred. Cannot have a transformer function for outputs other than Vec<u8>"),
-                        };
-
-                        match transformer(data) {
-                            Ok(data) => results.push(idx, data),
-                            Err(e) => return Err(BatchExecutionError::new(e, results)),
-                        }
-                    }
-                    Err(e) => {
-                        return Err(BatchExecutionError::new(crate::Error::Probe(e), results))
-                    }
-                }
-
-                pos += len;
-            }
+            bits.push((idx, write.transform, op));
         }
 
-        Ok(results)
-    }
+        tracing::debug!("Sending to chip...");
+        // If an error happens during the final flush, also retry whole operation
+        let bitstream = self
+            .adapter
+            .flush()
+            .map_err(|e| BatchExecutionError::new(e.into(), DeferredResultSet::new()))?;
 
-    fn set_ir_len(&mut self, _len: u32) {
-        // The FTDI implementation automatically sets this, so no need to act on this data
+        tracing::debug!("Got response! Took {:?}! Processing...", t1.elapsed(),);
+        let mut responses = DeferredResultSet::with_capacity(bits.len());
+
+        let mut bitstream = bitstream.as_bitslice();
+        for (idx, transform, bit) in bits.into_iter() {
+            if idx.should_capture() {
+                let write_response = match self
+                    .adapter
+                    .recieve_dr_scan(bitstream[..bit.len].to_bitvec())
+                {
+                    Ok(response_bits) => transform(response_bits),
+                    Err(e) => Err(e.into()),
+                };
+
+                match write_response {
+                    Ok(response) => responses.push(idx, response),
+                    Err(e) => return Err(BatchExecutionError::new(e, responses)),
+                }
+            }
+
+            bitstream = &bitstream[bit.len..];
+        }
+
+        Ok(responses)
     }
 }
 
-/// (VendorId, ProductId)
-static FTDI_COMPAT_DEVICE_IDS: &[(u16, u16)] = &[
-    (0x0403, 0x6010), // FTDI Ltd. FT2232C/D/H Dual UART/FIFO IC
-    (0x0403, 0x6011), // FTDI Ltd. FT4232H Quad HS USB-UART/FIFO IC
-    (0x0403, 0x6014), // FTDI Ltd. FT232H Single HS USB-UART/FIFO IC
-    (0x15ba, 0x002a), // Olimex Ltd. ARM-USB-TINY-H JTAG interface
+#[derive(Debug)]
+struct FtdiDevice {
+    /// The (VID, PID) pair of this device.
+    id: (u16, u16),
+
+    /// If set, only an exact match of this product string will be accepted.
+    product_string: Option<&'static str>,
+
+    /// The size of the device's TX/RX buffers.
+    buffer_size: usize,
+}
+
+impl FtdiDevice {
+    fn matches(&self, device: &DeviceInfo) -> bool {
+        self.id == (device.vendor_id(), device.product_id())
+            && (self.product_string.is_none() || self.product_string == device.product_string())
+    }
+}
+
+const BUFFER_SIZE_FTDI2232C_D: usize = 128;
+const BUFFER_SIZE_FTDI232H: usize = 1024;
+const BUFFER_SIZE_FTDI2232H: usize = 4096;
+
+/// Known FTDI device variants. Matched from first to last, meaning that more specific devices
+/// (i.e. those wih product strings) should be listed first.
+static FTDI_COMPAT_DEVICES: &[FtdiDevice] = &[
+    // FTDI Ltd. FT2232H Dual UART/FIFO IC
+    FtdiDevice {
+        id: (0x0403, 0x6010),
+        product_string: Some("Dual RS232-HS"),
+        buffer_size: BUFFER_SIZE_FTDI2232H,
+    },
+    // Unidentified FTDI Ltd. FT2232C/D/H Dual UART/FIFO IC
+    FtdiDevice {
+        id: (0x0403, 0x6010),
+        product_string: None,
+        // FIXME: We are using a very small buffer size here to support 2232D devices. In
+        //        the future, we should detect the device type and use a larger buffer size.
+        buffer_size: BUFFER_SIZE_FTDI2232C_D,
+    },
+    // FTDI Ltd. FT4232H Quad HS USB-UART/FIFO IC
+    FtdiDevice {
+        id: (0x0403, 0x6011),
+        product_string: None,
+        buffer_size: BUFFER_SIZE_FTDI232H,
+    },
+    // FTDI Ltd. FT232H Single HS USB-UART/FIFO IC
+    FtdiDevice {
+        id: (0x0403, 0x6014),
+        product_string: None,
+        buffer_size: BUFFER_SIZE_FTDI232H,
+    },
+    // Olimex Ltd. ARM-USB-OCD JTAG interface, FTDI2232C
+    FtdiDevice {
+        id: (0x15ba, 0x0003),
+        product_string: None,
+        buffer_size: BUFFER_SIZE_FTDI2232C_D,
+    },
+    // Olimex Ltd. ARM-USB-TINY JTAG interface, FTDI2232C
+    FtdiDevice {
+        id: (0x15ba, 0x0004),
+        product_string: None,
+        buffer_size: BUFFER_SIZE_FTDI2232C_D,
+    },
+    // Olimex Ltd. ARM-USB-TINY-H JTAG interface, FTDI2232H
+    FtdiDevice {
+        id: (0x15ba, 0x002a),
+        product_string: None,
+        buffer_size: BUFFER_SIZE_FTDI2232H,
+    },
+    // Olimex Ltd. ARM-USB-OCD-H JTAG interface, FTDI2232H
+    FtdiDevice {
+        id: (0x15ba, 0x002b),
+        product_string: None,
+        buffer_size: BUFFER_SIZE_FTDI2232H,
+    },
 ];
 
 fn get_device_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
-    if !FTDI_COMPAT_DEVICE_IDS.contains(&(device.vendor_id(), device.product_id())) {
+    if !FTDI_COMPAT_DEVICES.iter().any(|ftdi| ftdi.matches(device)) {
         return None;
     }
 
     Some(DebugProbeInfo {
-        identifier: device.product_string()?.to_string(),
+        identifier: device.product_string().unwrap_or("FTDI").to_string(),
         vendor_id: device.vendor_id(),
         product_id: device.product_id(),
         serial_number: device.serial_number().map(|s| s.to_string()),

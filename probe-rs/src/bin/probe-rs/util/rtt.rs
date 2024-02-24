@@ -27,7 +27,7 @@ pub fn attach_to_rtt(
     rtt_config: &RttConfig,
     timestamp_offset: UtcOffset,
     log_format: Option<&str>,
-) -> Result<RttActiveTarget, anyhow::Error> {
+) -> Result<Option<RttActiveTarget>, anyhow::Error> {
     log::info!("Initializing RTT");
     let rtt_header_address = if let Ok(mut file) = File::open(elf_file) {
         if let Some(address) = RttActiveTarget::get_rtt_symbol(&mut file) {
@@ -42,7 +42,8 @@ pub fn attach_to_rtt(
     if let ScanRegion::Ranges(rngs) = &rtt_header_address {
         if rngs.is_empty() {
             // We have no regions to scan so we cannot initialize RTT.
-            return Err(anyhow!("ELF file has no RTT block symbol, and this target does not support automatic scanning"));
+            log::debug!("ELF file has no RTT block symbol, and this target does not support automatic scanning");
+            return Ok(None);
         }
     }
 
@@ -51,7 +52,7 @@ pub fn attach_to_rtt(
             log::info!("RTT initialized.");
             let app =
                 RttActiveTarget::new(rtt, elf_file, rtt_config, timestamp_offset, log_format)?;
-            Ok(app)
+            Ok(Some(app))
         }
         Err(err) => Err(anyhow!("Error attempting to attach to RTT: {}", err)),
     }
@@ -610,7 +611,7 @@ pub fn try_attach_to_rtt(
             timestamp_offset,
             log_format,
         ) {
-            Ok(target_rtt) => return Some(target_rtt),
+            Ok(target_rtt) => return target_rtt,
             Err(error) => {
                 log::debug!("{:?} RTT attach error", error);
             }

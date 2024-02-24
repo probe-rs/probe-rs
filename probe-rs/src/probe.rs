@@ -837,7 +837,14 @@ impl fmt::Display for DebugProbeSelector {
 /// This trait should be implemented by all probes which offer low-level access to
 /// the JTAG protocol, i.e. direction control over the bytes sent and received.
 pub trait JTAGAccess: DebugProbe {
-    fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError>;
+    /// Read a JTAG register.
+    ///
+    /// This function emulates a read by performing a write with all zeros to the DR.
+    fn read_register(&mut self, address: u32, len: u32) -> Result<Vec<u8>, DebugProbeError> {
+        let data = vec![0u8; (len as usize + 7) / 8];
+
+        self.write_register(address, &data, len)
+    }
 
     /// For RISC-V, and possibly other interfaces, the JTAG interface has to remain in
     /// the idle state for several cycles between consecutive accesses to the DR register.
@@ -847,9 +854,6 @@ pub trait JTAGAccess: DebugProbe {
 
     /// Return the currently configured idle cycles.
     fn idle_cycles(&self) -> u8;
-
-    /// Set the IR register length
-    fn set_ir_len(&mut self, len: u32);
 
     /// Write to a JTAG register
     ///
@@ -969,16 +973,16 @@ pub enum CommandResult {
 }
 
 impl CommandResult {
-    pub fn as_u32(&self) -> u32 {
+    pub fn into_u32(self) -> u32 {
         match self {
-            CommandResult::U32(val) => *val,
+            CommandResult::U32(val) => val,
             _ => panic!("CommandResult is not a u32"),
         }
     }
 
-    pub fn as_u8(&self) -> u8 {
+    pub fn into_u8(self) -> u8 {
         match self {
-            CommandResult::U8(val) => *val,
+            CommandResult::U8(val) => val,
             _ => panic!("CommandResult is not a u8"),
         }
     }

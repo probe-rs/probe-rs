@@ -29,7 +29,6 @@ pub mod sequences;
 pub struct Riscv32<'probe> {
     interface: &'probe mut RiscvCommunicationInterface,
     state: &'probe mut RiscVState,
-    id: usize,
 }
 
 impl<'probe> Riscv32<'probe> {
@@ -37,13 +36,8 @@ impl<'probe> Riscv32<'probe> {
     pub fn new(
         interface: &'probe mut RiscvCommunicationInterface,
         state: &'probe mut RiscVState,
-        id: usize,
     ) -> Self {
-        Self {
-            interface,
-            state,
-            id,
-        }
+        Self { interface, state }
     }
 
     fn read_csr(&mut self, address: u16) -> Result<u32, RiscvError> {
@@ -282,7 +276,7 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
             Ok(_) => self.resume_core()?,
             Err(error) => {
                 return Err(RiscvError::DebugProbe(crate::DebugProbeError::Other(
-                    anyhow::anyhow!("Error during reset : {:?}", error),
+                    anyhow::anyhow!("Error during reset").context(error),
                 ))
                 .into());
             }
@@ -729,10 +723,6 @@ impl<'probe> CoreInterface for Riscv32<'probe> {
         Ok(isa_extensions & mask != 0)
     }
 
-    fn id(&self) -> usize {
-        self.id
-    }
-
     fn reset_catch_set(&mut self) -> Result<(), Error> {
         if !self.supports_reset_halt_req()? {
             return Err(Error::Riscv(RiscvError::ResetHaltRequestNotSupported));
@@ -780,6 +770,10 @@ impl<'probe> MemoryInterface for Riscv32<'probe> {
         self.interface.read_word_32(address)
     }
 
+    fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
+        self.interface.read_word_16(address)
+    }
+
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
         self.interface.read_word_8(address)
     }
@@ -790,6 +784,10 @@ impl<'probe> MemoryInterface for Riscv32<'probe> {
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
         self.interface.read_32(address, data)
+    }
+
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
+        self.interface.read_16(address, data)
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
@@ -804,6 +802,10 @@ impl<'probe> MemoryInterface for Riscv32<'probe> {
         self.interface.write_word_32(address, data)
     }
 
+    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), Error> {
+        self.interface.write_word_16(address, data)
+    }
+
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), Error> {
         self.interface.write_word_8(address, data)
     }
@@ -814,6 +816,10 @@ impl<'probe> MemoryInterface for Riscv32<'probe> {
 
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), Error> {
         self.interface.write_32(address, data)
+    }
+
+    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), Error> {
+        self.interface.write_16(address, data)
     }
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {

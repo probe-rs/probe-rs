@@ -1,6 +1,6 @@
 use bitvec::{prelude::*, slice::BitSlice, vec::BitVec};
 use nusb::{
-    transfer::{ControlIn, Direction, EndpointType},
+    transfer::{Direction, EndpointType},
     DeviceInfo,
 };
 use std::{fmt::Debug, time::Duration};
@@ -29,9 +29,8 @@ const USB_DEVICE_TRANSFER_TYPE: EndpointType = EndpointType::Bulk;
 const USB_VID: u16 = 0x303A;
 const USB_PID: u16 = 0x1001;
 
-const VENDOR_DESCRIPTOR_JTAG_CAPABILITIES: u16 = 0x2000;
-
-const USB_REQUEST_GET_DESCRIPTOR: u8 = 0x06;
+const DESCRIPTOR_JTAG_CAPABILITIES_TYPE: u8 = 0x20;
+const DESCRIPTOR_JTAG_CAPABILITIES_INDEX: u8 = 0x00;
 
 pub(super) struct ProtocolHandler {
     // The USB device handle.
@@ -79,27 +78,23 @@ impl ProtocolHandler {
         let device = nusb::list_devices()
             .map_err(ProbeCreationError::Usb)?
             .filter(is_espjtag_device)
-            .find_map(|device| {
+            .find(|device| {
                 // First match the VID & PID.
                 if selector.vendor_id == device.vendor_id()
                     && selector.product_id == device.product_id()
                 {
                     // If the VID & PID match, match the serial if one was given.
                     if let Some(serial) = &selector.serial_number {
-                        if device.serial_number() == Some(serial) {
-                            Some(device)
-                        } else {
-                            None
-                        }
+                        device.serial_number() == Some(serial)
                     } else {
                         // If no serial was given, the VID & PID match is enough; return the device.
-                        Some(device)
+                        true
                     }
                 } else {
-                    None
+                    false
                 }
             })
-            .map_or(Err(ProbeCreationError::NotFound), Ok)?;
+            .ok_or(ProbeCreationError::NotFound)?;
 
         let device_handle = device.open().map_err(ProbeCreationError::Usb)?;
 
@@ -159,16 +154,13 @@ impl ProtocolHandler {
             ));
         };
 
-        let control = ControlIn {
-            recipient: nusb::transfer::Recipient::Device,
-            control_type: nusb::transfer::ControlType::Standard,
-            request: USB_REQUEST_GET_DESCRIPTOR,
-            value: VENDOR_DESCRIPTOR_JTAG_CAPABILITIES,
-            index: 0,
-            length: 255,
-        };
-        let buffer = iface
-            .read_control(control, USB_TIMEOUT)
+        let buffer = device_handle
+            .get_descriptor(
+                DESCRIPTOR_JTAG_CAPABILITIES_TYPE,
+                DESCRIPTOR_JTAG_CAPABILITIES_INDEX,
+                0,
+                USB_TIMEOUT,
+            )
             .map_err(ProbeCreationError::Usb)?;
 
         let mut base_speed_khz = 1000;
@@ -176,7 +168,7 @@ impl ProtocolHandler {
         let mut div_max = 1;
 
         let protocol_version = buffer[0];
-        tracing::debug!("{:?}", &buffer[..20]);
+        tracing::debug!("{:02x?}", &buffer);
         tracing::debug!("Protocol version: {}", protocol_version);
         if protocol_version != JTAG_PROTOCOL_CAPABILITIES_VERSION {
             return Err(ProbeCreationError::ProbeSpecific(

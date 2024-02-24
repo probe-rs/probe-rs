@@ -1288,13 +1288,12 @@ mod test {
                     url_label: Some("Documentation".to_string()),
                     variables: Some(BTreeMap::from([(
                         "response_message".to_string(),
-                        "No probes found. Please check your USB connections.".to_string(),
+                        "No connected probes were found.".to_string(),
                     )])),
                 }),
             });
 
-        protocol_adapter
-            .expect_output_event("No probes found. Please check your USB connections.\n");
+        protocol_adapter.expect_output_event("No connected probes were found.\n");
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
 

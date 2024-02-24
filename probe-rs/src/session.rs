@@ -19,6 +19,7 @@ use crate::{
     config::DebugSequence,
 };
 use crate::{AttachMethod, Core, CoreType, Error, Lister, Probe};
+use anyhow::anyhow;
 use std::ops::DerefMut;
 use std::{fmt, sync::Arc, time::Duration};
 
@@ -82,12 +83,13 @@ impl From<&ArchitectureInterface> for Architecture {
 impl ArchitectureInterface {
     fn attach<'probe, 'target: 'probe>(
         &'probe mut self,
+        target: &'probe Target,
         combined_state: &'probe mut CombinedCoreState,
     ) -> Result<Core<'probe>, Error> {
         match self {
-            ArchitectureInterface::Arm(iface) => combined_state.attach_arm(iface),
-            ArchitectureInterface::Riscv(iface) => combined_state.attach_riscv(iface),
-            ArchitectureInterface::Xtensa(iface) => combined_state.attach_xtensa(iface),
+            ArchitectureInterface::Arm(iface) => combined_state.attach_arm(target, iface),
+            ArchitectureInterface::Riscv(iface) => combined_state.attach_riscv(target, iface),
+            ArchitectureInterface::Xtensa(iface) => combined_state.attach_xtensa(target, iface),
         }
     }
 }
@@ -386,7 +388,7 @@ impl Session {
             .cores
             .get_mut(core_index)
             .ok_or(Error::CoreNotFound(core_index))?;
-        self.interface.attach(combined_state)
+        self.interface.attach(&self.target, combined_state)
     }
 
     /// Read available trace data from the specified data sink.
@@ -659,14 +661,20 @@ impl Drop for Session {
             self.core(i)
                 .and_then(|mut core| core.clear_all_hw_breakpoints())
         }) {
-            tracing::warn!("Could not clear all hardware breakpoints: {:?}", err);
+            tracing::warn!(
+                "Could not clear all hardware breakpoints: {:?}",
+                anyhow!(err)
+            );
         }
 
         // Call any necessary deconfiguration/shutdown hooks.
         if let Err(err) = { 0..self.cores.len() }
             .try_for_each(|i| self.core(i).and_then(|mut core| core.debug_core_stop()))
         {
-            tracing::warn!("Failed to deconfigure device during shutdown: {err:?}");
+            tracing::warn!(
+                "Failed to deconfigure device during shutdown: {:?}",
+                anyhow!(err)
+            );
         }
     }
 }

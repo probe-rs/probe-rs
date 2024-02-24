@@ -103,28 +103,24 @@ impl StLinkUsbDevice {
         let device = nusb::list_devices()
             .map_err(ProbeCreationError::Usb)?
             .filter(is_stlink_device)
-            .find_map(|device| {
+            .find(|device| {
                 // First match the VID & PID.
                 if selector.vendor_id == device.vendor_id()
                     && selector.product_id == device.product_id()
                 {
                     // If the VID & PID match, match the serial if one was given.
                     if let Some(serial) = selector.serial_number.as_ref() {
-                        let sn_str = read_serial_number(&device);
-                        if sn_str.as_ref() == Some(serial) {
-                            Some(device)
-                        } else {
-                            None
-                        }
+                        let sn_str = read_serial_number(device);
+                        sn_str.as_ref() == Some(serial)
                     } else {
                         // If no serial was given, the VID & PID match is enough; return the device.
-                        Some(device)
+                        true
                     }
                 } else {
-                    None
+                    false
                 }
             })
-            .map_or(Err(ProbeCreationError::NotFound), Ok)?;
+            .ok_or(ProbeCreationError::NotFound)?;
 
         let info = USB_PID_EP_MAP[&device.product_id()].clone();
 

@@ -69,6 +69,9 @@ pub enum RiscvError {
     /// The target does not support halt after reset.
     #[error("The target does not support halt after reset.")]
     ResetHaltRequestNotSupported,
+    /// The result index of a batched command is not available.
+    #[error("The requested data is not available due to a previous error.")]
+    BatchedResultNotAvailable,
 }
 
 impl From<RiscvError> for ProbeRsError {
@@ -605,7 +608,7 @@ impl RiscvCommunicationInterface {
     /// Use the [`read_dm_register`] function if possible.
     fn read_dm_register_untyped(&mut self, address: u64) -> Result<u32, RiscvError> {
         let read_idx = self.schedule_read_dm_register_untyped(address)?;
-        let register_value = self.dtm.read_deferred_result(read_idx)?.as_u32();
+        let register_value = self.dtm.read_deferred_result(read_idx)?.into_u32();
 
         Ok(register_value)
     }
@@ -718,7 +721,7 @@ impl RiscvCommunicationInterface {
         if sbcs.sberror() != 0 {
             Err(RiscvError::SystemBusAccess)
         } else {
-            let data = V::from_register_value(self.dtm.read_deferred_result(data_idx)?.as_u32());
+            let data = V::from_register_value(self.dtm.read_deferred_result(data_idx)?.into_u32());
 
             Ok(data)
         }
@@ -762,7 +765,8 @@ impl RiscvCommunicationInterface {
         let sbcs = self.read_dm_register::<Sbcs>()?;
 
         for (out_index, idx) in read_results.into_iter().enumerate() {
-            data[out_index] = V::from_register_value(self.dtm.read_deferred_result(idx)?.as_u32());
+            data[out_index] =
+                V::from_register_value(self.dtm.read_deferred_result(idx)?.into_u32());
         }
 
         // Check that the read was succesful
@@ -810,7 +814,7 @@ impl RiscvCommunicationInterface {
         // Read back s0
         let value = self.abstract_cmd_register_read(&registers::S0)?;
 
-        let abstractcs = Abstractcs(self.dtm.read_deferred_result(abstractcs_idx)?.as_u32());
+        let abstractcs = Abstractcs(self.dtm.read_deferred_result(abstractcs_idx)?.into_u32());
         if abstractcs.cmderr() != 0 {
             return Err(RiscvError::AbstractCommand(
                 AbstractCommandErrorKind::parse(abstractcs.cmderr() as u8),
@@ -886,7 +890,7 @@ impl RiscvCommunicationInterface {
         data[data.len() - 1] = V::from_register_value(last_value);
 
         for (out_idx, value_idx) in result_idxs {
-            let value = Data0::from(self.dtm.read_deferred_result(value_idx)?.as_u32());
+            let value = Data0::from(self.dtm.read_deferred_result(value_idx)?.into_u32());
 
             data[out_idx] = V::from_register_value(value.0);
         }
@@ -1791,6 +1795,13 @@ impl MemoryInterface for RiscvCommunicationInterface {
 
     fn read_word_32(&mut self, address: u64) -> Result<u32, crate::Error> {
         let address = valid_32bit_address(address)?;
+        tracing::debug!("read_word_32 from {:#08x}", address);
+        self.read_word(address)
+    }
+
+    fn read_word_16(&mut self, address: u64) -> Result<u16, crate::Error> {
+        let address = valid_32bit_address(address)?;
+        tracing::debug!("read_word_16 from {:#08x}", address);
         self.read_word(address)
     }
 
@@ -1814,6 +1825,12 @@ impl MemoryInterface for RiscvCommunicationInterface {
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), crate::Error> {
         let address = valid_32bit_address(address)?;
         tracing::debug!("read_32 from {:#08x}", address);
+        self.read_multiple(address, data)
+    }
+
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), crate::Error> {
+        let address = valid_32bit_address(address)?;
+        tracing::debug!("read_16 from {:#08x}", address);
         self.read_multiple(address, data)
     }
 
@@ -1843,6 +1860,11 @@ impl MemoryInterface for RiscvCommunicationInterface {
         self.write_word(address, data)
     }
 
+    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), crate::Error> {
+        let address = valid_32bit_address(address)?;
+        self.write_word(address, data)
+    }
+
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), crate::Error> {
         let address = valid_32bit_address(address)?;
         self.write_word(address, data)
@@ -1862,6 +1884,13 @@ impl MemoryInterface for RiscvCommunicationInterface {
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), crate::Error> {
         let address = valid_32bit_address(address)?;
         tracing::debug!("write_32 to {:#08x}", address);
+
+        self.write_multiple(address, data)
+    }
+
+    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), crate::Error> {
+        let address = valid_32bit_address(address)?;
+        tracing::debug!("write_16 to {:#08x}", address);
 
         self.write_multiple(address, data)
     }

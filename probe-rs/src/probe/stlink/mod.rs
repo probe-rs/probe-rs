@@ -915,6 +915,55 @@ impl<D: StLinkUsb> StLink<D> {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, data, apsel), fields(ap=apsel, length= data.len()))]
+    fn read_mem_16bit(
+        &mut self,
+        address: u32,
+        data: &mut [u8],
+        apsel: u8,
+    ) -> Result<(), DebugProbeError> {
+        self.select_ap(apsel)?;
+
+        // TODO what is the max length?
+
+        assert!(
+            data.len() % 2 == 0,
+            "Data length has to be a multiple of 2 for 16 bit reads"
+        );
+
+        if address % 2 != 0 {
+            return Err(DebugProbeError::from(StlinkError::UnalignedAddress));
+        }
+
+        let data_length = data.len().to_le_bytes();
+        let addbytes = address.to_le_bytes();
+
+        retry_on_wait(|| {
+            self.device.write(
+                &[
+                    commands::JTAG_COMMAND,
+                    commands::JTAG_READMEM_16BIT,
+                    addbytes[0],
+                    addbytes[1],
+                    addbytes[2],
+                    addbytes[3],
+                    data_length[0],
+                    data_length[1],
+                    apsel,
+                ],
+                &[],
+                data,
+                TIMEOUT,
+            )?;
+
+            self.get_last_rw_status()
+        })?;
+
+        tracing::debug!("Read ok");
+
+        Ok(())
+    }
+
     fn read_mem_8bit(
         &mut self,
         address: u32,
@@ -1013,6 +1062,54 @@ impl<D: StLinkUsb> StLink<D> {
                 &[
                     commands::JTAG_COMMAND,
                     commands::JTAG_WRITEMEM_32BIT,
+                    addbytes[0],
+                    addbytes[1],
+                    addbytes[2],
+                    addbytes[3],
+                    lenbytes[0],
+                    lenbytes[1],
+                    apsel,
+                ],
+                data,
+                &mut [],
+                TIMEOUT,
+            )?;
+
+            self.get_last_rw_status()
+        })?;
+
+        Ok(())
+    }
+
+    fn write_mem_16bit(
+        &mut self,
+        address: u32,
+        data: &[u8],
+        apsel: u8,
+    ) -> Result<(), DebugProbeError> {
+        self.select_ap(apsel)?;
+
+        tracing::trace!("write_mem_16bit");
+        let length = data.len();
+
+        // TODO what is the maximum supported length?
+
+        assert!(
+            data.len() % 2 == 0,
+            "Data length has to be a multiple of 2 for 16 bit writes"
+        );
+
+        if address % 2 != 0 {
+            return Err(DebugProbeError::from(StlinkError::UnalignedAddress));
+        }
+
+        let addbytes = address.to_le_bytes();
+        let lenbytes = length.to_le_bytes();
+        retry_on_wait(|| {
+            self.device.write(
+                &[
+                    commands::JTAG_COMMAND,
+                    commands::JTAG_WRITEMEM_16BIT,
                     addbytes[0],
                     addbytes[1],
                     addbytes[2],
@@ -1500,6 +1597,33 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
         Ok(())
     }
 
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), ArmError> {
+        let address = valid_32bit_arm_address(address)?;
+
+        // Read needs to be chunked into chunks of appropriate max length of the probe
+        // use half the limits of 8bit accesses to be conservative. TODO can we increase this?
+        let chunk_size = if self.probe.probe.hw_version < 3 {
+            32
+        } else {
+            64
+        };
+
+        for (index, chunk) in data.chunks_mut(chunk_size).enumerate() {
+            let mut buff = vec![0u8; 2 * chunk.len()];
+            self.probe.probe.read_mem_16bit(
+                address + (index * chunk_size) as u32,
+                &mut buff,
+                self.current_ap.ap_address().ap,
+            )?;
+
+            for (index, word) in buff.chunks_exact(2).enumerate() {
+                chunk[index] = u16::from_le_bytes(word.try_into().unwrap());
+            }
+        }
+
+        Ok(())
+    }
+
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), ArmError> {
         let address = valid_32bit_arm_address(address)?;
 
@@ -1564,6 +1688,37 @@ impl ArmProbe for StLinkMemoryInterface<'_> {
 
         for (index, chunk) in tx_buffer.chunks(STLINK_MAX_WRITE_LEN).enumerate() {
             self.probe.probe.write_mem_32bit(
+                address + (index * STLINK_MAX_WRITE_LEN) as u32,
+                chunk,
+                self.current_ap.ap_address().ap,
+            )?;
+        }
+
+        Ok(())
+    }
+
+    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), ArmError> {
+        let address = valid_32bit_arm_address(address)?;
+
+        let mut tx_buffer = vec![0u8; data.len() * 2];
+
+        let mut offset = 0;
+
+        for word in data {
+            tx_buffer
+                .gwrite(word, &mut offset)
+                .expect("Failed to write into tx_buffer");
+        }
+
+        // use half the limits of 8bit accesses to be conservative. TODO can we increase this?
+        let chunk_size = if self.probe.probe.hw_version < 3 {
+            32
+        } else {
+            256
+        };
+
+        for (index, chunk) in tx_buffer.chunks(chunk_size).enumerate() {
+            self.probe.probe.write_mem_16bit(
                 address + (index * STLINK_MAX_WRITE_LEN) as u32,
                 chunk,
                 self.current_ap.ap_address().ap,
