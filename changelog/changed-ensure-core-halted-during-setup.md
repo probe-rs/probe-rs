@@ -1,1 +1,0 @@
-Ensure then when executing setup commands and sequences that the core is halted.

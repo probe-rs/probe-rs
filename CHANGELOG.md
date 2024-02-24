@@ -3,6 +3,75 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.0]
+
+Released 2024-02-24
+
+### Added
+
+ - Added option to specify load address for flash algorithm data pages (#2099) by @bugadani
+ - Added multidrop support for J-Link probes (#2079) by @bugadani
+ - Added support for 16bit reads and writes. (#2018) by @Dirbaio
+ - probe-rs info now supports Xtensa devices (#2022) by @bugadani
+ - Added `chipDescriptionPath` to debug server configuration
+   rtthost: Small refactor to reuse code (#2050) by @bugadani
+
+ - It is now possible to configure the speed of FTDI probes (#2075) by @bugadani
+ - Allow specifying a chip via environment variable (#1958) by @jessebraham
+ - Add support for the esp32 targets (3.3V VDD_SDIO) (#2102) by @bugadani
+ - Add support for AirMCU series. (#1974) by @HalfSweet
+ - Added ARM interface support (JTAG only) to FTDI probes. (#2090) by @bugadani
+ - Add support for using a hart other than hart 0 (#2080) by @bjoernQ
+ - debug: Added `StackFrame::canonical_frame_address` and `StackFrameInfo` (#2134) by @bugadani
+ - Exposed the internal probe implementations (#2027) by @bugadani
+ - Support specifying a TARGETSEL value to the `probe-rs info` subcommand. This can be used to see information about a SWD multi-drop target. (#2092) by @Tiwalun
+ - Added support to `cargo embed` for publishing raw RTT data for specific channels on a tcp socket. (#2126) by @ijager
+ - Added limited C debugging capabilities (#2171) by @bugadani
+ - probe-rs now supports flashing STM32WLE5CCUx MCUs (#2036) by @elpiel
+ - Add support for the esp32s2 target (#2002) by @bugadani
+ - probe-rs now supports flashing CH32V307 MCUs (#2136) by @Marcuss2
+
+### Changed
+
+ - Ensure then when executing setup commands and sequences that the core is halted. (#2151) by @MabezDev
+ - JLink: handle multiple JTAG TAPs (#2025) by @bugadani
+ - `UnitInfo` is now public.
+   `VariableCache::new_dwarf_cache` and `VariableCache::create_variable` now take an `Option<&UnitInfo>`. (#2150) by @bugadani
+
+ - The FTDI probe driver is now enabled unconditionally (#2077) by @bugadani
+ - The following are now available under `probe_rs::probe`: `AttachMethod`, `DebugProbe`, `DebugProbeError`, `DebugProbeInfo`, `DebugProbeSelector`, `Probe`, `ProbeCreationError`, `ProbeFactory`, `WireProtocol`
+   `Lister` is now available under `probe_rs::probe::list` (#2027) by @bugadani
+
+ - Moved `scan_chain` under `jtag` in target descriptions (#2082) by @bugadani
+ - The scan chain information in target descriptions is now always used to validate the measured JTAG chain. (#2082) by @bugadani
+ - Use the `nusb` crate for USB I/O. (pure-Rust replacement for `rusb`/`libusb`). (#1842) by @Dirbaio
+ - Extract ProbeDriver from DebugProbe (#1996) by @bugadani
+
+### Fixed
+
+ - Fixed `--speed` being ignored by J-Links (#2109) by @bugadani
+ - Temporarily pin defmt-decoder version to deal with breaking change in 0.3.10 (#2156) by @tommy-gilligan
+ - cmsis-dap: Increase USB timeout to 1s. (#2205) by @Tiwalun
+ - jlink: Consider free memory size reported by J-Link when performing SWD transfers. (#2144) by @Tiwalun
+ - Don't stop DAP debugger server when an error unwinding an exception occurs. (#2198) by @Tiwalun
+ - Fix reading back an empty buffer from the espusbjtag probe on a cold boot. (#2173) by @MabezDev
+ - Fixed logging causing multiple progress bars to appear in console output. (#2104) by @bugadani
+ - Fixed flashing MIMXRT1060 devices (#2089) by @bugadani
+ - Fixed STM32G431xB flashing, which was broken by adopting the [version 1.5.0](https://www.keil.arm.com/packs/stm32g4xx_dfp-keil/versions/) STM32G4 target pack from upstream. (#2061) by @dlaw
+ - espusbjtag, ftdi: fix IR length measurement (#2024) by @bugadani
+ - Fixed `probe-rs info` not recognising Xtensa chips if probe supports SWD (#2069) by @bugadani
+ - Fixed cargo-embed not respecting the target's preferred image format. (#2104) by @bugadani
+ - Do not print RTT error if there is nowhere to look for the control block (#2073) by @bugadani
+ - Fixed a regression that made it impossible to select a chip target that was a substring of another chip (eg cortex-m3 is a substring of cortex-m33) (#2121) by @9names
+ - Debug: Do not fail when encountering new `DW_AT_accessibility` attribute in debug info. (#2149) by @noppej
+
+### Removed
+
+ - Removed the redundant `begin_data` field of `FlashAlgorithm` (#2095) by @bugadani
+ - Removed `DebugProbeType` (#1996) by @bugadani
+ - Removed the `ftdi` and `ftdi-vendored` features (#2077) by @bugadani
+ - Removed (hidden) private Xtensa APIs (#2051) by @bugadani
+
 ## [0.22.0]
 
 Released 2024-01-03
@@ -1107,7 +1176,8 @@ Initial release on crates.io
 - Working basic flash downloader with nRF51.
 - Introduce cargo-flash which can automatically build & flash the target elf file.
 
-[unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.22.0...master
+[unreleased]: https://github.com/probe-rs/probe-rs/compare/v0.23.0...master
+[0.23.0]: https://github.com/probe-rs/probe-rs/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/probe-rs/probe-rs/compare/v0.21.1...v0.22.0
 [0.21.1]: https://github.com/probe-rs/probe-rs/compare/v0.21.0...v0.21.1
 [0.21.0]: https://github.com/probe-rs/probe-rs/compare/v0.20.0...v0.21.0

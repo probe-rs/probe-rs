@@ -1,1 +1,0 @@
-Added ARM interface support (JTAG only) to FTDI probes.

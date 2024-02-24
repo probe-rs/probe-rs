@@ -1,1 +1,0 @@
-Fixed `probe-rs info` not recognising Xtensa chips if probe supports SWD

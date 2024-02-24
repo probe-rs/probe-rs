@@ -1,1 +1,0 @@
-Debug: Do not fail when encountering new `DW_AT_accessibility` attribute in debug info.

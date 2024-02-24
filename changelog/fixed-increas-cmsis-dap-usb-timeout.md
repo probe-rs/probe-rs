@@ -1,1 +1,0 @@
-cmsis-dap: Increase USB timeout to 1s.

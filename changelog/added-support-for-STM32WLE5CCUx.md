@@ -1,1 +1,0 @@
-probe-rs now supports flashing STM32WLE5CCUx MCUs

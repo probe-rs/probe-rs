@@ -2543,7 +2543,7 @@ dependencies = [
 
 [[package]]
 name = "probe-rs"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "addr2line",
  "anyhow",
@@ -2621,7 +2621,7 @@ dependencies = [
 
 [[package]]
 name = "probe-rs-target"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "base64",
  "jep106",
@@ -3020,7 +3020,7 @@ checksum = "3cd14fd5e3b777a7422cca79358c57a8f6e3a703d9ac187448d0daf220c2407f"
 
 [[package]]
 name = "rtthost"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -3511,7 +3511,7 @@ checksum = "b7c388c1b5e93756d0c740965c41e8822f866621d41acbdf6336a6a168f8840c"
 
 [[package]]
 name = "smoke_tester"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -3775,7 +3775,7 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "target-gen"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -4736,7 +4736,7 @@ checksum = "7e2c411759b501fb9501aac2b1b2d287a6e93e5bdcf13c25306b23e1b716dd0e"
 
 [[package]]
 name = "xtask"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "anyhow",
  "chrono",

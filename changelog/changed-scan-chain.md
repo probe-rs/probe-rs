@@ -1,1 +1,0 @@
-The scan chain information in target descriptions is now always used to validate the measured JTAG chain.

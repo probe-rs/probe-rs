@@ -1,1 +1,0 @@
-Do not print RTT error if there is nowhere to look for the control block

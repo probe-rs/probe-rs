@@ -1,1 +1,0 @@
-Fix reading back an empty buffer from the espusbjtag probe on a cold boot.
