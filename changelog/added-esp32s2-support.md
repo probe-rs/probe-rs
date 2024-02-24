@@ -1,1 +1,0 @@
-Add support for the esp32s2 target

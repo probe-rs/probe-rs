@@ -1,1 +1,0 @@
-probe-rs now supports flashing CH32V307 MCUs

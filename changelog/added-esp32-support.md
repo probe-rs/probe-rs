@@ -1,1 +1,0 @@
-Add support for the esp32 targets (3.3V VDD_SDIO)
