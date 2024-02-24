@@ -1,4 +1,5 @@
 use super::{
+    canonical_path_eq,
     unit_info::{self, UnitInfo},
     ColumnType, DebugError, DebugInfo,
 };
@@ -11,16 +12,141 @@ use std::{
 };
 use typed_path::TypedPathBuf;
 
-/// Capture the required information when a breakpoint is set based on a requested source location.
-/// It is possible that the requested source location cannot be resolved to a valid instruction address,
-/// in which case the first 'valid' instruction address will be used, and the source location will be
-/// updated to reflect the actual source location, not the requested source location.
+/// A verified breakpoint represents an instruction address, and the source location that it corresponds to it,
+/// for locations in the target binary that comply with the DWARF standard terminology for "recommended breakpoint location".
+/// This typically refers to instructions that are not part of the prologue or epilogue, and are part of the user code,
+/// or are the final instruction in a sequence, before the processor begins the epilogue code.
+/// The `probe-rs` debugger uses this information to identify valid halt locations for breakpoints and stepping.
 #[derive(Clone, Debug)]
 pub struct VerifiedBreakpoint {
     /// The address in target memory, where the breakpoint can be set.
     pub address: u64,
     /// If the breakpoint request was for a specific source location, then this field will contain the resolved source location.
     pub source_location: SourceLocation,
+}
+
+impl VerifiedBreakpoint {
+    /// Return the first valid breakpoint location of the statement that is greater than OR equal to `address`.
+    /// e.g., if the `address` is the current program counter, then the return value will be the next valid halt address
+    /// in the current sequence.
+    pub(crate) fn for_address(
+        debug_info: &DebugInfo,
+        address: u64,
+    ) -> Result<VerifiedBreakpoint, DebugError> {
+        let instruction_sequence = InstructionSequence::for_address(debug_info, address)?;
+        // Note: The `address_range` captures address range the prologue, in addition to the valid instructions in the sequence.
+        if instruction_sequence.address_range.contains(&address) {
+            if let Some(valid_breakpoint) = instruction_sequence
+                .instructions
+                .iter()
+                .find(|instruction_location| instruction_location.address >= address)
+                .and_then(|instruction_location| {
+                    SourceLocation::from_instruction_location(
+                        debug_info,
+                        instruction_sequence.program_unit,
+                        instruction_location,
+                    )
+                    .map(|source_location| VerifiedBreakpoint {
+                        address: instruction_location.address,
+                        source_location,
+                    })
+                })
+            {
+                tracing::debug!(
+                    "Found valid breakpoint for address: {:#010x} : {valid_breakpoint:?}",
+                    &address
+                );
+                return Ok(valid_breakpoint);
+            }
+        }
+        Err(DebugError::IncompleteDebugInfo{
+            message: format!("Could not identify a valid breakpoint for address: {address:#010x}. Please consider using instruction level stepping."),
+            pc_at_error: address,
+        })
+    }
+
+    /// Identifying the breakpoint location for a specific location (path, line, colunmn) is a bit more complex,
+    /// compared to the `for_address()` method, due to a few factors:
+    /// - The correct program instructions, may be in any of the compilation units of the current program.
+    /// - The debug information may not contain data for the "specific source" location requested:
+    ///   - DWARFv5 standard, section 6.2, allows omissions based on certain conditions. In this case,
+    ///    we need to find the closest "relevant" source location that has valid debug information.
+    ///   - The requested location may not be a valid source location, e.g. when the
+    ///    debug information has been optimized away. In this case we will return an appropriate error.
+    /// #### The logic used to find the "most relevant" source location is as follows:
+    /// 1. Filter  [`UnitInfo`] , by using [`LineProgramHeader`] to match units that include the requested path.
+    /// 2. For each matching compilation unit, get the [`LineProgram`] and [`Vec<LineSequence>`].
+    /// 3. Filter the [`Vec<LineSequence>`] entries to only include sequences that match the requested path.
+    /// 3. Convert remaining [`LineSequence`], to [`InstructionSequence`].
+    /// 4. Return the first [`InstructionSequence`] that contains the requested source location.
+    ///   4a. This may be an exact match on file/line/column, or,
+    ///   4b. Failing an exact match, a match on file/line only. (TODO: make sure we don't try to step backwards!)
+    ///   4c. Failing that, a match on file only, where the line number is the "next" available instruction.
+    #[allow(dead_code)] // temporary, while this PR is a WIP
+    pub(crate) fn for_source_location(
+        debug_info: &DebugInfo,
+        path: &TypedPathBuf,
+        _line: u64,
+        _column: Option<u64>,
+    ) -> Result<Self, DebugError> {
+        let wip = debug_info.unit_infos.as_slice().iter().map(|program_unit| {
+            // Track the file entry for more efficient filtering of line rows.
+            let mut matching_file_entry = None;
+            program_unit
+                .unit
+                .line_program
+                .as_ref()
+                .and_then(|line_program| {
+                    if line_program.header().file_names().iter().any(|file_entry| {
+                        debug_info
+                            .get_path(&program_unit.unit, line_program.header(), file_entry)
+                            .map(|combined_path: TypedPathBuf| {
+                                if canonical_path_eq(path, &combined_path) {
+                                    matching_file_entry = Some(file_entry);
+                                    true
+                                } else {
+                                    false
+                                }
+                            })
+                            .unwrap_or(false)
+                    }) {
+                        if let Ok((complete_line_program, mut line_sequences)) =
+                            line_program.clone().sequences()
+                        {
+                            line_sequences
+                                .iter_mut()
+                                .map(|line_sequence| {
+                                    complete_line_program.resume_from(line_sequence)
+                                })
+                                .map(|mut line_rows| {
+                                    while let Ok(Some((line_program_header, line_row))) =
+                                        line_rows.next_row()
+                                    {}
+                                });
+                            Some(complete_line_program)
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                })
+        });
+        for pu in wip {}
+        // .collect::<Vec<&IncompleteLineProgram<GimliReader>>>();
+
+        //     {
+        //     program_unit.unit.line_program.as_ref().map(|line_program| {
+        //         line_program.header().file_names().iter().any(|file_entry| {
+        //             debug_info
+        //                 .get_path(&program_unit.unit, line_program.header(), file_entry)
+        //                 .map(|combined_path: TypedPathBuf| canonical_path_eq(path, &combined_path))
+        //                 .unwrap_or(false)
+        //         })
+        //     })
+        // });
+        Err(DebugError::Other(anyhow::anyhow!("TODO")))
+    }
 }
 
 fn serialize_typed_path<S>(path: &Option<TypedPathBuf>, serializer: S) -> Result<S::Ok, S::Error>
@@ -50,7 +176,7 @@ pub struct SourceLocation {
 
 impl SourceLocation {
     /// Resolve debug information for a [`InstructionLocation`] and create a [`SourceLocation`].
-    pub(crate) fn from_instruction_location(
+    fn from_instruction_location(
         debug_info: &DebugInfo,
         program_unit: &unit_info::UnitInfo,
         instruction_location: &InstructionLocation,
@@ -71,7 +197,7 @@ impl SourceLocation {
 
     /// The full path of the source file, combining the `directory` and `file` fields.
     /// If the path does not resolve to an existing file, an error is returned.
-    pub fn combined_path(&self) -> Result<PathBuf, DebugError> {
+    pub(crate) fn combined_path(&self) -> Result<PathBuf, DebugError> {
         let combined_path = self.combined_typed_path();
 
         if let Some(native_path) = combined_path.and_then(|p| PathBuf::try_from(p).ok()) {
@@ -102,7 +228,7 @@ impl SourceLocation {
 /// This is a list of target instructions, belonging to a [`gimli::LineSequence`],
 /// and filters it to only user code instructions (no prologue code, and no non-statement instructions),
 /// so that we are left only with what DWARF terms as "recommended breakpoint location".
-pub struct InstructionSequence<'debug_info> {
+pub(crate) struct InstructionSequence<'debug_info> {
     /// The `address_range.start` is the starting address of the program counter for which this sequence is valid,
     /// and allows us to identify target instruction locations where the program counter lies inside the prologue.
     /// The `address_range.end` is the first address that is not covered by this sequence within the line number program,
@@ -112,7 +238,6 @@ pub struct InstructionSequence<'debug_info> {
     pub(crate) instructions: Vec<InstructionLocation>,
     // The following private fields are required to resolve the source location information for
     // each instruction location.
-    debug_info: &'debug_info DebugInfo,
     program_unit: &'debug_info UnitInfo,
 }
 
@@ -174,7 +299,6 @@ impl<'debug_info> InstructionSequence<'debug_info> {
         let mut instruction_sequence = InstructionSequence {
             address_range: line_sequence.start..line_sequence.end,
             instructions: Vec::new(),
-            debug_info,
             program_unit,
         };
         let mut prologue_completed = false;
@@ -243,24 +367,6 @@ impl<'debug_info> InstructionSequence<'debug_info> {
         }
     }
 
-    /// Identifying the instruction locations for a specific location (path, line, colunmn) is a bit more complex,
-    /// compared to the `for_address()` method, due to a few factors:
-    /// - We need to find the correct program instructions, which may be in any of the compilation
-    /// units of the current program.
-    /// - The debug information may not contain data for the "requested source location", e.g.
-    ///   - DWARFv5 standard, section 6.2, allows omissions based on certain conditions. In this case,
-    ///    we need to find the closest "relevant" source location that has valid debug information.
-    ///   - The requested location may not be a valid source location, e.g. when the
-    ///    debug information has been optimized away. In this case we will return an appropriate error.
-    #[allow(dead_code)] // temporary, while this PR is a WIP
-    pub(crate) fn for_source_location(
-        _path: &TypedPathBuf,
-        _line: u64,
-        _column: Option<u64>,
-    ) -> Result<Self, DebugError> {
-        Err(DebugError::Other(anyhow::anyhow!("TODO")))
-    }
-
     /// Add a instruction location to the list.
     pub(crate) fn add(&mut self, row: &gimli::LineRow, previous_row: Option<&gimli::LineRow>) {
         let mut instruction_location = InstructionLocation::from(row);
@@ -283,44 +389,6 @@ impl<'debug_info> InstructionSequence<'debug_info> {
     /// Get the number of instruction locations in the list.
     pub(crate) fn len(&self) -> usize {
         self.instructions.len()
-    }
-
-    /// Return the first valid breakpoint location of the statement that is greater than OR equal to `address`.
-    /// e.g., if the `address` is the current program counter, and the return value will be the next valid halt address
-    /// in the current sequence. A result of `None` indicates that the next valid halt address is outside the current sequence.
-    pub(crate) fn get_first_breakpoint(
-        &self,
-        address: u64,
-    ) -> Result<VerifiedBreakpoint, DebugError> {
-        // Note: The `address_range` captures address range the prologue, in addition to the valid instructions in the sequence.
-        if self.address_range.contains(&address) {
-            if let Some(valid_breakpoint) = self
-                .instructions
-                .iter()
-                .find(|instruction_location| instruction_location.address >= address)
-                .and_then(|instruction_location| {
-                    SourceLocation::from_instruction_location(
-                        self.debug_info,
-                        self.program_unit,
-                        instruction_location,
-                    )
-                    .map(|source_location| VerifiedBreakpoint {
-                        address: instruction_location.address,
-                        source_location,
-                    })
-                })
-            {
-                tracing::debug!(
-                    "Found valid breakpoint for address: {:#010x} : {valid_breakpoint:?}",
-                    &address
-                );
-                return Ok(valid_breakpoint);
-            }
-        }
-        Err(DebugError::IncompleteDebugInfo{
-            message: "Could not determine valid halt locations for this request. Please consider using instruction level stepping.".to_string(),
-            pc_at_error: address,
-        })
     }
 }
 

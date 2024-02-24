@@ -1,6 +1,4 @@
-use super::{
-    debug_info::DebugInfo, source_instructions::InstructionSequence, DebugError, VerifiedBreakpoint,
-};
+use super::{debug_info::DebugInfo, DebugError, VerifiedBreakpoint};
 use crate::{
     architecture::{
         arm::ArmError, riscv::communication_interface::RiscvError,
@@ -179,36 +177,31 @@ impl SteppingMode {
         match self {
             SteppingMode::BreakPoint => {
                 // Find the first_breakpoint_address
-                let instruction_sequence =
-                    InstructionSequence::for_address(debug_info, program_counter)?;
-                return instruction_sequence.get_first_breakpoint(program_counter);
+                return VerifiedBreakpoint::for_address(debug_info, program_counter);
             }
             SteppingMode::OverStatement => {
-                // Find the next_statement_address
+                // Find the "step over location"
                 // - The instructions in a sequence do not necessarily have contiguous addresses,
                 //   and the next instruction address may be affected by conditonal branching at runtime.
-                // - Therefore, in order to find the correct next_statement_address, we iterate through the
-                //   instructions to find the starting address of the next halt location in the source instructions.
+                // - Therefore, in order to find the correct "step over location", we iterate through the
+                //   instructions to find the starting address of the next halt location, ie. the address
+                //   is greater than the current program counter.
                 //    -- If there is one, it means the step over target is in the current sequence,
                 //       so we get the valid breakpoint location for this next location.
                 //    -- If there is not one, the step over target is the same as the step out target.
-                let instruction_sequence =
-                    InstructionSequence::for_address(debug_info, program_counter)?;
-
-                // Find the breakpoint_address where the address is > program_counter (not inclusive).
-                // We do this by by forcing the `get_first_breakpoint` method to look for an address
-                // that is greater than the current program_counter.
-                return instruction_sequence
-                    .get_first_breakpoint(program_counter.checked_add(1).unwrap_or(program_counter))
-                    .or_else(|_| {
-                        // If we cannot find a valid breakpoint in the current sequence, we will step out of the current sequence.
-                        SteppingMode::OutOfStatement.get_halt_location(
-                            core,
-                            debug_info,
-                            program_counter,
-                            return_address,
-                        )
-                    });
+                return VerifiedBreakpoint::for_address(
+                    debug_info,
+                    program_counter.checked_add(1).unwrap_or(program_counter),
+                )
+                .or_else(|_| {
+                    // If we cannot find a valid breakpoint in the current sequence, we will step out of the current sequence.
+                    SteppingMode::OutOfStatement.get_halt_location(
+                        core,
+                        debug_info,
+                        program_counter,
+                        return_address,
+                    )
+                });
             }
             SteppingMode::IntoStatement => {
                 // This is a tricky case because the current RUST generated DWARF, does not store the DW_TAG_call_site information described in the DWARF 5 standard.
@@ -223,11 +216,10 @@ impl SteppingMode {
                 //          (a.ii) An interrupt handler diverted the processing.
                 //   (b) We hit a PC at the address of the identified next instruction location,
                 //       which means there was nothing to step into, so the target is now halted (correctly) at the next statement.
-                let instruction_sequence =
-                    InstructionSequence::for_address(debug_info, program_counter)?;
-                let target_pc = match instruction_sequence
-                    .get_first_breakpoint(program_counter.checked_add(1).unwrap_or(program_counter))
-                {
+                let target_pc = match VerifiedBreakpoint::for_address(
+                    debug_info,
+                    program_counter.checked_add(1).unwrap_or(program_counter),
+                ) {
                     Ok(identified_next_breakpoint) => identified_next_breakpoint.address,
                     Err(DebugError::IncompleteDebugInfo { .. }) => {
                         // There are no next statements in this sequence, so we will use the return address as the target.
@@ -247,12 +239,12 @@ impl SteppingMode {
                     }
                 };
 
-                let (core_status, new_pc) =
-                    step_to_address(instruction_sequence.address_range.start..=target_pc, core)?;
-                if (program_counter..instruction_sequence.address_range.end).contains(&new_pc) {
-                    // We have halted at an address after the current instruction, but inside the same sequence,
+                let (core_status, new_pc) = step_to_address(program_counter..=target_pc, core)?;
+                if (program_counter..=target_pc).contains(&new_pc) {
+                    // We have halted at an address after the current instruction (either in the same sequence,
+                    // or at the return address of the current function),
                     // so we can conclude there were no branching calls in this instruction.
-                    tracing::debug!("Stepping into next statement, but no branching calls found. Stepped to next available statement.");
+                    tracing::debug!("Stepping into next statement, but no branching calls found. Stepped to next available location.");
                 } else if matches!(core_status, CoreStatus::Halted(HaltReason::Breakpoint(_))) {
                     // We have halted at a PC that is within the current statement, so there must be another breakpoint.
                     tracing::debug!("Stepping into next statement, but encountered a breakpoint.");
