@@ -24,9 +24,10 @@ exclude = ["probe-rs/tests/gpio-hal-blinky"]
 [workspace.dependencies]
 probe-rs = { path = "probe-rs", version = "0.22.0" }
 probe-rs-target = { path = "probe-rs-target", version = "0.22.0" }
-pretty_env_logger = "0.5.0"
-thiserror = "1.0"
-anyhow = "1.0.78"
+
+pretty_env_logger = "0.5"
+thiserror = "1"
+anyhow = "1"
 
 [workspace.metadata.release]
 shared-version = true
@@ -41,7 +42,12 @@ rust-toolchain-version = "1.74.0"
 # CI backends to support
 ci = ["github"]
 # Target platforms to build apps for (Rust target-triple syntax)
-targets = ["x86_64-unknown-linux-gnu", "aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-pc-windows-msvc"]
+targets = [
+    "x86_64-unknown-linux-gnu",
+    "aarch64-apple-darwin",
+    "x86_64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+]
 # Build only the required packages, and individually
 precise-builds = true
 # The archive format to use for non-windows builds (defaults .tar.xz)
