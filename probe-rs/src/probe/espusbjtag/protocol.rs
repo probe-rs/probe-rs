@@ -6,8 +6,8 @@ use nusb::{
 use std::{fmt::Debug, time::Duration};
 
 use crate::{
-    probe::common::JtagState, probe::espusbjtag::EspUsbJtagSource, probe::usb_util::InterfaceExt,
-    DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
+    probe::espusbjtag::EspUsbJtagSource, probe::usb_util::InterfaceExt, DebugProbeError,
+    DebugProbeInfo, DebugProbeSelector, ProbeCreationError,
 };
 
 const JTAG_PROTOCOL_CAPABILITIES_VERSION: u8 = 1;
@@ -50,8 +50,6 @@ pub(super) struct ProtocolHandler {
     ep_out: u8,
     ep_in: u8,
 
-    jtag_state: JtagState,
-
     pub(crate) base_speed_khz: u32,
     pub(crate) div_min: u16,
     pub(crate) div_max: u16,
@@ -68,7 +66,6 @@ impl Debug for ProtocolHandler {
             .field("base_speed_khz", &self.base_speed_khz)
             .field("div_min", &self.div_min)
             .field("div_max", &self.div_max)
-            .field("jtag_state", &self.jtag_state)
             .finish()
     }
 }
@@ -78,22 +75,7 @@ impl ProtocolHandler {
         let device = nusb::list_devices()
             .map_err(ProbeCreationError::Usb)?
             .filter(is_espjtag_device)
-            .find(|device| {
-                // First match the VID & PID.
-                if selector.vendor_id == device.vendor_id()
-                    && selector.product_id == device.product_id()
-                {
-                    // If the VID & PID match, match the serial if one was given.
-                    if let Some(serial) = &selector.serial_number {
-                        device.serial_number() == Some(serial)
-                    } else {
-                        // If no serial was given, the VID & PID match is enough; return the device.
-                        true
-                    }
-                } else {
-                    false
-                }
-            })
+            .find(|device| selector.matches(device))
             .ok_or(ProbeCreationError::NotFound)?;
 
         let device_handle = device.open().map_err(ProbeCreationError::Usb)?;
@@ -210,52 +192,34 @@ impl ProtocolHandler {
             base_speed_khz,
             div_min,
             div_max,
-
-            jtag_state: JtagState::Reset,
         })
-    }
-
-    pub(super) fn jtag_move_to_state(&mut self, target: JtagState) -> Result<(), DebugProbeError> {
-        tracing::trace!("Changing state: {:?} -> {:?}", self.jtag_state, target);
-        while let Some(tms) = self.jtag_state.step_toward(target) {
-            self.schedule_jtag_scan([tms], [false], [false])?;
-        }
-        tracing::trace!("In state: {:?}", self.jtag_state);
-        Ok(())
     }
 
     /// Put a bit on TDI and possibly read one from TDO.
     /// to receive the bytes from this operations call [`ProtocolHandler::flush`]
     ///
     /// Note that if the internal buffer is exceeded bytes will be automatically flushed to usb device
-    pub fn schedule_jtag_scan(
-        &mut self,
-        tms: impl IntoIterator<Item = bool>,
-        tdi: impl IntoIterator<Item = bool>,
-        cap: impl IntoIterator<Item = bool>,
-    ) -> Result<(), DebugProbeError> {
-        for ((tms, tdi), cap) in tms.into_iter().zip(tdi.into_iter()).zip(cap.into_iter()) {
-            self.jtag_state.update(tms);
-            if cap && self.pending_in_bits == 128 * 8 {
-                // From the ESP32-S3 TRM:
-                // [A] command stream can cause at most 128 bytes of capture data to be
-                // generated [...] without the host acting to receive the generated data. If
-                // more data is generated anyway, the command stream is paused and the device
-                // will not accept more commands before the generated capture data is read out.
+    pub fn shift_bit(&mut self, tms: bool, tdi: bool, cap: bool) -> Result<(), DebugProbeError> {
+        if cap && self.pending_in_bits == 128 * 8 {
+            // From the ESP32-S3 TRM:
+            // [A] command stream can cause at most 128 bytes of capture data to be
+            // generated [...] without the host acting to receive the generated data. If
+            // more data is generated anyway, the command stream is paused and the device
+            // will not accept more commands before the generated capture data is read out.
 
-                // Let's break the command stream here and flush the data.
-                // We do this before we would capture the 1025th bit, so we don't do an
-                // extra flush if we only ever want to capture 1024 bits.
-                self.finalize_previous_command()?;
-                self.send_buffer()?;
-                self.receive_buffer()?;
-            }
-
-            self.push_command(RepeatableCommand::Clock { cap, tdi, tms })?;
-            if cap {
-                self.pending_in_bits += 1;
-            }
+            // Let's break the command stream here and flush the data.
+            // We do this before we would capture the 1025th bit, so we don't do an
+            // extra flush if we only ever want to capture 1024 bits.
+            self.finalize_previous_command()?;
+            self.send_buffer()?;
+            self.receive_buffer()?;
         }
+
+        self.push_command(RepeatableCommand::Clock { cap, tdi, tms })?;
+        if cap {
+            self.pending_in_bits += 1;
+        }
+
         Ok(())
     }
 
@@ -293,8 +257,10 @@ impl ProtocolHandler {
         Ok(())
     }
 
-    /// Flushes all the pending commands to the JTAG adapter.
-    pub fn flush(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
+    /// Flushes pending commands and reads the captured bits from the target.
+    ///
+    /// The captured bits will be stored in the response buffer.
+    pub(super) fn flush(&mut self) -> Result<(), DebugProbeError> {
         self.finalize_previous_command()?;
 
         // Only flush if we have anything to do.
@@ -308,6 +274,16 @@ impl ProtocolHandler {
                 self.receive_buffer()?;
             }
         }
+
+        Ok(())
+    }
+
+    /// Flushes pending commands and reads the captured bits from the target.
+    ///
+    /// This method returns the response buffer and clears it. The returned buffer will contain
+    /// all bits captured since the last call to `read_captured_bits`.
+    pub(super) fn read_captured_bits(&mut self) -> Result<BitVec<u8, Lsb0>, DebugProbeError> {
+        self.flush()?;
 
         Ok(std::mem::take(&mut self.response))
     }

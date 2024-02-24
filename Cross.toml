@@ -9,7 +9,7 @@
 pre-build = [
     "dpkg --add-architecture armhf",
     "apt-get update",
-    "apt-get install --assume-yes libusb-1.0-0-dev:armhf libftdi1-dev:armhf libudev-dev:armhf libssl-dev:armhf",
+    "apt-get install --assume-yes libudev-dev:armhf",
 ]
 
 [target.aarch64-unknown-linux-gnu]
@@ -23,5 +23,5 @@ pre-build = [
 pre-build = [
     "dpkg --add-architecture arm64",
     "apt-get update",
-    "apt-get install --assume-yes libusb-1.0-0-dev:arm64 libftdi1-dev:arm64 libudev-dev:arm64 libssl-dev:arm64",
+    "apt-get install --assume-yes libudev-dev:arm64",
 ]

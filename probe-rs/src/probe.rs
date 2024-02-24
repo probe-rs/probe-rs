@@ -5,7 +5,6 @@ pub(crate) mod usb_util;
 pub(crate) mod cmsisdap;
 pub(crate) mod espusbjtag;
 pub(crate) mod fake_probe;
-#[cfg(feature = "ftdi")]
 pub(crate) mod ftdi;
 pub(crate) mod jlink;
 pub(crate) mod list;
@@ -33,6 +32,7 @@ use crate::{
     Permissions,
 };
 use crate::{Lister, Session};
+use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -487,7 +487,7 @@ impl Probe {
 /// An abstraction over a probe driver type.
 ///
 /// This trait has to be implemented by ever debug probe driver.
-pub trait ProbeDriver: std::any::Any + std::fmt::Debug {
+pub trait ProbeDriver: std::any::Any + std::fmt::Debug + Sync {
     /// Creates a new boxed [`DebugProbe`] from a given [`DebugProbeSelector`].
     /// This will be called for all available debug drivers when discovering probes.
     /// When opening, it will open the first probe which succeeds during this call.
@@ -760,6 +760,18 @@ pub struct DebugProbeSelector {
     pub serial_number: Option<String>,
 }
 
+impl DebugProbeSelector {
+    pub(crate) fn matches(&self, info: &DeviceInfo) -> bool {
+        info.vendor_id() == self.vendor_id
+            && info.product_id() == self.product_id
+            && self
+                .serial_number
+                .as_ref()
+                .map(|s| info.serial_number() == Some(s))
+                .unwrap_or(true)
+    }
+}
+
 impl TryFrom<&str> for DebugProbeSelector {
     type Error = DebugProbeSelectorParseError;
     fn try_from(value: &str) -> Result<Self, Self::Error> {
@@ -837,6 +849,12 @@ impl fmt::Display for DebugProbeSelector {
 /// This trait should be implemented by all probes which offer low-level access to
 /// the JTAG protocol, i.e. direction control over the bytes sent and received.
 pub trait JTAGAccess: DebugProbe {
+    /// Returns `IDCODE` and `IR` length information about the devices on the JTAG chain.
+    ///
+    /// If configured, this will use the data from [`DebugProbe::set_scan_chain`]. Otherwise, it
+    /// will try to measure and extract `IR` lengths by driving the JTAG interface.
+    fn scan_chain(&mut self) -> Result<Vec<JtagChainItem>, DebugProbeError>;
+
     /// Read a JTAG register.
     ///
     /// This function emulates a read by performing a write with all zeros to the DR.

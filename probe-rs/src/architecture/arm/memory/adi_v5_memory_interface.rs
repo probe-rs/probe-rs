@@ -217,10 +217,10 @@ impl<AP> ADIMemoryInterface<'_, AP>
 where
     AP: ApAccess + DpAccess,
 {
-    /// Build the correct CSW register for a memory access
+    /// Build and write the correct CSW register for a memory access
     ///
     /// Currently, only AMBA AHB Access is supported.
-    fn build_csw_register(&self, data_size: DataSize) -> CSW {
+    fn write_csw_register(&mut self, data_size: DataSize) -> Result<(), ArmError> {
         // The CSW Register is set for an AMBA AHB Acccess, according to
         // the ARM Debug Interface Architecture Specification.
         //
@@ -239,7 +239,7 @@ where
         // to ensure we observe the same state as the CPU core. On cores without
         // cache the bit is RAZ/WI.
 
-        CSW {
+        let value = CSW {
             DbgSwEnable: 0b1,
             HNONSEC: !self.ap_information.supports_hnonsec as u8,
             PROT: 0b10,
@@ -247,10 +247,8 @@ where
             AddrInc: AddressIncrement::Single,
             SIZE: data_size,
             ..Default::default()
-        }
-    }
+        };
 
-    fn write_csw_register(&mut self, value: CSW) -> Result<(), ArmError> {
         // Check if the write is necessary
         match self.cached_csw_value {
             Some(cached_value) if cached_value == value => Ok(()),
@@ -343,28 +341,57 @@ where
         }
     }
 
-    /// Read a 64bit word at `address`.
+    /// Read a block of 64 bit words at `address`.
     ///
+    /// The number of words read is `data.len()`.
     /// The address where the read should be performed at has to be a multiple of 8.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
-    pub fn read_word_64(&mut self, address: u64) -> Result<u64, ArmError> {
+    pub fn read_64(&mut self, mut address: u64, mut data: &mut [u64]) -> Result<(), ArmError> {
+        if data.is_empty() {
+            return Ok(());
+        }
+
         if (address % 8) != 0 {
-            return Err(ArmError::alignment_error(address, 4));
+            return Err(ArmError::alignment_error(address, 8));
         }
 
-        let mut buf = [0u32; 2];
+        // Fall back to 32-bit accesses if 64-bit accesses are not supported.
+        // In both cases the sequence of words we have to read from DRW is the same:
+        // first the least significant word, then the most significant word.
+        let size = match self.ap_information.has_large_data_extension {
+            true => DataSize::U64,
+            false => DataSize::U32,
+        };
+        self.write_csw_register(size)?;
 
-        if !self.ap_information.has_large_data_extension {
-            self.read_32(address, &mut buf)?;
-        } else {
-            let csw = self.build_csw_register(DataSize::U64);
+        while !data.is_empty() {
+            let chunk_size = data.len().min(autoincr_max_bytes(address) / 8);
 
-            self.write_csw_register(csw)?;
+            tracing::debug!(
+                "Reading chunk with len {} at address {:#08x}",
+                chunk_size,
+                address
+            );
+
+            // autoincrement is limited to the 10 lowest bits, so write TAR every time.
             self.write_tar_register(address)?;
+
+            let mut buf = vec![0; chunk_size * 2];
             self.read_drw(&mut buf)?;
+
+            for i in 0..chunk_size {
+                data[i] = buf[i * 2] as u64 | (buf[i * 2 + 1] as u64) << 32;
+            }
+
+            address = address
+                .checked_add(chunk_size as u64 * 8)
+                .ok_or(ArmError::OutOfBounds)?;
+            data = &mut data[chunk_size..];
         }
 
-        Ok(buf[0] as u64 | (buf[1] as u64) << 32)
+        tracing::debug!("Finished reading block");
+
+        Ok(())
     }
 
     /// Read a block of 32 bit words at `address`.
@@ -381,8 +408,7 @@ where
             return Err(ArmError::alignment_error(address, 4));
         }
 
-        let csw = self.build_csw_register(DataSize::U32);
-        self.write_csw_register(csw)?;
+        self.write_csw_register(DataSize::U32)?;
 
         while !data.is_empty() {
             let chunk_size = data.len().min(autoincr_max_bytes(address) / 4);
@@ -426,8 +452,7 @@ where
             return Ok(());
         }
 
-        let csw = self.build_csw_register(DataSize::U16);
-        self.write_csw_register(csw)?;
+        self.write_csw_register(DataSize::U16)?;
 
         while !data.is_empty() {
             let chunk_size = data.len().min(autoincr_max_bytes(address) / 2);
@@ -476,8 +501,7 @@ where
             return Ok(());
         }
 
-        let csw = self.build_csw_register(DataSize::U8);
-        self.write_csw_register(csw)?;
+        self.write_csw_register(DataSize::U8)?;
 
         while !data.is_empty() {
             let chunk_size = data.len().min(autoincr_max_bytes(address));
@@ -514,26 +538,62 @@ where
         Ok(())
     }
 
-    /// Write a 64bit word at `addr`.
+    /// Write a block of 64 bit words at `address`.
     ///
+    /// The number of words written is `data.len()`.
     /// The address where the write should be performed at has to be a multiple of 8.
     /// Returns `ArmError::MemoryNotAligned` if this does not hold true.
-    pub fn write_word_64(&mut self, address: u64, data: u64) -> Result<(), ArmError> {
+    pub fn write_64(&mut self, mut address: u64, mut data: &[u64]) -> Result<(), ArmError> {
         if (address % 8) != 0 {
-            return Err(ArmError::alignment_error(address, 4));
+            return Err(ArmError::alignment_error(address, 8));
         }
 
-        let buf = [data as u32, (data >> 32) as u32];
+        if data.is_empty() {
+            return Ok(());
+        }
 
-        if !self.ap_information.has_large_data_extension {
-            self.write_32(address, &buf)
-        } else {
-            let csw = self.build_csw_register(DataSize::U64);
-            self.write_csw_register(csw)?;
+        tracing::debug!(
+            "Write block with total size {} bytes to address {:#08x}",
+            data.len() * 8,
+            address
+        );
+
+        // Fall back to 32-bit accesses if 64-bit accesses are not supported.
+        // In both cases the sequence of words we have to write to DRW is the same:
+        // first the least significant word, then the most significant word.
+        let size = match self.ap_information.has_large_data_extension {
+            true => DataSize::U64,
+            false => DataSize::U32,
+        };
+        self.write_csw_register(size)?;
+
+        while !data.is_empty() {
+            let chunk_size = data.len().min(autoincr_max_bytes(address) / 8);
+
+            tracing::debug!(
+                "Writing chunk with len {} at address {:#08x}",
+                chunk_size,
+                address
+            );
+
+            let values: Vec<u32> = data[..chunk_size]
+                .iter()
+                .flat_map(|&w| [w as u32, (w >> 32) as u32])
+                .collect();
+
+            // autoincrement is limited to the 10 lowest bits, so write TAR every time.
             self.write_tar_register(address)?;
-            self.write_drw(&buf)?;
-            Ok(())
+            self.write_drw(&values)?;
+
+            address = address
+                .checked_add(chunk_size as u64 * 8)
+                .ok_or(ArmError::OutOfBounds)?;
+            data = &data[chunk_size..];
         }
+
+        tracing::debug!("Finished writing block");
+
+        Ok(())
     }
 
     /// Write a block of 32 bit words at `address`.
@@ -556,8 +616,7 @@ where
             address
         );
 
-        let csw = self.build_csw_register(DataSize::U32);
-        self.write_csw_register(csw)?;
+        self.write_csw_register(DataSize::U32)?;
 
         while !data.is_empty() {
             let chunk_size = data.len().min(autoincr_max_bytes(address) / 4);
@@ -605,8 +664,7 @@ where
             address
         );
 
-        let csw = self.build_csw_register(DataSize::U16);
-        self.write_csw_register(csw)?;
+        self.write_csw_register(DataSize::U16)?;
 
         while !data.is_empty() {
             let chunk_size = data.len().min(autoincr_max_bytes(address) / 2);
@@ -659,8 +717,7 @@ where
             address
         );
 
-        let csw = self.build_csw_register(DataSize::U8);
-        self.write_csw_register(csw)?;
+        self.write_csw_register(DataSize::U8)?;
 
         while !data.is_empty() {
             let chunk_size = data.len().min(autoincr_max_bytes(address));
@@ -737,11 +794,7 @@ where
     }
 
     fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), ArmError> {
-        for (i, d) in data.iter_mut().enumerate() {
-            *d = self.read_word_64(address + (i as u64 * 8))?;
-        }
-
-        Ok(())
+        self.read_64(address, data)
     }
 
     fn write_8(&mut self, address: u64, data: &[u8]) -> Result<(), ArmError> {
@@ -757,11 +810,7 @@ where
     }
 
     fn write_64(&mut self, address: u64, data: &[u64]) -> Result<(), ArmError> {
-        for (i, d) in data.iter().enumerate() {
-            self.write_word_64(address + (i as u64 * 8), *d)?;
-        }
-
-        Ok(())
+        self.write_64(address, data)
     }
 
     fn supports_8bit_transfers(&self) -> Result<bool, ArmError> {

@@ -3,10 +3,7 @@ use crate::{
     ProbeCreationError,
 };
 
-use super::{cmsisdap, espusbjtag, jlink, stlink, wlink};
-
-#[cfg(feature = "ftdi")]
-use super::ftdi;
+use super::{cmsisdap, espusbjtag, ftdi, jlink, stlink, wlink};
 
 /// Struct to list all attached debug probes
 #[derive(Debug)]
@@ -77,7 +74,6 @@ impl Default for AllProbesLister {
 impl AllProbesLister {
     const DRIVERS: &'static [&'static dyn ProbeDriver] = &[
         &cmsisdap::CmsisDapSource,
-        #[cfg(feature = "ftdi")]
         &ftdi::FtdiProbeSource,
         &stlink::StLinkSource,
         &jlink::JLinkSource,

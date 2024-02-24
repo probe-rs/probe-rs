@@ -4,7 +4,6 @@
 //! # Prerequisites
 //!
 //! - Udev rules
-//! - libusb
 //!
 //! # Examples
 //!
