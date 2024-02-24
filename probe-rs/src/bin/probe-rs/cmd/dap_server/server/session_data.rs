@@ -88,7 +88,7 @@ impl SessionData {
                             if !connect_under_reset {
                                 DebuggerError::UserMessage(format!("{source} {shared_cause}"))
                             } else {
-                                DebuggerError::UserMessage(format!("{source} {shared_cause} It is possible that your probe does not support this behaviour, or something else is preventing the attach.Please try again without `connect_under_reset`."))
+                                DebuggerError::UserMessage(format!("{source} {shared_cause} It is possible that your probe does not support this behaviour, or something else is preventing the attach. Please try again without `connect_under_reset`."))
                             }
                         }
                         other_attach_error => other_attach_error.into(),
