@@ -1,1 +1,0 @@
-Removed (hidden) private Xtensa APIs

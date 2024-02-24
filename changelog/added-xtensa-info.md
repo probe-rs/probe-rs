@@ -1,1 +1,0 @@
-probe-rs info now supports Xtensa devices
