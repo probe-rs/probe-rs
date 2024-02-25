@@ -401,13 +401,10 @@ fn write_changelog_section(
 
         write!(writer, " - {}", first_line)?;
 
-        let mut multiline = false;
-
         // Write remaining lines
         for line in lines {
             writeln!(writer)?;
             write!(writer, "   {}", line)?;
-            multiline = true;
         }
 
         if let Some(pr_number) = &fragment.pr_number {
