@@ -35,10 +35,7 @@ use super::ArtifactError;
 
 use std::{fs::File, path::Path, path::PathBuf};
 
-use crate::{
-    cmd::dap_server::DebuggerError,
-    util::{logging::LevelFilter, parse_u64},
-};
+use crate::util::{logging::LevelFilter, parse_u64};
 use clap;
 use probe_rs::{
     config::{RegistryError, TargetSelector},
@@ -572,12 +569,6 @@ fn print_list(list: &[impl std::fmt::Debug]) -> String {
 impl From<std::io::Error> for OperationError {
     fn from(e: std::io::Error) -> Self {
         OperationError::IOError(e)
-    }
-}
-
-impl From<OperationError> for DebuggerError {
-    fn from(e: OperationError) -> Self {
-        DebuggerError::Other(e.into())
     }
 }
 
