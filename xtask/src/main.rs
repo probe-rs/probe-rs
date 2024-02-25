@@ -390,6 +390,9 @@ fn write_changelog_section(
             )
         })?;
 
+        // Replace paragraph breaks which screw up list item spacing.
+        let text = text.replace("\n\n", "<br>\n");
+
         let mut lines = text.lines();
 
         let Some(first_line) = lines.next() else {
