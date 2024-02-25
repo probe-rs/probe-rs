@@ -419,11 +419,6 @@ fn write_changelog_section(
         }
 
         writeln!(writer)?;
-
-        // Add an empty line between multiline fragments
-        if multiline {
-            writeln!(writer)?;
-        }
     }
 
     writeln!(writer)?;
