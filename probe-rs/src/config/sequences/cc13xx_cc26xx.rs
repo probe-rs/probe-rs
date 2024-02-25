@@ -2,9 +2,9 @@
 use std::sync::Arc;
 
 use crate::architecture::arm::communication_interface::DapProbe;
-use crate::architecture::arm::sequences::{ArmDebugSequence, ArmDebugSequenceError};
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
-use crate::architecture::arm::ArmError;
+use crate::architecture::arm::sequences::{ArmDebugSequence, ArmDebugSequenceError};
+use crate::architecture::arm::{ArmError, DpAddress};
 use crate::probe::{DebugProbeError, WireProtocol};
 
 /// Marker struct indicating initialization sequencing for cc13xx_cc26xx family parts.
@@ -295,7 +295,11 @@ impl ArmDebugSequence for CC13xxCC26xx {
         Ok(())
     }
 
-    fn debug_port_setup(&self, interface: &mut dyn DapProbe) -> Result<(), ArmError> {
+    fn debug_port_setup(
+        &self,
+        interface: &mut dyn DapProbe,
+        _dp: DpAddress,
+    ) -> Result<(), ArmError> {
         // Ensure current debug interface is in reset state.
         interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
 
