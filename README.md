@@ -61,7 +61,7 @@ irm https://github.com/probe-rs/probe-rs/releases/latest/download/probe-rs-insta
 
 
 ```bash
-cargo binstall probe-rs 
+cargo binstall probe-rs
 ```
 
 See <https://github.com/cargo-bins/cargo-binstall> for more information.
@@ -182,8 +182,6 @@ Building requires Rust and Cargo which can be installed [using rustup](https://r
 # Fedora
 > sudo dnf install -y libudev-devel
 ```
-
-See [the vcpkg crate documentation](https://docs.rs/vcpkg/) for more information about configuring vcpkg with rust.
 
 ### Adding Targets
 
