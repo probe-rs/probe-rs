@@ -132,31 +132,39 @@ pub struct ReadWriteOptions {
 pub struct ProbeOptions {
     #[arg(long, env = "PROBE_RS_CHIP")]
     pub chip: Option<String>,
-    #[arg(value_name = "chip description file path", long)]
+    #[arg(
+        value_name = "chip description file path",
+        long,
+        env = "PROBE_RS_CHIP_DESCRIPTION_PATH"
+    )]
     pub chip_description_path: Option<PathBuf>,
 
     /// Protocol used to connect to chip. Possible options: [swd, jtag]
-    #[arg(long, help_heading = "PROBE CONFIGURATION")]
+    #[arg(long, env = "PROBE_RS_PROTOCOL", help_heading = "PROBE CONFIGURATION")]
     pub protocol: Option<WireProtocol>,
 
     /// Use this flag to select a specific probe in the list.
     ///
     /// Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one
     /// probe with the same VID:PID.",
-    #[arg(long = "probe", help_heading = "PROBE CONFIGURATION")]
+    #[arg(
+        long = "probe",
+        env = "PROBE_RS_PROBE",
+        help_heading = "PROBE CONFIGURATION"
+    )]
     pub probe_selector: Option<DebugProbeSelector>,
     /// The protocol speed in kHz.
-    #[arg(long, help_heading = "PROBE CONFIGURATION")]
+    #[arg(long, env = "PROBE_RS_SPEED", help_heading = "PROBE CONFIGURATION")]
     pub speed: Option<u32>,
     /// Use this flag to assert the nreset & ntrst pins during attaching the probe to
     /// the chip.
-    #[arg(long)]
+    #[arg(long, env = "PROBE_RS_CONNECT_UNDER_RESET")]
     pub connect_under_reset: bool,
-    #[arg(long)]
+    #[arg(long, env = "PROBE_RS_DRY_RUN")]
     pub dry_run: bool,
     /// Use this flag to allow all memory, including security keys and 3rd party
     /// firmware, to be erased even when it has read-only protection.
-    #[arg(long)]
+    #[arg(long, env = "PROBE_RS_ALLOW_ERASE_ALL")]
     pub allow_erase_all: bool,
 }
 
