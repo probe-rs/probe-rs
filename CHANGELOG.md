@@ -84,7 +84,6 @@ Released 2024-01-03
  - Added support for riscv semihosting SYS_EXIT syscall.
 
    Please note that probe-rs with espflash < 3.0 will probably fail to flash a binary containing semihosting calls due to https://github.com/esp-rs/espflash/issues/522 (#1901) by @t-moe
-
  - Add support for the esp32c2 target (#1869) (#1869) by @SergioGasquez
  - Add support for the esp32s3 target (#2003) by @bugadani
  - Auto-detect ESP32 flash size (#1952) by @bugadani
@@ -116,14 +115,12 @@ Released 2024-01-03
 
    Previously, `probe-rs run` would exit with "the CPU halted unexpectedly", whenever an unknown semihosting operation occurred.
    With this change, `probe-rs run` will print a warning and then automatically continue the core. (#1901) by @t-moe
-
  - `dap-server`: Move initial check of core state from `threads` request to `configuration_done` request. (#1903) by @Andrew-Collins
  - Renamed `JTAGAccess::get_idle_cycles` to `idle_cycles` and removed redundant inherent fns (#1924) by @bugadani
  - Reduced logging level for custom debug sequences (#1882) by @ianrrees
  - The `dump` command that is used by the VSCode REPL can now be used without specifying memory regions.
 
    The resulting coredump will include all the memory regions required to unwind the in-scope functions and variables. (#1930) by @noppej
-
  - For CLI builds, statically link to libusb to make installation of precompiled binaries easier. (#1830) by @Tiwalun
  - By default, `probe-rs run` and `probe-rs attach` will only scan the memory for the RTT control block if the `--rtt-scan-memory` flag is provided. It will still always look for a `_SEGGER_RTT` symbol in the ELF file and use that first in all circumstances. (#1919) by @ia0
  - Refactor unwinding code to improve testability, add tests for unwinding. (#1853) by @Tiwalun
@@ -145,10 +142,8 @@ Released 2024-01-03
  - Disable the second core on LPC55S69 to fix #1802. (#1823) by @Tiwalun
  - Fix LPC55S69 reset sequence
    Fix LPC55S69 attach without disturbing target (#1907) by @9names
-
  - * Improved handling of source file paths in debugger, don't assume paths in the debug information
      are in the same format as the paths of the host OS. (#1857) by @Tiwalun
-
  - Updated the STM32G4 target yaml to [version 1.5.0](https://www.keil.arm.com/packs/stm32g4xx_dfp-keil/versions/). This fixes the stm32g4xx_256 flash algorithm. (#1896) by @dlaw
  - Set DbgSwEnable to 1 during memory access (#1841) by @pcc
  - Flasher: single buffer transfers are now done with u32 writes (#1944) by @bugadani
@@ -166,11 +161,9 @@ Released 2024-01-03
    The prebuilt binaries depended on the system openSSL installation on Linux.
    This meant that they required openSSL1, which is not supported e.g. on Ubuntu 22.04.
    Changing to rustls removes this dependency. (#1828) by @Tiwalun
-
  - Issue DAPABORT at startup and after receiving WAIT response from CMSIS-DAP (#1840) by @pcc
  - * Mark all ARM memory accesses as cacheable, to indicate they must not bypass
      the cache and instead should see the same data as the CPU. Fixes #1715. (#1883) by @adamgreig
-
  - Fix the RAM address mapping for the esp32c3. (#1898) by @MabezDev
  - Fix core names and regions in LPC55S69 target description. (#1832) by @Tiwalun
  - dap-server: Return correct type for error response. (#1895) by @Tiwalun
@@ -331,65 +324,44 @@ Released 2023-03-31
 
 - Add reset catch sequence for Silicon Labs EFM32/EFR32 Series 2 chips.
 - Support for detecting WCH-Link as CMSIS-DAP v1 probe
-
 - target-gen: Use the correct flash base address when testing flash algorithm (#1542)
-
 - VSCode and probe-rs-debugger is very slow if `rttEnabled: true` and target application has no RTT initialized (#1497).
-
 - prober-rs-debugger: Using the readMemory request on RISC-V (ESP32C3 board) is slow (#1275).
-
 - probe-rs-debugger: Improve handling of `disconnect` and `terminate` requests. With support in DAP Client/VSCode for: (#1197)
 
   - `Disconnect` - will disconnect the debug session, without affecting the run status of the target application.
   - `Disconnect and Suspend` - will halt the target application, before disconnecting the debug session.
   - `Terminate` request is not supported, and DAP configuration is such that it won't be requested by the client.
-
 - probe-rs-debugger: Improve handling of `restart` request. With support in DAP Client/VSCode for: (#1507)
-
   - `Restart` will now restart the debug session. Currently this is support for ARM targets only.
   - If a newer binary is available, and flashing enabled, then the new binary will be flashed before starting the new debug session.
-
 - probe-rs-debugger: Ensure VSCode will halt on all configured breakpoints`, irrespective of flashing config. (#1529)
-
 - probe-rs-debugger: Fix issue where "Watch" variables were not found in the debug session. (#1552)
 
 ### Changed
 
 - Update MS DAP protocol to v1.60.0. Documentation clarifications only. (#1458)
-
 - probe-rs-debugger: Cleaned up the timing of caching unwind information, based on new MS DAP protocol docs. (#1458)
-
 - probe-rs: Allows `add_target_from_yaml` function to accept multiple sources
-
 - probe-rs-debugger: Remove `restart-after-flashing` option, and make it the default behaviour. (#1550)
-
 - probe-rs: Trigger rebuild if changes in the `PROBE_RS_TARGETS_DIR` detected (#1562).
-
 - probe-rs: Set the flash range of RP2040 to the max supported size (#1567)
-
 - probe-rs-debugger: Slightly relax the RISC-V restriction when handling `restart` request. Allows restart, but does not re-flash. (#1569)
 
 ### Added
 
 - Added EFM32TG11B family targets (#1420)
-
 - Added LPC55Sxx target (#1513)
-
 - Added STM32H5xx targets (#1575)
-
 - Added custom sequence support to STM32L0, L1, L4, G0, G4, F0, F3, WB, WL,
   enabling debug clocks during sleep modes (#1521)
-
 - Add default sequence 'debug_core_stop', which disables debugging when disconneting from ARM cores by default. (#1525)
-
 - probe-rs-debugger: Initial support for 'gdb-like' commands to be typed into VSCode Debug Console REPL. (#1552)
 
   - The `help` command will list available commands, and arguments.
   - Command completions are supported for the individual commands, but not for the arguments.
   - Additional commands can be added in the future, as required, but will benefit from some refactoring to share code with functionality that is already implementated in `dap_adapter.rs` for MS DAP requests.
-
 - debug: Enable debug experimental support for binaries compiled from C files (GNU C99/11/17). (#1558)
-
 - Added support for `monitor reset` and `monitor reset halt` commands in `gdb-server` (#1565)
 
 ## [0.17.0]
@@ -399,7 +371,6 @@ Released 2023-02-06
 ### Added
 
 - st-link: Support reading banked DP registers if firmware is new enough to support it.
-
 - target-gen: Add support for STAR-MC1 by Arm China
 
 ### Fixed
@@ -408,15 +379,11 @@ Released 2023-02-06
 
   The finished/failed event would only be emitted when a sectorwise erase would be performed.
   Now the events are correctly emitted.
-
 - probe-rs: Fixed a race condition when reseting NXP chips under JTAG (#1482)
 
   As an example, this makes flashing the Teensy 4.1 (which has an i.MX RT1062) reliable.
-
 - probe-rs: jlink: fix WAIT retries on AP reads. Fixes flashing on nrf91. (#1489)
-
 - Add flashing and debugging support for the ESP32C6 (#1476)
-
 - Debug: Fixed a number of known issues, which included some code refactoring to avoid code duplication (#1484).
 
   - Unwind of variables that are in inlined subroutines now resolve correctly under all known conditions.
@@ -426,9 +393,7 @@ Released 2023-02-06
   - Correctly unwind pointers/references to variants and enums.
   - Fix an error that terminated the debug when new architecture error variants were introduced by a previous PR.
   - Fix an error where unwind memory locations decoded memory values as integer addresses without accounting for endianness.
-
 - VSCode: Avoid sending extraneous `StoppedEvent` from probe-rs-debugger (#1485).
-
 - cmsis-dap: Avoid endless recursion when recovering from errors.
 
   When an error occurred, the cmsis-dap code tried to read the debug port CTRL register.
@@ -452,20 +417,15 @@ Released 2023-01-28
 
   This can be used when the flash algorithm needs to be loaded at a specific address.
   The address is determined automatically from the ELF file.
-
 - target-gen: Extract RTT control block address from flash algorithm. (#1427)
 
   Check if the flash algorithm supports RTT, and if it does, store the RTT control block
   address in the target YAML file.
-
 - probe-rs: Read RTT during flashing procedures if the algorithm supports RTT.
 
   This enables better debugging for flash-algorithms and should encourage development of said algorithms.
-
 - Add support for FT4232HL probe.
-
 - probe-rs-cli: Add `--log-file` option to specify where the log file should be placed.
-
 - target-gen: Add a command which enables the easy development and debugging of a flash algorithm.
 
   `target-gen test` is a new command to automatically upload, run, print RTT messages and test
@@ -476,13 +436,11 @@ Released 2023-01-28
 
 - cmsisdap: Increased read timeout from 100ms to 1000ms.
 - rtt: Moved RTT to the probe-rs library instead of having it in its own library. (#1411)
-
 - probe-rs: update probe-rs/targets/STM32F3_Series.yaml with `target-gen`
 
 ### Fixed
 
 - probe-rs: Avoid nested calls to tracing macros, otherwise filtering doesn't work properly. (#1415)
-
 - probe-rs-cli: Reduce RTT polling frequency in run command to avoid USB instability issues.
 
 ## [0.14.2]
