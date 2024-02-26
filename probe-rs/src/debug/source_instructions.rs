@@ -84,30 +84,65 @@ impl VerifiedBreakpoint {
     pub(crate) fn for_source_location(
         debug_info: &DebugInfo,
         path: &TypedPathBuf,
-        _line: u64,
-        _column: Option<u64>,
+        line: u64,
+        column: Option<u64>,
     ) -> Result<Self, DebugError> {
         for program_unit in debug_info.unit_infos.as_slice() {
             let Some(ref line_program) = program_unit.unit.line_program else {
                 // Not all compilation units need to have debug line information, so we skip those.
                 continue;
             };
-            if line_program.header().file_names().iter().any(|file_entry| {
-                debug_info
-                    .get_path(&program_unit.unit, line_program.header(), file_entry)
-                    .map(|combined_path: TypedPathBuf| canonical_path_eq(path, &combined_path))
-                    .unwrap_or(false)
-            }) {
+            // Keep track of the matching file index to avoid having to lookup and match the full path
+            // for every row in the program line sequence.
+            let mut matching_file_index = None;
+            if line_program
+                .header()
+                .file_names()
+                .iter()
+                .enumerate()
+                .any(|(file_index, _)| {
+                    debug_info
+                        .get_path(&program_unit.unit, file_index as u64)
+                        .map(|combined_path: TypedPathBuf| {
+                            if canonical_path_eq(path, &combined_path) {
+                                matching_file_index = Some(file_index as u64);
+                                true
+                            } else {
+                                false
+                            }
+                        })
+                        .unwrap_or(false)
+                })
+            {
                 let Ok((complete_line_program, line_sequences)) = line_program.clone().sequences()
                 else {
                     continue;
                 };
                 for line_sequence in line_sequences {
-                    let _instruction_sequence = InstructionSequence::from_line_sequence(
+                    let instruction_sequence = InstructionSequence::from_line_sequence(
                         program_unit,
                         complete_line_program.clone(),
                         &line_sequence,
                     );
+                    println!(
+                        "\n\nLooking for {}:{line}:{} - {}",
+                        matching_file_index.unwrap(),
+                        column.unwrap(),
+                        path.to_string_lossy()
+                    );
+                    println!("{:?}", instruction_sequence);
+                    // for instruction_location in InstructionSequence::from_line_sequence(
+                    //     program_unit,
+                    //     complete_line_program.clone(),
+                    //     &line_sequence,
+                    // )
+                    // .instructions
+                    // {
+                    //     if matching_file_index != Some(instruction_location.file_index) {
+                    //         // Ignore instructions that don't match the requested file.
+                    //         continue;
+                    //     }
+                    // }
                     // TODO: Implement the logic to find the most relevant source location.
                 }
             }
@@ -149,12 +184,8 @@ impl SourceLocation {
         program_unit: &unit_info::UnitInfo,
         instruction_location: &InstructionLocation,
     ) -> Option<SourceLocation> {
-        let line_program = program_unit.unit.line_program.as_ref()?;
-        let file_entry = line_program
-            .header()
-            .file(instruction_location.file_index)?;
         debug_info
-            .find_file_and_directory(&program_unit.unit, line_program.header(), file_entry)
+            .find_file_and_directory(&program_unit.unit, instruction_location.file_index)
             .map(|(file, directory)| SourceLocation {
                 line: instruction_location.line.map(std::num::NonZeroU64::get),
                 column: Some(instruction_location.column),

@@ -14,8 +14,7 @@ use crate::{
 };
 use anyhow::anyhow;
 use gimli::{
-    BaseAddresses, DebugFrame, FileEntry, LineProgramHeader, UnwindContext, UnwindSection,
-    UnwindTableRow,
+    BaseAddresses, DebugFrame, LineProgramHeader, UnwindContext, UnwindSection, UnwindTableRow,
 };
 use object::read::{Object, ObjectSection};
 use probe_rs_target::InstructionSet;
@@ -193,7 +192,7 @@ impl DebugInfo {
 
                 let mut rows = program.resume_from(target_seq);
 
-                while let Ok(Some((header, row))) = rows.next_row() {
+                while let Ok(Some((_, row))) = rows.next_row() {
                     match row.address().cmp(&address) {
                         Ordering::Greater => {
                             // The address is after the current row, so we use the previous row data.
@@ -201,36 +200,32 @@ impl DebugInfo {
                             // (If we don't do this, you get the artificial effect where the debugger
                             // steps to the top of the file when it is steppping out of a function.)
                             if let Some(previous_row) = previous_row {
-                                if let Some(file_entry) = previous_row.file(header) {
-                                    if let Some((file, directory)) =
-                                        self.find_file_and_directory(unit, header, file_entry)
-                                    {
-                                        tracing::debug!("{} - {:?}", address, previous_row.isa());
-                                        return Some(SourceLocation {
-                                            line: previous_row.line().map(NonZeroU64::get),
-                                            column: Some(previous_row.column().into()),
-                                            file,
-                                            directory,
-                                        });
-                                    }
+                                if let Some((file, directory)) =
+                                    self.find_file_and_directory(unit, previous_row.file_index())
+                                {
+                                    tracing::debug!("{} - {:?}", address, previous_row.isa());
+                                    return Some(SourceLocation {
+                                        line: previous_row.line().map(NonZeroU64::get),
+                                        column: Some(previous_row.column().into()),
+                                        file,
+                                        directory,
+                                    });
                                 }
                             }
                         }
                         Ordering::Less => {}
                         Ordering::Equal => {
-                            if let Some(file_entry) = row.file(header) {
-                                if let Some((file, directory)) =
-                                    self.find_file_and_directory(unit, header, file_entry)
-                                {
-                                    tracing::debug!("{} - {:?}", address, row.isa());
+                            if let Some((file, directory)) =
+                                self.find_file_and_directory(unit, row.file_index())
+                            {
+                                tracing::debug!("{} - {:?}", address, row.isa());
 
-                                    return Some(SourceLocation {
-                                        line: row.line().map(NonZeroU64::get),
-                                        column: Some(row.column().into()),
-                                        file,
-                                        directory,
-                                    });
-                                }
+                                return Some(SourceLocation {
+                                    line: row.line().map(NonZeroU64::get),
+                                    column: Some(row.column().into()),
+                                    file,
+                                    directory,
+                                });
                             }
                         }
                     }
@@ -880,28 +875,31 @@ impl DebugInfo {
                 .unwrap_or_else(|| "-".to_owned())
         );
 
+        VerifiedBreakpoint::for_source_location(self, path, line, column)
         // We need to look through all the compilation units, and inspect their line programs,
         // to determine the correct address for the breakpoint.
-        for progam_unit in &self.unit_infos {
-            // TODO: We do NOT need to look up the line program here.
-            let Some(ref line_program) = &progam_unit.unit.line_program else {
-                continue;
-            };
+        /*
+                for progam_unit in &self.unit_infos {
+                    // TODO: We do NOT need to look up the line program here.
+                    let Some(ref line_program) = &progam_unit.unit.line_program else {
+                        continue;
+                    };
 
-            if let Some(location) =
-                self.get_breakpoint_location_in_unit(progam_unit, line_program, path, line, column)?
-            {
-                return Ok(location);
-            };
-        }
-
-        // If we get here, it means we didn't find any valid breakpoint locations.
-        Err(DebugError::Other(anyhow::anyhow!(
-            "No valid breakpoint information found for file: {}, line: {line:?}, column: {column:?}",
-            path.to_path().display()
-        )))
+                    if let Some(location) =
+                        self.get_breakpoint_location_in_unit(progam_unit, line_program, path, line, column)?
+                    {
+                        return Ok(location);
+                    };
+                }
+                // If we get here, it means we didn't find any valid breakpoint locations.
+                Err(DebugError::Other(anyhow::anyhow!(
+                    "No valid breakpoint information found for file: {}, line: {line:?}, column: {column:?}",
+                    path.to_path().display()
+                )))
+        */
     }
 
+    #[allow(dead_code)] // temp until this fn can be deleted.
     fn get_breakpoint_location_in_unit(
         &self,
         unit_header: &UnitInfo,
@@ -914,23 +912,26 @@ impl DebugInfo {
         let header: &LineProgramHeader<GimliReader, usize> = line_program.header();
 
         // Early return, if none of the file names in the header match the path we are looking for.
-        if !header.file_names().iter().any(|file_name| {
-            let combined_path = self.get_path(unit, header, file_name);
+        if !header
+            .file_names()
+            .iter()
+            .enumerate()
+            .any(|(file_index, _)| {
+                let combined_path = self.get_path(unit, file_index as u64);
 
-            combined_path
-                .map(|p| canonical_path_eq(path, &p))
-                .unwrap_or(false)
-        }) {
+                combined_path
+                    .map(|p| canonical_path_eq(path, &p))
+                    .unwrap_or(false)
+            })
+        {
             return Ok(None);
         }
 
         let mut rows = line_program.clone().rows();
 
-        while let Some((header, row)) = rows.next_row()? {
+        while let Some((_, row)) = rows.next_row()? {
             // If the row is not in the same file, we can skip it.
-            let row_path = row
-                .file(header)
-                .and_then(|file_entry| self.get_path(unit, header, file_entry));
+            let row_path = self.get_path(unit, row.file_index());
             if row_path
                 .as_ref()
                 .map(|p| !canonical_path_eq(path, p))
@@ -955,22 +956,16 @@ impl DebugInfo {
             let halt_address_and_location = |instruction_location: &InstructionLocation| {
                 (
                     instruction_location.address,
-                    line_program
-                        .header()
-                        .file(instruction_location.file_index)
-                        .and_then(|file_entry| {
-                            self.find_file_and_directory(
-                                &unit_header.unit,
-                                line_program.header(),
-                                file_entry,
-                            )
-                            .map(|(file, directory)| SourceLocation {
-                                line: instruction_location.line.map(std::num::NonZeroU64::get),
-                                column: Some(instruction_location.column),
-                                file,
-                                directory,
-                            })
-                        }),
+                    self.find_file_and_directory(
+                        &unit_header.unit,
+                        instruction_location.file_index,
+                    )
+                    .map(|(file, directory)| SourceLocation {
+                        line: instruction_location.line.map(std::num::NonZeroU64::get),
+                        column: Some(instruction_location.column),
+                        file,
+                        directory,
+                    }),
                 )
             };
 
@@ -1014,9 +1009,17 @@ impl DebugInfo {
     pub(crate) fn get_path(
         &self,
         unit: &gimli::read::Unit<DwarfReader>,
-        header: &LineProgramHeader<DwarfReader>,
-        file_entry: &FileEntry<DwarfReader>,
+        file_index: u64,
     ) -> Option<TypedPathBuf> {
+        let line_program = unit.line_program.as_ref()?;
+        let header = line_program.header();
+        let Some(file_entry) = header.file(file_index) else {
+            tracing::warn!(
+                "Unable to extract file entry for file_index {:?}.",
+                file_index
+            );
+            return None;
+        };
         let file_name_attr_string = self.dwarf.attr_string(unit, file_entry.path_name()).ok()?;
         let name_path = from_utf8(&file_name_attr_string).ok()?;
 
@@ -1054,10 +1057,9 @@ impl DebugInfo {
     pub(crate) fn find_file_and_directory(
         &self,
         unit: &gimli::read::Unit<DwarfReader>,
-        header: &LineProgramHeader<DwarfReader>,
-        file_entry: &FileEntry<DwarfReader>,
+        file_index: u64,
     ) -> Option<(Option<String>, Option<TypedPathBuf>)> {
-        let combined_path = self.get_path(unit, header, file_entry)?;
+        let combined_path = self.get_path(unit, file_index)?;
 
         let file_name = combined_path
             .file_name()

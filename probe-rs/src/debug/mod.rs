@@ -178,24 +178,17 @@ fn extract_file(
     attribute_value: gimli::AttributeValue<GimliReader>,
 ) -> Option<(TypedPathBuf, String)> {
     match attribute_value {
-        gimli::AttributeValue::FileIndex(index) => unit.line_program.as_ref().and_then(|ilnp| {
-            let header = ilnp.header();
-
-            if let Some(file_entry) = header.file(index) {
-                if let Some((Some(path), Some(file))) = debug_info
-                    .find_file_and_directory(unit, header, file_entry)
-                    .map(|(file, path)| (path, file))
-                {
-                    Some((path, file))
-                } else {
-                    tracing::warn!("Unable to extract file or path from {:?}.", attribute_value);
-                    None
-                }
+        gimli::AttributeValue::FileIndex(index) => {
+            if let Some((Some(path), Some(file))) = debug_info
+                .find_file_and_directory(unit, index)
+                .map(|(file, path)| (path, file))
+            {
+                Some((path, file))
             } else {
-                tracing::warn!("Unable to extract file entry for {:?}.", attribute_value);
+                tracing::warn!("Unable to extract file or path from {:?}.", attribute_value);
                 None
             }
-        }),
+        }
         other => {
             tracing::warn!(
                 "Unable to extract file information from attribute value {:?}: Not implemented.",
