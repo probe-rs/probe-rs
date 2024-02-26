@@ -722,6 +722,11 @@ impl DebugProbeInfo {
     pub fn open(&self, lister: &Lister) -> Result<Probe, DebugProbeError> {
         lister.open(DebugProbeSelector::from(self))
     }
+
+    /// Returns whether this info was returned by a particular probe factory.
+    pub fn is_probe_type<F: ProbeFactory>(&self, factory: &F) -> bool {
+        self.probe_type == factory as &dyn ProbeFactory
+    }
 }
 
 /// An error which can occur while parsing a [`DebugProbeSelector`].
@@ -1189,4 +1194,24 @@ pub enum AttachMethod {
     ///
     /// This is required on targets that can remap SWD pins or disable the SWD interface in sleep.
     UnderReset,
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_is_probe_factory() {
+        let probe_info = DebugProbeInfo::new(
+            "Mock probe",
+            0x12,
+            0x23,
+            Some("mock_serial".to_owned()),
+            &ftdi::FtdiProbeFactory,
+            None,
+        );
+
+        assert!(probe_info.is_probe_type(&ftdi::FtdiProbeFactory));
+        assert!(!probe_info.is_probe_type(&espusbjtag::EspUsbJtagFactory));
+    }
 }
