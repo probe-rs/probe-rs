@@ -351,6 +351,7 @@ impl RiscvCommunicationInterface {
         }
 
         let mut control: Dmcontrol = self.read_dm_register()?;
+        control.set_dmactive(true);
         control.set_hartsel(hart);
         self.write_dm_register(control)?;
         self.last_selected_hart = hart;
@@ -426,8 +427,6 @@ impl RiscvCommunicationInterface {
     }
 
     fn enter_debug_mode(&mut self) -> Result<(), RiscvError> {
-        // We need a jtag interface
-
         tracing::debug!("Building RISC-V interface");
 
         // Reset error bits from previous connections
@@ -532,8 +531,8 @@ impl RiscvCommunicationInterface {
 
         // Select hart 0 again - assuming all harts are same in regards of discovered features
         let mut control = Dmcontrol(0);
-        control.set_hartsel(0);
         control.set_dmactive(true);
+        control.set_hartsel(0);
 
         self.write_dm_register(control)?;
 
@@ -630,6 +629,7 @@ impl RiscvCommunicationInterface {
             dmcontrol
         );
 
+        dmcontrol.set_dmactive(true);
         dmcontrol.set_haltreq(true);
 
         self.write_dm_register(dmcontrol)?;
@@ -1170,10 +1170,10 @@ impl RiscvCommunicationInterface {
         // ackhavereset = 0
 
         let mut dmcontrol: Dmcontrol = self.read_dm_register()?;
+        dmcontrol.set_dmactive(true);
         dmcontrol.set_haltreq(false);
         dmcontrol.set_resumereq(false);
         dmcontrol.set_ackhavereset(false);
-        dmcontrol.set_dmactive(true);
         self.schedule_write_dm_register(dmcontrol)?;
 
         // Clear any previous command errors.
