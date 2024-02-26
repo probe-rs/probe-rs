@@ -3,19 +3,16 @@ use super::{
     DebugRegisters, StackFrame, VariableCache,
 };
 use crate::core::UnwindRule;
-use crate::debug::source_instructions::InstructionLocation;
 use crate::debug::stack_frame::StackFrameInfo;
 use crate::debug::unit_info::RangeExt;
-use crate::debug::{ColumnType, SourceLocation, VerifiedBreakpoint};
+use crate::debug::{SourceLocation, VerifiedBreakpoint};
 use crate::{
     core::{ExceptionInterface, RegisterRole, RegisterValue},
-    debug::{registers, source_instructions::InstructionSequence},
+    debug::registers,
     MemoryInterface,
 };
 use anyhow::anyhow;
-use gimli::{
-    BaseAddresses, DebugFrame, LineProgramHeader, UnwindContext, UnwindSection, UnwindTableRow,
-};
+use gimli::{BaseAddresses, DebugFrame, UnwindContext, UnwindSection, UnwindTableRow};
 use object::read::{Object, ObjectSection};
 use probe_rs_target::InstructionSet;
 use typed_path::{TypedPath, TypedPathBuf};
@@ -874,134 +871,7 @@ impl DebugInfo {
                 .map(|c| c.to_string())
                 .unwrap_or_else(|| "-".to_owned())
         );
-
         VerifiedBreakpoint::for_source_location(self, path, line, column)
-        // We need to look through all the compilation units, and inspect their line programs,
-        // to determine the correct address for the breakpoint.
-        /*
-                for progam_unit in &self.unit_infos {
-                    // TODO: We do NOT need to look up the line program here.
-                    let Some(ref line_program) = &progam_unit.unit.line_program else {
-                        continue;
-                    };
-
-                    if let Some(location) =
-                        self.get_breakpoint_location_in_unit(progam_unit, line_program, path, line, column)?
-                    {
-                        return Ok(location);
-                    };
-                }
-                // If we get here, it means we didn't find any valid breakpoint locations.
-                Err(DebugError::Other(anyhow::anyhow!(
-                    "No valid breakpoint information found for file: {}, line: {line:?}, column: {column:?}",
-                    path.to_path().display()
-                )))
-        */
-    }
-
-    #[allow(dead_code)] // temp until this fn can be deleted.
-    fn get_breakpoint_location_in_unit(
-        &self,
-        unit_header: &UnitInfo,
-        line_program: &gimli::IncompleteLineProgram<GimliReader, usize>,
-        path: &TypedPathBuf,
-        line: u64,
-        column: Option<u64>,
-    ) -> Result<Option<VerifiedBreakpoint>, DebugError> {
-        let unit = &unit_header.unit;
-        let header: &LineProgramHeader<GimliReader, usize> = line_program.header();
-
-        // Early return, if none of the file names in the header match the path we are looking for.
-        if !header
-            .file_names()
-            .iter()
-            .enumerate()
-            .any(|(file_index, _)| {
-                let combined_path = self.get_path(unit, file_index as u64);
-
-                combined_path
-                    .map(|p| canonical_path_eq(path, &p))
-                    .unwrap_or(false)
-            })
-        {
-            return Ok(None);
-        }
-
-        let mut rows = line_program.clone().rows();
-
-        while let Some((_, row)) = rows.next_row()? {
-            // If the row is not in the same file, we can skip it.
-            let row_path = self.get_path(unit, row.file_index());
-            if row_path
-                .as_ref()
-                .map(|p| !canonical_path_eq(path, p))
-                .unwrap_or(true)
-            {
-                continue;
-            }
-
-            let Some(cur_line) = row.line() else {
-                continue;
-            };
-
-            if cur_line.get() != line {
-                continue;
-            }
-
-            let instruction_sequence = InstructionSequence::for_address(self, row.address())?;
-
-            // The first match of the file and row will be used to build the InstructionSequence, and then:
-            // 1. If there is an exact column match, we will use the low_pc of the statement at that column and line.
-            // 2. If there is no exact column match, we use the first available statement in the line.
-            let halt_address_and_location = |instruction_location: &InstructionLocation| {
-                (
-                    instruction_location.address,
-                    self.find_file_and_directory(
-                        &unit_header.unit,
-                        instruction_location.file_index,
-                    )
-                    .map(|(file, directory)| SourceLocation {
-                        line: instruction_location.line.map(std::num::NonZeroU64::get),
-                        column: Some(instruction_location.column),
-                        file,
-                        directory,
-                    }),
-                )
-            };
-
-            // The case where we have exact match on file, line AND column.
-            let first_find = instruction_sequence.instructions.iter().find(|statement| {
-                column
-                    .map(ColumnType::Column)
-                    .map_or(false, |col| col == statement.column)
-                    && statement.line == Some(cur_line)
-            });
-            if let Some((halt_address, Some(halt_location))) =
-                first_find.map(halt_address_and_location)
-            {
-                return Ok(Some(VerifiedBreakpoint {
-                    address: halt_address,
-                    source_location: halt_location,
-                }));
-            }
-
-            // The fallback case where we have exact match on file and line, but no column.
-            let second_find = instruction_sequence
-                .instructions
-                .iter()
-                .find(|statement| statement.line == Some(cur_line));
-
-            if let Some((halt_address, Some(halt_location))) =
-                second_find.map(halt_address_and_location)
-            {
-                return Ok(Some(VerifiedBreakpoint {
-                    address: halt_address,
-                    source_location: halt_location,
-                }));
-            }
-        }
-
-        Ok(None)
     }
 
     /// Get the path for an entry in a line program header, using the compilation unit's directory and file entries.
