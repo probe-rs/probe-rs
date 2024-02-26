@@ -4,8 +4,6 @@
 //!
 //! See <https://developer.arm.com/documentation/ihi0031/f/?lang=en> for the ADIv5 specification.
 
-use bitvec::{prelude::*, view::BitView};
-
 use crate::{
     architecture::arm::{
         dp::{Abort, Ctrl, RdBuff, DPIDR},
@@ -1271,10 +1269,9 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
     }
 
     fn jtag_sequence(&mut self, bit_len: u8, tms: bool, bits: u64) -> Result<(), DebugProbeError> {
-        let bits = bits.view_bits::<Lsb0>();
-        let bits = &bits[..bit_len as usize];
+        let bits = (0..bit_len).map(|i| (bits >> i) & 1 == 1);
 
-        self.jtag_shift_tdi(tms, bits.iter().by_vals())?;
+        self.jtag_shift_tdi(tms, bits)?;
 
         Ok(())
     }
