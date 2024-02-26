@@ -394,7 +394,7 @@ impl VariableLocation {
     pub fn memory_address(&self) -> Result<u64, DebugError> {
         match self {
             VariableLocation::Address(address) => Ok(*address),
-            other => Err(DebugError::UnwindIncompleteResults {
+            other => Err(DebugError::WarnAndContinue {
                 message: format!("Variable does not have a memory location: location={other:?}"),
             }),
         }
@@ -535,7 +535,7 @@ impl Variable {
             // We have everything we need to update the variable value.
             language::from_dwarf(self.language)
                 .update_variable(self, memory, &new_value)
-                .map_err(|error| DebugError::UnwindIncompleteResults {
+                .map_err(|error| DebugError::WarnAndContinue {
                     message: format!("Invalid data value={new_value:?}: {error}"),
                 })?;
 

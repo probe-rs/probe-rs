@@ -1085,9 +1085,8 @@ impl DebugInfo {
                 Err(_) => continue,
             };
         }
-        Err(DebugError::IncompleteDebugInfo{
-            message: "No debug information available for the specified instruction address. Please consider using instruction level stepping.".to_string(),
-            pc_at_error: address,
+        Err(DebugError::WarnAndContinue {
+            message: format!("No debug information available for the instruction at {address:#010x}. Please consider using instruction level stepping.")
         })
     }
 }

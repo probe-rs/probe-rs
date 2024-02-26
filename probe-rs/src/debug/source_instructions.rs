@@ -8,7 +8,6 @@ use std::{
     fmt::{Debug, Formatter},
     num::NonZeroU64,
     ops::Range,
-    path::PathBuf,
 };
 use typed_path::TypedPathBuf;
 
@@ -59,9 +58,8 @@ impl VerifiedBreakpoint {
                 return Ok(valid_breakpoint);
             }
         }
-        Err(DebugError::IncompleteDebugInfo{
+        Err(DebugError::WarnAndContinue{
             message: format!("Could not identify a valid breakpoint for address: {address:#010x}. Please consider using instruction level stepping."),
-            pc_at_error: address,
         })
     }
 
@@ -89,62 +87,32 @@ impl VerifiedBreakpoint {
         _line: u64,
         _column: Option<u64>,
     ) -> Result<Self, DebugError> {
-        let wip = debug_info.unit_infos.as_slice().iter().map(|program_unit| {
-            // Track the file entry for more efficient filtering of line rows.
-            let mut matching_file_entry = None;
-            program_unit
-                .unit
-                .line_program
-                .as_ref()
-                .and_then(|line_program| {
-                    if line_program.header().file_names().iter().any(|file_entry| {
-                        debug_info
-                            .get_path(&program_unit.unit, line_program.header(), file_entry)
-                            .map(|combined_path: TypedPathBuf| {
-                                if canonical_path_eq(path, &combined_path) {
-                                    matching_file_entry = Some(file_entry);
-                                    true
-                                } else {
-                                    false
-                                }
-                            })
-                            .unwrap_or(false)
-                    }) {
-                        if let Ok((complete_line_program, mut line_sequences)) =
-                            line_program.clone().sequences()
-                        {
-                            line_sequences
-                                .iter_mut()
-                                .map(|line_sequence| {
-                                    complete_line_program.resume_from(line_sequence)
-                                })
-                                .map(|mut line_rows| {
-                                    while let Ok(Some((line_program_header, line_row))) =
-                                        line_rows.next_row()
-                                    {}
-                                });
-                            Some(complete_line_program)
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
-                    }
-                })
-        });
-        for pu in wip {}
-        // .collect::<Vec<&IncompleteLineProgram<GimliReader>>>();
-
-        //     {
-        //     program_unit.unit.line_program.as_ref().map(|line_program| {
-        //         line_program.header().file_names().iter().any(|file_entry| {
-        //             debug_info
-        //                 .get_path(&program_unit.unit, line_program.header(), file_entry)
-        //                 .map(|combined_path: TypedPathBuf| canonical_path_eq(path, &combined_path))
-        //                 .unwrap_or(false)
-        //         })
-        //     })
-        // });
+        for program_unit in debug_info.unit_infos.as_slice() {
+            let Some(ref line_program) = program_unit.unit.line_program else {
+                // Not all compilation units need to have debug line information, so we skip those.
+                continue;
+            };
+            if line_program.header().file_names().iter().any(|file_entry| {
+                debug_info
+                    .get_path(&program_unit.unit, line_program.header(), file_entry)
+                    .map(|combined_path: TypedPathBuf| canonical_path_eq(path, &combined_path))
+                    .unwrap_or(false)
+            }) {
+                let Ok((complete_line_program, line_sequences)) = line_program.clone().sequences()
+                else {
+                    continue;
+                };
+                for line_sequence in line_sequences {
+                    let _instruction_sequence = InstructionSequence::from_line_sequence(
+                        program_unit,
+                        complete_line_program.clone(),
+                        &line_sequence,
+                    );
+                    // TODO: Implement the logic to find the most relevant source location.
+                }
+            }
+        }
+        // If we get here, we have not found a valid breakpoint location.
         Err(DebugError::Other(anyhow::anyhow!("TODO")))
     }
 }
@@ -193,24 +161,6 @@ impl SourceLocation {
                 file,
                 directory,
             })
-    }
-
-    /// The full path of the source file, combining the `directory` and `file` fields.
-    /// If the path does not resolve to an existing file, an error is returned.
-    pub(crate) fn combined_path(&self) -> Result<PathBuf, DebugError> {
-        let combined_path = self.combined_typed_path();
-
-        if let Some(native_path) = combined_path.and_then(|p| PathBuf::try_from(p).ok()) {
-            if native_path.exists() {
-                return Ok(native_path);
-            }
-        }
-
-        Err(DebugError::Other(anyhow::anyhow!(
-            "Unable to find source file for directory {:?} and file {:?}",
-            self.directory,
-            self.file
-        )))
     }
 
     /// Get the full path of the source file
@@ -270,9 +220,8 @@ impl<'debug_info> InstructionSequence<'debug_info> {
                 line_program.header().address_size(),
             )
         } else {
-            return Err(DebugError::IncompleteDebugInfo{
-                        message: "The specified source location does not have any line_program information available. Please consider using instruction level stepping.".to_string(),
-                        pc_at_error: program_counter,
+            return Err(DebugError::WarnAndContinue{
+                        message: "The specified source location does not have any line_program information available. Please consider using instruction level stepping.".to_string()
                     });
         };
 
@@ -287,11 +236,34 @@ impl<'debug_info> InstructionSequence<'debug_info> {
         let Some(line_sequence) = line_sequences.iter().find(|line_sequence| {
             line_sequence.start <= program_counter && program_counter < line_sequence.end
         }) else {
-            return Err(DebugError::IncompleteDebugInfo{
+            return Err(DebugError::WarnAndContinue{
                         message: "The specified source location does not have any line information available. Please consider using instruction level stepping.".to_string(),
-                        pc_at_error: program_counter,
                     });
         };
+        let instruction_sequence =
+            Self::from_line_sequence(program_unit, complete_line_program, line_sequence);
+
+        if instruction_sequence.len() == 0 {
+            Err(DebugError::WarnAndContinue{
+                message: "Could not find valid instruction locations for this address. Consider using instruction level stepping.".to_string(),            })
+        } else {
+            tracing::trace!(
+                "Instruction location for pc={:#010x}\n{:?}",
+                program_counter,
+                instruction_sequence
+            );
+            Ok(instruction_sequence)
+        }
+    }
+
+    fn from_line_sequence(
+        program_unit: &'debug_info UnitInfo,
+        complete_line_program: gimli::CompleteLineProgram<
+            gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>,
+            usize,
+        >,
+        line_sequence: &LineSequence<gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>>,
+    ) -> Self {
         let program_language = program_unit.get_language();
         let mut sequence_rows = complete_line_program.resume_from(line_sequence);
 
@@ -330,11 +302,11 @@ impl<'debug_info> InstructionSequence<'debug_info> {
             }
 
             if !prologue_completed {
-                log_row_eval(line_sequence, program_counter, row, "  inside prologue>");
+                log_row_eval(line_sequence, row, "  inside prologue>");
                 previous_row = Some(*row);
                 continue;
             } else {
-                log_row_eval(line_sequence, program_counter, row, "  after prologue>");
+                log_row_eval(line_sequence, row, "  after prologue>");
             }
 
             // The end of the sequence is not a valid halt location,
@@ -351,20 +323,7 @@ impl<'debug_info> InstructionSequence<'debug_info> {
                 instruction_sequence.add(row, previous_row.as_ref());
             }
         }
-
-        if instruction_sequence.len() == 0 {
-            Err(DebugError::IncompleteDebugInfo{
-                message: "Could not find valid instruction locations for this address. Consider using instruction level stepping.".to_string(),
-                pc_at_error: program_counter,
-            })
-        } else {
-            tracing::trace!(
-                "Instruction location for pc={:#010x}\n{:?}",
-                program_counter,
-                instruction_sequence
-            );
-            Ok(instruction_sequence)
-        }
+        instruction_sequence
     }
 
     /// Add a instruction location to the list.
@@ -447,11 +406,10 @@ impl From<&gimli::LineRow> for InstructionLocation {
 /// Helper function to avoid code duplication when logging of information during row evaluation.
 fn log_row_eval(
     active_sequence: &LineSequence<super::GimliReader>,
-    pc: u64,
     row: &gimli::LineRow,
     status: &str,
 ) {
-    tracing::trace!("Sequence: line={:04} col={:05} f={:02} addr={:#010X} stmt={:5} ep={:5} es={:5} eb={:5} : {:#010X}<={:#010X}<{:#010X} : {}",
+    tracing::trace!("Sequence: line={:04} col={:05} f={:02} stmt={:5} ep={:5} es={:5} eb={:5} : {:#010X}<={:#010X}<{:#010X} : {}",
         match row.line() {
             Some(line) => line.get(),
             None => 0,
@@ -461,13 +419,12 @@ fn log_row_eval(
             gimli::ColumnType::Column(column) => column.get(),
         },
         row.file_index(),
-        row.address(),
         row.is_stmt(),
         row.prologue_end(),
         row.end_sequence(),
         row.epilogue_begin(),
         active_sequence.start,
-        pc,
+        row.address(),
         active_sequence.end,
         status);
 }

@@ -71,22 +71,11 @@ pub enum DebugError {
     /// An int could not be created from the given string.
     #[error(transparent)]
     IntConversion(#[from] std::num::TryFromIntError),
-    /// Errors encountered while determining valid locations for memory addresses involved in actions like
-    /// setting breakpoints and/or stepping through source code.
-    /// These are distinct from other errors because they gracefully terminate the current action,
-    /// and result in a user message, but they do not interrupt the rest of the debug session.
-    #[error("{message}  @program_counter={:#010X}.", pc_at_error)]
-    IncompleteDebugInfo {
-        /// A message that can be displayed to the user to help them make an informed recovery choice.
-        message: String,
-        /// The value of the program counter for which a halt was requested.
-        pc_at_error: u64,
-    },
     /// Non-terminal Errors encountered while unwinding the stack, e.g. Could not resolve the value of a variable in the stack.
     /// These are distinct from other errors because they do not interrupt processing.
     /// Instead, the cause of incomplete results are reported back/explained to the user, and the stack continues to unwind.
     #[error("{message}")]
-    UnwindIncompleteResults {
+    WarnAndContinue {
         /// A message that can be displayed to the user to help them understand the reason for the incomplete results.
         message: String,
     },

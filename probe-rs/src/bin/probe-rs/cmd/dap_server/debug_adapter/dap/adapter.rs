@@ -1655,15 +1655,15 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         {
             Ok((new_status, program_counter)) => (new_status, program_counter),
             Err(error) => match &error {
-                probe_rs::debug::DebugError::IncompleteDebugInfo {
-                    message,
-                    pc_at_error,
-                } => {
+                probe_rs::debug::DebugError::WarnAndContinue { message } => {
+                    let pc_at_error = target_core
+                        .core
+                        .read_core_reg(target_core.core.program_counter())?;
                     self.show_message(
                         MessageSeverity::Information,
                         format!("Step error @{pc_at_error:#010X}: {message}"),
                     );
-                    (target_core.core.status()?, *pc_at_error)
+                    (target_core.core.status()?, pc_at_error)
                 }
                 other_error => {
                     target_core.core.halt(Duration::from_millis(100)).ok();

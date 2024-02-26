@@ -681,7 +681,7 @@ impl UnitInfo {
                         .get_program_counter()
                         .and_then(|reg| reg.value)
                     else {
-                        return Err(DebugError::UnwindIncompleteResults {
+                        return Err(DebugError::WarnAndContinue {
                             message:
                                 "Cannot unwind `Variable` without a valid PC (program_counter)"
                                     .to_string(),
@@ -1560,7 +1560,7 @@ impl UnitInfo {
             fn convert_incomplete(self) -> Result<ExpressionResult, DebugError> {
                 match self {
                     Ok(result) => Ok(result),
-                    Err(DebugError::UnwindIncompleteResults { message }) => {
+                    Err(DebugError::WarnAndContinue { message }) => {
                         tracing::warn!("UnwindIncompleteResults: {:?}", message);
                         Ok(ExpressionResult::Location(VariableLocation::Unavailable))
                     }
@@ -1582,7 +1582,7 @@ impl UnitInfo {
                     gimli::AttributeValue::Udata(offset_from_location) => {
                         let location = if let VariableLocation::Address(address) = parent_location {
                             let Some(location) = address.checked_add(offset_from_location) else {
-                                return Err(DebugError::UnwindIncompleteResults {
+                                return Err(DebugError::WarnAndContinue {
                                     message: "Overflow calculating variable address"
                                         .to_string(),
                                 });
@@ -1825,7 +1825,7 @@ impl UnitInfo {
                     provide_cfa(frame_info.canonical_frame_address, &mut evaluation)?
                 }
                 unimplemented_expression => {
-                    return Err(DebugError::UnwindIncompleteResults {
+                    return Err(DebugError::WarnAndContinue {
                         message: format!("Unimplemented: Expressions that include {unimplemented_expression:?} are not currently supported."
                     )});
                 }
@@ -2126,13 +2126,13 @@ fn provide_register(
             let register_value = gimli::Value::Generic(raw_value.try_into()?);
             Ok(evaluation.resume_with_register(register_value)?)
         }
-        Some(_) => Err(DebugError::UnwindIncompleteResults {
+        Some(_) => Err(DebugError::WarnAndContinue {
             message: format!(
                 "Unimplemented: Support for type {:?} in `RequiresRegister`",
                 base_type
             ),
         }),
-        None => Err(DebugError::UnwindIncompleteResults {
+        None => Err(DebugError::WarnAndContinue {
             message: format!(
                 "Error while calculating `Variable::memory_location`. No value for register #:{}.",
                 register.0
@@ -2147,14 +2147,14 @@ fn provide_frame_base(
     evaluation: &mut gimli::Evaluation<EndianReader>,
 ) -> Result<EvaluationResult<EndianReader>, DebugError> {
     let Some(frame_base) = frame_base else {
-        return Err(DebugError::UnwindIncompleteResults {
+        return Err(DebugError::WarnAndContinue {
             message: "Cannot unwind `Variable` location without a valid frame base address.)"
                 .to_string(),
         });
     };
     match evaluation.resume_with_frame_base(frame_base) {
         Ok(evaluation_result) => Ok(evaluation_result),
-        Err(error) => Err(DebugError::UnwindIncompleteResults {
+        Err(error) => Err(DebugError::WarnAndContinue {
             message: format!("Error while calculating `Variable::memory_location`:{error}."),
         }),
     }
@@ -2166,14 +2166,14 @@ fn provide_cfa(
     evaluation: &mut gimli::Evaluation<EndianReader>,
 ) -> Result<EvaluationResult<EndianReader>, DebugError> {
     let Some(cfa) = cfa else {
-        return Err(DebugError::UnwindIncompleteResults {
+        return Err(DebugError::WarnAndContinue {
             message: "Cannot unwind `Variable` location without a valid canonical frame address.)"
                 .to_string(),
         });
     };
     match evaluation.resume_with_call_frame_cfa(cfa) {
         Ok(evaluation_result) => Ok(evaluation_result),
-        Err(error) => Err(DebugError::UnwindIncompleteResults {
+        Err(error) => Err(DebugError::WarnAndContinue {
             message: format!("Error while calculating `Variable::memory_location`:{error}."),
         }),
     }
@@ -2193,7 +2193,7 @@ fn read_memory(
     ) -> Result<[u8; SIZE], DebugError> {
         let mut buff = [0u8; SIZE];
         memory.read(address, &mut buff).map_err(|error| {
-            DebugError::UnwindIncompleteResults {
+            DebugError::WarnAndContinue {
                 message: format!("Unexpected error while reading debug expressions from target memory: {error:?}. Please report this as a bug.")
             }
         })?;
@@ -2214,7 +2214,7 @@ fn read_memory(
             gimli::Value::U32(u32::from_le_bytes(buff))
         }
         x => {
-            return Err(DebugError::UnwindIncompleteResults {
+            return Err(DebugError::WarnAndContinue {
                 message: format!(
                     "Unimplemented: Requested memory with size {x}, which is not supported yet."
                 ),

@@ -68,13 +68,13 @@ impl SteppingMode {
                     core_status = core.status()?;
                     return Ok((core_status, program_counter));
                 }
-                SteppingMode::IntoStatement => {
-                    self.get_halt_location(core, debug_info, program_counter, Some(return_address))
-                }
                 SteppingMode::BreakPoint => {
                     self.get_halt_location(core, debug_info, program_counter, None)
                 }
-                SteppingMode::OverStatement | SteppingMode::OutOfStatement => {
+                SteppingMode::IntoStatement
+                | SteppingMode::OverStatement
+                | SteppingMode::OutOfStatement => {
+                    // The more complex cases, where specific handling is required.
                     self.get_halt_location(core, debug_info, program_counter, Some(return_address))
                 }
             } {
@@ -86,31 +86,26 @@ impl SteppingMode {
                         .try_into()?;
                     break;
                 }
-                Err(error) => match error {
-                    DebugError::IncompleteDebugInfo {
-                        message,
-                        pc_at_error,
-                    } => {
-                        // Step on target instruction, and then try again.
-                        tracing::trace!(
-                            "Incomplete stepping information @{:#010X}: {}",
-                            pc_at_error,
-                            message
-                        );
-                        program_counter = core.step()?.pc;
-                        return_address =
-                            core.read_core_reg(core.return_address().id())?.try_into()?;
-                        continue;
+                Err(error) => {
+                    match error {
+                        DebugError::WarnAndContinue { message } => {
+                            // Step on target instruction, and then try again.
+                            tracing::trace!("Incomplete stepping information @{program_counter:#010X}: {message}");
+                            program_counter = core.step()?.pc;
+                            return_address =
+                                core.read_core_reg(core.return_address().id())?.try_into()?;
+                            continue;
+                        }
+                        other_error => {
+                            core_status = core.status()?;
+                            program_counter = core
+                                .read_core_reg(core.program_counter().id())?
+                                .try_into()?;
+                            tracing::error!("Error during step ({:?}): {}", self, other_error);
+                            return Ok((core_status, program_counter));
+                        }
                     }
-                    other_error => {
-                        core_status = core.status()?;
-                        program_counter = core
-                            .read_core_reg(core.program_counter().id())?
-                            .try_into()?;
-                        tracing::error!("Error during step ({:?}): {}", self, other_error);
-                        return Ok((core_status, program_counter));
-                    }
-                },
+                }
             }
         }
 
@@ -140,10 +135,9 @@ impl SteppingMode {
                 run_to_address(program_counter, target_address, core)?
             }
             None => {
-                return Err(DebugError::IncompleteDebugInfo {
+                return Err(DebugError::WarnAndContinue {
                     message: "Unable to determine target address for this step request."
                         .to_string(),
-                    pc_at_error: program_counter,
                 });
             }
         };
@@ -221,16 +215,13 @@ impl SteppingMode {
                     program_counter.checked_add(1).unwrap_or(program_counter),
                 ) {
                     Ok(identified_next_breakpoint) => identified_next_breakpoint.address,
-                    Err(DebugError::IncompleteDebugInfo { .. }) => {
+                    Err(DebugError::WarnAndContinue { .. }) => {
                         // There are no next statements in this sequence, so we will use the return address as the target.
                         if let Some(return_address) = return_address {
                             return_address
                         } else {
-                            return Err(DebugError::IncompleteDebugInfo {
-                                message:
-                                    "Could not determine a 'step in' target. Please use 'step over'."
-                                        .to_string(),
-                                pc_at_error: program_counter,
+                            return Err(DebugError::WarnAndContinue {
+                                message: "Could not determine a 'step in' target. Please use 'step over'.".to_string(),
                             });
                         }
                     }
@@ -308,9 +299,8 @@ impl SteppingMode {
             }
         }
 
-        Err(DebugError::IncompleteDebugInfo{
-                message: "Could not determine valid halt locations for this request. Please consider using instruction level stepping.".to_string(),
-                pc_at_error: program_counter,
+        Err(DebugError::WarnAndContinue {
+                message: "Could not determine valid halt locations for this request. Please consider using instruction level stepping.".to_string()
         })
     }
 }
@@ -328,9 +318,8 @@ fn run_to_address(
 ) -> Result<(CoreStatus, u64), DebugError> {
     Ok(if target_address < program_counter {
         // We are not able to calculate a step_out_address. Notify the user to try something else.
-        return Err(DebugError::IncompleteDebugInfo {
+        return Err(DebugError::WarnAndContinue  {
             message: "Unable to determine target address for this step request. Please try a different form of stepping.".to_string(),
-            pc_at_error: program_counter,
         });
     } else if target_address == program_counter {
         // No need to step further. e.g. For inline functions we have already stepped to the best available target address..
@@ -412,10 +401,9 @@ fn step_to_address(
                     break;
                 }
                 // This is a recoverable error kind, and can be reported to the user higher up in the call stack.
-                other_halt_reason => return Err(DebugError::IncompleteDebugInfo{message:
-                    format!("Target halted unexpectedly before we reached the destination address of a step operation: {other_halt_reason:?}"),
-                        pc_at_error: core.read_core_reg(core.program_counter().id())?.try_into()?}
-                    ),
+                other_halt_reason => return Err(DebugError::WarnAndContinue {
+                    message: format!("Target halted unexpectedly before we reached the destination address of a step operation: {other_halt_reason:?}")
+                }),
             },
             // This is not a recoverable error, and will result in the debug session ending (we have no predicatable way of successfully continuing the session)
             other_status => return Err(DebugError::Other(
