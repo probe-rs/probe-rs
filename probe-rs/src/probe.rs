@@ -673,12 +673,13 @@ pub struct DebugProbeInfo {
     pub product_id: u16,
     /// The serial number of the debug probe.
     pub serial_number: Option<String>,
-    /// A reference to the [`ProbeFactory`] that created this info object.
-    pub probe_factory: &'static dyn ProbeFactory,
 
     /// The USB HID interface which should be used.
     /// This is necessary for composite HID devices.
     pub hid_interface: Option<u8>,
+
+    /// A reference to the [`ProbeFactory`] that created this info object.
+    probe_factory: &'static dyn ProbeFactory,
 }
 
 impl std::fmt::Debug for DebugProbeInfo {
