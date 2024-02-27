@@ -38,7 +38,10 @@ impl VerifiedBreakpoint {
             if let Some(valid_breakpoint) = instruction_sequence
                 .instructions
                 .iter()
-                .find(|instruction_location| instruction_location.address >= address)
+                .find(|instruction_location| {
+                    instruction_location.instruction_type == InstructionType::HaltLocation
+                        && instruction_location.address >= address
+                })
                 .and_then(|instruction_location| {
                     SourceLocation::from_instruction_location(
                         debug_info,
@@ -169,7 +172,8 @@ fn match_file_line_column(
             .instructions
             .iter()
             .find(|instruction_location| {
-                matching_file_index == Some(instruction_location.file_index)
+                instruction_location.instruction_type == InstructionType::HaltLocation
+                    && matching_file_index == Some(instruction_location.file_index)
                     && NonZeroU64::new(line) == instruction_location.line
                     && column
                         .map(ColumnType::Column)
@@ -203,7 +207,8 @@ fn match_file_line_first_available_column(
             .instructions
             .iter()
             .find(|instruction_location| {
-                matching_file_index == Some(instruction_location.file_index)
+                instruction_location.instruction_type == InstructionType::HaltLocation
+                    && matching_file_index == Some(instruction_location.file_index)
                     && NonZeroU64::new(line) == instruction_location.line
             })
     {
@@ -278,14 +283,16 @@ impl SourceLocation {
 /// This is a list of target instructions, belonging to a [`gimli::LineSequence`],
 /// and filters it to only user code instructions (no prologue code, and no non-statement instructions),
 /// so that we are left only with what DWARF terms as "recommended breakpoint location".
-pub(crate) struct InstructionSequence<'debug_info> {
+struct InstructionSequence<'debug_info> {
     /// The `address_range.start` is the starting address of the program counter for which this sequence is valid,
     /// and allows us to identify target instruction locations where the program counter lies inside the prologue.
     /// The `address_range.end` is the first address that is not covered by this sequence within the line number program,
     /// and allows us to identify when stepping over a instruction location would result in leaving a sequence.
-    pub(crate) address_range: Range<u64>,
+    /// - This is typically the instruction address of the first instruction in the next sequence,
+    ///   which may also be the first instruction in a new function.
+    address_range: Range<u64>,
     // NOTE: Use Vec as a container, because we will have relatively few statements per sequence, and we need to maintain the order.
-    pub(crate) instructions: Vec<InstructionLocation>,
+    instructions: Vec<InstructionLocation>,
     // The following private fields are required to resolve the source location information for
     // each instruction location.
     debug_info: &'debug_info DebugInfo,
@@ -368,6 +375,7 @@ impl<'debug_info> InstructionSequence<'debug_info> {
         }
     }
 
+    /// Build [`InstructionSequence`] from a [`gimli::LineSequence`], with all the markers we need to determine valid halt locations.
     fn from_line_sequence(
         debug_info: &'debug_info DebugInfo,
         program_unit: &'debug_info UnitInfo,
@@ -417,8 +425,6 @@ impl<'debug_info> InstructionSequence<'debug_info> {
 
             if !prologue_completed {
                 log_row_eval(line_sequence, row, "  inside prologue>");
-                previous_row = Some(*row);
-                continue;
             } else {
                 log_row_eval(line_sequence, row, "  after prologue>");
             }
@@ -426,36 +432,51 @@ impl<'debug_info> InstructionSequence<'debug_info> {
             // The end of the sequence is not a valid halt location,
             // nor is it a valid instruction in the current sequence.
             if row.end_sequence() {
-                // Mark the previous instruction as the last valid instruction in the sequence.
-                if let Some(previous_instruction) = instruction_sequence.instructions.last_mut() {
-                    previous_instruction.is_sequence_exit = true;
-                }
                 break;
             }
 
-            if row.is_stmt() {
-                instruction_sequence.add(row, previous_row.as_ref());
-            }
+            instruction_sequence.add(prologue_completed, row, previous_row.as_ref());
+            previous_row = Some(*row);
         }
         instruction_sequence
     }
 
     /// Add a instruction location to the list.
-    fn add(&mut self, row: &gimli::LineRow, previous_row: Option<&gimli::LineRow>) {
-        let mut instruction_location = InstructionLocation::from(row);
+    fn add(
+        &mut self,
+        prologue_completed: bool,
+        row: &gimli::LineRow,
+        previous_row: Option<&gimli::LineRow>,
+    ) {
+        // Workaround the line number issue (if recorded as 0 in the DWARF, then gimli reports it as None).
+        // For debug purposes, it makes more sense to be the same as the previous line, which almost always
+        // has the same file index and column value.
+        // This prevents the debugger from jumping to the top of the file unexpectedly.
+        let mut instruction_line = row.line();
         if let Some(prev_row) = previous_row {
             if row.line().is_none()
                 && prev_row.line().is_some()
                 && row.file_index() == prev_row.file_index()
                 && prev_row.column() == row.column()
             {
-                // Workaround the line number issue (if recorded as 0 in the DWARF, then gimli reports it as None).
-                // For debug purposes, it makes more sense to be the same as the previous line, which almost always
-                // has the same file index and column value.
-                // This prevents the debugger from jumping to the top of the file unexpectedly.
-                instruction_location.line = prev_row.line();
+                instruction_line = prev_row.line();
             }
         }
+
+        let instruction_location = InstructionLocation {
+            address: row.address(),
+            file_index: row.file_index(),
+            line: instruction_line,
+            column: row.column().into(),
+            instruction_type: if !prologue_completed {
+                InstructionType::Prologue
+            } else if row.epilogue_begin() || row.is_stmt() {
+                InstructionType::HaltLocation
+            } else {
+                InstructionType::Unspecified
+            },
+        };
+
         self.instructions.push(instruction_location);
     }
 
@@ -463,6 +484,20 @@ impl<'debug_info> InstructionSequence<'debug_info> {
     fn len(&self) -> usize {
         self.instructions.len()
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+/// The type of instruction, as defined by [`gimli::LineRow`] attributes and relative position in the sequence.
+enum InstructionType {
+    /// We need to keep track of source lines that signal function signatures,
+    /// even if their program lines are not valid halt locations.
+    Prologue,
+    /// DWARF defined "recommended breakpoint location",
+    /// typically marked with `is_stmt` or `epilogue_begin`.
+    HaltLocation,
+    /// Any other instruction that is not part of the prologue or epilogue, and is not a statement,
+    /// is considered to be an unspecified instruction type.
+    Unspecified,
 }
 
 #[derive(Clone)]
@@ -474,21 +509,19 @@ impl<'debug_info> InstructionSequence<'debug_info> {
 /// - A line of code in a source file may contain multiple instruction locations, in which case
 ///     a new [`InstructionLocation`] with unique `column` is created.
 /// - A [`InstructionSequence`] is a series of contiguous [`InstructionLocation`]'s.
-pub struct InstructionLocation {
-    pub address: u64,
-    pub file_index: u64,
-    pub line: Option<NonZeroU64>,
-    pub column: ColumnType,
-    /// Indicates that this instruction location is either the beginning of an epilogue,
-    /// or the last valid instruction in the sequence.
-    pub is_sequence_exit: bool,
+struct InstructionLocation {
+    address: u64,
+    file_index: u64,
+    line: Option<NonZeroU64>,
+    column: ColumnType,
+    instruction_type: InstructionType,
 }
 
 impl Debug for InstructionLocation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Instruction @ {:010x}, on line={:04}  col={:05}  f={:02}, is_sequence_exit={:?}",
+            "Instruction @ {:010x}, on line={:04}  col={:05}  f={:02}, type={:?}",
             &self.address,
             match &self.line {
                 Some(line) => line.get(),
@@ -499,21 +532,9 @@ impl Debug for InstructionLocation {
                 ColumnType::Column(column) => column.to_owned(),
             },
             &self.file_index,
-            &self.is_sequence_exit,
+            &self.instruction_type,
         )?;
         Ok(())
-    }
-}
-
-impl From<&gimli::LineRow> for InstructionLocation {
-    fn from(line_row: &gimli::LineRow) -> Self {
-        InstructionLocation {
-            address: line_row.address(),
-            file_index: line_row.file_index(),
-            line: line_row.line(),
-            column: line_row.column().into(),
-            is_sequence_exit: line_row.epilogue_begin(),
-        }
     }
 }
 
