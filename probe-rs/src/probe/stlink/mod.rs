@@ -42,11 +42,12 @@ const STLINK_MAX_WRITE_LEN: usize = 0xFFFC;
 const DP_PORT: u16 = 0xFFFF;
 
 /// A factory for creating [`StLink`] probes.
+#[derive(Debug)]
 pub struct StLinkFactory;
 
-impl std::fmt::Debug for StLinkFactory {
+impl std::fmt::Display for StLinkFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("StLink").finish()
+        f.write_str("ST-LINK")
     }
 }
 

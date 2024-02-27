@@ -486,7 +486,10 @@ impl Probe {
 /// An abstraction over a probe driver type.
 ///
 /// This trait has to be implemented by ever debug probe driver.
-pub trait ProbeFactory: std::any::Any + std::fmt::Debug + Sync {
+///
+/// The `std::fmt::Display` implementation will be used to display the probe in the list of available probes,
+/// and should return a human-readable name for the probe type.
+pub trait ProbeFactory: std::any::Any + std::fmt::Display + std::fmt::Debug + Sync {
     /// Creates a new boxed [`DebugProbe`] from a given [`DebugProbeSelector`].
     /// This will be called for all available debug drivers when discovering probes.
     /// When opening, it will open the first probe which succeeds during this call.
@@ -663,7 +666,7 @@ impl PartialEq for dyn ProbeFactory {
 }
 
 /// Gathers some information about a debug probe which was found during a scan.
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DebugProbeInfo {
     /// The name of the debug probe.
     pub identifier: String,
@@ -682,11 +685,11 @@ pub struct DebugProbeInfo {
     probe_factory: &'static dyn ProbeFactory,
 }
 
-impl std::fmt::Debug for DebugProbeInfo {
+impl std::fmt::Display for DebugProbeInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "{} (VID: {:04x}, PID: {:04x}, {}{:?})",
+            "{} (VID: {:04x}, PID: {:04x}, {}{})",
             self.identifier,
             self.vendor_id,
             self.product_id,

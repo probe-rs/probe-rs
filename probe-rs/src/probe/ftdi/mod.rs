@@ -243,11 +243,12 @@ impl JtagAdapter {
 }
 
 /// A factory for creating [`FtdiProbe`] instances.
+#[derive(Debug)]
 pub struct FtdiProbeFactory;
 
-impl std::fmt::Debug for FtdiProbeFactory {
+impl std::fmt::Display for FtdiProbeFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("FTDI").finish()
+        f.write_str("FTDI")
     }
 }
 
