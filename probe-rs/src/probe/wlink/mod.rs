@@ -149,11 +149,12 @@ impl RiscvChip {
 }
 
 /// Factory for creating [`WchLink`] probes.
+#[derive(Debug)]
 pub struct WchLinkFactory;
 
-impl std::fmt::Debug for WchLinkFactory {
+impl std::fmt::Display for WchLinkFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("WchLink").finish()
+        f.write_str("WchLink")
     }
 }
 

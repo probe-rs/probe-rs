@@ -27,7 +27,6 @@ use crate::architecture::xtensa::communication_interface::{
 use crate::config::RegistryError;
 use crate::config::TargetSelector;
 use crate::probe::common::IdCode;
-use crate::probe::list::Lister;
 use crate::{Error, Permissions, Session};
 use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
@@ -214,7 +213,7 @@ pub enum ProbeCreationError {
 /// let lister = Lister::new();
 ///
 /// let probe_list = lister.list_all();
-/// let probe = probe_list[0].open(&lister);
+/// let probe = probe_list[0].open();
 /// ```
 #[derive(Debug)]
 pub struct Probe {
@@ -487,7 +486,10 @@ impl Probe {
 /// An abstraction over a probe driver type.
 ///
 /// This trait has to be implemented by ever debug probe driver.
-pub trait ProbeFactory: std::any::Any + std::fmt::Debug + Sync {
+///
+/// The `std::fmt::Display` implementation will be used to display the probe in the list of available probes,
+/// and should return a human-readable name for the probe type.
+pub trait ProbeFactory: std::any::Any + std::fmt::Display + std::fmt::Debug + Sync {
     /// Creates a new boxed [`DebugProbe`] from a given [`DebugProbeSelector`].
     /// This will be called for all available debug drivers when discovering probes.
     /// When opening, it will open the first probe which succeeds during this call.
@@ -664,7 +666,7 @@ impl PartialEq for dyn ProbeFactory {
 }
 
 /// Gathers some information about a debug probe which was found during a scan.
-#[derive(Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DebugProbeInfo {
     /// The name of the debug probe.
     pub identifier: String,
@@ -674,26 +676,27 @@ pub struct DebugProbeInfo {
     pub product_id: u16,
     /// The serial number of the debug probe.
     pub serial_number: Option<String>,
-    /// The probe type of the debug probe.
-    pub probe_type: &'static dyn ProbeFactory,
 
     /// The USB HID interface which should be used.
     /// This is necessary for composite HID devices.
     pub hid_interface: Option<u8>,
+
+    /// A reference to the [`ProbeFactory`] that created this info object.
+    probe_factory: &'static dyn ProbeFactory,
 }
 
-impl std::fmt::Debug for DebugProbeInfo {
+impl std::fmt::Display for DebugProbeInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "{} (VID: {:04x}, PID: {:04x}, {}{:?})",
+            "{} (VID: {:04x}, PID: {:04x}, {}{})",
             self.identifier,
             self.vendor_id,
             self.product_id,
             self.serial_number
                 .as_ref()
                 .map_or("".to_owned(), |v| format!("Serial: {v}, ")),
-            self.probe_type
+            self.probe_factory
         )
     }
 }
@@ -705,7 +708,7 @@ impl DebugProbeInfo {
         vendor_id: u16,
         product_id: u16,
         serial_number: Option<String>,
-        probe_type: &'static dyn ProbeFactory,
+        probe_factory: &'static dyn ProbeFactory,
         hid_interface: Option<u8>,
     ) -> Self {
         Self {
@@ -713,14 +716,22 @@ impl DebugProbeInfo {
             vendor_id,
             product_id,
             serial_number,
-            probe_type,
+            probe_factory,
             hid_interface,
         }
     }
 
     /// Open the probe described by this `DebugProbeInfo`.
-    pub fn open(&self, lister: &Lister) -> Result<Probe, DebugProbeError> {
-        lister.open(DebugProbeSelector::from(self))
+    pub fn open(&self) -> Result<Probe, DebugProbeError> {
+        let selector = DebugProbeSelector::from(self);
+        self.probe_factory
+            .open(&selector)
+            .map(Probe::from_specific_probe)
+    }
+
+    /// Returns whether this info was returned by a particular probe factory.
+    pub fn is_probe_type<F: ProbeFactory>(&self) -> bool {
+        self.probe_factory.type_id() == std::any::TypeId::of::<F>()
     }
 }
 
@@ -1189,4 +1200,24 @@ pub enum AttachMethod {
     ///
     /// This is required on targets that can remap SWD pins or disable the SWD interface in sleep.
     UnderReset,
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_is_probe_factory() {
+        let probe_info = DebugProbeInfo::new(
+            "Mock probe",
+            0x12,
+            0x23,
+            Some("mock_serial".to_owned()),
+            &ftdi::FtdiProbeFactory,
+            None,
+        );
+
+        assert!(probe_info.is_probe_type::<ftdi::FtdiProbeFactory>());
+        assert!(!probe_info.is_probe_type::<espusbjtag::EspUsbJtagFactory>());
+    }
 }

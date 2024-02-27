@@ -914,6 +914,7 @@ mod test {
 
     use core::panic;
     use std::collections::{BTreeMap, HashMap, VecDeque};
+    use std::fmt::Display;
     use std::path::PathBuf;
 
     use probe_rs::architecture::arm::ApAddress;
@@ -948,6 +949,12 @@ mod test {
 
     #[derive(Debug)]
     struct MockProbeFactory;
+
+    impl Display for MockProbeFactory {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str("Mocked Probe")
+        }
+    }
 
     impl ProbeFactory for MockProbeFactory {
         fn open(

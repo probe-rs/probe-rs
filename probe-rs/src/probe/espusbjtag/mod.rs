@@ -25,11 +25,12 @@ use crate::architecture::riscv::dtm::jtag_dtm::JtagDtm;
 use probe_rs_target::ScanChainElement;
 
 /// Probe factory for USB JTAG interfaces built into certain ESP32 chips.
+#[derive(Debug)]
 pub struct EspUsbJtagFactory;
 
-impl std::fmt::Debug for EspUsbJtagFactory {
+impl std::fmt::Display for EspUsbJtagFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("EspJtag").finish()
+        f.write_str("EspJtag")
     }
 }
 

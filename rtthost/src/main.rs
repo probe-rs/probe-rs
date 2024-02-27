@@ -130,7 +130,7 @@ fn main() -> Result<()> {
         bail!("Probe {probe_number} does not exist.");
     }
 
-    let probe = match probes[probe_number].open(&lister) {
+    let probe = match probes[probe_number].open() {
         Ok(probe) => probe,
         Err(err) => {
             bail!("Error opening probe: {err}");

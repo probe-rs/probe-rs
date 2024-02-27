@@ -18,7 +18,7 @@ fn main() -> Result<(), Error> {
     let probes = lister.list_all();
 
     // Use the first probe found.
-    let probe = probes[0].open(&lister)?;
+    let probe = probes[0].open()?;
 
     // Attach to a chip.
     let mut session = probe.attach("stm32f407", Permissions::default())?;

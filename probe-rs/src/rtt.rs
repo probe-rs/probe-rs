@@ -21,7 +21,7 @@
 //!
 //! let probes = lister.list_all();
 //!
-//! let probe = probes[0].open(&lister)?;
+//! let probe = probes[0].open()?;
 //! let mut session = probe.attach("somechip", Permissions::default())?;
 //! let memory_map = session.target().memory_map.clone();
 //! // Select a core.
