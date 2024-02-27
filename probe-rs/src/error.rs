@@ -44,7 +44,7 @@ pub enum Error {
     /// A timeout occurred.
     // TODO: Errors below should be core specific
     Timeout,
-    /// Improper unaligned memory access
+    /// Memory access to address {address:#X?} was not aligned to {alignment} bytes.
     MemoryNotAligned {
         /// The address of the register.
         address: u64,
