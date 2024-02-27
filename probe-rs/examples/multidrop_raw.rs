@@ -14,7 +14,7 @@ fn main() -> Result<()> {
     let probes = probe_lister.list_all();
 
     // Use the first probe found.
-    let mut probe: Probe = probes[0].open(&probe_lister)?;
+    let mut probe: Probe = probes[0].open()?;
 
     // Specify the multidrop DP address of the first core,
     // this is used for the initial connection.

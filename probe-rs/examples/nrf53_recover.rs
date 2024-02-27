@@ -13,7 +13,7 @@ fn main() -> Result<()> {
     let probes = lister.list_all();
 
     // Use the first probe found.
-    let mut probe = probes[0].open(&lister)?;
+    let mut probe = probes[0].open()?;
 
     probe.attach_to_unspecified()?;
     let mut iface = probe

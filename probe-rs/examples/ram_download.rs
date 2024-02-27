@@ -166,7 +166,7 @@ fn open_probe(index: Option<usize>) -> Result<Probe> {
         }
     };
 
-    let probe = device.open(&lister).context("Failed to open probe")?;
+    let probe = device.open().context("Failed to open probe")?;
 
     Ok(probe)
 }

@@ -160,11 +160,11 @@ impl DutDefinition {
                 ensure!(!probes.is_empty(), "No probes detected!");
 
                 ensure!(
-            probes.len() < 2,
-            "Multiple probes detected. Specify which probe to use using the '--probe' argument."
-        );
+                    probes.len() < 2,
+                    "Multiple probes detected. Specify which probe to use using the '--probe' argument."
+                );
 
-                let probe = probes[0].open(&lister)?;
+                let probe = probes[0].open()?;
 
                 Ok(probe)
             }
