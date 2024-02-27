@@ -628,7 +628,7 @@ fn get_device_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
             vendor_id: device.vendor_id(),
             product_id: device.product_id(),
             serial_number: device.serial_number().map(|s| s.to_string()),
-            probe_type: &FtdiProbeFactory,
+            probe_factory: &FtdiProbeFactory,
             hid_interface: None,
         })
     })

@@ -27,7 +27,6 @@ use crate::architecture::xtensa::communication_interface::{
 use crate::config::RegistryError;
 use crate::config::TargetSelector;
 use crate::probe::common::IdCode;
-use crate::probe::list::Lister;
 use crate::{Error, Permissions, Session};
 use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
@@ -214,7 +213,7 @@ pub enum ProbeCreationError {
 /// let lister = Lister::new();
 ///
 /// let probe_list = lister.list_all();
-/// let probe = probe_list[0].open(&lister);
+/// let probe = probe_list[0].open();
 /// ```
 #[derive(Debug)]
 pub struct Probe {
@@ -674,8 +673,8 @@ pub struct DebugProbeInfo {
     pub product_id: u16,
     /// The serial number of the debug probe.
     pub serial_number: Option<String>,
-    /// The probe type of the debug probe.
-    pub probe_type: &'static dyn ProbeFactory,
+    /// A reference to the [`ProbeFactory`] that created this info object.
+    pub probe_factory: &'static dyn ProbeFactory,
 
     /// The USB HID interface which should be used.
     /// This is necessary for composite HID devices.
@@ -693,7 +692,7 @@ impl std::fmt::Debug for DebugProbeInfo {
             self.serial_number
                 .as_ref()
                 .map_or("".to_owned(), |v| format!("Serial: {v}, ")),
-            self.probe_type
+            self.probe_factory
         )
     }
 }
@@ -705,7 +704,7 @@ impl DebugProbeInfo {
         vendor_id: u16,
         product_id: u16,
         serial_number: Option<String>,
-        probe_type: &'static dyn ProbeFactory,
+        probe_factory: &'static dyn ProbeFactory,
         hid_interface: Option<u8>,
     ) -> Self {
         Self {
@@ -713,19 +712,22 @@ impl DebugProbeInfo {
             vendor_id,
             product_id,
             serial_number,
-            probe_type,
+            probe_factory,
             hid_interface,
         }
     }
 
     /// Open the probe described by this `DebugProbeInfo`.
-    pub fn open(&self, lister: &Lister) -> Result<Probe, DebugProbeError> {
-        lister.open(DebugProbeSelector::from(self))
+    pub fn open(&self) -> Result<Probe, DebugProbeError> {
+        let selector = DebugProbeSelector::from(self);
+        self.probe_factory
+            .open(&selector)
+            .map(Probe::from_specific_probe)
     }
 
     /// Returns whether this info was returned by a particular probe factory.
-    pub fn is_probe_type<F: ProbeFactory>(&self, factory: &F) -> bool {
-        self.probe_type == factory as &dyn ProbeFactory
+    pub fn is_probe_type<F: ProbeFactory>(&self) -> bool {
+        self.probe_factory.type_id() == std::any::TypeId::of::<F>()
     }
 }
 
@@ -1211,7 +1213,7 @@ mod test {
             None,
         );
 
-        assert!(probe_info.is_probe_type(&ftdi::FtdiProbeFactory));
-        assert!(!probe_info.is_probe_type(&espusbjtag::EspUsbJtagFactory));
+        assert!(probe_info.is_probe_type::<ftdi::FtdiProbeFactory>());
+        assert!(!probe_info.is_probe_type::<espusbjtag::EspUsbJtagFactory>());
     }
 }

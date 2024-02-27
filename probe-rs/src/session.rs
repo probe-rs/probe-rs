@@ -354,7 +354,7 @@ impl Session {
         let probe = probes
             .first()
             .ok_or(Error::UnableToOpenProbe("No probe was found"))?
-            .open(&lister)?;
+            .open()?;
 
         // Attach to a chip.
         probe.attach(target, permissions)

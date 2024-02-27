@@ -1,6 +1,6 @@
 //! # Debugging toolset for embedded devices
 //!
-//!  
+//!
 //! # Prerequisites
 //!
 //! - Udev rules
@@ -20,7 +20,7 @@
 //! let probes = lister.list_all();
 //!
 //! // Use the first probe found.
-//! let mut probe = probes[0].open(&lister)?;
+//! let mut probe = probes[0].open()?;
 //!
 //! // Attach to a chip.
 //! let mut session = probe.attach("nrf52", Permissions::default())?;
