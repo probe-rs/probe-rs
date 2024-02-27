@@ -111,7 +111,7 @@ pub struct FormatOptions {
     /// Finally, if neither of the above cases are true, we default to ELF.
     #[clap(value_enum, ignore_case = true, long)]
     #[serde(deserialize_with = "format_from_str")]
-    format: Option<Format>,
+    binary_format: Option<Format>,
     /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
     #[clap(long, value_parser = parse_u64)]
     pub base_address: Option<u64>,
@@ -131,10 +131,12 @@ impl FormatOptions {
     /// If a target has a preferred format, we use that.
     /// Finally, if neither of the above cases are true, we default to [`Format::default()`].
     pub fn into_format(self, target: &Target) -> anyhow::Result<Format> {
-        let format = self.format.unwrap_or_else(|| match target.default_format {
-            probe_rs_target::BinaryFormat::Idf => Format::Idf(Default::default()),
-            probe_rs_target::BinaryFormat::Raw => Default::default(),
-        });
+        let format = self
+            .binary_format
+            .unwrap_or_else(|| match target.default_format {
+                probe_rs_target::BinaryFormat::Idf => Format::Idf(Default::default()),
+                probe_rs_target::BinaryFormat::Raw => Default::default(),
+            });
         Ok(match format {
             Format::Bin(_) => Format::Bin(BinOptions {
                 base_address: self.base_address,
@@ -256,6 +258,16 @@ fn main() -> Result<()> {
     if let Some(args) = multicall_check(&args, "cargo-embed") {
         cmd::cargo_embed::main(args, utc_offset);
         return Ok(());
+    }
+
+    if let Some(format_arg_pos) = args.iter().position(|arg| arg == "--format") {
+        if let Some(format_arg) = args.get(format_arg_pos + 1) {
+            if let Some(format_arg) = format_arg.to_str() {
+                if Format::from_str(format_arg).is_ok() {
+                    anyhow::bail!("--format has been renamed to --binary-format. Please use --binary-format {0} instead of --format {0}", format_arg);
+                }
+            }
+        }
     }
 
     // Parse the commandline options.
