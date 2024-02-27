@@ -25,6 +25,7 @@ exclude = ["probe-rs/tests/gpio-hal-blinky"]
 probe-rs = { path = "probe-rs", version = "0.23.0" }
 probe-rs-target = { path = "probe-rs-target", version = "0.23.0" }
 
+docsplay = "0.1.1"
 pretty_env_logger = "0.5"
 thiserror = "1"
 anyhow = "1"
