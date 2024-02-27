@@ -25,7 +25,7 @@ use crate::{
 use constants::{commands, JTagFrequencyToDivider, Mode, Status, SwdFrequencyToDelayCount};
 use probe_rs_target::ScanChainElement;
 use scroll::{Pread, Pwrite, BE, LE};
-use std::{cmp::Ordering, convert::TryInto, sync::Arc, time::Duration};
+use std::{cmp::Ordering, sync::Arc, time::Duration};
 use usb_interface::TIMEOUT;
 
 /// Maximum length of 32 bit reads in bytes.
@@ -1912,10 +1912,7 @@ fn retry_on_wait<R>(mut f: impl FnMut() -> Result<R, StlinkError>) -> Result<R, 
 
 #[cfg(test)]
 mod test {
-
     use super::*;
-
-    use scroll::Pwrite;
 
     #[derive(Debug)]
     struct MockUsb {

@@ -1,6 +1,5 @@
 //! Memory access port
 
-#[doc(hidden)]
 pub(crate) mod mock;
 
 use super::{AccessPort, ApAccess, ApRegister, GenericAp, Register};

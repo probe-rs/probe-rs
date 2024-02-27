@@ -1,4 +1,4 @@
-use bitvec::{prelude::*, slice::BitSlice, vec::BitVec};
+use bitvec::prelude::*;
 use nusb::{
     transfer::{Direction, EndpointType},
     DeviceInfo,

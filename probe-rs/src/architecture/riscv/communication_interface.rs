@@ -4,18 +4,13 @@
 //! Debug Module, as described in the RISC-V debug
 //! specification v0.13.2 .
 
-use super::{registers, Dmcontrol, Dmstatus};
 use crate::architecture::riscv::dtm::dtm_access::DtmAccess;
 use crate::probe::{DebugProbe, Probe};
 use crate::{
-    architecture::riscv::*, core::RegisterId, memory::valid_32bit_address,
-    memory_mapped_bitfield_register, probe::DeferredResultIndex, Error as ProbeRsError,
-    MemoryInterface, MemoryMappedRegister,
+    architecture::riscv::*, memory_mapped_bitfield_register, probe::DeferredResultIndex,
+    Error as ProbeRsError,
 };
-use std::{
-    collections::HashMap,
-    time::{Duration, Instant},
-};
+use std::collections::HashMap;
 
 /// Some error occurred when working with the RISC-V core.
 #[derive(thiserror::Error, Debug)]

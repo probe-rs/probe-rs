@@ -31,8 +31,8 @@ use crate::{Error, Permissions, Session};
 use nusb::DeviceInfo;
 use probe_rs_target::ScanChainElement;
 use std::collections::HashMap;
+use std::fmt;
 use std::sync::Arc;
-use std::{convert::TryFrom, fmt};
 
 /// Used to log warnings when the measured target voltage is
 /// lower than 1.4V, if at all measurable.

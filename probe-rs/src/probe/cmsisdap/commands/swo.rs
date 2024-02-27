@@ -1,7 +1,6 @@
 use scroll::{Pread, LE};
 
 use super::{CommandId, Request, SendError, Status};
-use std::convert::TryInto;
 
 #[repr(u8)]
 #[allow(unused)]

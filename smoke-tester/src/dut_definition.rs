@@ -11,7 +11,6 @@ use probe_rs::{
 };
 use serde::Deserialize;
 use std::{
-    convert::TryInto,
     ffi::OsStr,
     path::{Path, PathBuf},
 };
@@ -58,7 +57,7 @@ pub struct DutDefinition {
     pub probe_selector: Option<DebugProbeSelector>,
 
     /// Path to a binary which can be used to test
-    /// flashing for the DUT.     
+    /// flashing for the DUT.
     pub flash_test_binary: Option<PathBuf>,
 
     /// Source of the DUT definition.

@@ -8,7 +8,6 @@ use crate::architecture::arm::{
 };
 use crate::probe::DebugProbeError;
 use std::collections::HashMap;
-use std::convert::TryInto;
 
 #[derive(Debug)]
 pub struct MockMemoryAp {

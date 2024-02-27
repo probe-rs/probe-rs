@@ -10,14 +10,12 @@ mod speed;
 pub mod swo;
 
 use core::panic;
-use std::convert::TryFrom;
 use std::iter;
 use std::mem::take;
 use std::time::Duration;
 use std::{cmp, fmt};
 
 use bitvec::prelude::*;
-use bitvec::vec::BitVec;
 
 use nusb::transfer::{Direction, EndpointType};
 use nusb::DeviceInfo;

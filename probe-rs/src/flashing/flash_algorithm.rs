@@ -3,7 +3,7 @@ use crate::{architecture::riscv, core::Architecture, Target};
 use probe_rs_target::{
     FlashProperties, PageInfo, RamRegion, RawFlashAlgorithm, SectorInfo, TransferEncoding,
 };
-use std::{convert::TryInto, mem::size_of_val};
+use std::mem::size_of_val;
 
 /// A flash algorithm, which has been assembled for a specific
 /// chip.

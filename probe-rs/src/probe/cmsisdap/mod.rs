@@ -55,7 +55,7 @@ use commands::{
 };
 use probe_rs_target::ScanChainElement;
 
-use std::{fmt::Write, result::Result, time::Duration};
+use std::{fmt::Write, time::Duration};
 
 use bitvec::prelude::*;
 

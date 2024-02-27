@@ -1,6 +1,5 @@
 use super::*;
 use crate::core::RegisterValue;
-use std;
 
 #[cfg(test)]
 pub use test::TestFormatter;

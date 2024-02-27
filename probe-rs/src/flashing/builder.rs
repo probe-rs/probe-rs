@@ -372,7 +372,7 @@ impl FlashBuilder {
 
 #[cfg(test)]
 mod tests {
-    use probe_rs_target::{FlashProperties, NvmRegion, SectorDescription};
+    use probe_rs_target::{FlashProperties, SectorDescription};
 
     use super::*;
 

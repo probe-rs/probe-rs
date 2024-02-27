@@ -8,7 +8,7 @@ use num_traits::Num;
 use parse_int::parse;
 use schemafy::schemafy;
 use serde::{Deserialize, Serialize};
-use std::{convert::TryFrom, fmt::Display};
+use std::fmt::Display;
 
 // Convert the MSDAP `debugAdaptor.json` file into Rust types.
 schemafy!(root: debugserver_types "src/bin/probe-rs/cmd/dap_server/debug_adapter/dap/debugProtocol.json");
