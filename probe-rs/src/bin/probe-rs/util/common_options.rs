@@ -556,11 +556,11 @@ pub enum OperationError {
 }
 
 /// Used in errors it can print a list of items.
-fn print_list(list: &[impl std::fmt::Debug]) -> String {
+fn print_list(list: &[impl std::fmt::Display]) -> String {
     let mut output = String::new();
 
     for (i, entry) in list.iter().enumerate() {
-        output.push_str(&format!("\n    {}. {:?}", i + 1, entry));
+        output.push_str(&format!("\n    {}. {}", i + 1, entry));
     }
 
     output

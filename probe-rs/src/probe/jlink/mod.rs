@@ -57,11 +57,12 @@ const SWO_BUFFER_SIZE: u16 = 128;
 const TIMEOUT_DEFAULT: Duration = Duration::from_millis(500);
 
 /// Factory to create [`JLink`] probes.
+#[derive(Debug)]
 pub struct JLinkFactory;
 
-impl std::fmt::Debug for JLinkFactory {
+impl std::fmt::Display for JLinkFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("JLink").finish()
+        f.write_str("J-Link")
     }
 }
 

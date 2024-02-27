@@ -62,11 +62,12 @@ use bitvec::prelude::*;
 use super::common::{extract_idcodes, extract_ir_lengths, ScanChainError};
 
 /// A factory for creating [`CmsisDap`] probes.
+#[derive(Debug)]
 pub struct CmsisDapFactory;
 
-impl std::fmt::Debug for CmsisDapFactory {
+impl std::fmt::Display for CmsisDapFactory {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("CmsisDap").finish()
+        f.write_str("CMSIS-DAP")
     }
 }
 

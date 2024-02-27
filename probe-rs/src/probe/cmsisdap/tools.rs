@@ -42,10 +42,10 @@ pub fn list_cmsisdap_devices() -> Vec<DebugProbeInfo> {
                         && p.product_id == info.product_id
                         && p.serial_number == info.serial_number
                 }) {
-                    tracing::trace!("Adding new HID-only probe {:?}", info);
+                    tracing::trace!("Adding new HID-only probe {}", info);
                     probes.push(info)
                 } else {
-                    tracing::trace!("Ignoring duplicate {:?}", info);
+                    tracing::trace!("Ignoring duplicate {}", info);
                 }
             }
         }
