@@ -33,34 +33,17 @@ impl VerifiedBreakpoint {
         address: u64,
     ) -> Result<VerifiedBreakpoint, DebugError> {
         let instruction_sequence = InstructionSequence::from_address(debug_info, address)?;
-        // Note: The `address_range` captures address range the prologue, in addition to the valid instructions in the sequence.
-        if instruction_sequence.address_range.contains(&address) {
-            if let Some(valid_breakpoint) = instruction_sequence
-                .instructions
-                .iter()
-                .find(|instruction_location| {
-                    instruction_location.instruction_type == InstructionType::HaltLocation
-                        && instruction_location.address >= address
-                })
-                .and_then(|instruction_location| {
-                    SourceLocation::from_instruction_location(
-                        debug_info,
-                        instruction_sequence.program_unit,
-                        instruction_location,
-                    )
-                    .map(|source_location| VerifiedBreakpoint {
-                        address: instruction_location.address,
-                        source_location,
-                    })
-                })
-            {
-                tracing::debug!(
-                    "Found valid breakpoint for address: {:#010x} : {valid_breakpoint:?}",
-                    &address
-                );
-                return Ok(valid_breakpoint);
-            }
+
+        // Cycle through various degrees of matching, to find the most relevant source location.
+        if let Some(verified_breakpoint) = match_address(&instruction_sequence, address, debug_info)
+        {
+            tracing::debug!(
+                "Found valid breakpoint for address: {:#010x} : {verified_breakpoint:?}",
+                &address
+            );
+            return verified_breakpoint;
         }
+        // If we get here, we have not found a valid breakpoint location.
         Err(DebugError::WarnAndContinue{
             message: format!("Could not identify a valid breakpoint for address: {address:#010x}. Please consider using instruction level stepping."),
         })
@@ -131,7 +114,7 @@ impl VerifiedBreakpoint {
                     );
 
                     // Cycle through various degrees of matching, to find the most relevant source location.
-                    if let Some(return_value) = match_file_line_column(
+                    if let Some(verified_breakpoint) = match_file_line_column(
                         &instruction_sequence,
                         matching_file_index,
                         line,
@@ -148,7 +131,7 @@ impl VerifiedBreakpoint {
                             program_unit,
                         )
                     }) {
-                        return Ok(return_value);
+                        return Ok(verified_breakpoint);
                     }
                 }
             }
@@ -158,7 +141,39 @@ impl VerifiedBreakpoint {
     }
 }
 
-// Find the valid halt instruction location that matches the file, line and column.
+/// Find the valid halt instruction location that is equal to, or greater than, the address.
+fn match_address(
+    instruction_sequence: &InstructionSequence<'_>,
+    address: u64,
+    debug_info: &DebugInfo,
+) -> Option<Result<VerifiedBreakpoint, DebugError>> {
+    if instruction_sequence.address_range.contains(&address) {
+        if let Some(valid_breakpoint) = instruction_sequence
+            .instructions
+            .iter()
+            .find(|instruction_location| {
+                instruction_location.instruction_type == InstructionType::HaltLocation
+                    && instruction_location.address >= address
+            })
+            .and_then(|instruction_location| {
+                SourceLocation::from_instruction_location(
+                    debug_info,
+                    instruction_sequence.program_unit,
+                    instruction_location,
+                )
+                .map(|source_location| VerifiedBreakpoint {
+                    address: instruction_location.address,
+                    source_location,
+                })
+            })
+        {
+            return Some(Ok(valid_breakpoint));
+        }
+    }
+    None
+}
+
+/// Find the valid halt instruction location that matches the file, line and column.
 fn match_file_line_column(
     instruction_sequence: &InstructionSequence<'_>,
     matching_file_index: Option<u64>,
@@ -194,7 +209,7 @@ fn match_file_line_column(
     None
 }
 
-// Find the first valid halt instruction location that matches the file and line, ignoring column.
+/// Find the first valid halt instruction location that matches the file and line, ignoring column.
 fn match_file_line_first_available_column(
     instruction_sequence: &InstructionSequence<'_>,
     matching_file_index: Option<u64>,

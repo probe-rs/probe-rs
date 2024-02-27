@@ -262,7 +262,7 @@ impl SteppingMode {
                         if function.attribute(gimli::DW_AT_noreturn).is_some() {
                             return Err(DebugError::Other(anyhow::anyhow!(
                                 "Function {:?} is marked as `noreturn`. Cannot step out of this function.",
-                                function.function_name(debug_info)
+                                function.function_name(debug_info).unwrap_or("<unknown>".to_string())
                             )));
                         } else if function.low_pc <= program_counter
                             && function.high_pc > program_counter
@@ -316,12 +316,7 @@ fn run_to_address(
     target_address: u64,
     core: &mut impl CoreInterface,
 ) -> Result<(CoreStatus, u64), DebugError> {
-    Ok(if target_address < program_counter {
-        // We are not able to calculate a step_out_address. Notify the user to try something else.
-        return Err(DebugError::WarnAndContinue  {
-            message: "Unable to determine target address for this step request. Please try a different form of stepping.".to_string(),
-        });
-    } else if target_address == program_counter {
+    Ok(if target_address == program_counter {
         // No need to step further. e.g. For inline functions we have already stepped to the best available target address..
         (
             core.status()?,
