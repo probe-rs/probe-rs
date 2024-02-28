@@ -5,7 +5,6 @@ use super::Command;
 
 use byteorder::{LittleEndian, ReadBytesExt};
 
-use std::convert::TryInto;
 use std::{cmp, fmt};
 
 use super::JLink;

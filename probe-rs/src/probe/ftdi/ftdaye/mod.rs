@@ -1,7 +1,6 @@
 pub mod error;
 
 use std::collections::VecDeque;
-use std::convert::TryInto;
 use std::io::{self, Read, Write};
 use std::time::Duration;
 

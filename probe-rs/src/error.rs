@@ -1,5 +1,3 @@
-#![warn(missing_docs)]
-
 use crate::architecture::arm::ArmError;
 use crate::architecture::riscv::communication_interface::RiscvError;
 use crate::architecture::xtensa::communication_interface::XtensaError;
@@ -7,57 +5,46 @@ use crate::config::RegistryError;
 use crate::probe::DebugProbeError;
 
 /// The overarching error type which contains all possible errors as variants.
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, docsplay::Display)]
 pub enum Error {
-    /// An error in the probe driver occurred.
-    #[error("An error with the usage of the probe occurred")]
+    /// An error with the usage of the probe occurred
     Probe(#[from] DebugProbeError),
     /// An ARM specific error occurred.
-    #[error("An ARM specific error occurred.")]
     Arm(#[source] ArmError),
     /// A RISC-V specific error occurred.
-    #[error("A RISC-V specific error occurred.")]
     Riscv(#[source] RiscvError),
     /// An Xtensa specific error occurred.
-    #[error("An Xtensa specific error occurred.")]
     Xtensa(#[source] XtensaError),
-    /// The probe could not be opened.
-    #[error("Probe could not be opened: {0}")]
+    /// The probe could not be opened: {0}.
     UnableToOpenProbe(&'static str),
-    /// The core with given ID does not exist.
-    #[error("Core {0} does not exist")]
+    /// Core {0} does not exist
     CoreNotFound(usize),
-    /// The given chip does not exist.
-    #[error("Unable to load specification for chip")]
+    /// Unable to load specification for chip
     ChipNotFound(#[from] RegistryError),
-    /// An operation was not performed because the required permissions were not given.
+    /// An operation was not performed because the required permissions were not given: {0}.
     ///
     /// This can for example happen when the core is locked and needs to be erased to be unlocked.
     /// Then the correct permission needs to be given to automatically unlock the core to prevent accidental erases.
-    #[error("An operation could not be performed because it lacked the permission to do so: {0}")]
+    #[ignore_extra_doc_attributes]
     MissingPermissions(String),
-    /// An error that is not architecture specific occurred.
-    #[error("A generic core (not architecture specific) error occurred.")]
+    /// An error that is not architecture specific occurred: {0}
     GenericCoreError(String),
-    /// Errors related to the handling of core registers inside probe-rs .
-    #[error("Register error: {0}")]
+    /// Errors accessing core register: {0}
     Register(String),
-    /// The variant of the function you called is not yet implemented.
+    /// The {0} capability has not yet been implemented for this architecture.
+    ///
     /// Because of the large varieties of supported architectures, it is not always possible for
     /// a contributor to implement functionality for all of them. This allows us to
     /// implement new functionality on selected architectures first, and then add support for
     /// the other architectures later.
-    #[error("This capability has not yet been implemented for this architecture: {0}")]
     NotImplemented(&'static str),
-    /// Any other error occurred.
-    #[error(transparent)]
+    /// Some uncategorized error occurred.
+    #[display("{0}")]
     Other(#[from] anyhow::Error),
+    /// A timeout occurred.
     // TODO: Errors below should be core specific
-    /// A timeout occurred during an operation
-    #[error("A timeout occurred.")]
     Timeout,
-    /// Unaligned memory access
-    #[error("Alignment error")]
+    /// Memory access to address {address:#X?} was not aligned to {alignment} bytes.
     MemoryNotAligned {
         /// The address of the register.
         address: u64,

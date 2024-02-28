@@ -22,8 +22,7 @@ use probe_rs_target::InstructionSet;
 use typed_path::{TypedPath, TypedPathBuf};
 
 use std::{
-    borrow, cmp::Ordering, convert::TryInto, num::NonZeroU64, ops::ControlFlow, path::Path, rc::Rc,
-    str::from_utf8,
+    borrow, cmp::Ordering, num::NonZeroU64, ops::ControlFlow, path::Path, rc::Rc, str::from_utf8,
 };
 
 pub(crate) type GimliReader = gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>;

@@ -1337,8 +1337,7 @@ impl<'probe> MemoryInterface for Armv8a<'probe> {
 mod test {
     use crate::{
         architecture::arm::{
-            ap::MemoryAp, communication_interface::SwdSequence,
-            memory::adi_v5_memory_interface::ArmProbe, sequences::DefaultArmSequence, ArmError,
+            ap::MemoryAp, communication_interface::SwdSequence, sequences::DefaultArmSequence,
         },
         probe::DebugProbeError,
     };

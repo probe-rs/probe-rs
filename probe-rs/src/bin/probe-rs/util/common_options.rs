@@ -36,7 +36,6 @@ use super::ArtifactError;
 use std::{fs::File, path::Path, path::PathBuf};
 
 use crate::util::{logging::LevelFilter, parse_u64};
-use clap;
 use probe_rs::{
     config::{RegistryError, TargetSelector},
     flashing::{FileDownloadError, FlashError},

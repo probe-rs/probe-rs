@@ -2,7 +2,6 @@
 
 #![allow(clippy::inconsistent_digit_grouping)]
 
-use self::registers::*;
 use crate::{
     core::{
         Architecture, BreakpointCause, CoreInformation, CoreRegisters, RegisterId, RegisterValue,
@@ -16,7 +15,7 @@ use crate::{
 use anyhow::{anyhow, Result};
 use bitfield::bitfield;
 use communication_interface::{AbstractCommandErrorKind, RiscvCommunicationInterface, RiscvError};
-use registers::RISCV_CORE_REGSISTERS;
+use registers::{FP, RA, RISCV_CORE_REGSISTERS, SP};
 use std::time::{Duration, Instant};
 
 #[macro_use]

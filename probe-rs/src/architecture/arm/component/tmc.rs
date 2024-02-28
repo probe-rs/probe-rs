@@ -2,7 +2,6 @@
 //!
 //! The embedded trace memory controller exposes a means of buffering and storing trace data in
 //! on-device SRAM for extraction either via the TPIU or via the debug interface.
-use core::iter::Iterator;
 
 use crate::{
     architecture::arm::{

@@ -1,11 +1,10 @@
-use crate::*;
 use anyhow::{anyhow, Result};
 use defmt_decoder::DecodeError;
 pub use probe_rs::rtt::ChannelMode;
 use probe_rs::rtt::{DownChannel, Rtt, ScanRegion, UpChannel};
 use probe_rs::Core;
 use probe_rs_target::MemoryRegion;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs::File;
 use std::{
@@ -13,6 +12,7 @@ use std::{
     fmt::Write,
     fs,
     io::{Read, Seek},
+    path::Path,
     str::FromStr,
 };
 use time::{OffsetDateTime, UtcOffset};
@@ -25,7 +25,7 @@ pub fn attach_to_rtt(
     memory_map: &[MemoryRegion],
     rtt_region: &ScanRegion,
     elf_file: &Path,
-) -> Result<Option<Rtt>, anyhow::Error> {
+) -> Result<Option<Rtt>> {
     // Try to find the RTT control block symbol in the ELF file.
 
     // If we find it, we can use the exact address to attach to the RTT control block. Otherwise, we
@@ -70,7 +70,7 @@ fn default_include_location() -> bool {
     true
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Default)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum DataFormat {
     #[default]
     String,
@@ -249,7 +249,7 @@ impl RttActiveChannel {
         &mut self,
         core: &mut Core,
         defmt_state: Option<&DefmtState>,
-    ) -> Result<Option<(String, String)>, anyhow::Error> {
+    ) -> Result<Option<(String, String)>> {
         self.poll_rtt(core)
             .map(|bytes_read| {
                 Ok((

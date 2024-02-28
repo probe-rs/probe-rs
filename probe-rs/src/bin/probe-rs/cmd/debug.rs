@@ -5,7 +5,7 @@ use std::time::Duration;
 use anyhow::anyhow;
 use capstone::{
     arch::arm::ArchMode as armArchMode, arch::arm64::ArchMode as aarch64ArchMode,
-    arch::riscv::ArchMode as riscvArchMode, prelude::*, Capstone, Endian,
+    arch::riscv::ArchMode as riscvArchMode, prelude::*, Endian,
 };
 use num_traits::Num;
 use parse_int::parse;
