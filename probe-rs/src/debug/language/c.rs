@@ -85,7 +85,7 @@ impl ProgrammingLanguage for C {
                 }
                 "float" => f32::update_value(variable, memory, new_value),
                 // TODO: doubles
-                other => Err(DebugError::UnwindIncompleteResults {
+                other => Err(DebugError::WarnAndContinue {
                     message: format!("Updating {other} variables is not yet supported."),
                 }),
             },
@@ -99,7 +99,7 @@ impl ProgrammingLanguage for C {
                     }
                 }
 
-                other => Err(DebugError::UnwindIncompleteResults {
+                other => Err(DebugError::WarnAndContinue {
                     message: format!(
                         "Updating {} bitfield variables is not yet supported.",
                         other.kind()
@@ -107,7 +107,7 @@ impl ProgrammingLanguage for C {
                 }),
             },
 
-            other => Err(DebugError::UnwindIncompleteResults {
+            other => Err(DebugError::WarnAndContinue {
                 message: format!("Updating {} variables is not yet supported.", other.kind()),
             }),
         }
@@ -179,7 +179,7 @@ impl Value for CChar {
         new_value: &str,
     ) -> Result<(), DebugError> {
         fn input_error(value: &str) -> DebugError {
-            DebugError::UnwindIncompleteResults {
+            DebugError::WarnAndContinue {
                 message: format!(
                     "Invalid value for char: {value}. Please provide a single character."
                 ),
@@ -246,7 +246,7 @@ impl UnsignedInt {
     ) -> Result<(), DebugError> {
         match parse_int::parse::<u128>(new_value) {
             Ok(value) => write_unsigned_bytes(variable, bitfield, memory, value),
-            Err(e) => Err(DebugError::UnwindIncompleteResults {
+            Err(e) => Err(DebugError::WarnAndContinue {
                 message: format!("Invalid data conversion from value: {new_value:?}. {e:?}"),
             }),
         }
@@ -334,7 +334,7 @@ impl SignedInt {
     ) -> Result<(), DebugError> {
         match parse_int::parse::<i128>(new_value) {
             Ok(value) => write_unsigned_bytes(variable, bitfield, memory, value as u128),
-            Err(e) => Err(DebugError::UnwindIncompleteResults {
+            Err(e) => Err(DebugError::WarnAndContinue {
                 message: format!("Invalid data conversion from value: {new_value:?}. {e:?}"),
             }),
         }

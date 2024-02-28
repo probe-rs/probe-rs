@@ -90,11 +90,11 @@ impl ProgrammingLanguage for Rust {
                 "usize" => u32::update_value(variable, memory, new_value),
                 "f32" => f32::update_value(variable, memory, new_value),
                 "f64" => f64::update_value(variable, memory, new_value),
-                other => Err(DebugError::UnwindIncompleteResults {
+                other => Err(DebugError::WarnAndContinue {
                     message: format!("Updating {other} variables is not yet supported."),
                 }),
             },
-            other => Err(DebugError::UnwindIncompleteResults {
+            other => Err(DebugError::WarnAndContinue {
                 message: format!("Updating {} variables is not yet supported.", other.kind()),
             }),
         }

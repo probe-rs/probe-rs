@@ -1,4 +1,5 @@
 use super::{
+    canonical_path_eq,
     unit_info::{self, UnitInfo},
     ColumnType, DebugError, DebugInfo,
 };
@@ -7,20 +8,236 @@ use std::{
     fmt::{Debug, Formatter},
     num::NonZeroU64,
     ops::Range,
-    path::PathBuf,
 };
 use typed_path::TypedPathBuf;
 
-/// Capture the required information when a breakpoint is set based on a requested source location.
-/// It is possible that the requested source location cannot be resolved to a valid instruction address,
-/// in which case the first 'valid' instruction address will be used, and the source location will be
-/// updated to reflect the actual source location, not the requested source location.
+/// A verified breakpoint represents an instruction address, and the source location that it corresponds to it,
+/// for locations in the target binary that comply with the DWARF standard terminology for "recommended breakpoint location".
+/// This typically refers to instructions that are not part of the prologue or epilogue, and are part of the user code,
+/// or are the final instruction in a sequence, before the processor begins the epilogue code.
+/// The `probe-rs` debugger uses this information to identify valid halt locations for breakpoints and stepping.
 #[derive(Clone, Debug)]
 pub struct VerifiedBreakpoint {
     /// The address in target memory, where the breakpoint can be set.
     pub address: u64,
     /// If the breakpoint request was for a specific source location, then this field will contain the resolved source location.
     pub source_location: SourceLocation,
+}
+
+impl VerifiedBreakpoint {
+    /// Return the first valid breakpoint location of the statement that is greater than OR equal to `address`.
+    /// e.g., if the `address` is the current program counter, then the return value will be the next valid halt address
+    /// in the current sequence.
+    pub(crate) fn for_address(
+        debug_info: &DebugInfo,
+        address: u64,
+    ) -> Result<VerifiedBreakpoint, DebugError> {
+        let instruction_sequence = InstructionSequence::from_address(debug_info, address)?;
+
+        // Cycle through various degrees of matching, to find the most relevant source location.
+        if let Some(verified_breakpoint) = match_address(&instruction_sequence, address, debug_info)
+        {
+            tracing::debug!(
+                "Found valid breakpoint for address: {:#010x} : {verified_breakpoint:?}",
+                &address
+            );
+            return verified_breakpoint;
+        }
+        // If we get here, we have not found a valid breakpoint location.
+        let message = format!("Could not identify a valid breakpoint for address: {address:#010x}. Please consider using instruction level stepping.");
+        Err(DebugError::WarnAndContinue { message })
+    }
+
+    /// Identifying the breakpoint location for a specific location (path, line, colunmn) is a bit more complex,
+    /// compared to the `for_address()` method, due to a few factors:
+    /// - The correct program instructions, may be in any of the compilation units of the current program.
+    /// - The debug information may not contain data for the "specific source" location requested:
+    ///   - DWARFv5 standard, section 6.2, allows omissions based on certain conditions. In this case,
+    ///    we need to find the closest "relevant" source location that has valid debug information.
+    ///   - The requested location may not be a valid source location, e.g. when the
+    ///    debug information has been optimized away. In this case we will return an appropriate error.
+    /// #### The logic used to find the "most relevant" source location is as follows:
+    /// 1. Filter  [`UnitInfo`] , by using [`LineProgramHeader`] to match units that include the requested path.
+    /// 2. For each matching compilation unit, get the [`LineProgram`] and [`Vec<LineSequence>`].
+    /// 3. Filter the [`Vec<LineSequence>`] entries to only include sequences that match the requested path.
+    /// 3. Convert remaining [`LineSequence`], to [`InstructionSequence`].
+    /// 4. Return the first [`InstructionSequence`] that contains the requested source location.
+    ///   4a. This may be an exact match on file/line/column, or,
+    ///   4b. Failing an exact match, a match on file/line only.
+    ///   4c. Failing that, a match on file only, where the line number is the "next" available instruction,
+    ///       on the next available line of the specified file.
+    #[allow(dead_code)] // temporary, while this PR is a WIP
+    pub(crate) fn for_source_location(
+        debug_info: &DebugInfo,
+        path: &TypedPathBuf,
+        line: u64,
+        column: Option<u64>,
+    ) -> Result<Self, DebugError> {
+        for program_unit in debug_info.unit_infos.as_slice() {
+            let Some(ref line_program) = program_unit.unit.line_program else {
+                // Not all compilation units need to have debug line information, so we skip those.
+                continue;
+            };
+            // Keep track of the matching file index to avoid having to lookup and match the full path
+            // for every row in the program line sequence.
+            let mut matching_file_index = None;
+            if line_program
+                .header()
+                .file_names()
+                .iter()
+                .enumerate()
+                .any(|(file_index, _)| {
+                    debug_info
+                        .get_path(&program_unit.unit, file_index as u64)
+                        .map(|combined_path: TypedPathBuf| {
+                            if canonical_path_eq(path, &combined_path) {
+                                matching_file_index = Some(file_index as u64);
+                                true
+                            } else {
+                                false
+                            }
+                        })
+                        .unwrap_or(false)
+                })
+            {
+                let Ok((complete_line_program, line_sequences)) = line_program.clone().sequences()
+                else {
+                    continue;
+                };
+                for line_sequence in line_sequences {
+                    let instruction_sequence = InstructionSequence::from_line_sequence(
+                        debug_info,
+                        program_unit,
+                        complete_line_program.clone(),
+                        &line_sequence,
+                    );
+
+                    // Cycle through various degrees of matching, to find the most relevant source location.
+                    if let Some(verified_breakpoint) = match_file_line_column(
+                        &instruction_sequence,
+                        matching_file_index,
+                        line,
+                        column,
+                        debug_info,
+                        program_unit,
+                    )
+                    .or_else(|| {
+                        match_file_line_first_available_column(
+                            &instruction_sequence,
+                            matching_file_index,
+                            line,
+                            debug_info,
+                            program_unit,
+                        )
+                    }) {
+                        return Ok(verified_breakpoint);
+                    }
+                }
+            }
+        }
+        // If we get here, we have not found a valid breakpoint location.
+        Err(DebugError::Other(anyhow::anyhow!("No valid breakpoint information found for file: {}, line: {line:?}, column: {column:?}", path.to_path().display())))
+    }
+}
+
+/// Find the valid halt instruction location that is equal to, or greater than, the address.
+fn match_address(
+    instruction_sequence: &InstructionSequence<'_>,
+    address: u64,
+    debug_info: &DebugInfo,
+) -> Option<Result<VerifiedBreakpoint, DebugError>> {
+    if instruction_sequence.address_range.contains(&address) {
+        if let Some(valid_breakpoint) = instruction_sequence
+            .instructions
+            .iter()
+            .find(|instruction_location| {
+                instruction_location.instruction_type == InstructionType::HaltLocation
+                    && instruction_location.address >= address
+            })
+            .and_then(|instruction_location| {
+                SourceLocation::from_instruction_location(
+                    debug_info,
+                    instruction_sequence.program_unit,
+                    instruction_location,
+                )
+                .map(|source_location| VerifiedBreakpoint {
+                    address: instruction_location.address,
+                    source_location,
+                })
+            })
+        {
+            return Some(Ok(valid_breakpoint));
+        }
+    }
+    None
+}
+
+/// Find the valid halt instruction location that matches the file, line and column.
+fn match_file_line_column(
+    instruction_sequence: &InstructionSequence<'_>,
+    matching_file_index: Option<u64>,
+    line: u64,
+    column: Option<u64>,
+    debug_info: &DebugInfo,
+    program_unit: &UnitInfo,
+) -> Option<VerifiedBreakpoint> {
+    if let Some(instruction_location) =
+        instruction_sequence
+            .instructions
+            .iter()
+            .find(|instruction_location| {
+                instruction_location.instruction_type == InstructionType::HaltLocation
+                    && matching_file_index == Some(instruction_location.file_index)
+                    && NonZeroU64::new(line) == instruction_location.line
+                    && column
+                        .map(ColumnType::Column)
+                        .map_or(false, |col| col == instruction_location.column)
+            })
+    {
+        if let Some(source_location) = SourceLocation::from_instruction_location(
+            debug_info,
+            program_unit,
+            instruction_location,
+        ) {
+            return Some(VerifiedBreakpoint {
+                address: instruction_location.address,
+                source_location,
+            });
+        }
+    }
+    None
+}
+
+/// Find the first valid halt instruction location that matches the file and line, ignoring column.
+fn match_file_line_first_available_column(
+    instruction_sequence: &InstructionSequence<'_>,
+    matching_file_index: Option<u64>,
+    line: u64,
+    debug_info: &DebugInfo,
+    program_unit: &UnitInfo,
+) -> Option<VerifiedBreakpoint> {
+    if let Some(instruction_location) =
+        instruction_sequence
+            .instructions
+            .iter()
+            .find(|instruction_location| {
+                instruction_location.instruction_type == InstructionType::HaltLocation
+                    && matching_file_index == Some(instruction_location.file_index)
+                    && NonZeroU64::new(line) == instruction_location.line
+            })
+    {
+        if let Some(source_location) = SourceLocation::from_instruction_location(
+            debug_info,
+            program_unit,
+            instruction_location,
+        ) {
+            return Some(VerifiedBreakpoint {
+                address: instruction_location.address,
+                source_location,
+            });
+        }
+    }
+    None
 }
 
 fn serialize_typed_path<S>(path: &Option<TypedPathBuf>, serializer: S) -> Result<S::Ok, S::Error>
@@ -50,41 +267,19 @@ pub struct SourceLocation {
 
 impl SourceLocation {
     /// Resolve debug information for a [`InstructionLocation`] and create a [`SourceLocation`].
-    pub(crate) fn from_instruction_location(
+    fn from_instruction_location(
         debug_info: &DebugInfo,
         program_unit: &unit_info::UnitInfo,
         instruction_location: &InstructionLocation,
     ) -> Option<SourceLocation> {
-        let line_program = program_unit.unit.line_program.as_ref()?;
-        let file_entry = line_program
-            .header()
-            .file(instruction_location.file_index)?;
         debug_info
-            .find_file_and_directory(&program_unit.unit, line_program.header(), file_entry)
+            .find_file_and_directory(&program_unit.unit, instruction_location.file_index)
             .map(|(file, directory)| SourceLocation {
                 line: instruction_location.line.map(std::num::NonZeroU64::get),
                 column: Some(instruction_location.column),
                 file,
                 directory,
             })
-    }
-
-    /// The full path of the source file, combining the `directory` and `file` fields.
-    /// If the path does not resolve to an existing file, an error is returned.
-    pub fn combined_path(&self) -> Result<PathBuf, DebugError> {
-        let combined_path = self.combined_typed_path();
-
-        if let Some(native_path) = combined_path.and_then(|p| PathBuf::try_from(p).ok()) {
-            if native_path.exists() {
-                return Ok(native_path);
-            }
-        }
-
-        Err(DebugError::Other(anyhow::anyhow!(
-            "Unable to find source file for directory {:?} and file {:?}",
-            self.directory,
-            self.file
-        )))
     }
 
     /// Get the full path of the source file
@@ -102,14 +297,16 @@ impl SourceLocation {
 /// This is a list of target instructions, belonging to a [`gimli::LineSequence`],
 /// and filters it to only user code instructions (no prologue code, and no non-statement instructions),
 /// so that we are left only with what DWARF terms as "recommended breakpoint location".
-pub struct InstructionSequence<'debug_info> {
+struct InstructionSequence<'debug_info> {
     /// The `address_range.start` is the starting address of the program counter for which this sequence is valid,
     /// and allows us to identify target instruction locations where the program counter lies inside the prologue.
     /// The `address_range.end` is the first address that is not covered by this sequence within the line number program,
     /// and allows us to identify when stepping over a instruction location would result in leaving a sequence.
-    pub(crate) address_range: Range<u64>,
+    /// - This is typically the instruction address of the first instruction in the next sequence,
+    ///   which may also be the first instruction in a new function.
+    address_range: Range<u64>,
     // NOTE: Use Vec as a container, because we will have relatively few statements per sequence, and we need to maintain the order.
-    pub(crate) instructions: Vec<InstructionLocation>,
+    instructions: Vec<InstructionLocation>,
     // The following private fields are required to resolve the source location information for
     // each instruction location.
     debug_info: &'debug_info DebugInfo,
@@ -124,15 +321,22 @@ impl Debug for InstructionSequence<'_> {
             self.address_range.start, self.address_range.end
         )?;
         for instruction_location in &self.instructions {
-            writeln!(f, "\t{instruction_location:?}")?;
+            writeln!(
+                f,
+                "\t{instruction_location:?} - {}",
+                self.debug_info
+                    .get_path(&self.program_unit.unit, instruction_location.file_index)
+                    .map(|file_path| file_path.to_string_lossy().to_string())
+                    .unwrap_or("<unknown file>".to_string())
+            )?;
         }
         Ok(())
     }
 }
 
 impl<'debug_info> InstructionSequence<'debug_info> {
-    /// Extract all the instruction locations, belonging to the active sequence (i.e. the sequence that contains the `program_counter`).
-    pub(crate) fn for_address(
+    /// Extract all the instruction locations, belonging to the active sequence (i.e. the sequence that contains the `address`).
+    fn from_address(
         debug_info: &'debug_info DebugInfo,
         program_counter: u64,
     ) -> Result<Self, DebugError> {
@@ -145,10 +349,8 @@ impl<'debug_info> InstructionSequence<'debug_info> {
                 line_program.header().address_size(),
             )
         } else {
-            return Err(DebugError::IncompleteDebugInfo{
-                        message: "The specified source location does not have any line_program information available. Please consider using instruction level stepping.".to_string(),
-                        pc_at_error: program_counter,
-                    });
+            let message = "The specified source location does not have any line_program information available. Please consider using instruction level stepping.".to_string();
+            return Err(DebugError::WarnAndContinue { message });
         };
 
         // Get the sequences of rows from the CompleteLineProgram at the given program_counter.
@@ -162,11 +364,39 @@ impl<'debug_info> InstructionSequence<'debug_info> {
         let Some(line_sequence) = line_sequences.iter().find(|line_sequence| {
             line_sequence.start <= program_counter && program_counter < line_sequence.end
         }) else {
-            return Err(DebugError::IncompleteDebugInfo{
-                        message: "The specified source location does not have any line information available. Please consider using instruction level stepping.".to_string(),
-                        pc_at_error: program_counter,
-                    });
+            let message = "The specified source location does not have any line information available. Please consider using instruction level stepping.".to_string();
+            return Err(DebugError::WarnAndContinue { message });
         };
+        let instruction_sequence = Self::from_line_sequence(
+            debug_info,
+            program_unit,
+            complete_line_program,
+            line_sequence,
+        );
+
+        if instruction_sequence.len() == 0 {
+            let message = "Could not find valid instruction locations for this address. Consider using instruction level stepping.".to_string();
+            Err(DebugError::WarnAndContinue { message })
+        } else {
+            tracing::trace!(
+                "Instruction location for pc={:#010x}\n{:?}",
+                program_counter,
+                instruction_sequence
+            );
+            Ok(instruction_sequence)
+        }
+    }
+
+    /// Build [`InstructionSequence`] from a [`gimli::LineSequence`], with all the markers we need to determine valid halt locations.
+    fn from_line_sequence(
+        debug_info: &'debug_info DebugInfo,
+        program_unit: &'debug_info UnitInfo,
+        complete_line_program: gimli::CompleteLineProgram<
+            gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>,
+            usize,
+        >,
+        line_sequence: &LineSequence<gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>>,
+    ) -> Self {
         let program_language = program_unit.get_language();
         let mut sequence_rows = complete_line_program.resume_from(line_sequence);
 
@@ -206,122 +436,80 @@ impl<'debug_info> InstructionSequence<'debug_info> {
             }
 
             if !prologue_completed {
-                log_row_eval(line_sequence, program_counter, row, "  inside prologue>");
-                previous_row = Some(*row);
-                continue;
+                log_row_eval(line_sequence, row, "  inside prologue>");
             } else {
-                log_row_eval(line_sequence, program_counter, row, "  after prologue>");
+                log_row_eval(line_sequence, row, "  after prologue>");
             }
 
             // The end of the sequence is not a valid halt location,
             // nor is it a valid instruction in the current sequence.
             if row.end_sequence() {
-                // Mark the previous instruction as the last valid instruction in the sequence.
-                if let Some(previous_instruction) = instruction_sequence.instructions.last_mut() {
-                    previous_instruction.is_sequence_exit = true;
-                }
                 break;
             }
 
-            if row.is_stmt() {
-                instruction_sequence.add(row, previous_row.as_ref());
-            }
+            instruction_sequence.add(prologue_completed, row, previous_row.as_ref());
+            previous_row = Some(*row);
         }
-
-        if instruction_sequence.len() == 0 {
-            Err(DebugError::IncompleteDebugInfo{
-                message: "Could not find valid instruction locations for this address. Consider using instruction level stepping.".to_string(),
-                pc_at_error: program_counter,
-            })
-        } else {
-            tracing::trace!(
-                "Instruction location for pc={:#010x}\n{:?}",
-                program_counter,
-                instruction_sequence
-            );
-            Ok(instruction_sequence)
-        }
-    }
-
-    /// Identifying the instruction locations for a specific location (path, line, colunmn) is a bit more complex,
-    /// compared to the `for_address()` method, due to a few factors:
-    /// - We need to find the correct program instructions, which may be in any of the compilation
-    /// units of the current program.
-    /// - The debug information may not contain data for the "requested source location", e.g.
-    ///   - DWARFv5 standard, section 6.2, allows omissions based on certain conditions. In this case,
-    ///    we need to find the closest "relevant" source location that has valid debug information.
-    ///   - The requested location may not be a valid source location, e.g. when the
-    ///    debug information has been optimized away. In this case we will return an appropriate error.
-    #[allow(dead_code)] // temporary, while this PR is a WIP
-    pub(crate) fn for_source_location(
-        _path: &TypedPathBuf,
-        _line: u64,
-        _column: Option<u64>,
-    ) -> Result<Self, DebugError> {
-        Err(DebugError::Other(anyhow::anyhow!("TODO")))
+        instruction_sequence
     }
 
     /// Add a instruction location to the list.
-    pub(crate) fn add(&mut self, row: &gimli::LineRow, previous_row: Option<&gimli::LineRow>) {
-        let mut instruction_location = InstructionLocation::from(row);
+    fn add(
+        &mut self,
+        prologue_completed: bool,
+        row: &gimli::LineRow,
+        previous_row: Option<&gimli::LineRow>,
+    ) {
+        // Workaround the line number issue (if recorded as 0 in the DWARF, then gimli reports it as None).
+        // For debug purposes, it makes more sense to be the same as the previous line, which almost always
+        // has the same file index and column value.
+        // This prevents the debugger from jumping to the top of the file unexpectedly.
+        let mut instruction_line = row.line();
         if let Some(prev_row) = previous_row {
             if row.line().is_none()
                 && prev_row.line().is_some()
                 && row.file_index() == prev_row.file_index()
                 && prev_row.column() == row.column()
             {
-                // Workaround the line number issue (if recorded as 0 in the DWARF, then gimli reports it as None).
-                // For debug purposes, it makes more sense to be the same as the previous line, which almost always
-                // has the same file index and column value.
-                // This prevents the debugger from jumping to the top of the file unexpectedly.
-                instruction_location.line = prev_row.line();
+                instruction_line = prev_row.line();
             }
         }
+
+        let instruction_location = InstructionLocation {
+            address: row.address(),
+            file_index: row.file_index(),
+            line: instruction_line,
+            column: row.column().into(),
+            instruction_type: if !prologue_completed {
+                InstructionType::Prologue
+            } else if row.epilogue_begin() || row.is_stmt() {
+                InstructionType::HaltLocation
+            } else {
+                InstructionType::Unspecified
+            },
+        };
+
         self.instructions.push(instruction_location);
     }
 
     /// Get the number of instruction locations in the list.
-    pub(crate) fn len(&self) -> usize {
+    fn len(&self) -> usize {
         self.instructions.len()
     }
+}
 
-    /// Return the first valid breakpoint location of the statement that is greater than OR equal to `address`.
-    /// e.g., if the `address` is the current program counter, and the return value will be the next valid halt address
-    /// in the current sequence. A result of `None` indicates that the next valid halt address is outside the current sequence.
-    pub(crate) fn get_first_breakpoint(
-        &self,
-        address: u64,
-    ) -> Result<VerifiedBreakpoint, DebugError> {
-        // Note: The `address_range` captures address range the prologue, in addition to the valid instructions in the sequence.
-        if self.address_range.contains(&address) {
-            if let Some(valid_breakpoint) = self
-                .instructions
-                .iter()
-                .find(|instruction_location| instruction_location.address >= address)
-                .and_then(|instruction_location| {
-                    SourceLocation::from_instruction_location(
-                        self.debug_info,
-                        self.program_unit,
-                        instruction_location,
-                    )
-                    .map(|source_location| VerifiedBreakpoint {
-                        address: instruction_location.address,
-                        source_location,
-                    })
-                })
-            {
-                tracing::debug!(
-                    "Found valid breakpoint for address: {:#010x} : {valid_breakpoint:?}",
-                    &address
-                );
-                return Ok(valid_breakpoint);
-            }
-        }
-        Err(DebugError::IncompleteDebugInfo{
-            message: "Could not determine valid halt locations for this request. Please consider using instruction level stepping.".to_string(),
-            pc_at_error: address,
-        })
-    }
+#[derive(Debug, Clone, PartialEq)]
+/// The type of instruction, as defined by [`gimli::LineRow`] attributes and relative position in the sequence.
+enum InstructionType {
+    /// We need to keep track of source lines that signal function signatures,
+    /// even if their program lines are not valid halt locations.
+    Prologue,
+    /// DWARF defined "recommended breakpoint location",
+    /// typically marked with `is_stmt` or `epilogue_begin`.
+    HaltLocation,
+    /// Any other instruction that is not part of the prologue or epilogue, and is not a statement,
+    /// is considered to be an unspecified instruction type.
+    Unspecified,
 }
 
 #[derive(Clone)]
@@ -333,21 +521,19 @@ impl<'debug_info> InstructionSequence<'debug_info> {
 /// - A line of code in a source file may contain multiple instruction locations, in which case
 ///     a new [`InstructionLocation`] with unique `column` is created.
 /// - A [`InstructionSequence`] is a series of contiguous [`InstructionLocation`]'s.
-pub(crate) struct InstructionLocation {
-    pub(crate) address: u64,
-    pub(crate) file_index: u64,
-    pub(crate) line: Option<NonZeroU64>,
-    pub(crate) column: ColumnType,
-    /// Indicates that this instruction location is either the beginning of an epilogue,
-    /// or the last valid instruction in the sequence.
-    pub(crate) is_sequence_exit: bool,
+struct InstructionLocation {
+    address: u64,
+    file_index: u64,
+    line: Option<NonZeroU64>,
+    column: ColumnType,
+    instruction_type: InstructionType,
 }
 
 impl Debug for InstructionLocation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "Instruction @ {:010x}, on line={:04}  col={:05}  f={:02}, is_sequence_exit={:?}",
+            "Instruction @ {:010x}, on line={:04}  col={:05}  f={:02}, type={:?}",
             &self.address,
             match &self.line {
                 Some(line) => line.get(),
@@ -358,32 +544,19 @@ impl Debug for InstructionLocation {
                 ColumnType::Column(column) => column.to_owned(),
             },
             &self.file_index,
-            &self.is_sequence_exit,
+            &self.instruction_type,
         )?;
         Ok(())
-    }
-}
-
-impl From<&gimli::LineRow> for InstructionLocation {
-    fn from(line_row: &gimli::LineRow) -> Self {
-        InstructionLocation {
-            address: line_row.address(),
-            file_index: line_row.file_index(),
-            line: line_row.line(),
-            column: line_row.column().into(),
-            is_sequence_exit: line_row.epilogue_begin(),
-        }
     }
 }
 
 /// Helper function to avoid code duplication when logging of information during row evaluation.
 fn log_row_eval(
     active_sequence: &LineSequence<super::GimliReader>,
-    pc: u64,
     row: &gimli::LineRow,
     status: &str,
 ) {
-    tracing::trace!("Sequence: line={:04} col={:05} f={:02} addr={:#010X} stmt={:5} ep={:5} es={:5} eb={:5} : {:#010X}<={:#010X}<{:#010X} : {}",
+    tracing::trace!("Sequence: line={:04} col={:05} f={:02} stmt={:5} ep={:5} es={:5} eb={:5} : {:#010X}<={:#010X}<{:#010X} : {}",
         match row.line() {
             Some(line) => line.get(),
             None => 0,
@@ -393,13 +566,12 @@ fn log_row_eval(
             gimli::ColumnType::Column(column) => column.get(),
         },
         row.file_index(),
-        row.address(),
         row.is_stmt(),
         row.prologue_end(),
         row.end_sequence(),
         row.epilogue_begin(),
         active_sequence.start,
-        pc,
+        row.address(),
         active_sequence.end,
         status);
 }

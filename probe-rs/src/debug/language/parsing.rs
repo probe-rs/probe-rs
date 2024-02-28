@@ -20,7 +20,7 @@ macro_rules! impl_parse {
             fn parse_to_bytes(s: &str) -> Result<Self::Out, DebugError> {
                 match ::parse_int::parse::<$t>(s) {
                     Ok(value) => Ok(<$t>::to_le_bytes(value)),
-                    Err(e) => Err(DebugError::UnwindIncompleteResults {
+                    Err(e) => Err(DebugError::WarnAndContinue {
                         message: format!("Invalid data conversion from value: {s:?}. {e:?}"),
                     }),
                 }

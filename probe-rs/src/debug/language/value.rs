@@ -61,14 +61,14 @@ impl Value for bool {
             .write_word_8(
                 variable.memory_location.memory_address()?,
                 <bool as FromStr>::from_str(new_value).map_err(|error| {
-                    DebugError::UnwindIncompleteResults {
+                    DebugError::WarnAndContinue {
                         message: format!(
                             "Invalid data conversion from value: {new_value:?}. {error:?}"
                         ),
                     }
                 })? as u8,
             )
-            .map_err(|error| DebugError::UnwindIncompleteResults {
+            .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
@@ -96,14 +96,14 @@ impl Value for char {
             .write_word_32(
                 variable.memory_location.memory_address()?,
                 <char as FromStr>::from_str(new_value).map_err(|error| {
-                    DebugError::UnwindIncompleteResults {
+                    DebugError::WarnAndContinue {
                         message: format!(
                             "Invalid data conversion from value: {new_value:?}. {error:?}"
                         ),
                     }
                 })? as u32,
             )
-            .map_err(|error| DebugError::UnwindIncompleteResults {
+            .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
@@ -179,7 +179,7 @@ impl Value for String {
         _memory: &mut dyn MemoryInterface,
         _new_value: &str,
     ) -> Result<(), DebugError> {
-        Err(DebugError::UnwindIncompleteResults { message:"Unsupported datatype: \"String\". Please only update variables with a base data type.".to_string()})
+        Err(DebugError::WarnAndContinue { message:"Unsupported datatype: \"String\". Please only update variables with a base data type.".to_string()})
     }
 }
 impl Value for i8 {
@@ -202,7 +202,7 @@ impl Value for i8 {
         let buff = i8::parse_to_bytes(new_value)?;
         memory
             .write_word_8(variable.memory_location.memory_address()?, buff[0])
-            .map_err(|error| DebugError::UnwindIncompleteResults {
+            .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
@@ -227,7 +227,7 @@ impl Value for i16 {
         let buff = i16::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
-            .map_err(|error| DebugError::UnwindIncompleteResults {
+            .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
@@ -252,7 +252,7 @@ impl Value for i32 {
         let buff = i32::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
-            .map_err(|error| DebugError::UnwindIncompleteResults {
+            .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
@@ -277,7 +277,7 @@ impl Value for i64 {
         let buff = i64::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
-            .map_err(|error| DebugError::UnwindIncompleteResults {
+            .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
@@ -302,7 +302,7 @@ impl Value for i128 {
         let buff = i128::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
-            .map_err(|error| DebugError::UnwindIncompleteResults {
+            .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
@@ -327,7 +327,7 @@ impl Value for u8 {
         let buff = u8::parse_to_bytes(new_value)?;
         memory
             .write_word_8(variable.memory_location.memory_address()?, buff[0])
-            .map_err(|error| DebugError::UnwindIncompleteResults {
+            .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
@@ -352,7 +352,7 @@ impl Value for u16 {
         let buff = u16::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
-            .map_err(|error| DebugError::UnwindIncompleteResults {
+            .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
@@ -377,7 +377,7 @@ impl Value for u32 {
         let buff = u32::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
-            .map_err(|error| DebugError::UnwindIncompleteResults {
+            .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
@@ -402,7 +402,7 @@ impl Value for u64 {
         let buff = u64::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
-            .map_err(|error| DebugError::UnwindIncompleteResults {
+            .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
@@ -427,7 +427,7 @@ impl Value for u128 {
         let buff = u128::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
-            .map_err(|error| DebugError::UnwindIncompleteResults {
+            .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
@@ -452,7 +452,7 @@ impl Value for f32 {
         let buff = f32::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
-            .map_err(|error| DebugError::UnwindIncompleteResults {
+            .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
@@ -477,7 +477,7 @@ impl Value for f64 {
         let buff = f64::parse_to_bytes(new_value)?;
         memory
             .write_8(variable.memory_location.memory_address()?, &buff)
-            .map_err(|error| DebugError::UnwindIncompleteResults {
+            .map_err(|error| DebugError::WarnAndContinue {
                 message: format!("{error:?}"),
             })
     }
