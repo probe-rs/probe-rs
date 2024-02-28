@@ -44,9 +44,8 @@ impl VerifiedBreakpoint {
             return verified_breakpoint;
         }
         // If we get here, we have not found a valid breakpoint location.
-        Err(DebugError::WarnAndContinue{
-            message: format!("Could not identify a valid breakpoint for address: {address:#010x}. Please consider using instruction level stepping."),
-        })
+        let message = format!("Could not identify a valid breakpoint for address: {address:#010x}. Please consider using instruction level stepping.");
+        Err(DebugError::WarnAndContinue { message })
     }
 
     /// Identifying the breakpoint location for a specific location (path, line, colunmn) is a bit more complex,
@@ -350,9 +349,8 @@ impl<'debug_info> InstructionSequence<'debug_info> {
                 line_program.header().address_size(),
             )
         } else {
-            return Err(DebugError::WarnAndContinue{
-                        message: "The specified source location does not have any line_program information available. Please consider using instruction level stepping.".to_string()
-                    });
+            let message = "The specified source location does not have any line_program information available. Please consider using instruction level stepping.".to_string();
+            return Err(DebugError::WarnAndContinue { message });
         };
 
         // Get the sequences of rows from the CompleteLineProgram at the given program_counter.
@@ -366,9 +364,8 @@ impl<'debug_info> InstructionSequence<'debug_info> {
         let Some(line_sequence) = line_sequences.iter().find(|line_sequence| {
             line_sequence.start <= program_counter && program_counter < line_sequence.end
         }) else {
-            return Err(DebugError::WarnAndContinue{
-                        message: "The specified source location does not have any line information available. Please consider using instruction level stepping.".to_string(),
-                    });
+            let message = "The specified source location does not have any line information available. Please consider using instruction level stepping.".to_string();
+            return Err(DebugError::WarnAndContinue { message });
         };
         let instruction_sequence = Self::from_line_sequence(
             debug_info,
@@ -378,8 +375,8 @@ impl<'debug_info> InstructionSequence<'debug_info> {
         );
 
         if instruction_sequence.len() == 0 {
-            Err(DebugError::WarnAndContinue{
-                message: "Could not find valid instruction locations for this address. Consider using instruction level stepping.".to_string(),            })
+            let message = "Could not find valid instruction locations for this address. Consider using instruction level stepping.".to_string();
+            Err(DebugError::WarnAndContinue { message })
         } else {
             tracing::trace!(
                 "Instruction location for pc={:#010x}\n{:?}",

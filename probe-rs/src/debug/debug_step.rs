@@ -61,7 +61,7 @@ impl SteppingMode {
         // When DebugError::NoValidHaltLocation happens, we will step to the next instruction and try again(until we can reasonably expect to have passed out of an epilogue), before giving up.
         let mut target_address: Option<u64> = None;
         for _ in 0..10 {
-            match match self {
+            let post_step_target = match self {
                 SteppingMode::StepInstruction => {
                     // First deal with the the fast/easy case.
                     program_counter = core.step()?.pc;
@@ -77,7 +77,8 @@ impl SteppingMode {
                     // The more complex cases, where specific handling is required.
                     self.get_halt_location(core, debug_info, program_counter, Some(return_address))
                 }
-            } {
+            };
+            match post_step_target {
                 Ok(post_step_target) => {
                     target_address = Some(post_step_target.address);
                     // Re-read the program_counter, because it may have changed during the `get_halt_location` call.
@@ -185,7 +186,7 @@ impl SteppingMode {
                 //    -- If there is not one, the step over target is the same as the step out target.
                 return VerifiedBreakpoint::for_address(
                     debug_info,
-                    program_counter.checked_add(1).unwrap_or(program_counter),
+                    program_counter.saturating_add(1),
                 )
                 .or_else(|_| {
                     // If we cannot find a valid breakpoint in the current sequence, we will step out of the current sequence.
@@ -212,7 +213,7 @@ impl SteppingMode {
                 //       which means there was nothing to step into, so the target is now halted (correctly) at the next statement.
                 let target_pc = match VerifiedBreakpoint::for_address(
                     debug_info,
-                    program_counter.checked_add(1).unwrap_or(program_counter),
+                    program_counter.saturating_add(1),
                 ) {
                     Ok(identified_next_breakpoint) => identified_next_breakpoint.address,
                     Err(DebugError::WarnAndContinue { .. }) => {
@@ -262,7 +263,7 @@ impl SteppingMode {
                         if function.attribute(gimli::DW_AT_noreturn).is_some() {
                             return Err(DebugError::Other(anyhow::anyhow!(
                                 "Function {:?} is marked as `noreturn`. Cannot step out of this function.",
-                                function.function_name(debug_info).unwrap_or("<unknown>".to_string())
+                                function.function_name(debug_info).as_deref().unwrap_or("<unknown>")
                             )));
                         } else if function.low_pc <= program_counter
                             && function.high_pc > program_counter
