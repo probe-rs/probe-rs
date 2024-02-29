@@ -9,6 +9,7 @@ use crate::architecture::xtensa::communication_interface::{
 use crate::config::{ChipInfo, CoreExt, RegistryError, Target, TargetSelector};
 use crate::core::{Architecture, CombinedCoreState};
 use crate::probe::fake_probe::FakeProbe;
+use crate::probe::ProbeCreationError;
 use crate::{
     architecture::{
         arm::{
@@ -353,7 +354,9 @@ impl Session {
         // Use the first probe found.
         let probe = probes
             .first()
-            .ok_or(Error::UnableToOpenProbe("No probe was found"))?
+            .ok_or(Error::Probe(DebugProbeError::ProbeCouldNotBeCreated(
+                ProbeCreationError::NotFound,
+            )))?
             .open()?;
 
         // Attach to a chip.
