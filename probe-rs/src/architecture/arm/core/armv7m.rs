@@ -911,9 +911,9 @@ impl<'probe> CoreInterface for Armv7m<'probe> {
             Ok(reg.num_code())
         } else {
             tracing::warn!("This chip uses FPBU revision {}, which is not yet supported. HW breakpoints are not available.", reg.rev());
-            Err(Error::Probe(DebugProbeError::CommandNotSupportedByProbe(
-                "get_available_breakpoint_units",
-            )))
+            Err(Error::Probe(DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "get_available_breakpoint_units",
+            }))
         }
     }
 

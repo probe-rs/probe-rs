@@ -103,6 +103,7 @@ impl fmt::Display for BatchCommand {
 pub enum DebugProbeError {
     /// USB Communication Error
     Usb(#[source] std::io::Error),
+
     /// The firmware on the probe is outdated, and not supported by probe-rs.
     ///
     /// This error is especially prominent with ST-Links.
@@ -110,56 +111,71 @@ pub enum DebugProbeError {
     // TODO: Shouldn't this be probe-specific?
     #[ignore_extra_doc_attributes]
     ProbeFirmwareOutdated,
+
     /// An error which is specific to the debug probe in use occurred.
     ProbeSpecific(#[source] Box<dyn std::error::Error + Send + Sync>),
+
     /// The debug probe could not be created.
     ProbeCouldNotBeCreated(#[from] ProbeCreationError),
+
     /// The probe does not support the {0} protocol.
     UnsupportedProtocol(WireProtocol),
-    /// The selected probe does not support the '{0}' interface.
+
+    /// The selected probe does not support the '{interface_name}' interface.
+    ///
     /// This happens if a probe does not support certain functionality, such as:
     /// - ARM debugging
     /// - RISC-V debugging
     /// - SWO
-    // TODO: transform this into a struct-like variant to discourage passing more than a name, and clean up.
     #[ignore_extra_doc_attributes]
-    InterfaceNotAvailable(&'static str),
+    InterfaceNotAvailable {
+        /// The name of the unsupported interface.
+        interface_name: &'static str,
+    },
+
     /// An error occurred while working with the registry.
     Registry(#[from] RegistryError),
+
     /// The probe does not support he requested speed setting ({0} kHz).
     UnsupportedSpeed(u32),
+
     /// You need to be attached to the target to perform this action.
     ///
     /// The debug probe did not yet perform the init sequence.
     /// Try calling [`DebugProbe::attach`] before trying again.
     #[ignore_extra_doc_attributes]
     NotAttached,
+
     /// You need to be detached from the target to perform this action.
     ///
     /// The debug probe already performed the init sequence.
     /// Try running the failing command before [`DebugProbe::attach`].
     #[ignore_extra_doc_attributes]
     Attached,
+
     /// Failed to find or attach to the target. Please check the wiring before retrying.
     TargetNotFound,
-    /// The '{0}' functionality is not implemented yet.
+
+    /// Error in previous batched command.
+    BatchError(BatchCommand),
+
+    /// The '{function_name}' functionality is not implemented yet.
     ///
     /// The variant of the function you called is not yet implemented.
     /// This can happen if some debug probe has some unimplemented functionality for a specific protocol or architecture.
     #[ignore_extra_doc_attributes]
-    // TODO: transform this into a struct-like variant to discourage passing more than a name, and clean up.
-    NotImplemented(&'static str),
-    /// The '{0}' debug sequence is not supported on given probe.
-    /// This is most likely happening because you are using an ST-Link, which are severely limited in functionality.
-    /// If possible, try using another probe.
-    // TODO: transform this into a struct-like variant to discourage passing more than a name, and clean up.
-    DebugSequenceNotSupported(&'static str),
-    /// Error in previous batched command.
-    BatchError(BatchCommand),
-    /// The {0} functionality is not supported by the selected probe.
+    NotImplemented {
+        /// The name of the unsupported functionality.
+        function_name: &'static str,
+    },
+
+    /// The '{command_name}' functionality is not supported by the selected probe.
     /// This can happen when a probe does not allow for setting speed manually for example.
-    // TODO: transform this into a struct-like variant to discourage passing more than a name, and clean up.
-    CommandNotSupportedByProbe(&'static str),
+    CommandNotSupportedByProbe {
+        /// The name of the unsupported command.
+        command_name: &'static str,
+    },
+
     /// Some other error occurred.
     #[display("{0}")]
     Other(#[from] anyhow::Error),
@@ -578,7 +594,9 @@ pub trait DebugProbe: Send + fmt::Debug {
     {
         Err((
             self.into_probe(),
-            DebugProbeError::InterfaceNotAvailable("ARM"),
+            DebugProbeError::InterfaceNotAvailable {
+                interface_name: "ARM",
+            },
         ))
     }
 
@@ -589,7 +607,10 @@ pub trait DebugProbe: Send + fmt::Debug {
     ) -> Result<RiscvCommunicationInterface, (Box<dyn DebugProbe>, RiscvError)> {
         Err((
             self.into_probe(),
-            DebugProbeError::InterfaceNotAvailable("RISC-V").into(),
+            DebugProbeError::InterfaceNotAvailable {
+                interface_name: "RISC-V",
+            }
+            .into(),
         ))
     }
 
@@ -605,7 +626,9 @@ pub trait DebugProbe: Send + fmt::Debug {
     ) -> Result<XtensaCommunicationInterface, (Box<dyn DebugProbe>, DebugProbeError)> {
         Err((
             self.into_probe(),
-            DebugProbeError::InterfaceNotAvailable("Xtensa"),
+            DebugProbeError::InterfaceNotAvailable {
+                interface_name: "Xtensa",
+            },
         ))
     }
 

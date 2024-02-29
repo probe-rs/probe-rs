@@ -550,9 +550,9 @@ impl Session {
     /// Err(e) if the custom erase sequence failed
     pub fn sequence_erase_all(&mut self) -> Result<(), Error> {
         let ArchitectureInterface::Arm(ref mut interface) = self.interface else {
-            return Err(Error::Probe(DebugProbeError::NotImplemented(
-                "Debug Erase Sequence",
-            )));
+            return Err(Error::Probe(DebugProbeError::NotImplemented {
+                function_name: "Debug Erase Sequence",
+            }));
         };
 
         let DebugSequence::Arm(ref debug_sequence) = self.target.debug_sequence else {
@@ -560,9 +560,9 @@ impl Session {
         };
 
         let Some(erase_sequence) = debug_sequence.debug_erase_sequence() else {
-            return Err(Error::Probe(DebugProbeError::NotImplemented(
-                "Debug Erase Sequence",
-            )));
+            return Err(Error::Probe(DebugProbeError::NotImplemented {
+                function_name: "Debug Erase Sequence",
+            }));
         };
 
         tracing::info!("Trying Debug Erase Sequence");
