@@ -155,7 +155,7 @@ impl Rtt {
             .pread_with::<u32>(Self::O_MAX_DOWN_CHANNELS, LE)
             .unwrap() as usize;
 
-        // *Very* conservative sanity check, most people
+        // *Very* conservative sanity check, most people only use a handful of RTT channels
         if max_up_channels > 255 || max_down_channels > 255 {
             return Err(Error::ControlBlockCorrupted(format!(
                 "Nonsensical array sizes at {ptr:08x}: max_up_channels={max_up_channels} max_down_channels={max_down_channels}"
