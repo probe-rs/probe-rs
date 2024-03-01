@@ -1,7 +1,10 @@
 //! List of RTT channels.
 
 use crate::rtt::RttChannel;
-use std::collections::BTreeMap;
+use std::collections::{
+    btree_map::{IntoValues, Values},
+    BTreeMap,
+};
 
 /// List of RTT channels.
 #[derive(Debug)]
@@ -29,12 +32,17 @@ impl<T: RttChannel> Channels<T> {
     }
 
     /// Gets and iterator over the channels on the list, sorted by number.
-    pub fn iter(&self) -> impl Iterator<Item = &'_ T> + '_ {
-        self.0.iter().map(|(_, v)| v)
+    pub fn iter(&self) -> Values<'_, usize, T> {
+        self.0.values()
     }
+}
+
+impl<T: RttChannel> IntoIterator for Channels<T> {
+    type Item = T;
+    type IntoIter = IntoValues<usize, T>;
 
     /// Consumes the channel list and returns an iterator over the channels.
-    pub fn into_iter(self) -> impl Iterator<Item = T> {
-        self.0.into_iter().map(|(_, v)| v)
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_values()
     }
 }
