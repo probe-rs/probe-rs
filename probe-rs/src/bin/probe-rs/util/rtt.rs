@@ -393,7 +393,7 @@ impl fmt::Debug for DefmtState {
 impl RttActiveTarget {
     /// RttActiveTarget collects references to all the `RttActiveChannel`s, for latter polling/pushing of data.
     pub fn new(
-        mut rtt: probe_rs::rtt::Rtt,
+        rtt: probe_rs::rtt::Rtt,
         elf_file: &Path,
         rtt_config: &RttConfig,
         timestamp_offset: UtcOffset,
@@ -401,9 +401,7 @@ impl RttActiveTarget {
     ) -> Result<Self> {
         let mut active_channels = Vec::new();
         // For each channel configured in the RTT Control Block (`Rtt`), check if there are additional user configuration in a `RttChannelConfig`. If not, apply defaults.
-        let up_channels = rtt.up_channels().drain();
-        let down_channels = rtt.down_channels().drain();
-        for channel in up_channels {
+        for channel in rtt.up_channels.into_iter() {
             let number = channel.number();
             let channel_config = rtt_config
                 .channels
@@ -418,7 +416,7 @@ impl RttActiveTarget {
             ));
         }
 
-        for channel in down_channels {
+        for channel in rtt.down_channels.into_iter() {
             let number = channel.number();
             let channel_config = rtt_config
                 .channels

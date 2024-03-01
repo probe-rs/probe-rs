@@ -92,8 +92,12 @@ use std::ops::Range;
 #[derive(Debug)]
 pub struct Rtt {
     ptr: u32,
-    up_channels: Channels<UpChannel>,
-    down_channels: Channels<DownChannel>,
+
+    /// The detected up (target to host) channels.
+    pub up_channels: Channels<UpChannel>,
+
+    /// The detected down (host to target) channels.
+    pub down_channels: Channels<DownChannel>,
 }
 
 // Rtt must follow this data layout when reading/writing memory in order to be compatible with the
@@ -335,12 +339,12 @@ impl Rtt {
         self.ptr
     }
 
-    /// Gets the detected up channels.
+    /// Gets a mutable reference to the detected up channels.
     pub fn up_channels(&mut self) -> &mut Channels<UpChannel> {
         &mut self.up_channels
     }
 
-    /// Gets the detected down channels.
+    /// Gets a mutable reference to the detected down channels.
     pub fn down_channels(&mut self) -> &mut Channels<DownChannel> {
         &mut self.down_channels
     }

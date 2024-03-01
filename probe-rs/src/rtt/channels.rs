@@ -1,8 +1,7 @@
 //! List of RTT channels.
 
 use crate::rtt::RttChannel;
-use std::collections::{btree_map, BTreeMap};
-use std::mem;
+use std::collections::BTreeMap;
 
 /// List of RTT channels.
 #[derive(Debug)]
@@ -30,40 +29,12 @@ impl<T: RttChannel> Channels<T> {
     }
 
     /// Gets and iterator over the channels on the list, sorted by number.
-    pub fn iter(&self) -> Iter<'_, T> {
-        Iter(self.0.iter())
+    pub fn iter(&self) -> impl Iterator<Item = &'_ T> + '_ {
+        self.0.iter().map(|(_, v)| v)
     }
 
-    /// Gets and iterator over the channels on the list, sorted by number.
-    pub fn drain(&mut self) -> Drain<T> {
-        let map = mem::take(&mut self.0);
-
-        Drain(map.into_iter())
-    }
-}
-
-/// An iterator over RTT channels.
-///
-/// This struct is created by the [`Channels::iter`] method. See its documentation for more.
-pub struct Iter<'a, T: RttChannel>(btree_map::Iter<'a, usize, T>);
-
-impl<'a, T: RttChannel> Iterator for Iter<'a, T> {
-    type Item = &'a T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.next().map(|(_, v)| v)
-    }
-}
-
-/// A draining iterator over RTT channels.
-///
-/// This struct is created by the [`Channels::drain`] method. See its documentation for more.
-pub struct Drain<T: RttChannel>(btree_map::IntoIter<usize, T>);
-
-impl<T: RttChannel> Iterator for Drain<T> {
-    type Item = T;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.next().map(|(_, v)| v)
+    /// Consumes the channel list and returns an iterator over the channels.
+    pub fn into_iter(self) -> impl Iterator<Item = T> {
+        self.0.into_iter().map(|(_, v)| v)
     }
 }

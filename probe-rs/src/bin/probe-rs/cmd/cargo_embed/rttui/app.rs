@@ -4,7 +4,6 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use probe_rs::rtt::RttChannel;
 use probe_rs::Core;
 use ratatui::{
     backend::CrosstermBackend,
@@ -39,15 +38,6 @@ pub struct App<'defmt> {
     logname: String,
 }
 
-fn pull_channel<C: RttChannel>(channels: &mut Vec<C>, n: usize) -> Option<C> {
-    let c = channels
-        .iter()
-        .enumerate()
-        .find_map(|(i, c)| if c.number() == n { Some(i) } else { None });
-
-    c.map(|c| channels.remove(c))
-}
-
 impl<'defmt> App<'defmt> {
     pub fn new(
         mut rtt: probe_rs::rtt::Rtt,
@@ -57,9 +47,6 @@ impl<'defmt> App<'defmt> {
     ) -> Result<Self> {
         let mut tabs = Vec::new();
         if !config.rtt.channels.is_empty() {
-            let mut up_channels = rtt.up_channels().drain().collect::<Vec<_>>();
-            let mut down_channels = rtt.down_channels().drain().collect::<Vec<_>>();
-
             for channel in &config.rtt.channels {
                 let data = match channel.format {
                     DataFormat::String => ChannelData::new_string(config.rtt.show_timestamps),
@@ -75,10 +62,8 @@ impl<'defmt> App<'defmt> {
                 };
 
                 tabs.push(ChannelState::new(
-                    channel.up.and_then(|up| pull_channel(&mut up_channels, up)),
-                    channel
-                        .down
-                        .and_then(|down| pull_channel(&mut down_channels, down)),
+                    channel.up.and_then(|up| rtt.up_channels.take(up)),
+                    channel.down.and_then(|down| rtt.down_channels.take(down)),
                     channel.name.clone(),
                     data,
                     channel.socket,
@@ -86,21 +71,18 @@ impl<'defmt> App<'defmt> {
             }
         } else {
             // Display all detected channels as String channels
-
-            let up_channels = rtt.up_channels().drain();
-            let mut down_channels = rtt.down_channels().drain().collect::<Vec<_>>();
-            for channel in up_channels {
+            for channel in rtt.up_channels.into_iter() {
                 let number = channel.number();
                 tabs.push(ChannelState::new(
                     Some(channel),
-                    pull_channel(&mut down_channels, number),
+                    rtt.down_channels.take(number),
                     None,
                     ChannelData::new_string(config.rtt.show_timestamps),
                     None,
                 ));
             }
 
-            for channel in down_channels {
+            for channel in rtt.down_channels.into_iter() {
                 tabs.push(ChannelState::new(
                     None,
                     Some(channel),
