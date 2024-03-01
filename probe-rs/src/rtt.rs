@@ -72,7 +72,7 @@ use std::ops::Range;
 /// 1. **Scenario: Ideal configuration** The host RTT interface is created AFTER the target program has successfully executing the RTT
 /// initialization, by calling an api such as [rtt:target](https://github.com/mvirkkunen/rtt-target)`::rtt_init_print!()`
 ///     * At this point, both the RTT Control Block and the RTT Channel configurations are present in the target memory, and
-/// this RTT interface can be expected to work as expected.  
+/// this RTT interface can be expected to work as expected.
 ///
 /// 2. **Scenario: Failure to detect RTT Control Block** The target has been configured correctly, BUT the host creates this interface BEFORE
 /// the target program has initialized RTT.
@@ -140,7 +140,7 @@ impl Rtt {
         };
 
         // Validate that the control block starts with the ID bytes
-        let rtt_id = &mem[Self::O_ID..(Self::O_ID + Self::RTT_ID.len())];
+        let rtt_id = &mem[Self::O_ID..][..Self::RTT_ID.len()];
         if rtt_id != Self::RTT_ID {
             tracing::trace!(
                 "Expected control block to start with RTT ID: {:?}\n. Got instead: {:?}",
@@ -182,9 +182,8 @@ impl Rtt {
         let mut up_channels = BTreeMap::new();
         let mut down_channels = BTreeMap::new();
 
+        let mut offset = Self::O_CHANNEL_ARRAYS;
         for i in 0..max_up_channels {
-            let offset = Self::O_CHANNEL_ARRAYS + i * Channel::SIZE;
-
             if let Some(chan) =
                 Channel::from(core, i, memory_map, ptr + offset as u32, &mem[offset..])?
             {
@@ -192,12 +191,10 @@ impl Rtt {
             } else {
                 tracing::warn!("Buffer for up channel {} not initialized", i);
             }
+            offset += Channel::SIZE;
         }
 
         for i in 0..max_down_channels {
-            let offset =
-                Self::O_CHANNEL_ARRAYS + (max_up_channels * Channel::SIZE) + i * Channel::SIZE;
-
             if let Some(chan) =
                 Channel::from(core, i, memory_map, ptr + offset as u32, &mem[offset..])?
             {
@@ -205,6 +202,7 @@ impl Rtt {
             } else {
                 tracing::warn!("Buffer for down channel {} not initialized", i);
             }
+            offset += Channel::SIZE;
         }
 
         Ok(Some(Rtt {
