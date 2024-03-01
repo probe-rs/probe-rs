@@ -2,6 +2,7 @@ use super::{
     ColumnType, DebugError, DebugInfo, GimliReader, canonical_path_eq,
     unit_info::{self, UnitInfo},
 };
+use bincode::de;
 use gimli::LineSequence;
 use serde::Serialize;
 use std::{
@@ -390,17 +391,35 @@ impl<'debug_info> Sequence<'debug_info> {
             program_unit,
         };
 
-        // HACK: Temporary code to add all known instructions to a single block.
         let mut block = Block {
             included_addresses: line_sequence.start..=line_sequence.start,
             instructions: Vec::new(),
         };
-
         let mut prologue_completed = false;
         let mut previous_row: Option<gimli::LineRow> = None;
+
+        let sequence_functions = program_unit
+            .get_function_dies(debug_info, sequence.address_range.start + 8, true)
+            .ok();
+        if let Some(functions) = sequence_functions {
+            for function in functions {
+                let name = function.function_name(debug_info);
+                println!(
+                    "Function: {:?} @ {:#010x}:{:#010x}",
+                    name, function.low_pc, function.high_pc
+                );
+                // if let Some(ranges) = function.get_ranges(debug_info) {
+                //     for range in ranges {
+                //         if range.contains(&sequence.address_range.start) {
+                //             block.included_addresses = range.start..=range.end;
+                //         }
+                //     }
+                // }
+            }
+        }
         while let Ok(Some((_, row))) = sequence_rows.next_row() {
             if !prologue_completed && is_prologue_complete(row, program_language, previous_row) {
-                // This is the first row after the prologue, so we close off the previous block, ...
+                // This is the first row after the prologue, so we close off the prologue block, ...
                 sequence.blocks.push(block);
                 // ... and start a new block.
                 block = Block {
@@ -410,18 +429,13 @@ impl<'debug_info> Sequence<'debug_info> {
                 prologue_completed = true;
             }
 
-            if !prologue_completed {
-                log_row_eval(line_sequence, row, "  inside prologue>");
-            } else {
-                log_row_eval(line_sequence, row, "  after prologue>");
-            }
-
             // The end of the sequence is not a valid halt location,
             // nor is it a valid instruction in the current sequence.
             if row.end_sequence() {
                 break;
             }
 
+            // Logic to break the sequence into blocks. See [`Block`] for more information.
             block.add(prologue_completed, row, previous_row.as_ref());
             previous_row = Some(*row);
         }
@@ -468,6 +482,23 @@ fn is_prologue_complete(
     prologue_completed
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Default)]
+/// Instructions are grouped into blocks, based on their own attributes as well
+/// as their position in the sequence, and their role in the function.
+/// See [`Block`] for a detailed discussion.
+enum BlockType {
+    /// Assigned to instructions that are part of the prologue.
+    Prologue {
+        /// We need this to determine when the prologue is complete.
+        previous_row: Option<gimli::LineRow>,
+    },
+    /// Assigned to instructions that are part of an explicit range in a function DIE.
+    Branch,
+    #[default]
+    /// Assigned to instructions that have no specific flags in a sequence. This is the default.
+    Sequence,
+}
+
 /// The concept of an instruction block is based on
 /// [Rust's MIR basic block definition](https://rustc-dev-guide.rust-lang.org/appendix/background.html#cfg)
 /// The concept is also a close match for how the DAP specification defines the a `statement`
@@ -488,6 +519,11 @@ fn is_prologue_complete(
 ///   - `DW_AT_ranges`, we use those ranges as initial block boundaries. These ranges only covers
 ///      parts of the sequence, and we start by creating a block for each covered range, and blocks
 ///      for the remaining covered ranges.
+/// - To facilitate 'stepping', we need to identify how blocks transition from one to the next.
+///  - The `from_block` (left edge) and `to_block` (right edge) are the optional blocks. (Think simple AST).
+///  - The `to_block` is one of the following:
+///    - The address of the first instruction in the next block in the sequence, if there is one.
+///    - The address of first instruction, after the instruction that called this sequence (return register value).
 struct Block {
     /// The range of addresses that the block covers is 'inclusive' on both ends.
     included_addresses: RangeInclusive<u64>,
