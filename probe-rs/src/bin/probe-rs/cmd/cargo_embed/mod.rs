@@ -333,7 +333,7 @@ fn run_rttui_app(
     };
 
     // Configure rtt channels according to configuration
-    rtt_config(session, &config, &mut rtt)?;
+    configure_rtt_modes(session, &config, &mut rtt)?;
 
     tracing::info!("RTT initialized.");
 
@@ -383,7 +383,7 @@ fn run_rttui_app(
     }
 }
 
-fn rtt_config(
+fn configure_rtt_modes(
     session: &Mutex<Session>,
     config: &config::Config,
     rtt: &mut Rtt,
