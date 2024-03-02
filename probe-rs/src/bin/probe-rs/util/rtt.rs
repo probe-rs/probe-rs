@@ -93,9 +93,11 @@ pub struct RttChannelConfig {
     pub channel_name: Option<String>,
     #[serde(default)]
     pub data_format: DataFormat,
+
     #[serde(default)]
     // Control the inclusion of timestamps for DataFormat::String.
     pub show_timestamps: bool,
+
     #[serde(default = "default_include_location")]
     // Control the inclusion of source location information for DataFormat::Defmt.
     pub show_location: bool,
