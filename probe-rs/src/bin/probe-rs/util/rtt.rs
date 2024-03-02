@@ -124,13 +124,8 @@ pub enum ChannelDataConfig {
 
 impl ChannelDataConfig {
     pub fn clear(&mut self) {
-        match self {
-            ChannelDataConfig::String {
-                ref mut last_line_done,
-                ..
-            } => *last_line_done = true,
-            ChannelDataConfig::BinaryLE => {}
-            ChannelDataConfig::Defmt { .. } => {}
+        if let ChannelDataConfig::String { last_line_done, .. } = self {
+            *last_line_done = true;
         }
     }
 }
