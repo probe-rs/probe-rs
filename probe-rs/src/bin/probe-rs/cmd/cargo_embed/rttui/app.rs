@@ -9,8 +9,7 @@ use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
-    text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, Paragraph, Tabs},
+    widgets::{Block, Borders, List, Paragraph, Tabs},
     Terminal,
 };
 use std::{collections::BTreeMap, io::Write};
@@ -175,18 +174,16 @@ impl<'defmt> App<'defmt> {
 
                 let message_num = messages_wrapped.len();
 
-                let messages: Vec<ListItem> = messages_wrapped
-                    .iter()
+                let messages = messages_wrapped
+                    .into_iter()
                     .skip(message_num - (height + scroll_offset).min(message_num))
-                    .take(height)
-                    .map(|s| ListItem::new(Line::raw::<&str>(s.as_ref())))
-                    .collect();
+                    .take(height);
 
                 let messages = List::new(messages).block(Block::default().borders(Borders::NONE));
                 f.render_widget(messages, chunks[1]);
 
                 if has_down_channel {
-                    let input = Paragraph::new(Line::raw(&input))
+                    let input = Paragraph::new(input.as_str())
                         .style(Style::default().fg(Color::Yellow).bg(Color::Blue));
                     f.render_widget(input, chunks[2]);
                 }
@@ -343,10 +340,7 @@ fn render_tabs(
     tabs: &[Tab<'_>],
     current_tab: usize,
 ) {
-    let tab_names = tabs
-        .iter()
-        .map(|t| Line::from(t.name()))
-        .collect::<Vec<_>>();
+    let tab_names = tabs.iter().map(|t| t.name());
     let tabs = Tabs::new(tab_names)
         .select(current_tab)
         .style(Style::default().fg(Color::Black).bg(Color::Yellow))
