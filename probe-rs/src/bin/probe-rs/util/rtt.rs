@@ -165,14 +165,19 @@ pub struct RttActiveChannel {
 /// information was available.
 impl RttActiveChannel {
     fn new(
+        number: usize,
         up_channel: Option<UpChannel>,
         down_channel: Option<DownChannel>,
         rtt_config: &RttConfig,
-        channel_config: Option<RttChannelConfig>,
         timestamp_offset: UtcOffset,
         defmt_state: Option<&DefmtState>,
     ) -> Self {
-        let full_config = channel_config.unwrap_or_default();
+        let channel_config = rtt_config
+            .channels
+            .iter()
+            .find(|channel| channel.channel_number == Some(number))
+            .cloned()
+            .unwrap_or_default();
 
         let buffer_size = up_channel
             .as_ref()
@@ -188,9 +193,9 @@ impl RttActiveChannel {
                 .map(|down| down.name() == Some("defmt")))
             .unwrap_or(false); // If no explicit config is requested, assign a default
 
-        let data_format = match full_config.data_format {
+        let data_format = match channel_config.data_format {
             DataFormat::String if !defmt_enabled => ChannelDataConfig::String {
-                show_timestamps: full_config.show_timestamps,
+                show_timestamps: channel_config.show_timestamps,
             },
 
             DataFormat::BinaryLE if !defmt_enabled => ChannelDataConfig::BinaryLE,
@@ -210,7 +215,7 @@ impl RttActiveChannel {
                 // 4. Default without timestamp with location
                 // 5. Default without timestamp without location
                 let format = rtt_config.log_format.as_deref().unwrap_or(
-                    match (full_config.show_location, has_timestamp) {
+                    match (channel_config.show_location, has_timestamp) {
                         (true, true) => "{t} {L} {s}\n└─ {m} @ {F}:{l}",
                         (true, false) => "{L} {s}\n└─ {m} @ {F}:{l}",
                         (false, true) => "{t} {L} {s}",
@@ -228,13 +233,12 @@ impl RttActiveChannel {
             .as_ref()
             .and_then(|up| up.name())
             .or_else(|| down_channel.as_ref().and_then(|down| down.name()))
-            .or_else(|| full_config.channel_name.as_deref())
+            .or_else(|| channel_config.channel_name.as_deref())
             .map(ToString::to_string)
             .unwrap_or_else(|| {
                 format!(
-                    "Unnamed {:?} RTT channel - {}",
-                    data_format,
-                    full_config.channel_number.unwrap_or(0)
+                    "Unnamed {:?} RTT channel - {number}",
+                    channel_config.data_format
                 )
             });
         Self {
@@ -348,12 +352,9 @@ impl RttActiveChannel {
         formatter: &defmt_decoder::log::format::Formatter,
     ) -> anyhow::Result<()> {
         let Some(DefmtState { table, locs }) = defmt_state else {
-            write!(
-                formatted_data,
-                "Running rtt in defmt mode but table or locations could not be loaded."
-            )
-            .expect("Writing to String cannot fail");
-
+            formatted_data.push_str(
+                "Trying to process defmt data but table or locations could not be loaded.\n",
+            );
             return Ok(());
         };
 
@@ -466,16 +467,11 @@ impl RttActiveTarget {
         // For each channel configured in the RTT Control Block (`Rtt`), check if there are additional user configuration in a `RttChannelConfig`. If not, apply defaults.
         for channel in rtt.up_channels.into_iter() {
             let number = channel.number();
-            let channel_config = rtt_config
-                .channels
-                .clone()
-                .into_iter()
-                .find(|channel| channel.channel_number == Some(number));
             active_channels.push(RttActiveChannel::new(
+                number,
                 Some(channel),
                 None,
                 rtt_config,
-                channel_config,
                 timestamp_offset,
                 defmt_state.as_ref(),
             ));
@@ -483,16 +479,11 @@ impl RttActiveTarget {
 
         for channel in rtt.down_channels.into_iter() {
             let number = channel.number();
-            let channel_config = rtt_config
-                .channels
-                .clone()
-                .into_iter()
-                .find(|channel| channel.channel_number == Some(number));
             active_channels.push(RttActiveChannel::new(
+                number,
                 None,
                 Some(channel),
                 rtt_config,
-                channel_config,
                 timestamp_offset,
                 defmt_state.as_ref(),
             ));
