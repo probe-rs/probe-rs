@@ -254,7 +254,7 @@ impl<'defmt> App<'defmt> {
                             for line in data {
                                 if let Err(e) = writeln!(file, "{line}") {
                                     eprintln!("\nError writing log channel {i}: {e}");
-                                    continue;
+                                    break;
                                 }
                             }
                             // Flush file
