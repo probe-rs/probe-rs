@@ -78,6 +78,10 @@ pub struct RttConfig {
     #[serde(default, rename = "rttEnabled")]
     pub enabled: bool,
 
+    /// The default format string to use for decoding defmt logs.
+    #[serde(default, rename = "defmtLogFormat")]
+    pub log_format: Option<String>,
+
     /// Configure data_format and show_timestamps for select channels
     #[serde(default = "Vec::new", rename = "rttChannelFormats")]
     pub channels: Vec<RttChannelConfig>,
@@ -388,7 +392,6 @@ impl RttActiveTarget {
         elf_file: &Path,
         rtt_config: &RttConfig,
         timestamp_offset: UtcOffset,
-        log_format: Option<&str>,
     ) -> Result<Self> {
         let mut active_channels = Vec::new();
         // For each channel configured in the RTT Control Block (`Rtt`), check if there are additional user configuration in a `RttChannelConfig`. If not, apply defaults.
@@ -454,12 +457,14 @@ impl RttActiveTarget {
                 // 3. Default with timestamp without location
                 // 4. Default without timestamp with location
                 // 5. Default without timestamp without location
-                let format = log_format.unwrap_or(match (show_location, has_timestamp) {
-                    (true, true) => "{t} {L} {s}\n└─ {m} @ {F}:{l}",
-                    (true, false) => "{L} {s}\n└─ {m} @ {F}:{l}",
-                    (false, true) => "{t} {L} {s}",
-                    (false, false) => "{L} {s}",
-                });
+                let format = rtt_config.log_format.as_deref().unwrap_or(
+                    match (show_location, has_timestamp) {
+                        (true, true) => "{t} {L} {s}\n└─ {m} @ {F}:{l}",
+                        (true, false) => "{L} {s}\n└─ {m} @ {F}:{l}",
+                        (false, true) => "{t} {L} {s}",
+                        (false, false) => "{L} {s}",
+                    },
+                );
                 let mut format = defmt_decoder::log::format::FormatterConfig::custom(format);
                 format.is_timestamp_available = has_timestamp;
                 let formatter = defmt_decoder::log::format::Formatter::new(format);

@@ -147,7 +147,10 @@ fn run_loop(
     no_location: bool,
     log_format: Option<&str>,
 ) -> Result<(), anyhow::Error> {
-    let mut rtt_config = rtt::RttConfig::default();
+    let mut rtt_config = rtt::RttConfig {
+        log_format: log_format.map(String::from),
+        ..Default::default()
+    };
     rtt_config.channels.push(rtt::RttChannelConfig {
         channel_number: Some(0),
         show_location: !no_location,
@@ -161,7 +164,6 @@ fn run_loop(
         path,
         rtt_config,
         timestamp_offset,
-        log_format,
     );
 
     let exit = Arc::new(AtomicBool::new(false));
@@ -317,19 +319,12 @@ fn attach_to_rtt(
     path: &Path,
     rtt_config: RttConfig,
     timestamp_offset: UtcOffset,
-    log_format: Option<&str>,
 ) -> Option<rtt::RttActiveTarget> {
     let scan_regions = ScanRegion::Ranges(scan_regions.to_vec());
     for _ in 0..RTT_RETRIES {
         match rtt::attach_to_rtt(core, memory_map, &scan_regions, path) {
             Ok(Some(target_rtt)) => {
-                let app = RttActiveTarget::new(
-                    target_rtt,
-                    path,
-                    &rtt_config,
-                    timestamp_offset,
-                    log_format,
-                );
+                let app = RttActiveTarget::new(target_rtt, path, &rtt_config, timestamp_offset);
 
                 match app {
                     Ok(app) => return Some(app),

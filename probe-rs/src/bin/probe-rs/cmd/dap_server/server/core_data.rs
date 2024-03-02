@@ -452,13 +452,13 @@ fn try_attach_rtt(
         .map_err(|error| anyhow!("Error attempting to attach to RTT: {}", error))?;
 
     tracing::info!("RTT initialized.");
-    let target = RttActiveTarget::new(rtt, elf_file, rtt_config, timestamp_offset, None)?;
+    let target = RttActiveTarget::new(rtt, elf_file, rtt_config, timestamp_offset)?;
 
     Ok(target)
 }
 
 /// Return a Vec of memory ranges that consolidate the adjacent memory ranges of the input ranges.
-/// Note: The concept of "adjacent" is calculated to include a gap of up to specicied number of bytes between ranges.
+/// Note: The concept of "adjacent" is calculated to include a gap of up to specified number of bytes between ranges.
 /// This serves to consolidate memory ranges that are separated by a small gap, but are still close enough for the purpose of the caller.
 fn consolidate_memory_ranges(
     mut discrete_memory_ranges: Vec<Range<u64>>,
