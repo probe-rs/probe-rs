@@ -20,44 +20,36 @@ pub struct ChannelConfig {
 }
 
 pub enum ChannelData {
-    String { data: Vec<String> },
+    Strings { messages: Vec<String> },
     Binary { data: Vec<u8> },
-    Defmt { messages: Vec<String> },
 }
 
 impl std::fmt::Debug for ChannelData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::String { data } => f.debug_struct("String").field("data", data).finish(),
+            Self::Strings { messages: data } => {
+                f.debug_struct("Strings").field("data", data).finish()
+            }
             Self::Binary { data } => f.debug_struct("Binary").field("data", data).finish(),
-            Self::Defmt { messages, .. } => f
-                .debug_struct("Defmt")
-                .field("messages", messages)
-                .finish_non_exhaustive(),
         }
     }
 }
 
 impl ChannelData {
-    pub fn new_string() -> Self {
-        Self::String { data: Vec::new() }
-    }
-
-    pub fn new_defmt() -> Self {
-        Self::Defmt {
+    fn new_strings() -> Self {
+        Self::Strings {
             messages: Vec::new(),
         }
     }
 
-    pub fn new_binary() -> Self {
+    fn new_binary() -> Self {
         Self::Binary { data: Vec::new() }
     }
 
     fn clear(&mut self) {
         match self {
-            Self::String { data } => data.clear(),
+            Self::Strings { messages } => messages.clear(),
             Self::Binary { data, .. } => data.clear(),
-            Self::Defmt { messages, .. } => messages.clear(),
         }
     }
 }
@@ -78,7 +70,7 @@ impl<'defmt> ChannelState<'defmt> {
         up_channel: Option<RttActiveUpChannel>,
         down_channel: Option<RttActiveDownChannel>,
         name: Option<String>,
-        data: ChannelData,
+        data: DataFormat,
         tcp_socket: Option<SocketAddr>,
         defmt_info: Option<&'defmt DefmtState>,
     ) -> Self {
@@ -94,7 +86,10 @@ impl<'defmt> ChannelState<'defmt> {
             down_channel,
             name,
             scroll_offset: 0,
-            data,
+            data: match data {
+                DataFormat::String | DataFormat::Defmt => ChannelData::new_strings(),
+                DataFormat::BinaryLE => ChannelData::new_binary(),
+            },
             tcp_socket,
             defmt_info,
         }
@@ -170,8 +165,7 @@ impl<'defmt> ChannelState<'defmt> {
                 }
 
                 let messages = match &mut self.data {
-                    ChannelData::String { data: messages, .. }
-                    | ChannelData::Defmt { messages, .. } => messages,
+                    ChannelData::Strings { messages, .. } => messages,
                     ChannelData::Binary { .. } => {
                         unreachable!()
                     }
@@ -197,7 +191,7 @@ impl<'defmt> ChannelState<'defmt> {
 
                 match &mut self.data {
                     ChannelData::Binary { data } => data.extend_from_slice(incoming),
-                    ChannelData::String { .. } | ChannelData::Defmt { .. } => {
+                    ChannelData::Strings { .. } => {
                         unreachable!()
                     }
                 }

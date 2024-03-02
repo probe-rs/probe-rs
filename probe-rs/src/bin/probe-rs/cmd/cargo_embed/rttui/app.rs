@@ -16,10 +16,12 @@ use ratatui::{
 use std::{collections::BTreeMap, io::Write};
 use std::{fmt::write, path::PathBuf, sync::mpsc::TryRecvError};
 
-use crate::util::rtt::{DataFormat, DefmtState, RttActiveTarget};
+use crate::{
+    cmd::cargo_embed::rttui::channel::ChannelData,
+    util::rtt::{DataFormat, DefmtState, RttActiveTarget},
+};
 
-use super::{super::config, channel::ChannelData};
-
+use super::super::config;
 use super::{channel::ChannelState, event::Events};
 
 use event::KeyModifiers;
@@ -58,17 +60,11 @@ impl<'defmt> App<'defmt> {
 
         if !config.rtt.channels.is_empty() {
             for channel in &config.rtt.channels {
-                let data = match channel.format {
-                    DataFormat::String => ChannelData::new_string(),
-                    DataFormat::BinaryLE => ChannelData::new_binary(),
-                    DataFormat::Defmt => ChannelData::new_defmt(),
-                };
-
                 tabs.push(ChannelState::new(
                     channel.up.and_then(|up| up_channels.remove(&up)),
                     channel.down.and_then(|down| down_channels.remove(&down)),
                     channel.name.clone(),
-                    data,
+                    channel.format,
                     channel.socket,
                     defmt_state,
                 ))
@@ -81,7 +77,7 @@ impl<'defmt> App<'defmt> {
                     Some(channel),
                     down_channels.remove(&number),
                     None,
-                    ChannelData::new_string(),
+                    DataFormat::String,
                     None,
                     defmt_state,
                 ));
@@ -92,7 +88,7 @@ impl<'defmt> App<'defmt> {
                     None,
                     Some(channel),
                     None,
-                    ChannelData::new_string(),
+                    DataFormat::String,
                     None,
                     defmt_state,
                 ));
@@ -159,7 +155,7 @@ impl<'defmt> App<'defmt> {
 
                 height = chunks[1].height as usize;
                 match tabs[current_tab].data() {
-                    ChannelData::String { data: messages, .. } => {
+                    ChannelData::Strings { messages, .. } => {
                         // We need to collect to generate message_num :(
                         messages_wrapped = messages
                             .iter()
@@ -170,16 +166,12 @@ impl<'defmt> App<'defmt> {
                     ChannelData::Binary { data } => {
                         // probably pretty bad
                         messages_wrapped.push(data.iter().fold(
-                            String::new(),
+                            String::with_capacity(data.len() * 6),
                             |mut output, byte| {
                                 let _ = write(&mut output, format_args!("{byte:#04x}, "));
                                 output
                             },
                         ));
-                    }
-
-                    ChannelData::Defmt { messages, .. } => {
-                        messages_wrapped.extend_from_slice(messages);
                     }
                 };
 
@@ -240,14 +232,7 @@ impl<'defmt> App<'defmt> {
 
                 for (i, tab) in self.tabs.iter().enumerate() {
                     match tab.data() {
-                        ChannelData::Defmt { .. } => {
-                            eprintln!(
-                                "Not saving tab {} as saving defmt logs is currently unsupported.",
-                                i + 1
-                            );
-                            continue;
-                        }
-                        ChannelData::String { data, .. } => {
+                        ChannelData::Strings { messages: data, .. } => {
                             let extension = "txt";
                             let name = format!("{}_channel{}.{}", self.logname, i, extension);
                             let sanitize_options = sanitize_filename::Options {
