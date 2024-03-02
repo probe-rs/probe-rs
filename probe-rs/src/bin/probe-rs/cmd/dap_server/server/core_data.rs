@@ -1,7 +1,7 @@
 use std::{fs::File, ops::Range, path::Path};
 
 use super::session_data::{self, ActiveBreakpoint, BreakpointType, SourceLocationScope};
-use crate::util::rtt::{self, ChannelDataConfig, ChannelMode, RttActiveTarget};
+use crate::util::rtt::{self, ChannelMode, DataFormat, RttActiveTarget};
 use crate::{
     cmd::dap_server::{
         debug_adapter::{
@@ -195,7 +195,7 @@ impl<'p> CoreHandle<'p> {
 
         for any_channel in target_rtt.active_channels.iter() {
             if let Some(up_channel) = &any_channel.up_channel {
-                if matches!(any_channel.data_format, ChannelDataConfig::Defmt { .. }) {
+                if any_channel.data_format == DataFormat::Defmt {
                     // For defmt, we set the channel to be blocking when full.
                     up_channel.set_mode(&mut self.core, ChannelMode::BlockIfFull)?;
                 }
@@ -206,8 +206,8 @@ impl<'p> CoreHandle<'p> {
                 });
                 debug_adapter.rtt_window(
                     up_channel.number(),
-                    any_channel.channel_name.clone(),
-                    &any_channel.data_format,
+                    up_channel.channel_name.clone(),
+                    any_channel.data_format,
                 );
             }
         }

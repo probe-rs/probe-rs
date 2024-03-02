@@ -69,9 +69,7 @@ impl DebuggerRttChannel {
                     }
                 })
                 .and_then(|(channel_number, channel_data)| {
-                    if debug_adapter
-                        .rtt_output(channel_number.parse::<usize>().unwrap_or(0), channel_data)
-                    {
+                    if debug_adapter.rtt_output(channel_number, channel_data) {
                         Some(true)
                     } else {
                         None
