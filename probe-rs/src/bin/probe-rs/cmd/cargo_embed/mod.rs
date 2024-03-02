@@ -523,7 +523,7 @@ fn rtt_attach(
 
             match crate::util::rtt::attach_to_rtt(&mut core, &memory_map, rtt_region, elf_file) {
                 Ok(Some(rtt)) => {
-                    let app = RttActiveTarget::new(rtt, elf_file, &rtt_config, timestamp_offset);
+                    let app = RttActiveTarget::new(rtt, elf_file, rtt_config, timestamp_offset);
 
                     match app {
                         Ok(app) => return Ok(Some(app)),

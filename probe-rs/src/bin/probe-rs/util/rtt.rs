@@ -583,7 +583,7 @@ impl RttActiveTarget {
         rtt_config: &RttConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<Self> {
-        let defmt_state = DefmtState::try_from_elf(&elf_file)?;
+        let defmt_state = DefmtState::try_from_elf(elf_file)?;
 
         let mut active_channels = Vec::new();
         // For each channel configured in the RTT Control Block (`Rtt`), check if there are additional user configuration in a `RttChannelConfig`. If not, apply defaults.
