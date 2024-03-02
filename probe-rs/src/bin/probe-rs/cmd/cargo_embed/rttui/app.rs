@@ -58,41 +58,39 @@ impl<'defmt> App<'defmt> {
             }
         }
 
-        if !config.rtt.channels.is_empty() {
-            for channel in config.rtt.channels {
-                tabs.push(ChannelState::new(
-                    channel.up.and_then(|up| up_channels.remove(&up)),
-                    channel.down.and_then(|down| down_channels.remove(&down)),
-                    channel.name,
-                    channel.format,
-                    channel.socket,
-                    defmt_state,
-                ));
-            }
-        } else {
-            // Display all detected channels as String channels
-            for channel in up_channels.into_values() {
-                let number = channel.number();
-                tabs.push(ChannelState::new(
-                    Some(channel),
-                    down_channels.remove(&number),
-                    None,
-                    DataFormat::String,
-                    None,
-                    defmt_state,
-                ));
-            }
+        for channel in config.rtt.channels {
+            tabs.push(ChannelState::new(
+                channel.up.and_then(|up| up_channels.remove(&up)),
+                channel.down.and_then(|down| down_channels.remove(&down)),
+                channel.name,
+                channel.format,
+                channel.socket,
+                defmt_state,
+            ));
+        }
 
-            for channel in down_channels.into_values() {
-                tabs.push(ChannelState::new(
-                    None,
-                    Some(channel),
-                    None,
-                    DataFormat::String,
-                    None,
-                    defmt_state,
-                ));
-            }
+        // Display all detected channels as String channels
+        for channel in up_channels.into_values() {
+            let number = channel.number();
+            tabs.push(ChannelState::new(
+                Some(channel),
+                down_channels.remove(&number),
+                None,
+                DataFormat::String,
+                None,
+                defmt_state,
+            ));
+        }
+
+        for channel in down_channels.into_values() {
+            tabs.push(ChannelState::new(
+                None,
+                Some(channel),
+                None,
+                DataFormat::String,
+                None,
+                defmt_state,
+            ));
         }
 
         // Code farther down relies on tabs being configured and might panic
