@@ -113,6 +113,7 @@ pub struct RttChannelConfig {
 pub enum ChannelDataConfig {
     String {
         show_timestamps: bool,
+        last_line_done: bool,
     },
     BinaryLE,
     Defmt {
@@ -123,9 +124,13 @@ pub enum ChannelDataConfig {
 impl std::fmt::Debug for ChannelDataConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ChannelDataConfig::String { show_timestamps } => f
+            ChannelDataConfig::String {
+                show_timestamps,
+                last_line_done,
+            } => f
                 .debug_struct("String")
                 .field("show_timestamps", show_timestamps)
+                .field("last_line_done", last_line_done)
                 .finish(),
             ChannelDataConfig::BinaryLE => f.debug_struct("BinaryLE").finish(),
             ChannelDataConfig::Defmt { .. } => f.debug_struct("Defmt").finish_non_exhaustive(),
@@ -174,6 +179,7 @@ impl RttActiveUpChannel {
         let data_format = match channel_config.data_format {
             DataFormat::String if !defmt_enabled => ChannelDataConfig::String {
                 show_timestamps: channel_config.show_timestamps,
+                last_line_done: true,
             },
 
             DataFormat::BinaryLE if !defmt_enabled => ChannelDataConfig::BinaryLE,
@@ -271,28 +277,39 @@ impl RttActiveUpChannel {
 
         let buffer = &self.rtt_buffer.0[..bytes_read];
 
-        match &self.data_format {
+        match self.data_format {
             ChannelDataConfig::BinaryLE => collector.on_binary_data(self.number(), buffer),
-            ChannelDataConfig::String { show_timestamps } => {
-                let string = self.process_string(buffer, *show_timestamps);
+            ChannelDataConfig::String {
+                show_timestamps,
+                ref mut last_line_done,
+            } => {
+                let timestamp = show_timestamps
+                    .then(|| OffsetDateTime::now_utc().to_offset(self.timestamp_offset));
+
+                let string = Self::process_string(buffer, timestamp, last_line_done);
                 collector.on_string_data(self.number(), string)
             }
-            ChannelDataConfig::Defmt { formatter } => {
+            ChannelDataConfig::Defmt { ref formatter } => {
                 let string = self.process_defmt(buffer, defmt_state, formatter)?;
                 collector.on_string_data(self.number(), string)
             }
         }
     }
 
-    fn process_string(&self, buffer: &[u8], show_timestamps: bool) -> String {
+    fn process_string(
+        buffer: &[u8],
+        timestamp: Option<OffsetDateTime>,
+        last_line_done: &mut bool,
+    ) -> String {
         let incoming = String::from_utf8_lossy(buffer);
-        if show_timestamps {
-            let timestamp = OffsetDateTime::now_utc().to_offset(self.timestamp_offset);
-
+        if let Some(timestamp) = timestamp {
             let mut formatted_data = String::new();
-            for line in incoming.split_terminator('\n') {
-                writeln!(formatted_data, "{timestamp}: {line}")
-                    .expect("Writing to String cannot fail");
+            for line in incoming.split_inclusive('\n') {
+                if *last_line_done {
+                    write!(formatted_data, "{timestamp}: ").expect("Writing to String cannot fail");
+                }
+                writeln!(formatted_data, "{line}").expect("Writing to String cannot fail");
+                *last_line_done = line.ends_with('\n');
             }
             formatted_data
         } else {
