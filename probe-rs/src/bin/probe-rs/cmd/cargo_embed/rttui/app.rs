@@ -137,39 +137,39 @@ impl<'defmt> App<'defmt> {
     }
 
     pub fn render(&mut self) {
-        let input = self.current_tab().input().to_owned();
-        let has_down_channel = self.current_tab().has_down_channel();
-        let scroll_offset = self.current_tab().scroll_offset();
-
-        let tabs = &self.tabs;
-        let current_tab = self.current_tab;
-        let mut height = 0;
-        let mut messages_wrapped: Vec<String> = Vec::new();
-
         self.terminal
             .draw(|f| {
-                let chunks = layout_chunks(f, has_down_channel);
-                render_tabs(f, chunks[0], tabs, current_tab);
+                let tab = &self.tabs[self.current_tab];
 
-                height = chunks[1].height as usize;
-                match tabs[current_tab].data() {
+                let has_down_channel = tab.has_down_channel();
+
+                let chunks = layout_chunks(f, has_down_channel);
+                render_tabs(f, chunks[0], &self.tabs, self.current_tab);
+
+                let input = tab.input().to_owned();
+                let scroll_offset = tab.scroll_offset();
+
+                let height = chunks[1].height as usize;
+
+                let binary_message;
+                let messages_wrapped = match tab.data() {
                     TabData::Strings { messages, .. } => {
                         // We need to collect to generate message_num :(
-                        messages_wrapped = messages
+                        messages
                             .iter()
                             .flat_map(|m| textwrap::wrap(m, chunks[1].width as usize))
-                            .map(|s| s.into_owned())
-                            .collect();
+                            .collect()
                     }
                     TabData::Binary { data } => {
                         // probably pretty bad
-                        messages_wrapped.push(data.iter().fold(
+                        binary_message = data.iter().fold(
                             String::with_capacity(data.len() * 6),
                             |mut output, byte| {
                                 let _ = write(&mut output, format_args!("{byte:#04x}, "));
                                 output
                             },
-                        ));
+                        );
+                        textwrap::wrap(&binary_message, chunks[1].width as usize)
                     }
                 };
 
@@ -179,26 +179,24 @@ impl<'defmt> App<'defmt> {
                     .iter()
                     .skip(message_num - (height + scroll_offset).min(message_num))
                     .take(height)
-                    .map(|s| ListItem::new(vec![Line::from(Span::raw(s))]))
+                    .map(|s| ListItem::new(Line::raw::<&str>(s.as_ref())))
                     .collect();
 
                 let messages = List::new(messages).block(Block::default().borders(Borders::NONE));
                 f.render_widget(messages, chunks[1]);
 
                 if has_down_channel {
-                    let input = Paragraph::new(Line::from(vec![Span::raw(input.clone())]))
+                    let input = Paragraph::new(Line::raw(&input))
                         .style(Style::default().fg(Color::Yellow).bg(Color::Blue));
                     f.render_widget(input, chunks[2]);
                 }
+
+                if message_num < height + scroll_offset {
+                    self.tabs[self.current_tab]
+                        .set_scroll_offset(message_num - height.min(message_num));
+                }
             })
             .unwrap();
-
-        let message_num = messages_wrapped.len();
-        let scroll_offset = self.tabs[self.current_tab].scroll_offset();
-        if message_num < height + scroll_offset {
-            self.current_tab_mut()
-                .set_scroll_offset(message_num - height.min(message_num));
-        }
     }
 
     /// Returns true if the application should exit.
@@ -295,10 +293,6 @@ impl<'defmt> App<'defmt> {
         }
 
         false
-    }
-
-    pub fn current_tab(&self) -> &Tab<'defmt> {
-        &self.tabs[self.current_tab]
     }
 
     pub fn current_tab_mut(&mut self) -> &mut Tab<'defmt> {
