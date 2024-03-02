@@ -429,7 +429,7 @@ fn run_rttui_app(
         / 1_000_000;
 
     let logname = format!("{name}_{chip_name}_{timestamp_millis}");
-    let mut app = rttui::app::App::new(rtt, &config, logname, defmt_state.as_ref())?;
+    let mut app = rttui::app::App::new(rtt, config, logname, defmt_state.as_ref())?;
     loop {
         app.render();
 

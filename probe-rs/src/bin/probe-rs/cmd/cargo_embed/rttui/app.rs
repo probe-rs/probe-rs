@@ -40,7 +40,7 @@ pub struct App<'defmt> {
 impl<'defmt> App<'defmt> {
     pub fn new(
         rtt: RttActiveTarget,
-        config: &config::Config,
+        config: config::Config,
         logname: String,
         defmt_state: Option<&'defmt DefmtState>,
     ) -> Result<Self> {
@@ -59,15 +59,15 @@ impl<'defmt> App<'defmt> {
         }
 
         if !config.rtt.channels.is_empty() {
-            for channel in &config.rtt.channels {
+            for channel in config.rtt.channels {
                 tabs.push(ChannelState::new(
                     channel.up.and_then(|up| up_channels.remove(&up)),
                     channel.down.and_then(|down| down_channels.remove(&down)),
-                    channel.name.clone(),
+                    channel.name,
                     channel.format,
                     channel.socket,
                     defmt_state,
-                ))
+                ));
             }
         } else {
             // Display all detected channels as String channels

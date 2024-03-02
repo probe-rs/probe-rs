@@ -193,6 +193,7 @@ impl RttActiveUpChannel {
 
             DataFormat::BinaryLE if !defmt_enabled => ChannelDataConfig::BinaryLE,
 
+            // either DataFormat::Defmt is configured, or defmt_enabled is true
             _ => {
                 let has_timestamp = if let Some(defmt) = defmt_state {
                     defmt.table.has_timestamp()
@@ -369,12 +370,10 @@ impl RttActiveUpChannel {
                     };
                     let s = formatter.format_frame(frame, Some(&file), line, module);
                     writeln!(formatted_data, "{s}").expect("Writing to String cannot fail");
-                    continue;
                 }
                 Err(DecodeError::UnexpectedEof) => break,
                 Err(DecodeError::Malformed) if table.encoding().can_recover() => {
                     // If recovery is possible, skip the current frame and continue with new data.
-                    continue;
                 }
                 Err(DecodeError::Malformed) => {
                     return Err(anyhow!(
@@ -403,7 +402,7 @@ pub struct RttActiveDownChannel {
     pub down_channel: DownChannel,
     pub channel_name: String,
     /// Data that will be written to the down_channel (host to target)
-    _input_data: String,
+    input_data: String,
 }
 
 impl RttActiveDownChannel {
@@ -417,7 +416,7 @@ impl RttActiveDownChannel {
         Self {
             down_channel,
             channel_name,
-            _input_data: String::new(),
+            input_data: String::new(),
         }
     }
 
@@ -426,20 +425,20 @@ impl RttActiveDownChannel {
     }
 
     pub fn input(&self) -> &str {
-        self._input_data.as_ref()
+        self.input_data.as_ref()
     }
 
     pub fn input_mut(&mut self) -> &mut String {
-        &mut self._input_data
+        &mut self.input_data
     }
 
     pub fn push_rtt(&mut self, core: &mut Core<'_>) -> Result<(), Error> {
-        self._input_data += "\n";
+        self.input_data += "\n";
         let result = self
             .down_channel
-            .write(core, self._input_data.as_bytes())
+            .write(core, self.input_data.as_bytes())
             .map(|_| ());
-        self._input_data.clear();
+        self.input_data.clear();
         result
     }
 }
