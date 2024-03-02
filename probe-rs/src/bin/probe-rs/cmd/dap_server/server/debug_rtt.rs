@@ -46,38 +46,28 @@ impl DebuggerRttChannel {
         debug_adapter: &mut DebugAdapter<P>,
         rtt_target: &mut rtt::RttActiveTarget,
     ) -> bool {
-        if self.has_client_window {
-            rtt_target
-                .active_channels
-                .iter_mut()
-                .find(|active_channel| {
-                    if let Some(channel_number) = active_channel.number() {
-                        channel_number == self.channel_number
-                    } else {
-                        false
-                    }
-                })
-                .and_then(|rtt_channel| {
-                    match rtt_channel.get_rtt_data(core, rtt_target.defmt_state.as_ref()) {
-                        Ok(data_result) => data_result,
-                        Err(rtt_error) => {
-                            debug_adapter
-                                .show_error_message(&DebuggerError::Other(rtt_error))
-                                .ok();
-                            None
-                        }
-                    }
-                })
-                .and_then(|(channel_number, channel_data)| {
-                    if debug_adapter.rtt_output(channel_number, channel_data) {
-                        Some(true)
-                    } else {
-                        None
-                    }
-                })
-                .is_some()
-        } else {
-            false
+        if !self.has_client_window {
+            return false;
         }
+
+        let Some(rtt_channel) = rtt_target
+            .active_channels
+            .iter_mut()
+            .find(|active_channel| active_channel.number() == Some(self.channel_number))
+        else {
+            return false;
+        };
+
+        match rtt_channel.get_rtt_data(core, rtt_target.defmt_state.as_ref()) {
+            Ok(Some((channel, data))) => return debug_adapter.rtt_output(channel, data),
+            Ok(None) => {}
+            Err(rtt_error) => {
+                debug_adapter
+                    .show_error_message(&DebuggerError::Other(rtt_error))
+                    .ok();
+            }
+        }
+
+        false
     }
 }
