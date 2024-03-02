@@ -13,7 +13,7 @@ use std::{
     io::{Read, Seek},
     path::Path,
 };
-use time::{OffsetDateTime, UtcOffset};
+use time::{macros::format_description, OffsetDateTime, UtcOffset};
 
 /// Try to find the RTT control block in the ELF file and attach to it.
 ///
@@ -98,15 +98,16 @@ pub struct RttChannelConfig {
     pub data_format: DataFormat,
 
     #[serde(default)]
-    // Control the inclusion of timestamps for DataFormat::String.
+    /// Control the inclusion of timestamps for DataFormat::String.
     pub show_timestamps: bool,
 
     #[serde(default = "default_include_location")]
-    // Control the inclusion of source location information for DataFormat::Defmt.
+    /// Control the inclusion of source location information for DataFormat::Defmt.
+    // TODO: third option: if available
     pub show_location: bool,
 
     #[serde(default)]
-    // Control the output format for DataFormat::Defmt.
+    /// Control the output format for DataFormat::Defmt.
     pub defmt_log_format: Option<String>,
 }
 
@@ -119,6 +120,19 @@ pub enum ChannelDataConfig {
     Defmt {
         formatter: defmt_decoder::log::format::Formatter,
     },
+}
+
+impl ChannelDataConfig {
+    pub fn clear(&mut self) {
+        match self {
+            ChannelDataConfig::String {
+                ref mut last_line_done,
+                ..
+            } => *last_line_done = true,
+            ChannelDataConfig::BinaryLE => {}
+            ChannelDataConfig::Defmt { .. } => {}
+        }
+    }
 }
 
 impl std::fmt::Debug for ChannelDataConfig {
@@ -286,7 +300,7 @@ impl RttActiveUpChannel {
                 let timestamp = show_timestamps
                     .then(|| OffsetDateTime::now_utc().to_offset(self.timestamp_offset));
 
-                let string = Self::process_string(buffer, timestamp, last_line_done);
+                let string = Self::process_string(buffer, timestamp, last_line_done)?;
                 collector.on_string_data(self.number(), string)
             }
             ChannelDataConfig::Defmt { ref formatter } => {
@@ -298,22 +312,25 @@ impl RttActiveUpChannel {
 
     fn process_string(
         buffer: &[u8],
-        timestamp: Option<OffsetDateTime>,
+        now: Option<OffsetDateTime>,
         last_line_done: &mut bool,
-    ) -> String {
+    ) -> Result<String> {
         let incoming = String::from_utf8_lossy(buffer);
-        if let Some(timestamp) = timestamp {
+        if let Some(now) = now {
             let mut formatted_data = String::new();
             for line in incoming.split_inclusive('\n') {
                 if *last_line_done {
-                    write!(formatted_data, "{timestamp}: ").expect("Writing to String cannot fail");
+                    let ts = now.format(format_description!(
+                        "[hour repr:24]:[minute]:[second].[subsecond digits:3]"
+                    ))?;
+                    write!(formatted_data, "{ts}: ").expect("Writing to String cannot fail");
                 }
                 writeln!(formatted_data, "{line}").expect("Writing to String cannot fail");
                 *last_line_done = line.ends_with('\n');
             }
-            formatted_data
+            Ok(formatted_data)
         } else {
-            incoming.to_string()
+            Ok(incoming.to_string())
         }
     }
 
@@ -409,15 +426,19 @@ impl RttActiveDownChannel {
         }
     }
 
-    pub fn _input(&self) -> &str {
+    pub fn number(&self) -> usize {
+        self.down_channel.number()
+    }
+
+    pub fn input(&self) -> &str {
         self._input_data.as_ref()
     }
 
-    pub fn _input_mut(&mut self) -> &mut String {
+    pub fn input_mut(&mut self) -> &mut String {
         &mut self._input_data
     }
 
-    fn _push_rtt(&mut self, core: &mut Core<'_>) -> Result<(), Error> {
+    pub fn push_rtt(&mut self, core: &mut Core<'_>) -> Result<(), Error> {
         self._input_data += "\n";
         let result = self
             .down_channel
@@ -496,7 +517,7 @@ impl RttActiveChannel {
 
     pub fn _push_rtt(&mut self, core: &mut Core) -> Result<()> {
         if let Some(down_channel) = self.down_channel.as_mut() {
-            down_channel._push_rtt(core)?;
+            down_channel.push_rtt(core)?;
         }
 
         Ok(())
@@ -513,8 +534,39 @@ pub struct RttActiveTarget {
 
 /// defmt information common to all defmt channels.
 pub struct DefmtState {
-    table: defmt_decoder::Table,
-    locs: Option<defmt_decoder::Locations>,
+    pub table: defmt_decoder::Table,
+    pub locs: Option<defmt_decoder::Locations>,
+}
+impl DefmtState {
+    pub fn try_from_elf(elf: &Path) -> Result<Option<Self>> {
+        let elf = fs::read(elf).map_err(|err| {
+            anyhow!(
+                "Error reading program binary while initalizing RTT: {}",
+                err
+            )
+        })?;
+
+        if let Some(table) = defmt_decoder::Table::parse(&elf)? {
+            let locs = {
+                let locs = table.get_locations(&elf)?;
+
+                if !table.is_empty() && locs.is_empty() {
+                    tracing::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
+                    None
+                } else if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
+                    Some(locs)
+                } else {
+                    tracing::warn!(
+                        "Location info is incomplete; it will be omitted from the output."
+                    );
+                    None
+                }
+            };
+            Ok(Some(DefmtState { table, locs }))
+        } else {
+            Ok(None)
+        }
+    }
 }
 
 impl fmt::Debug for DefmtState {
@@ -531,35 +583,7 @@ impl RttActiveTarget {
         rtt_config: &RttConfig,
         timestamp_offset: UtcOffset,
     ) -> Result<Self> {
-        let defmt_state = {
-            let elf = fs::read(elf_file).map_err(|err| {
-                anyhow!(
-                    "Error reading program binary while initalizing RTT: {}",
-                    err
-                )
-            })?;
-
-            if let Some(table) = defmt_decoder::Table::parse(&elf)? {
-                let locs = {
-                    let locs = table.get_locations(&elf)?;
-
-                    if !table.is_empty() && locs.is_empty() {
-                        tracing::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
-                        None
-                    } else if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
-                        Some(locs)
-                    } else {
-                        tracing::warn!(
-                            "Location info is incomplete; it will be omitted from the output."
-                        );
-                        None
-                    }
-                };
-                Some(DefmtState { table, locs })
-            } else {
-                None
-            }
-        };
+        let defmt_state = DefmtState::try_from_elf(&elf_file)?;
 
         let mut active_channels = Vec::new();
         // For each channel configured in the RTT Control Block (`Rtt`), check if there are additional user configuration in a `RttChannelConfig`. If not, apply defaults.

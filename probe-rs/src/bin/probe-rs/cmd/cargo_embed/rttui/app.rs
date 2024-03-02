@@ -13,15 +13,12 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph, Tabs},
     Terminal,
 };
-use std::io::Write;
+use std::{collections::BTreeMap, io::Write};
 use std::{fmt::write, path::PathBuf, sync::mpsc::TryRecvError};
 
-use crate::util::rtt::DataFormat;
+use crate::util::rtt::{DataFormat, DefmtState, RttActiveTarget};
 
-use super::{
-    super::{config, DefmtInformation},
-    channel::ChannelData,
-};
+use super::{super::config, channel::ChannelData};
 
 use super::{channel::ChannelState, event::Events};
 
@@ -40,55 +37,64 @@ pub struct App<'defmt> {
 
 impl<'defmt> App<'defmt> {
     pub fn new(
-        mut rtt: probe_rs::rtt::Rtt,
+        rtt: RttActiveTarget,
         config: &config::Config,
         logname: String,
-        defmt_state: Option<&'defmt DefmtInformation>,
+        defmt_state: Option<&'defmt DefmtState>,
     ) -> Result<Self> {
         let mut tabs = Vec::new();
+
+        let mut up_channels = BTreeMap::new();
+        let mut down_channels = BTreeMap::new();
+
+        for channel in rtt.active_channels {
+            if let Some(up) = channel.up_channel {
+                up_channels.insert(up.number(), up);
+            }
+            if let Some(down) = channel.down_channel {
+                down_channels.insert(down.number(), down);
+            }
+        }
+
         if !config.rtt.channels.is_empty() {
             for channel in &config.rtt.channels {
                 let data = match channel.format {
-                    DataFormat::String => ChannelData::new_string(config.rtt.show_timestamps),
+                    DataFormat::String => ChannelData::new_string(),
                     DataFormat::BinaryLE => ChannelData::new_binary(),
-                    DataFormat::Defmt => {
-                        let defmt_information = defmt_state.ok_or_else(|| {
-                            anyhow!("Defmt information required for defmt channel {:?}", channel)
-                        })?;
-                        let stream_decoder = defmt_information.table.new_stream_decoder();
-
-                        ChannelData::new_defmt(stream_decoder, defmt_information)
-                    }
+                    DataFormat::Defmt => ChannelData::new_defmt(),
                 };
 
                 tabs.push(ChannelState::new(
-                    channel.up.and_then(|up| rtt.up_channels.take(up)),
-                    channel.down.and_then(|down| rtt.down_channels.take(down)),
+                    channel.up.and_then(|up| up_channels.remove(&up)),
+                    channel.down.and_then(|down| down_channels.remove(&down)),
                     channel.name.clone(),
                     data,
                     channel.socket,
+                    defmt_state,
                 ))
             }
         } else {
             // Display all detected channels as String channels
-            for channel in rtt.up_channels.into_iter() {
+            for channel in up_channels.into_values() {
                 let number = channel.number();
                 tabs.push(ChannelState::new(
                     Some(channel),
-                    rtt.down_channels.take(number),
+                    down_channels.remove(&number),
                     None,
-                    ChannelData::new_string(config.rtt.show_timestamps),
+                    ChannelData::new_string(),
                     None,
+                    defmt_state,
                 ));
             }
 
-            for channel in rtt.down_channels.into_iter() {
+            for channel in down_channels.into_values() {
                 tabs.push(ChannelState::new(
                     None,
                     Some(channel),
                     None,
-                    ChannelData::new_string(config.rtt.show_timestamps),
+                    ChannelData::new_string(),
                     None,
+                    defmt_state,
                 ));
             }
         }
@@ -321,21 +327,11 @@ impl<'defmt> App<'defmt> {
                     self.current_tab = n;
                 }
             }
-            KeyCode::Enter => {
-                self.push_rtt(core);
-            }
-            KeyCode::Char(c) => {
-                self.current_tab_mut().input_mut().push(c);
-            }
-            KeyCode::Backspace => {
-                self.current_tab_mut().input_mut().pop();
-            }
-            KeyCode::PageUp => {
-                self.current_tab_mut().scroll_up();
-            }
-            KeyCode::PageDown => {
-                self.current_tab_mut().scroll_down();
-            }
+            KeyCode::Enter => self.push_rtt(core),
+            KeyCode::Char(c) => self.current_tab_mut().append_char(c),
+            KeyCode::Backspace => _ = self.current_tab_mut().pop_char(),
+            KeyCode::PageUp => self.current_tab_mut().scroll_up(),
+            KeyCode::PageDown => self.current_tab_mut().scroll_down(),
             _ => {}
         }
 
@@ -355,13 +351,9 @@ impl<'defmt> App<'defmt> {
     /// # Errors
     /// If formatting a timestamp fails,
     /// this function will abort and return a [`time::Error`].
-    pub fn poll_rtt(
-        &mut self,
-        core: &mut Core,
-        offset: time::UtcOffset,
-    ) -> Result<(), time::Error> {
+    pub fn poll_rtt(&mut self, core: &mut Core) -> Result<(), time::Error> {
         for channel in self.tabs.iter_mut() {
-            channel.poll_rtt(core, offset)?;
+            channel.poll_rtt(core)?;
         }
 
         Ok(())

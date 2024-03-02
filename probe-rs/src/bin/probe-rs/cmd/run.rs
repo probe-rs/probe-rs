@@ -162,7 +162,7 @@ fn run_loop(
         memory_map,
         rtt_scan_regions,
         path,
-        rtt_config,
+        &rtt_config,
         timestamp_offset,
     );
 
@@ -339,7 +339,7 @@ fn attach_to_rtt(
     memory_map: &[MemoryRegion],
     scan_regions: &[Range<u64>],
     path: &Path,
-    rtt_config: RttConfig,
+    rtt_config: &RttConfig,
     timestamp_offset: UtcOffset,
 ) -> Option<rtt::RttActiveTarget> {
     let scan_regions = ScanRegion::Ranges(scan_regions.to_vec());

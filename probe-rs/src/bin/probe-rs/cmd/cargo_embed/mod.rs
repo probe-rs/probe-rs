@@ -7,11 +7,10 @@ use clap::Parser;
 use colored::*;
 use probe_rs::gdb_server::GdbInstanceConfiguration;
 use probe_rs::probe::list::Lister;
-use probe_rs::rtt::{Rtt, ScanRegion};
+use probe_rs::rtt::ScanRegion;
 use probe_rs::{probe::DebugProbeSelector, Session};
 use std::ffi::OsString;
 use std::{
-    fs,
     fs::File,
     io::Write,
     panic,
@@ -27,6 +26,7 @@ use crate::util::common_options::{
 };
 use crate::util::flash::{build_loader, run_flash_download};
 use crate::util::logging::setup_logging;
+use crate::util::rtt::{DefmtState, RttActiveTarget, RttChannelConfig, RttConfig};
 use crate::util::{build_artifact, common_options::CargoOptions, logging, rtt::DataFormat};
 use crate::FormatOptions;
 
@@ -303,12 +303,78 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
 fn run_rttui_app(
     name: &str,
     session: &Mutex<Session>,
-    config: config::Config,
+    mut config: config::Config,
     elf_path: &Path,
     timezone_offset: UtcOffset,
 ) -> Result<(), anyhow::Error> {
-    let Some(mut rtt) = rtt_attach(session, config.rtt.timeout, &ScanRegion::Ram, elf_path)
-        .context("Failed to attach to RTT")?
+    // Transform channel configurations
+    let mut rtt_config = RttConfig {
+        enabled: true,
+        log_format: None,
+        channels: vec![],
+    };
+
+    // `None` out duplicate channel numbers, we don't handle them yet.
+    for i in 0..config.rtt.channels.len() {
+        if let Some(up_number) = config.rtt.channels[i].up {
+            for j in i + 1..config.rtt.channels.len() {
+                if config.rtt.channels[j].up == Some(up_number) {
+                    config.rtt.channels[j].up = None;
+                }
+            }
+        }
+        if let Some(down_number) = config.rtt.channels[i].down {
+            for j in i + 1..config.rtt.channels.len() {
+                if config.rtt.channels[j].down == Some(down_number) {
+                    config.rtt.channels[j].down = None;
+                }
+            }
+        }
+    }
+
+    // Now we know that we only encounter unique channel numbers.
+    for channel in config.rtt.channels.iter() {
+        if let Some(up_number) = channel.up {
+            rtt_config.channels.push(RttChannelConfig {
+                channel_number: Some(up_number),
+                channel_name: channel.name.clone(),
+                data_format: channel.format,
+                show_timestamps: config.rtt.show_timestamps,
+                show_location: true,
+                defmt_log_format: None,
+            });
+        }
+    }
+    // In case we have down channels without up channels, add them separately.
+    for channel in config.rtt.channels.iter() {
+        if let Some(down_number) = channel.down {
+            if !rtt_config
+                .channels
+                .iter()
+                .any(|c| c.channel_number == Some(down_number))
+            {
+                // Set up channel defaults, we don't read from it anyway.
+                rtt_config.channels.push(RttChannelConfig {
+                    channel_number: Some(down_number),
+                    channel_name: channel.name.clone(),
+                    data_format: DataFormat::String,
+                    show_timestamps: false,
+                    show_location: false,
+                    defmt_log_format: None,
+                });
+            }
+        }
+    }
+
+    let Some(mut rtt) = rtt_attach(
+        session,
+        config.rtt.timeout,
+        &ScanRegion::Ram,
+        elf_path,
+        &rtt_config,
+        timezone_offset,
+    )
+    .context("Failed to attach to RTT")?
     else {
         // Because we pass `ScanRegion::Ram` to `rtt_attach`, this branch should never be
         // reached. However, we might change how we attach to RTT in the future, so let's try
@@ -327,7 +393,7 @@ fn run_rttui_app(
         tracing::debug!(
             "Found RTT channels with format = defmt, trying to intialize defmt parsing."
         );
-        DefmtInformation::try_read_from_elf(elf_path)?
+        DefmtState::try_from_elf(elf_path)?
     } else {
         None
     };
@@ -371,7 +437,7 @@ fn run_rttui_app(
             let mut session_handle = session.lock().unwrap();
             let mut core = session_handle.core(0)?;
 
-            app.poll_rtt(&mut core, timezone_offset)?;
+            app.poll_rtt(&mut core)?;
 
             if app.handle_event(&mut core) {
                 logging::println("Shutting down.");
@@ -386,13 +452,16 @@ fn run_rttui_app(
 fn configure_rtt_modes(
     session: &Mutex<Session>,
     config: &config::Config,
-    rtt: &mut Rtt,
+    rtt: &mut RttActiveTarget,
 ) -> Result<(), anyhow::Error> {
     let mut session_handle = session.lock().unwrap();
     let mut core = session_handle.core(0)?;
     let default_up_mode = config.rtt.up_mode;
 
-    for up_channel in rtt.up_channels().iter() {
+    for channel in rtt.active_channels.iter() {
+        let Some(up_channel) = &channel.up_channel else {
+            continue;
+        };
         let mut specific_mode = None;
         for channel_config in config
             .rtt
@@ -425,57 +494,15 @@ fn configure_rtt_modes(
     Ok(())
 }
 
-#[derive(Debug)]
-pub struct DefmtInformation {
-    table: defmt_decoder::Table,
-    /// Location information for defmt
-    ///
-    /// Optional, defmt decoding is also possible without it.
-    location_information: Option<std::collections::BTreeMap<u64, defmt_decoder::Location>>,
-}
-
-impl DefmtInformation {
-    pub fn try_read_from_elf(path: &Path) -> Result<Option<DefmtInformation>, anyhow::Error> {
-        let elf = fs::read(path).with_context(|| {
-            format!("Failed to read ELF file from location '{}'", path.display())
-        })?;
-
-        let defmt_state = if let Some(table) = defmt_decoder::Table::parse(&elf)? {
-            let locs = {
-                let locs = table.get_locations(&elf)?;
-
-                if !table.is_empty() && locs.is_empty() {
-                    tracing::warn!("Insufficient DWARF info; compile your program with `debug = 2` to enable location info.");
-                    None
-                } else if table.indices().all(|idx| locs.contains_key(&(idx as u64))) {
-                    Some(locs)
-                } else {
-                    tracing::warn!(
-                        "Location info is incomplete; it will be omitted from the output."
-                    );
-                    None
-                }
-            };
-            Some(DefmtInformation {
-                table,
-                location_information: locs,
-            })
-        } else {
-            tracing::error!("Defmt enabled in rtt channel config, but defmt table couldn't be loaded from binary.");
-            None
-        };
-
-        Ok(defmt_state)
-    }
-}
-
 /// Try to attach to RTT, with the given timeout
 fn rtt_attach(
     session: &Mutex<Session>,
     timeout: Duration,
     rtt_region: &ScanRegion,
     elf_file: &Path,
-) -> Result<Option<Rtt>> {
+    rtt_config: &RttConfig,
+    timestamp_offset: UtcOffset,
+) -> Result<Option<RttActiveTarget>> {
     let t = std::time::Instant::now();
 
     let mut rtt_init_attempt = 1;
@@ -495,7 +522,15 @@ fn rtt_attach(
             let mut core = session_handle.core(0)?;
 
             match crate::util::rtt::attach_to_rtt(&mut core, &memory_map, rtt_region, elf_file) {
-                Ok(rtt) => return Ok(rtt),
+                Ok(Some(rtt)) => {
+                    let app = RttActiveTarget::new(rtt, elf_file, &rtt_config, timestamp_offset);
+
+                    match app {
+                        Ok(app) => return Ok(Some(app)),
+                        Err(error) => last_error = Some(error),
+                    }
+                }
+                Ok(None) => return Ok(None),
                 Err(e) => last_error = Some(e),
             }
         }
