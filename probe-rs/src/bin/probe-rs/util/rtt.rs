@@ -167,13 +167,10 @@ impl RttActiveChannel {
         };
         let name = up_channel
             .as_ref()
-            .and_then(|up| up.name().map(Into::into))
-            .or_else(|| {
-                down_channel
-                    .as_ref()
-                    .and_then(|down| down.name().map(Into::into))
-            })
-            .or_else(|| full_config.clone().channel_name)
+            .and_then(|up| up.name())
+            .or_else(|| down_channel.as_ref().and_then(|down| down.name()))
+            .or_else(|| full_config.channel_name.as_deref())
+            .map(ToString::to_string)
             .unwrap_or_else(|| {
                 format!(
                     "Unnamed {:?} RTT channel - {}",
