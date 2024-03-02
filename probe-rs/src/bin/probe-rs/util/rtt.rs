@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use defmt_decoder::log::format::{Formatter, FormatterConfig};
 use defmt_decoder::DecodeError;
 pub use probe_rs::rtt::ChannelMode;
 use probe_rs::rtt::{DownChannel, Error, Rtt, ScanRegion, UpChannel};
@@ -113,12 +114,16 @@ pub struct RttChannelConfig {
 
 pub enum ChannelDataConfig {
     String {
-        show_timestamps: bool,
+        /// UTC offset used for creating timestamps, if enabled.
+        ///
+        /// Getting the offset can fail in multi-threaded programs,
+        /// so it needs to be stored.
+        timestamp_offset: Option<UtcOffset>,
         last_line_done: bool,
     },
     BinaryLE,
     Defmt {
-        formatter: defmt_decoder::log::format::Formatter,
+        formatter: Formatter,
     },
 }
 
@@ -134,11 +139,11 @@ impl std::fmt::Debug for ChannelDataConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ChannelDataConfig::String {
-                show_timestamps,
+                timestamp_offset,
                 last_line_done,
             } => f
                 .debug_struct("String")
-                .field("show_timestamps", show_timestamps)
+                .field("timestamp_offset", timestamp_offset)
                 .field("last_line_done", last_line_done)
                 .finish(),
             ChannelDataConfig::BinaryLE => f.debug_struct("BinaryLE").finish(),
@@ -166,12 +171,6 @@ pub struct RttActiveUpChannel {
     pub channel_name: String,
     pub data_format: ChannelDataConfig,
     rtt_buffer: RttBuffer,
-
-    /// UTC offset used for creating timestamps
-    ///
-    /// Getting the offset can fail in multi-threaded programs,
-    /// so it needs to be stored.
-    timestamp_offset: UtcOffset,
 }
 
 impl RttActiveUpChannel {
@@ -182,16 +181,15 @@ impl RttActiveUpChannel {
         timestamp_offset: UtcOffset,
         defmt_state: Option<&DefmtState>,
     ) -> Self {
-        let buffer_size = up_channel.buffer_size();
-        let defmt_enabled = up_channel.name() == Some("defmt");
+        let is_defmt_channel = up_channel.name() == Some("defmt");
 
         let data_format = match channel_config.data_format {
-            DataFormat::String if !defmt_enabled => ChannelDataConfig::String {
-                show_timestamps: channel_config.show_timestamps,
+            DataFormat::String if !is_defmt_channel => ChannelDataConfig::String {
+                timestamp_offset: channel_config.show_timestamps.then_some(timestamp_offset),
                 last_line_done: true,
             },
 
-            DataFormat::BinaryLE if !defmt_enabled => ChannelDataConfig::BinaryLE,
+            DataFormat::BinaryLE if !is_defmt_channel => ChannelDataConfig::BinaryLE,
 
             // either DataFormat::Defmt is configured, or defmt_enabled is true
             _ => {
@@ -219,10 +217,11 @@ impl RttActiveUpChannel {
                         (false, true) => "{t} {L} {s}",
                         (false, false) => "{L} {s}",
                     });
-                let mut format = defmt_decoder::log::format::FormatterConfig::custom(format);
+                let mut format = FormatterConfig::custom(format);
                 format.is_timestamp_available = has_timestamp;
-                let formatter = defmt_decoder::log::format::Formatter::new(format);
-                ChannelDataConfig::Defmt { formatter }
+                ChannelDataConfig::Defmt {
+                    formatter: Formatter::new(format),
+                }
             }
         };
 
@@ -239,11 +238,10 @@ impl RttActiveUpChannel {
             });
 
         Self {
+            rtt_buffer: RttBuffer::new(up_channel.buffer_size()),
             up_channel,
             channel_name,
             data_format,
-            rtt_buffer: RttBuffer::new(buffer_size),
-            timestamp_offset,
         }
     }
 
@@ -290,13 +288,10 @@ impl RttActiveUpChannel {
         match self.data_format {
             ChannelDataConfig::BinaryLE => collector.on_binary_data(self.number(), buffer),
             ChannelDataConfig::String {
-                show_timestamps,
+                timestamp_offset,
                 ref mut last_line_done,
             } => {
-                let timestamp = show_timestamps
-                    .then(|| OffsetDateTime::now_utc().to_offset(self.timestamp_offset));
-
-                let string = Self::process_string(buffer, timestamp, last_line_done)?;
+                let string = Self::process_string(buffer, timestamp_offset, last_line_done)?;
                 collector.on_string_data(self.number(), string)
             }
             ChannelDataConfig::Defmt { ref formatter } => {
@@ -308,33 +303,37 @@ impl RttActiveUpChannel {
 
     fn process_string(
         buffer: &[u8],
-        now: Option<OffsetDateTime>,
+        offset: Option<UtcOffset>,
         last_line_done: &mut bool,
     ) -> Result<String> {
         let incoming = String::from_utf8_lossy(buffer);
-        if let Some(now) = now {
-            let mut formatted_data = String::new();
-            for line in incoming.split_inclusive('\n') {
-                if *last_line_done {
-                    let ts = now.format(format_description!(
-                        "[hour repr:24]:[minute]:[second].[subsecond digits:3]"
-                    ))?;
-                    write!(formatted_data, "{ts}: ").expect("Writing to String cannot fail");
-                }
-                writeln!(formatted_data, "{line}").expect("Writing to String cannot fail");
-                *last_line_done = line.ends_with('\n');
+
+        let Some(offset) = offset else {
+            return Ok(incoming.to_string());
+        };
+
+        let timestamp = OffsetDateTime::now_utc()
+            .to_offset(offset)
+            .format(format_description!(
+                "[hour repr:24]:[minute]:[second].[subsecond digits:3]"
+            ))?;
+
+        let mut formatted_data = String::new();
+        for line in incoming.split_inclusive('\n') {
+            if *last_line_done {
+                write!(formatted_data, "{timestamp}: ").expect("Writing to String cannot fail");
             }
-            Ok(formatted_data)
-        } else {
-            Ok(incoming.to_string())
+            write!(formatted_data, "{line}").expect("Writing to String cannot fail");
+            *last_line_done = line.ends_with('\n');
         }
+        Ok(formatted_data)
     }
 
     fn process_defmt(
         &self,
         buffer: &[u8],
         defmt_state: Option<&DefmtState>,
-        formatter: &defmt_decoder::log::format::Formatter,
+        formatter: &Formatter,
     ) -> Result<String> {
         let Some(DefmtState { table, locs }) = defmt_state else {
             return Ok(String::from(
@@ -653,10 +652,11 @@ impl RttActiveTarget {
 
 pub(crate) struct RttBuffer(pub Vec<u8>);
 impl RttBuffer {
-    /// Initialize the buffer and ensure it has enough capacity to match the size of the RTT channel on the target at the time of instantiation. Doing this now prevents later performance impact if the buffer capacity has to be grown dynamically.
+    /// Initialize the buffer and ensure it has enough capacity to match the size of the RTT channel
+    /// on the target at the time of instantiation. Doing this now prevents later performance impact
+    /// if the buffer capacity has to be grown dynamically.
     pub fn new(buffer_size: usize) -> RttBuffer {
-        let rtt_buffer = vec![0u8; buffer_size.max(1)];
-        RttBuffer(rtt_buffer)
+        RttBuffer(vec![0u8; buffer_size.max(1)])
     }
 }
 impl fmt::Debug for RttBuffer {
