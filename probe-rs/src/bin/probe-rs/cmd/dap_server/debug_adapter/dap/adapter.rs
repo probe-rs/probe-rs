@@ -1773,7 +1773,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         &mut self,
         channel_number: usize,
         channel_name: String,
-        data_format: rtt::ChannelDataFormat,
+        data_format: &rtt::ChannelDataConfig,
     ) -> bool {
         let Ok(event_body) = serde_json::to_value(RttChannelEventBody {
             channel_number,
