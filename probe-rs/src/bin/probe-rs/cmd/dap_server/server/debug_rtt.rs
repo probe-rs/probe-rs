@@ -1,8 +1,11 @@
-use crate::cmd::dap_server::{
-    debug_adapter::{dap::adapter::*, protocol::ProtocolAdapter},
-    DebuggerError,
-};
 use crate::util::rtt;
+use crate::{
+    cmd::dap_server::{
+        debug_adapter::{dap::adapter::*, protocol::ProtocolAdapter},
+        DebuggerError,
+    },
+    util::rtt::ChannelDataCallbacks,
+};
 use probe_rs::Core;
 
 /// Manage the active RTT target for a specific SessionData, as well as provide methods to reliably move RTT from target, through the debug_adapter, to the client.
@@ -58,16 +61,33 @@ impl DebuggerRttChannel {
             return false;
         };
 
-        match rtt_channel.get_rtt_data(core, rtt_target.defmt_state.as_ref()) {
-            Ok(Some((channel, data))) => return debug_adapter.rtt_output(channel, data),
-            Ok(None) => {}
-            Err(rtt_error) => {
-                debug_adapter
-                    .show_error_message(&DebuggerError::Other(rtt_error))
-                    .ok();
+        struct StringCollector {
+            data: Option<String>,
+        }
+
+        impl ChannelDataCallbacks for StringCollector {
+            fn on_string_data(
+                &mut self,
+                _channel: usize,
+                data: String,
+            ) -> Result<(), anyhow::Error> {
+                self.data = Some(data);
+                Ok(())
             }
         }
 
-        false
+        let mut out = StringCollector { data: None };
+
+        if let Err(e) = rtt_channel.get_rtt_data(core, rtt_target.defmt_state.as_ref(), &mut out) {
+            debug_adapter
+                .show_error_message(&DebuggerError::Other(e))
+                .ok();
+            return false;
+        }
+
+        match out.data {
+            Some(data) => debug_adapter.rtt_output(self.channel_number, data),
+            None => false,
+        }
     }
 }

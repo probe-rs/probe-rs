@@ -18,7 +18,7 @@ use time::UtcOffset;
 
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 use crate::util::flash::{build_loader, run_flash_download};
-use crate::util::rtt::{self, RttActiveTarget, RttConfig};
+use crate::util::rtt::{self, ChannelDataCallbacks, RttActiveTarget, RttConfig};
 use crate::FormatOptions;
 
 const RTT_RETRIES: usize = 10;
@@ -301,13 +301,35 @@ fn poll_rtt(
 ) -> Result<bool, anyhow::Error> {
     let mut had_data = false;
     if let Some(rtta) = rtta {
-        for (_ch, data) in rtta.poll_rtt_fallible(core)? {
-            if !data.is_empty() {
-                had_data = true;
-            }
-            stdout.write_all(data.as_bytes())?;
+        struct StdOutCollector<'a> {
+            stdout: &'a mut std::io::Stdout,
+            had_data: bool,
         }
-    };
+
+        impl ChannelDataCallbacks for StdOutCollector<'_> {
+            fn on_string_data(
+                &mut self,
+                _channel: usize,
+                data: String,
+            ) -> Result<(), anyhow::Error> {
+                if data.is_empty() {
+                    return Ok(());
+                }
+                self.had_data = true;
+                self.stdout.write_all(data.as_bytes())?;
+                Ok(())
+            }
+        }
+
+        let mut out = StdOutCollector {
+            stdout,
+            had_data: false,
+        };
+
+        rtta.poll_rtt_fallible(core, &mut out)?;
+        had_data = out.had_data;
+    }
+
     Ok(had_data)
 }
 

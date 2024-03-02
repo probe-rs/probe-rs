@@ -5,7 +5,6 @@ use probe_rs::rtt::{DownChannel, Error, Rtt, ScanRegion, UpChannel};
 use probe_rs::Core;
 use probe_rs_target::MemoryRegion;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::fs::File;
 use std::{
     fmt,
@@ -134,6 +133,19 @@ impl std::fmt::Debug for ChannelDataConfig {
     }
 }
 
+pub trait ChannelDataCallbacks {
+    fn on_binary_data(&mut self, channel: usize, data: &[u8]) -> Result<()> {
+        let mut formatted_data = String::with_capacity(data.len() * 4);
+        for element in data {
+            // Width of 4 allows 0xFF to be printed.
+            write!(&mut formatted_data, "{element:#04x}").expect("Writing to String cannot fail");
+        }
+        self.on_string_data(channel, formatted_data)
+    }
+
+    fn on_string_data(&mut self, channel: usize, data: String) -> Result<()>;
+}
+
 #[derive(Debug)]
 pub struct RttActiveUpChannel {
     pub up_channel: UpChannel,
@@ -251,73 +263,60 @@ impl RttActiveUpChannel {
         &mut self,
         core: &mut Core,
         defmt_state: Option<&DefmtState>,
-    ) -> Result<Option<(usize, String)>> {
-        self.poll_rtt(core)
-            .map(|bytes_read| {
-                Ok((self.number(), {
-                    let mut formatted_data = String::new();
-                    match &self.data_format {
-                        ChannelDataConfig::String { show_timestamps } => {
-                            self.process_string(bytes_read, &mut formatted_data, *show_timestamps)
-                        }
-                        ChannelDataConfig::BinaryLE => {
-                            self.process_binary_le(bytes_read, &mut formatted_data)
-                        }
-                        ChannelDataConfig::Defmt { formatter } => self.process_defmt(
-                            bytes_read,
-                            &mut formatted_data,
-                            defmt_state,
-                            formatter,
-                        )?,
-                    };
-                    formatted_data
-                }))
-            })
-            .transpose()
+        collector: &mut impl ChannelDataCallbacks,
+    ) -> Result<()> {
+        let Some(bytes_read) = self.poll_rtt(core) else {
+            return Ok(());
+        };
+
+        let buffer = &self.rtt_buffer.0[..bytes_read];
+
+        match &self.data_format {
+            ChannelDataConfig::BinaryLE => collector.on_binary_data(self.number(), buffer),
+            ChannelDataConfig::String { show_timestamps } => {
+                let string = self.process_string(buffer, *show_timestamps);
+                collector.on_string_data(self.number(), string)
+            }
+            ChannelDataConfig::Defmt { formatter } => {
+                let string = self.process_defmt(buffer, defmt_state, formatter)?;
+                collector.on_string_data(self.number(), string)
+            }
+        }
     }
 
-    fn process_string(
-        &self,
-        bytes_read: usize,
-        formatted_data: &mut String,
-        show_timestamps: bool,
-    ) {
-        let incoming = String::from_utf8_lossy(&self.rtt_buffer.0[..bytes_read]);
+    fn process_string(&self, buffer: &[u8], show_timestamps: bool) -> String {
+        let incoming = String::from_utf8_lossy(buffer);
         if show_timestamps {
             let timestamp = OffsetDateTime::now_utc().to_offset(self.timestamp_offset);
+
+            let mut formatted_data = String::new();
             for line in incoming.split_terminator('\n') {
                 writeln!(formatted_data, "{timestamp}: {line}")
                     .expect("Writing to String cannot fail");
             }
+            formatted_data
         } else {
-            formatted_data.push_str(&incoming);
-        }
-    }
-
-    fn process_binary_le(&self, bytes_read: usize, formatted_data: &mut String) {
-        for element in &self.rtt_buffer.0[..bytes_read] {
-            // Width of 4 allows 0xFF to be printed.
-            write!(formatted_data, "{element:#04x}").expect("Writing to String cannot fail");
+            incoming.to_string()
         }
     }
 
     fn process_defmt(
         &self,
-        bytes_read: usize,
-        formatted_data: &mut String,
+        buffer: &[u8],
         defmt_state: Option<&DefmtState>,
         formatter: &defmt_decoder::log::format::Formatter,
-    ) -> anyhow::Result<()> {
+    ) -> Result<String> {
         let Some(DefmtState { table, locs }) = defmt_state else {
-            formatted_data.push_str(
+            return Ok(String::from(
                 "Trying to process defmt data but table or locations could not be loaded.\n",
-            );
-            return Ok(());
+            ));
         };
 
         let mut stream_decoder = table.new_stream_decoder();
-        stream_decoder.received(&self.rtt_buffer.0[..bytes_read]);
+        stream_decoder.received(buffer);
         let current_dir = std::env::current_dir().unwrap();
+
+        let mut formatted_data = String::new();
         loop {
             match stream_decoder.decode() {
                 Ok(frame) => {
@@ -358,7 +357,7 @@ impl RttActiveUpChannel {
             }
         }
 
-        Ok(())
+        Ok(formatted_data)
     }
 
     pub(crate) fn set_mode(
@@ -462,18 +461,19 @@ impl RttActiveChannel {
         self.up_channel.as_ref().map(|uc| uc.number())
     }
 
-    /// Retrieves available data from the channel and if available, returns `Some(channel_number:String, formatted_data:String)`.
+    /// Retrieves available data from the channel and if available.
     /// If no data is available, or we encounter a recoverable error, it returns `None` value fore `formatted_data`.
     /// Non-recoverable errors are propagated to the caller.
     pub fn get_rtt_data(
         &mut self,
         core: &mut Core,
         defmt_state: Option<&DefmtState>,
-    ) -> Result<Option<(usize, String)>> {
+        collector: &mut impl ChannelDataCallbacks,
+    ) -> Result<()> {
         if let Some(up_channel) = self.up_channel.as_mut() {
-            up_channel.poll_process_rtt_data(core, defmt_state)
+            up_channel.poll_process_rtt_data(core, defmt_state, collector)
         } else {
-            Ok(None)
+            Ok(())
         }
     }
 
@@ -606,15 +606,13 @@ impl RttActiveTarget {
     pub fn poll_rtt_fallible(
         &mut self,
         core: &mut Core,
-    ) -> Result<HashMap<usize, String>, anyhow::Error> {
+        collector: &mut impl ChannelDataCallbacks,
+    ) -> Result<()> {
         let defmt_state = self.defmt_state.as_ref();
-        let mut data = HashMap::new();
         for channel in self.active_channels.iter_mut() {
-            if let Some((channel, formatted_data)) = channel.get_rtt_data(core, defmt_state)? {
-                data.insert(channel, formatted_data);
-            }
+            channel.get_rtt_data(core, defmt_state, collector)?;
         }
-        Ok(data)
+        Ok(())
     }
 }
 
