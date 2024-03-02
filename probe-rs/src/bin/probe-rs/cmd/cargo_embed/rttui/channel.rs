@@ -36,16 +36,6 @@ impl std::fmt::Debug for ChannelData {
 }
 
 impl ChannelData {
-    fn new_strings() -> Self {
-        Self::Strings {
-            messages: Vec::new(),
-        }
-    }
-
-    fn new_binary() -> Self {
-        Self::Binary { data: Vec::new() }
-    }
-
     fn clear(&mut self) {
         match self {
             Self::Strings { messages } => messages.clear(),
@@ -87,8 +77,10 @@ impl<'defmt> ChannelState<'defmt> {
             name,
             scroll_offset: 0,
             data: match data {
-                DataFormat::String | DataFormat::Defmt => ChannelData::new_strings(),
-                DataFormat::BinaryLE => ChannelData::new_binary(),
+                DataFormat::String | DataFormat::Defmt => ChannelData::Strings {
+                    messages: Vec::new(),
+                },
+                DataFormat::BinaryLE => ChannelData::Binary { data: Vec::new() },
             },
             tcp_socket,
             defmt_info,
