@@ -329,7 +329,7 @@ impl<'defmt> App<'defmt> {
             }
             KeyCode::Enter => self.push_rtt(core),
             KeyCode::Char(c) => self.current_tab_mut().append_char(c),
-            KeyCode::Backspace => _ = self.current_tab_mut().pop_char(),
+            KeyCode::Backspace => self.current_tab_mut().pop_char(),
             KeyCode::PageUp => self.current_tab_mut().scroll_up(),
             KeyCode::PageDown => self.current_tab_mut().scroll_down(),
             _ => {}

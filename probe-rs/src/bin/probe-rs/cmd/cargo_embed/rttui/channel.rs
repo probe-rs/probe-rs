@@ -123,30 +123,28 @@ impl<'defmt> ChannelState<'defmt> {
             .unwrap_or_default()
     }
 
-    pub fn scroll_offset(&self) -> usize {
-        self.scroll_offset
-    }
-
-    pub fn scroll_up(&mut self) {
-        self.scroll_offset += 1;
-    }
-
-    pub fn scroll_down(&mut self) {
-        if self.scroll_offset > 0 {
-            self.scroll_offset -= 1;
-        }
-    }
-
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn scroll_offset(&self) -> usize {
+        self.scroll_offset
     }
 
     pub fn set_scroll_offset(&mut self, value: usize) {
         self.scroll_offset = value;
     }
 
+    pub fn scroll_up(&mut self) {
+        self.set_scroll_offset(self.scroll_offset().saturating_add(1));
+    }
+
+    pub fn scroll_down(&mut self) {
+        self.set_scroll_offset(self.scroll_offset().saturating_sub(1));
+    }
+
     pub fn clear(&mut self) {
-        self.scroll_offset = 0;
+        self.set_scroll_offset(0);
         self.data.clear();
         if let Some(up) = self.up_channel.as_mut() {
             up.data_format.clear();
@@ -181,8 +179,11 @@ impl<'defmt> ChannelState<'defmt> {
 
                 for line in data.split_terminator('\n') {
                     messages.push(line.to_string());
+
                     if *self.scroll_offset != 0 {
-                        *self.scroll_offset += 1;
+                        // We're not on the bottom of the list, make sure we don't
+                        // move the rendered messages.
+                        *self.scroll_offset = self.scroll_offset.saturating_add(1);
                     }
                 }
 
