@@ -10,7 +10,8 @@ use crate::util::rtt::{
 };
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct ChannelConfig {
+// TODO: separate this (UI config) from channel config
+pub struct TabConfig {
     pub up: Option<usize>,
     pub down: Option<usize>,
     pub name: Option<String>,
@@ -19,12 +20,12 @@ pub struct ChannelConfig {
     pub socket: Option<SocketAddr>,
 }
 
-pub enum ChannelData {
+pub enum TabData {
     Strings { messages: Vec<String> },
     Binary { data: Vec<u8> },
 }
 
-impl std::fmt::Debug for ChannelData {
+impl std::fmt::Debug for TabData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Strings { messages: data } => {
@@ -35,7 +36,7 @@ impl std::fmt::Debug for ChannelData {
     }
 }
 
-impl ChannelData {
+impl TabData {
     fn clear(&mut self) {
         match self {
             Self::Strings { messages } => messages.clear(),
@@ -45,17 +46,17 @@ impl ChannelData {
 }
 
 #[derive(Debug)]
-pub struct ChannelState<'defmt> {
+pub struct Tab<'defmt> {
     up_channel: Option<RttActiveUpChannel>,
     down_channel: Option<RttActiveDownChannel>,
     name: String,
-    data: ChannelData,
+    data: TabData,
     defmt_info: Option<&'defmt DefmtState>,
     scroll_offset: usize,
     tcp_socket: Option<TcpPublisher>,
 }
 
-impl<'defmt> ChannelState<'defmt> {
+impl<'defmt> Tab<'defmt> {
     pub fn new(
         up_channel: Option<RttActiveUpChannel>,
         down_channel: Option<RttActiveDownChannel>,
@@ -77,10 +78,10 @@ impl<'defmt> ChannelState<'defmt> {
             name,
             scroll_offset: 0,
             data: match data {
-                DataFormat::String | DataFormat::Defmt => ChannelData::Strings {
+                DataFormat::String | DataFormat::Defmt => TabData::Strings {
                     messages: Vec::new(),
                 },
-                DataFormat::BinaryLE => ChannelData::Binary { data: Vec::new() },
+                DataFormat::BinaryLE => TabData::Binary { data: Vec::new() },
             },
             tcp_socket,
             defmt_info,
@@ -146,7 +147,7 @@ impl<'defmt> ChannelState<'defmt> {
     /// This function can return a [`time::Error`] if getting the local time or formatting a timestamp fails.
     pub fn poll_rtt(&mut self, core: &mut Core) -> Result<(), time::Error> {
         struct DataCollector<'a> {
-            data: &'a mut ChannelData,
+            data: &'a mut TabData,
             scroll_offset: &'a mut usize,
             tcp_stream: Option<&'a mut TcpPublisher>,
         }
@@ -157,8 +158,8 @@ impl<'defmt> ChannelState<'defmt> {
                 }
 
                 let messages = match &mut self.data {
-                    ChannelData::Strings { messages, .. } => messages,
-                    ChannelData::Binary { .. } => {
+                    TabData::Strings { messages, .. } => messages,
+                    TabData::Binary { .. } => {
                         unreachable!()
                     }
                 };
@@ -182,8 +183,8 @@ impl<'defmt> ChannelState<'defmt> {
                 }
 
                 match &mut self.data {
-                    ChannelData::Binary { data } => data.extend_from_slice(incoming),
-                    ChannelData::Strings { .. } => {
+                    TabData::Binary { data } => data.extend_from_slice(incoming),
+                    TabData::Strings { .. } => {
                         unreachable!()
                     }
                 }
@@ -214,7 +215,7 @@ impl<'defmt> ChannelState<'defmt> {
         }
     }
 
-    pub(crate) fn data(&self) -> &ChannelData {
+    pub(crate) fn data(&self) -> &TabData {
         &self.data
     }
 }

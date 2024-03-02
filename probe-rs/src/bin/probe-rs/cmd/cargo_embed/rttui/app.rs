@@ -17,18 +17,18 @@ use std::{collections::BTreeMap, io::Write};
 use std::{fmt::write, path::PathBuf, sync::mpsc::TryRecvError};
 
 use crate::{
-    cmd::cargo_embed::rttui::channel::ChannelData,
+    cmd::cargo_embed::rttui::tab::TabData,
     util::rtt::{DataFormat, DefmtState, RttActiveTarget},
 };
 
 use super::super::config;
-use super::{channel::ChannelState, event::Events};
+use super::{event::Events, tab::Tab};
 
 use event::KeyModifiers;
 
 /// App holds the state of the application
 pub struct App<'defmt> {
-    tabs: Vec<ChannelState<'defmt>>,
+    tabs: Vec<Tab<'defmt>>,
     current_tab: usize,
 
     terminal: Terminal<CrosstermBackend<std::io::Stdout>>,
@@ -59,7 +59,7 @@ impl<'defmt> App<'defmt> {
         }
 
         for channel in config.rtt.channels {
-            tabs.push(ChannelState::new(
+            tabs.push(Tab::new(
                 channel.up.and_then(|up| up_channels.remove(&up)),
                 channel.down.and_then(|down| down_channels.remove(&down)),
                 channel.name,
@@ -72,7 +72,7 @@ impl<'defmt> App<'defmt> {
         // Display all detected channels as String channels
         for channel in up_channels.into_values() {
             let number = channel.number();
-            tabs.push(ChannelState::new(
+            tabs.push(Tab::new(
                 Some(channel),
                 down_channels.remove(&number),
                 None,
@@ -83,7 +83,7 @@ impl<'defmt> App<'defmt> {
         }
 
         for channel in down_channels.into_values() {
-            tabs.push(ChannelState::new(
+            tabs.push(Tab::new(
                 None,
                 Some(channel),
                 None,
@@ -153,7 +153,7 @@ impl<'defmt> App<'defmt> {
 
                 height = chunks[1].height as usize;
                 match tabs[current_tab].data() {
-                    ChannelData::Strings { messages, .. } => {
+                    TabData::Strings { messages, .. } => {
                         // We need to collect to generate message_num :(
                         messages_wrapped = messages
                             .iter()
@@ -161,7 +161,7 @@ impl<'defmt> App<'defmt> {
                             .map(|s| s.into_owned())
                             .collect();
                     }
-                    ChannelData::Binary { data } => {
+                    TabData::Binary { data } => {
                         // probably pretty bad
                         messages_wrapped.push(data.iter().fold(
                             String::with_capacity(data.len() * 6),
@@ -230,7 +230,7 @@ impl<'defmt> App<'defmt> {
 
                 for (i, tab) in self.tabs.iter().enumerate() {
                     match tab.data() {
-                        ChannelData::Strings { messages: data, .. } => {
+                        TabData::Strings { messages: data, .. } => {
                             let extension = "txt";
                             let name = format!("{}_channel{}.{}", self.logname, i, extension);
                             let sanitize_options = sanitize_filename::Options {
@@ -263,7 +263,7 @@ impl<'defmt> App<'defmt> {
                             }
                         }
 
-                        ChannelData::Binary { data, .. } => {
+                        TabData::Binary { data, .. } => {
                             let extension = "dat";
                             let name = format!("{}_channel{}.{}", self.logname, i, extension);
                             let sanitize_options = sanitize_filename::Options {
@@ -321,11 +321,11 @@ impl<'defmt> App<'defmt> {
         false
     }
 
-    pub fn current_tab(&self) -> &ChannelState<'defmt> {
+    pub fn current_tab(&self) -> &Tab<'defmt> {
         &self.tabs[self.current_tab]
     }
 
-    pub fn current_tab_mut(&mut self) -> &mut ChannelState<'defmt> {
+    pub fn current_tab_mut(&mut self) -> &mut Tab<'defmt> {
         &mut self.tabs[self.current_tab]
     }
 
@@ -370,7 +370,7 @@ fn layout_chunks(
 fn render_tabs(
     f: &mut ratatui::Frame,
     chunk: ratatui::prelude::Rect,
-    tabs: &[ChannelState<'_>],
+    tabs: &[Tab<'_>],
     current_tab: usize,
 ) {
     let tab_names = tabs

@@ -10,7 +10,7 @@ use std::{path::PathBuf, time::Duration};
 
 use crate::util::logging::LevelFilter;
 
-use super::rttui::channel::ChannelConfig;
+use super::rttui::tab::TabConfig;
 
 /// A struct which holds all configs.
 #[derive(Debug, Clone)]
@@ -84,7 +84,7 @@ pub struct Rtt {
     /// Up mode, when not specified per-channel.  Target picks if neither is set
     pub up_mode: Option<ChannelMode>,
     /// Channels to be displayed, and options for them
-    pub channels: Vec<ChannelConfig>,
+    pub channels: Vec<TabConfig>,
     /// Connection timeout in ms.
     #[serde(with = "duration_ms")]
     pub timeout: Duration,
