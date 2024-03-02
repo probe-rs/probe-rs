@@ -375,7 +375,7 @@ impl ArmDebugSequence for CC13xxCC26xx {
                 // We avoid the live scan for the following reasons:
                 // 1. Only the ICEPICK is connected at boot so we need to manually the CPU to the scan chain
                 // 2. Entering test logic reset disconects the CPU again
-                interface.configure_jtag()?;
+                interface.configure_jtag(true)?;
             }
             Some(WireProtocol::Swd) => {
                 return Err(ArmDebugSequenceError::SequenceSpecific(
