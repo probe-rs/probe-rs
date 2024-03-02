@@ -105,6 +105,9 @@ pub struct RttChannelConfig {
     #[serde(default = "default_include_location")]
     // Control the inclusion of source location information for DataFormat::Defmt.
     pub show_location: bool,
+
+    #[serde(default)]
+    pub defmt_log_format: Option<String>,
 }
 
 pub enum ChannelDataConfig {
@@ -209,19 +212,22 @@ impl RttActiveChannel {
                 };
 
                 // Format options:
-                // 1. Custom format
-                // 2. Default with timestamp with location
-                // 3. Default with timestamp without location
-                // 4. Default without timestamp with location
-                // 5. Default without timestamp without location
-                let format = rtt_config.log_format.as_deref().unwrap_or(
-                    match (channel_config.show_location, has_timestamp) {
+                // 1. Custom format for the channel
+                // 2. Custom default format
+                // 3. Default with timestamp with location
+                // 4. Default with timestamp without location
+                // 5. Default without timestamp with location
+                // 6. Default without timestamp without location
+                let format = channel_config
+                    .defmt_log_format
+                    .as_deref()
+                    .or(rtt_config.log_format.as_deref())
+                    .unwrap_or(match (channel_config.show_location, has_timestamp) {
                         (true, true) => "{t} {L} {s}\n└─ {m} @ {F}:{l}",
                         (true, false) => "{L} {s}\n└─ {m} @ {F}:{l}",
                         (false, true) => "{t} {L} {s}",
                         (false, false) => "{L} {s}",
-                    },
-                );
+                    });
                 let mut format = defmt_decoder::log::format::FormatterConfig::custom(format);
                 format.is_timestamp_available = has_timestamp;
                 let formatter = defmt_decoder::log::format::Formatter::new(format);
