@@ -150,6 +150,7 @@ impl<'defmt> App<'defmt> {
 
                 let height = chunks[1].height as usize;
 
+                // FIXME: Collecting messages over and over again isn't the most efficient thing
                 let binary_message;
                 let messages_wrapped = match tab.data() {
                     TabData::Strings { messages, .. } => {
@@ -160,11 +161,13 @@ impl<'defmt> App<'defmt> {
                             .collect()
                     }
                     TabData::Binary { data } => {
-                        // probably pretty bad
                         binary_message = data.iter().fold(
-                            String::with_capacity(data.len() * 6),
+                            String::with_capacity(data.len() * 5 - 1),
                             |mut output, byte| {
-                                let _ = write(&mut output, format_args!("{byte:#04x}, "));
+                                if !output.is_empty() {
+                                    output.push(' ');
+                                }
+                                let _ = write(&mut output, format_args!("{byte:#04x}"));
                                 output
                             },
                         );
