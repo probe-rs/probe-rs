@@ -229,17 +229,21 @@ impl<'defmt> App<'defmt> {
                 };
 
                 for (i, tab) in self.tabs.iter().enumerate() {
+                    let extension = match tab.data() {
+                        TabData::Strings { .. } => "txt",
+                        TabData::Binary { .. } => "dat",
+                    };
+                    let name = format!("{}_channel{i}.{extension}", self.logname);
+                    let sanitize_options = sanitize_filename::Options {
+                        replacement: "_",
+                        ..Default::default()
+                    };
+                    let sanitized_name =
+                        sanitize_filename::sanitize_with_options(name, sanitize_options);
+                    let final_path = path.join(sanitized_name);
+
                     match tab.data() {
-                        TabData::Strings { messages: data, .. } => {
-                            let extension = "txt";
-                            let name = format!("{}_channel{}.{}", self.logname, i, extension);
-                            let sanitize_options = sanitize_filename::Options {
-                                replacement: "_",
-                                ..Default::default()
-                            };
-                            let sanitized_name =
-                                sanitize_filename::sanitize_with_options(name, sanitize_options);
-                            let final_path = path.join(sanitized_name);
+                        TabData::Strings { messages } => {
                             let mut file = match std::fs::File::create(&final_path) {
                                 Ok(file) => file,
                                 Err(e) => {
@@ -251,7 +255,7 @@ impl<'defmt> App<'defmt> {
                                     continue;
                                 }
                             };
-                            for line in data {
+                            for line in messages {
                                 if let Err(e) = writeln!(file, "{line}") {
                                     eprintln!("\nError writing log channel {i}: {e}");
                                     break;
@@ -264,35 +268,7 @@ impl<'defmt> App<'defmt> {
                         }
 
                         TabData::Binary { data, .. } => {
-                            let extension = "dat";
-                            let name = format!("{}_channel{}.{}", self.logname, i, extension);
-                            let sanitize_options = sanitize_filename::Options {
-                                replacement: "_",
-                                ..Default::default()
-                            };
-                            let sanitized_name =
-                                sanitize_filename::sanitize_with_options(name, sanitize_options);
-                            let final_path = path.join(sanitized_name);
-                            let mut file = match std::fs::File::create(&final_path) {
-                                Ok(file) => file,
-                                Err(e) => {
-                                    eprintln!(
-                                        "\nCould not create log file {}: {}",
-                                        final_path.display(),
-                                        e
-                                    );
-                                    continue;
-                                }
-                            };
-                            match file.write(data) {
-                                Ok(_) => {}
-                                Err(e) => {
-                                    eprintln!("\nError writing log channel {i}: {e}");
-                                    continue;
-                                }
-                            }
-                            // Flush file
-                            if let Err(e) = file.flush() {
+                            if let Err(e) = std::fs::write(final_path, data) {
                                 eprintln!("Error writing log channel {i}: {e}")
                             }
                         }
