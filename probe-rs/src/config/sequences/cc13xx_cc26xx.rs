@@ -9,9 +9,7 @@ use crate::probe::{DebugProbeError, WireProtocol};
 
 /// Marker struct indicating initialization sequencing for cc13xx_cc26xx family parts.
 #[derive(Debug)]
-pub struct CC13xxCC26xx {
-    target: String,
-}
+pub struct CC13xxCC26xx {}
 
 // IR register values, see https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf table 6-7
 const IR_ROUTER: u64 = 0x02;
@@ -36,8 +34,8 @@ fn set_n_bits(x: u32) -> u64 {
 
 impl CC13xxCC26xx {
     /// Create the sequencer for the cc13xx_cc26xx family of parts.
-    pub fn create(target: String) -> Arc<Self> {
-        Arc::new(Self { target })
+    pub fn create() -> Arc<Self> {
+        Arc::new(Self {})
     }
 
     /// This function implements a Zero Bit Scan(ZBS)
@@ -254,6 +252,55 @@ impl CC13xxCC26xx {
 
         Ok(())
     }
+    fn ctag_to_jtag(
+        &self,
+        interface: &mut dyn DapProbe,
+        jtag_state: &mut JtagState,
+    ) -> Result<(), ArmError> {
+        // Load IR with BYPASS
+        self.shift_ir(interface, IR_BYPASS, jtag_state, JtagState::RunTestIdle)?;
+
+        // cJTAG: Open Command Window
+        // This is described in section 6.2.2.1 of this document:
+        // https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf
+        // Also refer to the openocd implementation:
+        // https://github.com/openocd-org/openocd/blob/master/tcl/target/ti-cjtag.cfg#L6-L35
+        self.zero_bit_scan(interface)?;
+        self.zero_bit_scan(interface)?;
+        self.shift_dr(interface, 1, 0x01, jtag_state, JtagState::RunTestIdle)?;
+
+        // cJTAG: Switch to 4 pin
+        // This is described in section 6.2.2.2 of this document:
+        // https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf
+        // Also refer to the openocd implementation:
+        // https://github.com/openocd-org/openocd/blob/master/tcl/target/ti-cjtag.cfg#L6-L35
+        self.shift_dr(
+            interface,
+            2,
+            set_n_bits(2),
+            jtag_state,
+            JtagState::RunTestIdle,
+        )?;
+        self.shift_dr(
+            interface,
+            9,
+            set_n_bits(9),
+            jtag_state,
+            JtagState::RunTestIdle,
+        )?;
+
+        // Load IR with BYPASS so that future state transitions don't affect IR
+        self.shift_ir(interface, IR_BYPASS, jtag_state, JtagState::RunTestIdle)?;
+
+        // Connect CPU DAP to top level TAP
+        // This is done by interacting with the top level TAP which is called ICEPICK
+        // Some resouces on the ICEPICK, note that the cc13xx_cc26xx family implements ICEPICK-C
+        // https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf, Section 6.3
+        // https://software-dl.ti.com/ccs/esd/documents/xdsdebugprobes/emu_icepick.html
+        self.enable_icepick(interface, jtag_state)?;
+
+        Ok(())
+    }
 }
 
 impl ArmDebugSequence for CC13xxCC26xx {
@@ -263,36 +310,20 @@ impl ArmDebugSequence for CC13xxCC26xx {
         _core_type: crate::CoreType,
         _debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
-        let mut reset_reg: u64 = 0x0000_010C; // This is the default offset for all devices, x4 has different base addr
-        let reset_val: u32 = 0x0000_0001; // This is the default value to write for all devices
+        interface.flush()?;
+        // Do a full system reset (emulated PIN reset)
+        // CPU reset alone is not possible since AIRCR.SYSRESETREQ will be
+        // converted to system reset on these devices.
+        //
+        // The below code writes to the following bit
+        // AON_PMCTL.RESETCTL.SYSRESET=1
+        interface.write_word_32(0x4009_0028, 0x8000_0000).ok();
 
-        // The TI family naming scheme is CCxxxN where N is the sub family
-        // The part names always have 4 digits and are prefixed by CC
-        // The devices ending with 4 have a different base address for the AON PMCTL register
-        const SUB_FAMILY_DIGIT_OFFSET: usize = 5;
-        match self.target.chars().nth(SUB_FAMILY_DIGIT_OFFSET).unwrap() {
-            '4' => {
-                // AON_PMCTL_RESETCTL has a different offset for the x4 devices
-                reset_reg += 0x58080000;
-            }
-            '2' | '1' | '0' => {
-                // AON_PMCTL_RESETCTL
-                // From the TRM https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf, section 7.7.1.3:
-                // "Reset requests from the MCU system is by default set to result in a  system reset when any warm reset source is triggered"
-                // A system reset will reset the debug interface, so we need to bypass this behavior.
-                // We do this by setting the `RESET_REQ` bit in the `RESETCTL` register.
-                reset_reg += 0x4008_2000;
-            }
-            _ => {
-                return Err(ArmDebugSequenceError::SequenceSpecific(
-                    "Unknown device family".into(),
-                )
-                .into());
-            }
-        }
+        // Since the system went down, including the debug, we should flush any pending operations
+        interface.flush().ok();
 
-        interface.write_word_32(reset_reg, reset_val)?;
-        Ok(())
+        // This indicates to the caller that a reattach is required
+        Err(ArmError::ReAttachRequired)
     }
 
     fn debug_port_setup(
@@ -318,57 +349,7 @@ impl ArmDebugSequence for CC13xxCC26xx {
                         DebugProbeError::CommandNotSupportedByProbe("jtag_sequence"),
                     ));
                 }
-                // Load IR with BYPASS
-                self.shift_ir(
-                    interface,
-                    IR_BYPASS,
-                    &mut jtag_state,
-                    JtagState::RunTestIdle,
-                )?;
-
-                // cJTAG: Open Command Window
-                // This is described in section 6.2.2.1 of this document:
-                // https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf
-                // Also refer to the openocd implementation:
-                // https://github.com/openocd-org/openocd/blob/master/tcl/target/ti-cjtag.cfg#L6-L35
-                self.zero_bit_scan(interface)?;
-                self.zero_bit_scan(interface)?;
-                self.shift_dr(interface, 1, 0x01, &mut jtag_state, JtagState::RunTestIdle)?;
-
-                // cJTAG: Switch to 4 pin
-                // This is described in section 6.2.2.2 of this document:
-                // https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf
-                // Also refer to the openocd implementation:
-                // https://github.com/openocd-org/openocd/blob/master/tcl/target/ti-cjtag.cfg#L6-L35
-                self.shift_dr(
-                    interface,
-                    2,
-                    set_n_bits(2),
-                    &mut jtag_state,
-                    JtagState::RunTestIdle,
-                )?;
-                self.shift_dr(
-                    interface,
-                    9,
-                    set_n_bits(9),
-                    &mut jtag_state,
-                    JtagState::RunTestIdle,
-                )?;
-
-                // Load IR with BYPASS so that future state transitions don't affect IR
-                self.shift_ir(
-                    interface,
-                    IR_BYPASS,
-                    &mut jtag_state,
-                    JtagState::RunTestIdle,
-                )?;
-
-                // Connect CPU DAP to top level TAP
-                // This is done by interacting with the top level TAP which is called ICEPICK
-                // Some resouces on the ICEPICK, note that the cc13xx_cc26xx family implements ICEPICK-C
-                // https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf, Section 6.3
-                // https://software-dl.ti.com/ccs/esd/documents/xdsdebugprobes/emu_icepick.html
-                self.enable_icepick(interface, &mut jtag_state)?;
+                self.ctag_to_jtag(interface, &mut jtag_state)?;
 
                 // Call the configure JTAG function. We don't derive the scan chain at runtime
                 // for these devices, but regardless the scan chain must be told to the debug probe
