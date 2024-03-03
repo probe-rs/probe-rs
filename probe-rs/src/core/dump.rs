@@ -53,6 +53,7 @@ impl CoreDump {
         let mut file = OpenOptions::new()
             .create(true)
             .write(true)
+            .truncate(true)
             .open(path)
             .map_err(|e| {
                 CoreDumpError::CoreDumpFileWrite(e, dunce::canonicalize(path).unwrap_or_default())
