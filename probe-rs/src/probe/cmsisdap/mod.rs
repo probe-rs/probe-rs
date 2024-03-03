@@ -506,58 +506,41 @@ impl CmsisDap {
                 }
 
                 return Err(DapError::SwdProtocol.into());
-            } else {
-                match response.last_transfer_response.ack {
-                    Ack::Ok => {
-                        tracing::trace!("Transfer status: ACK");
-                        return Ok(response.transfers[response.transfers.len() - 1].data);
-                    }
-                    Ack::NoAck => {
-                        tracing::trace!(
-                            "Transfer status for batch item {}/{}: NACK",
-                            count,
-                            batch.len()
-                        );
-                        // TODO: Try a reset?
-                        return Err(DapError::NoAcknowledge.into());
-                    }
-                    Ack::Fault => {
-                        tracing::trace!(
-                            "Transfer status for batch item {}/{}: FAULT",
-                            count,
-                            batch.len()
-                        );
+            }
 
-                        // To avoid a potential endless recursion,
-                        // call a separate function to read the ctrl register,
-                        // which doesn't use the batch API.
-                        let ctrl = self.read_ctrl_register()?;
+            match response.last_transfer_response.ack {
+                Ack::Ok => {
+                    tracing::trace!("Transfer status: ACK");
+                    return Ok(response.transfers[response.transfers.len() - 1].data);
+                }
+                Ack::NoAck => {
+                    tracing::trace!(
+                        "Transfer status for batch item {}/{}: NACK",
+                        count,
+                        batch.len()
+                    );
+                    // TODO: Try a reset?
+                    return Err(DapError::NoAcknowledge.into());
+                }
+                Ack::Fault => {
+                    tracing::trace!(
+                        "Transfer status for batch item {}/{}: FAULT",
+                        count,
+                        batch.len()
+                    );
 
-                        tracing::trace!("Ctrl/Stat register value is: {:?}", ctrl);
+                    // To avoid a potential endless recursion,
+                    // call a separate function to read the ctrl register,
+                    // which doesn't use the batch API.
+                    let ctrl = self.read_ctrl_register()?;
 
-                        if ctrl.sticky_err() {
-                            let mut abort = Abort(0);
+                    tracing::trace!("Ctrl/Stat register value is: {:?}", ctrl);
 
-                            // Clear sticky error flags.
-                            abort.set_stkerrclr(ctrl.sticky_err());
-
-                            RawDapAccess::raw_write_register(
-                                self,
-                                PortType::DebugPort,
-                                Abort::ADDRESS,
-                                abort.into(),
-                            )?;
-                        }
-
-                        tracing::trace!("draining {:?} and retries left {:?}", count, retry);
-                        batch.drain(0..count);
-                        continue;
-                    }
-                    Ack::Wait => {
-                        tracing::trace!("wait",);
-
+                    if ctrl.sticky_err() {
                         let mut abort = Abort(0);
-                        abort.set_dapabort(true);
+
+                        // Clear sticky error flags.
+                        abort.set_stkerrclr(ctrl.sticky_err());
 
                         RawDapAccess::raw_write_register(
                             self,
@@ -565,9 +548,26 @@ impl CmsisDap {
                             Abort::ADDRESS,
                             abort.into(),
                         )?;
-
-                        return Err(DapError::WaitResponse.into());
                     }
+
+                    tracing::trace!("draining {:?} and retries left {:?}", count, retry);
+                    batch.drain(0..count);
+                    continue;
+                }
+                Ack::Wait => {
+                    tracing::trace!("wait",);
+
+                    let mut abort = Abort(0);
+                    abort.set_dapabort(true);
+
+                    RawDapAccess::raw_write_register(
+                        self,
+                        PortType::DebugPort,
+                        Abort::ADDRESS,
+                        abort.into(),
+                    )?;
+
+                    return Err(DapError::WaitResponse.into());
                 }
             }
         }
