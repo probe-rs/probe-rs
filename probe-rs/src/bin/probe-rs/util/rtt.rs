@@ -87,9 +87,7 @@ pub struct RttConfig {
     pub channels: Vec<RttChannelConfig>,
 }
 
-/// The User specified configuration for each active RTT Channel. The configuration is passed via a
-/// DAP Client configuration (`launch.json`). If no configuration is specified, the defaults will be
-/// `DataFormat::String` and `show_timestamps=false`.
+/// The User specified configuration for each active RTT Channel.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct RttChannelConfig {
@@ -110,6 +108,16 @@ pub struct RttChannelConfig {
     #[serde(default)]
     /// Control the output format for DataFormat::Defmt.
     pub defmt_log_format: Option<String>,
+}
+
+/// The User specified configuration for each active RTT Channel. The configuration is passed via a
+/// DAP Client configuration (`launch.json`). If no configuration is specified, the defaults will be
+/// `DataFormat::String` and `show_timestamps=false`.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct RttDownChannelConfig {
+    pub channel_number: Option<usize>,
+    pub operating_mode: Option<String>,
 }
 
 pub enum ChannelDataConfig {

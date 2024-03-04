@@ -45,28 +45,40 @@ connect_under_reset = false
 [default.rtt]
 # Whether or not an RTTUI should be opened after flashing.
 enabled = false
-# How the target handles RTT outputs that won't fit in the buffer.  This can be
-# overridden per-channel. If left unset, the firmware will determine the default
-# for each RTT up channel.
-#   NoBlockSkip - Skip writing the data completely if it doesn't fit in its
-#                 entirety.
-#   NoBlockTrim - Write as much as possible of the data and ignore the rest.
-#   BlockIfFull - Spin until the host reads data.  Can result in app freezing.
-#
-# up_mode = "BlockIfFull"
-
-# A list of channel associations to be displayed. If left empty, all channels are displayed.
-# up, down (Optional) - RTT channel numbers
-# name     (Optional) - String to be displayed in the RTTUI tab
-# up_mode  (Optional) - RTT channel specific as described above
-# format   (Required) - How to interpret data from target firmware.  One of:
-#              String - Directly show output from the target
-#              Defmt  - Format output on the host, see https://defmt.ferrous-systems.com/
-#              BinaryLE - Display as raw hex
-# socket   (Optional, up channel only) - Server socket address (for optional external frontend or endpoint).
-channels = [
-    # { up = 0, down = 0, name = "name", up_mode = "BlockIfFull", format = "Defmt" },
-    # { up = 1, down = 0, name = "name", up_mode = "BlockIfFull", format = "String", socket = "127.0.0.1:12345" },
+# A list of up (target -> host) channel settings associations to be displayed. If left empty, all channels are displayed.
+# channel_number      - RTT channel identifier number
+# mode     (Optional) - RTT operation mode. Describes how the target handles RTT outputs that won't
+#                       fit in the buffer. If left unset, the firmware will determine the default
+#                       for each RTT up channel.
+#              * NoBlockSkip - Skip writing the data completely if it doesn't fit in its
+#                            entirety.
+#              * NoBlockTrim - Write as much as possible of the data and ignore the rest.
+#              * BlockIfFull - Spin until the host reads data.  Can result in app freezing.
+# format   (Optional) - How to interpret data from target firmware.  One of:
+#              * String - Directly show output from the target (default)
+#              * Defmt  - Format output on the host, see https://defmt.ferrous-systems.com/
+#              * BinaryLE - Display as raw hex
+# socket   (Optional) - Server socket address (for optional external frontend or endpoint).
+# TODO: change format into objects, add per-format settings (e.g. defmt format string)
+# TODO: per-channel log settings
+up_channels = [
+    # { channel_number = 0, mode = "BlockIfFull", format = "Defmt" },
+    # { channel_number = 1, mode = "BlockIfFull", format = "String", socket = "127.0.0.1:12345" },
+]
+# A list of down (host -> target) channel settings. You can select a down channel for each UI tab,
+# which will be used to send data to the target.
+down_channels = [
+    # { channel_number: 0, mode = "BlockIfFull" }
+]
+# UI tab settings. All up channels are displayed, except when hidden here. You can specify how each
+# tab is displayed and whether they allow sending data to the target.
+# up_channel              - The channel_number of the RTT up channel to display
+# hide         (Optional) - Whether to hide the tab. Defaults to false.
+# down_channel (Optional) - The channel_number of the RTT down channel to use for this tab.
+# name         (Optional) - String to be displayed in the RTTUI tab. Defaults to the channel name.
+tabs = [
+    { up_channel = 0, down_channel = 0, name = "name" },
+    { up_channel = 1, hide = true },
 ]
 # The duration in ms for which the logger should retry to attach to RTT.
 timeout = 3000
