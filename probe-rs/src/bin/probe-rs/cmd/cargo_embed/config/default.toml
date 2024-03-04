@@ -45,8 +45,16 @@ connect_under_reset = false
 [default.rtt]
 # Whether or not an RTTUI should be opened after flashing.
 enabled = false
+# The duration in ms for which the logger should retry to attach to RTT.
+timeout = 3000
+# Whether timestamps in the RTTUI are enabled
+show_timestamps = true
+# Whether to save rtt history buffer on exit.
+log_enabled = false
+# Where to save rtt history buffer relative to manifest path.
+log_path = "./logs"
 # A list of up (target -> host) channel settings associations to be displayed. If left empty, all channels are displayed.
-# channel_number      - RTT channel identifier number
+# object key  - RTT channel identifier number
 # mode     (Optional) - RTT operation mode. Describes how the target handles RTT outputs that won't
 #                       fit in the buffer. If left unset, the firmware will determine the default
 #                       for each RTT up channel.
@@ -62,14 +70,20 @@ enabled = false
 # TODO: change format into objects, add per-format settings (e.g. defmt format string)
 # TODO: per-channel log settings
 up_channels = [
-    # { channel_number = 0, mode = "BlockIfFull", format = "Defmt" },
-    # { channel_number = 1, mode = "BlockIfFull", format = "String", socket = "127.0.0.1:12345" },
+    # { channel = 0, mode = "BlockIfFull", format = "Defmt" },
+    # { channel = 1, mode = "BlockIfFull", format = "String", socket = "127.0.0.1:12345" },
 ]
+
 # A list of down (host -> target) channel settings. You can select a down channel for each UI tab,
 # which will be used to send data to the target.
+# object key  - RTT channel identifier number
+# mode     (Optional) - RTT operation mode. Describes how the target handles RTT outputs that won't
+#                       fit in the buffer. If left unset, the firmware will determine the default
+#                       for each RTT down channel.
 down_channels = [
-    # { channel_number: 0, mode = "BlockIfFull" }
+    # { channel = 0, mode = "BlockIfFull" }
 ]
+
 # UI tab settings. All up channels are displayed, except when hidden here. You can specify how each
 # tab is displayed and whether they allow sending data to the target.
 # up_channel              - The channel_number of the RTT up channel to display
@@ -77,17 +91,9 @@ down_channels = [
 # down_channel (Optional) - The channel_number of the RTT down channel to use for this tab.
 # name         (Optional) - String to be displayed in the RTTUI tab. Defaults to the channel name.
 tabs = [
-    { up_channel = 0, down_channel = 0, name = "name" },
-    { up_channel = 1, hide = true },
+    # { up_channel = 0, down_channel = 0, name = "My channel" },
+    # { up_channel = 1, hide = true },
 ]
-# The duration in ms for which the logger should retry to attach to RTT.
-timeout = 3000
-# Whether timestamps in the RTTUI are enabled
-show_timestamps = true
-# Whether to save rtt history buffer on exit.
-log_enabled = false
-# Where to save rtt history buffer relative to manifest path.
-log_path = "./logs"
 
 [default.gdb]
 # Whether or not a GDB server should be opened after flashing.

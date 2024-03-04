@@ -6,9 +6,9 @@ use figment::{
 use probe_rs::probe::WireProtocol;
 use probe_rs::rtt::ChannelMode;
 use serde::{Deserialize, Serialize};
-use std::{path::PathBuf, time::Duration};
+use std::{net::SocketAddr, path::PathBuf, time::Duration};
 
-use crate::util::logging::LevelFilter;
+use crate::util::{logging::LevelFilter, rtt::DataFormat};
 
 use super::rttui::tab::TabConfig;
 
@@ -76,6 +76,24 @@ pub struct General {
     pub connect_under_reset: bool,
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct UpChannelConfig {
+    pub channel: usize,
+    #[serde(default)]
+    pub mode: Option<ChannelMode>,
+    #[serde(default)]
+    pub format: DataFormat,
+    #[serde(default)]
+    pub socket: Option<SocketAddr>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct DownChannelConfig {
+    pub channel: usize,
+    #[serde(default)]
+    pub mode: Option<ChannelMode>,
+}
+
 /// The rtt config struct holding all the possible rtt options.
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -84,7 +102,11 @@ pub struct Rtt {
     /// Up mode, when not specified per-channel.  Target picks if neither is set
     pub up_mode: Option<ChannelMode>,
     /// Channels to be displayed, and options for them
-    pub channels: Vec<TabConfig>,
+    pub up_channels: Vec<UpChannelConfig>,
+    /// Channels to be displayed, and options for them
+    pub down_channels: Vec<DownChannelConfig>,
+    ///
+    pub tabs: Vec<TabConfig>,
     /// Connection timeout in ms.
     #[serde(with = "duration_ms")]
     pub timeout: Duration,

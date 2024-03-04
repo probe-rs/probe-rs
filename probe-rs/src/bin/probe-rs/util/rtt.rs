@@ -135,14 +135,6 @@ pub enum ChannelDataConfig {
     },
 }
 
-impl ChannelDataConfig {
-    pub fn clear(&mut self) {
-        if let ChannelDataConfig::String { last_line_done, .. } = self {
-            *last_line_done = true;
-        }
-    }
-}
-
 impl std::fmt::Debug for ChannelDataConfig {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -408,8 +400,6 @@ impl RttActiveUpChannel {
 pub struct RttActiveDownChannel {
     pub down_channel: DownChannel,
     pub channel_name: String,
-    /// Data that will be written to the down_channel (host to target)
-    input_data: String,
 }
 
 impl RttActiveDownChannel {
@@ -423,7 +413,6 @@ impl RttActiveDownChannel {
         Self {
             down_channel,
             channel_name,
-            input_data: String::new(),
         }
     }
 
@@ -431,22 +420,8 @@ impl RttActiveDownChannel {
         self.down_channel.number()
     }
 
-    pub fn input(&self) -> &str {
-        self.input_data.as_ref()
-    }
-
-    pub fn input_mut(&mut self) -> &mut String {
-        &mut self.input_data
-    }
-
-    pub fn push_rtt(&mut self, core: &mut Core<'_>) -> Result<(), Error> {
-        self.input_data += "\n";
-        let result = self
-            .down_channel
-            .write(core, self.input_data.as_bytes())
-            .map(|_| ());
-        self.input_data.clear();
-        result
+    pub fn push_rtt(&mut self, core: &mut Core<'_>, data: &str) -> Result<(), Error> {
+        self.down_channel.write(core, data.as_bytes()).map(|_| ())
     }
 }
 
@@ -514,14 +489,6 @@ impl RttActiveChannel {
         } else {
             Ok(())
         }
-    }
-
-    pub fn _push_rtt(&mut self, core: &mut Core) -> Result<()> {
-        if let Some(down_channel) = self.down_channel.as_mut() {
-            down_channel.push_rtt(core)?;
-        }
-
-        Ok(())
     }
 }
 

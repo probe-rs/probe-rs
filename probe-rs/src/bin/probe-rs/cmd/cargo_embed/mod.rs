@@ -303,7 +303,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
 fn run_rttui_app(
     name: &str,
     session: &Mutex<Session>,
-    mut config: config::Config,
+    config: config::Config,
     elf_path: &Path,
     timezone_offset: UtcOffset,
 ) -> Result<(), anyhow::Error> {
@@ -314,55 +314,34 @@ fn run_rttui_app(
         channels: vec![],
     };
 
-    // `None` out duplicate channel numbers, we don't handle them yet.
-    for i in 0..config.rtt.channels.len() {
-        if let Some(up_number) = config.rtt.channels[i].up {
-            for j in i + 1..config.rtt.channels.len() {
-                if config.rtt.channels[j].up == Some(up_number) {
-                    config.rtt.channels[j].up = None;
-                }
-            }
-        }
-        if let Some(down_number) = config.rtt.channels[i].down {
-            for j in i + 1..config.rtt.channels.len() {
-                if config.rtt.channels[j].down == Some(down_number) {
-                    config.rtt.channels[j].down = None;
-                }
-            }
-        }
-    }
-
     // Now we know that we only encounter unique channel numbers.
-    for channel in config.rtt.channels.iter() {
-        if let Some(up_number) = channel.up {
-            rtt_config.channels.push(RttChannelConfig {
-                channel_number: Some(up_number),
-                channel_name: channel.name.clone(),
-                data_format: channel.format,
-                show_timestamps: config.rtt.show_timestamps,
-                show_location: true,
-                defmt_log_format: None,
-            });
-        }
+    for channel_config in config.rtt.up_channels.iter() {
+        rtt_config.channels.push(RttChannelConfig {
+            channel_number: Some(channel_config.channel),
+            channel_name: None,
+            data_format: channel_config.format,
+            show_timestamps: config.rtt.show_timestamps,
+            show_location: true,
+            defmt_log_format: None,
+        });
     }
     // In case we have down channels without up channels, add them separately.
-    for channel in config.rtt.channels.iter() {
-        if let Some(down_number) = channel.down {
-            if !rtt_config
-                .channels
-                .iter()
-                .any(|c| c.channel_number == Some(down_number))
-            {
-                // Set up channel defaults, we don't read from it anyway.
-                rtt_config.channels.push(RttChannelConfig {
-                    channel_number: Some(down_number),
-                    channel_name: channel.name.clone(),
-                    data_format: DataFormat::String,
-                    show_timestamps: false,
-                    show_location: false,
-                    defmt_log_format: None,
-                });
-            }
+    for channel_config in config.rtt.down_channels.iter() {
+        if !config
+            .rtt
+            .up_channels
+            .iter()
+            .any(|ch| ch.channel == channel_config.channel)
+        {
+            // Set up channel defaults, we don't read from it anyway.
+            rtt_config.channels.push(RttChannelConfig {
+                channel_number: Some(channel_config.channel),
+                channel_name: None,
+                data_format: DataFormat::String,
+                show_timestamps: false,
+                show_location: false,
+                defmt_log_format: None,
+            });
         }
     }
 
@@ -385,9 +364,9 @@ fn run_rttui_app(
 
     let defmt_enable = config
         .rtt
-        .channels
+        .up_channels
         .iter()
-        .any(|elem| elem.format == DataFormat::Defmt);
+        .any(|ch| ch.format == DataFormat::Defmt);
 
     let defmt_state = if defmt_enable {
         tracing::debug!(
@@ -458,33 +437,20 @@ fn configure_rtt_modes(
     let mut core = session_handle.core(0)?;
     let default_up_mode = config.rtt.up_mode;
 
+    // TODO: also configure down channels
     for channel in rtt.active_channels.iter() {
         let Some(up_channel) = &channel.up_channel else {
             continue;
         };
-        let mut specific_mode = None;
-        for channel_config in config
+        let Some(channel_config) = config
             .rtt
-            .channels
+            .up_channels
             .iter()
-            .filter(|ch_conf| ch_conf.up == Some(up_channel.number()))
-        {
-            if let Some(mode) = channel_config.up_mode {
-                if specific_mode.is_some() && specific_mode != channel_config.up_mode {
-                    // Can't safely resolve this generally...
-                    return Err(anyhow!(
-                        "Conflicting modes specified for RTT up channel {}: {:?} and {:?}",
-                        up_channel.number(),
-                        specific_mode.unwrap(),
-                        mode
-                    ));
-                }
-
-                specific_mode = Some(mode);
-            }
-        }
-
-        if let Some(mode) = specific_mode.or(default_up_mode) {
+            .find(|ch| ch.channel == up_channel.number())
+        else {
+            continue;
+        };
+        if let Some(mode) = channel_config.mode.or(default_up_mode) {
             // Only set the mode when the config file says to,
             // when not set explicitly, the firmware picks.
             tracing::debug!("Setting RTT channel {} to {:?}", up_channel.number(), &mode);
