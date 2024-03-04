@@ -13,7 +13,6 @@ use std::{
     fs,
     io::{Read, Seek},
     path::Path,
-    str::FromStr,
 };
 use time::{OffsetDateTime, UtcOffset};
 
@@ -59,11 +58,6 @@ pub fn attach_to_rtt(
     }
 }
 
-/// Used by serde to provide defaults for `RttConfig`
-fn default_channel_formats() -> Vec<RttChannelConfig> {
-    vec![]
-}
-
 /// Used by serde to provide defaults for `RttChannelConfig::show_location`
 fn default_include_location() -> bool {
     // Setting this to true to allow compatibility with behaviour prior to when this option was introduced.
@@ -77,48 +71,31 @@ pub enum DataFormat {
     BinaryLE,
     Defmt,
 }
-impl FromStr for DataFormat {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let src = s.to_ascii_lowercase();
-        match &src.to_ascii_lowercase()[..] {
-            // A forgiving/case-insensitive match
-            "string" => Ok(Self::String),
-            "binaryle" => Ok(Self::BinaryLE),
-            "defmt" => Ok(Self::Defmt),
-            _ => Err(format!("{src} is not a valid format")),
-        }
-    }
-}
 
 /// The initial configuration for RTT (Real Time Transfer). This configuration is complimented with the additional information specified for each of the channels in `RttChannel`.
-#[derive(clap::Parser, Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RttConfig {
-    #[structopt(skip)]
     #[serde(default, rename = "rttEnabled")]
     pub enabled: bool,
+
     /// Configure data_format and show_timestamps for select channels
-    #[structopt(skip)]
-    #[serde(default = "default_channel_formats", rename = "rttChannelFormats")]
+    #[serde(default = "Vec::new", rename = "rttChannelFormats")]
     pub channels: Vec<RttChannelConfig>,
 }
 
 /// The User specified configuration for each active RTT Channel. The configuration is passed via a
 /// DAP Client configuration (`launch.json`). If no configuration is specified, the defaults will be
-/// `Dataformat::String` and `show_timestamps=false`.
-#[derive(clap::Parser, Debug, Clone, Serialize, Deserialize, Default)]
+/// `DataFormat::String` and `show_timestamps=false`.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct RttChannelConfig {
     pub channel_number: Option<usize>,
     pub channel_name: Option<String>,
     #[serde(default)]
     pub data_format: DataFormat,
-    #[structopt(skip)]
     #[serde(default)]
     // Control the inclusion of timestamps for DataFormat::String.
     pub show_timestamps: bool,
-    #[structopt(skip)]
     #[serde(default = "default_include_location")]
     // Control the inclusion of source location information for DataFormat::Defmt.
     pub show_location: bool,
