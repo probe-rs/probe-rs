@@ -62,7 +62,7 @@ impl<'defmt> App<'defmt> {
         for channel in rtt.active_channels {
             if let Some(up) = channel.up_channel {
                 up_channel_nums.insert(up.number());
-                up_channels.insert(up.number(), up);
+                up_channels.insert(up.number(), (up, None));
             }
             if let Some(down) = channel.down_channel {
                 down_channel_nums.insert(down.number());
@@ -77,12 +77,19 @@ impl<'defmt> App<'defmt> {
             }
         }
 
+        // Collect TCP publish addresses
+        for up_config in config.rtt.up_channels.iter() {
+            if let Some((_, stream)) = up_channels.get_mut(&up_config.channel) {
+                *stream = up_config.socket;
+            }
+        }
+
         // Create tabs
 
         for tab in config.rtt.tabs {
             let up_channel_name = up_channels
                 .get(&tab.up_channel)
-                .map(|up| up.channel_name.as_str());
+                .map(|(up, _)| up.channel_name.as_str());
             let down_channel_name = tab.down_channel.and_then(|down| {
                 down_channels
                     .get(&down)
@@ -105,7 +112,7 @@ impl<'defmt> App<'defmt> {
         for up_channel in up_channel_nums.into_iter() {
             let up_channel_name = up_channels
                 .get(&up_channel)
-                .map(|up| up.channel_name.as_str());
+                .map(|(up, _)| up.channel_name.as_str());
             let down_channel_name = down_channels
                 .get(&up_channel)
                 .map(|down| down.channel_name.as_str());
@@ -172,22 +179,7 @@ impl<'defmt> App<'defmt> {
             down_channels,
             up_channels: up_channels
                 .into_iter()
-                .map(|(num, channel)| {
-                    (
-                        num,
-                        UpChannel::new(
-                            channel,
-                            defmt_state,
-                            config.rtt.up_channels.iter().find_map(|config| {
-                                if config.channel == num {
-                                    config.socket
-                                } else {
-                                    None
-                                }
-                            }),
-                        ),
-                    )
-                })
+                .map(|(num, (channel, socket))| (num, UpChannel::new(channel, defmt_state, socket)))
                 .collect(),
         })
     }
