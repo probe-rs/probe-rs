@@ -12,14 +12,11 @@ use ratatui::{
     widgets::{Block, Borders, List, Paragraph, Tabs},
     Terminal,
 };
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    io::Write,
-};
+use std::{collections::BTreeMap, io::Write};
 use std::{fmt::write, path::PathBuf, sync::mpsc::TryRecvError};
 
 use crate::{
-    cmd::cargo_embed::rttui::channel::ChannelData,
+    cmd::cargo_embed::rttui::{channel::ChannelData, tab::TabConfig},
     util::rtt::{DefmtState, RttActiveDownChannel, RttActiveTarget},
 };
 
@@ -46,34 +43,61 @@ pub struct App<'defmt> {
 impl<'defmt> App<'defmt> {
     pub fn new(
         rtt: RttActiveTarget,
-        config: config::Config,
+        mut config: config::Config,
         logname: String,
         defmt_state: Option<&'defmt DefmtState>,
     ) -> Result<Self> {
         let mut tabs = Vec::new();
 
         // Create channel states
-        let mut up_channel_nums = BTreeSet::new();
-        let mut down_channel_nums = BTreeSet::new();
-
         let mut up_channels = BTreeMap::new();
         let mut down_channels = BTreeMap::new();
 
+        // Create tab config based on detected channels
         for channel in rtt.active_channels {
             if let Some(up) = channel.up_channel {
-                up_channel_nums.insert(up.number());
-                up_channels.insert(up.number(), (up, None));
+                let number = up.number();
+                if !config
+                    .rtt
+                    .tabs
+                    .iter()
+                    .any(|tab| tab.up_channel == up.number())
+                {
+                    config.rtt.tabs.push(TabConfig {
+                        up_channel: number,
+                        down_channel: None,
+                        name: Some(up.channel_name.clone()),
+                        hide: false,
+                    });
+                }
+
+                if up_channels.insert(number, (up, None)).is_some() {
+                    return Err(anyhow!("Duplicate up channel configuration: {number}"));
+                }
             }
             if let Some(down) = channel.down_channel {
-                down_channel_nums.insert(down.number());
-                down_channels.insert(down.number(), down);
-            }
-        }
+                let number = down.number();
+                if !config
+                    .rtt
+                    .tabs
+                    .iter()
+                    .any(|tab| tab.down_channel == Some(down.number()))
+                {
+                    config.rtt.tabs.push(TabConfig {
+                        up_channel: if up_channels.contains_key(&number) {
+                            number
+                        } else {
+                            0
+                        },
+                        down_channel: Some(number),
+                        name: Some(down.channel_name.clone()),
+                        hide: false,
+                    });
+                }
 
-        // Remove hidden channels
-        for tab in config.rtt.tabs.iter() {
-            if tab.hide {
-                up_channel_nums.remove(&tab.up_channel);
+                if down_channels.insert(number, down).is_some() {
+                    return Err(anyhow!("Duplicate down channel configuration: {number}"));
+                }
             }
         }
 
@@ -85,54 +109,19 @@ impl<'defmt> App<'defmt> {
         }
 
         // Create tabs
-
         for tab in config.rtt.tabs {
-            let up_channel_name = up_channels
-                .get(&tab.up_channel)
-                .map(|(up, _)| up.channel_name.as_str());
-            let down_channel_name = tab.down_channel.and_then(|down| {
-                down_channels
-                    .get(&down)
-                    .map(|down| down.channel_name.as_str())
-            });
-            let name = tab
-                .name
-                .or_else(|| up_channel_name.map(|n| n.to_string()))
-                .or_else(|| down_channel_name.map(|n| n.to_string()));
-
-            tabs.push(Tab::new(tab.up_channel, tab.down_channel, name));
-
-            up_channel_nums.remove(&tab.up_channel);
-            if let Some(down_channel) = tab.down_channel {
-                down_channel_nums.remove(&down_channel);
+            if tab.hide {
+                continue;
             }
-        }
-
-        // Display all detected channels as String channels
-        for up_channel in up_channel_nums.into_iter() {
-            let up_channel_name = up_channels
-                .get(&up_channel)
-                .map(|(up, _)| up.channel_name.as_str());
-            let down_channel_name = down_channels
-                .get(&up_channel)
-                .map(|down| down.channel_name.as_str());
-
-            let name = up_channel_name.or(down_channel_name).map(|n| n.to_string());
-
-            tabs.push(Tab::new(
-                up_channel,
-                down_channel_nums.remove(&up_channel).then_some(up_channel),
-                name,
-            ));
-        }
-
-        for down_channel in down_channel_nums.into_iter() {
-            let down_channel_name = down_channels
-                .get(&down_channel)
-                .map(|down| down.channel_name.as_str())
-                .map(|n| n.to_string());
-
-            tabs.push(Tab::new(0, Some(down_channel), down_channel_name));
+            if let Some(up_channel) = up_channels.get(&tab.up_channel).map(|(up, _)| up) {
+                let down_channel = tab.down_channel.and_then(|down| down_channels.get(&down));
+                tabs.push(Tab::new(up_channel, down_channel, tab.name));
+            } else {
+                tracing::warn!(
+                    "Configured up channel {} does not exist, skipping tab",
+                    tab.up_channel
+                );
+            }
         }
 
         // Code farther down relies on tabs being configured and might panic
@@ -152,20 +141,18 @@ impl<'defmt> App<'defmt> {
         let mut terminal = Terminal::new(backend).unwrap();
         let _ = terminal.hide_cursor();
 
-        let history_path = {
-            if !config.rtt.log_enabled {
-                None
-            } else {
-                //when is the right time if ever to fail if the directory or file cant be created?
-                //should we create the path on startup or when we write
-                match std::fs::create_dir_all(&config.rtt.log_path) {
-                    Ok(_) => Some(config.rtt.log_path.clone()),
-                    Err(_) => {
-                        tracing::warn!("Could not create log directory");
-                        None
-                    }
+        let history_path = if config.rtt.log_enabled {
+            //when is the right time if ever to fail if the directory or file cant be created?
+            //should we create the path on startup or when we write
+            match std::fs::create_dir_all(&config.rtt.log_path) {
+                Ok(_) => Some(config.rtt.log_path),
+                Err(_) => {
+                    tracing::warn!("Could not create log directory");
+                    None
                 }
             }
+        } else {
+            None
         };
 
         Ok(Self {

@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use probe_rs::Core;
 
-use crate::util::rtt::RttActiveDownChannel;
+use crate::util::rtt::{RttActiveDownChannel, RttActiveUpChannel};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TabConfig {
@@ -24,13 +24,15 @@ pub struct Tab {
 }
 
 impl Tab {
-    pub fn new(up_channel: usize, down_channel: Option<usize>, name: Option<String>) -> Self {
-        let name = name.unwrap_or_else(|| "Unnamed channel".to_owned());
-
+    pub fn new(
+        up_channel: &RttActiveUpChannel,
+        down_channel: Option<&RttActiveDownChannel>,
+        name: Option<String>,
+    ) -> Self {
         Self {
-            up_channel,
-            down_channel: down_channel.map(|id| (id, String::new())),
-            name,
+            up_channel: up_channel.number(),
+            down_channel: down_channel.map(|down| (down.number(), String::new())),
+            name: name.unwrap_or_else(|| up_channel.channel_name.clone()),
             scroll_offset: 0,
         }
     }

@@ -553,6 +553,7 @@ impl RttActiveTarget {
     ) -> Result<Self> {
         let defmt_state = DefmtState::try_from_elf(elf_file)?;
 
+        // TODO: do not collect into a single vector. Instead, keep separate maps.
         let mut active_channels = Vec::new();
         // For each channel configured in the RTT Control Block (`Rtt`), check if there are additional user configuration in a `RttChannelConfig`. If not, apply defaults.
         for channel in rtt.up_channels.into_iter() {

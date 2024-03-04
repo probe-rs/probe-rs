@@ -306,7 +306,7 @@ fn run_rttui_app(
     config: config::Config,
     elf_path: &Path,
     timezone_offset: UtcOffset,
-) -> Result<(), anyhow::Error> {
+) -> anyhow::Result<()> {
     // Transform channel configurations
     let mut rtt_config = RttConfig {
         enabled: true,
@@ -314,7 +314,6 @@ fn run_rttui_app(
         channels: vec![],
     };
 
-    // Now we know that we only encounter unique channel numbers.
     for channel_config in config.rtt.up_channels.iter() {
         rtt_config.channels.push(RttChannelConfig {
             channel_number: Some(channel_config.channel),
