@@ -118,6 +118,7 @@ impl UnitInfo {
                 continue;
             };
 
+
             let mut functions = vec![die];
             tracing::debug!(
                 "Found DIE: name={:?}",
