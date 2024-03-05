@@ -1,5 +1,5 @@
 use super::{
-    super::{canonical_path_eq, debug_info::GimliReader, unit_info::UnitInfo, DebugError, DebugInfo},
+    super::{canonical_path_eq, unit_info::UnitInfo, DebugError, DebugInfo},
     sequence::Sequence,
     SourceLocation,
 };
@@ -127,7 +127,7 @@ impl VerifiedBreakpoint {
                     program_unit,
                     &complete_line_program,
                     &line_sequence,
-                );
+                )?;
 
                 for matching_file_index in &matching_file_indices {
                     // Cycle through various degrees of matching, to find the most relevant source location.

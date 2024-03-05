@@ -76,6 +76,9 @@ pub enum DebugError {
     /// An int could not be created from the given string.
     #[error(transparent)]
     IntConversion(#[from] std::num::TryFromIntError),
+    /// Error while identifying a valid halt location for setting a breakpoint, or during debug stepping.
+    #[error("{0}. Please consider using instruction level stepping, or try setting a breakpoint at a different location.")]
+    HaltLocation(&'static str),
     /// Non-terminal Errors encountered while unwinding the stack, e.g. Could not resolve the value of a variable in the stack.
     /// These are distinct from other errors because they do not interrupt processing.
     /// Instead, the cause of incomplete results are reported back/explained to the user, and the stack continues to unwind.

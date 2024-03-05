@@ -32,6 +32,12 @@ pub(crate) struct FunctionDie<'data> {
     pub(crate) ranges: Vec<Range<u64>>,
 }
 
+impl PartialEq for FunctionDie<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.function_die.offset() == other.function_die.offset()
+    }
+}
+
 impl<'a> FunctionDie<'a> {
     /// Create a new function DIE reference.
     /// We only return DIE's that are functions, with valid address ranges that represent machine code

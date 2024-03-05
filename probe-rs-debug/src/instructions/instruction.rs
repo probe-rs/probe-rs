@@ -4,21 +4,33 @@ use std::{
     num::NonZeroU64,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-/// The type of instruction, as defined by [`gimli::LineRow`] attributes and relative position in the sequence.
-pub(crate) enum InstructionType {
+#[derive(Debug, Copy, Clone, PartialEq)]
+/// The role of instruction, as defined by [`gimli::LineRow`] attributes and relative position in the sequence.
+pub(crate) enum InstructionRole {
     /// We need to keep track of source lines that signal function signatures,
     /// even if their program lines are not valid halt locations.
     Prologue,
-    /// DWARF defined "recommended breakpoint location",
-    /// typically marked with `is_stmt` or `epilogue_begin`.
-    HaltLocation,
+    /// A non-branching instruction.
+    Simple,
+    /// The last instruction before the function returns.
+    EpilogueBegin,
     /// Any other instruction that is not part of the prologue or epilogue, and is not a statement,
     /// is considered to be an unspecified instruction type.
     Unspecified,
 }
 
-#[derive(Clone, Copy)]
+impl InstructionRole {
+    /// Returns `true` if the instruction is a valid halt location,
+    /// described by DWARF as a "recommended breakpoint location",
+    pub(crate) fn is_halt_location(&self) -> bool {
+        !matches!(
+            self,
+            InstructionRole::Unspecified | InstructionRole::Prologue
+        )
+    }
+}
+
+#[derive(Copy, Clone)]
 /// - A [`Instruction`] filters and maps [`gimli::LineRow`] entries to be used for determining valid halt points.
 ///   - Each [`Instruction`] maps to a single machine instruction on target.
 ///   - For establishing valid halt locations (breakpoint or stepping), we are only interested,
@@ -32,16 +44,54 @@ pub(crate) struct Instruction {
     pub(crate) file_index: u64,
     pub(crate) line: Option<NonZeroU64>,
     pub(crate) column: ColumnType,
-    pub(crate) instruction_type: InstructionType,
+    pub(crate) role: InstructionRole,
 }
 
-impl Instruction {}
+impl Instruction {
+    /// Build a [`Instruction`] using [`gimli::LineRow`] information.
+    pub(crate) fn from_line_row(
+        prologue_completed: bool,
+        row: &gimli::LineRow,
+        previous_row: Option<&gimli::LineRow>,
+    ) -> Self {
+        // Workaround the line number issue (if recorded as 0 in the DWARF, then gimli reports it as None).
+        // For debug purposes, it makes more sense to be the same as the previous line, which almost always
+        // has the same file index and column value.
+        // This prevents the debugger from jumping to the top of the file unexpectedly.
+        let mut instruction_line = row.line();
+        if let Some(prev_row) = previous_row
+            && row.line().is_none()
+            && prev_row.line().is_some()
+            && row.file_index() == prev_row.file_index()
+            && prev_row.column() == row.column()
+        {
+            instruction_line = prev_row.line();
+        }
+
+        Instruction {
+            address: row.address(),
+            file_index: row.file_index(),
+            line: instruction_line,
+            column: row.column().into(),
+            role: if !prologue_completed {
+                InstructionRole::Prologue
+            } else if row.is_stmt() {
+                // This type may be later changed during further processing.
+                InstructionRole::Simple
+            } else if row.epilogue_begin() {
+                InstructionRole::EpilogueBegin
+            } else {
+                InstructionRole::Unspecified
+            },
+        }
+    }
+}
 
 impl Debug for Instruction {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "{:010x}, line={:04}  col={:05}  f={:02}, type={:?}",
+            "{:#010x}, line={:04}  col={:05}  f={:02}, type={:?}",
             self.address,
             match self.line {
                 Some(line) => line.get(),
@@ -52,7 +102,7 @@ impl Debug for Instruction {
                 ColumnType::Column(column) => column,
             },
             self.file_index,
-            self.instruction_type,
+            self.role,
         )
     }
 }
