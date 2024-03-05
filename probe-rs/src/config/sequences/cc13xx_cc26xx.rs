@@ -1,8 +1,5 @@
 //! Sequences for cc13xx_cc26xx devices
-use std::ops::DerefMut;
 use std::sync::Arc;
-use std::thread;
-use std::time::{Duration};
 
 use crate::architecture::arm::communication_interface::DapProbe;
 use crate::architecture::arm::memory::adi_v5_memory_interface::ArmProbe;
@@ -12,8 +9,7 @@ use crate::probe::{DebugProbeError, WireProtocol};
 
 /// Marker struct indicating initialization sequencing for cc13xx_cc26xx family parts.
 #[derive(Debug)]
-pub struct CC13xxCC26xx {
-}
+pub struct CC13xxCC26xx {}
 
 // IR register values, see https://www.ti.com/lit/ug/swcu185f/swcu185f.pdf table 6-7
 const IR_ROUTER: u64 = 0x02;
@@ -39,7 +35,7 @@ fn set_n_bits(x: u32) -> u64 {
 impl CC13xxCC26xx {
     /// Create the sequencer for the cc13xx_cc26xx family of parts.
     pub fn create() -> Arc<Self> {
-        Arc::new(Self {  })
+        Arc::new(Self {})
     }
 
     /// This function implements a Zero Bit Scan(ZBS)
@@ -315,26 +311,19 @@ impl ArmDebugSequence for CC13xxCC26xx {
         _debug_base: Option<u64>,
     ) -> Result<(), ArmError> {
         interface.flush()?;
-        // Do the reset, this will do a full system reset
+        // Do a full system reset (emulated PIN reset)
+        // CPU reset alone is not possible since AIRCR.SYSRESETREQ will be
+        // converted to system reset on these devices.
+        //
         // The below code writes to the following bit
         // AON_PMCTL.RESETCTL.SYSRESET=1
         interface.write_word_32(0x4009_0028, 0x8000_0000).ok();
+
+        // Since the system went down, including the debug, we should flush any pending operations
         interface.flush().ok();
-        // Wait for the reset to complete
-        // Pause the current thread to not use CPU for no reason.
-        thread::sleep(Duration::from_millis(100));
 
-        // When the device is reset, it needs to rerun the cJTAG -> JTAG sequence
-        // This requires a DapProbe, so we need to get the DapProbe from the ArmProbe
-        let iface = interface.get_arm_communication_interface();
-        let probe = iface.unwrap().get_probe_mut();
-
-        let mut jtag_state: JtagState = JtagState::RunTestIdle;
-        probe.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
-        probe.jtag_sequence(1, false, 0x00)?;
-        self.ctag_to_jtag(probe.deref_mut(), &mut jtag_state)?;
-
-        Ok(())
+        // This indicates to the caller that a reattach is required
+        Err(ArmError::ReAttachRequired)
     }
 
     fn debug_port_setup(
