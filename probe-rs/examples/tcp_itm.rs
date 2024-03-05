@@ -115,14 +115,10 @@ impl TcpPublisher {
     fn write_to_all_sockets(sockets: &mut Vec<(TcpStream, SocketAddr)>, message: impl AsRef<str>) {
         let mut to_remove = vec![];
         for (i, (socket, _addr)) in sockets.iter_mut().enumerate() {
-            match socket.write(message.as_ref().as_bytes()) {
-                Ok(_) => (),
-                Err(err) => {
-                    if err.kind() == std::io::ErrorKind::WouldBlock {
-                    } else {
-                        to_remove.push(i);
-                        tracing::error!("Writing to a tcp socket experienced an error: {:?}", err)
-                    }
+            if let Err(err) = socket.write_all(message.as_ref().as_bytes()) {
+                if err.kind() != std::io::ErrorKind::WouldBlock {
+                    to_remove.push(i);
+                    tracing::error!("Writing to a tcp socket experienced an error: {:?}", err)
                 }
             }
         }
