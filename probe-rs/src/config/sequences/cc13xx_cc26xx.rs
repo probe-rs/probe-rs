@@ -339,14 +339,17 @@ impl ArmDebugSequence for CC13xxCC26xx {
                 let mut jtag_state: JtagState = JtagState::RunTestIdle;
 
                 // Enter Run-Test-Idle state, quit early if jtag_sequence is not supported
-                if let Err(DebugProbeError::CommandNotSupportedByProbe("jtag_sequence")) =
-                    interface.jtag_sequence(1, false, 0x00)
+                if let Err(DebugProbeError::CommandNotSupportedByProbe {
+                    command_name: "jtag_sequence",
+                }) = interface.jtag_sequence(1, false, 0x00)
                 {
                     tracing::error!(
                         "TI devices require a probe that supports the jtag_sequence command"
                     );
                     return Err(ArmError::Probe(
-                        DebugProbeError::CommandNotSupportedByProbe("jtag_sequence"),
+                        DebugProbeError::CommandNotSupportedByProbe {
+                            command_name: "jtag_sequence",
+                        },
                     ));
                 }
                 self.ctag_to_jtag(interface, &mut jtag_state)?;
