@@ -431,9 +431,16 @@ impl DebugInfo {
             // Calculate the call site for this function, so that we can use it later to create an additional 'callee' `StackFrame` from that PC.
             let address_size = unit_info.unit.header.address_size() as u64;
 
-            if next_function.low_pc > address_size && next_function.low_pc < u32::MAX.into() {
+            let Some(next_function_low_pc) = next_function.low_pc() else {
+                tracing::warn!(
+                    "UNWIND: Unknown starting address for inlined function {}.",
+                    function_name
+                );
+                continue;
+            };
+            if next_function_low_pc > address_size && next_function_low_pc < u32::MAX.into() {
                 // The first instruction of the inlined function is used as the call site
-                let inlined_call_site = RegisterValue::from(next_function.low_pc);
+                let inlined_call_site = RegisterValue::from(next_function_low_pc);
 
                 tracing::debug!(
                     "UNWIND: Callsite for inlined function {:?}",

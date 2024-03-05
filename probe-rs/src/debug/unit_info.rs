@@ -68,48 +68,43 @@ impl UnitInfo {
         let mut entries_cursor = self.unit.entries();
         while let Ok(Some((_depth, current))) = entries_cursor.next_dfs() {
             let Some(mut die) = FunctionDie::new(current.clone(), self) else {
+                // We only want to process DIEs that are functions.
                 continue;
             };
 
-            let mut ranges = debug_info.dwarf.die_ranges(&self.unit, current)?;
-
-            while let Ok(Some(range)) = ranges.next() {
-                if !range.contains(address) {
-                    continue;
-                }
-
-                // Check if we are actually in an inlined function
-                die.low_pc = range.begin;
-                die.high_pc = range.end;
-
-                // Extract the frame_base for this function DIE.
-                let mut functions = vec![die];
-
-                tracing::debug!(
-                    "Found DIE: name={:?}",
-                    functions[0].function_name(debug_info)
-                );
-
-                if find_inlined {
-                    tracing::debug!("Checking for inlined functions");
-
-                    let inlined_functions =
-                        self.find_inlined_functions(debug_info, address, current.offset())?;
-
-                    if inlined_functions.is_empty() {
-                        tracing::debug!("No inlined function found!");
-                    } else {
-                        tracing::debug!(
-                            "{} inlined functions for address {}",
-                            inlined_functions.len(),
-                            address
-                        );
-                    }
-
-                    functions.extend(inlined_functions.into_iter());
-                }
-                return Ok(functions);
+            let mut gimli_ranges = debug_info.dwarf.die_ranges(&self.unit, current)?;
+            while let Ok(Some(gimli_range)) = gimli_ranges.next() {
+                die.ranges.push(gimli_range.begin..gimli_range.end);
             }
+
+            if !die.range_contains(address) {
+                continue;
+            }
+
+            let mut functions = vec![die];
+            tracing::debug!(
+                "Found DIE: name={:?}",
+                functions[0].function_name(debug_info)
+            );
+
+            if find_inlined {
+                tracing::debug!("Checking for inlined functions");
+
+                let inlined_functions =
+                    self.find_inlined_functions(debug_info, address, current.offset())?;
+
+                if inlined_functions.is_empty() {
+                    tracing::debug!("No inlined function found!");
+                } else {
+                    tracing::debug!(
+                        "{} inlined functions for address {}",
+                        inlined_functions.len(),
+                        address
+                    );
+                }
+                functions.extend(inlined_functions.into_iter());
+            }
+            return Ok(functions);
         }
         Ok(vec![])
     }
@@ -142,43 +137,48 @@ impl UnitInfo {
                 continue;
             }
 
-            let mut ranges = debug_info.dwarf.die_ranges(&self.unit, current)?;
-
-            while let Ok(Some(range)) = ranges.next() {
-                if !range.contains(address) {
-                    continue;
-                }
-                // Check if we are actually in an inlined function
-
-                // We don't have to search further up in the tree, if there are multiple inlined functions,
-                // they will be children of the current function.
-                abort_depth = current_depth;
-
-                // Find the abstract definition
-                let Ok(Some(abstract_origin)) = current.attr(gimli::DW_AT_abstract_origin) else {
-                    tracing::warn!("No abstract origin for inlined function, skipping.");
-                    return Ok(vec![]);
-                };
-                let abstract_origin_value = abstract_origin.value();
-                let gimli::AttributeValue::UnitRef(unit_ref) = abstract_origin_value else {
-                    tracing::warn!(
-                        "Unsupported DW_AT_abstract_origin value: {:?}",
-                        abstract_origin_value
-                    );
-                    continue;
-                };
-
-                let Some(mut die) = self.unit.entry(unit_ref).ok().and_then(|abstract_die| {
-                    FunctionDie::new_inlined(current.clone(), abstract_die.clone(), self)
-                }) else {
-                    continue;
-                };
-
-                die.low_pc = range.begin;
-                die.high_pc = range.end;
-
-                functions.push(die);
+            let mut gimli_ranges = debug_info.dwarf.die_ranges(&self.unit, current)?;
+            let mut die_ranges = Vec::new();
+            while let Ok(Some(gimli_range)) = gimli_ranges.next() {
+                die_ranges.push(gimli_range.begin..gimli_range.end);
             }
+
+            if !die_ranges.iter().any(|range| range.contains(&address)) {
+                continue;
+            }
+
+            // Check if we are actually in an inlined function
+
+            // We don't have to search further up in the tree, if there are multiple inlined functions,
+            // they will be children of the current function.
+            abort_depth = current_depth;
+
+            // Find the abstract definition
+            let Ok(Some(abstract_origin)) = current.attr(gimli::DW_AT_abstract_origin) else {
+                tracing::warn!("No abstract origin for inlined function, skipping.");
+                return Ok(vec![]);
+            };
+            let abstract_origin_value = abstract_origin.value();
+            let gimli::AttributeValue::UnitRef(unit_ref) = abstract_origin_value else {
+                tracing::warn!(
+                    "Unsupported DW_AT_abstract_origin value: {:?}",
+                    abstract_origin_value
+                );
+                continue;
+            };
+
+            let Some(die) = self.unit.entry(unit_ref).ok().and_then(|abstract_die| {
+                FunctionDie::new_inlined(current.clone(), abstract_die.clone(), self).map(
+                    |mut inlined_function_die: FunctionDie<'_, '_, '_>| {
+                        inlined_function_die.ranges = die_ranges;
+                        inlined_function_die
+                    },
+                )
+            }) else {
+                continue;
+            };
+
+            functions.push(die);
         }
 
         Ok(functions)

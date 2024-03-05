@@ -256,8 +256,8 @@ impl SteppingMode {
                         tracing::trace!(
                             "Step Out target: Evaluating function {:?}, low_pc={:?}, high_pc={:?}",
                             function.function_name(debug_info),
-                            function.low_pc,
-                            function.high_pc
+                            function.low_pc(),
+                            function.high_pc()
                         );
 
                         if function.attribute(gimli::DW_AT_noreturn).is_some() {
@@ -265,13 +265,14 @@ impl SteppingMode {
                                 "Function {:?} is marked as `noreturn`. Cannot step out of this function.",
                                 function.function_name(debug_info).as_deref().unwrap_or("<unknown>")
                             )));
-                        } else if function.low_pc <= program_counter
-                            && function.high_pc > program_counter
-                        {
+                        } else if function.range_contains(program_counter) {
                             if function.is_inline() {
                                 // Step_out_address for inlined functions, is the first available breakpoint address after the last statement in the inline function.
-                                let (_, next_instruction_address) =
-                                    run_to_address(program_counter, function.high_pc, core)?;
+                                let (_, next_instruction_address) = run_to_address(
+                                    program_counter,
+                                    function.high_pc().unwrap(), //unwrap is OK because `range_contains` is true.
+                                    core,
+                                )?;
                                 return SteppingMode::BreakPoint.get_halt_location(
                                     core,
                                     debug_info,
