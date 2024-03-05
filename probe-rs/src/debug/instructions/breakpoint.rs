@@ -103,7 +103,7 @@ impl VerifiedBreakpoint {
                         program_unit,
                         complete_line_program.clone(),
                         &line_sequence,
-                    );
+                    )?;
 
                     if let Some(verified_breakpoint) = match_location(
                         &sequence,

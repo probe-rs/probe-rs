@@ -25,6 +25,12 @@ pub(crate) struct FunctionDie<'abbrev, 'unit, 'unit_info> {
     pub(crate) high_pc: u64,
 }
 
+impl PartialEq for FunctionDie<'_, '_, '_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.function_die.offset() == other.function_die.offset()
+    }
+}
+
 impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info> FunctionDie<'abbrev, 'unit, 'unit_info> {
     /// Create a new function DIE reference.
     pub(crate) fn new(die: Die<'abbrev, 'unit>, unit_info: &'unit_info UnitInfo) -> Option<Self> {

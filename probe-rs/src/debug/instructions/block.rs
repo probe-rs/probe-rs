@@ -1,25 +1,5 @@
-use super::{
-    super::ColumnType,
-    instruction::{Instruction, InstructionType},
-};
+use super::{super::ColumnType, instruction::Instruction};
 use std::{num::NonZeroU64, ops::RangeInclusive};
-
-#[derive(Debug, Copy, Clone, PartialEq, Default)]
-/// Instructions are grouped into blocks, based on their own attributes as well
-/// as their position in the sequence, and their role in the function.
-/// See [`Block`] for a detailed discussion.
-pub(crate) enum BlockType {
-    /// Assigned to instructions that are part of the prologue.
-    Prologue {
-        /// We need this to determine when the prologue is complete.
-        previous_row: Option<gimli::LineRow>,
-    },
-    /// Assigned to instructions that are part of an explicit range in a function DIE.
-    Branch,
-    #[default]
-    /// Assigned to instructions that have no specific flags in a sequence. This is the default.
-    Sequence,
-}
 
 /// The concept of an instruction block is based on
 /// [Rust's MIR basic block definition](https://rustc-dev-guide.rust-lang.org/appendix/background.html#cfg)
@@ -41,28 +21,44 @@ pub(crate) enum BlockType {
 ///   - `DW_AT_ranges`, we use those ranges as initial block boundaries. These ranges only covers
 ///      parts of the sequence, and we start by creating a block for each covered range, and blocks
 ///      for the remaining covered ranges.
-/// - To facilitate 'stepping', we need to identify how blocks transition from one to the next.
-///  - The `from_block` (left edge) and `to_block` (right edge) are the optional blocks. (Think simple AST).
-///  - The `to_block` is one of the following:
-///    - The address of the first instruction in the next block in the sequence, if there is one.
-///    - The address of first instruction, after the instruction that called this sequence (return register value).
+/// - To facilitate 'stepping', we also need to identify how blocks transition from one to the next,
+///   and unlike inside a sequence, these are typicall not sequential addresses.
+///   These addresses may be unknown (`None`), in which case our ability step through
+///   the sequence may be limited.
+#[derive(Default)]
 pub(crate) struct Block {
-    /// The range of addresses that the block covers is 'inclusive' on both ends.
-    pub(crate) included_addresses: RangeInclusive<u64>,
+    pub(crate) function_name: String,
+    /// This block contains instructions that was inlined (function or macro) into the current sequence.
+    pub(crate) is_inlined: bool,
     pub(crate) instructions: Vec<Instruction>,
+    ///  - The `stepped_from` (left edge) identifies the address of the instruction immediately preceding this block.
+    pub(crate) stepped_from: Option<u64>,
+    ///  - The `steps_to` (right edge) identifies the address of the instruction immediately following this block:
+    ///    - The address of the first instruction in the next block in the sequence, if there is one.
+    ///    - The address of first instruction, after the instruction that called this sequence (return register value).
+    pub(crate) steps_to: Option<u64>,
 }
 
 impl Block {
+    /// The range of addresses that the block covers is 'inclusive' on both ends.
+    pub(crate) fn included_addresses(&self) -> Option<RangeInclusive<u64>> {
+        self.instructions
+            .first()
+            .map(|first| &first.address)
+            .and_then(|first| self.instructions.last().map(|last| *first..=last.address))
+    }
+
     /// Find the valid halt instruction location that is equal to, or greater than, the address.
     pub(crate) fn match_address(&self, address: u64) -> Option<&Instruction> {
-        if self.included_addresses.contains(&address) {
-            self.instructions.iter().find(|&location| {
-                location.instruction_type == InstructionType::HaltLocation
-                    && location.address >= address
-            })
-        } else {
-            None
-        }
+        self.included_addresses().and_then(|included_addresses| {
+            if included_addresses.contains(&address) {
+                self.instructions.iter().find(|&location| {
+                    location.role.is_halt_location() && location.address >= address
+                })
+            } else {
+                None
+            }
+        })
     }
 
     /// Find the valid halt instruction location that that matches the `file`, `line` and `column`.
@@ -80,7 +76,7 @@ impl Block {
             self.instructions
                 .iter()
                 .find(|&location| {
-                    location.instruction_type == InstructionType::HaltLocation
+                    location.role.is_halt_location()
                         && matching_file_index == Some(location.file_index)
                         && NonZeroU64::new(line) == location.line
                         && ColumnType::from(supplied_column) == location.column
@@ -88,56 +84,17 @@ impl Block {
                 .or_else(|| {
                     // Try without a column specifier.
                     self.instructions.iter().find(|&location| {
-                        location.instruction_type == InstructionType::HaltLocation
+                        location.role.is_halt_location()
                             && matching_file_index == Some(location.file_index)
                             && NonZeroU64::new(line) == location.line
                     })
                 })
         } else {
             self.instructions.iter().find(|&location| {
-                location.instruction_type == InstructionType::HaltLocation
+                location.role.is_halt_location()
                     && matching_file_index == Some(location.file_index)
                     && NonZeroU64::new(line) == location.line
             })
         }
-    }
-
-    /// Add a instruction locations to the list.
-    pub(crate) fn add(
-        &mut self,
-        prologue_completed: bool,
-        row: &gimli::LineRow,
-        previous_row: Option<&gimli::LineRow>,
-    ) {
-        // Workaround the line number issue (if recorded as 0 in the DWARF, then gimli reports it as None).
-        // For debug purposes, it makes more sense to be the same as the previous line, which almost always
-        // has the same file index and column value.
-        // This prevents the debugger from jumping to the top of the file unexpectedly.
-        let mut instruction_line = row.line();
-        if let Some(prev_row) = previous_row {
-            if row.line().is_none()
-                && prev_row.line().is_some()
-                && row.file_index() == prev_row.file_index()
-                && prev_row.column() == row.column()
-            {
-                instruction_line = prev_row.line();
-            }
-        }
-
-        let instruction = Instruction {
-            address: row.address(),
-            file_index: row.file_index(),
-            line: instruction_line,
-            column: row.column().into(),
-            instruction_type: if !prologue_completed {
-                InstructionType::Prologue
-            } else if row.epilogue_begin() || row.is_stmt() {
-                InstructionType::HaltLocation
-            } else {
-                InstructionType::Unspecified
-            },
-        };
-        self.included_addresses = *self.included_addresses.start()..=row.address();
-        self.instructions.push(instruction);
     }
 }
