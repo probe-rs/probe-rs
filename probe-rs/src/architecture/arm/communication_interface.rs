@@ -3,7 +3,10 @@ use super::{
         valid_access_ports, AccessPort, ApAccess, ApClass, BaseaddrFormat, GenericAp, MemoryAp,
         BASE, BASE2, CFG, CSW, IDR,
     },
-    dp::{Abort, Ctrl, DebugPortVersion, DpAccess, Select, DPIDR},
+    dp::{
+        Abort, Ctrl, DebugPortError, DebugPortVersion, DpAccess, Select, BASEPTR0, BASEPTR1, DPIDR,
+        DPIDR1,
+    },
     memory::{
         adi_v5_memory_interface::{ADIMemoryInterface, ArmProbe},
         Component,
@@ -499,6 +502,31 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
                 // only write if there’s a need for it.
                 ctrl_reg.set_orun_detect(self.state.use_overrun_detect);
                 self.write_dp_register(dp, ctrl_reg)?;
+            }
+
+            let idr = self.read_dp_register::<DPIDR>(dp)?;
+            if idr.version() == 3 {
+                let idr1: DPIDR1 = self.read_dp_register(dp)?;
+                let base_ptr0: BASEPTR0 = self.read_dp_register(dp)?;
+                let base_ptr1: BASEPTR1 = self.read_dp_register(dp)?;
+                let base_ptr_str = base_ptr0.valid().then(|| {
+                    format!(
+                        "0x{:x}",
+                        u64::from(base_ptr1.ptr()) | u64::from(base_ptr0.ptr() << 12)
+                    )
+                });
+                tracing::info!(
+                    "DPv3 detected: DPIDR1:{:?} BASE_PTR: {}",
+                    idr1,
+                    base_ptr_str
+                        .as_ref()
+                        .map(String::as_str)
+                        .unwrap_or("not valid")
+                );
+
+                return Err(ArmError::DebugPort(DebugPortError::Unsupported(
+                    "Unsupported version (DPv3)".to_string(),
+                )));
             }
 
             /* determine the number and type of available APs */
