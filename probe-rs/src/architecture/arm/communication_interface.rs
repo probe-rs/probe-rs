@@ -526,12 +526,13 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
 
         // DP register addresses are 4 bank bits, 4 address bits. Lowest 2 address bits are
         // always 0, so this leaves only 4 possible addresses: 0x0, 0x4, 0x8, 0xC.
-        // Only address 0x4 is banked, the rest are don't care.
+        // On ADIv5, only address 0x4 is banked, the rest are don't care.
+        // On ADIv6, address 0x0 and 0x4 are banked, the rest are don't care.
 
         let bank = dp_register_address >> 4;
         let addr = dp_register_address & 0xF;
 
-        if addr != 4 {
+        if addr != 0 && addr != 4 {
             return Ok(());
         }
 
