@@ -93,15 +93,12 @@ impl UnitInfo {
                 let inlined_functions =
                     self.find_inlined_functions(debug_info, address, current.offset())?;
 
-                if inlined_functions.is_empty() {
-                    tracing::debug!("No inlined function found!");
-                } else {
-                    tracing::debug!(
-                        "{} inlined functions for address {}",
-                        inlined_functions.len(),
-                        address
-                    );
-                }
+                tracing::debug!(
+                    "{} inlined functions for address {}",
+                    inlined_functions.len(),
+                    address
+                );
+
                 functions.extend(inlined_functions.into_iter());
             }
             return Ok(functions);
@@ -169,7 +166,7 @@ impl UnitInfo {
 
             let Some(die) = self.unit.entry(unit_ref).ok().and_then(|abstract_die| {
                 FunctionDie::new_inlined(current.clone(), abstract_die.clone(), self).map(
-                    |mut inlined_function_die: FunctionDie<'_, '_, '_>| {
+                    |mut inlined_function_die| {
                         inlined_function_die.ranges = die_ranges;
                         inlined_function_die
                     },
