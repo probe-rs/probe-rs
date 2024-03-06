@@ -110,7 +110,7 @@ pub struct FormatOptions {
     /// If a target has a preferred format, we use that.
     /// Finally, if neither of the above cases are true, we default to ELF.
     #[clap(value_enum, ignore_case = true, long)]
-    #[serde(deserialize_with = "format_from_str")]
+    #[serde(deserialize_with = "format_from_str", alias = "format")]
     binary_format: Option<Format>,
     /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
     #[clap(long, value_parser = parse_u64)]
