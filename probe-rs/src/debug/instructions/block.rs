@@ -15,16 +15,36 @@ use std::{num::NonZeroU64, ops::RangeInclusive};
 /// `DW_LNS_basic_block` attribute of the line program rows in the DWARF debug information. The implication of this is that
 /// we need to infer the boundaries of each block withing the sequence of instructions, from other blocks, as well as
 /// from the prologue and epilogue markers. The approach taken is as follows:
-/// - The first block is the prologue block, and is identified by the `DW_LNS_set_prologue_end` attribute.
-/// - If the sequence starting address is a non-inlined function, then if the DWARF `DW_AT_subprogram` attribute
-///   for the function uses:
-///   - `DW_AT_ranges`, we use those ranges as initial block boundaries. These ranges only covers
-///      parts of the sequence, and we start by creating a block for each covered range, and blocks
-///      for the remaining covered ranges.
 /// - To facilitate 'stepping', we also need to identify how blocks transition from one to the next,
-///   and unlike inside a sequence, these are typicall not sequential addresses.
-///   These addresses may be unknown (`None`), in which case our ability step through
-///   the sequence may be limited.
+///   and unlike inside a sequence, these are typically not sequential addresses. The `stepped_from` and `steps_to`
+///   fields are used to identify the addresses of the instructions that are the left and right edges of the block.
+///   The DWARF line program rows do not have enough information to identify branching instructions, and so we
+///   cannot rely on the sequence of instructions in a line program sequence to identify the block boundaries.
+///   To avoid having to interpret the Assembly instructions for every architecture, we use some basic heuristics
+///   to identify block boundaries. Some of these can be inferred from the DWARF debug information, while others
+///   can only be assessed using information about the stackframes in an unwinding context.
+/// - The DWARF based heuristics used to identify block boundaries are as follows:
+///   - The first block is the prologue block, and is identified by the `DW_LNS_set_prologue_end` attribute on the first
+///   - first insruction after the prologue.
+///   - The first block after the prologue, steps directly from the prologue block.
+///   - Inlined code (functions or macros) always precede the instruction that called them. They are in their own block,
+///     and will step to the calling instruction.
+///   - If a function/sequence has multiple ranges, then the instructions in those ranges are assumed to be
+///     divergent in some way.
+///   - The remaining instructions are grouped into blocks containing the contiguous instructions belonging to the same
+///     source file line.
+/// - After applying the DWARF based heuristics, the remaining block boundaries are inferred from the stackframes when
+///   they are available (target is halted and unwinding is possible).
+/// - If after all this, we need to step from/to/into blocks with insufficient boundary information, then we resort to
+///   the following strategy:
+///   - Once the target is active and halted in the relevant sequence, then we can single step the processor,
+///     until we reach a new block, a new sequence, and based on the result,
+///     we can update the block boundaries. e.g. If after stepping the processor by one instruction,
+///     we find ourselves in the prologue of a different function, then we know we have stepped `into`
+///     a function call, and we can update the block boundaries (and stepping logic) accordingly.
+///   - If the target is active and halted in a different sequence, e.g. during reset-and-halt, then
+///     we can infer breakpoints based on the 'closest available line', or if that is not possible, we
+///     inform the user that insufficient information is available to set a breakpoint at the requested location.
 #[derive(Default)]
 pub(crate) struct Block {
     pub(crate) function_name: String,
