@@ -236,54 +236,62 @@ impl<'debug_info> Sequence<'debug_info> {
             steps_to: None,
         };
         while let Some(instruction) = block_instructions.next() {
-            if let Some(next_instruction) = block_instructions.peek().cloned() {
-                // Break out the prologue block, and recurse through the remaining instructions.
-                if instruction.role == instruction::InstructionRole::Prologue
-                    && next_instruction.role != instruction::InstructionRole::Prologue
-                {
+            let next_instruction = block_instructions.peek().cloned();
+            // Break out the prologue block, and recurse through the remaining instructions.
+            if instruction.role == instruction::InstructionRole::Prologue
+                && next_instruction
+                    .map(|ni| ni.role != instruction::InstructionRole::Prologue)
+                    .unwrap_or(true)
+            {
+                self.recurse_inner_block(
+                    &mut block,
+                    Some(instruction.address),
+                    debug_info,
+                    program_unit,
+                    block_instructions,
+                    block_function.clone(),
+                    instruction,
+                )?;
+                block.steps_to = next_instruction.map(|ni| ni.address);
+                continue;
+            // Check if we're on the final instruction before returning from an inlined function.
+            } else if block.is_inlined
+                && block_function
+                    .as_ref()
+                    .map(|block_function| {
+                        next_instruction.map(|ni| ni.address) == block_function.high_pc()
+                    })
+                    .unwrap_or(false)
+            {
+                // Inlined instructions immediately precede the call site.
+                block.steps_to = next_instruction.map(|ni| ni.address);
+                block.instructions.push(*instruction);
+                break;
+            }
+            // Check if we're about to step into an inlined function, and recurse ...
+            else if next_instruction.is_some() {
+                let inlined_function = next_instruction
+                    .and_then(|ni| {
+                        program_unit
+                            .get_function_dies(debug_info, ni.address)
+                            .map(|function_dies| function_dies.last().cloned())
+                            .ok()
+                    })
+                    .flatten();
+                if inlined_function != block_function {
                     self.recurse_inner_block(
                         &mut block,
-                        next_instruction,
+                        None,
                         debug_info,
                         program_unit,
                         block_instructions,
-                        block_function.clone(),
+                        inlined_function,
                         instruction,
                     )?;
+                    // This instruction will be in a separate block from the inline instructions.
                     continue;
-                // Check if we're on the final instruction before returning from an inlined function.
-                } else if block.is_inlined
-                    && block_function
-                        .as_ref()
-                        .and_then(|block_function| block_function.high_pc())
-                        .map(|high_pc| instruction.address == high_pc)
-                        .unwrap_or(false)
-                {
-                    // Inlined instructions immediately precede the call site.
-                    block.steps_to = Some(next_instruction.address);
-                    block.instructions.push(*instruction);
-                    break;
-                }
-                // Check if we're about to step into an inlined function, and recurse ...
-                else {
-                    let inlined_function = program_unit
-                        .get_function_dies(debug_info, next_instruction.address)
-                        .map(|function_dies| function_dies.last().cloned())?;
-                    if inlined_function != block_function {
-                        self.recurse_inner_block(
-                            &mut block,
-                            next_instruction,
-                            debug_info,
-                            program_unit,
-                            block_instructions,
-                            inlined_function,
-                            instruction,
-                        )?;
-                        continue;
-                    }
                 }
             }
-
             // If this instruction is not a boundary, then simply add it to the current block.
             block.instructions.push(*instruction);
         }
@@ -297,21 +305,20 @@ impl<'debug_info> Sequence<'debug_info> {
     fn recurse_inner_block(
         &mut self,
         block: &mut Block,
-        next_instruction: &Instruction,
+        edge_address: Option<u64>,
         debug_info: &'debug_info DebugInfo,
         program_unit: &'debug_info UnitInfo,
         block_instructions: &mut std::iter::Peekable<std::slice::Iter<'_, Instruction>>,
         inlined_function: Option<FunctionDie<'debug_info>>,
         instruction: &Instruction,
     ) -> Result<(), DebugError> {
-        block.steps_to = Some(next_instruction.address);
         let mut inner_block = self.build_blocks(
             debug_info,
             program_unit,
             block_instructions,
             inlined_function,
         )?;
-        inner_block.stepped_from = Some(instruction.address);
+        inner_block.stepped_from = edge_address;
         self.blocks.push(inner_block);
         // We can move on the next instruction, as we've already processed the current one.
         block.instructions.push(*instruction);
