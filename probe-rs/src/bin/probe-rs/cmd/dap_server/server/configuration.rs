@@ -18,8 +18,7 @@ pub struct SessionConfig {
     pub(crate) cwd: Option<PathBuf>,
 
     /// The debug probe selector associated with the debug probe to use. Use 'list' command to see available probes
-    #[serde(alias = "probe")]
-    pub(crate) probe_selector: Option<DebugProbeSelector>,
+    pub(crate) probe: Option<DebugProbeSelector>,
 
     /// The target to be selected.
     pub(crate) chip: Option<String>,
@@ -142,7 +141,7 @@ impl SessionConfig {
             chip: self.chip.clone(),
             chip_description_path: self.chip_description_path.clone(),
             protocol: self.wire_protocol,
-            probe_selector: self.probe_selector.clone(),
+            probe: self.probe.clone(),
             speed: self.speed,
             connect_under_reset: self.connect_under_reset,
             dry_run: false,
