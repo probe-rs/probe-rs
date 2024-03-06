@@ -1,4 +1,5 @@
 use anyhow::{anyhow, Result};
+use colored::Colorize;
 use defmt_decoder::DecodeError;
 pub use probe_rs::rtt::ChannelMode;
 use probe_rs::rtt::{DownChannel, Rtt, ScanRegion, UpChannel};
@@ -440,9 +441,20 @@ impl RttActiveTarget {
                 // 3. Default with timestamp without location
                 // 4. Default without timestamp with location
                 // 5. Default without timestamp without location
+                let mut fileinfo = String::new();
                 let format = log_format.unwrap_or(match (show_location, has_timestamp) {
-                    (true, true) => "{t} {L} {s}\n└─ {m} @ {F}:{l}",
-                    (true, false) => "{L} {s}\n└─ {m} @ {F}:{l}",
+                    (true, true) => {
+                        fileinfo.push_str("{t} {L} {s}\n");
+                        fileinfo.push_str(&"└─ {m} @ {F}:{l}".dimmed());
+
+                        &fileinfo
+                    }
+                    (true, false) => {
+                        fileinfo.push_str("{L} {s}\n");
+                        fileinfo.push_str(&"└─ {m} @ {F}:{l}".dimmed());
+
+                        &fileinfo
+                    }
                     (false, true) => "{t} {L} {s}",
                     (false, false) => "{L} {s}",
                 });
