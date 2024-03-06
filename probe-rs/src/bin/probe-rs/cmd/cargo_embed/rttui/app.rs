@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use crossterm::{
-    event::{self, KeyCode},
+    event::{self, KeyCode, KeyEventKind},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
@@ -217,6 +217,11 @@ impl<'defmt> App<'defmt> {
                 return true;
             }
         };
+
+        // Ignore key release events emitted by Crossterm on Windows
+        if event.kind != KeyEventKind::Press {
+            return false;
+        }
 
         match event.code {
             KeyCode::Char('c') if event.modifiers.contains(KeyModifiers::CONTROL) => {
