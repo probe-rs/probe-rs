@@ -286,7 +286,9 @@ impl<'debug_info> Sequence<'debug_info> {
                 } else if block.is_inlined
                     && block_function
                         .as_ref()
-                        .map(|block_function| instruction.address == block_function.high_pc)
+                        .map(|block_function| {
+                            instruction.address == block_function.high_pc().unwrap_or(0)
+                        })
                         .unwrap_or(false)
                 {
                     // Inlined instructions immediately precede the call site.
