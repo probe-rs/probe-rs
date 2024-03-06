@@ -1,3 +1,5 @@
+use crate::debug::{function_die::FunctionDie, unit_info::UnitInfo, DebugError, DebugInfo};
+
 use super::{super::ColumnType, instruction::Instruction};
 use std::{num::NonZeroU64, ops::RangeInclusive};
 
@@ -60,6 +62,30 @@ pub(crate) struct Block {
 }
 
 impl Block {
+    pub(crate) fn new(
+        address: u64,
+        debug_info: &DebugInfo,
+        program_unit: &UnitInfo,
+    ) -> Result<Self, DebugError> {
+        let block_function = program_unit
+            .get_function_dies(debug_info, address, false)
+            .map(|function_dies| function_dies.first().cloned())?;
+        let block = Block {
+            function_name: block_function
+                .as_ref()
+                .and_then(|block_function| block_function.function_name(debug_info))
+                .unwrap_or_else(|| "<unknown>".to_string()),
+            is_inlined: block_function
+                .as_ref()
+                .map(|block_function| block_function.is_inline())
+                .unwrap_or(false),
+            instructions: Vec::new(),
+            stepped_from: None,
+            steps_to: None,
+        };
+        Ok(block)
+    }
+
     /// The range of addresses that the block covers is 'inclusive' on both ends.
     pub(crate) fn included_addresses(&self) -> Option<RangeInclusive<u64>> {
         self.instructions
