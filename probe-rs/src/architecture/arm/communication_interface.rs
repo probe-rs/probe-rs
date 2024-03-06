@@ -518,10 +518,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
                 tracing::info!(
                     "DPv3 detected: DPIDR1:{:?} BASE_PTR: {}",
                     idr1,
-                    base_ptr_str
-                        .as_ref()
-                        .map(String::as_str)
-                        .unwrap_or("not valid")
+                    base_ptr_str.as_deref().unwrap_or("not valid")
                 );
 
                 return Err(ArmError::DebugPort(DebugPortError::Unsupported(
