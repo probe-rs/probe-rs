@@ -93,15 +93,12 @@ impl UnitInfo {
                 let inlined_functions =
                     self.find_inlined_functions(debug_info, address, current.offset())?;
 
-                if inlined_functions.is_empty() {
-                    tracing::debug!("No inlined function found!");
-                } else {
-                    tracing::debug!(
-                        "{} inlined functions for address {}",
-                        inlined_functions.len(),
-                        address
-                    );
-                }
+                tracing::debug!(
+                    "{} inlined functions for address {}",
+                    inlined_functions.len(),
+                    address
+                );
+
                 functions.extend(inlined_functions.into_iter());
             }
             return Ok(functions);
