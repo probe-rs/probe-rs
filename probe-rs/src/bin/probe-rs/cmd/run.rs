@@ -111,8 +111,8 @@ impl Cmd {
                     Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
                 }
             }
+            core.run()?;
         }
-        core.run()?;
 
         run_loop(
             &mut core,
