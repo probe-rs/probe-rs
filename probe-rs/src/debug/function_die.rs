@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use crate::{debug::stack_frame::StackFrameInfo, MemoryInterface};
 
 use super::{
@@ -12,17 +14,15 @@ pub(crate) type Die<'abbrev, 'unit> =
 /// Reference to a DIE for a function
 #[derive(Clone)]
 pub(crate) struct FunctionDie<'abbrev, 'unit, 'unit_info> {
+    /// A reference to the compilation unit this function belongs to.
     pub(crate) unit_info: &'unit_info UnitInfo,
-
+    /// The DIE (Debugging Information Entry) for the function.
     pub(crate) function_die: Die<'abbrev, 'unit>,
-
     /// Only present for inlined functions, where this is a reference
     /// to the declaration of the function.
     pub(crate) abstract_die: Option<Die<'abbrev, 'unit>>,
-    /// The address of the first instruction in this function.
-    pub(crate) low_pc: u64,
-    /// The address of the first instruction after this function.
-    pub(crate) high_pc: u64,
+    /// The address ranges for which this function is valid.
+    pub(crate) ranges: Vec<Range<u64>>,
 }
 
 impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info> FunctionDie<'abbrev, 'unit, 'unit_info> {
@@ -38,8 +38,7 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info> FunctionDie<'abbrev, 'u
             unit_info,
             function_die: die,
             abstract_die: None,
-            low_pc: 0,
-            high_pc: 0,
+            ranges: Vec::new(),
         })
     }
 
@@ -59,9 +58,27 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info> FunctionDie<'abbrev, 'u
             unit_info,
             function_die: concrete_die,
             abstract_die: Some(abstract_die),
-            low_pc: 0,
-            high_pc: 0,
+            ranges: Vec::new(),
         })
+    }
+
+    /// Test whether the given address is contained in the address ranges of this function.
+    /// Use this, instead of checking for values between `low_pc()` and `high_pc()`, because
+    /// the address ranges can be disjointed.
+    pub(crate) fn range_contains(&self, address: u64) -> bool {
+        self.ranges.iter().any(|range| range.contains(&address))
+    }
+
+    /// Returns the lowest valid address for which this function DIE is valid.
+    /// Please use `range_contains()` to check whether an address is contained in the range.
+    pub(crate) fn low_pc(&self) -> Option<u64> {
+        self.ranges.first().map(|range| range.start)
+    }
+
+    /// Returns the highest valid address for which this function DIE is valid.
+    /// Please use `range_contains()` to check whether an address is contained in the range.
+    pub(crate) fn high_pc(&self) -> Option<u64> {
+        self.ranges.last().map(|range| range.end)
     }
 
     /// Returns whether this is an inlined function DIE reference.
