@@ -111,19 +111,22 @@ impl Cmd {
                     Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
                 }
             }
-            core.run()?;
         }
 
-        run_loop(
-            &mut core,
-            &memory_map,
-            &rtt_scan_regions,
-            path,
-            timestamp_offset,
-            self.always_print_stacktrace,
-            self.no_location,
-            self.log_format.as_deref(),
-        )?;
+        if core.core_halted()? {
+            core.run()?;
+        } else {
+            run_loop(
+                &mut core,
+                &memory_map,
+                &rtt_scan_regions,
+                path,
+                timestamp_offset,
+                self.always_print_stacktrace,
+                self.no_location,
+                self.log_format.as_deref(),
+            )?;
+        }
 
         Ok(())
     }
