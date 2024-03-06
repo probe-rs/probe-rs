@@ -115,18 +115,18 @@ impl Cmd {
 
         if core.core_halted()? {
             core.run()?;
-        } else {
-            run_loop(
-                &mut core,
-                &memory_map,
-                &rtt_scan_regions,
-                path,
-                timestamp_offset,
-                self.always_print_stacktrace,
-                self.no_location,
-                self.log_format.as_deref(),
-            )?;
         }
+
+        run_loop(
+            &mut core,
+            &memory_map,
+            &rtt_scan_regions,
+            path,
+            timestamp_offset,
+            self.always_print_stacktrace,
+            self.no_location,
+            self.log_format.as_deref(),
+        )?;
 
         Ok(())
     }
