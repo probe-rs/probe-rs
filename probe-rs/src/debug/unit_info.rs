@@ -169,7 +169,7 @@ impl UnitInfo {
 
             let Some(die) = self.unit.entry(unit_ref).ok().and_then(|abstract_die| {
                 FunctionDie::new_inlined(current.clone(), abstract_die.clone(), self).map(
-                    |mut inlined_function_die: FunctionDie<'_, '_, '_>| {
+                    |mut inlined_function_die| {
                         inlined_function_die.ranges = die_ranges;
                         inlined_function_die
                     },
