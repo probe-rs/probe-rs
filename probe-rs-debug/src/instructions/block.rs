@@ -1,6 +1,7 @@
-use crate::debug::{function_die::FunctionDie, unit_info::UnitInfo, DebugError, DebugInfo};
-
-use super::{super::ColumnType, instruction::Instruction};
+use super::{
+    super::{unit_info::UnitInfo, ColumnType, DebugError, DebugInfo},
+    instruction::{Instruction, InstructionRole},
+};
 use std::{num::NonZeroU64, ops::RangeInclusive};
 
 /// The concept of an instruction block is based on
@@ -28,6 +29,8 @@ use std::{num::NonZeroU64, ops::RangeInclusive};
 /// - The DWARF based heuristics used to identify block boundaries are as follows:
 ///   - The first block is the prologue block, and is identified by the `DW_LNS_set_prologue_end` attribute on the first
 ///   - first insruction after the prologue.
+///   = The `DW_NLS_epilogue_begin` instructions are always in their own block, and linked with preceding blocks
+///     based on available line and column information.
 ///   - The first block after the prologue, steps directly from the prologue block.
 ///   - Inlined code (functions or macros) always precede the instruction that called them. They are in their own block,
 ///     and will step to the calling instruction.
@@ -47,9 +50,8 @@ use std::{num::NonZeroU64, ops::RangeInclusive};
 ///   - If the target is active and halted in a different sequence, e.g. during reset-and-halt, then
 ///     we can infer breakpoints based on the 'closest available line', or if that is not possible, we
 ///     inform the user that insufficient information is available to set a breakpoint at the requested location.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub(crate) struct Block {
-    pub(crate) function_name: String,
     /// This block contains instructions that was inlined (function or macro) into the current sequence.
     pub(crate) is_inlined: bool,
     pub(crate) instructions: Vec<Instruction>,
@@ -63,26 +65,98 @@ pub(crate) struct Block {
 
 impl Block {
     pub(crate) fn new(
-        address: u64,
+        starting_address: u64,
+        stepped_from: Option<u64>,
+        block_instructions: &mut std::iter::Peekable<std::slice::Iter<Instruction>>,
         debug_info: &DebugInfo,
         program_unit: &UnitInfo,
     ) -> Result<Self, DebugError> {
         let block_function = program_unit
-            .get_function_dies(debug_info, address, false)
-            .map(|function_dies| function_dies.first().cloned())?;
-        let block = Block {
-            function_name: block_function
-                .as_ref()
-                .and_then(|block_function| block_function.function_name(debug_info))
-                .unwrap_or_else(|| "<unknown>".to_string()),
+            .get_function_dies(debug_info, starting_address)
+            .map(|function_dies| function_dies.last().cloned())?;
+        let mut block = Block {
             is_inlined: block_function
                 .as_ref()
                 .map(|block_function| block_function.is_inline())
                 .unwrap_or(false),
             instructions: Vec::new(),
-            stepped_from: None,
+            stepped_from,
             steps_to: None,
         };
+        while let Some(instruction) = block_instructions.next() {
+            let next_instruction = block_instructions.peek().cloned();
+
+            // Some of the blocks below have the same logic, but the conditions are complex enough
+            // that it is worth keeping them separate.
+            #[allow(clippy::if_same_then_else)]
+            // End the prologue block, if the next instruction is not a prologue instruction.
+            if instruction.role == InstructionRole::Prologue
+                && next_instruction
+                    .map(|ni| ni.role != InstructionRole::Prologue)
+                    .unwrap_or(true)
+            {
+                block.instructions.push(*instruction);
+                block.steps_to = next_instruction.map(|ni| ni.address);
+                break;
+            }
+            // End the block, if the next instruction the beginning of the epilogue.
+            else if next_instruction
+                .map(|ni| ni.role == InstructionRole::EpilogueBegin)
+                .unwrap_or(true)
+            {
+                block.instructions.push(*instruction);
+                block.steps_to = next_instruction.map(|ni| ni.address);
+                break;
+            }
+            // End the current block, if we're on the final instruction before returning from an inlined function.
+            else if block.is_inlined
+                && block_function
+                    .as_ref()
+                    .map(|block_function| {
+                        next_instruction.map(|ni| ni.address) == block_function.high_pc()
+                    })
+                    .unwrap_or(false)
+            {
+                // Inlined instructions immediately precede the call site.
+                block.instructions.push(*instruction);
+                block.steps_to = next_instruction.map(|ni| ni.address);
+                break;
+            }
+            // End the current block, if we're about to step into an inlined function.
+            else if block_function.is_some()
+                && block_function
+                    != next_instruction
+                        .and_then(|ni| {
+                            program_unit
+                                .get_function_dies(debug_info, ni.address)
+                                .map(|function_dies| function_dies.last().cloned())
+                                .ok()
+                        })
+                        .flatten()
+            {
+                block.instructions.push(*instruction);
+                break;
+            }
+            // When we're not at one of the known boundaries, then we end blocks to conservatively to avoid
+            // false assumptions about whether two instructions belong in the same block.
+            // Break between instructions that are not in the same file, or not on the same line, are not in the same block.
+            else if next_instruction
+                .map(|ni| {
+                    (ni.file_index != instruction.file_index || ni.line != instruction.line)
+                        && (instruction.role == InstructionRole::HaltPoint
+                            || instruction.role == InstructionRole::Other)
+                        && ni.role == InstructionRole::HaltPoint
+                })
+                .unwrap_or(false)
+            {
+                // The next instruction is ...
+                block.instructions.push(*instruction);
+                break;
+            }
+            // Finally, if this instruction is not deemed part of one of the above boundary conditions,
+            // then simply add it to the current block.
+            block.instructions.push(*instruction);
+        }
         Ok(block)
     }
 

@@ -53,16 +53,13 @@ impl VerifiedBreakpoint {
     ///     debug information has been optimized away. In this case we will return an appropriate error.
     ///
     /// #### The logic used to find the "most relevant" source location is as follows:
-    /// 1. Filter  [`UnitInfo`], by using [`gimli::LineProgramHeader`] to match units that include
-    ///    the requested path.
-    /// 2. For each matching compilation unit, get the [`gimli::LineProgram`] and
-    ///    [`Vec<LineSequence>`][gimli::LineSequence].
-    /// 3. Filter the [`Vec<LineSequence>`][gimli::LineSequence] entries to only include sequences that match the requested path.
-    /// 3. Convert remaining [`LineSequence`][gimli::LineSequence], to [`Sequence`].
-    /// 4. Return the first [`Sequence`] that contains the requested source location.
-    ///    1. This may be an exact match on file/line/column, or,
-    ///    2. Failing an exact match, a match on file/line only.
-    ///    3. Failing that, a match on file only, where the line number is the "next" available instruction,
+    /// - Filter  [`UnitInfo`] , by using [`gimli::LineProgramHeader`] to match units that include the requested path.
+    /// - For each matching compilation unit, get the [`gimli::LineProgram`] and [`Vec<LineSequence>`][gimli::LineSequence].
+    /// - Convert [`LineSequence`][gimli::LineSequence], to [`Sequence`] to infer statement block boundaries.
+    /// - Return the first `Instruction` that contains the requested source location, being one of the following:
+    ///   - This may be an exact match on file/line/column, or,
+    ///   - Failing an exact match, a match on file/line only.
+    ///   - Failing that, a match on file only, where the line number is the "next" available instruction,
     ///       on the next available line of the specified file.
     pub(crate) fn for_source_location(
         debug_info: &DebugInfo,
@@ -158,6 +155,8 @@ pub(crate) fn match_address(
     address: u64,
     debug_info: &DebugInfo,
 ) -> Option<VerifiedBreakpoint> {
+    tracing::debug!("Looking for halt instruction at address={address:#010x}");
+
     if sequence.address_range.contains(&address) {
         sequence
             .blocks
@@ -184,6 +183,17 @@ pub(crate) fn match_location(
     debug_info: &DebugInfo,
     program_unit: &UnitInfo,
 ) -> Option<VerifiedBreakpoint> {
+    tracing::debug!(
+        "Looking for halt instruction on line={line:04}  col={:05}  f={:02} - {}",
+        column.unwrap(),
+        matching_file_index.unwrap(),
+        debug_info
+            .get_path(&program_unit.unit, matching_file_index.unwrap())
+            .unwrap()
+            .to_string_lossy()
+    );
+
+
     sequence
         .blocks
         .iter()

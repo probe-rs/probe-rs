@@ -10,23 +10,20 @@ pub(crate) enum InstructionRole {
     /// We need to keep track of source lines that signal function signatures,
     /// even if their program lines are not valid halt locations.
     Prologue,
-    /// A non-branching instruction.
-    Simple,
+    /// An instruction where we can set a breakpoint and expect the processor to halt.
+    HaltPoint,
     /// The last instruction before the function returns.
     EpilogueBegin,
-    /// Any other instruction that is not part of the prologue or epilogue, and is not a statement,
-    /// is considered to be an unspecified instruction type.
-    Unspecified,
+    /// Any other instruction that is not part of the prologue or epilogue, and is not a haltpoint.
+    /// We keep track of these for stepping purposes, so that we can identify adjacent haltpoints.
+    Other,
 }
 
 impl InstructionRole {
     /// Returns `true` if the instruction is a valid halt location,
     /// described by DWARF as a "recommended breakpoint location",
     pub(crate) fn is_halt_location(&self) -> bool {
-        !matches!(
-            self,
-            InstructionRole::Unspecified | InstructionRole::Prologue
-        )
+        !matches!(self, InstructionRole::Other | InstructionRole::Prologue)
     }
 }
 
@@ -77,11 +74,11 @@ impl Instruction {
                 InstructionRole::Prologue
             } else if row.is_stmt() {
                 // This type may be later changed during further processing.
-                InstructionRole::Simple
+                InstructionRole::HaltPoint
             } else if row.epilogue_begin() {
                 InstructionRole::EpilogueBegin
             } else {
-                InstructionRole::Unspecified
+                InstructionRole::Other
             },
         }
     }

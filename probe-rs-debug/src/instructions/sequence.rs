@@ -1,7 +1,7 @@
 use super::{
-    super::{debug_info::GimliReader, function_die::FunctionDie, unit_info::UnitInfo, DebugError, DebugInfo},
+    super::{debug_info::GimliReader, unit_info::UnitInfo, DebugError, DebugInfo},
     block::Block,
-    instruction::{self, Instruction},
+    instruction::Instruction,
 };
 use gimli::LineSequence;
 use std::{
@@ -15,7 +15,7 @@ use typed_path::TypedPathBuf;
 /// and filters it to only user code instructions (no prologue code, and no non-statement instructions),
 /// so that we are left only with what DWARF terms as "recommended breakpoint location".
 ///
-/// [s]: crate::debug::debug_step::SteppingMode
+/// [s]: crate::debug_step::SteppingMode
 pub(crate) struct Sequence<'debug_info> {
     /// The `address_range.start` is the starting address of the program counter for which this sequence is valid,
     /// and allows us to identify target instruction locations where the program counter lies inside the prologue.
@@ -38,6 +38,8 @@ pub(crate) struct Sequence<'debug_info> {
 }
 
 impl Debug for Sequence<'_> {
+    /// We implement a single Debug for the sequence, its blocks, and the instructions in each block,
+    /// so that we don't have to store references to `DebugInfo` and `UnitInfo` in the `Block` and `Instruction` types.
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(
             f,
@@ -52,7 +54,13 @@ impl Debug for Sequence<'_> {
                     included_addresses.start(),
                     included_addresses.end(),
                     if block.is_inlined { "Inlined " } else { "" },
-                    block.function_name
+                    self.program_unit
+                        .get_function_dies(self.debug_info, *included_addresses.start())
+                        .map(|function_dies| function_dies.last().cloned())
+                        .ok()
+                        .and_then(|function_die| function_die
+                            .and_then(|function_die| function_die.function_name(self.debug_info)))
+                        .unwrap_or("unknown".to_string()),
                 )?;
             } else {
                 write!(f, "  Block range: <empty>")?;
@@ -190,25 +198,28 @@ impl<'debug_info> Sequence<'debug_info> {
             previous_row = Some(*row);
         }
 
-        let sequence_function = program_unit
-            .get_function_dies(debug_info, sequence.address_range.start)
-            .map(|function_dies| function_dies.first().cloned())?;
-
         // Now that we have all the instructions, we can create the blocks.
-        let first_block = sequence.build_blocks(
+        sequence.build_blocks(
             debug_info,
             program_unit,
             &mut sequence_instructions.iter().peekable(),
-            sequence_function,
         )?;
-        sequence.blocks.push(first_block);
-        // Sort the blocks to comply with the DWARF specification, 6.2.5. (they get muddled because of the recursion).
-        sequence.blocks.sort_by_key(|block| {
-            block
-                .instructions
-                .first()
-                .map(|instruction| instruction.address)
-        });
+
+        //TODO: Create a test to compare the number of instructions in the sequence with the number of instructions in the blocks.
+        tracing::trace!(
+            "The `Sequence` has {} instructions, and {} blocks.",
+            sequence_instructions.len(),
+            sequence.blocks.len(),
+        );
+        tracing::trace!(
+            "\tThe blocks combined have a total of {} instructions",
+            sequence
+                .blocks
+                .iter()
+                .map(|block| block.instructions.len())
+                .sum::<usize>()
+        );
+        tracing::trace!("{sequence:?}");
         Ok(sequence)
     }
 
@@ -220,99 +231,31 @@ impl<'debug_info> Sequence<'debug_info> {
         debug_info: &'debug_info DebugInfo,
         program_unit: &'debug_info UnitInfo,
         block_instructions: &mut std::iter::Peekable<std::slice::Iter<Instruction>>,
-        block_function: Option<FunctionDie<'debug_info>>,
-    ) -> Result<Block, DebugError> {
-        let mut active_block = Block::new(self.address_range.start, debug_info, program_unit)?;
-        while let Some(instruction) = block_instructions.next() {
-            let next_instruction = block_instructions.peek().cloned();
-            // Close out the prologue block.
-            if instruction.role == instruction::InstructionRole::Prologue
-                && next_instruction
-                    .map(|ni| ni.role != instruction::InstructionRole::Prologue)
-                    .unwrap_or(true)
-            {
-                let next_block = next_instruction
-                    .and_then(|ni| Block::new(ni.address, debug_info, program_unit)?);
-
-                self.recurse_inner_block(
-                    &mut active_block,
-                    Some(instruction.address),
-                    debug_info,
-                    program_unit,
-                    block_instructions,
-                    block_function.clone(),
-                    instruction,
-                )?;
-                active_block.steps_to = next_instruction.map(|ni| ni.address);
-                continue;
-            // Check if we're on the final instruction before returning from an inlined function.
-            } else if active_block.is_inlined
-                && block_function
-                    .as_ref()
-                    .map(|block_function| {
-                        next_instruction.map(|ni| ni.address) == block_function.high_pc()
-                    })
-                    .unwrap_or(false)
-            {
-                // Inlined instructions immediately precede the call site.
-                active_block.steps_to = next_instruction.map(|ni| ni.address);
-                active_block.instructions.push(*instruction);
-                break;
-            }
-            // Check if we're about to step into an inlined function, and recurse ...
-            else if next_instruction.is_some() {
-                let inlined_function = next_instruction
-                    .and_then(|ni| {
-                        program_unit
-                            .get_function_dies(debug_info, ni.address)
-                            .map(|function_dies| function_dies.last().cloned())
-                            .ok()
-                    })
-                    .flatten();
-                if inlined_function != block_function {
-                    self.recurse_inner_block(
-                        &mut active_block,
-                        None,
-                        debug_info,
-                        program_unit,
-                        block_instructions,
-                        inlined_function,
-                        instruction,
-                    )?;
-                    // This instruction will be in a separate block from the inline instructions.
-                    continue;
-                }
-            }
-            // If this instruction is not a boundary, then simply add it to the current block.
-            active_block.instructions.push(*instruction);
-        }
-
-        Ok(active_block)
-    }
-
-    /// The steps to recurse, and return from an inner block to the outer block.
-    // Allowing too many arguments, because repeating all this code inside `fn build_blocks` would be worse.
-    #[allow(clippy::too_many_arguments)]
-    fn recurse_inner_block(
-        &mut self,
-        block: &mut Block,
-        edge_address: Option<u64>,
-        debug_info: &'debug_info DebugInfo,
-        program_unit: &'debug_info UnitInfo,
-        block_instructions: &mut std::iter::Peekable<std::slice::Iter<'_, Instruction>>,
-        inlined_function: Option<FunctionDie<'debug_info>>,
-        instruction: &Instruction,
     ) -> Result<(), DebugError> {
-        let mut inner_block = self.build_blocks(
-            debug_info,
-            program_unit,
-            block_instructions,
-            inlined_function,
-        )?;
-        inner_block.stepped_from = edge_address;
-        self.blocks.push(inner_block);
-        // We can move on the next instruction, as we've already processed the current one.
-        block.instructions.push(*instruction);
+        let mut previous_block: Option<Block> = None;
+        while let Some(instruction) = block_instructions.peek() {
+            // Determine if these two blocks need to be connected by their edges.
+            let stepped_from = previous_block.as_ref().and_then(|prev_block: &Block| {
+                if prev_block
+                    .steps_to
+                    .map(|address| address == instruction.address)
+                    .unwrap_or(false)
+                {
+                    prev_block.instructions.last().map(|i| i.address)
+                } else {
+                    None
+                }
+            });
+            let current_block = Block::new(
+                instruction.address,
+                stepped_from,
+                block_instructions,
+                debug_info,
+                program_unit,
+            )?;
+            previous_block = Some(current_block.clone());
+            self.blocks.push(current_block);
+        }
         Ok(())
     }
 
