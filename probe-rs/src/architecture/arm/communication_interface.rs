@@ -493,10 +493,13 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
             // Make sure we enable the overrun detect mode when requested.
             // For "bit-banging" probes, such as JLink or FTDI, we rely on it for good, stable communication.
             // This is required as the default sequence (and most special implementations) does not do this.
-            tracing::debug!("Setting orun_detect: {}", self.state.use_overrun_detect);
             let mut ctrl_reg: Ctrl = self.read_dp_register(dp)?;
-            ctrl_reg.set_orun_detect(self.state.use_overrun_detect);
-            self.write_dp_register(dp, ctrl_reg)?;
+            if ctrl_reg.orun_detect() != self.state.use_overrun_detect {
+                tracing::debug!("Setting orun_detect: {}", self.state.use_overrun_detect);
+                // only write if there’s a need for it.
+                ctrl_reg.set_orun_detect(self.state.use_overrun_detect);
+                self.write_dp_register(dp, ctrl_reg)?;
+            }
 
             /* determine the number and type of available APs */
             tracing::trace!("Searching valid APs");
