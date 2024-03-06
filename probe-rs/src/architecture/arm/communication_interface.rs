@@ -449,11 +449,8 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         match info {
             ApInformation::MemoryAp(ap_information) => {
                 let information = ap_information.clone();
-                let adi_v5_memory_interface = ADIMemoryInterface::<
-                    'interface,
-                    ArmCommunicationInterface<Initialized>,
-                >::new(self, information)
-                .map_err(|e| ArmError::from_access_port(e, access_port))?;
+                let adi_v5_memory_interface = ADIMemoryInterface::new(self, information)
+                    .map_err(|e| ArmError::from_access_port(e, access_port))?;
 
                 Ok(Box::new(adi_v5_memory_interface))
             }
