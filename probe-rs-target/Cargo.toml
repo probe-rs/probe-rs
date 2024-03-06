@@ -12,6 +12,12 @@ keywords = ["embedded"]
 license.workspace = true
 
 [dependencies]
+base64 = "0.21.7"
 jep106 = "0.2.8"
 serde = { version = "1", features = ["derive"] }
-base64 = "0.21.7"
+serde_yaml = "0.9"
+thiserror = "1"
+url = { version = "2", features = ["serde"] }
+
+[dev-dependencies]
+insta = "1"

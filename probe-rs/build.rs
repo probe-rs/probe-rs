@@ -1,7 +1,6 @@
 use std::env;
-use std::fs::{read_dir, read_to_string};
-use std::io;
-use std::path::{Path, PathBuf};
+use std::fs::read_dir;
+use std::path::Path;
 
 use probe_rs_target::ChipFamily;
 
@@ -23,31 +22,16 @@ fn main() {
     }
 
     let mut families: Vec<ChipFamily> = Vec::new();
-
-    let mut files = vec![];
-    visit_dirs(Path::new("targets"), &mut files).unwrap();
+    visit_targets(Path::new("targets"), &mut families).unwrap();
 
     // Check if there are any additional targets to generate for
     match env::var("PROBE_RS_TARGETS_DIR") {
         Ok(additional_target_dir) => {
             println!("cargo:rerun-if-changed={additional_target_dir}");
-            visit_dirs(Path::new(&additional_target_dir), &mut files).unwrap();
+            visit_targets(Path::new(&additional_target_dir), &mut families).unwrap();
         }
         Err(_err) => {
             // Do nothing as you dont have to add any other targets
-        }
-    }
-
-    for file in files {
-        let string = read_to_string(&file).expect(
-            "Algorithm definition file could not be read. This is a bug. Please report it.",
-        );
-
-        let yaml: Result<ChipFamily, _> = serde_yaml::from_str(&string);
-
-        match yaml {
-            Ok(familiy) => families.push(familiy),
-            Err(e) => panic!("Failed to parse target file: {file:?} because:\n{e}"),
         }
     }
 
@@ -67,18 +51,14 @@ fn main() {
 }
 
 /// One possible implementation of walking a directory only visiting files.
-fn visit_dirs(dir: &Path, targets: &mut Vec<PathBuf>) -> io::Result<()> {
+fn visit_targets(dir: &Path, targets: &mut Vec<ChipFamily>) -> anyhow::Result<()> {
+    // We make sure the root path we look at is a directory.
     if dir.is_dir() {
+        // We enumerate all the entries in the root path.
         for entry in read_dir(dir)? {
             let entry = entry?;
             let path = entry.path();
-            if path.is_dir() {
-                visit_dirs(&path, targets)?;
-            } else if let Some(extension) = path.extension() {
-                if extension.eq_ignore_ascii_case("yaml") {
-                    targets.push(path);
-                }
-            }
+            targets.push(ChipFamily::load(&path)?);
         }
     }
     Ok(())

@@ -1,6 +1,7 @@
 use super::memory::MemoryRegion;
 use crate::{serialize::hex_option, CoreType};
 use serde::{Deserialize, Serialize};
+use url::Url;
 
 /// Represents a DAP scan chain element.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -45,8 +46,10 @@ pub struct Chip {
     /// The `PART` register of the chip.
     /// This value can be determined via the `cli info` command.
     pub part: Option<u16>,
-    /// An URL to the SVD file for this chip.
-    pub svd: Option<String>,
+    /// A URI to an SVD file.
+    pub svd: Option<Url>,
+    /// An URI to a datasheet file.
+    pub datasheet: Option<Url>,
     /// The cores available on the chip.
     #[serde(default)]
     pub cores: Vec<Core>,
@@ -91,7 +94,6 @@ impl Chip {
         Chip {
             name: name.to_string(),
             part: None,
-            svd: None,
             cores: vec![Core {
                 name: "main".to_string(),
                 core_type,
@@ -102,6 +104,8 @@ impl Chip {
             rtt_scan_ranges: None,
             jtag: None,
             default_binary_format: Some(BinaryFormat::Raw),
+            svd: None,
+            datasheet: None,
         }
     }
 }

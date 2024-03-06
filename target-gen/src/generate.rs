@@ -159,13 +159,14 @@ where
         family.variants.push(Chip {
             name: device_name,
             part: None,
-            svd: None,
             cores,
             memory_map,
             flash_algorithms: flash_algorithm_names,
             rtt_scan_ranges: None,
             jtag: None, // TODO, parse scan chain from sdf
             default_binary_format: None,
+            svd: None,
+            datasheet: None,
         });
     }
 
