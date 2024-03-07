@@ -1,5 +1,5 @@
 use super::{
-    super::{debug_info::GimliReader, unit_info::UnitInfo, DebugError, DebugInfo},
+    super::{debug_info::GimliReader, unit_info::UnitInfo, ColumnType, DebugError, DebugInfo},
     block::Block,
     instruction::Instruction,
     SourceLocation, VerifiedBreakpoint,
@@ -7,6 +7,7 @@ use super::{
 use gimli::LineSequence;
 use std::{
     fmt::{Debug, Formatter},
+    num::NonZeroU64,
     ops::Range,
 };
 use typed_path::TypedPathBuf;
@@ -275,6 +276,7 @@ impl<'debug_info> Sequence<'debug_info> {
             .iter()
             .find(|block| block.contains_address(address))
         else {
+            tracing::warn!("Could not find a valid breakpoint for address={address:#010x}");
             return None;
         };
 
@@ -303,43 +305,122 @@ impl<'debug_info> Sequence<'debug_info> {
             halt_instruction
         };
 
-        halt_instruction.and_then(|instruction| {
+        if let Some(breakpoint) = halt_instruction.and_then(|instruction| {
             SourceLocation::from_instruction(self.debug_info, self.program_unit, instruction).map(
                 |source_location| VerifiedBreakpoint {
                     address: instruction.address,
                     source_location,
                 },
             )
-        })
+        }) {
+            tracing::debug!("Found a matching breakpoint: {breakpoint:?}");
+            Some(breakpoint)
+        } else {
+            tracing::warn!("Could not find a valid breakpoint for address={address:#010x}");
+            None
+        }
     }
 
     /// See [`VerifiedBreakpoint::for_source_location()`].
-    pub(crate) fn haltpoint_near_location(
+    // TODO: We need tests for the various scenarios below.
+    pub(crate) fn haltpoint_near_source_location(
         &self,
         matching_file_index: Option<u64>,
         line: u64,
         column: Option<u64>,
     ) -> Option<VerifiedBreakpoint> {
         tracing::debug!(
-            "Looking for halt instruction on line={line:04}  col={:05}  f={:02} - {}",
+            "Looking for a breakpoint for line={line}, column={} in file: {}",
             column.unwrap(),
-            matching_file_index.unwrap(),
             self.debug_info
                 .get_path(&self.program_unit.unit, matching_file_index.unwrap())
                 .unwrap()
                 .to_string_lossy()
         );
 
-        self.blocks
+        // First, let's reduce the blocks to only those that contain the file index we are looking for.
+        // We do this, because in real life, users are more like to request the file and line,
+        // but cannot accurately specify the column that contains a valid halt location. The result is
+        // that trying to do an exact file+line+column match as the first step is likely to useless.
+        let matching_blocks = self
+            .blocks
             .iter()
-            .find_map(|block| block.match_location(matching_file_index, line, column))
-            .and_then(|instruction| {
-                SourceLocation::from_instruction(self.debug_info, self.program_unit, instruction)
-                    .map(|source_location| VerifiedBreakpoint {
-                        address: instruction.address,
-                        source_location,
-                    })
+            .filter(|block| {
+                block
+                    .instructions
+                    .iter()
+                    .any(|instruction| matching_file_index == Some(instruction.file_index))
             })
+            .collect::<Vec<&Block>>();
+
+        // Cycle through various degrees of matching, to find the most relevant source location.
+        // We have to do this in multiple iterations because instructions are allocated to blocks
+        // based on their instruction address, and not their source location.
+        for block in &matching_blocks {
+            // Try an exact match.
+            if let Some(matching_breakpoint) = block
+                .instructions
+                .iter()
+                .find(|&location| {
+                    matching_file_index == Some(location.file_index)
+                        && NonZeroU64::new(line) == location.line
+                        && ColumnType::from(column.unwrap_or(0)) == location.column
+                })
+                .or_else(|| {
+                    // Try without a column specifier.
+                    block.instructions.iter().find(|&location| {
+                        matching_file_index == Some(location.file_index)
+                            && NonZeroU64::new(line) == location.line
+                    })
+                })
+                .and_then(|matching_location| {
+                    self.haltpoint_near_address(matching_location.address)
+                })
+            {
+                tracing::debug!("Found a closely matching breakpoint: {matching_breakpoint:?}");
+                return Some(matching_breakpoint);
+            }
+        }
+
+        // If we still haven't found a halt instruction, then we try to find the next
+        // and closest source line, in the same file. This is a bit risky, because
+        // those lines may not be part of the same branch of execution. That said,
+        // the process of setting breakpoints by source location is usually a
+        // visual process, with feedback. e.g. in VSCode, the actual breakpoint location
+        // is shown in the editor, and the user can see if it represents a reasonable alternative.
+        // This is how GDB does it also.
+        let mut sorted_file_lines = Vec::new();
+        for block in matching_blocks {
+            for instruction in &block.instructions {
+                if matching_file_index == Some(instruction.file_index) {
+                    sorted_file_lines.push(instruction);
+                }
+            }
+        }
+        sorted_file_lines.sort_by(|a, b| a.line.cmp(&b.line));
+
+        for matching_location in sorted_file_lines {
+            if matching_location.line > NonZeroU64::new(line) {
+                if let Some(matching_breakpoint) =
+                    self.haltpoint_near_address(matching_location.address)
+                {
+                    tracing::warn!(
+                        "Suggesting an closely matching breakpoint: {matching_breakpoint:?}"
+                    );
+                    return Some(matching_breakpoint);
+                }
+            }
+        }
+
+        tracing::warn!(
+            "Could not find a valid breakpoint for line={line}, column={} in file: {}",
+            column.unwrap(),
+            self.debug_info
+                .get_path(&self.program_unit.unit, matching_file_index.unwrap())
+                .unwrap()
+                .to_string_lossy()
+        );
+        None
     }
 }
 

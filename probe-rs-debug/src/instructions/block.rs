@@ -1,8 +1,8 @@
 use super::{
-    super::{unit_info::UnitInfo, ColumnType, DebugError, DebugInfo},
+    super::{unit_info::UnitInfo, DebugError, DebugInfo},
     instruction::{Instruction, InstructionRole},
 };
-use std::{num::NonZeroU64, ops::RangeInclusive};
+use std::ops::RangeInclusive;
 
 /// The concept of an instruction block is based on
 /// [Rust's MIR basic block definition](https://rustc-dev-guide.rust-lang.org/appendix/background.html#cfg)
@@ -173,42 +173,5 @@ impl Block {
         self.included_addresses()
             .map(|included_addresses| included_addresses.contains(&address))
             .unwrap_or(false)
-    }
-
-    /// Find the valid halt instruction location that that matches the `file`, `line` and `column`.
-    /// If `column` is `None`, then the first instruction location that matches the `file` and `line` is returned.
-    /// TODO: If there is a match, but it is not a valid halt location, then the next valid halt location is returned.
-    pub(crate) fn match_location(
-        &self,
-        matching_file_index: Option<u64>,
-        line: u64,
-        column: Option<u64>,
-    ) -> Option<&Instruction> {
-        // Cycle through various degrees of matching, to find the most relevant source location.
-        if let Some(supplied_column) = column {
-            // Try an exact match.
-            self.instructions
-                .iter()
-                .find(|&location| {
-                    location.role.is_halt_location()
-                        && matching_file_index == Some(location.file_index)
-                        && NonZeroU64::new(line) == location.line
-                        && ColumnType::from(supplied_column) == location.column
-                })
-                .or_else(|| {
-                    // Try without a column specifier.
-                    self.instructions.iter().find(|&location| {
-                        location.role.is_halt_location()
-                            && matching_file_index == Some(location.file_index)
-                            && NonZeroU64::new(line) == location.line
-                    })
-                })
-        } else {
-            self.instructions.iter().find(|&location| {
-                location.role.is_halt_location()
-                    && matching_file_index == Some(location.file_index)
-                    && NonZeroU64::new(line) == location.line
-            })
-        }
     }
 }

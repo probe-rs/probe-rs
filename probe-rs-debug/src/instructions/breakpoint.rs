@@ -1,5 +1,5 @@
 use super::{
-    super::{canonical_path_eq, DebugError, DebugInfo},
+    super::{debug_info::canonical_unit_path_eq, DebugError, DebugInfo},
     sequence::Sequence,
     SourceLocation,
 };
@@ -93,7 +93,7 @@ impl VerifiedBreakpoint {
                     debug_info
                         .get_path(&program_unit.unit, file_index)
                         .and_then(|combined_path: TypedPathBuf| {
-                            if canonical_path_eq(path, combined_path.to_path()) {
+                            if canonical_unit_path_eq(combined_path.to_path(), path) {
                                 tracing::debug!(
                                     "Found matching file index: {file_index} for path: {path}",
                                     file_index = file_index,
@@ -127,7 +127,7 @@ impl VerifiedBreakpoint {
 
                 for matching_file_index in &matching_file_indices {
                     if let Some(verified_breakpoint) =
-                        sequence.haltpoint_near_location(Some(*matching_file_index), line, column)
+                        sequence.haltpoint_near_source_location(Some(*matching_file_index), line, column)
                     {
                         return Ok(verified_breakpoint);
                     }
