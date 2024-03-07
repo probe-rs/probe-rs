@@ -140,7 +140,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                     .properties
                     .access
                     .map(|a| !a.can_read())
-                    .unwrap_or(true);
+                    .unwrap_or_default();
 
             let register_name = format!("{}.{}", &peripheral_name, register.name);
 
