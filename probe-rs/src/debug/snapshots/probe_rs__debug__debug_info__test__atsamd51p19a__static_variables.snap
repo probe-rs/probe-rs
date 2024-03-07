@@ -5,7 +5,7 @@ expression: static_variables
 Child Variables:
   name: StaticScopeRoot
   type_name: Unknown
-  value: "<unknown> {\n\texception_table: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t_aTerminalId: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,<unknown>,\n\tchar[1024] = [\n\t\tH,\n\t\te,\n\t\tl,\n\t\tl,\n\t\to,\n\t\t ,\n\t\tH,\n\t\te,\n\t\tl,\n\t\tl,\n\n\t\t... and 1014 more\n\t],\n\tchar[16] = [\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\n\t\t... and 6 more\n\t],\n\t_ActiveTerminal: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\tfoo: Foo_t = Foo_t @ 0x20000000,\n\tconst Foo_t[2] = [\n\t\tFoo_t @ 0x0000165C,\n\t\tFoo_t @ 0x00001664\n\t]}"
+  value: "<unknown> {\n\texception_table: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\t_aTerminalId: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,<unknown>,\n\tchar[1024] = [\n\t\tH,\n\t\te,\n\t\tl,\n\t\tl,\n\t\to,\n\t\t ,\n\t\tH,\n\t\te,\n\t\tl,\n\t\tl,\n\n\t\t... and 1014 more\n\t],\n\tchar[16] = [\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\t\t\u0000,\n\n\t\t... and 6 more\n\t],\n\t_ActiveTerminal: <unknown> = < The value of this variable may have been optimized out of the debug info, by the compiler. >,\n\tfoo: Foo_t = Foo_t @ 0x20000000,\n\tconst Foo_t[2] = [\n\t\tFoo_t @ 0x00001670,\n\t\tFoo_t @ 0x00001678\n\t],\n\tuint8_t[6] = [\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0,\n\t\t0\n\t]}"
   children:
     - name:
         Named: exception_table
@@ -513,7 +513,7 @@ Child Variables:
                       - Typedef: Foo_t
                       - Struct: "<unnamed struct>"
               count: 2
-      value: "const Foo_t[2] = [\n\tFoo_t @ 0x0000165C,\n\tFoo_t @ 0x00001664]"
+      value: "const Foo_t[2] = [\n\tFoo_t @ 0x00001670,\n\tFoo_t @ 0x00001678]"
       children:
         - name:
             Named: __0
@@ -523,17 +523,17 @@ Child Variables:
               - Modified:
                   - Typedef: Foo_t
                   - Struct: "<unnamed struct>"
-          value: Foo_t @ 0x0000165C
+          value: Foo_t @ 0x00001670
           children:
             - name: Unknown
               type_name:
                 Base: "<unnamed union>"
-              value: "<unnamed union> {\n\t<unknown>: <unnamed struct> = <unnamed struct> @ 0x0000165C,\n\tx: uint32_t = 0}"
+              value: "<unnamed union> {\n\t<unknown>: <unnamed struct> = <unnamed struct> @ 0x00001670,\n\tx: uint32_t = 0}"
               children:
                 - name: Unknown
                   type_name:
                     Struct: "<unnamed struct>"
-                  value: "<unnamed struct> @ 0x0000165C"
+                  value: "<unnamed struct> @ 0x00001670"
                   children:
                     - name:
                         Named: a
@@ -584,7 +584,7 @@ Child Variables:
                 Named: unsigned_bitfields
               type_name:
                 Struct: "<unnamed struct>"
-              value: "<unnamed struct> @ 0x00001660"
+              value: "<unnamed struct> @ 0x00001674"
               children:
                 - name:
                     Named: f
@@ -616,7 +616,7 @@ Child Variables:
                 Named: signed_bitfields
               type_name:
                 Struct: "<unnamed struct>"
-              value: "<unnamed struct> @ 0x00001661"
+              value: "<unnamed struct> @ 0x00001675"
               children:
                 - name:
                     Named: f
@@ -652,17 +652,17 @@ Child Variables:
               - Modified:
                   - Typedef: Foo_t
                   - Struct: "<unnamed struct>"
-          value: Foo_t @ 0x00001664
+          value: Foo_t @ 0x00001678
           children:
             - name: Unknown
               type_name:
                 Base: "<unnamed union>"
-              value: "<unnamed union> {\n\t<unknown>: <unnamed struct> = <unnamed struct> @ 0x00001664,\n\tx: uint32_t = 0}"
+              value: "<unnamed union> {\n\t<unknown>: <unnamed struct> = <unnamed struct> @ 0x00001678,\n\tx: uint32_t = 0}"
               children:
                 - name: Unknown
                   type_name:
                     Struct: "<unnamed struct>"
-                  value: "<unnamed struct> @ 0x00001664"
+                  value: "<unnamed struct> @ 0x00001678"
                   children:
                     - name:
                         Named: a
@@ -713,7 +713,7 @@ Child Variables:
                 Named: unsigned_bitfields
               type_name:
                 Struct: "<unnamed struct>"
-              value: "<unnamed struct> @ 0x00001668"
+              value: "<unnamed struct> @ 0x0000167C"
               children:
                 - name:
                     Named: f
@@ -745,7 +745,7 @@ Child Variables:
                 Named: signed_bitfields
               type_name:
                 Struct: "<unnamed struct>"
-              value: "<unnamed struct> @ 0x00001669"
+              value: "<unnamed struct> @ 0x0000167D"
               children:
                 - name:
                     Named: f
@@ -773,4 +773,71 @@ Child Variables:
                               - Typedef: __int8_t
                               - Base: signed char
                   value: "0"
+    - name:
+        Named: nested_array
+      type_name:
+        Array:
+          item_type_name:
+            Modified:
+              - Typedef: uint8_t
+              - Modified:
+                  - Typedef: __uint8_t
+                  - Base: unsigned char
+          count: 6
+      value: "uint8_t[6] = [\n\t0,\n\t0,\n\t0,\n\t0,\n\t0,\n\t0]"
+      children:
+        - name:
+            Named: __0
+          type_name:
+            Modified:
+              - Typedef: uint8_t
+              - Modified:
+                  - Typedef: __uint8_t
+                  - Base: unsigned char
+          value: "0"
+        - name:
+            Named: __1
+          type_name:
+            Modified:
+              - Typedef: uint8_t
+              - Modified:
+                  - Typedef: __uint8_t
+                  - Base: unsigned char
+          value: "0"
+        - name:
+            Named: __2
+          type_name:
+            Modified:
+              - Typedef: uint8_t
+              - Modified:
+                  - Typedef: __uint8_t
+                  - Base: unsigned char
+          value: "0"
+        - name:
+            Named: __3
+          type_name:
+            Modified:
+              - Typedef: uint8_t
+              - Modified:
+                  - Typedef: __uint8_t
+                  - Base: unsigned char
+          value: "0"
+        - name:
+            Named: __4
+          type_name:
+            Modified:
+              - Typedef: uint8_t
+              - Modified:
+                  - Typedef: __uint8_t
+                  - Base: unsigned char
+          value: "0"
+        - name:
+            Named: __5
+          type_name:
+            Modified:
+              - Typedef: uint8_t
+              - Modified:
+                  - Typedef: __uint8_t
+                  - Base: unsigned char
+          value: "0"
 
