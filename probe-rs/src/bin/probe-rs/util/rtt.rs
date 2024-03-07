@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Result};
-use defmt_decoder::log::format::{Formatter, FormatterConfig};
+use defmt_decoder::log::format::{Formatter, FormatterConfig, FormatterFormat};
 use defmt_decoder::DecodeError;
 pub use probe_rs::rtt::ChannelMode;
 use probe_rs::rtt::{DownChannel, Error, Rtt, ScanRegion, UpChannel};
@@ -203,24 +203,24 @@ impl RttActiveUpChannel {
                 // Format options:
                 // 1. Custom format for the channel
                 // 2. Custom default format
-                // 3. Default with timestamp with location
-                // 4. Default with timestamp without location
-                // 5. Default without timestamp with location
-                // 6. Default without timestamp without location
-                let format = channel_config
+                // 3. Default with optional timestamp and location
+                let format = if let Some(format) = channel_config
                     .defmt_log_format
                     .as_deref()
                     .or(rtt_config.log_format.as_deref())
-                    .unwrap_or(match (channel_config.show_location, has_timestamp) {
-                        (true, true) => "{t} {L} {s}\n└─ {m} @ {F}:{l}",
-                        (true, false) => "{L} {s}\n└─ {m} @ {F}:{l}",
-                        (false, true) => "{t} {L} {s}",
-                        (false, false) => "{L} {s}",
-                    });
-                let mut format = FormatterConfig::custom(format);
-                format.is_timestamp_available = has_timestamp;
+                {
+                    FormatterFormat::Custom(format)
+                } else {
+                    FormatterFormat::Default {
+                        with_location: channel_config.show_location,
+                    }
+                };
+
                 ChannelDataConfig::Defmt {
-                    formatter: Formatter::new(format),
+                    formatter: Formatter::new(FormatterConfig {
+                        format,
+                        is_timestamp_available: has_timestamp,
+                    }),
                 }
             }
         };
