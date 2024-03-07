@@ -1,5 +1,5 @@
 use super::{
-    super::{canonical_path_eq, unit_info::UnitInfo, DebugError, DebugInfo},
+    super::{canonical_path_eq, DebugError, DebugInfo},
     sequence::Sequence,
     SourceLocation,
 };
@@ -21,15 +21,14 @@ pub struct VerifiedBreakpoint {
 impl VerifiedBreakpoint {
     /// Return the first valid breakpoint location of the statement that is greater than OR equal to `address`.
     /// e.g., if the `address` is the current program counter, then the return value will be the next valid halt address
-    /// in the current sequence.
+    /// in the current sequence, where the address is part of the sequence, and will NOT be bypassed because of branching.
     pub(crate) fn for_address(
         debug_info: &DebugInfo,
         address: u64,
     ) -> Result<VerifiedBreakpoint, DebugError> {
         let sequence = Sequence::from_address(debug_info, address)?;
 
-        // Cycle through various degrees of matching, to find the most relevant source location.
-        if let Some(verified_breakpoint) = match_address(&sequence, address, debug_info) {
+        if let Some(verified_breakpoint) = sequence.haltpoint_near_address(address) {
             tracing::debug!(
                 "Found valid breakpoint for address: {:#010x} : {verified_breakpoint:?}",
                 &address
@@ -60,7 +59,7 @@ impl VerifiedBreakpoint {
     ///   - This may be an exact match on file/line/column, or,
     ///   - Failing an exact match, a match on file/line only.
     ///   - Failing that, a match on file only, where the line number is the "next" available instruction,
-    ///       on the next available line of the specified file.
+    ///     on the next available line of the specified file.
     pub(crate) fn for_source_location(
         debug_info: &DebugInfo,
         path: TypedPath,
@@ -127,15 +126,9 @@ impl VerifiedBreakpoint {
                 )?;
 
                 for matching_file_index in &matching_file_indices {
-                    // Cycle through various degrees of matching, to find the most relevant source location.
-                    if let Some(verified_breakpoint) = match_location(
-                        &sequence,
-                        Some(*matching_file_index),
-                        line,
-                        column,
-                        debug_info,
-                        program_unit,
-                    ) {
+                    if let Some(verified_breakpoint) =
+                        sequence.haltpoint_near_location(Some(*matching_file_index), line, column)
+                    {
                         return Ok(verified_breakpoint);
                     }
                 }
@@ -147,63 +140,4 @@ impl VerifiedBreakpoint {
             path.display()
         )))
     }
-}
-
-/// Find the valid halt instruction location that is equal to, or greater than, the address.
-pub(crate) fn match_address(
-    sequence: &Sequence<'_>,
-    address: u64,
-    debug_info: &DebugInfo,
-) -> Option<VerifiedBreakpoint> {
-    tracing::debug!("Looking for halt instruction at address={address:#010x}");
-
-    if sequence.address_range.contains(&address) {
-        sequence
-            .blocks
-            .iter()
-            .find_map(|block| block.match_address(address))
-            .and_then(|instruction| {
-                SourceLocation::from_instruction(debug_info, sequence.program_unit, instruction)
-                    .map(|source_location| VerifiedBreakpoint {
-                        address: instruction.address,
-                        source_location,
-                    })
-            })
-    } else {
-        None
-    }
-}
-
-/// Find the valid halt instruction location that matches the file, line and column.
-pub(crate) fn match_location(
-    sequence: &Sequence<'_>,
-    matching_file_index: Option<u64>,
-    line: u64,
-    column: Option<u64>,
-    debug_info: &DebugInfo,
-    program_unit: &UnitInfo,
-) -> Option<VerifiedBreakpoint> {
-    tracing::debug!(
-        "Looking for halt instruction on line={line:04}  col={:05}  f={:02} - {}",
-        column.unwrap(),
-        matching_file_index.unwrap(),
-        debug_info
-            .get_path(&program_unit.unit, matching_file_index.unwrap())
-            .unwrap()
-            .to_string_lossy()
-    );
-
-
-    sequence
-        .blocks
-        .iter()
-        .find_map(|block| block.match_location(matching_file_index, line, column))
-        .and_then(|instruction| {
-            SourceLocation::from_instruction(debug_info, sequence.program_unit, instruction).map(
-                |source_location| VerifiedBreakpoint {
-                    address: instruction.address,
-                    source_location,
-                },
-            )
-        })
 }

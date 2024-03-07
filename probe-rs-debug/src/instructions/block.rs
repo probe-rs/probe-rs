@@ -168,17 +168,11 @@ impl Block {
             .and_then(|first| self.instructions.last().map(|last| *first..=last.address))
     }
 
-    /// Find the valid halt instruction location that is equal to, or greater than, the address.
-    pub(crate) fn match_address(&self, address: u64) -> Option<&Instruction> {
-        self.included_addresses().and_then(|included_addresses| {
-            if included_addresses.contains(&address) {
-                self.instructions.iter().find(|&location| {
-                    location.role.is_halt_location() && location.address >= address
-                })
-            } else {
-                None
-            }
-        })
+    /// Check if the block contains the address.
+    pub(crate) fn contains_address(&self, address: u64) -> bool {
+        self.included_addresses()
+            .map(|included_addresses| included_addresses.contains(&address))
+            .unwrap_or(false)
     }
 
     /// Find the valid halt instruction location that that matches the `file`, `line` and `column`.

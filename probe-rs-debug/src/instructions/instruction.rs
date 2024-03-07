@@ -23,7 +23,10 @@ impl InstructionRole {
     /// Returns `true` if the instruction is a valid halt location,
     /// described by DWARF as a "recommended breakpoint location",
     pub(crate) fn is_halt_location(&self) -> bool {
-        !matches!(self, InstructionRole::Other | InstructionRole::Prologue)
+        matches!(
+            self,
+            InstructionRole::HaltPoint | InstructionRole::EpilogueBegin
+        )
     }
 }
 

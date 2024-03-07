@@ -2,6 +2,7 @@ use super::{
     super::{debug_info::GimliReader, unit_info::UnitInfo, DebugError, DebugInfo},
     block::Block,
     instruction::Instruction,
+    SourceLocation, VerifiedBreakpoint,
 };
 use gimli::LineSequence;
 use std::{
@@ -262,6 +263,83 @@ impl<'debug_info> Sequence<'debug_info> {
     /// Get the number of instruction locations in the list.
     pub(crate) fn len(&self) -> usize {
         self.blocks.len()
+    }
+
+    /// See [`VerifiedBreakpoint::for_address()`].
+    // TODO: We need tests for the various scenarios below.
+    pub(crate) fn haltpoint_near_address(&self, address: u64) -> Option<VerifiedBreakpoint> {
+        tracing::debug!("Looking for halt instruction at address={address:#010x}");
+
+        let Some(block) = self
+            .blocks
+            .iter()
+            .find(|block| block.contains_address(address))
+        else {
+            return None;
+        };
+
+        // Cycle through increasing degrees of "looseness" in the search for the halt instruction.
+        let halt_instruction = if let Some(instruction) =
+            block.instructions.iter().find(|instruction| {
+                instruction.address >= address && instruction.role.is_halt_location()
+            }) {
+            // We found a matching halt location in the current block.
+            Some(instruction)
+        } else {
+            // Look for the next halt instruction in any blocks that we know are linked.
+            let mut halt_instruction = None;
+            let mut linked_address = block.steps_to;
+            while let Some(linked_block) = self.blocks.iter().find(|next_block| {
+                linked_address.is_some() && next_block.stepped_from == linked_address
+            }) {
+                linked_address = linked_block.steps_to;
+                if let Some(instruction) = linked_block.instructions.iter().find(|instruction| {
+                    instruction.address >= address && instruction.role.is_halt_location()
+                }) {
+                    halt_instruction = Some(instruction);
+                    break;
+                }
+            }
+            halt_instruction
+        };
+
+        halt_instruction.and_then(|instruction| {
+            SourceLocation::from_instruction(self.debug_info, self.program_unit, instruction).map(
+                |source_location| VerifiedBreakpoint {
+                    address: instruction.address,
+                    source_location,
+                },
+            )
+        })
+    }
+
+    /// See [`VerifiedBreakpoint::for_source_location()`].
+    pub(crate) fn haltpoint_near_location(
+        &self,
+        matching_file_index: Option<u64>,
+        line: u64,
+        column: Option<u64>,
+    ) -> Option<VerifiedBreakpoint> {
+        tracing::debug!(
+            "Looking for halt instruction on line={line:04}  col={:05}  f={:02} - {}",
+            column.unwrap(),
+            matching_file_index.unwrap(),
+            self.debug_info
+                .get_path(&self.program_unit.unit, matching_file_index.unwrap())
+                .unwrap()
+                .to_string_lossy()
+        );
+
+        self.blocks
+            .iter()
+            .find_map(|block| block.match_location(matching_file_index, line, column))
+            .and_then(|instruction| {
+                SourceLocation::from_instruction(self.debug_info, self.program_unit, instruction)
+                    .map(|source_location| VerifiedBreakpoint {
+                        address: instruction.address,
+                        source_location,
+                    })
+            })
     }
 }
 
