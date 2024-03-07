@@ -39,7 +39,7 @@ impl SvdCache {
             svd_xml,
             &Config::default().expand(true).ignore_enums(true),
         ) {
-            Ok(peripheral_device) => {
+            Ok(mut peripheral_device) => {
                 debug_adapter
                     .update_progress(
                         None,
@@ -47,6 +47,11 @@ impl SvdCache {
                         progress_id,
                     )
                     .ok();
+
+                // add a extra phase of "expand_properties",
+                // to make sure `None` value of a register
+                // means "nowhere to find a (reference) value"
+                svd_parser::expand_properties(&mut peripheral_device);
 
                 Ok(SvdCache {
                     svd_variable_cache: variable_cache_from_svd(
