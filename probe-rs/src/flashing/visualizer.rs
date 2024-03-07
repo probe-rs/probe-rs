@@ -47,7 +47,7 @@ impl<'layout> FlashVisualizer<'layout> {
                 .set("y", start + height - 2.0)
                 .set("font-size", 5)
                 .set("font-family", "Arial")
-                .set("fill", "Black")
+                .set("fill", "Black"),
         );
 
         group.append(
@@ -56,7 +56,7 @@ impl<'layout> FlashVisualizer<'layout> {
                 .set("y", start + 5.0)
                 .set("font-size", 5)
                 .set("font-family", "Arial")
-                .set("fill", "Black")
+                .set("fill", "Black"),
         );
 
         group
