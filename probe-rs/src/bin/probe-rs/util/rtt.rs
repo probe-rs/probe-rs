@@ -446,7 +446,8 @@ impl RttActiveTarget {
                     (false, true) => "{t} {L} {s}",
                     (false, false) => "{L} {s}",
                 });
-                let format = defmt_decoder::log::format::FormatterConfig::custom(format);
+                let mut format = defmt_decoder::log::format::FormatterConfig::custom(format);
+                format.is_timestamp_available = has_timestamp;
                 let formatter = defmt_decoder::log::format::Formatter::new(format);
 
                 let locs = {
