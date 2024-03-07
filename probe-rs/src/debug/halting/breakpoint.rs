@@ -1,5 +1,6 @@
 use super::{
-    super::{canonical_unit_path_eq, DebugError, DebugInfo},
+    super::{DebugError, DebugInfo},
+    canonical_unit_path_eq,
     sequence::Sequence,
     SourceLocation,
 };

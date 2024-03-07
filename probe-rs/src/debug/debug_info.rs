@@ -969,21 +969,6 @@ impl DebugInfo {
     }
 }
 
-/// Uses the [std::fs::canonicalize] function to canonicalize both paths before applying the [TypedPathBuf::starts_with]
-/// to test if the source file path is equal, or a split compilation unit of the source file.
-/// We use 'starts_with` because the DWARF unit paths often have split unit identifiers, e.g. `...main.rs/@/11rwb6kiscqun26d`.
-/// If for some reason (e.g., the paths don't exist) the canonicalization fails, the original equality check is used.
-/// We do this to maximize the chances of finding a match where the source file path can be given as
-/// an absolute, relative, or partial path.
-pub(crate) fn canonical_unit_path_eq(
-    unit_path: &TypedPathBuf,
-    source_file_path: &TypedPathBuf,
-) -> bool {
-    unit_path
-        .normalize()
-        .starts_with(source_file_path.normalize())
-}
-
 /// Get a handle to the [`gimli::UnwindTableRow`] for this call frame, so that we can reference it to unwind register values.
 fn get_unwind_info<'a>(
     unwind_context: &'a mut UnwindContext<DwarfReader>,
