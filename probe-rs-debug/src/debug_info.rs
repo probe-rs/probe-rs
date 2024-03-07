@@ -1011,13 +1011,6 @@ impl DebugInfo {
     }
 }
 
-/// Uses the [`TypedPathBuf::normalize`] function to normalize both paths before comparing them.
-/// We use `starts_with` because the DWARF unit paths often have split unit identifiers,
-/// e.g. `...main.rs/@/11rwb6kiscqun26d`.
-pub(crate) fn canonical_unit_path_eq(unit_path: TypedPath, source_file_path: TypedPath) -> bool {
-    unit_path.normalize().starts_with(source_file_path.normalize())
-}
-
 /// Get a handle to the [`gimli::UnwindTableRow`] for this call frame, so that we can reference it to unwind register values.
 pub fn get_unwind_info<'a>(
     unwind_context: &'a mut UnwindContext<GimliReaderOffset>,

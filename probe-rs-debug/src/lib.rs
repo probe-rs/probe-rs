@@ -9,8 +9,8 @@ pub mod debug_info;
 pub mod debug_step;
 /// References to the DIE (debug information entry) of functions.
 pub mod function_die;
-/// The source information used while identifying haltpoints for debug stepping and breakpoints.
-pub(crate) mod instructions;
+/// Identifying haltpoints for debug stepping and breakpoints.
+pub(crate) mod halting;
 /// Programming languages
 pub(crate) mod language;
 /// Target Register definitions, expanded from [`crate::core::registers::CoreRegister`] to include unwind specific information.
@@ -28,8 +28,8 @@ pub(crate) mod exception_handling;
 
 pub use self::{
     debug_info::*, debug_step::SteppingMode, exception_handling::exception_handler_for_core,
-    instructions::SourceLocation, instructions::VerifiedBreakpoint, registers::*,
-    stack_frame::StackFrame, variable::*, variable_cache::VariableCache,
+    halting::SourceLocation, halting::VerifiedBreakpoint, registers::*, stack_frame::StackFrame,
+    variable::*, variable_cache::VariableCache,
 };
 
 use probe_rs::{Core, MemoryInterface};

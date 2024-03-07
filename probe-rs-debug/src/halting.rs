@@ -2,21 +2,32 @@ mod block;
 mod breakpoint;
 mod instruction;
 mod sequence;
-use instruction::Instruction;
-
 use super::{
     unit_info::{self},
     ColumnType, DebugInfo,
 };
 pub use breakpoint::VerifiedBreakpoint;
+use instruction::Instruction;
 use serde::Serialize;
-use typed_path::TypedPathBuf;
+use typed_path::{TypedPath, TypedPathBuf};
 
 fn serialize_typed_path<S>(path: &TypedPathBuf, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
     serializer.serialize_str(&path.to_string_lossy())
+}
+
+/// Uses the [std::fs::canonicalize] function to canonicalize both paths before applying the [TypedPathBuf::starts_with]
+/// to test if the source file path is equal, or a split compilation unit of the source file.
+/// We use 'starts_with` because the DWARF unit paths often have split unit identifiers, e.g. `...main.rs/@/11rwb6kiscqun26d`.
+/// If for some reason (e.g., the paths don't exist) the canonicalization fails, the original equality check is used.
+/// We do this to maximize the chances of finding a match where the source file path can be given as
+/// an absolute, relative, or partial path.
+pub(crate) fn canonical_unit_path_eq(unit_path: TypedPath, source_file_path: TypedPath) -> bool {
+    unit_path
+        .normalize()
+        .starts_with(source_file_path.normalize())
 }
 
 /// A specific location in source code.
