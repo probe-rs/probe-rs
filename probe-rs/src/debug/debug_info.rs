@@ -969,16 +969,19 @@ impl DebugInfo {
     }
 }
 
-/// Uses the [std::fs::canonicalize] function to canonicalize both paths before applying the [std::path::PathBuf::eq]
-/// to test if the secondary path is equal or a suffix of the primary path.
+/// Uses the [std::fs::canonicalize] function to canonicalize both paths before applying the [TypedPathBuf::starts_with]
+/// to test if the source file path is equal, or a split compilation unit of the source file.
+/// We use 'starts_with` because the DWARF unit paths often have split unit identifiers, e.g. `...main.rs/@/11rwb6kiscqun26d`.
 /// If for some reason (e.g., the paths don't exist) the canonicalization fails, the original equality check is used.
-/// We do this to maximize the chances of finding a match where the secondary path can be given as
+/// We do this to maximize the chances of finding a match where the source file path can be given as
 /// an absolute, relative, or partial path.
-pub(crate) fn canonical_path_eq(
-    primary_path: &TypedPathBuf,
-    secondary_path: &TypedPathBuf,
+pub(crate) fn canonical_unit_path_eq(
+    unit_path: &TypedPathBuf,
+    source_file_path: &TypedPathBuf,
 ) -> bool {
-    primary_path.normalize() == secondary_path.normalize()
+    unit_path
+        .normalize()
+        .starts_with(source_file_path.normalize())
 }
 
 /// Get a handle to the [`gimli::UnwindTableRow`] for this call frame, so that we can reference it to unwind register values.

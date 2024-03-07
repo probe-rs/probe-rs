@@ -1,5 +1,5 @@
 use super::{
-    super::{canonical_path_eq, DebugError, DebugInfo},
+    super::{canonical_unit_path_eq, DebugError, DebugInfo},
     sequence::Sequence,
     SourceLocation,
 };
@@ -78,10 +78,16 @@ impl VerifiedBreakpoint {
                 .enumerate()
                 .any(|(file_index, _)| {
                     debug_info
-                        .get_path(&program_unit.unit, file_index as u64)
-                        .map(|combined_path: TypedPathBuf| {
-                            if canonical_path_eq(path, &combined_path) {
-                                matching_file_index = Some(file_index as u64);
+                        .get_path(&program_unit.unit, file_index as u64 + 1)
+                        .map(|unit_path: TypedPathBuf| {
+                            println!(
+                                "\nCompare unit path: {:?} to \n   requested path: {:?}",
+                                unit_path.to_string_lossy(),
+                                path.to_string_lossy()
+                            );
+                            if canonical_unit_path_eq(&unit_path, path) {
+                                // we use file_index + 1, because the file index is 1-based in DWARF.
+                                matching_file_index = Some(file_index as u64 + 1);
                                 true
                             } else {
                                 false
@@ -103,7 +109,7 @@ impl VerifiedBreakpoint {
                     )?;
 
                     if let Some(verified_breakpoint) =
-                        sequence.haltpoint_near_location(matching_file_index, line, column)
+                        sequence.haltpoint_near_source_location(matching_file_index, line, column)
                     {
                         return Ok(verified_breakpoint);
                     }
