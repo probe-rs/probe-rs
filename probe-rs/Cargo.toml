@@ -116,7 +116,7 @@ typed-path = "0.8"
 bitflags = "2"
 byteorder = "1"
 espflash = { version = "2", default-features = false }
-esp-idf-part = "0.5"
+esp-idf-part = "0.4" # Must be 0.4 for compatibility with espflash 2
 # optional
 hexdump = { version = "0.1", optional = true }
 # path
