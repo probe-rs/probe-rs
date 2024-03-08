@@ -122,6 +122,15 @@ pub struct Rtt {
     pub log_path: PathBuf,
 }
 
+impl Rtt {
+    /// Returns the configuration for the specified up channel number, if it exists.
+    pub fn up_channel_config(&self, channel_number: usize) -> Option<&UpChannelConfig> {
+        self.up_channels
+            .iter()
+            .find(|ch| ch.channel == channel_number)
+    }
+}
+
 mod duration_ms {
     use std::time::Duration;
 

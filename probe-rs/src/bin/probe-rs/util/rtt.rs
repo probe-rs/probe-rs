@@ -6,6 +6,7 @@ use probe_rs::rtt::{DownChannel, Error, Rtt, ScanRegion, UpChannel};
 use probe_rs::Core;
 use probe_rs_target::MemoryRegion;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs::File;
 use std::{
     fmt,
@@ -90,6 +91,15 @@ pub struct RttConfig {
     pub channels: Vec<RttChannelConfig>,
 }
 
+impl RttConfig {
+    /// Returns the configuration for the specified channel number, if it exists.
+    pub fn channel_config(&self, channel_number: usize) -> Option<&RttChannelConfig> {
+        self.channels
+            .iter()
+            .find(|ch| ch.channel_number == Some(channel_number))
+    }
+}
+
 /// The User specified configuration for each active RTT Channel.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
@@ -136,6 +146,16 @@ pub enum ChannelDataConfig {
     Defmt {
         formatter: Formatter,
     },
+}
+
+impl From<&ChannelDataConfig> for DataFormat {
+    fn from(config: &ChannelDataConfig) -> Self {
+        match config {
+            ChannelDataConfig::String { .. } => DataFormat::String,
+            ChannelDataConfig::BinaryLE => DataFormat::BinaryLE,
+            ChannelDataConfig::Defmt { .. } => DataFormat::Defmt,
+        }
+    }
 }
 
 impl std::fmt::Debug for ChannelDataConfig {
@@ -428,78 +448,12 @@ impl RttActiveDownChannel {
     }
 }
 
-/// This is the primary interface through which RTT channel data is read and written. Every actual
-/// RTT channel has a configuration and buffer that is used for this purpose.
-#[derive(Debug)]
-pub struct RttActiveChannel {
-    pub data_format: DataFormat,
-    pub up_channel: Option<RttActiveUpChannel>,
-    pub down_channel: Option<RttActiveDownChannel>,
-}
-
-/// A fully configured RttActiveChannel. The configuration will always try to 'default' based on
-/// information read from the RTT control block in the binary. Where insufficient information is
-/// available, it will use the supplied configuration, with final hardcoded defaults where no other
-/// information was available.
-impl RttActiveChannel {
-    fn new(
-        number: usize,
-        up_channel: Option<UpChannel>,
-        down_channel: Option<DownChannel>,
-        rtt_config: &RttConfig,
-        timestamp_offset: UtcOffset,
-        defmt_state: Option<&DefmtState>,
-    ) -> Self {
-        let channel_config = rtt_config
-            .channels
-            .iter()
-            .find(|channel| channel.channel_number == Some(number))
-            .cloned()
-            .unwrap_or_default();
-
-        Self {
-            data_format: channel_config.data_format,
-            up_channel: up_channel.map(|channel| {
-                RttActiveUpChannel::new(
-                    channel,
-                    rtt_config,
-                    &channel_config,
-                    timestamp_offset,
-                    defmt_state,
-                )
-            }),
-            down_channel: down_channel
-                .map(|channel| RttActiveDownChannel::new(channel, &channel_config)),
-        }
-    }
-
-    /// Returns the number of the `UpChannel`.
-    pub fn number(&self) -> Option<usize> {
-        self.up_channel.as_ref().map(|uc| uc.number())
-    }
-
-    /// Retrieves available data from the channel and if available.
-    /// If no data is available, or we encounter a recoverable error, it returns `None` value fore `formatted_data`.
-    /// Non-recoverable errors are propagated to the caller.
-    pub fn get_rtt_data(
-        &mut self,
-        core: &mut Core,
-        defmt_state: Option<&DefmtState>,
-        collector: &mut impl ChannelDataCallbacks,
-    ) -> Result<()> {
-        if let Some(up_channel) = self.up_channel.as_mut() {
-            up_channel.poll_process_rtt_data(core, defmt_state, collector)
-        } else {
-            Ok(())
-        }
-    }
-}
-
 /// Once an active connection with the Target RTT control block has been established, we configure
 /// each of the active channels, and hold essential state information for successful communication.
 #[derive(Debug)]
 pub struct RttActiveTarget {
-    pub active_channels: Vec<RttActiveChannel>,
+    pub active_up_channels: HashMap<usize, RttActiveUpChannel>,
+    pub active_down_channels: HashMap<usize, RttActiveDownChannel>,
     pub defmt_state: Option<DefmtState>,
 }
 
@@ -556,42 +510,48 @@ impl RttActiveTarget {
     ) -> Result<Self> {
         let defmt_state = DefmtState::try_from_elf(elf_file)?;
 
-        // TODO: do not collect into a single vector. Instead, keep separate maps.
-        let mut active_channels = Vec::new();
+        let mut active_up_channels = HashMap::new();
+        let mut active_down_channels = HashMap::new();
+
         // For each channel configured in the RTT Control Block (`Rtt`), check if there are additional user configuration in a `RttChannelConfig`. If not, apply defaults.
         for channel in rtt.up_channels.into_iter() {
-            let number = channel.number();
-            active_channels.push(RttActiveChannel::new(
-                number,
-                Some(channel),
-                None,
-                rtt_config,
-                timestamp_offset,
-                defmt_state.as_ref(),
-            ));
+            let channel_config = rtt_config
+                .channel_config(channel.number())
+                .cloned()
+                .unwrap_or_default();
+            active_up_channels.insert(
+                channel.number(),
+                RttActiveUpChannel::new(
+                    channel,
+                    rtt_config,
+                    &channel_config,
+                    timestamp_offset,
+                    defmt_state.as_ref(),
+                ),
+            );
         }
 
         for channel in rtt.down_channels.into_iter() {
-            let number = channel.number();
-            active_channels.push(RttActiveChannel::new(
-                number,
-                None,
-                Some(channel),
-                rtt_config,
-                timestamp_offset,
-                defmt_state.as_ref(),
-            ));
+            let channel_config = rtt_config
+                .channel_config(channel.number())
+                .cloned()
+                .unwrap_or_default();
+            active_down_channels.insert(
+                channel.number(),
+                RttActiveDownChannel::new(channel, &channel_config),
+            );
         }
 
-        // It doesn't make sense to pretend RTT is active, if there are no active channels
-        if active_channels.is_empty() {
+        // It doesn't make sense to pretend RTT is active, if there are no active up channels
+        if active_up_channels.is_empty() {
             return Err(anyhow!(
                 "RTT Initialized correctly, but there were no active channels configured"
             ));
         }
 
         Ok(Self {
-            active_channels,
+            active_up_channels,
+            active_down_channels,
             defmt_state,
         })
     }
@@ -622,8 +582,8 @@ impl RttActiveTarget {
         collector: &mut impl ChannelDataCallbacks,
     ) -> Result<()> {
         let defmt_state = self.defmt_state.as_ref();
-        for channel in self.active_channels.iter_mut() {
-            channel.get_rtt_data(core, defmt_state, collector)?;
+        for channel in self.active_up_channels.values_mut() {
+            channel.poll_process_rtt_data(core, defmt_state, collector)?;
         }
         Ok(())
     }

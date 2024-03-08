@@ -439,19 +439,12 @@ fn configure_rtt_modes(
     let default_up_mode = config.rtt.up_mode;
 
     // TODO: also configure down channels
-    for channel in rtt.active_channels.iter() {
-        let Some(up_channel) = &channel.up_channel else {
-            continue;
-        };
-        let Some(channel_config) = config
+    for up_channel in rtt.active_up_channels.values() {
+        if let Some(mode) = config
             .rtt
-            .up_channels
-            .iter()
-            .find(|ch| ch.channel == up_channel.number())
-        else {
-            continue;
-        };
-        if let Some(mode) = channel_config.mode.or(default_up_mode) {
+            .up_channel_config(up_channel.number())
+            .and_then(|ch| ch.mode.or(default_up_mode))
+        {
             // Only set the mode when the config file says to,
             // when not set explicitly, the firmware picks.
             tracing::debug!("Setting RTT channel {} to {:?}", up_channel.number(), &mode);

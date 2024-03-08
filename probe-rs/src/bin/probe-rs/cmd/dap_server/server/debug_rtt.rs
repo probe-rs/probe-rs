@@ -53,11 +53,7 @@ impl DebuggerRttChannel {
             return false;
         }
 
-        let Some(rtt_channel) = rtt_target
-            .active_channels
-            .iter_mut()
-            .find(|active_channel| active_channel.number() == Some(self.channel_number))
-        else {
+        let Some(rtt_channel) = rtt_target.active_up_channels.get_mut(&self.channel_number) else {
             return false;
         };
 
@@ -78,7 +74,9 @@ impl DebuggerRttChannel {
 
         let mut out = StringCollector { data: None };
 
-        if let Err(e) = rtt_channel.get_rtt_data(core, rtt_target.defmt_state.as_ref(), &mut out) {
+        if let Err(e) =
+            rtt_channel.poll_process_rtt_data(core, rtt_target.defmt_state.as_ref(), &mut out)
+        {
             debug_adapter
                 .show_error_message(&DebuggerError::Other(e))
                 .ok();

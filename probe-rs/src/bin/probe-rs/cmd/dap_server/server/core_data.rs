@@ -193,23 +193,22 @@ impl<'p> CoreHandle<'p> {
             return Ok(());
         };
 
-        for any_channel in target_rtt.active_channels.iter() {
-            if let Some(up_channel) = &any_channel.up_channel {
-                if any_channel.data_format == DataFormat::Defmt {
-                    // For defmt, we set the channel to be blocking when full.
-                    up_channel.set_mode(&mut self.core, ChannelMode::BlockIfFull)?;
-                }
-                debugger_rtt_channels.push(debug_rtt::DebuggerRttChannel {
-                    channel_number: up_channel.number(),
-                    // This value will eventually be set to true by a VSCode client request "rttWindowOpened"
-                    has_client_window: false,
-                });
-                debug_adapter.rtt_window(
-                    up_channel.number(),
-                    up_channel.channel_name.clone(),
-                    any_channel.data_format,
-                );
+        for up_channel in target_rtt.active_up_channels.values() {
+            let data_format = DataFormat::from(&up_channel.data_format);
+            if data_format == DataFormat::Defmt {
+                // For defmt, we set the channel to be blocking when full.
+                up_channel.set_mode(&mut self.core, ChannelMode::BlockIfFull)?;
             }
+            debugger_rtt_channels.push(debug_rtt::DebuggerRttChannel {
+                channel_number: up_channel.number(),
+                // This value will eventually be set to true by a VSCode client request "rttWindowOpened"
+                has_client_window: false,
+            });
+            debug_adapter.rtt_window(
+                up_channel.number(),
+                up_channel.channel_name.clone(),
+                data_format,
+            );
         }
 
         self.core_data.rtt_connection = Some(debug_rtt::RttConnection {

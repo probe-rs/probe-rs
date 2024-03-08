@@ -54,43 +54,41 @@ impl<'defmt> App<'defmt> {
         let mut down_channels = BTreeMap::new();
 
         // Create tab config based on detected channels
-        for channel in rtt.active_channels {
-            if let Some(up) = channel.up_channel {
-                let number = up.number();
-                if !tab_config.iter().any(|tab| tab.up_channel == number) {
-                    tab_config.push(TabConfig {
-                        up_channel: number,
-                        down_channel: None,
-                        name: Some(up.channel_name.clone()),
-                        hide: false,
-                    });
-                }
-
-                if up_channels.insert(number, (up, None)).is_some() {
-                    return Err(anyhow!("Duplicate up channel configuration: {number}"));
-                }
+        for up in rtt.active_up_channels.into_values() {
+            let number = up.number();
+            if !tab_config.iter().any(|tab| tab.up_channel == number) {
+                tab_config.push(TabConfig {
+                    up_channel: number,
+                    down_channel: None,
+                    name: Some(up.channel_name.clone()),
+                    hide: false,
+                });
             }
-            if let Some(down) = channel.down_channel {
-                let number = down.number();
-                if !tab_config
-                    .iter()
-                    .any(|tab| tab.down_channel == Some(number))
-                {
-                    tab_config.push(TabConfig {
-                        up_channel: if up_channels.contains_key(&number) {
-                            number
-                        } else {
-                            0
-                        },
-                        down_channel: Some(number),
-                        name: Some(down.channel_name.clone()),
-                        hide: false,
-                    });
-                }
 
-                if down_channels.insert(number, down).is_some() {
-                    return Err(anyhow!("Duplicate down channel configuration: {number}"));
-                }
+            if up_channels.insert(number, (up, None)).is_some() {
+                return Err(anyhow!("Duplicate up channel configuration: {number}"));
+            }
+        }
+        for down in rtt.active_down_channels.into_values() {
+            let number = down.number();
+            if !tab_config
+                .iter()
+                .any(|tab| tab.down_channel == Some(number))
+            {
+                tab_config.push(TabConfig {
+                    up_channel: if up_channels.contains_key(&number) {
+                        number
+                    } else {
+                        0
+                    },
+                    down_channel: Some(number),
+                    name: Some(down.channel_name.clone()),
+                    hide: false,
+                });
+            }
+
+            if down_channels.insert(number, down).is_some() {
+                return Err(anyhow!("Duplicate down channel configuration: {number}"));
             }
         }
 
