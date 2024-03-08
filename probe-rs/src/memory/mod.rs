@@ -112,9 +112,9 @@ pub trait MemoryInterface {
     ///
     ///  Generally faster than `read_8`.
     fn read(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
-        if self.supports_native_64bit_access() && address % 8 == 0 && data.len() % 8 == 0 {
+        if self.supports_native_64bit_access() {
             // Avoid heap allocation and copy if we don't need it.
-            self.read_mem_64bit(address, data)?;
+            self.read_8(address, data)?;
         } else if address % 4 == 0 && data.len() % 4 == 0 {
             // Avoid heap allocation and copy if we don't need it.
             self.read_mem_32bit(address, data)?;
