@@ -334,11 +334,10 @@ fn run_rttui_app(
     }
     // In case we have down channels without up channels, add them separately.
     for channel_config in config.rtt.down_channels.iter() {
-        if !config
+        if config
             .rtt
-            .up_channels
-            .iter()
-            .any(|ch| ch.channel == channel_config.channel)
+            .up_channel_config(channel_config.channel)
+            .is_none()
         {
             // Set up channel defaults, we don't read from it anyway.
             rtt_config.channels.push(RttChannelConfig {
