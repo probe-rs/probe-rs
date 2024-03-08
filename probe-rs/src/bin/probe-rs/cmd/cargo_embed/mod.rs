@@ -314,17 +314,23 @@ fn run_rttui_app(
         channels: vec![],
     };
 
+    let mut defmt_enable = false;
     for channel_config in config.rtt.up_channels.iter() {
         rtt_config.channels.push(RttChannelConfig {
             channel_number: Some(channel_config.channel),
             channel_name: None,
             data_format: channel_config.format,
-            show_timestamps: config.rtt.show_timestamps,
+            show_timestamps: channel_config
+                .show_timestamps
+                .unwrap_or(config.rtt.show_timestamps),
             show_location: channel_config
                 .show_location
                 .unwrap_or(config.rtt.show_location),
-            defmt_log_format: None,
+            defmt_log_format: channel_config.defmt_log_format.clone(),
         });
+        if channel_config.format == DataFormat::Defmt {
+            defmt_enable = true;
+        }
     }
     // In case we have down channels without up channels, add them separately.
     for channel_config in config.rtt.down_channels.iter() {
@@ -362,12 +368,6 @@ fn run_rttui_app(
         tracing::info!("RTT not found, skipping RTT initialization.");
         return Ok(());
     };
-
-    let defmt_enable = config
-        .rtt
-        .up_channels
-        .iter()
-        .any(|ch| ch.format == DataFormat::Defmt);
 
     let defmt_state = if defmt_enable {
         tracing::debug!(
