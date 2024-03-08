@@ -49,6 +49,8 @@ enabled = false
 timeout = 3000
 # Whether timestamps in the RTTUI are enabled
 show_timestamps = true
+# Whether locations for defmt messages are enabled in the RTTUI
+show_location = false
 # Whether to save rtt history buffer on exit.
 log_enabled = false
 # Where to save rtt history buffer relative to manifest path.
@@ -66,11 +68,10 @@ log_path = "./logs"
 #              * String - Directly show output from the target (default)
 #              * Defmt  - Format output on the host, see https://defmt.ferrous-systems.com/
 #              * BinaryLE - Display as raw hex
+# show_location (Optional) - Whether to show the location of defmt messages in the UI.
 # socket   (Optional) - Server socket address (for optional external frontend or endpoint).
-# TODO: change format into objects, add per-format settings (e.g. defmt format string)
-# TODO: per-channel log settings
 up_channels = [
-    # { channel = 0, mode = "BlockIfFull", format = "Defmt" },
+    # { channel = 0, mode = "BlockIfFull", format = "Defmt", show_location = true },
     # { channel = 1, mode = "BlockIfFull", format = "String", socket = "127.0.0.1:12345" },
 ]
 

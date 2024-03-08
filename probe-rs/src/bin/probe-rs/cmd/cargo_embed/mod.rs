@@ -320,7 +320,9 @@ fn run_rttui_app(
             channel_name: None,
             data_format: channel_config.format,
             show_timestamps: config.rtt.show_timestamps,
-            show_location: true,
+            show_location: channel_config
+                .show_location
+                .unwrap_or(config.rtt.show_location),
             defmt_log_format: None,
         });
     }

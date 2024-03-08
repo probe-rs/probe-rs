@@ -6,11 +6,18 @@ use crate::util::rtt::{RttActiveDownChannel, RttActiveUpChannel};
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TabConfig {
+    /// Which up channel to use.
     pub up_channel: usize,
+
+    /// Which down channel to use, if any.
     #[serde(default)]
     pub down_channel: Option<usize>,
+
+    /// The name of the tab. If not set, the name of the up channel is used.
     #[serde(default)]
     pub name: Option<String>,
+
+    /// Whether to hide the tab. By default, all up channels are shown in separate tabs.
     #[serde(default)]
     pub hide: bool,
 }

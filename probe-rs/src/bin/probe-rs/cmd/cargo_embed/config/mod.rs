@@ -84,6 +84,8 @@ pub struct UpChannelConfig {
     #[serde(default)]
     pub format: DataFormat,
     #[serde(default)]
+    pub show_location: Option<bool>,
+    #[serde(default)]
     pub socket: Option<SocketAddr>,
 }
 
@@ -105,13 +107,15 @@ pub struct Rtt {
     pub up_channels: Vec<UpChannelConfig>,
     /// Channels to be displayed, and options for them
     pub down_channels: Vec<DownChannelConfig>,
-    ///
+    /// UI tab configuration
     pub tabs: Vec<TabConfig>,
     /// Connection timeout in ms.
     #[serde(with = "duration_ms")]
     pub timeout: Duration,
     /// Whether to show timestamps in RTTUI
     pub show_timestamps: bool,
+    /// Whether to show location info in RTTUI for defmt channels.
+    pub show_location: bool,
     /// Whether to save rtt history buffer on exit to file named history.txt
     pub log_enabled: bool,
     /// Where to save rtt history buffer relative to manifest path.
