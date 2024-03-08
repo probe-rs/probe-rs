@@ -416,12 +416,12 @@ fn run_rttui_app(
             let mut session_handle = session.lock().unwrap();
             let mut core = session_handle.core(0)?;
 
-            app.poll_rtt(&mut core)?;
-
             if app.handle_event(&mut core) {
                 logging::println("Shutting down.");
                 return Ok(());
             }
+
+            app.poll_rtt(&mut core)?;
         }
 
         std::thread::sleep(Duration::from_millis(10));
