@@ -177,6 +177,7 @@ impl<'defmt> App<'defmt> {
                 let scroll_offset = tab.scroll_offset();
 
                 let height = chunks[1].height as usize;
+                let width = chunks[1].width as usize;
 
                 let up_channel = self
                     .up_channels
@@ -191,7 +192,7 @@ impl<'defmt> App<'defmt> {
                         // We need to collect to generate message_num :(
                         messages
                             .iter()
-                            .flat_map(|m| textwrap::wrap(m, chunks[1].width as usize))
+                            .flat_map(|m| textwrap::wrap(m, width))
                             .collect()
                     }
                     ChannelData::Binary { data } => {
@@ -205,7 +206,7 @@ impl<'defmt> App<'defmt> {
                                 output
                             },
                         );
-                        textwrap::wrap(&binary_message, chunks[1].width as usize)
+                        textwrap::wrap(&binary_message, width)
                     }
                 };
 
