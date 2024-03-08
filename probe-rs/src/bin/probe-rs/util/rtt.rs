@@ -64,11 +64,14 @@ fn default_include_location() -> bool {
     true
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize, Default, docsplay::Display)]
 pub enum DataFormat {
     #[default]
+    /// string
     String,
+    /// binary
     BinaryLE,
+    /// defmt
     Defmt,
 }
 
@@ -231,7 +234,7 @@ impl RttActiveUpChannel {
             .map(ToString::to_string)
             .unwrap_or_else(|| {
                 format!(
-                    "Unnamed {:?} RTT channel - {}",
+                    "Unnamed {} RTT up channel - {}",
                     channel_config.data_format,
                     up_channel.number()
                 )
