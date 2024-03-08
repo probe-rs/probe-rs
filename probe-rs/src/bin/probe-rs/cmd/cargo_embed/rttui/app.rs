@@ -43,11 +43,11 @@ pub struct App<'defmt> {
 impl<'defmt> App<'defmt> {
     pub fn new(
         rtt: RttActiveTarget,
-        mut config: config::Config,
+        config: config::Config,
         logname: String,
         defmt_state: Option<&'defmt DefmtState>,
     ) -> Result<Self> {
-        let mut tabs = Vec::new();
+        let mut tab_config = config.rtt.tabs;
 
         // Create channel states
         let mut up_channels = BTreeMap::new();
@@ -57,13 +57,8 @@ impl<'defmt> App<'defmt> {
         for channel in rtt.active_channels {
             if let Some(up) = channel.up_channel {
                 let number = up.number();
-                if !config
-                    .rtt
-                    .tabs
-                    .iter()
-                    .any(|tab| tab.up_channel == up.number())
-                {
-                    config.rtt.tabs.push(TabConfig {
+                if !tab_config.iter().any(|tab| tab.up_channel == number) {
+                    tab_config.push(TabConfig {
                         up_channel: number,
                         down_channel: None,
                         name: Some(up.channel_name.clone()),
@@ -77,13 +72,11 @@ impl<'defmt> App<'defmt> {
             }
             if let Some(down) = channel.down_channel {
                 let number = down.number();
-                if !config
-                    .rtt
-                    .tabs
+                if !tab_config
                     .iter()
-                    .any(|tab| tab.down_channel == Some(down.number()))
+                    .any(|tab| tab.down_channel == Some(number))
                 {
-                    config.rtt.tabs.push(TabConfig {
+                    tab_config.push(TabConfig {
                         up_channel: if up_channels.contains_key(&number) {
                             number
                         } else {
@@ -109,7 +102,8 @@ impl<'defmt> App<'defmt> {
         }
 
         // Create tabs
-        for tab in config.rtt.tabs {
+        let mut tabs = Vec::new();
+        for tab in tab_config {
             if tab.hide {
                 continue;
             }
