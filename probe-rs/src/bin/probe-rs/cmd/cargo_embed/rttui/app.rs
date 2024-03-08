@@ -13,7 +13,7 @@ use ratatui::{
     Terminal,
 };
 use std::{collections::BTreeMap, io::Write};
-use std::{fmt::write, path::PathBuf, sync::mpsc::TryRecvError};
+use std::{path::PathBuf, sync::mpsc::TryRecvError};
 
 use crate::{
     cmd::cargo_embed::rttui::{channel::ChannelData, tab::TabConfig},
@@ -168,67 +168,23 @@ impl<'defmt> App<'defmt> {
             .draw(|f| {
                 let tab = &self.tabs[self.current_tab];
 
-                let input = tab.input().to_owned();
-
-                let chunks = layout_chunks(f, input.is_some());
+                let chunks = layout_chunks(f, tab.input().is_some());
                 render_tabs(f, chunks[0], &self.tabs, self.current_tab);
-
-                // TODO: scroll_offset is broken right now
-                let scroll_offset = tab.scroll_offset();
 
                 let height = chunks[1].height as usize;
                 let width = chunks[1].width as usize;
 
-                let up_channel = self
-                    .up_channels
-                    .get(&tab.up_channel())
-                    .expect("up channel disappeared");
+                let current_tab = &mut self.tabs[self.current_tab];
+                current_tab.update_messages(width, &self.up_channels);
 
-                // FIXME: Collecting messages over and over again isn't the most efficient thing.
-                // Also, collecting messages is probably tab-specific.
-                let binary_message;
-                let messages_wrapped = match &up_channel.data {
-                    ChannelData::Strings { messages, .. } => {
-                        // We need to collect to generate message_num :(
-                        messages
-                            .iter()
-                            .flat_map(|m| textwrap::wrap(m, width))
-                            .collect()
-                    }
-                    ChannelData::Binary { data } => {
-                        binary_message = data.iter().fold(
-                            String::with_capacity(data.len() * 5 - 1),
-                            |mut output, byte| {
-                                if !output.is_empty() {
-                                    output.push(' ');
-                                }
-                                let _ = write(&mut output, format_args!("{byte:#04x}"));
-                                output
-                            },
-                        );
-                        textwrap::wrap(&binary_message, width)
-                    }
-                };
-
-                let message_num = messages_wrapped.len();
-
-                let messages = messages_wrapped
-                    .into_iter()
-                    .skip(message_num - (height + scroll_offset).min(message_num))
-                    .take(height);
-
-                let messages = List::new(messages).block(Block::default().borders(Borders::NONE));
+                let messages = List::new(current_tab.messages(height))
+                    .block(Block::default().borders(Borders::NONE));
                 f.render_widget(messages, chunks[1]);
 
-                if let Some(input) = input {
+                if let Some(input) = current_tab.input() {
                     let input = Paragraph::new(input)
                         .style(Style::default().fg(Color::Yellow).bg(Color::Blue));
                     f.render_widget(input, chunks[2]);
-                }
-
-                if message_num < height + scroll_offset {
-                    self.tabs[self.current_tab]
-                        .set_scroll_offset(message_num - height.min(message_num));
                 }
             })
             .unwrap();

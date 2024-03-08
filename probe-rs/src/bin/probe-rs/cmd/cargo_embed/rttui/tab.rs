@@ -1,8 +1,14 @@
 use std::collections::BTreeMap;
+use std::fmt::write;
 
 use probe_rs::Core;
 
-use crate::util::rtt::{RttActiveDownChannel, RttActiveUpChannel};
+use crate::{
+    cmd::cargo_embed::rttui::channel::ChannelData,
+    util::rtt::{RttActiveDownChannel, RttActiveUpChannel},
+};
+
+use super::channel::UpChannel;
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TabConfig {
@@ -28,6 +34,9 @@ pub struct Tab {
     down_channel: Option<(usize, String)>,
     name: String,
     scroll_offset: usize,
+    messages: Vec<String>,
+    last_processed: usize,
+    last_width: usize,
 }
 
 impl Tab {
@@ -41,6 +50,9 @@ impl Tab {
             down_channel: down_channel.map(|down| (down.number(), String::new())),
             name: name.unwrap_or_else(|| up_channel.channel_name.clone()),
             scroll_offset: 0,
+            messages: Vec::new(),
+            last_processed: 0,
+            last_width: 0,
         }
     }
 
@@ -61,7 +73,11 @@ impl Tab {
     }
 
     pub fn scroll_up(&mut self) {
-        self.set_scroll_offset(self.scroll_offset().saturating_add(1));
+        self.set_scroll_offset(
+            self.scroll_offset()
+                .saturating_add(1)
+                .min(self.messages.len()),
+        );
     }
 
     pub fn scroll_down(&mut self) {
@@ -101,5 +117,67 @@ impl Tab {
         }
 
         Ok(())
+    }
+
+    pub fn update_messages(&mut self, width: usize, up_channels: &BTreeMap<usize, UpChannel<'_>>) {
+        let up_channel = up_channels
+            .get(&self.up_channel)
+            .expect("up channel disappeared");
+
+        if self.last_width != width {
+            self.last_width = width;
+            self.last_processed = 0;
+            self.set_scroll_offset(0);
+            self.messages.clear();
+        }
+
+        let old_message_count = self.messages.len();
+        match &up_channel.data {
+            ChannelData::Strings { messages, .. } => {
+                let new = messages
+                    .iter()
+                    .skip(self.last_processed)
+                    .flat_map(|m| textwrap::wrap(m, width));
+                self.last_processed = messages.len();
+
+                self.messages.extend(new.map(String::from));
+            }
+            ChannelData::Binary { data } => {
+                let mut string = self.messages.pop().unwrap_or_default();
+
+                string.reserve(data.len() * 5 - 1);
+
+                let string =
+                    data.iter()
+                        .skip(self.last_processed)
+                        .fold(string, |mut output, byte| {
+                            if !output.is_empty() {
+                                output.push(' ');
+                            }
+                            let _ = write(&mut output, format_args!("{byte:#04x}"));
+                            output
+                        });
+                self.last_processed = data.len();
+                let new = textwrap::wrap(&string, width);
+
+                self.messages.extend(new.into_iter().map(String::from));
+            }
+        };
+
+        let inserted = self.messages.len() - old_message_count;
+
+        // Move scroll offset if we're not at the bottom
+        if self.scroll_offset != 0 {
+            self.set_scroll_offset(self.scroll_offset + inserted);
+        }
+    }
+
+    pub fn messages(&self, height: usize) -> impl Iterator<Item = &str> + '_ {
+        let message_num = self.messages.len();
+        self.messages
+            .iter()
+            .map(|s| s.as_str())
+            .skip(message_num - (height + self.scroll_offset).min(message_num))
+            .take(height)
     }
 }
