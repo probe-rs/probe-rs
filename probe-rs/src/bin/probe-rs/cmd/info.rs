@@ -1,6 +1,7 @@
 use std::fmt::Write;
 
 use anyhow::{anyhow, Result};
+use jep106::JEP106Code;
 use probe_rs::{
     architecture::{
         arm::{
@@ -21,6 +22,8 @@ use probe_rs::{
 use termtree::Tree;
 
 use crate::util::common_options::ProbeOptions;
+
+const JEP_ARM: JEP106Code = JEP106Code::new(4, 0x3b);
 
 #[derive(clap::Parser)]
 pub struct Cmd {
@@ -317,14 +320,9 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
             }
 
             ApInformation::Other { address, idr } => {
-                let designer = idr.DESIGNER;
+                let jep = idr.DESIGNER;
 
-                let cc = (designer >> 7) as u8;
-                let id = (designer & 0x7f) as u8;
-
-                let jep = jep106::JEP106Code::new(cc, id);
-
-                let ap_type = if designer == 0x43b {
+                let ap_type = if idr.DESIGNER == JEP_ARM {
                     format!("{:?}", idr.TYPE)
                 } else {
                     format!("{:#x}", idr.TYPE as u8)
@@ -494,4 +492,12 @@ fn print_idcode_info(architecture: &str, idcode: u32) {
     println!("    Version:      {version}");
     println!("    Part:         {part_number}");
     println!("    Manufacturer: {manufacturer_id} ({jep_id})");
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn jep_arm_is_arm() {
+        assert_eq!(super::JEP_ARM.get(), Some("ARM Ltd"))
+    }
 }
