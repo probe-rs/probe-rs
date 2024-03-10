@@ -90,7 +90,9 @@ pub enum BatchCommand {
 impl fmt::Display for BatchCommand {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            BatchCommand::Read(port, addr) => write!(f, "Read(port={port:?}, addr={addr})"),
+            BatchCommand::Read(port, addr) => {
+                write!(f, "Read(port={port:?}, addr={addr})")
+            }
             BatchCommand::Write(port, addr, data) => {
                 write!(f, "Write(port={port:?}, addr={addr}, data=0x{data:08x}")
             }

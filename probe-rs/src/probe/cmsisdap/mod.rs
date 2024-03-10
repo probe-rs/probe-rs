@@ -4,8 +4,7 @@ mod tools;
 
 use crate::{
     architecture::arm::{
-        communication_interface::DapProbe,
-        communication_interface::UninitializedArmProbe,
+        communication_interface::{DapProbe, UninitializedArmProbe},
         dp::{Abort, Ctrl},
         swo::poll_interval_from_buf_size,
         ArmCommunicationInterface, ArmError, DapError, Pins, PortType, RawDapAccess, Register,

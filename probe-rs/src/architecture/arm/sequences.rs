@@ -11,7 +11,10 @@ use std::{
 use probe_rs_target::CoreType;
 
 use crate::{
-    architecture::arm::ArmProbeInterface,
+    architecture::arm::{
+        dp::{DLPIDR, TARGETID},
+        ArmProbeInterface,
+    },
     probe::{DebugProbeError, WireProtocol},
     MemoryMappedRegister,
 };
@@ -460,7 +463,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         dp: DpAddress,
     ) -> Result<(), ArmError> {
         // TODO: Handle this differently for ST-Link?
-        tracing::debug!("Setting up debug port {dp:?}");
+        tracing::debug!("Setting up debug port {dp:x?}");
 
         // Assume that multidrop means SWD version 2 and dormant state.
         // There could also be chips with SWD version 2 that don't use multidrop,
@@ -493,9 +496,9 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 Some(WireProtocol::Jtag) => {
                     if has_dormant {
                         // Ensure current debug interface is in reset state.
-                        swd_line_reset(interface)?;
+                        swd_line_reset(interface, 0)?;
 
-                        tracing::trace!("Select Dormant State (from SWD)");
+                        tracing::debug!("Select Dormant State (from SWD)");
                         interface.swj_sequence(16, 0xE3BC)?;
 
                         // Send alert sequence
@@ -508,7 +511,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                         interface.swj_sequence(6, 0x3F)?;
                     } else {
                         // Ensure current debug interface is in reset state.
-                        swd_line_reset(interface)?;
+                        swd_line_reset(interface, 0)?;
 
                         // Execute SWJ-DP Switch Sequence SWD to JTAG (0xE73C).
                         interface.swj_sequence(16, 0xE73C)?;
@@ -525,10 +528,11 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 }
                 Some(WireProtocol::Swd) => {
                     if has_dormant {
-                        swd_line_reset(interface)?;
+                        // Ensure JTAG TAP is in Test-Logic-Reset state
+                        interface.swj_sequence(6, 0x3F)?;
 
                         // Select Dormant State (from JTAG)
-                        tracing::trace!("Select Dormant State (from JTAG)");
+                        tracing::debug!("Select Dormant State (from JTAG)");
                         interface.swj_sequence(31, 0x33BBBBBA)?;
 
                         // Leave dormant state
@@ -538,16 +542,15 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                         interface.swj_sequence(12, 0x1A0)?;
                     } else {
                         // Ensure current debug interface is in reset state.
-                        swd_line_reset(interface)?;
+                        swd_line_reset(interface, 0)?;
 
                         // Execute SWJ-DP Switch Sequence JTAG to SWD (0xE79E).
                         // Change if SWJ-DP uses deprecated switch code (0xEDB6).
                         interface.swj_sequence(16, 0xE79E)?;
 
-                        // > 50 cycles SWDIO/TMS High.
-                        swd_line_reset(interface)?;
-                        // At least 2 idle cycles (SWDIO/TMS Low).
-                        interface.swj_sequence(3, 0x00)?;
+                        // > 50 cycles SWDIO/TMS High, at least 2 idle cycles (SWDIO/TMS Low).
+                        //swd_line_reset(interface, 3)?;
+                        // -> done in debug_port_connect
                     }
                 }
                 _ => {
@@ -561,8 +564,11 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             // End of atomic block.
 
             // SWD or JTAG should now be activated, so we can try and connect to the debug port.
-            if self.debug_port_connect(interface, dp).is_ok() {
-                return Ok(());
+
+            for _ in 0..3 {
+                if self.debug_port_connect(interface, dp).is_ok() {
+                    return Ok(());
+                }
             }
         }
 
@@ -574,7 +580,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// Connect to the target debug port and power it up. This is based on the
     /// `DebugPortStart` function from the [ARM SVD Debug Description].
     ///
-    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#debugPortStart
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html
     #[doc(alias = "DebugPortStart")]
     fn debug_port_start(
         &self,
@@ -599,6 +605,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         let powered_down = !(ctrl.csyspwrupack() && ctrl.cdbgpwrupack());
 
         if powered_down {
+            tracing::debug!("Debug port is powered down, powering up");
             let mut ctrl = Ctrl(0);
             ctrl.set_cdbgpwrupreq(true);
             ctrl.set_csyspwrupreq(true);
@@ -819,6 +826,22 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         Ok(())
     }
 
+    /// Sequence executed when disconnecting from a debug port.
+    ///
+    /// Based on the `DebugPortStop` function from the [ARM SVD Debug Description].
+    ///
+    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#debugPortStop
+    #[doc(alias = "DebugPortStop")]
+    fn debug_port_stop(&self, interface: &mut dyn DapProbe) -> Result<(), ArmError> {
+        // Select Bank 0
+        interface.raw_write_register(PortType::DebugPort, Select::ADDRESS, 0)?;
+
+        // De-assert debug power request
+        interface.raw_write_register(PortType::DebugPort, Ctrl::ADDRESS, 0)?;
+
+        Ok(())
+    }
+
     /// Perform a SWD line reset or enter the JTAG Run-Test-Idle state, and then try to connect to a debug port.
     ///
     /// This is executed as part of the standard `debug_port_setup` sequence,
@@ -831,6 +854,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// done after the line reset, followed by a read of the `DPIDR` register.
     ///
     /// This is not based on a sequence from the Open-CMSIS-Pack standard.
+    #[tracing::instrument(level = "debug", skip_all)]
     fn debug_port_connect(
         &self,
         interface: &mut dyn DapProbe,
@@ -842,7 +866,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 return Ok(());
             }
             Some(WireProtocol::Swd) => {
-                tracing::debug!("SWD: Connecting to debug port with address {:?}", dp);
+                tracing::debug!("SWD: Connecting to debug port with address {:x?}", dp);
             }
             None => {
                 return Err(ArmDebugSequenceError::SequenceSpecific(
@@ -852,12 +876,14 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
             }
         }
 
-        // Enter SWD Line Reset State
-        swd_line_reset(interface)?;
-        interface.swj_sequence(3, 0x00)?; // At least 2 idle cycles (SWDIO/TMS Low)
+        // Enter SWD Line Reset State, afterwards at least 2 idle cycles (SWDIO/TMS Low)
+
+        swd_line_reset(interface, 3)?;
 
         // If multidrop is used, we now have to select a target
         if let DpAddress::Multidrop(targetsel) = dp {
+            // Deselect other debug ports first?
+
             tracing::debug!("Writing targetsel {:#x}", targetsel);
             // TARGETSEL write.
             // The TARGETSEL write is not ACKed by design. We can't use a normal register write
@@ -872,6 +898,8 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 .map_err(DebugProbeError::from)?;
         }
 
+        tracing::debug!("Reading DPIDR to enable SWD interface");
+
         // Read DPIDR to enable SWD interface.
         let dpidr = interface.raw_read_register(PortType::DebugPort, DPIDR::ADDRESS)?;
 
@@ -884,10 +912,45 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         abort.set_stkerrclr(true);
         abort.set_stkcmpclr(true);
 
+        // DPBANKSEL does not matter for ABORT
         interface.raw_write_register(PortType::DebugPort, Abort::ADDRESS, abort.0)?;
+        interface.raw_flush()?;
 
+        // Check that we are connected to the right DP
+
+        if let DpAddress::Multidrop(targetsel) = dp {
+            tracing::debug!("Checking TARGETID and DLPIDR match");
+            // Select DP Bank 2
+            interface.raw_write_register(PortType::DebugPort, Select::ADDRESS, 2)?;
+
+            let target_id =
+                interface.raw_read_register(PortType::DebugPort, TARGETID::ADDRESS & 0xf)?;
+
+            // Select DP Bank 3
+            interface.raw_write_register(PortType::DebugPort, Select::ADDRESS, 3)?;
+            let dlpidr = interface.raw_read_register(PortType::DebugPort, DLPIDR::ADDRESS & 0xf)?;
+
+            const TARGETID_MASK: u32 = 0x0FFF_FFFF;
+            const DLPIDR_MASK: u32 = 0xF000_0000;
+
+            let targetid_match = (target_id & TARGETID_MASK) == (targetsel & TARGETID_MASK);
+            let dlpdir_match = (dlpidr & DLPIDR_MASK) == (targetsel & DLPIDR_MASK);
+
+            if !(targetid_match && dlpdir_match) {
+                tracing::warn!(
+                    "Target ID and DLPIDR do not match, failed to select debug port. Target ID: {:#x?}, DLPIDR: {:#x?}",
+                    target_id,
+                    dlpidr
+                );
+                return Err(ArmError::Other(anyhow::anyhow!(
+                    "Target ID and DLPIDR do not match, failed to select debug port"
+                )));
+            }
+        }
+
+        interface.raw_write_register(PortType::DebugPort, Select::ADDRESS, 0)?;
         let ctrl_stat = interface
-            .raw_read_register(PortType::DebugPort, Ctrl::ADDRESS)
+            .raw_read_register(PortType::DebugPort, Ctrl::ADDRESS & 0xf)
             .map(Ctrl);
 
         match ctrl_stat {
@@ -930,9 +993,13 @@ pub trait DebugEraseSequence: Send + Sync {
 }
 
 /// Perform a SWD line reset (SWDIO high for 50 clock cycles)
-fn swd_line_reset(interface: &mut dyn DapProbe) -> Result<(), ArmError> {
+///
+/// After the line reset, SWDIO will be kept low for `swdio_low_cycles` cycles.
+fn swd_line_reset(interface: &mut dyn DapProbe, swdio_low_cycles: u8) -> Result<(), ArmError> {
+    assert!(swdio_low_cycles + 51 <= 64);
+
     tracing::debug!("Performing SWD line reset");
-    interface.swj_sequence(51, 0x0007_FFFF_FFFF_FFFF)?;
+    interface.swj_sequence(51 + swdio_low_cycles, 0x0007_FFFF_FFFF_FFFF)?;
 
     Ok(())
 }

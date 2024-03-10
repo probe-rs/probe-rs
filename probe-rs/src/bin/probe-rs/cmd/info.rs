@@ -7,7 +7,7 @@ use probe_rs::{
             ap::{GenericAp, MemoryAp},
             armv6m::Demcr,
             component::Scs,
-            dp::{DPIDR, TARGETID},
+            dp::{DLPIDR, DPIDR, TARGETID},
             memory::{Component, CoresightComponent, PeripheralType},
             sequences::DefaultArmSequence,
             ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation, Register,
@@ -82,6 +82,12 @@ impl Cmd {
     }
 }
 
+const DEFAULT_DP_ADRESSES: &[DpAddress] = &[
+    DpAddress::Default,
+    DpAddress::Multidrop(0x01002927),
+    DpAddress::Multidrop(0x11002927),
+];
+
 fn try_show_info(
     mut probe: Probe,
     protocol: WireProtocol,
@@ -102,34 +108,29 @@ fn try_show_info(
         return (probe, Err(e.into()));
     }
 
-    let dp = target_sel.map(DpAddress::Multidrop).unwrap_or_default();
-
     let mut probe = probe;
 
     if probe.has_arm_interface() {
-        tracing::debug!("Trying to show ARM chip information");
-        match probe.try_into_arm_interface() {
-            Ok(interface) => {
-                match interface.initialize(DefaultArmSequence::create(), dp) {
-                    Ok(mut interface) => {
-                        if let Err(e) = show_arm_info(&mut *interface, dp) {
-                            // Log error?
-                            println!("Error showing ARM chip information: {:?}", anyhow!(e));
-                        }
+        let provided_target_sel;
 
-                        probe = interface.close();
-                    }
-                    Err((interface, e)) => {
-                        println!("Error showing ARM chip information: {:?}", anyhow!(e));
+        let dp_addresses = if let Some(target_sel) = target_sel {
+            provided_target_sel = DpAddress::Multidrop(target_sel);
+            std::slice::from_ref(&provided_target_sel)
+        } else {
+            DEFAULT_DP_ADRESSES
+        };
 
-                        probe = interface.close();
-                    }
+        let mut dp_version = None;
+
+        for address in dp_addresses {
+            if let Some(dp_version) = dp_version {
+                if dp_version < 2 && matches!(address, DpAddress::Multidrop(_)) {
+                    println!("Debug port version 1 does not support SWD multidrop. Skipping address {:?}.", address);
+                    continue;
                 }
             }
-            Err((interface_probe, e)) => {
-                println!("Error showing ARM chip information: {:?}", anyhow!(e));
-                probe = interface_probe;
-            }
+
+            (probe, dp_version) = show_arm_dp_info(probe, *address);
         }
     } else {
         println!("No DAP interface was found on the connected probe. ARM-specific information cannot be printed.");
@@ -192,7 +193,46 @@ fn try_show_info(
     (probe, Ok(()))
 }
 
-fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result<()> {
+fn show_arm_dp_info(probe: Probe, dp_address: DpAddress) -> (Probe, Option<u8>) {
+    tracing::debug!("Trying to show ARM chip information");
+    match probe.try_into_arm_interface() {
+        Ok(interface) => match interface.initialize(DefaultArmSequence::create(), dp_address) {
+            Ok(mut interface) => {
+                let dp_version = show_arm_info(&mut *interface, dp_address)
+                    .inspect_err(|e| {
+                        println!("Error showing ARM chip information: {e:?}");
+                        println!();
+                    })
+                    .ok();
+                (interface.close(), dp_version)
+            }
+            Err((interface, e)) => {
+                println!(
+                    "Error showing ARM chip information for Debug Port {:?}: {:?}",
+                    dp_address,
+                    anyhow!(e)
+                );
+                println!();
+
+                (interface.close(), None)
+            }
+        },
+        Err((interface_probe, e)) => {
+            println!(
+                "Error showing ARM chip information for Debug Port {:?}: {:?}",
+                dp_address,
+                anyhow!(e)
+            );
+            println!();
+            (interface_probe, None)
+        }
+    }
+}
+
+/// Try to show information about the ARM chip, connected to a DP at the given address.
+///
+/// Returns the version of the DP.
+fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result<u8> {
     let dp_info = interface.read_raw_dp_register(dp, DPIDR::ADDRESS)?;
     let dp_info = DPIDR(dp_info);
 
@@ -205,6 +245,8 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
     }
 
     let jep_code = jep106::JEP106Code::new(dp_info.jep_cc(), dp_info.jep_id());
+
+    let dp_version = dp_info.version();
 
     if dp_info.version() == 2 {
         let target_id = interface.read_raw_dp_register(dp, TARGETID::ADDRESS)?;
@@ -228,6 +270,13 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
         )?;
         write!(dp_node, ", Part: {part_no:#x}")?;
         write!(dp_node, ", Revision: {revision:#x}")?;
+
+        // Read Instance ID
+        let dlpidr = interface.read_raw_dp_register(dp, DLPIDR::ADDRESS)?;
+
+        let instance = (dlpidr >> 28) & 0xf;
+
+        write!(dp_node, ", Instance: {:#04x}", instance)?;
     } else {
         write!(
             dp_node,
@@ -297,10 +346,15 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
         }
     }
 
-    println!("ARM Chip:");
+    println!("ARM Chip with debug port {:x?}:", dp);
     println!("{tree}");
 
-    Ok(())
+    if num_access_ports == 0 {
+        println!("No access ports found on this chip.");
+    }
+    println!();
+
+    Ok(dp_version)
 }
 
 fn handle_memory_ap(
