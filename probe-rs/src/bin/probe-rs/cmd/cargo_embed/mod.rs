@@ -42,7 +42,7 @@ struct Opt {
     ///
     ///  Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one probe with the same VID:PID.
     #[arg(long)]
-    probe_selector: Option<DebugProbeSelector>,
+    probe: Option<DebugProbeSelector>,
     #[arg(long)]
     disable_progressbars: bool,
     /// Work directory for the command.
@@ -155,7 +155,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
     let lister = Lister::new();
 
     // If we got a probe selector in the config, open the probe matching the selector if possible.
-    let selector = if let Some(selector) = opt.probe_selector {
+    let selector = if let Some(selector) = opt.probe {
         Some(selector)
     } else {
         match (config.probe.usb_vid.as_ref(), config.probe.usb_pid.as_ref()) {
@@ -186,7 +186,7 @@ fn main_try(mut args: Vec<OsString>, offset: UtcOffset) -> Result<()> {
         chip,
         chip_description_path: None,
         protocol: Some(config.probe.protocol),
-        probe_selector: selector,
+        probe: selector,
         speed: config.probe.speed,
         connect_under_reset: config.general.connect_under_reset,
         dry_run: false,

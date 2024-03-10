@@ -143,12 +143,8 @@ pub struct ProbeOptions {
     ///
     /// Use '--probe VID:PID' or '--probe VID:PID:Serial' if you have more than one
     /// probe with the same VID:PID.",
-    #[arg(
-        long = "probe",
-        env = "PROBE_RS_PROBE",
-        help_heading = "PROBE CONFIGURATION"
-    )]
-    pub probe_selector: Option<DebugProbeSelector>,
+    #[arg(long, env = "PROBE_RS_PROBE", help_heading = "PROBE CONFIGURATION")]
+    pub probe: Option<DebugProbeSelector>,
     /// The protocol speed in kHz.
     #[arg(long, env = "PROBE_RS_SPEED", help_heading = "PROBE CONFIGURATION")]
     pub speed: Option<u32>,
@@ -247,7 +243,7 @@ impl LoadedProbeOptions {
         } else {
             // If we got a probe selector as an argument, open the probe
             // matching the selector if possible.
-            let probe = match &self.0.probe_selector {
+            let probe = match &self.0.probe {
                 Some(selector) => lister.open(selector),
                 None => {
                     // Only automatically select a probe if there is
