@@ -112,7 +112,10 @@ impl Cmd {
                 }
             }
         }
-        core.run()?;
+
+        if core.core_halted()? {
+            core.run()?;
+        }
 
         run_loop(
             &mut core,
