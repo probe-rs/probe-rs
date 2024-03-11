@@ -10,7 +10,7 @@ use probe_rs::debug::{DebugInfo, DebugRegisters};
 use probe_rs::rtt::ScanRegion;
 use probe_rs::{
     exception_handler_for_core, probe::list::Lister, BreakpointCause, Core, CoreInterface, Error,
-    HaltReason, SemihostingCommand, VectorCatchCondition,
+    HaltReason, SemihostingCommand, UnknownCommandDetails, VectorCatchCondition,
 };
 use probe_rs_target::MemoryRegion;
 use signal_hook::consts::signal;
@@ -175,9 +175,18 @@ fn run_loop(
         // the core printed before halting, such as a panic message.
         match core.status()? {
             probe_rs::CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
-                SemihostingCommand::Unknown { operation },
+                SemihostingCommand::Unknown(UnknownCommandDetails {
+                    operation,
+                    parameter,
+                }),
             ))) => {
-                tracing::error!("Target wanted to run semihosting operation {:#x}, but probe-rs does not support this operation yet. Continuing...", operation);
+                tracing::warn!("Target wanted to run semihosting operation {:#x} with parameter {:#x}, but probe-rs does not support this operation yet. Continuing...", operation, parameter);
+                core.run()?;
+            }
+            probe_rs::CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
+                SemihostingCommand::GetCommandLine(_),
+            ))) => {
+                tracing::warn!("Target wanted to run semihosting operation SYS_GET_CMDLINE, but probe-rs does not support this operation yet. Continuing...");
                 core.run()?;
             }
             probe_rs::CoreStatus::Halted(r) => halt_reason = Some(r),
@@ -214,10 +223,8 @@ fn run_loop(
                 SemihostingCommand::ExitSuccess,
             )) => Ok(()),
             HaltReason::Breakpoint(BreakpointCause::Semihosting(
-                SemihostingCommand::ExitError { code },
-            )) => Err(anyhow!(
-                "Semihosting indicates exit with failure code: {code:#08x} ({code})"
-            )),
+                SemihostingCommand::ExitError(details),
+            )) => Err(anyhow!("Semihosting indicates exit with {}", details)),
             _ => Err(anyhow!("CPU halted unexpectedly.")),
         },
     };

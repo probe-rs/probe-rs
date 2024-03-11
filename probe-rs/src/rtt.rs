@@ -49,9 +49,6 @@
 mod channel;
 pub use channel::*;
 
-mod syscall;
-pub use syscall::*;
-
 pub mod channels;
 pub use channels::Channels;
 
