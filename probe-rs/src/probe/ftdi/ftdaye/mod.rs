@@ -369,7 +369,7 @@ impl Device {
                 if read_ep.address() != interface.read_ep()
                     || write_ep.address() != interface.write_ep()
                 {
-                    warn!(
+                    debug!(
                         "interface {} does not match requested interface {:?}",
                         descr.interface_number(),
                         interface
