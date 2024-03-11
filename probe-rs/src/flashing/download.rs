@@ -1,6 +1,6 @@
 use object::{
-    elf::FileHeader32, elf::PT_LOAD, read::elf::FileHeader, read::elf::ProgramHeader, Endianness,
-    Object, ObjectSection,
+    elf::FileHeader32, elf::FileHeader64, elf::PT_LOAD, read::elf::ElfFile, read::elf::FileHeader,
+    read::elf::ProgramHeader, Endianness, Object, ObjectSection,
 };
 use probe_rs_target::MemoryRange;
 
@@ -215,21 +215,12 @@ impl std::fmt::Debug for ExtractedFlashData<'_> {
     }
 }
 
-pub(super) fn extract_from_elf<'data>(
+fn extract_from_elf_inner<'data, T: FileHeader>(
     extracted_data: &mut Vec<ExtractedFlashData<'data>>,
+    elf_header: &T,
+    binary: ElfFile<'_, T>,
     elf_data: &'data [u8],
 ) -> Result<usize, FileDownloadError> {
-    let file_kind = object::FileKind::parse(elf_data)?;
-
-    match file_kind {
-        object::FileKind::Elf32 => (),
-        _ => return Err(FileDownloadError::Object("Unsupported file type")),
-    }
-
-    let elf_header = FileHeader32::<Endianness>::parse(elf_data)?;
-
-    let binary = object::read::elf::ElfFile::<FileHeader32<Endianness>>::parse(elf_data)?;
-
     let endian = elf_header.endian()?;
 
     let mut extracted_sections = 0;
@@ -302,8 +293,28 @@ pub(super) fn extract_from_elf<'data>(
             }
         }
     }
-
     Ok(extracted_sections)
+}
+
+pub(super) fn extract_from_elf<'data>(
+    extracted_data: &mut Vec<ExtractedFlashData<'data>>,
+    elf_data: &'data [u8],
+) -> Result<usize, FileDownloadError> {
+    let file_kind = object::FileKind::parse(elf_data)?;
+
+    match file_kind {
+        object::FileKind::Elf32 => {
+            let elf_header = FileHeader32::<Endianness>::parse(elf_data)?;
+            let binary = object::read::elf::ElfFile::<FileHeader32<Endianness>>::parse(elf_data)?;
+            extract_from_elf_inner(extracted_data, elf_header, binary, elf_data)
+        }
+        object::FileKind::Elf64 => {
+            let elf_header = FileHeader64::<Endianness>::parse(elf_data)?;
+            let binary = object::read::elf::ElfFile::<FileHeader64<Endianness>>::parse(elf_data)?;
+            extract_from_elf_inner(extracted_data, elf_header, binary, elf_data)
+        }
+        _ => Err(FileDownloadError::Object("Unsupported file type")),
+    }
 }
 
 #[cfg(test)]
