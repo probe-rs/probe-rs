@@ -426,29 +426,6 @@ impl FakeArmInterface<Uninitialized> {
 
         Self { probe, state }
     }
-
-    fn into_initialized(
-        self,
-        sequence: Arc<dyn ArmDebugSequence>,
-        dp: DpAddress,
-    ) -> Result<FakeArmInterface<Initialized>, (Box<Self>, DebugProbeError)> {
-        Ok(FakeArmInterface::<Initialized>::from_uninitialized(
-            self, sequence, dp,
-        ))
-    }
-}
-
-impl FakeArmInterface<Initialized> {
-    fn from_uninitialized(
-        interface: FakeArmInterface<Uninitialized>,
-        sequence: Arc<dyn ArmDebugSequence>,
-        dp: DpAddress,
-    ) -> Self {
-        FakeArmInterface::<Initialized> {
-            probe: interface.probe,
-            state: Initialized::new(sequence, false, dp),
-        }
-    }
 }
 
 impl<S: ArmDebugState> SwdSequence for FakeArmInterface<S> {
@@ -474,14 +451,15 @@ impl UninitializedArmProbe for FakeArmInterface<Uninitialized> {
     fn initialize(
         self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
-        dp: DpAddress,
+        _dp: DpAddress,
     ) -> Result<Box<dyn ArmProbeInterface>, (Box<dyn UninitializedArmProbe>, Error)> {
         // TODO: Do we need this?
         // sequence.debug_port_setup(&mut self.probe)?;
 
-        let interface = self
-            .into_initialized(sequence, dp)
-            .map_err(|(s, err)| (s as Box<_>, Error::Probe(err)))?;
+        let interface = FakeArmInterface::<Initialized> {
+            probe: self.probe,
+            state: Initialized::new(sequence, false),
+        };
 
         Ok(Box::new(interface))
     }
@@ -540,7 +518,7 @@ impl ArmProbeInterface for FakeArmInterface<Initialized> {
     }
 
     fn current_debug_port(&self) -> DpAddress {
-        self.state.current_dp
+        self.state.current_dp.expect("A DpAddress is selected")
     }
 }
 
