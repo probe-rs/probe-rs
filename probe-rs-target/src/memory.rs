@@ -15,6 +15,9 @@ pub struct NvmRegion {
     pub is_boot_memory: bool,
     /// List of cores that can access this region
     pub cores: Vec<String>,
+    /// True if the memory region is an alias of a different memory region.
+    #[serde(default)]
+    pub is_alias: bool,
 }
 
 impl NvmRegion {
