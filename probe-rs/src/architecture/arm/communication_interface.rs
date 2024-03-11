@@ -368,7 +368,7 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
     }
 
     fn current_debug_port(&self) -> DpAddress {
-        self.state.current_dp.expect("A DpAddress is selected")
+        self.state.current_dp.expect("A DpAddress is selected. This is a bug, please report it.")
     }
 }
 

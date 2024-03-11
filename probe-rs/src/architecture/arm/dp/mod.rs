@@ -534,7 +534,7 @@ impl Register for TARGETID {
 }
 
 bitfield! {
-    /// BASEPTR0, Initiale system address for the first component in the system (see ADI v6.0 B2.2.2)
+    /// BASEPTR0, Initial system address for the first component in the system (see ADI v6.0 B2.2.2)
     #[derive(Clone)]
     pub struct BASEPTR0(u32);
     impl Debug;
@@ -568,7 +568,7 @@ impl Register for BASEPTR0 {
 }
 
 bitfield! {
-    /// BASEPTR1, Initiale system address for the first component in the system (see ADI v6.0 B2.2.2)
+    /// BASEPTR1, Initial system address for the first component in the system (see ADI v6.0 B2.2.2)
     #[derive(Clone)]
     pub struct BASEPTR1(u32);
     impl Debug;
