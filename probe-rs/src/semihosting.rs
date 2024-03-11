@@ -12,10 +12,10 @@ pub enum SemihostingCommand {
     /// code, and no-longer wishes to run.
     ExitError(ExitErrorDetails),
 
-    /// The target indicates that it would like to read the command line arguments
+    /// The target indicates that it would like to read the command line arguments.
     GetCommandLine(GetCommandLineRequest),
 
-    /// The target indicated that it would like to run a semihosting operation which we don't support yet
+    /// The target indicated that it would like to run a semihosting operation which we don't support yet.
     Unknown(UnknownCommandDetails),
 }
 
