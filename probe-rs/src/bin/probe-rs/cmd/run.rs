@@ -18,7 +18,7 @@ use time::UtcOffset;
 
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 use crate::util::flash::{build_loader, run_flash_download};
-use crate::util::rtt::{self, RttActiveTarget, RttConfig};
+use crate::util::rtt::{self, ChannelDataCallbacks, RttActiveTarget, RttConfig};
 use crate::FormatOptions;
 
 const RTT_RETRIES: usize = 10;
@@ -147,7 +147,10 @@ fn run_loop(
     no_location: bool,
     log_format: Option<&str>,
 ) -> Result<(), anyhow::Error> {
-    let mut rtt_config = rtt::RttConfig::default();
+    let mut rtt_config = rtt::RttConfig {
+        log_format: log_format.map(String::from),
+        ..Default::default()
+    };
     rtt_config.channels.push(rtt::RttChannelConfig {
         channel_number: Some(0),
         show_location: !no_location,
@@ -159,9 +162,8 @@ fn run_loop(
         memory_map,
         rtt_scan_regions,
         path,
-        rtt_config,
+        &rtt_config,
         timestamp_offset,
-        log_format,
     );
 
     let exit = Arc::new(AtomicBool::new(false));
@@ -306,13 +308,35 @@ fn poll_rtt(
 ) -> Result<bool, anyhow::Error> {
     let mut had_data = false;
     if let Some(rtta) = rtta {
-        for (_ch, data) in rtta.poll_rtt_fallible(core)? {
-            if !data.is_empty() {
-                had_data = true;
-            }
-            stdout.write_all(data.as_bytes())?;
+        struct StdOutCollector<'a> {
+            stdout: &'a mut std::io::Stdout,
+            had_data: bool,
         }
-    };
+
+        impl ChannelDataCallbacks for StdOutCollector<'_> {
+            fn on_string_data(
+                &mut self,
+                _channel: usize,
+                data: String,
+            ) -> Result<(), anyhow::Error> {
+                if data.is_empty() {
+                    return Ok(());
+                }
+                self.had_data = true;
+                self.stdout.write_all(data.as_bytes())?;
+                Ok(())
+            }
+        }
+
+        let mut out = StdOutCollector {
+            stdout,
+            had_data: false,
+        };
+
+        rtta.poll_rtt_fallible(core, &mut out)?;
+        had_data = out.had_data;
+    }
+
     Ok(had_data)
 }
 
@@ -322,21 +346,14 @@ fn attach_to_rtt(
     memory_map: &[MemoryRegion],
     scan_regions: &[Range<u64>],
     path: &Path,
-    rtt_config: RttConfig,
+    rtt_config: &RttConfig,
     timestamp_offset: UtcOffset,
-    log_format: Option<&str>,
 ) -> Option<rtt::RttActiveTarget> {
     let scan_regions = ScanRegion::Ranges(scan_regions.to_vec());
     for _ in 0..RTT_RETRIES {
         match rtt::attach_to_rtt(core, memory_map, &scan_regions, path) {
             Ok(Some(target_rtt)) => {
-                let app = RttActiveTarget::new(
-                    target_rtt,
-                    path,
-                    &rtt_config,
-                    timestamp_offset,
-                    log_format,
-                );
+                let app = RttActiveTarget::new(target_rtt, path, rtt_config, timestamp_offset);
 
                 match app {
                     Ok(app) => return Some(app),

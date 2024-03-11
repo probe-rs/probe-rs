@@ -1,302 +1,78 @@
-use std::fmt;
 use std::net::SocketAddr;
 
-use defmt_decoder::StreamDecoder;
-use probe_rs::rtt::{ChannelMode, DownChannel, UpChannel};
-use probe_rs::Core;
-use time::UtcOffset;
-use time::{macros::format_description, OffsetDateTime};
+use crate::{
+    cmd::cargo_embed::rttui::tcp::TcpPublisher,
+    util::rtt::{ChannelDataCallbacks, ChannelDataConfig, DefmtState, RttActiveUpChannel},
+};
 
-use crate::cmd::cargo_embed::rttui::tcp::TcpPublisher;
-use crate::cmd::cargo_embed::DefmtInformation;
-use crate::util::rtt::{DataFormat, RttBuffer};
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct ChannelConfig {
-    pub up: Option<usize>,
-    pub down: Option<usize>,
-    pub name: Option<String>,
-    pub up_mode: Option<ChannelMode>,
-    pub format: DataFormat,
-    pub socket: Option<SocketAddr>,
+pub enum ChannelData {
+    Strings { messages: Vec<String> },
+    Binary { data: Vec<u8> },
 }
 
-pub enum ChannelData<'defmt> {
-    String {
-        data: Vec<String>,
-        last_line_done: bool,
-        show_timestamps: bool,
-    },
-    Binary {
-        data: Vec<u8>,
-    },
-    Defmt {
-        messages: Vec<String>,
-        decoder: Box<dyn StreamDecoder + 'defmt>,
-        information: &'defmt DefmtInformation,
-    },
-}
-
-impl std::fmt::Debug for ChannelData<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::String {
-                data,
-                last_line_done,
-                show_timestamps,
-            } => f
-                .debug_struct("String")
-                .field("data", data)
-                .field("last_line_done", last_line_done)
-                .field("show_timestamps", show_timestamps)
-                .finish(),
-            Self::Binary { data } => f.debug_struct("Binary").field("data", data).finish(),
-            Self::Defmt { messages, .. } => f
-                .debug_struct("Defmt")
-                .field("messages", messages)
-                .finish_non_exhaustive(),
+impl ChannelDataCallbacks for (&mut Option<TcpPublisher>, &mut ChannelData) {
+    fn on_string_data(&mut self, _channel: usize, data: String) -> anyhow::Result<()> {
+        if let Some(ref mut stream) = self.0 {
+            stream.send(data.as_bytes());
         }
-    }
-}
 
-impl<'defmt> ChannelData<'defmt> {
-    pub fn new_string(show_timestamps: bool) -> Self {
-        Self::String {
-            data: Vec::new(),
-            last_line_done: true,
-            show_timestamps,
-        }
-    }
-
-    pub fn new_defmt(
-        decoder: Box<dyn StreamDecoder + 'defmt>,
-        information: &'defmt DefmtInformation,
-    ) -> Self {
-        Self::Defmt {
-            messages: Vec::new(),
-            decoder,
-            information,
-        }
-    }
-
-    pub fn new_binary() -> Self {
-        Self::Binary { data: Vec::new() }
-    }
-
-    fn clear(&mut self) {
-        match self {
-            Self::String {
-                data,
-                last_line_done,
-                show_timestamps: _,
-            } => {
-                data.clear();
-                *last_line_done = true
-            }
-            Self::Binary { data, .. } => data.clear(),
-            Self::Defmt { messages, .. } => messages.clear(),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct ChannelState<'defmt> {
-    up_channel: Option<UpChannel>,
-    down_channel: Option<DownChannel>,
-    name: String,
-    data: ChannelData<'defmt>,
-    input: String,
-    scroll_offset: usize,
-    rtt_buffer: RttBuffer,
-    tcp_socket: Option<TcpPublisher>,
-}
-
-impl<'defmt> ChannelState<'defmt> {
-    pub fn new(
-        up_channel: Option<UpChannel>,
-        down_channel: Option<DownChannel>,
-        name: Option<String>,
-        data: ChannelData<'defmt>,
-        tcp_socket: Option<SocketAddr>,
-    ) -> Self {
-        let name = name
-            .or_else(|| up_channel.as_ref().and_then(|up| up.name().map(Into::into)))
-            .or_else(|| {
-                down_channel
-                    .as_ref()
-                    .and_then(|down| down.name().map(Into::into))
-            })
-            .unwrap_or_else(|| "Unnamed channel".to_owned());
-
-        let tcp_socket = tcp_socket.map(TcpPublisher::new);
-
-        Self {
-            up_channel,
-            down_channel,
-            name,
-            input: String::new(),
-            scroll_offset: 0,
-            rtt_buffer: RttBuffer::new(1024),
-            data,
-            tcp_socket,
-        }
-    }
-
-    pub fn has_down_channel(&self) -> bool {
-        self.down_channel.is_some()
-    }
-
-    pub fn input(&self) -> &str {
-        &self.input
-    }
-
-    pub fn input_mut(&mut self) -> &mut String {
-        &mut self.input
-    }
-
-    pub fn scroll_offset(&self) -> usize {
-        self.scroll_offset
-    }
-
-    pub fn scroll_up(&mut self) {
-        self.scroll_offset += 1;
-    }
-
-    pub fn scroll_down(&mut self) {
-        if self.scroll_offset > 0 {
-            self.scroll_offset -= 1;
-        }
-    }
-
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn set_scroll_offset(&mut self, value: usize) {
-        self.scroll_offset = value;
-    }
-
-    pub fn clear(&mut self) {
-        self.scroll_offset = 0;
-
-        self.data.clear();
-    }
-
-    /// Polls the RTT target for new data on the specified channel.
-    ///
-    /// Processes all the new data and adds it to the linebuffer of the respective channel.
-    ///
-    /// # Errors
-    /// This function can return a [`time::Error`] if getting the local time or formatting a timestamp fails.
-    pub fn poll_rtt(&mut self, core: &mut Core, offset: UtcOffset) -> Result<(), time::Error> {
-        // TODO: Proper error handling.
-        let count = if let Some(channel) = self.up_channel.as_mut() {
-            match channel.read(core, self.rtt_buffer.0.as_mut()) {
-                Ok(count) => count,
-                Err(err) => {
-                    tracing::error!("\nError reading from RTT: {}", err);
-                    return Ok(());
-                }
-            }
-        } else {
-            0
+        let ChannelData::Strings { messages } = &mut self.1 else {
+            unreachable!()
         };
-
-        if count == 0 {
-            return Ok(());
+        for line in data.split_terminator('\n') {
+            messages.push(line.to_string());
         }
-
-        match &mut self.data {
-            ChannelData::String {
-                data: messages,
-                last_line_done,
-                show_timestamps,
-            } => {
-                let now = OffsetDateTime::now_utc().to_offset(offset);
-
-                // First, convert the incoming bytes to UTF8.
-                let mut incoming = String::from_utf8_lossy(&self.rtt_buffer.0[..count]).to_string();
-
-                // Send incoming data over the TCP stream if we have one.
-                if let Some(stream) = &mut self.tcp_socket {
-                    stream.send(incoming.as_bytes());
-                }
-
-                // Then pop the last stored line from our line buffer if possible and append our new line.
-                if !*last_line_done {
-                    if let Some(last_line) = messages.pop() {
-                        incoming = last_line + &incoming;
-                    }
-                }
-                *last_line_done = incoming.ends_with('\n');
-
-                // Then split the incoming buffer discarding newlines and if necessary
-                // add a timestamp at start of each.
-                // Note: this means if you print a newline in the middle of your debug
-                // you get a timestamp there too..
-                // Note: we timestamp at receipt of newline, not first char received if that
-                // matters.
-                for (i, line) in incoming.split_terminator('\n').enumerate() {
-                    if *show_timestamps && (*last_line_done || i > 0) {
-                        let ts = now.format(format_description!(
-                            "[hour repr:24]:[minute]:[second].[subsecond digits:3]"
-                        ))?;
-                        messages.push(format!("{ts} {line}"));
-                    } else {
-                        messages.push(line.to_string());
-                    }
-                    if self.scroll_offset != 0 {
-                        self.scroll_offset += 1;
-                    }
-                }
-            }
-            ChannelData::Binary { data, .. } => {
-                data.extend_from_slice(&self.rtt_buffer.0[..count]);
-            }
-            // defmt output is later formatted into strings in [App::render].
-            ChannelData::Defmt {
-                ref mut messages,
-                ref mut decoder,
-                information,
-            } => {
-                decoder.received(&self.rtt_buffer.0[..count]);
-                while let Ok(frame) = decoder.decode() {
-                    // NOTE(`[]` indexing) all indices in `table` have already been
-                    // verified to exist in the `locs` map.
-                    let loc: Option<_> = information
-                        .location_information
-                        .as_ref()
-                        .map(|locs| &locs[&frame.index()]);
-
-                    messages.push(format!("{}", frame.display(false)));
-                    if let Some(loc) = loc {
-                        let relpath = if let Ok(relpath) =
-                            loc.file.strip_prefix(&std::env::current_dir().unwrap())
-                        {
-                            relpath
-                        } else {
-                            // not relative; use full path
-                            &loc.file
-                        };
-
-                        messages.push(format!("└─ {}:{}", relpath.display(), loc.line));
-                    }
-                }
-            }
-        };
 
         Ok(())
     }
 
-    pub fn push_rtt(&mut self, core: &mut Core) {
-        if let Some(down_channel) = self.down_channel.as_mut() {
-            self.input += "\n";
-            down_channel.write(core, self.input.as_bytes()).unwrap();
-            self.input.clear();
+    fn on_binary_data(&mut self, _channel: usize, incoming: &[u8]) -> anyhow::Result<()> {
+        if let Some(ref mut stream) = self.0 {
+            stream.send(incoming);
+        }
+
+        let ChannelData::Binary { data } = &mut self.1 else {
+            unreachable!()
+        };
+        data.extend_from_slice(incoming);
+
+        Ok(())
+    }
+}
+
+pub struct UpChannel<'defmt> {
+    rtt_channel: RttActiveUpChannel,
+    defmt_state: Option<&'defmt DefmtState>,
+    tcp_stream: Option<TcpPublisher>,
+    pub data: ChannelData,
+}
+
+impl<'defmt> UpChannel<'defmt> {
+    pub fn new(
+        rtt_channel: RttActiveUpChannel,
+        defmt_state: Option<&'defmt DefmtState>,
+        tcp_stream: Option<SocketAddr>,
+    ) -> Self {
+        Self {
+            data: match rtt_channel.data_format {
+                ChannelDataConfig::String { .. } | ChannelDataConfig::Defmt { .. } => {
+                    ChannelData::Strings {
+                        messages: Vec::new(),
+                    }
+                }
+                ChannelDataConfig::BinaryLE => ChannelData::Binary { data: Vec::new() },
+            },
+            defmt_state,
+            tcp_stream: tcp_stream.map(TcpPublisher::new),
+            rtt_channel,
         }
     }
 
-    pub(crate) fn data(&self) -> &ChannelData {
-        &self.data
+    pub fn poll_rtt(&mut self, core: &mut probe_rs::Core<'_>) -> anyhow::Result<()> {
+        self.rtt_channel.poll_process_rtt_data(
+            core,
+            self.defmt_state,
+            &mut (&mut self.tcp_stream, &mut self.data),
+        )
     }
 }
