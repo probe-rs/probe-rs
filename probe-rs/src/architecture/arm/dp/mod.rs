@@ -160,7 +160,8 @@ bitfield! {
     ///
     /// After a powerup reset, the value of this field is false.
     ///
-    /// This bit only exists on DPv3. See ADIv6 B2.2.3.
+    /// This bit only exists on DPv3 (see ADIv6 B2.2.3), it is RES0 on previous DP versions. Its
+    /// value should therefore be ignored and written as 0.
     pub errmode, set_errmode: 24;
     /// Transaction counter. See The transaction counter on page B1-43. After a powerup reset, the value of this field is UNKNOWN.
     ///
