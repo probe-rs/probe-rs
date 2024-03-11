@@ -349,6 +349,21 @@ impl<S: ArmDebugState> Drop for ArmCommunicationInterface<S> {
     }
 }
 
+impl<S: ArmDebugState> ArmCommunicationInterface<S> {
+    fn probe_mut(&mut self) -> &mut dyn DapProbe {
+        // Unwrap: Probe is only taken when the struct is dropped
+        &mut *self.probe.as_mut().expect("ArmCommunicationInterface is in an inconsistent state. This is a bug, please report it.").as_mut()
+    }
+
+    fn close(mut self) -> Probe {
+        let mut probe = self.probe.take().expect("ArmCommunicationInterface is in an inconsistent state. This is a bug, please report it.");
+
+        self.state.disconnect(&mut *probe);
+
+        Probe::from_attached_probe(RawDapAccess::into_probe(probe))
+    }
+}
+
 /// Helper trait for probes which offer access to ARM DAP (Debug Access Port).
 ///
 /// This is used to combine the traits, because it cannot be done in the ArmCommunicationInterface
@@ -380,22 +395,18 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
         ArmCommunicationInterface::num_access_ports(self, dp)
     }
 
-    fn close(mut self: Box<Self>) -> Probe {
-        let mut probe = self.probe.take().unwrap();
-
-        self.state.disconnect(&mut *probe);
-
-        Probe::from_attached_probe(RawDapAccess::into_probe(probe))
-    }
-
     fn current_debug_port(&self) -> DpAddress {
         self.state.current_dp
+    }
+
+    fn close(self: Box<Self>) -> Probe {
+        ArmCommunicationInterface::close(*self)
     }
 }
 
 impl<S: ArmDebugState> SwdSequence for ArmCommunicationInterface<S> {
     fn swj_sequence(&mut self, bit_len: u8, bits: u64) -> Result<(), DebugProbeError> {
-        self.probe.as_mut().unwrap().swj_sequence(bit_len, bits)?;
+        self.probe_mut().swj_sequence(bit_len, bits)?;
 
         Ok(())
     }
@@ -446,7 +457,7 @@ impl UninitializedArmProbe for ArmCommunicationInterface<Uninitialized> {
         dp: DpAddress,
     ) -> Result<Box<dyn ArmProbeInterface>, (Box<dyn UninitializedArmProbe>, ProbeRsError)> {
         let setup_span = tracing::debug_span!("debug_port_setup").entered();
-        if let Err(e) = sequence.debug_port_setup(&mut *self.probe.as_deref_mut().unwrap(), dp) {
+        if let Err(e) = sequence.debug_port_setup(&mut *self.probe_mut(), dp) {
             return Err((self as Box<_>, e.into()));
         }
 
@@ -459,12 +470,8 @@ impl UninitializedArmProbe for ArmCommunicationInterface<Uninitialized> {
         Ok(Box::new(interface))
     }
 
-    fn close(mut self: Box<Self>) -> Probe {
-        let mut probe = self.probe.take().unwrap();
-
-        self.state.disconnect(&mut *probe);
-
-        Probe::from_attached_probe(RawDapAccess::into_probe(probe))
+    fn close(self: Box<Self>) -> Probe {
+        ArmCommunicationInterface::close(*self)
     }
 }
 
@@ -493,11 +500,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
 
     /// Inform the probe of the [`CoreStatus`] of the chip attached to the probe.
     pub fn core_status_notification(&mut self, state: CoreStatus) {
-        self.probe
-            .as_mut()
-            .unwrap()
-            .core_status_notification(state)
-            .ok();
+        self.probe_mut().core_status_notification(state).ok();
     }
 
     /// Tries to obtain a memory interface which can be used to read memory from ARM targets.
@@ -527,31 +530,25 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     fn select_dp(&mut self, dp: DpAddress) -> Result<&mut DpState, ArmError> {
         let mut switched_dp = false;
 
+        let sequence = self.state.sequence.clone();
+
         if self.state.current_dp != dp {
             tracing::debug!("Selecting DP {:x?}", dp);
 
             switched_dp = true;
 
-            self.probe.as_mut().unwrap().raw_flush()?;
+            self.probe_mut().raw_flush()?;
 
             let stop_span = tracing::debug_span!("debug_port_stop").entered();
-            self.state
-                .sequence
-                .debug_port_stop(&mut *self.probe.as_deref_mut().unwrap())?;
+            sequence.debug_port_stop(&mut *self.probe_mut())?;
             drop(stop_span);
 
             // Try to switch to the new DP.
-            if let Err(e) = self
-                .state
-                .sequence
-                .debug_port_connect(&mut *self.probe.as_deref_mut().unwrap(), dp)
-            {
+            if let Err(e) = sequence.debug_port_connect(&mut *self.probe_mut(), dp) {
                 tracing::warn!("Failed to switch to DP {:x?}: {}", dp, e);
 
                 // Try the more involved debug_port_setup sequence, which also handles dormant mode.
-                self.state
-                    .sequence
-                    .debug_port_setup(&mut *self.probe.as_deref_mut().unwrap(), dp)?;
+                sequence.debug_port_setup(&mut *self.probe_mut(), dp)?;
             }
 
             self.state.current_dp = dp;
@@ -699,7 +696,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
 
 impl FlushableArmAccess for ArmCommunicationInterface<Initialized> {
     fn flush(&mut self) -> Result<(), ArmError> {
-        self.probe.as_mut().unwrap().raw_flush()
+        self.probe_mut().raw_flush()
     }
 
     fn get_arm_communication_interface(
@@ -711,21 +708,21 @@ impl FlushableArmAccess for ArmCommunicationInterface<Initialized> {
 
 impl SwoAccess for ArmCommunicationInterface<Initialized> {
     fn enable_swo(&mut self, config: &SwoConfig) -> Result<(), ArmError> {
-        match self.probe.as_mut().unwrap().get_swo_interface_mut() {
+        match self.probe_mut().get_swo_interface_mut() {
             Some(interface) => interface.enable_swo(config),
             None => Err(ArmError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }
     }
 
     fn disable_swo(&mut self) -> Result<(), ArmError> {
-        match self.probe.as_mut().unwrap().get_swo_interface_mut() {
+        match self.probe_mut().get_swo_interface_mut() {
             Some(interface) => interface.disable_swo(),
             None => Err(ArmError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }
     }
 
     fn read_swo_timeout(&mut self, timeout: Duration) -> Result<Vec<u8>, ArmError> {
-        match self.probe.as_mut().unwrap().get_swo_interface_mut() {
+        match self.probe_mut().get_swo_interface_mut() {
             Some(interface) => interface.read_swo_timeout(timeout),
             None => Err(ArmError::ArchitectureRequired(&["ARMv7", "ARMv8"])),
         }
@@ -736,9 +733,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
     fn read_raw_dp_register(&mut self, dp: DpAddress, address: u8) -> Result<u32, ArmError> {
         self.select_dp_and_dp_bank(dp, address)?;
         let result = self
-            .probe
-            .as_mut()
-            .unwrap()
+            .probe_mut()
             .raw_read_register(PortType::DebugPort, address & 0xf)?;
         Ok(result)
     }
@@ -750,9 +745,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         value: u32,
     ) -> Result<(), ArmError> {
         self.select_dp_and_dp_bank(dp, address)?;
-        self.probe
-            .as_mut()
-            .unwrap()
+        self.probe_mut()
             .raw_write_register(PortType::DebugPort, address, value)?;
         Ok(())
     }
@@ -765,9 +758,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
         self.select_ap_and_ap_bank(ap, address)?;
 
         let result = self
-            .probe
-            .as_mut()
-            .unwrap()
+            .probe_mut()
             .raw_read_register(PortType::AccessPort, address & 0xf)?;
 
         Ok(result)
@@ -781,9 +772,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
     ) -> Result<(), ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
 
-        self.probe
-            .as_mut()
-            .unwrap()
+        self.probe_mut()
             .raw_read_block(PortType::AccessPort, address, values)?;
         Ok(())
     }
@@ -796,9 +785,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
     ) -> Result<(), ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
 
-        self.probe
-            .as_mut()
-            .unwrap()
+        self.probe_mut()
             .raw_write_register(PortType::AccessPort, address, value)?;
 
         Ok(())
@@ -812,9 +799,7 @@ impl DapAccess for ArmCommunicationInterface<Initialized> {
     ) -> Result<(), ArmError> {
         self.select_ap_and_ap_bank(ap, address)?;
 
-        self.probe
-            .as_mut()
-            .unwrap()
+        self.probe_mut()
             .raw_write_block(PortType::AccessPort, address, values)?;
         Ok(())
     }

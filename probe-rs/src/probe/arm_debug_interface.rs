@@ -891,7 +891,7 @@ impl<Probe: DebugProbe + RawProtocolIo + JTAGAccess + 'static> RawDapAccess for 
     fn raw_read_register(&mut self, port: PortType, address: u8) -> Result<u32, ArmError> {
         assert!(address < 0x10, "Invalid register address {:#x}", address);
 
-        let dap_wait_retries = 1; // self.swd_settings().num_retries_after_wait;
+        let dap_wait_retries = self.swd_settings().num_retries_after_wait;
         let mut idle_cycles = std::cmp::max(1, self.swd_settings().num_idle_cycles_between_writes);
 
         // Now we try to issue the request until it fails or succeeds.
