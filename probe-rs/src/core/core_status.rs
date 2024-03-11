@@ -1,3 +1,5 @@
+use crate::SemihostingCommand;
+
 /// The status of the core.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum CoreStatus {
@@ -23,25 +25,6 @@ impl CoreStatus {
     pub fn is_running(&self) -> bool {
         self == &Self::Running
     }
-}
-
-/// Indicates the operation the target would like the debugger to perform.
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub enum SemihostingCommand {
-    /// The target indicates that it completed successfully and no-longer wishes
-    /// to run.
-    ExitSuccess,
-    /// The target indicates that it completed unsuccessfully, with an error
-    /// code, and no-longer wishes to run.
-    ExitError {
-        /// Some architecture-specific or application specific exit code
-        code: u64,
-    },
-    /// The target indicated that it would like to run a semihosting operation which we don't support yet
-    Unknown {
-        /// The semihosting operation requested
-        operation: u32,
-    },
 }
 
 /// When the core halts due to a breakpoint request, some architectures will allow us to distinguish between a software and hardware breakpoint.

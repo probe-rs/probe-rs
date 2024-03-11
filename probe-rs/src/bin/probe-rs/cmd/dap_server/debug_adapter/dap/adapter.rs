@@ -1775,31 +1775,27 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         channel_name: String,
         data_format: rtt::DataFormat,
     ) -> bool {
-        let event_body = match serde_json::to_value(RttChannelEventBody {
+        let Ok(event_body) = serde_json::to_value(RttChannelEventBody {
             channel_number,
             channel_name,
             data_format,
-        }) {
-            Ok(event_body) => event_body,
-            Err(_) => {
-                return false;
-            }
+        }) else {
+            return false;
         };
+
         self.send_event("probe-rs-rtt-channel-config", Some(event_body))
             .is_ok()
     }
 
     /// Send a custom `probe-rs-rtt-data` event to the MS DAP Client, to
     pub fn rtt_output(&mut self, channel_number: usize, rtt_data: String) -> bool {
-        let event_body = match serde_json::to_value(RttDataEventBody {
+        let Ok(event_body) = serde_json::to_value(RttDataEventBody {
             channel_number,
             data: rtt_data,
-        }) {
-            Ok(event_body) => event_body,
-            Err(_) => {
-                return false;
-            }
+        }) else {
+            return false;
         };
+
         self.send_event("probe-rs-rtt-data", Some(event_body))
             .is_ok()
     }
