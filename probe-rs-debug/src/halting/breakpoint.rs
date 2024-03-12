@@ -1,6 +1,9 @@
+use std::num::NonZeroU64;
+
 use super::{
     super::{DebugError, DebugInfo},
-    canonical_unit_path_eq,
+    instruction::Instruction,
+    line_sequences_for_path,
     sequence::Sequence,
     SourceLocation,
 };
@@ -67,78 +70,63 @@ impl VerifiedBreakpoint {
         line: u64,
         column: Option<u64>,
     ) -> Result<Self, DebugError> {
-        for program_unit in &debug_info.unit_infos {
-            let Some(ref line_program) = program_unit.unit.line_program else {
-                // Not all compilation units need to have debug line information, so we skip those.
-                continue;
-            };
-
-            let mut num_files = line_program.header().file_names().len();
-
-            // For DWARF version 5, the current compilation file is included in the file names, with index 0.
-            //
-            // For earlier versions, the current compilation file is not included in the file names, but index 0 still refers to it.
-            // To get the correct number of files, we have to add 1 here.
-            if program_unit.unit.header.version() <= 4 {
-                num_files += 1;
-            }
-
-            // There can be multiple file indices which match, due to the inclusion of the current compilation file with index 0.
-            //
-            // At least for DWARF 4 there are cases where the current compilation file is also included in the file names with
-            // a non-zero index.
-            let matching_file_indices: Vec<_> = (0..num_files)
-                .filter_map(|file_index| {
-                    let file_index = file_index as u64;
-
-                    debug_info
-                        .get_path(&program_unit.unit, file_index)
-                        .and_then(|combined_path: TypedPathBuf| {
-                            if canonical_unit_path_eq(combined_path.to_path(), path) {
-                                tracing::debug!(
-                                    "Found matching file index: {file_index} for path: {path}",
-                                    file_index = file_index,
-                                    path = path.display()
-                                );
-                                Some(file_index)
-                            } else {
-                                None
-                            }
-                        })
-                })
-                .collect();
-
-            if matching_file_indices.is_empty() {
-                continue;
-            }
-
-            let Ok((complete_line_program, line_sequences)) = line_program.clone().sequences()
-            else {
-                tracing::debug!("Failed to get line sequences for line program");
-                continue;
-            };
-
-            for line_sequence in line_sequences {
-                let sequence = Sequence::from_line_sequence(
-                    debug_info,
-                    program_unit,
-                    &complete_line_program,
-                    &line_sequence,
-                )?;
-
-                for matching_file_index in &matching_file_indices {
-                    if let Some(verified_breakpoint) =
-                        sequence.haltpoint_near_source_location(Some(*matching_file_index), line, column)
-                    {
-                        return Ok(verified_breakpoint);
-                    }
-                }
+        // Keep track of the matching file index to avoid having to lookup and match the full path
+        // for every row in the program line sequence.
+        let path_buf = TypedPathBuf::from(path.as_bytes());
+        let line_sequences = line_sequences_for_path(debug_info, &path_buf);
+        for (sequence, matching_file_index) in &line_sequences {
+            if let Some(verified_breakpoint) =
+                sequence.haltpoint_near_source_location(*matching_file_index, line, column)
+            {
+                return Ok(verified_breakpoint);
             }
         }
+        // If we get here, we need a "best effort" approach to find the next line in the file with a valid haltpoint.
+        if let Some(verified_breakpoint) =
+            VerifiedBreakpoint::for_next_line_after_line(debug_info, &line_sequences, line)
+        {
+            return Ok(verified_breakpoint);
+        }
+
         // If we get here, we have not found a valid breakpoint location.
         Err(DebugError::Other(format!(
             "No valid breakpoint information found for file: {}, line: {line:?}, column: {column:?}",
             path.display()
         )))
+    }
+
+    fn for_next_line_after_line(
+        debug_info: &DebugInfo,
+        file_sequences: &[(Sequence, Option<u64>)],
+        line: u64,
+    ) -> Option<Self> {
+        let mut sorted_haltpoints: Vec<&Instruction> = Vec::new();
+        for file_sequence in file_sequences {
+            let (sequence, file_index) = file_sequence;
+            sorted_haltpoints.extend(sequence.blocks.iter().flat_map(|block| {
+                block.instructions.iter().filter(|instruction| {
+                    file_index
+                        .map(|index| {
+                            instruction.role.is_halt_location()
+                                && instruction.file_index == index
+                                && instruction.line >= NonZeroU64::new(line)
+                        })
+                        .unwrap_or(false)
+                })
+            }));
+        }
+        sorted_haltpoints.sort_by_key(|instruction| instruction.line);
+        if let Some(matching_breakpoint) = sorted_haltpoints
+            .iter()
+            .find(|instruction| instruction.line > NonZeroU64::new(line))
+            .and_then(|instruction| {
+                VerifiedBreakpoint::for_address(debug_info, instruction.address).ok()
+            })
+        {
+            tracing::warn!("Suggesting a closely matching breakpoint: {matching_breakpoint:?}");
+            Some(matching_breakpoint)
+        } else {
+            None
+        }
     }
 }

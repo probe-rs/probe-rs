@@ -32,7 +32,7 @@ use probe_rs::{
     },
 };
 use probe_rs_debug::{
-    ColumnType, ObjectRef, SteppingMode, VariableName, VerifiedBreakpoint,
+    ColumnType, ObjectRef, Stepping, VariableName, VerifiedBreakpoint,
     stack_frame::StackFrameInfo,
 };
 use serde::{Serialize, de::DeserializeOwned};
@@ -1482,8 +1482,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let arguments: NextArguments = get_arguments(self, request)?;
 
         let stepping_granularity = match arguments.granularity {
-            Some(SteppingGranularity::Instruction) => SteppingMode::StepInstruction,
-            _ => SteppingMode::OverStatement,
+            Some(SteppingGranularity::Instruction) => Stepping::StepInstruction,
+            _ => Stepping::OverStatement,
         };
 
         self.debug_step(stepping_granularity, target_core, request)
@@ -1500,8 +1500,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let arguments: StepInArguments = get_arguments(self, request)?;
 
         let stepping_granularity = match arguments.granularity {
-            Some(SteppingGranularity::Instruction) => SteppingMode::StepInstruction,
-            _ => SteppingMode::IntoStatement,
+            Some(SteppingGranularity::Instruction) => Stepping::StepInstruction,
+            _ => Stepping::IntoStatement,
         };
         self.debug_step(stepping_granularity, target_core, request)
     }
@@ -1517,8 +1517,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let arguments: StepOutArguments = get_arguments(self, request)?;
 
         let stepping_granularity = match arguments.granularity {
-            Some(SteppingGranularity::Instruction) => SteppingMode::StepInstruction,
-            _ => SteppingMode::OutOfStatement,
+            Some(SteppingGranularity::Instruction) => Stepping::StepInstruction,
+            _ => Stepping::OutOfStatement,
         };
 
         self.debug_step(stepping_granularity, target_core, request)
@@ -1527,11 +1527,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// Common code for the `next`, `step_in`, and `step_out` methods.
     fn debug_step(
         &mut self,
-        stepping_mode: SteppingMode,
+        stepping_granularity: Stepping,
         target_core: &mut CoreHandle<'_>,
         request: &Request,
     ) -> Result<(), anyhow::Error> {
-        self.step_impl(stepping_mode, target_core)?;
+        self.step_impl(stepping_granularity, target_core)?;
         self.send_response::<()>(request, Ok(None))?;
 
         Ok(())
@@ -1786,7 +1786,7 @@ impl<P: ProtocolAdapter + ?Sized> DebugAdapter<P> {
 
     pub(crate) fn step_impl(
         &mut self,
-        stepping_mode: SteppingMode,
+        stepping_mode: Stepping,
         target_core: &mut CoreHandle<'_>,
     ) -> Result<u64> {
         target_core.reset_core_status(self);

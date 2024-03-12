@@ -38,35 +38,18 @@ use std::ops::RangeInclusive;
 ///     divergent in some way.
 ///   - The remaining instructions are grouped into blocks containing the contiguous instructions belonging to the same
 ///     source file line.
-/// - After applying the DWARF based heuristics, the remaining block boundaries are inferred from the stackframes when
-///   they are available (target is halted and unwinding is possible).
-/// - If after all this, we need to step from/to/into blocks with insufficient boundary information, then we resort to
-///   the following strategy:
-///   - Once the target is active and halted in the relevant sequence, then we can single step the processor,
-///     until we reach a new block, a new sequence, and based on the result,
-///     we can update the block boundaries. e.g. If after stepping the processor by one instruction,
-///     we find ourselves in the prologue of a different function, then we know we have stepped `into`
-///     a function call, and we can update the block boundaries (and stepping logic) accordingly.
-///   - If the target is active and halted in a different sequence, e.g. during reset-and-halt, then
-///     we can infer breakpoints based on the 'closest available line', or if that is not possible, we
-///     inform the user that insufficient information is available to set a breakpoint at the requested location.
 #[derive(Clone, Default)]
 pub(crate) struct Block {
     /// This block contains instructions that was inlined (function or macro) into the current sequence.
     pub(crate) is_inlined: bool,
     pub(crate) instructions: Vec<Instruction>,
-    ///  - The `stepped_from` (left edge) identifies the address of the instruction immediately preceding this block.
-    pub(crate) stepped_from: Option<u64>,
-    ///  - The `steps_to` (right edge) identifies the address of the instruction immediately following this block:
-    ///    - The address of the first instruction in the next block in the sequence, if there is one.
-    ///    - The address of first instruction, after the instruction that called this sequence (return register value).
+    ///  - The `steps_to` identifies the address of the instruction immediately following this block.
     pub(crate) steps_to: Option<u64>,
 }
 
 impl Block {
     pub(crate) fn new(
         starting_address: u64,
-        stepped_from: Option<u64>,
         block_instructions: &mut std::iter::Peekable<std::slice::Iter<Instruction>>,
         debug_info: &DebugInfo,
         program_unit: &UnitInfo,
@@ -80,7 +63,6 @@ impl Block {
                 .map(|block_function| block_function.is_inline())
                 .unwrap_or(false),
             instructions: Vec::new(),
-            stepped_from,
             steps_to: None,
         };
         while let Some(instruction) = block_instructions.next() {

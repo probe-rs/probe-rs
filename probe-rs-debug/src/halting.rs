@@ -2,6 +2,9 @@ mod block;
 mod breakpoint;
 mod instruction;
 mod sequence;
+mod stepping;
+use self::sequence::Sequence;
+
 use super::{
     unit_info::{self},
     ColumnType, DebugInfo,
@@ -9,6 +12,7 @@ use super::{
 pub use breakpoint::VerifiedBreakpoint;
 use instruction::Instruction;
 use serde::Serialize;
+pub use stepping::Stepping;
 use typed_path::{TypedPath, TypedPathBuf};
 
 fn serialize_typed_path<S>(path: &TypedPathBuf, serializer: S) -> Result<S::Ok, S::Error>
@@ -80,4 +84,56 @@ impl SourceLocation {
             .file_name()
             .map(|name| String::from_utf8_lossy(name).to_string())
     }
+}
+
+/// Return the line program sequences with matching path entries, from all matching compilation units.
+pub(crate) fn line_sequences_for_path<'a>(
+    debug_info: &'a DebugInfo,
+    path: &TypedPathBuf,
+) -> Vec<(Sequence<'a>, Option<u64>)> {
+    let mut line_sequences_for_path = Vec::new();
+    for program_unit in debug_info.unit_infos.as_slice() {
+        let Some(ref line_program) = program_unit.unit.line_program else {
+            // Not all compilation units need to have debug line information, so we skip those.
+            continue;
+        };
+
+        let mut matching_file_index = None;
+        if line_program
+            .header()
+            .file_names()
+            .iter()
+            .enumerate()
+            .any(|(file_index, _)| {
+                debug_info
+                    .get_path(&program_unit.unit, file_index as u64 + 1)
+                    .map(|unit_path: TypedPathBuf| {
+                        if canonical_unit_path_eq(unit_path.to_path(), path.to_path()) {
+                            // we use file_index + 1, because the file index is 1-based in DWARF.
+                            matching_file_index = Some(file_index as u64 + 1);
+                            true
+                        } else {
+                            false
+                        }
+                    })
+                    .unwrap_or(false)
+            })
+        {
+            let Ok((complete_line_program, line_sequences)) = line_program.clone().sequences()
+            else {
+                continue;
+            };
+            for line_sequence in &line_sequences {
+                if let Ok(sequence) = Sequence::from_line_sequence(
+                    debug_info,
+                    program_unit,
+                    &complete_line_program,
+                    line_sequence,
+                ) {
+                    line_sequences_for_path.push((sequence, matching_file_index))
+                };
+            }
+        }
+    }
+    line_sequences_for_path
 }

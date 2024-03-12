@@ -5,8 +5,6 @@
 
 /// Debug information which is parsed from DWARF debugging information.
 pub mod debug_info;
-/// Stepping through a program during debug, at various granularities.
-pub mod debug_step;
 /// References to the DIE (debug information entry) of functions.
 pub mod function_die;
 /// Identifying haltpoints for debug stepping and breakpoints.
@@ -27,9 +25,9 @@ pub mod variable_cache;
 pub(crate) mod exception_handling;
 
 pub use self::{
-    debug_info::*, debug_step::SteppingMode, exception_handling::exception_handler_for_core,
-    halting::SourceLocation, halting::VerifiedBreakpoint, registers::*, stack_frame::StackFrame,
-    variable::*, variable_cache::VariableCache,
+    debug_info::*, exception_handling::exception_handler_for_core,
+    halting::{SourceLocation, Stepping, VerifiedBreakpoint}, registers::*,
+    stack_frame::StackFrame, variable::*, variable_cache::VariableCache,
 };
 
 use probe_rs::{Core, MemoryInterface};
