@@ -29,7 +29,7 @@ impl SvdCache {
         let mut svd_opened_file = File::open(svd_file)?;
 
         let progress_id = debug_adapter.start_progress(
-            format!("Loading SVD file : {}", svd_file.display()).as_str(),
+            format!("Loading SVD file: {}", svd_file.display()).as_str(),
             Some(dap_request_id),
         )?;
 
@@ -43,7 +43,7 @@ impl SvdCache {
                 debug_adapter
                     .update_progress(
                         None,
-                        Some(format!("Done loading SVD file :{:?}", &svd_file)),
+                        Some(format!("Done loading SVD file: {}", svd_file.display())),
                         progress_id,
                     )
                     .ok();
@@ -107,8 +107,7 @@ pub(crate) fn variable_cache_from_svd<P: ProtocolAdapter>(
                 .update_progress(
                     None,
                     Some(format!(
-                        "SVD loading peripheral group:{}",
-                        peripheral_group_name
+                        "SVD loading peripheral group: {peripheral_group_name}",
                     )),
                     progress_id,
                 )

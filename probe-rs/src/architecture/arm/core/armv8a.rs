@@ -606,113 +606,140 @@ impl<'probe> Armv8a<'probe> {
         }
     }
 
+    fn with_core_halted<F, R>(&mut self, f: F) -> Result<R, Error>
+    where
+        F: FnOnce(&mut Self) -> Result<R, Error>,
+    {
+        // save halt status
+        let original_halt_status = self.state.current_state.is_halted();
+        if !original_halt_status {
+            self.halt(Duration::from_millis(100))?;
+        }
+
+        let result = f(self);
+
+        // restore halt status
+        if !original_halt_status {
+            self.run()?;
+        }
+        result
+    }
+
     fn read_cpu_memory_aarch32_32(&mut self, address: u64) -> Result<u32, Error> {
         let address = valid_32bit_address(address)?;
 
-        // Save r0, r1
-        self.prepare_for_clobber(0)?;
-        self.prepare_for_clobber(1)?;
+        self.with_core_halted(|armv8a| {
+            // Save r0, r1
+            armv8a.prepare_for_clobber(0)?;
+            armv8a.prepare_for_clobber(1)?;
 
-        // Load r0 with the address to read from
-        self.set_reg_value(0, address.into())?;
+            // Load r0 with the address to read from
+            armv8a.set_reg_value(0, address.into())?;
 
-        // Read data to r1 - LDR r1, [r0], #4
-        let instruction = build_ldr(1, 0, 4);
+            // Read data to r1 - LDR r1, [r0], #4
+            let instruction = build_ldr(1, 0, 4);
 
-        self.execute_instruction(instruction)?;
+            armv8a.execute_instruction(instruction)?;
 
-        // Move from r1 to transfer buffer - MCR p14, 0, r1, c0, c5, 0
-        let instruction = build_mcr(14, 0, 1, 0, 5, 0);
-        self.execute_instruction_with_result_32(instruction)
+            // Move from r1 to transfer buffer - MCR p14, 0, r1, c0, c5, 0
+            let instruction = build_mcr(14, 0, 1, 0, 5, 0);
+            armv8a.execute_instruction_with_result_32(instruction)
+        })
     }
 
     fn read_cpu_memory_aarch64_32(&mut self, address: u64) -> Result<u32, Error> {
-        // Save x0, x1
-        self.prepare_for_clobber(0)?;
-        self.prepare_for_clobber(1)?;
+        self.with_core_halted(|armv8a| {
+            // Save x0, x1
+            armv8a.prepare_for_clobber(0)?;
+            armv8a.prepare_for_clobber(1)?;
 
-        // Load x0 with the address to read from
-        self.set_reg_value(0, address)?;
+            // Load x0 with the address to read from
+            armv8a.set_reg_value(0, address)?;
 
-        // Read data to w1 - LDR w1, [x0], #4
-        let instruction = aarch64::build_ldrw(1, 0, 4);
+            // Read data to w1 - LDR w1, [x0], #4
+            let instruction = aarch64::build_ldrw(1, 0, 4);
 
-        self.execute_instruction(instruction)?;
+            armv8a.execute_instruction(instruction)?;
 
-        // MSR DBGDTRTX_EL0, X1
-        let instruction = aarch64::build_msr(2, 3, 0, 5, 0, 1);
-        self.execute_instruction_with_result_32(instruction)
+            // MSR DBGDTRTX_EL0, X1
+            let instruction = aarch64::build_msr(2, 3, 0, 5, 0, 1);
+            armv8a.execute_instruction_with_result_32(instruction)
+        })
     }
 
     fn read_cpu_memory_aarch64_64(&mut self, address: u64) -> Result<u64, Error> {
-        // Save x0, x1
-        self.prepare_for_clobber(0)?;
-        self.prepare_for_clobber(1)?;
+        self.with_core_halted(|armv8a| {
+            // Save x0, x1
+            armv8a.prepare_for_clobber(0)?;
+            armv8a.prepare_for_clobber(1)?;
 
-        // Load x0 with the address to read from
-        self.set_reg_value(0, address)?;
+            // Load x0 with the address to read from
+            armv8a.set_reg_value(0, address)?;
 
-        // Read data to x1 - LDR x1, [x0], #8
-        let instruction = aarch64::build_ldr(1, 0, 8);
+            // Read data to x1 - LDR x1, [x0], #8
+            let instruction = aarch64::build_ldr(1, 0, 8);
 
-        self.execute_instruction(instruction)?;
+            armv8a.execute_instruction(instruction)?;
 
-        // MSR DBGDTR_EL0, X1
-        let instruction = aarch64::build_msr(2, 3, 0, 4, 0, 1);
-        self.execute_instruction_with_result_64(instruction)
+            // MSR DBGDTR_EL0, X1
+            let instruction = aarch64::build_msr(2, 3, 0, 4, 0, 1);
+            armv8a.execute_instruction_with_result_64(instruction)
+        })
     }
 
     fn write_cpu_memory_aarch32_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
         let address = valid_32bit_address(address)?;
+        self.with_core_halted(|armv8a| {
+            // Save r0, r1
+            armv8a.prepare_for_clobber(0)?;
+            armv8a.prepare_for_clobber(1)?;
 
-        // Save r0, r1
-        self.prepare_for_clobber(0)?;
-        self.prepare_for_clobber(1)?;
+            // Load x0 with the address to write to
+            armv8a.set_reg_value(0, address.into())?;
+            armv8a.set_reg_value(1, data.into())?;
 
-        // Load x0 with the address to write to
-        self.set_reg_value(0, address.into())?;
-        self.set_reg_value(1, data.into())?;
+            // Write data to memory - STR r1, [r0], #4
+            let instruction = build_str(1, 0, 4);
 
-        // Write data to memory - STR r1, [r0], #4
-        let instruction = build_str(1, 0, 4);
-
-        self.execute_instruction(instruction)?;
-
-        Ok(())
+            armv8a.execute_instruction(instruction)?;
+            Ok(())
+        })
     }
 
     fn write_cpu_memory_aarch64_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
-        // Save x0, x1
-        self.prepare_for_clobber(0)?;
-        self.prepare_for_clobber(1)?;
+        self.with_core_halted(|armv8a| {
+            // Save x0, x1
+            armv8a.prepare_for_clobber(0)?;
+            armv8a.prepare_for_clobber(1)?;
 
-        // Load r0 with the address to write to
-        self.set_reg_value(0, address)?;
-        self.set_reg_value(1, data.into())?;
+            // Load r0 with the address to write to
+            armv8a.set_reg_value(0, address)?;
+            armv8a.set_reg_value(1, data.into())?;
 
-        // Write data to memory - STR x1, [x0], #4
-        let instruction = aarch64::build_strw(1, 0, 4);
+            // Write data to memory - STR x1, [x0], #4
+            let instruction = aarch64::build_strw(1, 0, 4);
 
-        self.execute_instruction(instruction)?;
-
-        Ok(())
+            armv8a.execute_instruction(instruction)?;
+            Ok(())
+        })
     }
 
     fn write_cpu_memory_aarch64_64(&mut self, address: u64, data: u64) -> Result<(), Error> {
-        // Save x0, x1
-        self.prepare_for_clobber(0)?;
-        self.prepare_for_clobber(1)?;
+        self.with_core_halted(|armv8a| {
+            // Save x0, x1
+            armv8a.prepare_for_clobber(0)?;
+            armv8a.prepare_for_clobber(1)?;
 
-        // Load r0 with the address to write to
-        self.set_reg_value(0, address)?;
-        self.set_reg_value(1, data)?;
+            // Load r0 with the address to write to
+            armv8a.set_reg_value(0, address)?;
+            armv8a.set_reg_value(1, data)?;
 
-        // Write data to memory - STR x1, [x0], #8
-        let instruction = aarch64::build_str(1, 0, 8);
+            // Write data to memory - STR x1, [x0], #8
+            let instruction = aarch64::build_str(1, 0, 8);
 
-        self.execute_instruction(instruction)?;
-
-        Ok(())
+            armv8a.execute_instruction(instruction)?;
+            Ok(())
+        })
     }
 
     fn set_core_status(&mut self, new_status: CoreStatus) {
