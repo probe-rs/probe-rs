@@ -487,14 +487,14 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
         // TODO: Use atomic block
 
         for _ in 0..num_retries {
+            // Ensure current debug interface is in reset state.
+            swd_line_reset(interface)?;
+
             // Make sure the debug port is in the correct mode based on what the probe
             // has selected via active_protocol
             match interface.active_protocol() {
                 Some(WireProtocol::Jtag) => {
                     if has_dormant {
-                        // Ensure current debug interface is in reset state.
-                        swd_line_reset(interface)?;
-
                         tracing::trace!("Select Dormant State (from SWD)");
                         interface.swj_sequence(16, 0xE3BC)?;
 
@@ -503,19 +503,13 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
 
                         // 4 cycles SWDIO/TMS LOW + 8-Bit JTAG Activation Code (0x0A)
                         interface.swj_sequence(12, 0x0A0)?;
-
-                        // Ensure JTAG interface is reset
-                        interface.swj_sequence(6, 0x3F)?;
                     } else {
-                        // Ensure current debug interface is in reset state.
-                        swd_line_reset(interface)?;
-
                         // Execute SWJ-DP Switch Sequence SWD to JTAG (0xE73C).
                         interface.swj_sequence(16, 0xE73C)?;
-
-                        // Execute at least >5 TCK cycles with TMS high to enter the Test-Logic-Reset state
-                        interface.swj_sequence(6, 0x3F)?;
                     }
+
+                    // Execute at least >5 TCK cycles with TMS high to enter the Test-Logic-Reset state
+                    interface.swj_sequence(6, 0x3F)?;
 
                     // Enter Run-Test-Idle state, as required by the DAP_Transfer command when using JTAG
                     interface.jtag_sequence(1, false, 0x01)?;
@@ -525,8 +519,6 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                 }
                 Some(WireProtocol::Swd) => {
                     if has_dormant {
-                        swd_line_reset(interface)?;
-
                         // Select Dormant State (from JTAG)
                         tracing::trace!("Select Dormant State (from JTAG)");
                         interface.swj_sequence(31, 0x33BBBBBA)?;
@@ -537,9 +529,6 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
                         // 4 cycles SWDIO/TMS LOW + 8-Bit SWD Activation Code (0x1A)
                         interface.swj_sequence(12, 0x1A0)?;
                     } else {
-                        // Ensure current debug interface is in reset state.
-                        swd_line_reset(interface)?;
-
                         // Execute SWJ-DP Switch Sequence JTAG to SWD (0xE79E).
                         // Change if SWJ-DP uses deprecated switch code (0xEDB6).
                         interface.swj_sequence(16, 0xE79E)?;

@@ -3,7 +3,10 @@ use super::{
         valid_access_ports, AccessPort, ApAccess, ApClass, BaseaddrFormat, GenericAp, MemoryAp,
         BASE, BASE2, CFG, CSW, IDR,
     },
-    dp::{Abort, Ctrl, DebugPortVersion, DpAccess, Select, DPIDR},
+    dp::{
+        Abort, Ctrl, DebugPortError, DebugPortVersion, DpAccess, Select, BASEPTR0, BASEPTR1, DPIDR,
+        DPIDR1,
+    },
     memory::{
         adi_v5_memory_interface::{ADIMemoryInterface, ArmProbe},
         Component,
@@ -142,20 +145,16 @@ pub struct Uninitialized {
 pub struct Initialized {
     /// Currently selected debug port. For targets without multidrop,
     /// this will always be the single, default debug port in the system.
-    pub(crate) current_dp: DpAddress,
+    pub(crate) current_dp: Option<DpAddress>,
     dps: HashMap<DpAddress, DpState>,
     use_overrun_detect: bool,
     sequence: Arc<dyn ArmDebugSequence>,
 }
 
 impl Initialized {
-    pub fn new(
-        sequence: Arc<dyn ArmDebugSequence>,
-        use_overrun_detect: bool,
-        dp: DpAddress,
-    ) -> Self {
+    pub fn new(sequence: Arc<dyn ArmDebugSequence>, use_overrun_detect: bool) -> Self {
         Self {
-            current_dp: dp,
+            current_dp: None,
             dps: HashMap::new(),
             use_overrun_detect,
             sequence,
@@ -369,7 +368,9 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
     }
 
     fn current_debug_port(&self) -> DpAddress {
-        self.state.current_dp
+        self.state
+            .current_dp
+            .expect("A DpAddress is selected. This is a bug, please report it.")
     }
 }
 
@@ -396,41 +397,30 @@ impl ArmCommunicationInterface<Uninitialized> {
 
         Self { probe, state }
     }
-
-    fn into_initialized(
-        self,
-        sequence: Arc<dyn ArmDebugSequence>,
-        dp: DpAddress,
-    ) -> Result<ArmCommunicationInterface<Initialized>, (Box<Self>, DebugProbeError)> {
-        let use_overrun_detect = self.state.use_overrun_detect;
-
-        ArmCommunicationInterface::<Initialized>::from_uninitialized(
-            self,
-            sequence,
-            use_overrun_detect,
-            dp,
-        )
-    }
 }
 
 impl UninitializedArmProbe for ArmCommunicationInterface<Uninitialized> {
     fn initialize(
-        mut self: Box<Self>,
+        self: Box<Self>,
         sequence: Arc<dyn ArmDebugSequence>,
         dp: DpAddress,
     ) -> Result<Box<dyn ArmProbeInterface>, (Box<dyn UninitializedArmProbe>, ProbeRsError)> {
-        let setup_span = tracing::debug_span!("debug_port_setup").entered();
-        if let Err(e) = sequence.debug_port_setup(&mut *self.probe, dp) {
-            return Err((self as Box<_>, e.into()));
+        let use_overrun_detect = self.state.use_overrun_detect;
+        let mut initialized_interface = ArmCommunicationInterface {
+            probe: self.probe,
+            state: Initialized::new(sequence, use_overrun_detect),
+        };
+
+        match initialized_interface.select_dp(dp) {
+            Ok(_) => Ok(Box::new(initialized_interface) as Box<_>),
+            Err(err) => Err((
+                Box::new(ArmCommunicationInterface::new(
+                    initialized_interface.probe,
+                    use_overrun_detect,
+                )) as Box<_>,
+                ProbeRsError::Arm(err),
+            )),
         }
-
-        drop(setup_span);
-
-        let interface = self
-            .into_initialized(sequence, dp)
-            .map_err(|(s, err)| (s as Box<_>, ProbeRsError::Probe(err)))?;
-
-        Ok(Box::new(interface))
     }
 
     fn close(self: Box<Self>) -> Probe {
@@ -447,26 +437,6 @@ impl<S: ArmDebugState> ArmCommunicationInterface<S> {
 }
 
 impl<'interface> ArmCommunicationInterface<Initialized> {
-    fn from_uninitialized(
-        interface: ArmCommunicationInterface<Uninitialized>,
-        sequence: Arc<dyn ArmDebugSequence>,
-        use_overrun_detect: bool,
-        dp: DpAddress,
-    ) -> Result<
-        Self,
-        (
-            Box<ArmCommunicationInterface<Uninitialized>>,
-            DebugProbeError,
-        ),
-    > {
-        let initialized_interface = ArmCommunicationInterface {
-            probe: interface.probe,
-            state: Initialized::new(sequence, use_overrun_detect, dp),
-        };
-
-        Ok(initialized_interface)
-    }
-
     /// Inform the probe of the [`CoreStatus`] of the chip attached to the probe.
     pub fn core_status_notification(&mut self, state: CoreStatus) {
         self.probe.core_status_notification(state).ok();
@@ -484,11 +454,8 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
         match info {
             ApInformation::MemoryAp(ap_information) => {
                 let information = ap_information.clone();
-                let adi_v5_memory_interface = ADIMemoryInterface::<
-                    'interface,
-                    ArmCommunicationInterface<Initialized>,
-                >::new(self, information)
-                .map_err(|e| ArmError::from_access_port(e, access_port))?;
+                let adi_v5_memory_interface = ADIMemoryInterface::new(self, information)
+                    .map_err(|e| ArmError::from_access_port(e, access_port))?;
 
                 Ok(Box::new(adi_v5_memory_interface))
             }
@@ -497,7 +464,12 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     }
 
     fn select_dp(&mut self, dp: DpAddress) -> Result<&mut DpState, ArmError> {
-        if self.state.current_dp != dp {
+        if self
+            .state
+            .current_dp
+            .map(|current| current != dp)
+            .unwrap_or(true)
+        {
             tracing::debug!("Selecting DP {:x?}", dp);
 
             self.probe.raw_flush()?;
@@ -510,7 +482,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
                 self.state.sequence.debug_port_setup(&mut *self.probe, dp)?;
             }
 
-            self.state.current_dp = dp;
+            self.state.current_dp = Some(dp);
         }
 
         // If we don't have  a state for this DP, this means that we haven't run the necessary init sequence yet.
@@ -526,10 +498,35 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
             // Make sure we enable the overrun detect mode when requested.
             // For "bit-banging" probes, such as JLink or FTDI, we rely on it for good, stable communication.
             // This is required as the default sequence (and most special implementations) does not do this.
-            tracing::debug!("Setting orun_detect: {}", self.state.use_overrun_detect);
             let mut ctrl_reg: Ctrl = self.read_dp_register(dp)?;
-            ctrl_reg.set_orun_detect(self.state.use_overrun_detect);
-            self.write_dp_register(dp, ctrl_reg)?;
+            if ctrl_reg.orun_detect() != self.state.use_overrun_detect {
+                tracing::debug!("Setting orun_detect: {}", self.state.use_overrun_detect);
+                // only write if there’s a need for it.
+                ctrl_reg.set_orun_detect(self.state.use_overrun_detect);
+                self.write_dp_register(dp, ctrl_reg)?;
+            }
+
+            let idr = self.read_dp_register::<DPIDR>(dp)?;
+            if idr.version() == 3 {
+                let idr1: DPIDR1 = self.read_dp_register(dp)?;
+                let base_ptr0: BASEPTR0 = self.read_dp_register(dp)?;
+                let base_ptr1: BASEPTR1 = self.read_dp_register(dp)?;
+                let base_ptr_str = base_ptr0.valid().then(|| {
+                    format!(
+                        "0x{:x}",
+                        u64::from(base_ptr1.ptr()) | u64::from(base_ptr0.ptr() << 12)
+                    )
+                });
+                tracing::info!(
+                    "DPv3 detected: DPIDR1:{:?} BASE_PTR: {}",
+                    idr1,
+                    base_ptr_str.as_deref().unwrap_or("not valid")
+                );
+
+                return Err(ArmError::DebugPort(DebugPortError::Unsupported(
+                    "Unsupported version (DPv3)".to_string(),
+                )));
+            }
 
             /* determine the number and type of available APs */
             tracing::trace!("Searching valid APs");
@@ -559,12 +556,13 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
 
         // DP register addresses are 4 bank bits, 4 address bits. Lowest 2 address bits are
         // always 0, so this leaves only 4 possible addresses: 0x0, 0x4, 0x8, 0xC.
-        // Only address 0x4 is banked, the rest are don't care.
+        // On ADIv5, only address 0x4 is banked, the rest are don't care.
+        // On ADIv6, address 0x0 and 0x4 are banked, the rest are don't care.
 
         let bank = dp_register_address >> 4;
         let addr = dp_register_address & 0xF;
 
-        if addr != 4 {
+        if addr != 0 && addr != 4 {
             return Ok(());
         }
 

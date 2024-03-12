@@ -9,6 +9,7 @@ use crate::{
     memory::valid_32bit_address,
     memory_mapped_bitfield_register,
     probe::DebugProbeError,
+    semihosting::decode_semihosting_syscall,
     CoreInterface, CoreRegister, CoreStatus, CoreType, Error, HaltReason, InstructionSet,
     MemoryInterface, MemoryMappedRegister,
 };
@@ -111,55 +112,50 @@ impl<'probe> Riscv32<'probe> {
         }
     }
 
-    /// Check if the current breakpoint is a semihosting call. Does nothing unless feature rtt is enabled.
+    /// Check if the current breakpoint is a semihosting call
     fn check_for_semihosting(
         old_reason: HaltReason,
         core: &mut dyn CoreInterface,
     ) -> Result<HaltReason, Error> {
         let mut reason = old_reason;
+        let pc: u32 = core.read_core_reg(core.program_counter().id)?.try_into()?;
 
-        #[cfg(feature = "rtt")]
-        {
-            use crate::rtt::decode_semihosting_syscall;
-            let pc: u32 = core.read_core_reg(core.program_counter().id)?.try_into()?;
+        // The Riscv Semihosting Specification, specificies the following sequence of instructions,
+        // to trigger a semihosting call:
+        // <https://github.com/riscv-software-src/riscv-semihosting/blob/main/riscv-semihosting-spec.adoc>
 
-            // The Riscv Semihosting Specification, specificies the following sequence of instructions,
-            // to trigger a semihosting call:
-            // <https://github.com/riscv-software-src/riscv-semihosting/blob/main/riscv-semihosting-spec.adoc>
+        const TRAP_INSTRUCTIONS: [u32; 3] = [
+            0x01f01013, // slli x0, x0, 0x1f (Entry Nop)
+            0x00100073, // ebreak (Break to debugger)
+            0x40705013, // srai x0, x0, 7 (NOP encoding the semihosting call number 7)
+        ];
 
-            const TRAP_INSTRUCTIONS: [u32; 3] = [
-                0x01f01013, // slli x0, x0, 0x1f (Entry Nop)
-                0x00100073, // ebreak (Break to debugger)
-                0x40705013, // srai x0, x0, 7 (NOP encoding the semihosting call number 7)
-            ];
+        // Read the actual instructions, starting at the instruction before the ebreak (PC-4)
+        let mut actual_instructions = [0u32; 3];
+        core.read_32((pc - 4) as u64, &mut actual_instructions)?;
+        let actual_instructions = actual_instructions.as_slice();
 
-            // Read the actual instructions, starting at the instruction before the ebreak (PC-4)
-            let mut actual_instructions = [0u32; 3];
-            core.read_32((pc - 4) as u64, &mut actual_instructions)?;
-            let actual_instructions = actual_instructions.as_slice();
+        tracing::debug!(
+            "Semihosting check pc={pc:#x} instructions={0:#08x} {1:#08x} {2:#08x}",
+            actual_instructions[0],
+            actual_instructions[1],
+            actual_instructions[2]
+        );
 
-            tracing::debug!(
-                "Semihosting check pc={pc:#x} instructions={0:#08x} {1:#08x} {2:#08x}",
-                actual_instructions[0],
-                actual_instructions[1],
-                actual_instructions[2]
-            );
+        if TRAP_INSTRUCTIONS == actual_instructions {
+            // Trap sequence found -> we're semihosting
+            let a0: u32 = core
+                .read_core_reg(core.registers().get_argument_register(0).unwrap().id())?
+                .try_into()?;
+            let a1: u32 = core
+                .read_core_reg(core.registers().get_argument_register(1).unwrap().id())?
+                .try_into()?;
 
-            if TRAP_INSTRUCTIONS == actual_instructions {
-                // Trap sequence found -> we're semihosting
-                let a0: u32 = core
-                    .read_core_reg(core.registers().get_argument_register(0).unwrap().id())?
-                    .try_into()?;
-                let a1: u32 = core
-                    .read_core_reg(core.registers().get_argument_register(1).unwrap().id())?
-                    .try_into()?;
+            tracing::info!("Semihosting found pc={pc:#x} a0={a0:#x} a1={a1:#x}");
 
-                tracing::info!("Semihosting found pc={pc:#x} a0={a0:#x} a1={a1:#x}");
-
-                reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(
-                    decode_semihosting_syscall(a0, a1),
-                ));
-            }
+            reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(
+                decode_semihosting_syscall(core, a0, a1)?,
+            ));
         }
         Ok(reason)
     }

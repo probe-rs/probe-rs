@@ -110,7 +110,8 @@ pub struct FormatOptions {
     /// If a target has a preferred format, we use that.
     /// Finally, if neither of the above cases are true, we default to ELF.
     #[clap(value_enum, ignore_case = true, long)]
-    #[serde(deserialize_with = "format_from_str")]
+    // TODO: remove this alias in the next release after 0.24 and release of https://github.com/probe-rs/vscode/pull/86
+    #[serde(deserialize_with = "format_from_str", alias = "format")]
     binary_format: Option<Format>,
     /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
     #[clap(long, value_parser = parse_u64)]

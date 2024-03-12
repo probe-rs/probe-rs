@@ -504,7 +504,7 @@ impl JTAGAccess for WchLink {
 }
 
 fn get_wlink_info(device: &DeviceInfo) -> Option<DebugProbeInfo> {
-    if device.product_string() == Some("WCH-Link") {
+    if matches!(device.product_string(), Some("WCH-Link") | Some("WCH_Link")) {
         Some(DebugProbeInfo::new(
             "WCH-Link",
             VENDOR_ID,

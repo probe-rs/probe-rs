@@ -37,7 +37,7 @@ use probe_rs::{
 use serde::{de::DeserializeOwned, Serialize};
 use typed_path::NativePathBuf;
 
-use std::{str, time::Duration};
+use std::{fmt::Display, str, time::Duration};
 
 /// Progress ID used for progress reporting when the debug adapter protocol is used.
 type ProgressId = i64;
@@ -1775,31 +1775,27 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         channel_name: String,
         data_format: rtt::DataFormat,
     ) -> bool {
-        let event_body = match serde_json::to_value(RttChannelEventBody {
+        let Ok(event_body) = serde_json::to_value(RttChannelEventBody {
             channel_number,
             channel_name,
             data_format,
-        }) {
-            Ok(event_body) => event_body,
-            Err(_) => {
-                return false;
-            }
+        }) else {
+            return false;
         };
+
         self.send_event("probe-rs-rtt-channel-config", Some(event_body))
             .is_ok()
     }
 
     /// Send a custom `probe-rs-rtt-data` event to the MS DAP Client, to
     pub fn rtt_output(&mut self, channel_number: usize, rtt_data: String) -> bool {
-        let event_body = match serde_json::to_value(RttDataEventBody {
+        let Ok(event_body) = serde_json::to_value(RttDataEventBody {
             channel_number,
             data: rtt_data,
-        }) {
-            Ok(event_body) => event_body,
-            Err(_) => {
-                return false;
-            }
+        }) else {
+            return false;
         };
+
         self.send_event("probe-rs-rtt-data", Some(event_body))
             .is_ok()
     }
@@ -1859,7 +1855,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub fn update_progress(
         &mut self,
         progress: Option<f64>,
-        message: Option<impl Into<String>>,
+        message: Option<impl Display>,
         progress_id: i64,
     ) -> Result<ProgressId> {
         anyhow::ensure!(
@@ -1867,11 +1863,17 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             "Progress reporting is not supported by client."
         );
 
+        let percentage = progress.map(|progress| progress * 100.0);
+
         self.send_event(
             "progressUpdate",
             Some(ProgressUpdateEventBody {
-                message: message.map(|v| v.into()),
-                percentage: progress.map(|progress| progress * 100.0),
+                message: message.map(|msg| match percentage {
+                    None => msg.to_string(),
+                    Some(percentage) if percentage == 100.0 => msg.to_string(),
+                    Some(percentage) => format!("{msg} ({percentage:02.0}%)"),
+                }),
+                percentage,
                 progress_id: progress_id.to_string(),
             }),
         )?;

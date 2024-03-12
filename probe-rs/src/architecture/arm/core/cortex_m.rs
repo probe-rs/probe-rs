@@ -3,8 +3,9 @@
 use crate::{
     architecture::arm::{memory::adi_v5_memory_interface::ArmProbe, ArmError},
     core::RegisterId,
-    memory_mapped_bitfield_register, BreakpointCause, CoreInterface, Error, HaltReason,
-    MemoryMappedRegister,
+    memory_mapped_bitfield_register,
+    semihosting::decode_semihosting_syscall,
+    BreakpointCause, CoreInterface, Error, HaltReason, MemoryMappedRegister,
 };
 use std::time::{Duration, Instant};
 
@@ -176,7 +177,7 @@ pub(crate) fn write_core_reg(
     Ok(())
 }
 
-/// Check if the current breakpoint is a semihosting call. Does nothing unless feature rtt is enabled.
+/// Check if the current breakpoint is a semihosting call.
 ///
 /// Call this if you get some kind of breakpoint. Works on ARMv6-M, ARMv7-M and ARMv8-M.
 pub(crate) fn check_for_semihosting(
@@ -184,40 +185,35 @@ pub(crate) fn check_for_semihosting(
     core: &mut dyn CoreInterface,
 ) -> Result<HaltReason, Error> {
     let mut reason = old_reason;
+    let pc: u32 = core.read_core_reg(core.program_counter().id)?.try_into()?;
 
-    #[cfg(feature = "rtt")]
-    {
-        use crate::rtt::decode_semihosting_syscall;
-        let pc: u32 = core.read_core_reg(core.program_counter().id)?.try_into()?;
+    // The Arm Semihosting Specification, specificies that the instruction
+    // "BKPT 0xAB" (encoded as 0xBEAB) triggers a semihosting call.
+    // <https://github.com/ARM-software/abi-aa/blob/main/semihosting/semihosting.rst#the-semihosting-interface>
+    const TRAP_INSTRUCTION: [u8; 2] = [
+        // instruction encoded as little endian
+        0xAB, 0xBE,
+    ];
 
-        // The Arm Semihosting Specification, specificies that the instruction
-        // "BKPT 0xAB" (encoded as 0xBEAB) triggers a semihosting call.
-        // <https://github.com/ARM-software/abi-aa/blob/main/semihosting/semihosting.rst#the-semihosting-interface>
-        const TRAP_INSTRUCTION: [u8; 2] = [
-            // instruction encoded as little endian
-            0xAB, 0xBE,
-        ];
+    let mut actual_instruction = [0u8; 2];
+    core.read_8(pc as u64, &mut actual_instruction)?;
+    let actual_instruction = actual_instruction.as_slice();
 
-        let mut actual_instruction = [0u8; 2];
-        core.read_8(pc as u64, &mut actual_instruction)?;
-        let actual_instruction = actual_instruction.as_slice();
+    tracing::debug!(
+        "Semihosting check pc={pc:#x} instruction={0:#02x}{1:#02x}",
+        actual_instruction[1],
+        actual_instruction[0]
+    );
 
-        tracing::debug!(
-            "Semihosting check pc={pc:#x} instruction={0:#02x}{1:#02x}",
-            actual_instruction[1],
-            actual_instruction[0]
-        );
+    if TRAP_INSTRUCTION == actual_instruction {
+        // BKPT 0xAB -> we are semihosting
+        let r0: u32 = core.read_core_reg(RegisterId(0))?.try_into()?;
+        let r1: u32 = core.read_core_reg(RegisterId(1))?.try_into()?;
+        tracing::info!("Semihosting found pc={pc:#x} r0={r0:#x} r1={r1:#x}");
 
-        if TRAP_INSTRUCTION == actual_instruction {
-            // BKPT 0xAB -> we are semihosting
-            let r0: u32 = core.read_core_reg(RegisterId(0))?.try_into()?;
-            let r1: u32 = core.read_core_reg(RegisterId(1))?.try_into()?;
-            tracing::info!("Semihosting found pc={pc:#x} r0={r0:#x} r1={r1:#x}");
-
-            reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(
-                decode_semihosting_syscall(r0, r1),
-            ));
-        }
+        reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(decode_semihosting_syscall(
+            core, r0, r1,
+        )?));
     }
     Ok(reason)
 }

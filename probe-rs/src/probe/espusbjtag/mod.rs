@@ -123,7 +123,7 @@ impl DebugProbe for EspUsbJtag {
         tracing::info!("Found {} TAPs on reset scan", chain.len());
 
         if chain.len() > 1 {
-            tracing::warn!("More than one TAP detected, defaulting to tap0");
+            tracing::info!("More than one TAP detected, defaulting to tap0");
         }
 
         self.select_target(&chain, 0)
