@@ -1868,12 +1868,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         self.send_event(
             "progressUpdate",
             Some(ProgressUpdateEventBody {
-                message: message.map(|msg| {
-                    if let Some(percentage) = percentage {
-                        format!("{msg} ({percentage:02.0}%)")
-                    } else {
-                        format!("{msg} ...")
-                    }
+                message: message.map(|msg| match percentage {
+                    Some(100.0) => msg.to_string(),
+                    Some(percentage) => format!("{msg} ({percentage:02.0}%)"),
+                    None => format!("{msg} ..."),
                 }),
                 percentage,
                 progress_id: progress_id.to_string(),
