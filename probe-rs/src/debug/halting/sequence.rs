@@ -1,11 +1,10 @@
-use crate::debug::{ColumnType, SourceLocation};
-
 use super::{
     super::{unit_info::UnitInfo, DebugError, DebugInfo},
     block::Block,
     instruction::Instruction,
     VerifiedBreakpoint,
 };
+use crate::debug::{ColumnType, SourceLocation};
 use gimli::LineSequence;
 use std::{
     self,
@@ -40,6 +39,12 @@ pub(crate) struct Sequence<'debug_info> {
     pub(crate) program_unit: &'debug_info UnitInfo,
 }
 
+impl PartialEq for Sequence<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.address_range == other.address_range
+    }
+}
+
 impl Debug for Sequence<'_> {
     /// We implement a single Debug for the sequence, its blocks, and the instructions in each block,
     /// so that we don't have to store references to `DebugInfo` and `UnitInfo` in the `Block` and `Instruction` types.
@@ -67,11 +72,6 @@ impl Debug for Sequence<'_> {
                 )?;
             } else {
                 write!(f, "  Block range: <empty>")?;
-            }
-            if let Some(follows) = block.stepped_from {
-                write!(f, " Stepped From: {follows:#010x}")?;
-            } else {
-                write!(f, " Stepped From: <unknown>")?;
             }
             if let Some(precedes) = block.steps_to {
                 write!(f, " Steps To: {precedes:#010x}")?;
@@ -232,28 +232,13 @@ impl<'debug_info> Sequence<'debug_info> {
         program_unit: &'debug_info UnitInfo,
         block_instructions: &mut std::iter::Peekable<std::slice::Iter<Instruction>>,
     ) -> Result<(), DebugError> {
-        let mut previous_block: Option<Block> = None;
         while let Some(instruction) = block_instructions.peek() {
-            // Determine if these two blocks need to be connected by their edges.
-            let stepped_from = previous_block.as_ref().and_then(|prev_block: &Block| {
-                if prev_block
-                    .steps_to
-                    .map(|address| address == instruction.address)
-                    .unwrap_or(false)
-                {
-                    prev_block.instructions.last().map(|i| i.address)
-                } else {
-                    None
-                }
-            });
             let current_block = Block::new(
                 instruction.address,
-                stepped_from,
                 block_instructions,
                 debug_info,
                 program_unit,
             )?;
-            previous_block = Some(current_block.clone());
             self.blocks.push(current_block);
         }
         Ok(())
@@ -290,7 +275,10 @@ impl<'debug_info> Sequence<'debug_info> {
             let mut halt_instruction = None;
             let mut linked_address = block.steps_to;
             while let Some(linked_block) = self.blocks.iter().find(|next_block| {
-                linked_address.is_some() && next_block.stepped_from == linked_address
+                linked_address.is_some()
+                    && linked_address
+                        .map(|linked_address| next_block.contains_address(linked_address))
+                        .unwrap_or(false)
             }) {
                 linked_address = linked_block.steps_to;
                 if let Some(instruction) = linked_block.instructions.iter().find(|instruction| {
@@ -319,6 +307,8 @@ impl<'debug_info> Sequence<'debug_info> {
         }
     }
 
+    /// Find a valid haltpoint based on either the file plus line plus column, or failing that,
+    /// the first available haltpoint that matches the file plus column.
     /// See [`VerifiedBreakpoint::for_source_location()`].
     // TODO: We need tests for the various scenarios below.
     pub(crate) fn haltpoint_near_source_location(
@@ -335,26 +325,10 @@ impl<'debug_info> Sequence<'debug_info> {
                 .unwrap()
                 .to_string_lossy()
         );
-
-        // First, let's reduce the blocks to only those that contain the file index we are looking for.
-        // We do this, because in real life, users are more like to request the file and line,
-        // but cannot accurately specify the column that contains a valid halt location. The result is
-        // that trying to do an exact file+line+column match as the first step is likely to useless.
-        let matching_blocks = self
-            .blocks
-            .iter()
-            .filter(|block| {
-                block
-                    .instructions
-                    .iter()
-                    .any(|instruction| matching_file_index == Some(instruction.file_index))
-            })
-            .collect::<Vec<&Block>>();
-
         // Cycle through various degrees of matching, to find the most relevant source location.
         // We have to do this in multiple iterations because instructions are allocated to blocks
-        // based on their instruction address, and not their source location.
-        for block in &matching_blocks {
+        // based on their instruction address, and not based on their source location.
+        for block in &self.blocks {
             // Try an exact match.
             if let Some(matching_breakpoint) = block
                 .instructions
@@ -377,36 +351,6 @@ impl<'debug_info> Sequence<'debug_info> {
             {
                 tracing::debug!("Found a closely matching breakpoint: {matching_breakpoint:?}");
                 return Some(matching_breakpoint);
-            }
-        }
-
-        // If we still haven't found a halt instruction, then we try to find the next
-        // and closest source line, in the same file. This is a bit risky, because
-        // those lines may not be part of the same branch of execution. That said,
-        // the process of setting breakpoints by source location is usually a
-        // visual process, with feedback. e.g. in VSCode, the actual breakpoint location
-        // is shown in the editor, and the user can see if it represents a reasonable alternative.
-        // This is how GDB does it also.
-        let mut sorted_file_lines = Vec::new();
-        for block in matching_blocks {
-            for instruction in &block.instructions {
-                if matching_file_index == Some(instruction.file_index) {
-                    sorted_file_lines.push(instruction);
-                }
-            }
-        }
-        sorted_file_lines.sort_by(|a, b| a.line.cmp(&b.line));
-
-        for matching_location in sorted_file_lines {
-            if matching_location.line > NonZeroU64::new(line) {
-                if let Some(matching_breakpoint) =
-                    self.haltpoint_near_address(matching_location.address)
-                {
-                    tracing::warn!(
-                        "Suggesting an closely matching breakpoint: {matching_breakpoint:?}"
-                    );
-                    return Some(matching_breakpoint);
-                }
             }
         }
 

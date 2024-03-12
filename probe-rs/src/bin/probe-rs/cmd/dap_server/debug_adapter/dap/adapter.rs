@@ -28,8 +28,8 @@ use probe_rs::{
         xtensa::communication_interface::XtensaError,
     },
     debug::{
-        stack_frame::StackFrameInfo, ColumnType, ObjectRef, SourceLocation, SteppingMode,
-        VariableName, VerifiedBreakpoint,
+        stack_frame::StackFrameInfo, ColumnType, ObjectRef, SourceLocation, Stepping, VariableName,
+        VerifiedBreakpoint,
     },
     Architecture::Riscv,
     CoreStatus, Error, HaltReason, MemoryInterface, RegisterValue,
@@ -1600,8 +1600,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let arguments: NextArguments = get_arguments(self, request)?;
 
         let stepping_granularity = match arguments.granularity {
-            Some(SteppingGranularity::Instruction) => SteppingMode::StepInstruction,
-            _ => SteppingMode::OverStatement,
+            Some(SteppingGranularity::Instruction) => Stepping::StepInstruction,
+            _ => Stepping::OverStatement,
         };
 
         self.debug_step(stepping_granularity, target_core, request)
@@ -1618,8 +1618,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let arguments: StepInArguments = get_arguments(self, request)?;
 
         let stepping_granularity = match arguments.granularity {
-            Some(SteppingGranularity::Instruction) => SteppingMode::StepInstruction,
-            _ => SteppingMode::IntoStatement,
+            Some(SteppingGranularity::Instruction) => Stepping::StepInstruction,
+            _ => Stepping::IntoStatement,
         };
         self.debug_step(stepping_granularity, target_core, request)
     }
@@ -1635,8 +1635,8 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         let arguments: StepOutArguments = get_arguments(self, request)?;
 
         let stepping_granularity = match arguments.granularity {
-            Some(SteppingGranularity::Instruction) => SteppingMode::StepInstruction,
-            _ => SteppingMode::OutOfStatement,
+            Some(SteppingGranularity::Instruction) => Stepping::StepInstruction,
+            _ => Stepping::OutOfStatement,
         };
 
         self.debug_step(stepping_granularity, target_core, request)
@@ -1645,7 +1645,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     /// Common code for the `next`, `step_in`, and `step_out` methods.
     fn debug_step(
         &mut self,
-        stepping_granularity: SteppingMode,
+        stepping_granularity: Stepping,
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<(), anyhow::Error> {

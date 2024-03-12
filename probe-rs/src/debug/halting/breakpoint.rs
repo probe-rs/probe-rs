@@ -1,6 +1,9 @@
+use std::num::NonZeroU64;
+
 use super::{
     super::{DebugError, DebugInfo},
-    canonical_unit_path_eq,
+    instruction::Instruction,
+    line_sequences_for_path,
     sequence::Sequence,
     SourceLocation,
 };
@@ -64,60 +67,59 @@ impl VerifiedBreakpoint {
         line: u64,
         column: Option<u64>,
     ) -> Result<Self, DebugError> {
-        for program_unit in debug_info.unit_infos.as_slice() {
-            let Some(ref line_program) = program_unit.unit.line_program else {
-                // Not all compilation units need to have debug line information, so we skip those.
-                continue;
-            };
-            // Keep track of the matching file index to avoid having to lookup and match the full path
-            // for every row in the program line sequence.
-            let mut matching_file_index = None;
-            if line_program
-                .header()
-                .file_names()
-                .iter()
-                .enumerate()
-                .any(|(file_index, _)| {
-                    debug_info
-                        .get_path(&program_unit.unit, file_index as u64 + 1)
-                        .map(|unit_path: TypedPathBuf| {
-                            println!(
-                                "\nCompare unit path: {:?} to \n   requested path: {:?}",
-                                unit_path.to_string_lossy(),
-                                path.to_string_lossy()
-                            );
-                            if canonical_unit_path_eq(&unit_path, path) {
-                                // we use file_index + 1, because the file index is 1-based in DWARF.
-                                matching_file_index = Some(file_index as u64 + 1);
-                                true
-                            } else {
-                                false
-                            }
+        // Keep track of the matching file index to avoid having to lookup and match the full path
+        // for every row in the program line sequence.
+        let line_sequences_for_path = line_sequences_for_path(debug_info, path);
+        for (sequence, matching_file_index) in &line_sequences_for_path {
+            if let Some(verified_breakpoint) =
+                sequence.haltpoint_near_source_location(*matching_file_index, line, column)
+            {
+                return Ok(verified_breakpoint);
+            }
+        }
+        // If we get here, we need a "best effort" approach to find the next line in the file with a valid haltpoint.
+        if let Some(verified_breakpoint) =
+            VerifiedBreakpoint::for_next_line_after_line(debug_info, &line_sequences_for_path, line)
+        {
+            return Ok(verified_breakpoint);
+        }
+
+        // If we get here, we have not found a valid breakpoint location.
+        Err(DebugError::Other(anyhow::anyhow!("No valid breakpoint information found for file: {}, line: {line:?}, column: {column:?}", path.to_path().display())))
+    }
+
+    fn for_next_line_after_line(
+        debug_info: &DebugInfo,
+        file_sequences: &[(Sequence, Option<u64>)],
+        line: u64,
+    ) -> Option<Self> {
+        let mut sorted_haltpoints: Vec<&Instruction> = Vec::new();
+        for file_sequence in file_sequences {
+            let (sequence, file_index) = file_sequence;
+            sorted_haltpoints.extend(sequence.blocks.iter().flat_map(|block| {
+                block.instructions.iter().filter(|instruction| {
+                    file_index
+                        .map(|index| {
+                            instruction.role.is_halt_location()
+                                && instruction.file_index == index
+                                && instruction.line >= NonZeroU64::new(line)
                         })
                         .unwrap_or(false)
                 })
-            {
-                let Ok((complete_line_program, line_sequences)) = line_program.clone().sequences()
-                else {
-                    continue;
-                };
-                for line_sequence in line_sequences {
-                    let sequence = Sequence::from_line_sequence(
-                        debug_info,
-                        program_unit,
-                        complete_line_program.clone(),
-                        &line_sequence,
-                    )?;
-
-                    if let Some(verified_breakpoint) =
-                        sequence.haltpoint_near_source_location(matching_file_index, line, column)
-                    {
-                        return Ok(verified_breakpoint);
-                    }
-                }
-            }
+            }));
         }
-        // If we get here, we have not found a valid breakpoint location.
-        Err(DebugError::Other(anyhow::anyhow!("No valid breakpoint information found for file: {}, line: {line:?}, column: {column:?}", path.to_path().display())))
+        sorted_haltpoints.sort_by_key(|instruction| instruction.line);
+        if let Some(matching_breakpoint) = sorted_haltpoints
+            .iter()
+            .find(|instruction| instruction.line > NonZeroU64::new(line))
+            .and_then(|instruction| {
+                VerifiedBreakpoint::for_address(debug_info, instruction.address).ok()
+            })
+        {
+            tracing::warn!("Suggesting a closely matching breakpoint: {matching_breakpoint:?}");
+            Some(matching_breakpoint)
+        } else {
+            None
+        }
     }
 }
