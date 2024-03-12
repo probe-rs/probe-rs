@@ -30,7 +30,6 @@ use probe_rs::{
 use std::{
     cell::RefCell,
     fs,
-    ops::Mul,
     path::Path,
     rc::Rc,
     thread,
@@ -642,7 +641,7 @@ impl Debugger {
                     }
                     ProgressEvent::StartedFilling => {
                         debug_adapter
-                            .update_progress(Some(0.0), Some("Reading Old Pages ..."), id)
+                            .update_progress(None, Some("Reading Old Pages"), id)
                             .ok();
                     }
                     ProgressEvent::PageFilled { size, .. } => {
@@ -651,11 +650,7 @@ impl Debugger {
                             / flash_progress.total_fill_size as f64;
 
                         debug_adapter
-                            .update_progress(
-                                Some(progress),
-                                Some(format!("Reading Old Pages ({progress})")),
-                                id,
-                            )
+                            .update_progress(Some(progress), Some("Reading Old Pages"), id)
                             .ok();
                     }
                     ProgressEvent::FailedFilling => {
@@ -670,7 +665,7 @@ impl Debugger {
                     }
                     ProgressEvent::StartedErasing => {
                         debug_adapter
-                            .update_progress(Some(0.0), Some("Erasing Sectors ..."), id)
+                            .update_progress(None, Some("Erasing Sectors"), id)
                             .ok();
                     }
                     ProgressEvent::SectorErased { size, .. } => {
@@ -678,11 +673,7 @@ impl Debugger {
                         let progress = flash_progress.sector_size_done as f64
                             / flash_progress.total_sector_size as f64;
                         debug_adapter
-                            .update_progress(
-                                Some(progress),
-                                Some(format!("Erasing Sectors ({progress})")),
-                                id,
-                            )
+                            .update_progress(Some(progress), Some("Erasing Sectors"), id)
                             .ok();
                     }
                     ProgressEvent::FailedErasing => {
@@ -698,7 +689,7 @@ impl Debugger {
                     ProgressEvent::StartedProgramming { length } => {
                         flash_progress.total_page_size = length as usize;
                         debug_adapter
-                            .update_progress(Some(0.0), Some("Programming Pages ..."), id)
+                            .update_progress(None, Some("Programming Pages"), id)
                             .ok();
                     }
                     ProgressEvent::PageProgrammed { size, .. } => {
@@ -706,14 +697,7 @@ impl Debugger {
                         let progress = flash_progress.page_size_done as f64
                             / flash_progress.total_page_size as f64;
                         debug_adapter
-                            .update_progress(
-                                Some(progress),
-                                Some(format!(
-                                    "Programming Pages ({:02.0}%)",
-                                    progress.mul(100_f64)
-                                )),
-                                id,
-                            )
+                            .update_progress(Some(progress), Some("Programming Pages"), id)
                             .ok();
                     }
                     ProgressEvent::FailedProgramming => {

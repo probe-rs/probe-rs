@@ -37,7 +37,7 @@ use probe_rs::{
 use serde::{de::DeserializeOwned, Serialize};
 use typed_path::NativePathBuf;
 
-use std::{str, time::Duration};
+use std::{fmt::Display, str, time::Duration};
 
 /// Progress ID used for progress reporting when the debug adapter protocol is used.
 type ProgressId = i64;
@@ -1855,7 +1855,7 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
     pub fn update_progress(
         &mut self,
         progress: Option<f64>,
-        message: Option<impl Into<String>>,
+        message: Option<impl Display>,
         progress_id: i64,
     ) -> Result<ProgressId> {
         anyhow::ensure!(
@@ -1863,11 +1863,19 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             "Progress reporting is not supported by client."
         );
 
+        let percentage = progress.map(|progress| progress * 100.0);
+
         self.send_event(
             "progressUpdate",
             Some(ProgressUpdateEventBody {
-                message: message.map(|v| v.into()),
-                percentage: progress.map(|progress| progress * 100.0),
+                message: message.map(|msg| {
+                    if let Some(percentage) = percentage {
+                        format!("{msg} ({percentage:02.0}%)")
+                    } else {
+                        format!("{msg} ...")
+                    }
+                }),
+                percentage,
                 progress_id: progress_id.to_string(),
             }),
         )?;
