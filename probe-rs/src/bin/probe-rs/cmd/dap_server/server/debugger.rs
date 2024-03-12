@@ -23,7 +23,7 @@ use crate::{
 };
 use anyhow::{anyhow, Context};
 use probe_rs::{
-    flashing::{DownloadOptions, FileDownloadError, FlashProgress},
+    flashing::{DownloadOptions, FileDownloadError, FlashProgress, ProgressEvent},
     probe::list::Lister,
     Architecture, CoreStatus,
 };
@@ -627,7 +627,7 @@ impl Debugger {
                 let mut flash_progress = progress_state.borrow_mut();
                 let mut debug_adapter = rc_debug_adapter_clone.borrow_mut();
                 match event {
-                    probe_rs::flashing::ProgressEvent::Initialized { flash_layout } => {
+                    ProgressEvent::Initialized { flash_layout } => {
                         flash_progress.total_page_size =
                             flash_layout.pages().iter().map(|s| s.size() as usize).sum();
 
@@ -640,12 +640,12 @@ impl Debugger {
                         flash_progress.total_fill_size =
                             flash_layout.fills().iter().map(|s| s.size() as usize).sum();
                     }
-                    probe_rs::flashing::ProgressEvent::StartedFilling => {
+                    ProgressEvent::StartedFilling => {
                         debug_adapter
                             .update_progress(Some(0.0), Some("Reading Old Pages ..."), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::PageFilled { size, .. } => {
+                    ProgressEvent::PageFilled { size, .. } => {
                         flash_progress.fill_size_done += size as usize;
                         let progress = flash_progress.fill_size_done as f64
                             / flash_progress.total_fill_size as f64;
@@ -658,22 +658,22 @@ impl Debugger {
                             )
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::FailedFilling => {
+                    ProgressEvent::FailedFilling => {
                         debug_adapter
                             .update_progress(Some(1.0), Some("Reading Old Pages Failed!"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::FinishedFilling => {
+                    ProgressEvent::FinishedFilling => {
                         debug_adapter
                             .update_progress(Some(1.0), Some("Reading Old Pages Complete!"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::StartedErasing => {
+                    ProgressEvent::StartedErasing => {
                         debug_adapter
                             .update_progress(Some(0.0), Some("Erasing Sectors ..."), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::SectorErased { size, .. } => {
+                    ProgressEvent::SectorErased { size, .. } => {
                         flash_progress.sector_size_done += size as usize;
                         let progress = flash_progress.sector_size_done as f64
                             / flash_progress.total_sector_size as f64;
@@ -685,23 +685,23 @@ impl Debugger {
                             )
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::FailedErasing => {
+                    ProgressEvent::FailedErasing => {
                         debug_adapter
                             .update_progress(Some(1.0), Some("Erasing Sectors Failed!"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::FinishedErasing => {
+                    ProgressEvent::FinishedErasing => {
                         debug_adapter
                             .update_progress(Some(1.0), Some("Erasing Sectors Complete!"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::StartedProgramming { length } => {
+                    ProgressEvent::StartedProgramming { length } => {
                         flash_progress.total_page_size = length as usize;
                         debug_adapter
                             .update_progress(Some(0.0), Some("Programming Pages ..."), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::PageProgrammed { size, .. } => {
+                    ProgressEvent::PageProgrammed { size, .. } => {
                         flash_progress.page_size_done += size as usize;
                         let progress = flash_progress.page_size_done as f64
                             / flash_progress.total_page_size as f64;
@@ -716,17 +716,17 @@ impl Debugger {
                             )
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::FailedProgramming => {
+                    ProgressEvent::FailedProgramming => {
                         debug_adapter
                             .update_progress(Some(1.0), Some("Flashing Pages Failed!"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::FinishedProgramming => {
+                    ProgressEvent::FinishedProgramming => {
                         debug_adapter
                             .update_progress(Some(1.0), Some("Flashing Pages Complete!"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::DiagnosticMessage { .. } => (),
+                    ProgressEvent::DiagnosticMessage { .. } => (),
                 }
             })
         });
