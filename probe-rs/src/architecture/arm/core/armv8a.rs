@@ -611,7 +611,7 @@ impl<'probe> Armv8a<'probe> {
         F: FnOnce(&mut Self) -> Result<R, Error>,
     {
         // save halt status
-        let original_halt_status = self.core_halted()?;
+        let original_halt_status = self.state.current_state.is_halted();
         if !original_halt_status {
             self.halt(Duration::from_millis(100))?;
         }
@@ -2519,9 +2519,6 @@ mod test {
         // Add expectations
         add_status_expectations(&mut probe, true);
 
-        // check halt status(ref:PR #2269)
-        add_status_expectations(&mut probe, true);
-
         // Read memory
         add_read_reg_expectations(&mut probe, 0, 0);
         add_read_reg_expectations(&mut probe, 1, 0);
@@ -2551,9 +2548,6 @@ mod test {
         let mut state = CortexAState::new();
 
         // Add expectations
-        add_status_expectations(&mut probe, true);
-
-        // check halt status(ref:PR #2269)
         add_status_expectations(&mut probe, true);
 
         // Read memory
@@ -2588,9 +2582,6 @@ mod test {
         // Add expectations
         add_status_expectations(&mut probe, true);
 
-        // check halt status(ref:PR #2269)
-        add_status_expectations(&mut probe, true);
-
         // Read memory
         add_read_reg_expectations(&mut probe, 0, 0);
         add_read_reg_expectations(&mut probe, 1, 0);
@@ -2620,9 +2611,6 @@ mod test {
         let mut state = CortexAState::new();
 
         // Add expectations
-        add_status_expectations(&mut probe, true);
-
-        // check halt status(ref:PR #2269)
         add_status_expectations(&mut probe, true);
 
         // Read memory
