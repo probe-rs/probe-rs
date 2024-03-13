@@ -272,9 +272,9 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
         write!(dp_node, ", Revision: {revision:#x}")?;
 
         // Read Instance ID
-        let dlpidr = interface.read_raw_dp_register(dp, DLPIDR::ADDRESS)?;
+        let dlpidr = DLPIDR(interface.read_raw_dp_register(dp, DLPIDR::ADDRESS)?);
 
-        let instance = (dlpidr >> 28) & 0xf;
+        let instance = dlpidr.tinstance();
 
         write!(dp_node, ", Instance: {:#04x}", instance)?;
     } else {
