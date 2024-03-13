@@ -1,25 +1,28 @@
 use super::{
-    function_die::FunctionDie, get_object_reference, unit_info::UnitInfo, variable::*, DebugError,
-    DebugRegisters, StackFrame, VariableCache,
+    function_die::{Die, FunctionDie},
+    get_object_reference,
+    unit_info::UnitInfo,
+    variable::*,
+    DebugError, DebugRegisters, StackFrame, VariableCache,
 };
-use crate::core::UnwindRule;
-use crate::debug::stack_frame::StackFrameInfo;
-use crate::debug::unit_info::RangeExt;
-use crate::debug::{SourceLocation, VerifiedBreakpoint};
 use crate::{
-    core::{ExceptionInterface, RegisterRole, RegisterValue},
-    debug::registers,
+    core::{ExceptionInterface, RegisterRole, RegisterValue, UnwindRule},
+    debug::{
+        registers, stack_frame::StackFrameInfo, unit_info::RangeExt, SourceLocation,
+        VerifiedBreakpoint,
+    },
     MemoryInterface,
 };
 use anyhow::anyhow;
-use gimli::{BaseAddresses, DebugFrame, UnwindContext, UnwindSection, UnwindTableRow};
+use gimli::{
+    BaseAddresses, DebugFrame, DebugInfoOffset, UnwindContext, UnwindSection, UnwindTableRow,
+};
 use object::read::{Object, ObjectSection};
 use probe_rs_target::InstructionSet;
-use typed_path::{TypedPath, TypedPathBuf};
-
 use std::{
     borrow, cmp::Ordering, num::NonZeroU64, ops::ControlFlow, path::Path, rc::Rc, str::from_utf8,
 };
+use typed_path::{TypedPath, TypedPathBuf};
 
 pub(crate) type GimliReader = gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>;
 
@@ -966,6 +969,57 @@ impl DebugInfo {
         Err(DebugError::WarnAndContinue {
             message: format!("No debug information available for the instruction at {address:#010x}. Please consider using instruction level stepping.")
         })
+    }
+
+    /// Get the DIE at the given offset into the debug info section.
+    pub(crate) fn get_die_at_offset(&self, offset: DebugInfoOffset) -> Result<Die, DebugError> {
+        for unit_info in &self.unit_infos {
+            let Some(unit_start) = unit_info.unit.header.offset().as_debug_info_offset() else {
+                continue;
+            };
+            if (unit_start.0..unit_info.unit.header.length_including_self()).contains(&offset.0) {
+                return unit_info
+                    .unit
+                    .entry(gimli::UnitOffset(offset.0 - unit_start.0))
+                    .map_err(|error| {
+                        DebugError::Other(anyhow::anyhow!(
+                            "Error reading DIE at debug info offset {:#x} : {}",
+                            offset.0,
+                            error
+                        ))
+                    });
+            }
+        }
+
+        Err(DebugError::Other(anyhow::anyhow!(
+            "DIE at debug info offset {:#010x} not found",
+            offset.0
+        )))
+    }
+
+    /// Look up the DIE for the DW_AT_specification attribute, if it exists.
+    pub(crate) fn get_specification_die<'abbrev, 'unit>(
+        &'abbrev self,
+        die: &Die<'abbrev, 'unit>,
+        unit_info: &'unit UnitInfo,
+    ) -> Option<Die<'abbrev, 'unit>>
+    where
+        'abbrev: 'unit,
+        'unit: 'abbrev,
+    {
+        die.attr(gimli::DW_AT_specification)
+            .ok()
+            .flatten()
+            .and_then(move |specification_attr| match specification_attr.value() {
+                gimli::AttributeValue::UnitRef(unit_ref) => unit_info.unit.entry(unit_ref).ok(),
+                gimli::AttributeValue::DebugInfoRef(debug_info_ref) => {
+                    self.get_die_at_offset(debug_info_ref).ok()
+                }
+                other_value => {
+                    tracing::warn!("Unsupported DW_AT_speficiation value: {:?}", other_value);
+                    None
+                }
+            })
     }
 }
 

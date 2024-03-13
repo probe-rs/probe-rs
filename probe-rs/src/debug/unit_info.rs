@@ -57,9 +57,9 @@ impl UnitInfo {
     ///
     /// If `find_inlined` is `false`, then the result will contain a single [`FunctionDie`]
     /// If `find_inlined` is `true`, then the result will contain a  [`Vec<FunctionDie>`], where the innermost (deepest in the stack) function die is the last entry in the Vec.
-    pub(crate) fn get_function_dies(
-        &self,
-        debug_info: &super::DebugInfo,
+    pub(crate) fn get_function_dies<'debug_info>(
+        &'debug_info self,
+        debug_info: &'debug_info super::DebugInfo,
         address: u64,
         find_inlined: bool,
     ) -> Result<Vec<FunctionDie>, DebugError> {
@@ -67,7 +67,7 @@ impl UnitInfo {
 
         let mut entries_cursor = self.unit.entries();
         while let Ok(Some((_depth, current))) = entries_cursor.next_dfs() {
-            let Some(mut die) = FunctionDie::new(current.clone(), self) else {
+            let Some(mut die) = FunctionDie::new(current.clone(), self, debug_info) else {
                 // We only want to process DIEs that are functions.
                 continue;
             };
@@ -108,9 +108,9 @@ impl UnitInfo {
 
     /// Check if the function located at the given offset contains inlined functions at the
     /// given address.
-    pub(crate) fn find_inlined_functions(
-        &self,
-        debug_info: &DebugInfo,
+    pub(crate) fn find_inlined_functions<'debug_info>(
+        &'debug_info self,
+        debug_info: &'debug_info DebugInfo,
         address: u64,
         offset: UnitOffset,
     ) -> Result<Vec<FunctionDie>, DebugError> {
@@ -163,14 +163,20 @@ impl UnitInfo {
                 );
                 continue;
             };
+            // Find the specification definition
+            let specification_die = debug_info.get_specification_die(current, self);
 
             let Some(die) = self.unit.entry(unit_ref).ok().and_then(|abstract_die| {
-                FunctionDie::new_inlined(current.clone(), abstract_die.clone(), self).map(
-                    |mut inlined_function_die| {
-                        inlined_function_die.ranges = die_ranges;
-                        inlined_function_die
-                    },
+                FunctionDie::new_inlined(
+                    current.clone(),
+                    abstract_die.clone(),
+                    specification_die,
+                    self,
                 )
+                .map(|mut inlined_function_die| {
+                    inlined_function_die.ranges = die_ranges;
+                    inlined_function_die
+                })
             }) else {
                 continue;
             };
