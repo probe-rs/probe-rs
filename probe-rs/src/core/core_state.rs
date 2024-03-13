@@ -42,14 +42,14 @@ impl CombinedCoreState {
 
         let memory = arm_interface.memory_interface(self.arm_memory_ap())?;
 
-        let (options, debug_sequence) = match &self.core_state.core_access_options {
-            ResolvedCoreOptions::Arm { options, sequence } => (options, sequence.clone()),
-            _ => {
-                return Err(Error::UnableToOpenProbe(
-                    "Core architecture and Probe mismatch.",
-                ))
-            }
+        let ResolvedCoreOptions::Arm { options, sequence } = &self.core_state.core_access_options
+        else {
+            unreachable!(
+                "The stored core state is not compatible with the ARM architecture. \
+                This should never happen. Please file a bug if it does."
+            );
         };
+        let debug_sequence = sequence.clone();
 
         Ok(match &mut self.specific_state {
             SpecificCoreState::Armv6m(s) => Core::new(
@@ -94,9 +94,10 @@ impl CombinedCoreState {
                 crate::architecture::arm::armv8m::Armv8m::new(memory, s, debug_sequence)?,
             ),
             _ => {
-                return Err(Error::UnableToOpenProbe(
-                    "Core architecture and Probe mismatch.",
-                ))
+                unreachable!(
+                    "The stored core state is not compatible with the ARM architecture. \
+                    This should never happen. Please file a bug if it does."
+                );
             }
         })
     }
@@ -107,7 +108,10 @@ impl CombinedCoreState {
     ) -> Result<(), Error> {
         let ResolvedCoreOptions::Arm { sequence, options } = &self.core_state.core_access_options
         else {
-            unreachable!("This should never happen. Please file a bug if it does.");
+            unreachable!(
+                "The stored core state is not compatible with the ARM architecture. \
+                This should never happen. Please file a bug if it does."
+            );
         };
 
         tracing::debug_span!("debug_core_start", id = self.id()).in_scope(|| {
@@ -130,7 +134,10 @@ impl CombinedCoreState {
     ) -> Result<(), Error> {
         let ResolvedCoreOptions::Arm { sequence, options } = &self.core_state.core_access_options
         else {
-            unreachable!("This should never happen. Please file a bug if it does.");
+            unreachable!(
+                "The stored core state is not compatible with the ARM architecture. \
+                This should never happen. Please file a bug if it does."
+            );
         };
 
         let mut memory_interface = interface.memory_interface(self.arm_memory_ap())?;
@@ -151,32 +158,30 @@ impl CombinedCoreState {
         let memory_regions = &target.memory_map;
         let name = &target.cores[self.id].name;
 
-        let options = match &self.core_state.core_access_options {
-            ResolvedCoreOptions::Riscv { options } => options,
-            _ => {
-                return Err(Error::UnableToOpenProbe(
-                    "Core architecture and Probe mismatch.",
-                ))
-            }
+        let ResolvedCoreOptions::Riscv { options } = &self.core_state.core_access_options else {
+            unreachable!(
+                "The stored core state is not compatible with the RISC-V architecture. \
+                This should never happen. Please file a bug if it does."
+            );
         };
 
-        Ok(match &mut self.specific_state {
-            SpecificCoreState::Riscv(s) => Core::new(
-                self.id,
-                name,
-                memory_regions,
-                crate::architecture::riscv::Riscv32::new(
-                    options.hart_id.unwrap_or_default(),
-                    interface,
-                    s,
-                )?,
-            ),
-            _ => {
-                return Err(Error::UnableToOpenProbe(
-                    "Core architecture and Probe mismatch.",
-                ))
-            }
-        })
+        let SpecificCoreState::Riscv(s) = &mut self.specific_state else {
+            unreachable!(
+                "The stored core state is not compatible with the RISC-V architecture. \
+                This should never happen. Please file a bug if it does."
+            );
+        };
+
+        Ok(Core::new(
+            self.id,
+            name,
+            memory_regions,
+            crate::architecture::riscv::Riscv32::new(
+                options.hart_id.unwrap_or_default(),
+                interface,
+                s,
+            )?,
+        ))
     }
 
     pub(crate) fn attach_xtensa<'probe>(
@@ -187,19 +192,19 @@ impl CombinedCoreState {
         let memory_regions = &target.memory_map;
         let name = &target.cores[self.id].name;
 
-        Ok(match &mut self.specific_state {
-            SpecificCoreState::Xtensa(s) => Core::new(
-                self.id,
-                name,
-                memory_regions,
-                crate::architecture::xtensa::Xtensa::new(interface, s),
-            ),
-            _ => {
-                return Err(Error::UnableToOpenProbe(
-                    "Core architecture and Probe mismatch.",
-                ))
-            }
-        })
+        let SpecificCoreState::Xtensa(s) = &mut self.specific_state else {
+            unreachable!(
+                "The stored core state is not compatible with the Xtensa architecture. \
+                This should never happen. Please file a bug if it does."
+            );
+        };
+
+        Ok(Core::new(
+            self.id,
+            name,
+            memory_regions,
+            crate::architecture::xtensa::Xtensa::new(interface, s),
+        ))
     }
 
     /// Get the memory AP for this core.
@@ -228,20 +233,19 @@ impl CoreState {
     }
 
     pub(crate) fn memory_ap(&self) -> MemoryAp {
-        let arm_core_access_options = match self.core_access_options {
-            ResolvedCoreOptions::Arm { ref options, .. } => options,
-            _ => unreachable!("This should never happen. Please file a bug if it does."),
+        let ResolvedCoreOptions::Arm { options, .. } = &self.core_access_options else {
+            unreachable!(
+                "The stored core state is not compatible with the ARM architecture. \
+                This should never happen. Please file a bug if it does."
+            );
         };
 
-        let dp = match arm_core_access_options.psel {
+        let dp = match options.psel {
             0 => DpAddress::Default,
             x => DpAddress::Multidrop(x),
         };
 
-        let ap = ApAddress {
-            dp,
-            ap: arm_core_access_options.ap,
-        };
+        let ap = ApAddress { dp, ap: options.ap };
 
         MemoryAp::new(ap)
     }
