@@ -407,7 +407,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// Assert a system-wide reset line nRST. This is based on the
     /// `ResetHardwareAssert` function from the [ARM SVD Debug Description].
     ///
-    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetHardwareAssert
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#resetHardwareAssert
     #[doc(alias = "ResetHardwareAssert")]
     fn reset_hardware_assert(&self, interface: &mut dyn DapProbe) -> Result<(), ArmError> {
         let mut n_reset = Pins(0);
@@ -421,7 +421,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// De-Assert a system-wide reset line nRST. This is based on the
     /// `ResetHardwareDeassert` function from the [ARM SVD Debug Description].
     ///
-    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetHardwareDeassert
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#resetHardwareDeassert
     #[doc(alias = "ResetHardwareDeassert")]
     fn reset_hardware_deassert(&self, memory: &mut dyn ArmProbe) -> Result<(), ArmError> {
         let mut n_reset = Pins(0);
@@ -455,7 +455,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     ///
     /// If this function cannot read the DPIDR register, it will retry up to 5 times, and return an error if it still cannot read it.
     ///
-    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#debugPortSetup
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#debugPortSetup
     #[doc(alias = "DebugPortSetup")]
     fn debug_port_setup(
         &self,
@@ -564,7 +564,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// Connect to the target debug port and power it up. This is based on the
     /// `DebugPortStart` function from the [ARM SVD Debug Description].
     ///
-    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#debugPortStart
     #[doc(alias = "DebugPortStart")]
     fn debug_port_start(
         &self,
@@ -636,7 +636,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// Initialize core debug system. This is based on the
     /// `DebugCoreStart` function from the [ARM SVD Debug Description].
     ///
-    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#debugCoreStart
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#debugCoreStart
     #[doc(alias = "DebugCoreStart")]
     fn debug_core_start(
         &self,
@@ -663,7 +663,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// out of reset. This is based on the `ResetCatchSet` function from
     /// the [ARM SVD Debug Description].
     ///
-    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetCatchSet
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#resetCatchSet
     #[doc(alias = "ResetCatchSet")]
     fn reset_catch_set(
         &self,
@@ -686,7 +686,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// This is based on the `ResetCatchSet` function from
     /// the [ARM SVD Debug Description].
     ///
-    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetCatchClear
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#resetCatchClear
     #[doc(alias = "ResetCatchClear")]
     fn reset_catch_clear(
         &self,
@@ -712,7 +712,8 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// trace funnels, to route trace data to the specified trace sink.
     ///
     /// This is based on the `TraceStart` function from the [ARM SVD Debug Description].
-    /// [ARM SVD Debug Description]: <http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetCatchClear>
+    ///
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#traceStart
     fn trace_start(
         &self,
         interface: &mut dyn ArmProbeInterface,
@@ -738,7 +739,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// for example AIRCR.SYSRESETREQ.  This is based on the
     /// `ResetSystem` function from the [ARM SVD Debug Description].
     ///
-    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#resetSystem
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#resetSystem
     #[doc(alias = "ResetSystem")]
     fn reset_system(
         &self,
@@ -762,7 +763,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// Executed after having powered up the debug port. This is based on the
     /// `DebugDeviceUnlock` function from the [ARM SVD Debug Description].
     ///
-    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#debugDeviceUnlock
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#debugDeviceUnlock
     #[doc(alias = "DebugDeviceUnlock")]
     fn debug_device_unlock(
         &self,
@@ -777,7 +778,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     /// Executed before step or run command to support recovery from a lost target connection, e.g. after a low power mode.
     /// This is based on the `RecoverSupportStart` function from the [ARM SVD Debug Description].
     ///
-    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#recoverSupportStart
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.htmll#recoverSupportStart
     #[doc(alias = "RecoverSupportStart")]
     fn recover_support_start(&self, _interface: &mut dyn ArmProbe) -> Result<(), ArmError> {
         // Empty by default
@@ -788,7 +789,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     ///
     /// This is based on the `DebugCoreStop` function from the [ARM SVD Debug Description].
     ///
-    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#recoverSupportStart
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#debugCoreStop
     #[doc(alias = "DebugCoreStop")]
     fn debug_core_stop(
         &self,
@@ -814,7 +815,7 @@ pub trait ArmDebugSequence: Send + Sync + Debug {
     ///
     /// Based on the `DebugPortStop` function from the [ARM SVD Debug Description].
     ///
-    /// [ARM SVD Debug Description]: http://www.keil.com/pack/doc/cmsis/Pack/html/debug_description.html#debugPortStop
+    /// [ARM SVD Debug Description]: https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/debug_description.html#debugPortStop
     #[doc(alias = "DebugPortStop")]
     fn debug_port_stop(&self, interface: &mut dyn DapProbe) -> Result<(), ArmError> {
         // Select Bank 0

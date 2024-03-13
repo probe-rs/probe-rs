@@ -355,7 +355,7 @@ impl<S: ArmDebugState> Drop for ArmCommunicationInterface<S> {
 impl<S: ArmDebugState> ArmCommunicationInterface<S> {
     fn probe_mut(&mut self) -> &mut dyn DapProbe {
         // Unwrap: Probe is only taken when the struct is dropped
-        &mut *self.probe.as_mut().expect("ArmCommunicationInterface is in an inconsistent state. This is a bug, please report it.").as_mut()
+        self.probe.as_deref_mut().expect("ArmCommunicationInterface is in an inconsistent state. This is a bug, please report it.")
     }
 
     fn close(mut self) -> Probe {

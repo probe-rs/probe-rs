@@ -248,7 +248,7 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result
 
     let dp_version = dp_info.version();
 
-    if dp_info.version() == 2 {
+    if dp_version == 2 {
         let target_id = interface.read_raw_dp_register(dp, TARGETID::ADDRESS)?;
 
         let target_id = TARGETID(target_id);
