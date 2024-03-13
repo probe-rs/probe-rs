@@ -150,34 +150,29 @@ impl UnitInfo {
             // they will be children of the current function.
             abort_depth = current_depth;
 
-            // Find the abstract definition
-            let Ok(Some(abstract_origin)) = current.attr(gimli::DW_AT_abstract_origin) else {
+            // Find the abstract definition.
+            let Some(abstract_origin) =
+                debug_info.resolve_die_reference(gimli::DW_AT_abstract_origin, current, self)
+            else {
                 tracing::warn!("No abstract origin for inlined function, skipping.");
                 return Ok(vec![]);
             };
-            let abstract_origin_value = abstract_origin.value();
-            let gimli::AttributeValue::UnitRef(unit_ref) = abstract_origin_value else {
-                tracing::warn!(
-                    "Unsupported DW_AT_abstract_origin value: {:?}",
-                    abstract_origin_value
-                );
-                continue;
-            };
-            // Find the specification definition
-            let specification_die = debug_info.get_specification_die(current, self);
 
-            let Some(die) = self.unit.entry(unit_ref).ok().and_then(|abstract_die| {
-                FunctionDie::new_inlined(
-                    current.clone(),
-                    abstract_die.clone(),
-                    specification_die,
-                    self,
-                )
-                .map(|mut inlined_function_die| {
-                    inlined_function_die.ranges = die_ranges;
-                    inlined_function_die
-                })
-            }) else {
+            // Find the specification definition for the abstract origin.
+            let specification_die = debug_info.resolve_die_reference(
+                gimli::DW_AT_specification,
+                &abstract_origin,
+                self,
+            );
+
+            let Some(die) =
+                FunctionDie::new_inlined(current.clone(), abstract_origin, specification_die, self)
+                    .map(|mut inlined_function_die| {
+                        inlined_function_die.ranges = die_ranges;
+                        inlined_function_die
+                    })
+            else {
+                // The `new_inlined` function will never be None, because we have already checked for the tag.
                 continue;
             };
 

@@ -48,7 +48,8 @@ impl<'abbrev, 'unit> FunctionDie<'abbrev, 'unit> {
             return None;
         };
         // Find the specification definition
-        let specification_die = debug_info.get_specification_die(&die, unit_info);
+        let specification_die =
+            debug_info.resolve_die_reference(gimli::DW_AT_specification, &die, unit_info);
         Some(Self {
             unit_info,
             function_die: die,
@@ -175,8 +176,11 @@ impl<'abbrev, 'unit> FunctionDie<'abbrev, 'unit> {
         // For inlined function, the *abstract instance* has to be checked if we cannot find the
         // attribute on the *concrete instance*. The abstract instance my also be a reference to a specification.
         if let Some(abstract_die) = &self.abstract_die {
-            let inlined_specification_die =
-                debug_info.get_specification_die(abstract_die, self.unit_info);
+            let inlined_specification_die = debug_info.resolve_die_reference(
+                gimli::DW_AT_specification,
+                abstract_die,
+                self.unit_info,
+            );
             let inline_attribute =
                 collapsed_attribute(abstract_die, &inlined_specification_die, attribute_name);
 

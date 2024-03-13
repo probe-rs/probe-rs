@@ -997,9 +997,10 @@ impl DebugInfo {
         )))
     }
 
-    /// Look up the DIE for the DW_AT_specification attribute, if it exists.
-    pub(crate) fn get_specification_die<'abbrev, 'unit>(
+    /// Look up the DIE reference for the given attribute, if it exists.
+    pub(crate) fn resolve_die_reference<'abbrev, 'unit>(
         &'abbrev self,
+        attribute: gimli::DwAt,
         die: &Die<'abbrev, 'unit>,
         unit_info: &'unit UnitInfo,
     ) -> Option<Die<'abbrev, 'unit>>
@@ -1007,7 +1008,7 @@ impl DebugInfo {
         'abbrev: 'unit,
         'unit: 'abbrev,
     {
-        die.attr(gimli::DW_AT_specification)
+        die.attr(attribute)
             .ok()
             .flatten()
             .and_then(move |specification_attr| match specification_attr.value() {
@@ -1016,7 +1017,10 @@ impl DebugInfo {
                     self.get_die_at_offset(debug_info_ref).ok()
                 }
                 other_value => {
-                    tracing::warn!("Unsupported DW_AT_speficiation value: {:?}", other_value);
+                    tracing::warn!(
+                        "Unsupported {:?} value: {other_value:?}",
+                        attribute.static_string(),
+                    );
                     None
                 }
             })
