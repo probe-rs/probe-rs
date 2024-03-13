@@ -1,3 +1,5 @@
+use probe_rs_target::InstructionSet;
+
 use super::{
     super::{
         debug_info::DebugInfo, exception_handling::ExceptionInfo,
@@ -203,39 +205,76 @@ fn get_step_out_location(
     }
 }
 
+/// The `step over` operation will try to optimize, by first identifying the current halt location, and then
+/// applying that filter to the available source locations, to find the next available position.
+/// - It is reasonable to expect that most stepping operations from within an IDE like VSCode, will initiate
+/// at a known source location, and so it is reasonable to start the search with a limited scope.
+/// - If the current source location is not represented in the line-sequence program, then we can single-step
+/// the target, until we reach a known location.
 fn get_step_over_location(
     debug_info: &DebugInfo,
     core: &mut impl CoreInterface,
     program_counter: u64,
 ) -> Result<VerifiedBreakpoint, DebugError> {
     let current_halt_location = VerifiedBreakpoint::for_address(debug_info, program_counter)?;
-    if current_halt_location.address > program_counter {
-        // If the target was halted mid-statement, then this will step to the next statement.
-        return Ok(current_halt_location);
-    }
     let file_path = current_halt_location.source_location.path.clone();
-    let file_sequences = line_sequences_for_path(debug_info, &file_path);
-    let mut sorted_haltpoints: Vec<Instruction> = Vec::new();
-    for file_sequence in file_sequences {
-        let (sequence, file_index) = file_sequence;
-        sorted_haltpoints.extend(sequence.blocks.iter().flat_map(|block| {
-            block.instructions.iter().filter(|instruction| {
-                file_index
-                    .map(|index| {
-                        instruction.role.is_halt_location()
-                            && instruction.file_index == index
-                            && instruction.address > current_halt_location.address
-                            && instruction.line.map(std::num::NonZeroU64::get)
-                                >= current_halt_location.source_location.line
-                    })
-                    .unwrap_or(false)
-            })
-        }));
+
+    let mut candidate_haltpoints: Vec<Instruction> = Vec::new();
+    let Some((sequence, file_index)) =
+        // When we filter by address, we expect to get a single sequence, or none.
+        line_sequences_for_path(debug_info, &file_path, Some(current_halt_location.address)).pop()
+    else {
+        let message = format!(
+            "No available line program sequences for address {:?}",
+            current_halt_location.address
+        );
+        return Err(DebugError::WarnAndContinue { message });
+    };
+    candidate_haltpoints.extend(sequence.blocks.iter().flat_map(|block| {
+        block.instructions.iter().filter(|instruction| {
+            file_index
+                .map(|index| {
+                    instruction.role.is_halt_location()
+                        && instruction.file_index == index
+                        && instruction.address > current_halt_location.address
+                })
+                .unwrap_or(false)
+        })
+    }));
+    // Ensure we limit the stepping range to something sensible.
+    let return_address = get_return_address(core)?;
+    let terminating_address = sequence.last_halt_instruction.unwrap_or(return_address);
+
+    let proposed_halt_location = if candidate_haltpoints.is_empty() {
+        // We've run out out of valid lines in the current sequence, so can just step to the last statement in the sequence..
+        VerifiedBreakpoint::for_address(debug_info, terminating_address)
+    } else {
+        // Now step the target until we hit one of the candidate haltpoints, or some eror occurs.
+        let (_, next_line_address) =
+            step_to_next_line(&candidate_haltpoints, core, terminating_address)?;
+        VerifiedBreakpoint::for_address(debug_info, next_line_address)
+    }?;
+    // In the cases where we are trying to step over the last statement in a sequence,
+    // we should instead step out.
+    if proposed_halt_location.address == program_counter {
+        get_step_out_location(debug_info, program_counter, core, return_address)
+    } else {
+        Ok(proposed_halt_location)
     }
-    sorted_haltpoints.sort_by_key(|instruction| instruction.line);
-    // Now step the target until we hit one of the sorted haltpoints, or some error occurs.
-    let (_, next_line_address) = step_to_next_line(&sorted_haltpoints, core)?;
-    VerifiedBreakpoint::for_address(debug_info, next_line_address)
+}
+
+// TODO: Normalizing the return address is a common operation, and should probably be implemented in the `CoreInterface` trait.
+/// NOTE: [ARMv7-M Architecture Reference Manual](https://developer.arm.com/documentation/ddi0403/ee), Section A5.1.2:
+/// We have to clear the last bit to ensure the PC is half-word aligned. (on ARM architecture,
+/// when in Thumb state for certain instruction types will set the LSB to 1)
+fn get_return_address(core: &mut impl CoreInterface) -> Result<u64, DebugError> {
+    let return_register_value: u64 = core.read_core_reg(core.return_address().id())?.try_into()?;
+    let return_address = if core.instruction_set().ok() == Some(InstructionSet::Thumb2) {
+        return_register_value & !0b1
+    } else {
+        return_register_value
+    };
+    Ok(return_address)
 }
 
 /// Run the target to the desired address. If available, we will use a breakpoint, otherwise we will use single step.
@@ -350,15 +389,13 @@ fn step_to_address(
 fn step_to_next_line(
     available_source_locations: &[Instruction],
     core: &mut impl CoreInterface,
+    terminating_address: u64,
 ) -> Result<(CoreStatus, u64), DebugError> {
     let mut program_counter = core
         .read_core_reg(core.program_counter().id())?
         .try_into()?;
-    // Make sure we stop stepping if for some reason the next line is not found.
-    // In this case, we will halt at the next available location after the current function exits.
-    let return_address = core.read_core_reg(core.return_address().id())?.try_into()?;
 
-    while program_counter >= return_address {
+    while program_counter != terminating_address {
         if available_source_locations
             .iter()
             .any(|instruction| instruction.address == program_counter)

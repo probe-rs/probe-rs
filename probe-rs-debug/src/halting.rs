@@ -87,9 +87,11 @@ impl SourceLocation {
 }
 
 /// Return the line program sequences with matching path entries, from all matching compilation units.
+/// The optional filter on address helps to reduce the number of line sequences to return.
 pub(crate) fn line_sequences_for_path<'a>(
     debug_info: &'a DebugInfo,
     path: &TypedPathBuf,
+    address_filter: Option<u64>,
 ) -> Vec<(Sequence<'a>, Option<u64>)> {
     let mut line_sequences_for_path = Vec::new();
     for program_unit in debug_info.unit_infos.as_slice() {
@@ -123,7 +125,18 @@ pub(crate) fn line_sequences_for_path<'a>(
             else {
                 continue;
             };
-            for line_sequence in &line_sequences {
+            let filtered_sequences = line_sequences
+                .iter()
+                .filter(|sequence| {
+                    address_filter
+                        .map(|address_filter| {
+                            sequence.start <= address_filter && sequence.end > address_filter
+                        })
+                        // If the filter is not set, we return all sequences.
+                        .unwrap_or(true)
+                })
+                .collect::<Vec<_>>();
+            for line_sequence in &filtered_sequences {
                 if let Ok(sequence) = Sequence::from_line_sequence(
                     debug_info,
                     program_unit,

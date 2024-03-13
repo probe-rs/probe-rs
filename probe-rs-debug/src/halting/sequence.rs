@@ -27,6 +27,9 @@ pub(crate) struct Sequence<'debug_info> {
     /// - This is typically the instruction address of the first instruction in the next sequence,
     ///   which may also be the first instruction in a new function.
     pub(crate) address_range: Range<u64>,
+    /// Identify the last valid halt location in the sequence. This is not the same as the
+    /// start of epilogue, which may occurr more than once in a sequence.
+    pub(crate) last_halt_instruction: Option<u64>,
     /// See [`Block`].
     /// Note: The process of recursing the line sequence to create blocks,
     /// is likely to create blocks that our out of sequence, so we sort them to
@@ -166,6 +169,7 @@ impl<'debug_info> Sequence<'debug_info> {
         // We have enough information to create the Sequence.
         let mut sequence = Sequence {
             address_range: line_sequence.start..line_sequence.end,
+            last_halt_instruction: None,
             blocks: Vec::new(),
             debug_info,
             program_unit,
@@ -192,6 +196,13 @@ impl<'debug_info> Sequence<'debug_info> {
             // nor is it a valid instruction in the current sequence.
             if row.end_sequence() {
                 break;
+            }
+
+            // We need to know the last halt location in the sequence,
+            // and since we are already iterating through the rows, we can do it here,
+            // instead of iterating through the instructions again during runtime.
+            if row.is_stmt() || row.epilogue_begin() {
+                sequence.last_halt_instruction = Some(row.address());
             }
 
             sequence_instructions.push(Instruction::from_line_row(
