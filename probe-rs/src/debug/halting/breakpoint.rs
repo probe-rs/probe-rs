@@ -69,7 +69,7 @@ impl VerifiedBreakpoint {
     ) -> Result<Self, DebugError> {
         // Keep track of the matching file index to avoid having to lookup and match the full path
         // for every row in the program line sequence.
-        let line_sequences_for_path = line_sequences_for_path(debug_info, path);
+        let line_sequences_for_path = line_sequences_for_path(debug_info, path, None);
         for (sequence, matching_file_index) in &line_sequences_for_path {
             if let Some(verified_breakpoint) =
                 sequence.haltpoint_near_source_location(*matching_file_index, line, column)
@@ -93,10 +93,10 @@ impl VerifiedBreakpoint {
         file_sequences: &[(Sequence, Option<u64>)],
         line: u64,
     ) -> Option<Self> {
-        let mut sorted_haltpoints: Vec<&Instruction> = Vec::new();
+        let mut candidate_haltpoints: Vec<&Instruction> = Vec::new();
         for file_sequence in file_sequences {
             let (sequence, file_index) = file_sequence;
-            sorted_haltpoints.extend(sequence.blocks.iter().flat_map(|block| {
+            candidate_haltpoints.extend(sequence.blocks.iter().flat_map(|block| {
                 block.instructions.iter().filter(|instruction| {
                     file_index
                         .map(|index| {
@@ -108,8 +108,7 @@ impl VerifiedBreakpoint {
                 })
             }));
         }
-        sorted_haltpoints.sort_by_key(|instruction| instruction.line);
-        if let Some(matching_breakpoint) = sorted_haltpoints
+        if let Some(matching_breakpoint) = candidate_haltpoints
             .iter()
             .find(|instruction| instruction.line > NonZeroU64::new(line))
             .and_then(|instruction| {
