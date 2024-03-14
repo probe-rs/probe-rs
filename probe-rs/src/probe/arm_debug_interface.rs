@@ -1632,7 +1632,9 @@ mod test {
             _pin_select: u32,
             _pin_wait: u32,
         ) -> Result<u32, DebugProbeError> {
-            Err(DebugProbeError::CommandNotSupportedByProbe("swj_pins"))
+            Err(DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "swj_pins",
+            })
         }
 
         fn swd_settings(&self) -> &SwdSettings {

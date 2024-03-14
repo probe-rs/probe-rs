@@ -343,7 +343,9 @@ impl DebugProbe for FakeProbe {
 
     /// Resets the target device.
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::CommandNotSupportedByProbe("target_reset"))
+        Err(DebugProbeError::CommandNotSupportedByProbe {
+            command_name: "target_reset",
+        })
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {

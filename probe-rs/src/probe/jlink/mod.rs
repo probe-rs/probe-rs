@@ -909,7 +909,9 @@ impl DebugProbe for JLink {
     }
 
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::NotImplemented("target_reset"))
+        Err(DebugProbeError::NotImplemented {
+            function_name: "target_reset",
+        })
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
@@ -938,7 +940,13 @@ impl DebugProbe for JLink {
                 Err((probe, err)) => Err((probe.into_probe(), err)),
             }
         } else {
-            Err((self, DebugProbeError::InterfaceNotAvailable("JTAG").into()))
+            Err((
+                self,
+                DebugProbeError::InterfaceNotAvailable {
+                    interface_name: "JTAG",
+                }
+                .into(),
+            ))
         }
     }
 
@@ -992,7 +1000,12 @@ impl DebugProbe for JLink {
                 Err((probe, err)) => Err((probe.into_probe(), err)),
             }
         } else {
-            Err((self, DebugProbeError::InterfaceNotAvailable("JTAG")))
+            Err((
+                self,
+                DebugProbeError::InterfaceNotAvailable {
+                    interface_name: "JTAG",
+                },
+            ))
         }
     }
 
@@ -1098,7 +1111,9 @@ impl RawProtocolIo for JLink {
             Ok(0xFFFF_FFFF)
         } else {
             // This is not supported for J-Links, unfortunately.
-            Err(DebugProbeError::CommandNotSupportedByProbe("swj_pins"))
+            Err(DebugProbeError::CommandNotSupportedByProbe {
+                command_name: "swj_pins",
+            })
         }
     }
 

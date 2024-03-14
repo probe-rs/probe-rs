@@ -970,10 +970,10 @@ pub trait DebugEraseSequence: Send + Sync {
     /// Some devices require the probe to be disconnected and re-attached after a successful chip-erase in
     /// which case it will return `Error::Probe(DebugProbeError::ReAttachRequired)`
     fn erase_all(&self, _interface: &mut dyn ArmProbeInterface) -> Result<(), ArmError> {
-        Err(
-            DebugProbeError::NotImplemented("Debug erase sequence is not available on this device")
-                .into(),
-        )
+        Err(DebugProbeError::NotImplemented {
+            function_name: "erase_all",
+        }
+        .into())
     }
 }
 
