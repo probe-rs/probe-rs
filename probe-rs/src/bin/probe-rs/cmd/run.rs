@@ -151,7 +151,6 @@ impl Cmd {
         run_download: bool,
         timestamp_offset: UtcOffset,
     ) -> Result<()> {
-
         let run_mode = detect_run_mode(&self)?;
 
         let (mut session, probe_options) = self.probe_options.simple_attach(lister)?;
@@ -179,15 +178,18 @@ impl Cmd {
             false => Vec::new(),
         };
 
-        run_mode.run(session, RunLoop{
-            memory_map,
-            rtt_scan_regions,
-            path,
-            timestamp_offset,
-            always_print_stacktrace: self.common_options.always_print_stacktrace,
-            no_location: self.common_options.no_location,
-            log_format: self.common_options.log_format,
-        })?;
+        run_mode.run(
+            session,
+            RunLoop {
+                memory_map,
+                rtt_scan_regions,
+                path,
+                timestamp_offset,
+                always_print_stacktrace: self.common_options.always_print_stacktrace,
+                no_location: self.common_options.no_location,
+                log_format: self.common_options.log_format,
+            },
+        )?;
 
         Ok(())
     }
@@ -197,7 +199,7 @@ trait RunMode {
     fn run(&self, session: Session, run_loop: RunLoop) -> Result<()>;
 }
 
-fn detect_run_mode(cmd: &Cmd) ->  Result<Box<dyn RunMode>, anyhow::Error>  {
+fn detect_run_mode(cmd: &Cmd) -> Result<Box<dyn RunMode>, anyhow::Error> {
     let elf_contains_test = {
         // TODO: Improve this detection:
         //  1. read the elf symbol table instead of grepping for a string
@@ -215,10 +217,10 @@ fn detect_run_mode(cmd: &Cmd) ->  Result<Box<dyn RunMode>, anyhow::Error>  {
     // TODO: if elf_contains_test is true there should be no RunOptions present
     //  and if elf_contains_test is false there should be no TestOptions present
 
-    if elf_contains_test{
+    if elf_contains_test {
         tracing::info!("Detected embedded-test in ELF file. Running as test");
-        Ok(Box::new(TestRunMode{
-            libtest_args:  Arguments {
+        Ok(Box::new(TestRunMode {
+            libtest_args: Arguments {
                 test_threads: Some(1), // Avoid parallel execution
                 list: cmd.test_options.list,
                 exact: cmd.test_options.exact,
@@ -229,23 +231,22 @@ fn detect_run_mode(cmd: &Cmd) ->  Result<Box<dyn RunMode>, anyhow::Error>  {
                     Some(cmd.test_options.filter.join(" "))
                 },
                 ..Arguments::default()
-            }
+            },
         }))
     } else {
         tracing::debug!("No embedded-test in ELF file. Running as normal");
-        Ok(Box::new(NormalRunMode{
-            run_options: cmd.run_options.clone()
+        Ok(Box::new(NormalRunMode {
+            run_options: cmd.run_options.clone(),
         }))
     }
 }
 
-
 /// Test run mode
 struct TestRunMode {
-  libtest_args: Arguments
+    libtest_args: Arguments,
 }
 
-impl TestRunMode{
+impl TestRunMode {
     /// Asks the target for the tests, and create a "run the test"-closure for each test.
     /// libtest-mimic is in charge of selecting the tests to run based on the filter and other options
     fn create_tests(session_and_runloop_ref: Arc<Mutex<SessionAndRunLoop>>) -> Result<Vec<Trial>> {
@@ -261,7 +262,7 @@ impl TestRunMode{
                     let mut session_and_runloop = session_and_runloop.lock().unwrap();
                     Self::run_test(test, &mut session_and_runloop)
                 })
-                    .with_ignored_flag(t.ignored),
+                .with_ignored_flag(t.ignored),
             )
         }
         Ok(tests)
@@ -270,77 +271,106 @@ impl TestRunMode{
     const SEMIHOSTING_USER_LIST: u32 = 0x100;
 
     /// Requests all tests from the target via Semihosting back and forth
-    /// When the target first invokes SYS_GET_CMDLINE (0x15), we answer "list"
-    /// Then, we wait until the target invokes SEMIHOSTING_USER_LIST (0x100) with the json containing all tests
     fn list_tests(session_and_runloop: &mut SessionAndRunLoop) -> Result<Tests> {
         let mut core = session_and_runloop.session.core(0)?;
 
         let mut cmdline_requested = false;
 
-        session_and_runloop.run_loop.run(&mut core, true,true, Some(Duration::from_secs(5)), |halt_reason: HaltReason, core: &mut Core| {
+        // When the target first invokes SYS_GET_CMDLINE (0x15), we answer "list"
+        // Then, we wait until the target invokes SEMIHOSTING_USER_LIST (0x100) with the json containing all tests
+        let halt_handler = |halt_reason: HaltReason, core: &mut Core| {
             match halt_reason {
-                HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) =>
-                    match cmd {
-                        SemihostingCommand::GetCommandLine(request) if !cmdline_requested => {
-                            tracing::info!("target asked for cmdline. send 'list'");
-                            cmdline_requested = true;
-                            request.write_command_line_to_target(core, "list")?; //TODO: fix default retreg if this is not called
-                            Ok(None) // not done yet
+                HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) => match cmd {
+                    SemihostingCommand::GetCommandLine(request) if !cmdline_requested => {
+                        tracing::info!("target asked for cmdline. send 'list'");
+                        cmdline_requested = true;
+                        request.write_command_line_to_target(core, "list")?; //TODO: fix default retreg if this is not called
+                        Ok(None) // not done yet
+                    }
+                    SemihostingCommand::Unknown(details)
+                        if details.operation == Self::SEMIHOSTING_USER_LIST
+                            && cmdline_requested =>
+                    {
+                        let buf = details.get_buffer(core)?;
+                        let buf = buf.read(core)?;
+                        let list: Tests = serde_json::from_slice(&buf[..])?;
+                        //TODO: write return reg=0 ?!
+                        tracing::info!("got list of tests from target: {:?}", list);
+                        if list.version != 1 {
+                            Err(anyhow!(
+                                "Unsupported test list format version: {}",
+                                list.version
+                            ))
+                        } else {
+                            Ok(Some(list))
                         }
-                        SemihostingCommand::Unknown(details) if details.operation == Self::SEMIHOSTING_USER_LIST  && cmdline_requested
-                        => {
-                            let buf = details.get_buffer(core)?;
-                            let buf = buf.read(core)?;
-                            let list: Tests = serde_json::from_slice(&buf[..])?;
-                            //TODO: write return reg=0 ?!
-                            tracing::info!("got list of tests from target: {:?}", list);
-                            if list.version != 1 {
-                                Err(anyhow!("Unsupported test list format version: {}", list.version))
-                            } else {
-                                Ok(Some(list))
-                            }
-                        },
-                        other => Err(anyhow!("Unexpected semihosting command {:?} cmdline_requested: {:?}", other, cmdline_requested))
-                    },
-                _ => Err(anyhow!("CPU halted unexpectedly."))
+                    }
+                    other => Err(anyhow!(
+                        "Unexpected semihosting command {:?} cmdline_requested: {:?}",
+                        other,
+                        cmdline_requested
+                    )),
+                },
+                _ => Err(anyhow!("CPU halted unexpectedly.")),
             }
-        })?.ok_or(anyhow!("The user pressed ctrl+c before the target responded with the test list."))
+        };
+
+        session_and_runloop
+            .run_loop
+            .run(
+                &mut core,
+                true,
+                true,
+                Some(Duration::from_secs(5)),
+                halt_handler,
+            )?
+            .ok_or(anyhow!(
+                "The user pressed ctrl+c before the target responded with the test list."
+            ))
     }
 
     /// Runs a single test on the target
-    /// When the target first invokes SYS_GET_CMDLINE (0x15), we answer "run <test_name>
-    /// Then we wait until the target invokes SYS_EXIT (0x18) or SYS_EXIT_EXTENDED(0x20) with the exit code
-    fn run_test(test: Test, session_and_runloop: &mut SessionAndRunLoop) -> std::result::Result<(), Failed> {
+    fn run_test(
+        test: Test,
+        session_and_runloop: &mut SessionAndRunLoop,
+    ) -> std::result::Result<(), Failed> {
         let core = &mut session_and_runloop.session.core(0)?;
         tracing::info!("Running test {}", test.name);
         core.reset_and_halt(Duration::from_millis(100))?;
 
         let timeout = test.timeout.map(|t| Duration::from_secs(t as u64));
-        let timeout = timeout.unwrap_or(Duration::from_secs(60)); // TODO: make global timeout configurable*/
-
+        let timeout = timeout.unwrap_or(Duration::from_secs(60)); // TODO: make global timeout configurable: https://github.com/probe-rs/embedded-test/issues/3
         let mut cmdline_requested = false;
 
-        let ret = session_and_runloop.run_loop.run(core, true,true,  Some(timeout),|halt_reason: HaltReason, core: &mut Core| {
-           match halt_reason {
-                HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) =>
-                    match cmd {
-                        SemihostingCommand::GetCommandLine(request) if !cmdline_requested => {
-                            let cmdline = format!("run {}", test.name);
-                            tracing::info!("target asked for cmdline. send '{}'", cmdline.as_str());
-                            cmdline_requested = true;
-                            request.write_command_line_to_target(core, cmdline.as_str())?; //TODO: fix default retreg if this is not called
-                            Ok(None) // not done yet
-                        }
-                        SemihostingCommand::ExitSuccess if cmdline_requested => Ok(Some(true)),
-                        SemihostingCommand::ExitError(_) if cmdline_requested =>Ok(Some(false)),
-                        other => Err(anyhow!("Unexpected semihosting command {:?} cmdline_requested: {:?}", other, cmdline_requested))
-                    },
-                _ => Err(anyhow!("CPU halted unexpectedly."))
+        // When the target first invokes SYS_GET_CMDLINE (0x15), we answer "run <test_name>
+        // Then we wait until the target invokes SYS_EXIT (0x18) or SYS_EXIT_EXTENDED(0x20) with the exit code
+        let halt_handler = |halt_reason: HaltReason, core: &mut Core| {
+            match halt_reason {
+                HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) => match cmd {
+                    SemihostingCommand::GetCommandLine(request) if !cmdline_requested => {
+                        let cmdline = format!("run {}", test.name);
+                        tracing::info!("target asked for cmdline. send '{}'", cmdline.as_str());
+                        cmdline_requested = true;
+                        request.write_command_line_to_target(core, cmdline.as_str())?; //TODO: fix default retreg if this is not called
+                        Ok(None) // not done yet
+                    }
+                    SemihostingCommand::ExitSuccess if cmdline_requested => Ok(Some(true)),
+                    SemihostingCommand::ExitError(_) if cmdline_requested => Ok(Some(false)),
+                    other => Err(anyhow!(
+                        "Unexpected semihosting command {:?} cmdline_requested: {:?}",
+                        other,
+                        cmdline_requested
+                    )),
+                },
+                _ => Err(anyhow!("CPU halted unexpectedly.")),
             }
-        });
+        };
 
-        match ret {
-            Ok(Some(exit_status))  => {
+        match session_and_runloop
+            .run_loop
+            .run(core, true, true, Some(timeout), halt_handler)
+        {
+            Ok(Some(exit_status)) => {
                 let should_exit_successfully = !test.should_panic;
                 if exit_status == should_exit_successfully {
                     Ok(())
@@ -350,11 +380,15 @@ impl TestRunMode{
                     }
                     Err(Failed::from(format!(
                         "Test should have {} but it {}",
-                        if test.should_panic { "panicked" } else { "passed" },
+                        if test.should_panic {
+                            "panicked"
+                        } else {
+                            "passed"
+                        },
                         if exit_status { "passed" } else { "panicked" }
                     )))
                 }
-            },
+            }
             Ok(None) => {
                 tracing::error!("Test {} was aborted by the user", test.name);
                 Err(Failed::from("Test was aborted by the user (CTRL +C)"))
@@ -386,16 +420,12 @@ struct Test {
     pub timeout: Option<u32>,
 }
 
-
-impl RunMode for TestRunMode{
+impl RunMode for TestRunMode {
     fn run(&self, session: Session, run_loop: RunLoop) -> Result<()> {
         tracing::info!("libtest args {:?}", self.libtest_args);
 
         // Unfortunately libtest-mimic wants test functions to live for 'static, so we need to use a mutex to share the session and runloop
-        let session_and_runloop = Arc::new(Mutex::new(SessionAndRunLoop {
-            session,
-            run_loop
-        }));
+        let session_and_runloop = Arc::new(Mutex::new(SessionAndRunLoop { session, run_loop }));
 
         let tests = Self::create_tests(session_and_runloop)?;
         if libtest_mimic::run(&self.libtest_args, tests).has_failed() {
@@ -408,38 +438,45 @@ impl RunMode for TestRunMode{
 
 struct SessionAndRunLoop {
     session: Session,
-    run_loop: RunLoop
+    run_loop: RunLoop,
 }
 
-
 /// Normal run mode (non-test)
-struct NormalRunMode{
-    run_options: RunOptions
+struct NormalRunMode {
+    run_options: RunOptions,
 }
 
 impl RunMode for NormalRunMode {
     fn run(&self, mut session: Session, run_loop: RunLoop) -> Result<()> {
         let mut core = session.core(0)?;
 
-        run_loop.run(&mut core, self.run_options.catch_hardfault, self.run_options.catch_reset, None, |halt_reason: HaltReason, _core : &mut Core| {
-            match halt_reason {
-                HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) =>
-                    match cmd {
-                        SemihostingCommand::ExitSuccess => Ok(Some(())),
-                        SemihostingCommand::ExitError(details) => Err(anyhow!("Semihosting indicates exit with {}", details)),
-                        SemihostingCommand::Unknown(details) => {
-                            tracing::warn!("Target wanted to run semihosting operation {:#x} with parameter {:#x},\
+        let halt_handler = |halt_reason: HaltReason, _core: &mut Core| match halt_reason {
+            HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) => {
+                match cmd {
+                    SemihostingCommand::ExitSuccess => Ok(Some(())),
+                    SemihostingCommand::ExitError(details) => {
+                        Err(anyhow!("Semihosting indicates exit with {}", details))
+                    }
+                    SemihostingCommand::Unknown(details) => {
+                        tracing::warn!("Target wanted to run semihosting operation {:#x} with parameter {:#x},\
                              but probe-rs does not support this operation yet. Continuing...", details.operation, details.parameter);
-                            Ok(None)
-                        },
-                        SemihostingCommand::GetCommandLine(_) => {
-                            tracing::warn!("Target wanted to run semihosting operation SYS_GET_CMDLINE, but probe-rs does not support this operation yet. Continuing...");
-                            Ok(None)
-                        }
-                    },
-                _ => Err(anyhow!("CPU halted unexpectedly."))
+                        Ok(None)
+                    }
+                    SemihostingCommand::GetCommandLine(_) => {
+                        tracing::warn!("Target wanted to run semihosting operation SYS_GET_CMDLINE, but probe-rs does not support this operation yet. Continuing...");
+                        Ok(None)
+                    }
+                }
             }
-        })?;
+            _ => Err(anyhow!("CPU halted unexpectedly.")),
+        };
+        run_loop.run(
+            &mut core,
+            self.run_options.catch_hardfault,
+            self.run_options.catch_reset,
+            None,
+            halt_handler,
+        )?;
         Ok(())
     }
 }
@@ -525,7 +562,7 @@ impl RunLoop {
                     match halt_handler(reason, core) {
                         Ok(Some(r)) => halt_reason = Some(Ok(r)),
                         Err(e) => halt_reason = Some(Err(e)),
-                        Ok(None) =>{
+                        Ok(None) => {
                             //TODO: auto respond properly to SYS_GET_CMDLINE in case it is not answered here!!
                             core.run()?;
                         }
