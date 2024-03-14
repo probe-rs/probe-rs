@@ -974,20 +974,14 @@ impl DebugInfo {
     /// Get the DIE at the given offset into the debug info section.
     pub(crate) fn get_die_at_offset(&self, offset: DebugInfoOffset) -> Result<Die, DebugError> {
         for unit_info in &self.unit_infos {
-            let Some(unit_start) = unit_info.unit.header.offset().as_debug_info_offset() else {
-                continue;
-            };
-            if (unit_start.0..unit_info.unit.header.length_including_self()).contains(&offset.0) {
-                return unit_info
-                    .unit
-                    .entry(gimli::UnitOffset(offset.0 - unit_start.0))
-                    .map_err(|error| {
-                        DebugError::Other(anyhow::anyhow!(
-                            "Error reading DIE at debug info offset {:#x} : {}",
-                            offset.0,
-                            error
-                        ))
-                    });
+            if let Some(unit_offset) = offset.to_unit_offset(&unit_info.unit.header) {
+                return unit_info.unit.entry(unit_offset).map_err(|error| {
+                    DebugError::Other(anyhow::anyhow!(
+                        "Error reading DIE at debug info offset {:#x} : {}",
+                        offset.0,
+                        error
+                    ))
+                });
             }
         }
 
