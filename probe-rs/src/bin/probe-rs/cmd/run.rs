@@ -1,20 +1,23 @@
 use std::fs::File;
 use std::io::{Read, Write};
 use std::ops::Range;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc};
 use std::time::Duration;
 
 use anyhow::{anyhow, Context, Result};
 use libtest_mimic::{Arguments, FormatSetting};
 use probe_rs::debug::{DebugInfo, DebugRegisters};
+use probe_rs::flashing::FileDownloadError;
 use probe_rs::rtt::ScanRegion;
-use probe_rs::{exception_handler_for_core, probe::list::Lister, BreakpointCause, Core, CoreInterface, Error, HaltReason, SemihostingCommand, UnknownCommandDetails, VectorCatchCondition, Session};
+use probe_rs::{
+    exception_handler_for_core, probe::list::Lister, BreakpointCause, Core, CoreInterface, Error,
+    HaltReason, SemihostingCommand, Session, VectorCatchCondition,
+};
 use probe_rs_target::MemoryRegion;
 use signal_hook::consts::signal;
 use time::UtcOffset;
-use probe_rs::flashing::FileDownloadError;
 
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 use crate::util::flash::{build_loader, run_flash_download};
@@ -152,13 +155,13 @@ impl Cmd {
         let run_mode = detect_run_mode(&self)?;
 
         let (mut session, probe_options) = self.probe_options.simple_attach(lister)?;
-        let path = Path::new(&self.path);
+        let path = PathBuf::from(&self.path);
 
         if run_download {
-            let loader = build_loader(&mut session, path, self.format_options)?;
+            let loader = build_loader(&mut session, &path, self.format_options)?;
             run_flash_download(
                 &mut session,
-                path,
+                &path,
                 &self.download_options,
                 &probe_options,
                 loader,
@@ -176,14 +179,22 @@ impl Cmd {
             false => Vec::new(),
         };
 
-        run_mode.run(session, self.common_options, path, timestamp_offset, memory_map, rtt_scan_regions)?;
+        run_mode.run(session, RunLoop{
+            memory_map,
+            rtt_scan_regions,
+            path,
+            timestamp_offset,
+            always_print_stacktrace: self.common_options.always_print_stacktrace,
+            no_location: self.common_options.no_location,
+            log_format: self.common_options.log_format,
+        })?;
 
         Ok(())
     }
 }
 
 trait RunMode {
-    fn run(&self, session: Session, common_options: CommonOptions, path: &Path, timestamp_offset: UtcOffset, memory_map: Vec<MemoryRegion>, rtt_scan_regions: Vec<Range<u64>>) -> Result<()>;
+    fn run(&self, session: Session, run_loop: RunLoop) -> Result<()>;
 }
 
 fn detect_run_mode(cmd: &Cmd) ->  Result<Box<dyn RunMode>, anyhow::Error>  {
@@ -235,7 +246,7 @@ struct TestRunMode {
 }
 
 impl RunMode for TestRunMode{
-    fn run(&self, session: Session, common_options: CommonOptions, path: &Path, timestamp_offset: UtcOffset,  memory_map: Vec<MemoryRegion>, rtt_scan_regions: Vec<Range<u64>>) -> Result<()> {
+    fn run(&self, session: Session, run_loop: RunLoop) -> Result<()> {
         tracing::info!("libtest args {:?}", self.libtest_args);
         todo!()
     }
@@ -247,157 +258,158 @@ struct NormalRunMode{
 }
 
 impl RunMode for NormalRunMode {
-    fn run(&self, mut session: Session, common_options: CommonOptions, path: &Path, timestamp_offset: UtcOffset, memory_map: Vec<MemoryRegion>, rtt_scan_regions: Vec<Range<u64>>) -> Result<()> {
+    fn run(&self, mut session: Session, run_loop: RunLoop) -> Result<()> {
         let mut core = session.core(0)?;
 
-        if self.run_options.catch_hardfault || self.run_options.catch_reset {
-            core.halt(Duration::from_millis(100))?;
-            enable_vector_catch(&mut core, self.run_options.catch_hardfault, self.run_options.catch_reset);
+        run_loop.run(&mut core, self.run_options.catch_hardfault, self.run_options.catch_reset, |halt_reason: HaltReason, _core : &mut Core| {
+            match halt_reason {
+                HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) =>
+                    match cmd {
+                        SemihostingCommand::ExitSuccess => Ok(Some(())),
+                        SemihostingCommand::ExitError(details) => Err(anyhow!("Semihosting indicates exit with {}", details)),
+                        SemihostingCommand::Unknown(details) => {
+                            tracing::warn!("Target wanted to run semihosting operation {:#x} with parameter {:#x},\
+                             but probe-rs does not support this operation yet. Continuing...", details.operation, details.parameter);
+                            Ok(None)
+                        },
+                        SemihostingCommand::GetCommandLine(_) => {
+                            tracing::warn!("Target wanted to run semihosting operation SYS_GET_CMDLINE, but probe-rs does not support this operation yet. Continuing...");
+                            Ok(None)
+                        }
+                    },
+                _ => Err(anyhow!("CPU halted unexpectedly."))
+            }
+        })?;
+        Ok(())
+    }
+}
+
+struct RunLoop {
+    memory_map: Vec<MemoryRegion>,
+    rtt_scan_regions: Vec<Range<u64>>,
+    path: PathBuf,
+    timestamp_offset: UtcOffset,
+    always_print_stacktrace: bool,
+    no_location: bool,
+    log_format: Option<String>,
+}
+
+impl RunLoop {
+    /// Attaches to RTT and runs the core until it halts or the user presses CTRL+C.
+    /// If the user presses CTRL+C the core is stopped and `Ok(None)` is returned.
+    /// When the core halts otherwise, the `halt_handler` is called with the halt reason.
+    /// If the halt_handler returns `Ok(Some(r))` the run loop will return `Ok(Some(r))`.
+    /// If the halt_handler returns `Err(e)` the run loop will return `Err(e)` and a stack trace will be printed.
+    /// If the halt_handler returns `Ok(None)` the run loop will continue running the core.
+    fn run<F, R>(
+        &self,
+        core: &mut Core,
+        catch_hardfault: bool,
+        catch_reset: bool,
+        mut halt_handler: F,
+    ) -> Result<Option<R>>
+    where
+        F: FnMut(HaltReason, &mut Core) -> Result<Option<R>>,
+    {
+        if catch_hardfault {
+            match core.enable_vector_catch(VectorCatchCondition::HardFault) {
+                Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
+                Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+            }
+        }
+        if catch_reset {
+            match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
+                Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
+                Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+            }
         }
 
         if core.core_halted()? {
             core.run()?;
         }
 
-        run_loop(
-            &mut core,
-            &memory_map,
-            &rtt_scan_regions,
-            path,
-            timestamp_offset,
-            common_options.always_print_stacktrace,
-            common_options.no_location,
-            common_options.log_format.as_deref(),
-        )?;
+        let mut rtt_config = rtt::RttConfig {
+            log_format: self.log_format.clone(),
+            ..Default::default()
+        };
+        rtt_config.channels.push(rtt::RttChannelConfig {
+            channel_number: Some(0),
+            show_location: !self.no_location,
+            ..Default::default()
+        });
 
-        Ok(())
-    }
-}
+        let mut rtta = attach_to_rtt(
+            core,
+            self.memory_map.as_slice(),
+            self.rtt_scan_regions.as_slice(),
+            self.path.as_path(),
+            &rtt_config,
+            self.timestamp_offset,
+        );
 
+        let exit = Arc::new(AtomicBool::new(false));
+        let sig_id = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
 
-
-fn enable_vector_catch(core: &mut Core, catch_hardfault: bool, catch_reset: bool) {
-    if catch_hardfault {
-        match core.enable_vector_catch(VectorCatchCondition::HardFault) {
-            Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
-            Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
-        }
-    }
-    if catch_reset {
-        match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
-            Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
-            Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
-        }
-    }
-}
-
-/// Print all RTT messages and a stacktrace when the core stops due to an
-/// exception or when ctrl + c is pressed.
-///
-/// Returns `Ok(())` if the core gracefully halted, or an error.
-#[allow(clippy::too_many_arguments)]
-fn run_loop(
-    core: &mut Core<'_>,
-    memory_map: &[MemoryRegion],
-    rtt_scan_regions: &[Range<u64>],
-    path: &Path,
-    timestamp_offset: UtcOffset,
-    always_print_stacktrace: bool,
-    no_location: bool,
-    log_format: Option<&str>,
-) -> Result<(), anyhow::Error> {
-    let mut rtt_config = rtt::RttConfig {
-        log_format: log_format.map(String::from),
-        ..Default::default()
-    };
-    rtt_config.channels.push(rtt::RttChannelConfig {
-        channel_number: Some(0),
-        show_location: !no_location,
-        ..Default::default()
-    });
-
-    let mut rtta = attach_to_rtt(
-        core,
-        memory_map,
-        rtt_scan_regions,
-        path,
-        &rtt_config,
-        timestamp_offset,
-    );
-
-    let exit = Arc::new(AtomicBool::new(false));
-    let sig_id = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
-
-    let mut stdout = std::io::stdout();
-    let mut halt_reason = None;
-    while !exit.load(Ordering::Relaxed) && halt_reason.is_none() {
-        // check for halt first, poll rtt after.
-        // this is important so we do one last poll after halt, so we flush all messages
-        // the core printed before halting, such as a panic message.
-        match core.status()? {
-            probe_rs::CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
-                SemihostingCommand::Unknown(UnknownCommandDetails {
-                    operation,
-                    parameter,
-                }),
-            ))) => {
-                tracing::warn!("Target wanted to run semihosting operation {:#x} with parameter {:#x}, but probe-rs does not support this operation yet. Continuing...", operation, parameter);
-                core.run()?;
+        let mut stdout = std::io::stdout();
+        let mut halt_reason = None;
+        while !exit.load(Ordering::Relaxed) && halt_reason.is_none() {
+            // check for halt first, poll rtt after.
+            // this is important so we do one last poll after halt, so we flush all messages
+            // the core printed before halting, such as a panic message.
+            match core.status()? {
+                probe_rs::CoreStatus::Halted(reason) => {
+                    match halt_handler(reason, core) {
+                        Ok(Some(r)) => halt_reason = Some(Ok(r)),
+                        Err(e) => halt_reason = Some(Err(e)),
+                        Ok(None) =>{
+                            //TODO: auto respond properly to SYS_GET_CMDLINE in case it is not answered here!!
+                            core.run()?;
+                        }
+                    }
+                }
+                probe_rs::CoreStatus::Running
+                | probe_rs::CoreStatus::LockedUp
+                | probe_rs::CoreStatus::Sleeping
+                | probe_rs::CoreStatus::Unknown => {
+                    // Carry on
+                }
             }
-            probe_rs::CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
-                SemihostingCommand::GetCommandLine(_),
-            ))) => {
-                tracing::warn!("Target wanted to run semihosting operation SYS_GET_CMDLINE, but probe-rs does not support this operation yet. Continuing...");
-                core.run()?;
-            }
-            probe_rs::CoreStatus::Halted(r) => halt_reason = Some(r),
-            probe_rs::CoreStatus::Running
-            | probe_rs::CoreStatus::LockedUp
-            | probe_rs::CoreStatus::Sleeping
-            | probe_rs::CoreStatus::Unknown => {
-                // Carry on
+
+            let had_rtt_data = poll_rtt(&mut rtta, core, &mut stdout)?;
+
+            // Poll RTT with a frequency of 10 Hz if we do not receive any new data.
+            // Once we receive new data, we bump the frequency to 1kHz.
+            //
+            // If the polling frequency is too high, the USB connection to the probe
+            // can become unstable. Hence we only pull as little as necessary.
+            if had_rtt_data {
+                std::thread::sleep(Duration::from_millis(1));
+            } else {
+                std::thread::sleep(Duration::from_millis(100));
             }
         }
 
-        let had_rtt_data = poll_rtt(&mut rtta, core, &mut stdout)?;
+        let result = match halt_reason {
+            None => {
+                // manually halted with Control+C. Stop the core.
+                core.halt(Duration::from_secs(1))?;
+                Ok(None)
+            }
+            Some(reason) => match reason {
+                Ok(r) => Ok(Some(r)),
+                Err(e) => Err(e),
+            },
+        };
 
-        // Poll RTT with a frequency of 10 Hz if we do not receive any new data.
-        // Once we receive new data, we bump the frequency to 1kHz.
-        //
-        // If the polling frequency is too high, the USB connection to the probe
-        // can become unstable. Hence we only pull as little as necessary.
-        if had_rtt_data {
-            std::thread::sleep(Duration::from_millis(1));
-        } else {
-            std::thread::sleep(Duration::from_millis(100));
+        if self.always_print_stacktrace || result.is_err() {
+            print_stacktrace(core, self.path.as_path())?;
         }
+
+        signal_hook::low_level::unregister(sig_id);
+        signal_hook::flag::register_conditional_default(signal::SIGINT, exit)?;
+
+        result
     }
-
-    let result = match halt_reason {
-        None => {
-            // manually halted with Control+C. Stop the core.
-            core.halt(Duration::from_secs(1))?;
-            Ok(())
-        }
-        Some(reason) => match reason {
-            HaltReason::Breakpoint(BreakpointCause::Semihosting(
-                SemihostingCommand::ExitSuccess,
-            )) => Ok(()),
-            HaltReason::Breakpoint(BreakpointCause::Semihosting(
-                SemihostingCommand::ExitError(details),
-            )) => Err(anyhow!("Semihosting indicates exit with {}", details)),
-            _ => Err(anyhow!("CPU halted unexpectedly.")),
-        },
-    };
-
-    if always_print_stacktrace || result.is_err() {
-        print_stacktrace(core, path)?;
-    }
-
-    signal_hook::low_level::unregister(sig_id);
-    signal_hook::flag::register_conditional_default(signal::SIGINT, exit)?;
-
-    result
 }
 
 /// Prints the stacktrace of the current execution state.
