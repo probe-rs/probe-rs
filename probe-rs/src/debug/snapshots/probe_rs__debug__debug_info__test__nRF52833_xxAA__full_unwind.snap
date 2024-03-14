@@ -4542,7 +4542,7 @@ expression: stack_frames
       type_name: Unknown
       value: "<unknown>"
   canonical_frame_address: 536887296
-- function_name: "encrypt_block : ERROR: UNWIND: Tried to unwind `RegisterRule` at CFA = None."
+- function_name: "<unknown function @ 0x0000013c> : ERROR: UNWIND: Tried to unwind `RegisterRule` at CFA = None."
   source_location: ~
   registers:
     - core_register:
@@ -4766,3 +4766,4 @@ expression: stack_frames
           type_name: Unknown
           value: "< <value optimized away by compiler, out of scope, or dropped> >"
   canonical_frame_address: ~
+
