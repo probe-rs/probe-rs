@@ -420,10 +420,7 @@ impl<S: ArmDebugState> SwdSequence for ArmCommunicationInterface<S> {
         pin_select: u32,
         pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
-        self.probe
-            .as_mut()
-            .unwrap()
-            .swj_pins(pin_out, pin_select, pin_wait)
+        self.probe_mut().swj_pins(pin_out, pin_select, pin_wait)
     }
 }
 
