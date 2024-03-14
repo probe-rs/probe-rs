@@ -6,6 +6,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::{anyhow, Result};
+use libtest_mimic::{Arguments, FormatSetting};
 use probe_rs::debug::{DebugInfo, DebugRegisters};
 use probe_rs::rtt::ScanRegion;
 use probe_rs::{
@@ -23,41 +24,118 @@ use crate::FormatOptions;
 
 const RTT_RETRIES: usize = 10;
 
-#[derive(clap::Parser)]
+#[derive(clap::Parser, Debug)]
 pub struct Cmd {
+    ///The path to the ELF file to flash and run.
+    #[clap(help = "The path to the ELF file to flash and run.\n\
+    If the binary uses `embedded-test` each test will be executed in turn. See `TEST OPTIONS` for more configuration options exclusive to this mode.\n\
+    If the binary does not use `embedded-test` the binary will be flashed and run normally. See `RUN OPTIONS` for more configuration options exclusive to this mode.")]
+    pub(crate) path: String,
+
+    /// Options only used when in non-test mode
     #[clap(flatten)]
-    pub(crate) probe_options: ProbeOptions,
+    pub(crate) run_options: RunOptions,
+
+    /// Options only used when in test mode
+    #[clap(flatten)]
+    pub(crate) test_options: TestOptions,
+
+    // ---- General Options ahead ----
+    #[clap(flatten)]
+    pub(crate) common_options: CommonOptions,
 
     #[clap(flatten)]
     pub(crate) download_options: BinaryDownloadOptions,
 
-    /// The path to the ELF file to flash and run
-    pub(crate) path: String,
+    #[clap(flatten)]
+    pub(crate) format_options: FormatOptions,
 
+    /// Whether to erase the entire chip before downloading
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    pub(crate) chip_erase: bool,
+
+    #[clap(flatten)]
+    pub(crate) probe_options: ProbeOptions,
+}
+
+// Options only used when using normal runs
+#[derive(Debug, clap::Parser)]
+pub struct RunOptions {
+    /// Enable reset vector catch if its supported on the target.
+    #[clap(long, help_heading = "RUN OPTIONS")]
+    pub catch_reset: bool,
+    /// Enable hardfault vector catch if its supported on the target.
+    #[clap(long, help_heading = "RUN OPTIONS")]
+    pub catch_hardfault: bool,
+}
+
+// Options only used when using test runs
+#[derive(Debug, clap::Parser)]
+pub struct TestOptions {
+    /// Filter string. Only tests which contain this string are run.
+    #[clap(
+        value_name = "TEST_FILTER",
+        help = "The TEST_FILTER string is tested against the name of all tests, and only those tests whose names contain the filter are run. Multiple filter strings may be passed, which will run all tests matching any of the filters.",
+        help_heading = "TEST OPTIONS"
+    )]
+    pub filter: Vec<String>,
+
+    /// Only list all tests
+    #[clap(
+        long = "list",
+        help = "List all tests instead of executing them",
+        help_heading = "TEST OPTIONS"
+    )]
+    pub list: bool,
+
+    #[clap(
+        long = "format",
+        value_enum,
+        value_name = "pretty|terse|json",
+        help_heading = "TEST OPTIONS",
+        help = "Configure formatting of the test report output"
+    )]
+    pub format: Option<FormatSetting>,
+
+    /// If set, filters are matched exactly rather than by substring.
+    #[clap(long = "exact", help_heading = "TEST OPTIONS")]
+    pub exact: bool,
+
+    /// Options which are ignored, but exist for compatibility with libtest.
+    /// E.g. so that vscode and intellij can invoke the test runner with the args they are used to
+    #[clap(flatten)]
+    _no_op: NoOpTestOptions,
+}
+
+#[derive(Debug, clap::Parser)]
+struct NoOpTestOptions {
+    // No-op, ignored (libtest-mimic always runs in no-capture mode)
+    #[clap(long = "nocapture", hide = true)]
+    nocapture: bool,
+
+    /// No-op, ignored. libtest-mimic does not currently capture stdout.
+    #[clap(long = "show-output", hide = true)]
+    show_output: bool,
+
+    /// No-op, ignored. Flag only exists for CLI compatibility with libtest.
+    #[clap(short = 'Z', hide = true)]
+    unstable_flags: Option<String>,
+}
+
+// Options used for normal + test runs
+#[derive(Debug, clap::Parser)]
+pub struct CommonOptions {
     /// Always print the stacktrace on ctrl + c.
     #[clap(long)]
     pub(crate) always_print_stacktrace: bool,
-
-    /// Whether to erase the entire chip before downloading
-    #[clap(long)]
-    pub(crate) chip_erase: bool,
 
     /// Suppress filename and line number information from the rtt log
     #[clap(long)]
     pub(crate) no_location: bool,
 
-    #[clap(flatten)]
-    pub(crate) format_options: FormatOptions,
-
+    /// The default format string to use for decoding defmt logs.
     #[clap(long)]
     pub(crate) log_format: Option<String>,
-
-    /// Enable reset vector catch if its supported on the target.
-    #[arg(long)]
-    pub catch_reset: bool,
-    /// Enable hardfault vector catch if its supported on the target.
-    #[arg(long)]
-    pub catch_hardfault: bool,
 
     /// Scan the memory to find the RTT control block
     #[clap(long)]
@@ -71,6 +149,21 @@ impl Cmd {
         run_download: bool,
         timestamp_offset: UtcOffset,
     ) -> Result<()> {
+        let test_args = Arguments {
+            test: true,
+            test_threads: Some(1), // Set to 1 to avoid parallel execution
+            list: self.test_options.list,
+            exact: self.test_options.exact,
+            format: self.test_options.format,
+            filter: if self.test_options.filter.is_empty() {
+                None
+            } else {
+                Some(self.test_options.filter.join(" "))
+            },
+            ..Arguments::default()
+        };
+        tracing::error!("Libtest-mimic args {:?}", test_args);
+
         let (mut session, probe_options) = self.probe_options.simple_attach(lister)?;
         let path = Path::new(&self.path);
 
@@ -91,21 +184,21 @@ impl Cmd {
         }
 
         let memory_map = session.target().memory_map.clone();
-        let rtt_scan_regions = match self.rtt_scan_memory {
+        let rtt_scan_regions = match self.common_options.rtt_scan_memory {
             true => session.target().rtt_scan_regions.clone(),
             false => Vec::new(),
         };
         let mut core = session.core(0)?;
 
-        if self.catch_hardfault || self.catch_reset {
+        if self.run_options.catch_hardfault || self.run_options.catch_reset {
             core.halt(Duration::from_millis(100))?;
-            if self.catch_hardfault {
+            if self.run_options.catch_hardfault {
                 match core.enable_vector_catch(VectorCatchCondition::HardFault) {
                     Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
                     Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
                 }
             }
-            if self.catch_reset {
+            if self.run_options.catch_reset {
                 match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
                     Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
                     Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
@@ -123,9 +216,9 @@ impl Cmd {
             &rtt_scan_regions,
             path,
             timestamp_offset,
-            self.always_print_stacktrace,
-            self.no_location,
-            self.log_format.as_deref(),
+            self.common_options.always_print_stacktrace,
+            self.common_options.no_location,
+            self.common_options.log_format.as_deref(),
         )?;
 
         Ok(())

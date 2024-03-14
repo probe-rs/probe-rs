@@ -37,10 +37,10 @@ struct Cli {
     /// Location for log file
     ///
     /// If no location is specified, the behaviour depends on `--log-to-folder`.
-    #[clap(long, global = true)]
+    #[clap(long, global = true, help_heading = "LOG CONFIGURATION")]
     log_file: Option<PathBuf>,
     /// Enable logging to the default folder. This option is ignored if `--log-file` is specified.
-    #[clap(long, global = true)]
+    #[clap(long, global = true, help_heading = "LOG CONFIGURATION")]
     log_to_folder: bool,
     #[clap(subcommand)]
     subcommand: Subcommand,
@@ -109,21 +109,26 @@ pub struct FormatOptions {
     /// If a format is provided, use it.
     /// If a target has a preferred format, we use that.
     /// Finally, if neither of the above cases are true, we default to ELF.
-    #[clap(value_enum, ignore_case = true, long)]
+    #[clap(
+        value_enum,
+        ignore_case = true,
+        long,
+        help_heading = "DOWNLOAD CONFIGURATION"
+    )]
     // TODO: remove this alias in the next release after 0.24 and release of https://github.com/probe-rs/vscode/pull/86
     #[serde(deserialize_with = "format_from_str", alias = "format")]
     binary_format: Option<Format>,
     /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
-    #[clap(long, value_parser = parse_u64)]
+    #[clap(long, value_parser = parse_u64, help_heading = "DOWNLOAD CONFIGURATION")]
     pub base_address: Option<u64>,
     /// The number of bytes to skip at the start of the binary file. This is only considered when `bin` is selected as the format.
-    #[clap(long, value_parser = parse_u32, default_value = "0")]
+    #[clap(long, value_parser = parse_u32, default_value = "0", help_heading = "DOWNLOAD CONFIGURATION")]
     pub skip: u32,
     /// The idf bootloader path
-    #[clap(long)]
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub idf_bootloader: Option<PathBuf>,
     /// The idf partition table path
-    #[clap(long)]
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub idf_partition_table: Option<PathBuf>,
 }
 
