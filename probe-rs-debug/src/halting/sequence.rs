@@ -266,7 +266,7 @@ impl<'debug_info> Sequence<'debug_info> {
 
     /// See [`VerifiedBreakpoint::for_address()`].
     // TODO: We need tests for the various scenarios below.
-    pub(crate) fn haltpoint_near_address(&self, address: u64) -> Option<VerifiedBreakpoint> {
+    pub(crate) fn haltpoint_for_address(&self, address: u64) -> Option<VerifiedBreakpoint> {
         tracing::debug!("Looking for halt instruction at address={address:#010x}");
 
         let Some(block) = self
@@ -322,11 +322,62 @@ impl<'debug_info> Sequence<'debug_info> {
         }
     }
 
+    // TODO: We need tests for the various scenarios below.
+    /// If the current instruction is in a ['Block'], find the next valid halt location in the
+    /// next linked block in the sequence.
+    pub(crate) fn haltpoint_for_next_block(&self, address: u64) -> Option<VerifiedBreakpoint> {
+        tracing::debug!("Looking for next block halt instruction at address={address:#010x}");
+
+        let Some(block) = self
+            .blocks
+            .iter()
+            .find(|block| block.contains_address(address))
+        else {
+            tracing::warn!("Could not find a valid breakpoint for address={address:#010x}");
+            return None;
+        };
+
+        // Cycle through increasing degrees of "looseness" in the search for the halt instruction.
+
+        // Look for the next halt instruction in any blocks that we know are linked.
+        let mut halt_instruction = None;
+        let mut linked_address = block.steps_to;
+        while let Some(linked_block) = self.blocks.iter().find(|next_block| {
+            linked_address.is_some()
+                && linked_address
+                    .map(|linked_address| next_block.contains_address(linked_address))
+                    .unwrap_or(false)
+        }) {
+            linked_address = linked_block.steps_to;
+            if let Some(instruction) = linked_block.instructions.iter().find(|instruction| {
+                instruction.address >= address && instruction.role.is_halt_location()
+            }) {
+                halt_instruction = Some(instruction);
+                break;
+            }
+        }
+
+        if let Some(breakpoint) = halt_instruction.and_then(|instruction| {
+            SourceLocation::from_instruction(self.debug_info, self.program_unit, instruction).map(
+                |source_location| VerifiedBreakpoint {
+                    address: instruction.address,
+                    source_location,
+                },
+            )
+        }) {
+            tracing::debug!("Found a matching breakpoint: {breakpoint:?}");
+            Some(breakpoint)
+        } else {
+            tracing::warn!("Could not find a valid breakpoint for address={address:#010x}");
+            None
+        }
+    }
+
     /// Find a valid haltpoint based on either the file plus line plus column, or failing that,
-    /// the first available haltpoint that matches the file plus column.
+    /// the first available haltpoint that matches the file plus line (any colunn).
     /// See [`VerifiedBreakpoint::for_source_location()`].
     // TODO: We need tests for the various scenarios below.
-    pub(crate) fn haltpoint_near_source_location(
+    pub(crate) fn haltpoint_for_source_location(
         &self,
         matching_file_index: Option<u64>,
         line: u64,
@@ -360,9 +411,7 @@ impl<'debug_info> Sequence<'debug_info> {
                             && NonZeroU64::new(line) == location.line
                     })
                 })
-                .and_then(|matching_location| {
-                    self.haltpoint_near_address(matching_location.address)
-                })
+                .and_then(|matching_location| self.haltpoint_for_address(matching_location.address))
             {
                 tracing::debug!("Found a closely matching breakpoint: {matching_breakpoint:?}");
                 return Some(matching_breakpoint);

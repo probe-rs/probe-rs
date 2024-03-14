@@ -29,13 +29,13 @@ use std::ops::RangeInclusive;
 /// - The DWARF based heuristics used to identify block boundaries are as follows:
 ///   - The first block is the prologue block, and is identified by the `DW_LNS_set_prologue_end` attribute on the first
 ///   - first insruction after the prologue.
-///   = The `DW_NLS_epilogue_begin` instructions are always in their own block, and linked with preceding blocks
+///   - The `DW_NLS_epilogue_begin` instructions are always in their own block, and linked with preceding blocks
 ///     based on available line and column information.
 ///   - The first block after the prologue, steps directly from the prologue block.
-///   - Inlined code (functions or macros) always precede the instruction that called them. They are in their own block,
-///     and will step to the calling instruction.
+///   - Inlined code (functions or macros) always precede the instruction that called them. They have their
+///     own blocks, and the last one is linked to the instruction that called them.
 ///   - If a function/sequence has multiple ranges, then the instructions in those ranges are assumed to be
-///     divergent in some way.
+///     divergent in some way, and are therefore in separate blocks.
 ///   - The remaining instructions are grouped into blocks containing the contiguous instructions belonging to the same
 ///     source file line.
 #[derive(Clone, Default)]
@@ -81,7 +81,7 @@ impl Block {
                 block.steps_to = next_instruction.map(|ni| ni.address);
                 break;
             }
-            // End the block, if the next instruction the beginning of the epilogue.
+            // End the block, if the next instruction is the beginning of the epilogue.
             else if next_instruction
                 .map(|ni| ni.role == InstructionRole::EpilogueBegin)
                 .unwrap_or(true)
@@ -117,11 +117,12 @@ impl Block {
                         .flatten()
             {
                 block.instructions.push(*instruction);
+                block.steps_to = next_instruction.map(|ni| ni.address);
                 break;
             }
             // When we're not at one of the known boundaries, then we end blocks to conservatively to avoid
             // false assumptions about whether two instructions belong in the same block.
-            // Break between instructions that are not in the same file, or not on the same line, are not in the same block.
+            // Break between instructions that are not in the same file, or not on the same line.
             else if next_instruction
                 .map(|ni| {
                     (ni.file_index != instruction.file_index || ni.line != instruction.line)
