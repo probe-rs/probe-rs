@@ -1,21 +1,20 @@
-use std::io::Write;
+use std::fs::File;
+use std::io::{Read, Write};
 use std::ops::Range;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use libtest_mimic::{Arguments, FormatSetting};
 use probe_rs::debug::{DebugInfo, DebugRegisters};
 use probe_rs::rtt::ScanRegion;
-use probe_rs::{
-    exception_handler_for_core, probe::list::Lister, BreakpointCause, Core, CoreInterface, Error,
-    HaltReason, SemihostingCommand, UnknownCommandDetails, VectorCatchCondition,
-};
+use probe_rs::{exception_handler_for_core, probe::list::Lister, BreakpointCause, Core, CoreInterface, Error, HaltReason, SemihostingCommand, UnknownCommandDetails, VectorCatchCondition, Session};
 use probe_rs_target::MemoryRegion;
 use signal_hook::consts::signal;
 use time::UtcOffset;
+use probe_rs::flashing::FileDownloadError;
 
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
 use crate::util::flash::{build_loader, run_flash_download};
@@ -59,7 +58,7 @@ pub struct Cmd {
 }
 
 // Options only used when using normal runs
-#[derive(Debug, clap::Parser)]
+#[derive(Debug, clap::Parser, Clone)]
 pub struct RunOptions {
     /// Enable reset vector catch if its supported on the target.
     #[clap(long, help_heading = "RUN OPTIONS")]
@@ -149,20 +148,8 @@ impl Cmd {
         run_download: bool,
         timestamp_offset: UtcOffset,
     ) -> Result<()> {
-        let test_args = Arguments {
-            test: true,
-            test_threads: Some(1), // Set to 1 to avoid parallel execution
-            list: self.test_options.list,
-            exact: self.test_options.exact,
-            format: self.test_options.format,
-            filter: if self.test_options.filter.is_empty() {
-                None
-            } else {
-                Some(self.test_options.filter.join(" "))
-            },
-            ..Arguments::default()
-        };
-        tracing::error!("Libtest-mimic args {:?}", test_args);
+
+        let run_mode = detect_run_mode(&self)?;
 
         let (mut session, probe_options) = self.probe_options.simple_attach(lister)?;
         let path = Path::new(&self.path);
@@ -188,22 +175,84 @@ impl Cmd {
             true => session.target().rtt_scan_regions.clone(),
             false => Vec::new(),
         };
+
+        run_mode.run(session, self.common_options, path, timestamp_offset, memory_map, rtt_scan_regions)?;
+
+        Ok(())
+    }
+}
+
+trait RunMode {
+    fn run(&self, session: Session, common_options: CommonOptions, path: &Path, timestamp_offset: UtcOffset, memory_map: Vec<MemoryRegion>, rtt_scan_regions: Vec<Range<u64>>) -> Result<()>;
+}
+
+fn detect_run_mode(cmd: &Cmd) ->  Result<Box<dyn RunMode>, anyhow::Error>  {
+    let elf_contains_test = {
+        // TODO: Improve this detection:
+        //  1. read the elf symbol table instead of grepping for a string
+        //  2. Warn the user if no debug symbols are present? Or assume not a test?
+        let mut file = match File::open(cmd.path.as_str()) {
+            Ok(file) => file,
+            Err(e) => return Err(FileDownloadError::IO(e)).context("Failed to open binary file."),
+        };
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf)?;
+        let needle = b"EMBEDDED_TEST_VERSION";
+        buf.windows(needle.len()).any(|window| window == needle)
+    };
+
+    // TODO: if elf_contains_test is true there should be no RunOptions present
+    //  and if elf_contains_test is false there should be no TestOptions present
+
+    if elf_contains_test{
+        tracing::info!("Detected embedded-test in ELF file. Running as test");
+        Ok(Box::new(TestRunMode{
+            libtest_args:  Arguments {
+                test_threads: Some(1), // Avoid parallel execution
+                list: cmd.test_options.list,
+                exact: cmd.test_options.exact,
+                format: cmd.test_options.format,
+                filter: if cmd.test_options.filter.is_empty() {
+                    None
+                } else {
+                    Some(cmd.test_options.filter.join(" "))
+                },
+                ..Arguments::default()
+            }
+        }))
+    } else {
+        tracing::debug!("No embedded-test in ELF file. Running as normal");
+        Ok(Box::new(NormalRunMode{
+            run_options: cmd.run_options.clone()
+        }))
+    }
+}
+
+
+/// Test run mode
+struct TestRunMode {
+  libtest_args: Arguments
+}
+
+impl RunMode for TestRunMode{
+    fn run(&self, session: Session, common_options: CommonOptions, path: &Path, timestamp_offset: UtcOffset,  memory_map: Vec<MemoryRegion>, rtt_scan_regions: Vec<Range<u64>>) -> Result<()> {
+        tracing::info!("libtest args {:?}", self.libtest_args);
+        todo!()
+    }
+}
+
+/// Normal run mode (non-test)
+struct NormalRunMode{
+    run_options: RunOptions
+}
+
+impl RunMode for NormalRunMode {
+    fn run(&self, mut session: Session, common_options: CommonOptions, path: &Path, timestamp_offset: UtcOffset, memory_map: Vec<MemoryRegion>, rtt_scan_regions: Vec<Range<u64>>) -> Result<()> {
         let mut core = session.core(0)?;
 
         if self.run_options.catch_hardfault || self.run_options.catch_reset {
             core.halt(Duration::from_millis(100))?;
-            if self.run_options.catch_hardfault {
-                match core.enable_vector_catch(VectorCatchCondition::HardFault) {
-                    Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
-                    Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
-                }
-            }
-            if self.run_options.catch_reset {
-                match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
-                    Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
-                    Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
-                }
-            }
+            enable_vector_catch(&mut core, self.run_options.catch_hardfault, self.run_options.catch_reset);
         }
 
         if core.core_halted()? {
@@ -216,12 +265,29 @@ impl Cmd {
             &rtt_scan_regions,
             path,
             timestamp_offset,
-            self.common_options.always_print_stacktrace,
-            self.common_options.no_location,
-            self.common_options.log_format.as_deref(),
+            common_options.always_print_stacktrace,
+            common_options.no_location,
+            common_options.log_format.as_deref(),
         )?;
 
         Ok(())
+    }
+}
+
+
+
+fn enable_vector_catch(core: &mut Core, catch_hardfault: bool, catch_reset: bool) {
+    if catch_hardfault {
+        match core.enable_vector_catch(VectorCatchCondition::HardFault) {
+            Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
+            Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+        }
+    }
+    if catch_reset {
+        match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
+            Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
+            Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
+        }
     }
 }
 
