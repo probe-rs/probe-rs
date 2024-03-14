@@ -137,7 +137,7 @@ impl<'a> FunctionDie<'a> {
 
     /// Returns the function name described by the die.
     pub(crate) fn function_name(&self, debug_info: &super::DebugInfo) -> Option<String> {
-        let Some(fn_name_attr) = self.attribute(debug_info, gimli::DW_AT_name) else {
+        let Some(fn_name_attr) = self.attribute(gimli::DW_AT_name) else {
             tracing::debug!("DW_AT_name attribute not found, unable to retrieve function name");
             return None;
         };
@@ -173,15 +173,15 @@ impl<'a> FunctionDie<'a> {
             return None;
         }
 
-        let file_name_attr = self.attribute(debug_info, gimli::DW_AT_call_file)?;
+        let file_name_attr = self.attribute(gimli::DW_AT_call_file)?;
 
         let path = extract_file(debug_info, &self.unit_info.unit, file_name_attr.value())?;
         let line = self
-            .attribute(debug_info, gimli::DW_AT_call_line)
+            .attribute(gimli::DW_AT_call_line)
             .and_then(|line| line.udata_value());
 
         let column =
-            self.attribute(debug_info, gimli::DW_AT_call_column)
+            self.attribute(gimli::DW_AT_call_column)
                 .map(|column| match column.udata_value() {
                     None => ColumnType::LeftEdge,
                     Some(c) => ColumnType::Column(c),
@@ -197,10 +197,9 @@ impl<'a> FunctionDie<'a> {
         })
     }
 
-    /// Resolve an attribute by looking through both the specification and die, or abstract specification and die, entries.
+    /// Resolve an attribute by looking through both the origin or abstract die entries.
     pub(crate) fn attribute(
         &self,
-        debug_info: &super::DebugInfo,
         attribute_name: gimli::DwAt,
     ) -> Option<debug_info::GimliAttribute> {
         let attribute = collapsed_attribute(
