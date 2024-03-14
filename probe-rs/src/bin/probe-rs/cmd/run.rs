@@ -4,7 +4,7 @@ use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Context, Result};
 use libtest_mimic::{Arguments, Failed, FormatSetting, Trial};
@@ -277,7 +277,7 @@ impl TestRunMode{
 
         let mut cmdline_requested = false;
 
-        session_and_runloop.run_loop.run(&mut core, true,true, |halt_reason: HaltReason, core: &mut Core| {
+        session_and_runloop.run_loop.run(&mut core, true,true, Some(Duration::from_secs(5)), |halt_reason: HaltReason, core: &mut Core| {
             match halt_reason {
                 HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) =>
                     match cmd {
@@ -315,13 +315,12 @@ impl TestRunMode{
         tracing::info!("Running test {}", test.name);
         core.reset_and_halt(Duration::from_millis(100))?;
 
-        //TODO: Timeout!
-        //let timeout = test.timeout.map(|t| Duration::from_secs(t as u64));
-        //let timeout = timeout.unwrap_or(Duration::from_secs(60)); // TODO: make global timeout configurable*/
+        let timeout = test.timeout.map(|t| Duration::from_secs(t as u64));
+        let timeout = timeout.unwrap_or(Duration::from_secs(60)); // TODO: make global timeout configurable*/
 
         let mut cmdline_requested = false;
 
-        let ret = session_and_runloop.run_loop.run(core, true,true, |halt_reason: HaltReason, core: &mut Core| {
+        let ret = session_and_runloop.run_loop.run(core, true,true,  Some(timeout),|halt_reason: HaltReason, core: &mut Core| {
            match halt_reason {
                 HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) =>
                     match cmd {
@@ -344,9 +343,6 @@ impl TestRunMode{
             Ok(Some(exit_status))  => {
                 let should_exit_successfully = !test.should_panic;
                 if exit_status == should_exit_successfully {
-                    if session_and_runloop.run_loop.always_print_stacktrace && !exit_status {
-                        print_stacktrace(core, &session_and_runloop.run_loop.path)?;
-                    }
                     Ok(())
                 } else {
                     if !exit_status {
@@ -362,6 +358,11 @@ impl TestRunMode{
             Ok(None) => {
                 tracing::error!("Test {} was aborted by the user", test.name);
                 Err(Failed::from("Test was aborted by the user (CTRL +C)"))
+            }
+            Err(e) if e.downcast_ref::<&str>() == Some(&"Timeout") => {
+                // TODO: signal this in a nicer way
+                tracing::error!("Test {} timed out", test.name);
+                Err(Failed::from(format!("Test timed out after {:?}", timeout)))
             }
             Err(e) => {
                 eprintln!("Error: {:?}", e);
@@ -420,7 +421,7 @@ impl RunMode for NormalRunMode {
     fn run(&self, mut session: Session, run_loop: RunLoop) -> Result<()> {
         let mut core = session.core(0)?;
 
-        run_loop.run(&mut core, self.run_options.catch_hardfault, self.run_options.catch_reset, |halt_reason: HaltReason, _core : &mut Core| {
+        run_loop.run(&mut core, self.run_options.catch_hardfault, self.run_options.catch_reset, None, |halt_reason: HaltReason, _core : &mut Core| {
             match halt_reason {
                 HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) =>
                     match cmd {
@@ -460,11 +461,13 @@ impl RunLoop {
     /// If the halt_handler returns `Ok(Some(r))` the run loop will return `Ok(Some(r))`.
     /// If the halt_handler returns `Err(e)` the run loop will return `Err(e)` and a stack trace will be printed.
     /// If the halt_handler returns `Ok(None)` the run loop will continue running the core.
+    /// If the call exceeds `timeout` the run loop will return `Err(anyhow!("Timeout"))`. TODO
     fn run<F, R>(
         &self,
         core: &mut Core,
         catch_hardfault: bool,
         catch_reset: bool,
+        timeout: Option<Duration>,
         mut halt_handler: F,
     ) -> Result<Option<R>>
     where
@@ -486,6 +489,7 @@ impl RunLoop {
         if core.core_halted()? {
             core.run()?;
         }
+        let start = Instant::now();
 
         let mut rtt_config = rtt::RttConfig {
             log_format: self.log_format.clone(),
@@ -511,6 +515,7 @@ impl RunLoop {
 
         let mut stdout = std::io::stdout();
         let mut halt_reason = None;
+        let mut timeouted = false;
         while !exit.load(Ordering::Relaxed) && halt_reason.is_none() {
             // check for halt first, poll rtt after.
             // this is important so we do one last poll after halt, so we flush all messages
@@ -536,6 +541,14 @@ impl RunLoop {
 
             let had_rtt_data = poll_rtt(&mut rtta, core, &mut stdout)?;
 
+            match timeout {
+                Some(timeout) if start.elapsed() >= timeout => {
+                    timeouted = true;
+                    break;
+                }
+                _ => {}
+            }
+
             // Poll RTT with a frequency of 10 Hz if we do not receive any new data.
             // Once we receive new data, we bump the frequency to 1kHz.
             //
@@ -550,9 +563,13 @@ impl RunLoop {
 
         let result = match halt_reason {
             None => {
-                // manually halted with Control+C. Stop the core.
                 core.halt(Duration::from_secs(1))?;
-                Ok(None)
+                if timeouted {
+                    Err(anyhow!("Timeout"))
+                } else {
+                    // manually halted with Control+C. Stop the core.
+                    Ok(None)
+                }
             }
             Some(reason) => match reason {
                 Ok(r) => Ok(Some(r)),
