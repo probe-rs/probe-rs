@@ -969,18 +969,6 @@ impl DebugInfo {
     }
 }
 
-/// Uses the [std::fs::canonicalize] function to canonicalize both paths before applying the [std::path::PathBuf::eq]
-/// to test if the secondary path is equal or a suffix of the primary path.
-/// If for some reason (e.g., the paths don't exist) the canonicalization fails, the original equality check is used.
-/// We do this to maximize the chances of finding a match where the secondary path can be given as
-/// an absolute, relative, or partial path.
-pub(crate) fn canonical_path_eq(
-    primary_path: &TypedPathBuf,
-    secondary_path: &TypedPathBuf,
-) -> bool {
-    primary_path.normalize() == secondary_path.normalize()
-}
-
 /// Get a handle to the [`gimli::UnwindTableRow`] for this call frame, so that we can reference it to unwind register values.
 fn get_unwind_info<'a>(
     unwind_context: &'a mut UnwindContext<DwarfReader>,

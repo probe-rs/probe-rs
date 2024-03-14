@@ -1,0 +1,1 @@
+The `FunctionDie` struct now stores the actual address `Range`'s for which the DIE is valid. This is important because these are not necessarily contiquous, and checking for inclusion between the former `low_pc` and `high_pc` could give false positives.
