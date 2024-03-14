@@ -108,12 +108,12 @@ impl UnitInfo {
 
     /// Check if the function located at the given offset contains inlined functions at the
     /// given address.
-    pub(crate) fn find_inlined_functions<'debug_info>(
-        &'debug_info self,
-        debug_info: &'debug_info DebugInfo,
+    pub(crate) fn find_inlined_functions<'abbrev>(
+        &'abbrev self,
+        debug_info: &'abbrev DebugInfo,
         address: u64,
         offset: UnitOffset,
-    ) -> Result<Vec<FunctionDie>, DebugError> {
+    ) -> Result<Vec<FunctionDie<'abbrev, '_>>, DebugError> {
         // If we don't have any entries at our unit offset, return an empty vector.
         let Ok(mut cursor) = self.unit.entries_at_offset(offset) else {
             return Ok(vec![]);
