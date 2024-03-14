@@ -1154,9 +1154,9 @@ mod test {
             >,
             DebugProbeError,
         > {
-            Err(DebugProbeError::NotImplemented(
-                "get_arm_communication_interface",
-            ))
+            Err(DebugProbeError::NotImplemented {
+                function_name: "get_arm_communication_interface",
+            })
         }
 
         fn read_64(&mut self, _address: u64, _data: &mut [u64]) -> Result<(), ArmError> {
