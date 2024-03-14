@@ -32,7 +32,7 @@ impl VerifiedBreakpoint {
     ) -> Result<VerifiedBreakpoint, DebugError> {
         let sequence = Sequence::from_address(debug_info, address)?;
 
-        if let Some(verified_breakpoint) = sequence.haltpoint_near_address(address) {
+        if let Some(verified_breakpoint) = sequence.haltpoint_for_address(address) {
             tracing::debug!(
                 "Found valid breakpoint for address: {:#010x} : {verified_breakpoint:?}",
                 &address
@@ -72,7 +72,7 @@ impl VerifiedBreakpoint {
         let line_sequences_for_path = line_sequences_for_path(debug_info, path, None);
         for (sequence, matching_file_index) in &line_sequences_for_path {
             if let Some(verified_breakpoint) =
-                sequence.haltpoint_near_source_location(*matching_file_index, line, column)
+                sequence.haltpoint_for_source_location(*matching_file_index, line, column)
             {
                 return Ok(verified_breakpoint);
             }
