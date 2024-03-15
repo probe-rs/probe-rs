@@ -201,43 +201,42 @@ trait RunMode {
 
 fn detect_run_mode(cmd: &Cmd) -> Result<Box<dyn RunMode>, anyhow::Error> {
     let elf_contains_test = {
-        // TODO: Improve this detection:
-        //  1. read the elf symbol table instead of grepping for a string
-        //  2. Warn the user if no debug symbols are present? Or assume not a test?
         let mut file = match File::open(cmd.path.as_str()) {
             Ok(file) => file,
             Err(e) => return Err(FileDownloadError::IO(e)).context("Failed to open binary file."),
         };
-        let mut buf = Vec::new();
-        file.read_to_end(&mut buf)?;
-        let needle = b"EMBEDDED_TEST_VERSION";
-        buf.windows(needle.len()).any(|window| window == needle)
+        let mut buffer = Vec::new();
+        file.read_to_end(&mut buffer)?;
+        match goblin::elf::Elf::parse(buffer.as_slice()) {
+            Ok(elf) if elf.syms.is_empty() => {
+                tracing::info!("No Debug Symbols in ELF.");
+                false
+            }
+            Ok(elf) => elf
+                .syms
+                .iter()
+                .any(|sym| elf.strtab.get_at(sym.st_name) == Some("EMBEDDED_TEST_VERSION")),
+            Err(_) => {
+                tracing::info!("Failed to parse ELF file");
+                false
+            }
+        }
     };
 
-    // TODO: if elf_contains_test is true there should be no RunOptions present
-    //  and if elf_contains_test is false there should be no TestOptions present
-
     if elf_contains_test {
+        // We tolerate the run options, even in test mode
         tracing::info!("Detected embedded-test in ELF file. Running as test");
-        Ok(Box::new(TestRunMode {
-            libtest_args: Arguments {
-                test_threads: Some(1), // Avoid parallel execution
-                list: cmd.test_options.list,
-                exact: cmd.test_options.exact,
-                format: cmd.test_options.format,
-                filter: if cmd.test_options.filter.is_empty() {
-                    None
-                } else {
-                    Some(cmd.test_options.filter.join(" "))
-                },
-                ..Arguments::default()
-            },
-        }))
+        Ok(TestRunMode::new(&cmd.test_options))
     } else {
+        let test_args_specified = cmd.test_options.list
+            || cmd.test_options.exact
+            || cmd.test_options.format.is_some()
+            || !cmd.test_options.filter.is_empty();
+        if test_args_specified {
+            return Err(anyhow!("No embedded-test detected in ELF file, but CLI invoked with Arguments exclusive to test mode"));
+        }
         tracing::debug!("No embedded-test in ELF file. Running as normal");
-        Ok(Box::new(NormalRunMode {
-            run_options: cmd.run_options.clone(),
-        }))
+        Ok(NormalRunMode::new(&cmd.run_options))
     }
 }
 
@@ -247,6 +246,23 @@ struct TestRunMode {
 }
 
 impl TestRunMode {
+    fn new(test_options: &TestOptions) -> Box<Self> {
+        Box::new(Self {
+            libtest_args: Arguments {
+                test_threads: Some(1), // Avoid parallel execution
+                list: test_options.list,
+                exact: test_options.exact,
+                format: test_options.format,
+                filter: if test_options.filter.is_empty() {
+                    None
+                } else {
+                    Some(test_options.filter.join(" "))
+                },
+                ..Arguments::default()
+            },
+        })
+    }
+
     /// Asks the target for the tests, and create a "run the test"-closure for each test.
     /// libtest-mimic is in charge of selecting the tests to run based on the filter and other options
     fn create_tests(session_and_runloop_ref: Arc<Mutex<SessionAndRunLoop>>) -> Result<Vec<Trial>> {
@@ -446,6 +462,13 @@ struct NormalRunMode {
     run_options: RunOptions,
 }
 
+impl NormalRunMode {
+    fn new(run_options: &RunOptions) -> Box<Self> {
+        Box::new(NormalRunMode {
+            run_options: run_options.clone(),
+        })
+    }
+}
 impl RunMode for NormalRunMode {
     fn run(&self, mut session: Session, run_loop: RunLoop) -> Result<()> {
         let mut core = session.core(0)?;
