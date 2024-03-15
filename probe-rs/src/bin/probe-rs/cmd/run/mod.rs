@@ -25,39 +25,56 @@ const RTT_RETRIES: usize = 10;
 
 #[derive(clap::Parser)]
 pub struct Cmd {
+    /// The path to the ELF file to flash and run
+    pub(crate) path: String,
+
+    /// Options only used when in normal run mode
     #[clap(flatten)]
-    pub(crate) probe_options: ProbeOptions,
+    pub(crate) run_options: NormalRunOptions,
+
+    // ---- General Options ahead ----
+    #[clap(flatten)]
+    pub(crate) common_options: CommonOptions,
 
     #[clap(flatten)]
     pub(crate) download_options: BinaryDownloadOptions,
 
-    /// The path to the ELF file to flash and run
-    pub(crate) path: String,
+    #[clap(flatten)]
+    pub(crate) format_options: FormatOptions,
 
+    /// Whether to erase the entire chip before downloading
+    #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
+    pub(crate) chip_erase: bool,
+
+    #[clap(flatten)]
+    pub(crate) probe_options: ProbeOptions,
+}
+
+/// Options only used in normal run mode
+#[derive(Debug, clap::Parser, Clone)]
+pub struct NormalRunOptions {
+    /// Enable reset vector catch if its supported on the target.
+    #[clap(long, help_heading = "RUN OPTIONS")]
+    pub catch_reset: bool,
+    /// Enable hardfault vector catch if its supported on the target.
+    #[clap(long, help_heading = "RUN OPTIONS")]
+    pub catch_hardfault: bool,
+}
+
+// Options used for all run modes
+#[derive(Debug, clap::Parser)]
+pub struct CommonOptions {
     /// Always print the stacktrace on ctrl + c.
     #[clap(long)]
     pub(crate) always_print_stacktrace: bool,
-
-    /// Whether to erase the entire chip before downloading
-    #[clap(long)]
-    pub(crate) chip_erase: bool,
 
     /// Suppress filename and line number information from the rtt log
     #[clap(long)]
     pub(crate) no_location: bool,
 
-    #[clap(flatten)]
-    pub(crate) format_options: FormatOptions,
-
+    /// The default format string to use for decoding defmt logs.
     #[clap(long)]
     pub(crate) log_format: Option<String>,
-
-    /// Enable reset vector catch if its supported on the target.
-    #[arg(long)]
-    pub catch_reset: bool,
-    /// Enable hardfault vector catch if its supported on the target.
-    #[arg(long)]
-    pub catch_hardfault: bool,
 
     /// Scan the memory to find the RTT control block
     #[clap(long)]
@@ -91,21 +108,21 @@ impl Cmd {
         }
 
         let memory_map = session.target().memory_map.clone();
-        let rtt_scan_regions = match self.rtt_scan_memory {
+        let rtt_scan_regions = match self.common_options.rtt_scan_memory {
             true => session.target().rtt_scan_regions.clone(),
             false => Vec::new(),
         };
         let mut core = session.core(0)?;
 
-        if self.catch_hardfault || self.catch_reset {
+        if self.run_options.catch_hardfault || self.run_options.catch_reset {
             core.halt(Duration::from_millis(100))?;
-            if self.catch_hardfault {
+            if self.run_options.catch_hardfault {
                 match core.enable_vector_catch(VectorCatchCondition::HardFault) {
                     Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
                     Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
                 }
             }
-            if self.catch_reset {
+            if self.run_options.catch_reset {
                 match core.enable_vector_catch(VectorCatchCondition::CoreReset) {
                     Ok(_) | Err(Error::NotImplemented(_)) => {} // Don't output an error if vector_catch hasn't been implemented
                     Err(e) => tracing::error!("Failed to enable_vector_catch: {:?}", e),
@@ -123,9 +140,9 @@ impl Cmd {
             &rtt_scan_regions,
             path,
             timestamp_offset,
-            self.always_print_stacktrace,
-            self.no_location,
-            self.log_format.as_deref(),
+            self.common_options.always_print_stacktrace,
+            self.common_options.no_location,
+            self.common_options.log_format.as_deref(),
         )?;
 
         Ok(())
