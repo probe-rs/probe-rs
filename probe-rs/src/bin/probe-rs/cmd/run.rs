@@ -224,7 +224,7 @@ fn detect_run_mode(cmd: &Cmd) -> Result<Box<dyn RunMode>, anyhow::Error> {
     };
 
     if elf_contains_test {
-        // We tolerate the run options, even in test mode
+        // We tolerate the run options, even in test mode so that you can set `probe-rs run --catch-hardfault` as cargo runner (used for both unit tests and normal binaries)
         tracing::info!("Detected embedded-test in ELF file. Running as test");
         Ok(TestRunMode::new(&cmd.test_options))
     } else {
@@ -301,7 +301,7 @@ impl TestRunMode {
                         tracing::info!("target asked for cmdline. send 'list'");
                         cmdline_requested = true;
                         request.write_command_line_to_target(core, "list")?; //TODO: fix default retreg if this is not called
-                        Ok(None) // not done yet
+                        Ok(None) // Continue running
                     }
                     SemihostingCommand::Unknown(details)
                         if details.operation == Self::SEMIHOSTING_USER_LIST
@@ -331,18 +331,21 @@ impl TestRunMode {
             }
         };
 
-        session_and_runloop
-            .run_loop
-            .run(
-                &mut core,
-                true,
-                true,
-                Some(Duration::from_secs(5)),
-                halt_handler,
-            )?
-            .ok_or(anyhow!(
+        match session_and_runloop.run_loop.run_until(
+            &mut core,
+            true,
+            true,
+            Some(Duration::from_secs(5)),
+            halt_handler,
+        )? {
+            ReturnReason::User => Err(anyhow!(
                 "The user pressed ctrl+c before the target responded with the test list."
-            ))
+            )),
+            ReturnReason::Predicate(tests) => Ok(tests),
+            ReturnReason::Timeout => Err(anyhow!(
+                "The target did not respond with test list until timeout."
+            )),
+        }
     }
 
     /// Runs a single test on the target
@@ -368,25 +371,39 @@ impl TestRunMode {
                         tracing::info!("target asked for cmdline. send '{}'", cmdline.as_str());
                         cmdline_requested = true;
                         request.write_command_line_to_target(core, cmdline.as_str())?; //TODO: fix default retreg if this is not called
-                        Ok(None) // not done yet
+                        Ok(None) // Continue running
                     }
                     SemihostingCommand::ExitSuccess if cmdline_requested => Ok(Some(true)),
                     SemihostingCommand::ExitError(_) if cmdline_requested => Ok(Some(false)),
-                    other => Err(anyhow!(
-                        "Unexpected semihosting command {:?} cmdline_requested: {:?}",
-                        other,
-                        cmdline_requested
-                    )),
+                    other => {
+                        // Invalid sequence of semihosting calls => Abort testing altogether
+                        Err(anyhow!(
+                            "Unexpected semihosting command {:?} cmdline_requested: {:?}",
+                            other,
+                            cmdline_requested
+                        ))
+                    }
                 },
-                _ => Err(anyhow!("CPU halted unexpectedly.")),
+                e => {
+                    // Exception occurred (e.g. hardfault) => Abort testing altogether
+                    Err(anyhow!("The CPU halted unexpectedly: {:?}. Test should signal failure via a panic handler that calls `semihosting::proces::abort()` instead", e))
+                }
             }
         };
 
         match session_and_runloop
             .run_loop
-            .run(core, true, true, Some(timeout), halt_handler)
+            .run_until(core, true, true, Some(timeout), halt_handler)
         {
-            Ok(Some(exit_status)) => {
+            Ok(ReturnReason::Timeout) => {
+                Err(Failed::from(format!("Test timed out after {:?}", timeout)))
+            }
+            Ok(ReturnReason::User) => {
+                eprintln!("Test {} was aborted by the user with CTRL + C", test.name);
+                // We do not mark the test as failed and instead exit the process
+                std::process::exit(1);
+            }
+            Ok(ReturnReason::Predicate(exit_status)) => {
                 let should_exit_successfully = !test.should_panic;
                 if exit_status == should_exit_successfully {
                     Ok(())
@@ -405,16 +422,8 @@ impl TestRunMode {
                     )))
                 }
             }
-            Ok(None) => {
-                tracing::error!("Test {} was aborted by the user", test.name);
-                Err(Failed::from("Test was aborted by the user (CTRL +C)"))
-            }
-            Err(e) if e.downcast_ref::<&str>() == Some(&"Timeout") => {
-                // TODO: signal this in a nicer way
-                tracing::error!("Test {} timed out", test.name);
-                Err(Failed::from(format!("Test timed out after {:?}", timeout)))
-            }
             Err(e) => {
+                // Probe-rs error: We do not mark the test as failed and instead exit the process
                 eprintln!("Error: {:?}", e);
                 std::process::exit(1);
             }
@@ -493,7 +502,7 @@ impl RunMode for NormalRunMode {
             }
             _ => Err(anyhow!("CPU halted unexpectedly.")),
         };
-        run_loop.run(
+        run_loop.run_until(
             &mut core,
             self.run_options.catch_hardfault,
             self.run_options.catch_reset,
@@ -514,22 +523,30 @@ struct RunLoop {
     log_format: Option<String>,
 }
 
+#[derive(PartialEq, Debug)]
+enum ReturnReason<R> {
+    /// The user pressed CTRL +C
+    User,
+    /// The predicated requested a return
+    Predicate(R),
+    /// Timeout elapsed
+    Timeout,
+}
+
 impl RunLoop {
-    /// Attaches to RTT and runs the core until it halts or the user presses CTRL+C.
-    /// If the user presses CTRL+C the core is stopped and `Ok(None)` is returned.
-    /// When the core halts otherwise, the `halt_handler` is called with the halt reason.
-    /// If the halt_handler returns `Ok(Some(r))` the run loop will return `Ok(Some(r))`.
-    /// If the halt_handler returns `Err(e)` the run loop will return `Err(e)` and a stack trace will be printed.
-    /// If the halt_handler returns `Ok(None)` the run loop will continue running the core.
-    /// If the call exceeds `timeout` the run loop will return `Err(anyhow!("Timeout"))`. TODO
-    fn run<F, R>(
+    /// Attaches to RTT and runs the core until it halts
+    /// Upon halt the predicate is invoked with the halt reason.
+    /// If the predicate returns `Ok(Some(r))` the run loop returns `Ok(ReturnReason::Predicate(r))`.
+    /// If the predicate returns `Ok(None)` the run loop will continue running the core.
+    /// The function will also return on timeout with `Ok(ReturnReason::Timeout)` or if the user presses CTRL + C with `Ok(ReturnReason::User)`.
+    fn run_until<F, R>(
         &self,
         core: &mut Core,
         catch_hardfault: bool,
         catch_reset: bool,
         timeout: Option<Duration>,
-        mut halt_handler: F,
-    ) -> Result<Option<R>>
+        mut predicate: F,
+    ) -> Result<ReturnReason<R>>
     where
         F: FnMut(HaltReason, &mut Core) -> Result<Option<R>>,
     {
@@ -582,7 +599,7 @@ impl RunLoop {
             // the core printed before halting, such as a panic message.
             match core.status()? {
                 probe_rs::CoreStatus::Halted(reason) => {
-                    match halt_handler(reason, core) {
+                    match predicate(reason, core) {
                         Ok(Some(r)) => halt_reason = Some(Ok(r)),
                         Err(e) => halt_reason = Some(Err(e)),
                         Ok(None) => {
@@ -625,19 +642,22 @@ impl RunLoop {
             None => {
                 core.halt(Duration::from_secs(1))?;
                 if timeouted {
-                    Err(anyhow!("Timeout"))
+                    Ok(ReturnReason::Timeout)
                 } else {
                     // manually halted with Control+C. Stop the core.
-                    Ok(None)
+                    Ok(ReturnReason::User)
                 }
             }
             Some(reason) => match reason {
-                Ok(r) => Ok(Some(r)),
+                Ok(r) => Ok(ReturnReason::Predicate(r)),
                 Err(e) => Err(e),
             },
         };
 
-        if self.always_print_stacktrace || result.is_err() {
+        if self.always_print_stacktrace
+            || result.is_err()
+            || matches!(result, Ok(ReturnReason::Timeout))
+        {
             print_stacktrace(core, self.path.as_path())?;
         }
 
