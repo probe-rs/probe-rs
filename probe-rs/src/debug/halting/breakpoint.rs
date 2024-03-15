@@ -69,7 +69,7 @@ impl VerifiedBreakpoint {
     ) -> Result<Self, DebugError> {
         // Keep track of the matching file index to avoid having to lookup and match the full path
         // for every row in the program line sequence.
-        let line_sequences_for_path = line_sequences_for_path(debug_info, path, None);
+        let line_sequences_for_path = line_sequences_for_path(debug_info, path);
         for (sequence, matching_file_index) in &line_sequences_for_path {
             if let Some(verified_breakpoint) =
                 sequence.haltpoint_for_source_location(*matching_file_index, line, column)

@@ -865,7 +865,6 @@ impl DebugInfo {
 
     /// Find the program counter where a breakpoint should be set,
     /// given a source file, a line and optionally a column.
-    // TODO: Move (and fix) this to the [`InstructionSequence::for_source_location`] method.
     pub fn get_breakpoint_location(
         &self,
         path: &TypedPathBuf,

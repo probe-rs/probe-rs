@@ -1649,6 +1649,10 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
         target_core: &mut CoreHandle,
         request: &Request,
     ) -> Result<(), anyhow::Error> {
+        // Immediately send a response to the client, so that it can update the UI
+        // to show the user that the step has started.
+        self.send_response::<()>(request, Ok(None))?;
+
         target_core.reset_core_status(self);
         let (new_status, program_counter) = match stepping_granularity
             .step(&mut target_core.core, &target_core.core_data.debug_info)
@@ -1671,8 +1675,6 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
                 }
             },
         };
-
-        self.send_response::<()>(request, Ok(None))?;
 
         // We override the halt reason because our implementation of stepping uses breakpoints and results in a "BreakPoint" halt reason, which is not appropriate here.
         target_core.core_data.last_known_status = CoreStatus::Halted(HaltReason::Step);
