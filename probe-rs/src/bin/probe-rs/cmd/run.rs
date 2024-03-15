@@ -235,7 +235,7 @@ fn detect_run_mode(cmd: &Cmd) -> Result<Box<dyn RunMode>, anyhow::Error> {
         if test_args_specified {
             return Err(anyhow!("No embedded-test detected in ELF file, but CLI invoked with Arguments exclusive to test mode"));
         }
-        tracing::debug!("No embedded-test in ELF file. Running as normal");
+        tracing::info!("No embedded-test in ELF file. Running as normal");
         Ok(NormalRunMode::new(&cmd.run_options))
     }
 }
