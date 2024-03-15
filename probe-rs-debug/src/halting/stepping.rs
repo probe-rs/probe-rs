@@ -1,12 +1,10 @@
-use probe_rs_target::InstructionSet;
-
 use super::{
     super::{
-        debug_info::DebugInfo, exception_handling::ExceptionInfo,
+        ColumnType, debug_info::DebugInfo, exception_handling::ExceptionInfo,
         exception_handling::exception_handler_for_core, registers::DebugRegisters, DebugError,
     },
     instruction::Instruction,
-    line_sequences_for_path,
+    line_sequence_for_address,
     sequence::Sequence,
     VerifiedBreakpoint,
 };
@@ -17,6 +15,7 @@ use probe_rs::{
     },
     CoreInterface, CoreStatus, Error, HaltReason, MemoryInterface,
 };
+use probe_rs_target::InstructionSet;
 use std::{ops::ControlFlow, time::Duration};
 
 /// Implement the various stepping actions available during debugging.
@@ -74,8 +73,6 @@ impl Stepping {
             }
         };
         let origin_program_counter = program_counter;
-
-        let return_address = core.read_core_reg(core.return_address().id())?.try_into()?;
         let target_breakpoint = match self {
             Stepping::StepInstruction => {
                 // First deal with the the fast/easy case.
@@ -84,9 +81,7 @@ impl Stepping {
                 return Ok((core_status, program_counter));
             }
             Stepping::IntoStatement => get_step_into_location(debug_info, core),
-            Stepping::OutOfStatement => {
-                get_step_out_location(debug_info, program_counter, core, return_address)
-            }
+            Stepping::OutOfStatement => get_step_out_location(debug_info, core, program_counter),
             Stepping::OverStatement => get_step_over_location(debug_info, core, program_counter),
         }
         .map_err(|step_error| {
@@ -112,7 +107,7 @@ impl Stepping {
     }
 }
 
-/// Stepping into a line is a tricky case because the current RUST generated DWARF,
+/// Stepping into a line is a bit tricky case because the current RUST generated DWARF,
 /// does not store the DW_TAG_call_site information described in the DWARF 5 standard.
 /// It is not a mandatory attribute, so it is not clear if we can ever expect it.
 /// #### To find if any functions are called from the current program counter:
@@ -147,9 +142,8 @@ fn get_step_into_location(
 /// For non-inlined functions, this is the first available breakpoint address after the return address.
 fn get_step_out_location(
     debug_info: &DebugInfo,
-    program_counter: u64,
     core: &mut impl CoreInterface,
-    return_address: u64,
+    program_counter: u64,
 ) -> Result<VerifiedBreakpoint, DebugError> {
     // Get the function DIE for the current program counter, and there are inlined functions,
     // use the innermost of those.
@@ -158,6 +152,7 @@ fn get_step_out_location(
         .get_function_dies(debug_info, program_counter)?
         .pop()
         .ok_or(DebugError::WarnAndContinue {
+            // Without a valid function DIE, we don't have enough information to proceed intelligently.
             message: format!("Unable to identify the function at {program_counter:#010x}"),
         })?;
     tracing::trace!(
@@ -183,26 +178,80 @@ fn get_step_out_location(
     }
 
     if function.is_inline() {
-        if let Some(function_high_pc) = function.high_pc() {
-            // Step_out_address for inlined functions, is the first available breakpoint address after the last statement in the inline function.
-            tracing::debug!(
-                "Step Out target: inline function, stepping over high-pc address: {function_high_pc:#010x}"
-            );
-            VerifiedBreakpoint::for_address(debug_info, function_high_pc)
-        } else {
-            // This should never happen, but if it does, it is probably more useful to just step over
-            // the current statement, than to give an error.
-            tracing::debug!(
-                "Step Out target: inline function, stepping over the statement at: {program_counter:#010x}"
-            );
-            get_step_over_location(debug_info, core, program_counter)
-        }
+        function
+            .inline_call_location(debug_info)
+            .and_then(|call_site| {
+                // Step_out_address for inlined functions, is the first available breakpoint address for the call site.
+                // This has been tested to work with nested inline functions also.
+                tracing::debug!(
+                    "Step Out target: inline function, stepping over call-site: {call_site:?}"
+                );
+                Some(VerifiedBreakpoint::for_source_location(
+                    debug_info,
+                    call_site.path.to_path(),
+                    call_site.line.unwrap_or(0),
+                    call_site.column.map(|column| match column {
+                        ColumnType::LeftEdge => 0_u64,
+                        ColumnType::Column(c) => c,
+                    }),
+                ))
+            })
+            .unwrap_or_else(|| {
+                // This should never happen, but if it does, it is probably more useful to just step over
+                // the current statement, than to give an error.
+                tracing::debug!(
+                    "Unable to identify the call-site for the inlined function {:?}",
+                    function.function_name(debug_info)
+                );
+                get_step_over_location(debug_info, core, program_counter)
+            })
     } else {
+        let return_address = get_return_address(core)?;
         tracing::debug!(
             "Step Out target: non-inline function, stepping over return address: {return_address:#010x}"
         );
-        // Step_out_address for non-inlined functions is the first available breakpoint address after the return address.
-        VerifiedBreakpoint::for_address(debug_info, return_address)
+        // Step-out address for non-inlined functions is the first available breakpoint address after the return address.
+        if let Ok(target_location_at_return) =
+            VerifiedBreakpoint::for_address(debug_info, return_address)
+        {
+            Ok(target_location_at_return)
+        } else {
+            // It is possible that the return address is not a valid halt location,
+            // in which case we have to find the next valid halt_location,
+            // in the calling function.
+            // In this case, we have to do the following:
+            // 1. Run (set a breakpoint) to the last valid halt location in the current sequence.
+            // 2. Single-step the core until we get to the next valid halt location.
+
+            // Find the last valid halt location in the current sequence.
+            tracing::debug!("Looking for last halt instruction in the sequence containing address={program_counter:#010x}");
+
+            let sequence = Sequence::from_address(debug_info, program_counter)?;
+
+            let Some(last_sequence_haltpoint) = sequence.last_halt_instruction else {
+                let message = format!("No valid halt location found in the sequence for the return address: {return_address:#010x}. Please consider using a different step action.");
+                return Err(DebugError::WarnAndContinue { message });
+            };
+
+            // Run to the last valid halt location in the current sequence.
+            run_to_address(last_sequence_haltpoint, core)?;
+            // Now single-step until we find a valid halt location.
+            while let Ok(step_result) = core.step() {
+                if let ControlFlow::Break(debug_error) = validate_core_status_after_step(core) {
+                    return Err(debug_error);
+                }
+
+                if let Ok(target_location) =
+                    VerifiedBreakpoint::for_address(debug_info, step_result.pc)
+                {
+                    return Ok(target_location);
+                }
+            }
+            let message = format!(
+                "Unexpected halt while stepping past the return address: {return_address:#010x}."
+            );
+            Err(DebugError::WarnAndContinue { message })
+        }
     }
 }
 
@@ -223,9 +272,9 @@ fn get_step_over_location(
     let file_path = current_halt_location.source_location.path.clone();
 
     let mut candidate_haltpoints: Vec<Instruction> = Vec::new();
-    let Some((sequence, file_index)) =
+    let Some(sequence) =
         // When we filter by address, we expect to get a single sequence, or none.
-        line_sequences_for_path(debug_info, &file_path, Some(current_halt_location.address)).pop()
+        line_sequence_for_address(debug_info, current_halt_location.address)
     else {
         let message = format!(
             "No available line program sequences for address {:?}",
@@ -237,23 +286,18 @@ fn get_step_over_location(
     if let Some(breakpoint) = sequence.haltpoint_for_next_block(current_halt_location.address) {
         return Ok(breakpoint);
     }
-    // If we don't find a next block, we try to find the next haltpoint, in the next line in the same sequence.
+    // If we don't find a next block, we try to find the next haltpoint in the same sequence.
     candidate_haltpoints.extend(sequence.blocks.iter().flat_map(|block| {
         block.instructions.iter().filter(|instruction| {
-            file_index
-                .map(|index| {
-                    instruction.role.is_halt_location()
-                        && instruction.file_index == index
-                        && instruction.address > current_halt_location.address
-                })
-                .unwrap_or(false)
+            instruction.role.is_halt_location()
+                && instruction.address > current_halt_location.address
         })
     }));
     // Ensure we limit the stepping range to something sensible.
     let return_address = get_return_address(core)?;
     let terminating_address = sequence.last_halt_instruction.unwrap_or(return_address);
 
-    let proposed_halt_location = if candidate_haltpoints.is_empty() {
+    if candidate_haltpoints.is_empty() {
         // We've run out of valid lines in the current sequence, so can just step to the last statement in the sequence..
         VerifiedBreakpoint::for_address(debug_info, terminating_address)
     } else {
@@ -261,13 +305,6 @@ fn get_step_over_location(
         let (_, next_line_address) =
             step_to_next_line(&candidate_haltpoints, core, terminating_address)?;
         VerifiedBreakpoint::for_address(debug_info, next_line_address)
-    }?;
-    // In the cases where we are trying to step over the last statement in a sequence,
-    // we should instead step out.
-    if proposed_halt_location.address == program_counter {
-        get_step_out_location(debug_info, program_counter, core, return_address)
-    } else {
-        Ok(proposed_halt_location)
     }
 }
 
@@ -403,7 +440,7 @@ fn step_to_next_line(
         .read_core_reg(core.program_counter().id())?
         .try_into()?;
 
-    while program_counter != terminating_address {
+    while program_counter <= terminating_address {
         if available_source_locations
             .iter()
             .any(|instruction| instruction.address == program_counter)
@@ -420,7 +457,6 @@ fn step_to_next_line(
 }
 
 /// After stepping, ensure that the core didn't halt for some other reason.
-// TODO: Figure out why we often see HaltReason::Request after stepping.
 fn validate_core_status_after_step(core: &mut impl CoreInterface) -> ControlFlow<DebugError, ()> {
     if let Ok(Some(exception_info)) = check_for_exception(core) {
         let message = format!(

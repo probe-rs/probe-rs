@@ -91,7 +91,6 @@ impl SourceLocation {
 pub(crate) fn line_sequences_for_path<'a>(
     debug_info: &'a DebugInfo,
     path: &TypedPathBuf,
-    address_filter: Option<u64>,
 ) -> Vec<(Sequence<'a>, Option<u64>)> {
     let mut line_sequences_for_path = Vec::new();
     for program_unit in debug_info.unit_infos.as_slice() {
@@ -125,18 +124,8 @@ pub(crate) fn line_sequences_for_path<'a>(
             else {
                 continue;
             };
-            let filtered_sequences = line_sequences
-                .iter()
-                .filter(|sequence| {
-                    address_filter
-                        .map(|address_filter| {
-                            sequence.start <= address_filter && sequence.end > address_filter
-                        })
-                        // If the filter is not set, we return all sequences.
-                        .unwrap_or(true)
-                })
-                .collect::<Vec<_>>();
-            for line_sequence in &filtered_sequences {
+            // Return all the sequences for the matching file index.
+            for line_sequence in &line_sequences {
                 if let Ok(sequence) = Sequence::from_line_sequence(
                     debug_info,
                     program_unit,
@@ -149,4 +138,35 @@ pub(crate) fn line_sequences_for_path<'a>(
         }
     }
     line_sequences_for_path
+}
+
+/// Return the line program sequence which contain the instruction for the given address .
+pub(crate) fn line_sequence_for_address(
+    debug_info: &DebugInfo,
+    address_filter: u64,
+) -> Option<Sequence> {
+    for program_unit in debug_info.unit_infos.as_slice() {
+        let Some(ref line_program) = program_unit.unit.line_program else {
+            continue;
+        };
+        let Ok((complete_line_program, line_sequences)) = line_program.clone().sequences() else {
+            continue;
+        };
+        if let Some(sequence) = line_sequences
+            .iter()
+            .find(|sequence| sequence.start <= address_filter && sequence.end > address_filter)
+            .and_then(|sequence| {
+                Sequence::from_line_sequence(
+                    debug_info,
+                    program_unit,
+                    complete_line_program.clone(),
+                    sequence,
+                )
+                .ok()
+            })
+        {
+            return Some(sequence);
+        }
+    }
+    None
 }

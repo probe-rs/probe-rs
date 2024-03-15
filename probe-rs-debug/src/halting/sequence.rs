@@ -28,7 +28,7 @@ pub(crate) struct Sequence<'debug_info> {
     ///   which may also be the first instruction in a new function.
     pub(crate) address_range: Range<u64>,
     /// Identify the last valid halt location in the sequence. This is not the same as the
-    /// start of epilogue, which may occurr more than once in a sequence.
+    /// start of epilogue, which may occur more than once in a sequence.
     pub(crate) last_halt_instruction: Option<u64>,
     /// See [`Block`].
     /// Note: The process of recursing the line sequence to create blocks,
