@@ -1660,13 +1660,11 @@ impl<P: ProtocolAdapter> DebugAdapter<P> {
             Ok((new_status, program_counter)) => (new_status, program_counter),
             Err(error) => match &error {
                 probe_rs::debug::DebugError::WarnAndContinue { message } => {
+                    let message = format!("{message} Consider using a different step type, or use breakpoints to force a halt at a specific location.");
+                    self.show_message(MessageSeverity::Information, message);
                     let pc_at_error = target_core
                         .core
                         .read_core_reg(target_core.core.program_counter())?;
-                    self.show_message(
-                        MessageSeverity::Information,
-                        format!("Step error @{pc_at_error:#010X}: {message}"),
-                    );
                     (target_core.core.status()?, pc_at_error)
                 }
                 other_error => {
