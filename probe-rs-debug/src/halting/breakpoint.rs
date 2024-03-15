@@ -40,9 +40,8 @@ impl VerifiedBreakpoint {
             return Ok(verified_breakpoint);
         }
         // If we get here, we have not found a valid breakpoint location.
-        let message = format!(
-            "Could not identify a valid breakpoint for address: {address:#010x}. Please consider using instruction level stepping."
-        );
+        let message =
+            format!("Could not identify a valid breakpoint for address: {address:#010x}.");
         Err(DebugError::WarnAndContinue { message })
     }
 

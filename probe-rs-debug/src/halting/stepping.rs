@@ -52,10 +52,6 @@ impl Stepping {
     /// - Currently, no special provision is made for the effect of interrupts that get triggered
     ///   during stepping. The user must ensure that interrupts are disabled during stepping, or
     ///   accept that stepping may be diverted by the interrupt processing on the core.
-    /// ### About errors returned:
-    /// Sometimes the target program_counter is at a location where the debug_info program row data does not contain valid statements
-    /// for halt points, and we will return a `DebugError::NoValidHaltLocation`. In this case, we recommend the consumer of this API step the core to the next instruction
-    /// and try again, with a reasonable retry limit. All other error kinds are should be treated as non recoverable errors.
     pub fn step(
         &self,
         core: &mut impl CoreInterface,
@@ -133,7 +129,7 @@ fn get_step_into_location(
             return Err(debug_error);
         }
     }
-    let message = "Could not step into the current statement. Please consider using `step over`, or instruction level stepping.".to_string();
+    let message = "Could not step into the current statement.".to_string();
     Err(DebugError::WarnAndContinue { message })
 }
 
@@ -229,7 +225,7 @@ fn get_step_out_location(
             let sequence = Sequence::from_address(debug_info, program_counter)?;
 
             let Some(last_sequence_haltpoint) = sequence.last_halt_instruction else {
-                let message = format!("No valid halt location found in the sequence for the return address: {return_address:#010x}. Please consider using a different step action.");
+                let message = format!("No valid halt location found in the sequence for the return address: {return_address:#010x}.");
                 return Err(DebugError::WarnAndContinue { message });
             };
 
@@ -290,7 +286,7 @@ fn get_step_over_location(
     candidate_haltpoints.extend(sequence.blocks.iter().flat_map(|block| {
         block.instructions.iter().filter(|instruction| {
             instruction.role.is_halt_location()
-                && instruction.address > current_halt_location.address
+                && instruction.address >= current_halt_location.address
         })
     }));
     // Ensure we limit the stepping range to something sensible.

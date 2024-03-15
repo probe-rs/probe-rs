@@ -118,7 +118,7 @@ impl<'debug_info> Sequence<'debug_info> {
                 line_program.header().address_size(),
             )
         } else {
-            let message = "The specified source location does not have any line_program information available. Please consider using instruction level stepping.".to_string();
+            let message = "The specified source location does not have any line_program information available.".to_string();
             return Err(DebugError::WarnAndContinue { message });
         };
 
@@ -133,7 +133,9 @@ impl<'debug_info> Sequence<'debug_info> {
         let Some(line_sequence) = line_sequences.iter().find(|line_sequence| {
             line_sequence.start <= program_counter && program_counter < line_sequence.end
         }) else {
-            let message = "The specified source location does not have any line information available. Please consider using instruction level stepping.".to_string();
+            let message =
+                "The specified source location does not have any line information available."
+                    .to_string();
             return Err(DebugError::WarnAndContinue { message });
         };
         let sequence = Self::from_line_sequence(
@@ -144,7 +146,8 @@ impl<'debug_info> Sequence<'debug_info> {
         )?;
 
         if sequence.len() == 0 {
-            let message = "Could not find valid instruction locations for this address. Consider using instruction level stepping.".to_string();
+            let message =
+                "Could not find valid instruction locations for this address.".to_string();
             Err(DebugError::WarnAndContinue { message })
         } else {
             tracing::trace!(
