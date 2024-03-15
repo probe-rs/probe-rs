@@ -594,7 +594,7 @@ impl CoreInterface for Core<'_> {
     }
 
     fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
-        self.available_breakpoint_units()
+        self.inner.available_breakpoint_units()
     }
 
     fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
