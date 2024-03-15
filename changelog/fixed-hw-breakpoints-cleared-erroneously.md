@@ -1,0 +1,1 @@
+The  `impl<'probe> CoreInterface for Core<'probe>` for `fn probe_rs::core::Core::clear_hw_breakpoint(&mut self, unit_index: usize)` silently ignored the `unit_index` parameter, and cleared all breakpoints. This caused user breakpoints to be lost during debug stepping.

@@ -810,7 +810,7 @@ impl<'probe> CoreInterface for Core<'probe> {
     }
 
     fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
-        self.available_breakpoint_units()
+        self.inner.available_breakpoint_units()
     }
 
     fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
@@ -821,12 +821,12 @@ impl<'probe> CoreInterface for Core<'probe> {
         self.enable_breakpoints(state)
     }
 
-    fn set_hw_breakpoint(&mut self, _unit_index: usize, addr: u64) -> Result<(), Error> {
-        self.set_hw_breakpoint(addr)
+    fn set_hw_breakpoint(&mut self, unit_index: usize, addr: u64) -> Result<(), Error> {
+        self.inner.set_hw_breakpoint(unit_index, addr)
     }
 
-    fn clear_hw_breakpoint(&mut self, _unit_index: usize) -> Result<(), Error> {
-        self.clear_all_hw_breakpoints()
+    fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error> {
+        self.inner.clear_hw_breakpoint(unit_index)
     }
 
     fn registers(&self) -> &'static registers::CoreRegisters {
