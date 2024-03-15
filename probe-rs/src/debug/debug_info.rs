@@ -591,8 +591,9 @@ impl DebugInfo {
                     );
                     None
                 }
-                Err(e) => {
-                    tracing::warn!("UNWIND: Error while checking for exception context. The stack trace will not include the calling frames. : {}", e);
+                Err(_e) => {
+                    //TODO: readd this log and make it less noisy
+                    //tracing::warn!("UNWIND: Error while checking for exception context. The stack trace will not include the calling frames. : {}", e);
                     None
                 }
             };
