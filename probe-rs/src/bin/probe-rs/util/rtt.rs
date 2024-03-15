@@ -35,7 +35,7 @@ pub fn attach_to_rtt(
 
     if let Ok(mut file) = File::open(elf_file) {
         if let Some(address) = RttActiveTarget::get_rtt_symbol(&mut file) {
-            exact_rtt_region = ScanRegion::Exact(address as u32);
+            exact_rtt_region = ScanRegion::Exact(address);
             rtt_region = &exact_rtt_region;
         }
     }

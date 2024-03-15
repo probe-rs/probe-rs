@@ -88,7 +88,7 @@ use std::ops::Range;
 ///         * RTT Channel names are correct, but no data, or corrupted data, will be reported from RTT, because the buffer sizes are incorrect.
 #[derive(Debug)]
 pub struct Rtt {
-    ptr: u32,
+    ptr: u64,
 
     /// The detected up (target to host) channels.
     pub up_channels: Channels<UpChannel>,
@@ -115,27 +115,45 @@ impl Rtt {
 
     // Minimum size of the ControlBlock struct in target memory in bytes with empty arrays
     const MIN_SIZE: usize = Self::O_CHANNEL_ARRAYS;
+    const MIN_SIZE_64: usize = Self::O_CHANNEL_ARRAYS_64;
 
     // Offsets of fields in target memory in bytes
     const O_ID: usize = 0;
     const O_MAX_UP_CHANNELS: usize = 16;
     const O_MAX_DOWN_CHANNELS: usize = 20;
+    const O_MAX_DOWN_CHANNELS_64: usize = 24;
     const O_CHANNEL_ARRAYS: usize = 24;
+    const O_CHANNEL_ARRAYS_64: usize = 32;
 
     fn from(
         core: &mut Core,
         memory_map: &[MemoryRegion],
         // Pointer from which to scan
-        ptr: u32,
+        ptr: u64,
         // Memory contents read in advance, starting from ptr
         mem_in: Option<&[u8]>,
     ) -> Result<Option<Rtt>, Error> {
+        let is_64bit = match core.instruction_set()? {
+            probe_rs_target::InstructionSet::Thumb2
+            | probe_rs_target::InstructionSet::A32
+            | probe_rs_target::InstructionSet::RV32
+            | probe_rs_target::InstructionSet::RV32C
+            | probe_rs_target::InstructionSet::Xtensa => false,
+            probe_rs_target::InstructionSet::A64 => true,
+        };
         let mut mem = match mem_in {
             Some(mem) => Cow::Borrowed(mem),
             None => {
                 // If memory wasn't passed in, read the minimum header size
-                let mut mem = vec![0u8; Self::MIN_SIZE];
-                core.read(ptr.into(), &mut mem)?;
+                let mut mem = vec![
+                    0u8;
+                    if is_64bit {
+                        Self::MIN_SIZE_64
+                    } else {
+                        Self::MIN_SIZE
+                    }
+                ];
+                core.read(ptr, &mut mem)?;
                 Cow::Owned(mem)
             }
         };
@@ -151,10 +169,19 @@ impl Rtt {
             return Err(Error::ControlBlockNotFound);
         }
 
-        let max_up_channels = mem.pread_with::<u32>(Self::O_MAX_UP_CHANNELS, LE).unwrap() as usize;
-        let max_down_channels = mem
-            .pread_with::<u32>(Self::O_MAX_DOWN_CHANNELS, LE)
-            .unwrap() as usize;
+        let (max_up_channels, max_down_channels) = if is_64bit {
+            (
+                mem.pread_with::<u64>(Self::O_MAX_UP_CHANNELS, LE).unwrap() as usize,
+                mem.pread_with::<u64>(Self::O_MAX_DOWN_CHANNELS_64, LE)
+                    .unwrap() as usize,
+            )
+        } else {
+            (
+                mem.pread_with::<u32>(Self::O_MAX_UP_CHANNELS, LE).unwrap() as usize,
+                mem.pread_with::<u32>(Self::O_MAX_DOWN_CHANNELS, LE)
+                    .unwrap() as usize,
+            )
+        };
 
         // *Very* conservative sanity check, most people only use a handful of RTT channels
         if max_up_channels > 255 || max_down_channels > 255 {
@@ -163,15 +190,26 @@ impl Rtt {
             )));
         }
 
-        let cb_len = Self::O_CHANNEL_ARRAYS + (max_up_channels + max_down_channels) * Channel::SIZE;
+        let cb_len = if is_64bit {
+            Self::O_CHANNEL_ARRAYS_64 + (max_up_channels + max_down_channels) * Channel::SIZE_64
+        } else {
+            Self::O_CHANNEL_ARRAYS + (max_up_channels + max_down_channels) * Channel::SIZE
+        };
 
         if let Cow::Owned(mem) = &mut mem {
             // If memory wasn't passed in, read the rest of the control block
             mem.resize(cb_len, 0);
-            core.read(
-                (ptr + Self::MIN_SIZE as u32).into(),
-                &mut mem[Self::MIN_SIZE..cb_len],
-            )?;
+            if is_64bit {
+                core.read(
+                    ptr + Self::MIN_SIZE_64 as u64,
+                    &mut mem[Self::MIN_SIZE_64..cb_len],
+                )
+            } else {
+                core.read(
+                    ptr + Self::MIN_SIZE as u64,
+                    &mut mem[Self::MIN_SIZE..cb_len],
+                )
+            }?;
         }
 
         // Validate that the entire control block fits within the region
@@ -183,11 +221,20 @@ impl Rtt {
         let mut up_channels = BTreeMap::new();
         let mut down_channels = BTreeMap::new();
 
-        let mut offset = Self::O_CHANNEL_ARRAYS;
+        let mut offset = if is_64bit {
+            Self::O_CHANNEL_ARRAYS_64
+        } else {
+            Self::O_CHANNEL_ARRAYS
+        };
         for i in 0..max_up_channels {
-            if let Some(chan) =
-                Channel::from(core, i, memory_map, ptr + offset as u32, &mem[offset..])?
-            {
+            if let Some(chan) = Channel::from(
+                core,
+                i,
+                memory_map,
+                ptr + offset as u64,
+                &mem[offset..],
+                is_64bit,
+            )? {
                 up_channels.insert(i, UpChannel(chan));
             } else {
                 tracing::warn!("Buffer for up channel {} not initialized", i);
@@ -196,9 +243,14 @@ impl Rtt {
         }
 
         for i in 0..max_down_channels {
-            if let Some(chan) =
-                Channel::from(core, i, memory_map, ptr + offset as u32, &mem[offset..])?
-            {
+            if let Some(chan) = Channel::from(
+                core,
+                i,
+                memory_map,
+                ptr + offset as u64,
+                &mem[offset..],
+                is_64bit,
+            )? {
                 down_channels.insert(i, DownChannel(chan));
             } else {
                 tracing::warn!("Buffer for down channel {} not initialized", i);
@@ -230,6 +282,14 @@ impl Rtt {
         memory_map: &[MemoryRegion],
         region: &ScanRegion,
     ) -> Result<Rtt, Error> {
+        let is_64bit = match core.instruction_set()? {
+            probe_rs_target::InstructionSet::Thumb2
+            | probe_rs_target::InstructionSet::A32
+            | probe_rs_target::InstructionSet::RV32
+            | probe_rs_target::InstructionSet::RV32C
+            | probe_rs_target::InstructionSet::Xtensa => false,
+            probe_rs_target::InstructionSet::A64 => true,
+        };
         let ranges: Vec<Range<u64>> = match region {
             ScanRegion::Exact(addr) => {
                 tracing::debug!("Scanning at exact address: 0x{:X}", addr);
@@ -266,7 +326,7 @@ impl Rtt {
             .into_iter()
             .filter_map(|range| {
                 let range_len = match range.end.checked_sub(range.start) {
-                    Some(v) => if v < (Self::MIN_SIZE as u64) {
+                    Some(v) => if v < (if is_64bit {Self::MIN_SIZE_64} else {Self::MIN_SIZE} as u64) {
                         return None;
                     } else {
                         v
@@ -294,16 +354,6 @@ impl Rtt {
                 match kmp::kmp_find(&Self::RTT_ID, mem.as_slice()) {
                     Some(offset) => {
                         let target_ptr = range.start + (offset as u64);
-                        let target_ptr: u32 = match target_ptr.try_into() {
-                            Ok(v) => v,
-                            Err(_) => {
-                                // FIXME: The RTT API currently supports only
-                                // 32-bit addresses, and so it can't accept
-                                // an RTT block at an address >4GiB.
-                                tracing::warn!("can't use RTT block at {:#010x}; must be at a location reachable by 32-bit addressing", target_ptr);
-                                return None;
-                            },
-                        };
 
                         Rtt::from(
                             core,
@@ -332,7 +382,7 @@ impl Rtt {
     }
 
     /// Returns the memory address of the control block in target memory.
-    pub fn ptr(&self) -> u32 {
+    pub fn ptr(&self) -> u64 {
         self.ptr
     }
 
@@ -361,7 +411,7 @@ pub enum ScanRegion {
     /// This variant is equivalent to using [`Self::Ranges`] with a single range as long as the
     /// memory region fits into a 32-bit address space. This variant is for backward compatibility
     /// for code written before the addition of [`Self::Ranges`].
-    Range(Range<u32>),
+    Range(Range<u64>),
 
     /// Limit scanning to the memory addresses covered by all of the given ranges. It is up to the
     /// user to ensure that reading from this range will not read from undefined memory.
@@ -370,7 +420,7 @@ pub enum ScanRegion {
     /// Tries to find the control block starting at this exact address. It is up to the user to
     /// ensure that reading the necessary bytes after the pointer will no read from undefined
     /// memory.
-    Exact(u32),
+    Exact(u64),
 }
 
 /// Error type for RTT operations.
@@ -384,7 +434,7 @@ pub enum Error {
     ControlBlockNotFound,
 
     /// Multiple control blocks found in target memory: {display_list(_0)}.
-    MultipleControlBlocksFound(Vec<u32>),
+    MultipleControlBlocksFound(Vec<u64>),
 
     /// The control block has been corrupted. {0}
     ControlBlockCorrupted(String),
@@ -399,7 +449,7 @@ pub enum Error {
     MemoryRead(String),
 }
 
-fn display_list(list: &[u32]) -> String {
+fn display_list(list: &[u64]) -> String {
     list.iter()
         .map(|x| format!("{:#x}", x))
         .collect::<Vec<_>>()

@@ -20,10 +20,11 @@ pub trait RttChannel {
 pub(crate) struct Channel {
     number: usize,
     core_id: usize,
-    ptr: u32,
+    ptr: u64,
     name: Option<String>,
-    buffer_ptr: u32,
-    size: u32,
+    buffer_ptr: u64,
+    size: u64,
+    is_64bit: bool,
 }
 
 // Chanels must follow this data layout when reading/writing memory in order to be compatible with
@@ -42,6 +43,7 @@ pub(crate) struct Channel {
 impl Channel {
     // Size of the Channel struct in target memory in bytes
     pub(crate) const SIZE: usize = 24;
+    pub(crate) const SIZE_64: usize = 48;
 
     // Offsets of fields in target memory in bytes
     const O_NAME: usize = 0;
@@ -50,17 +52,29 @@ impl Channel {
     const O_WRITE: usize = 12;
     const O_READ: usize = 16;
     const O_FLAGS: usize = 20;
+    const O_BUFFER_PTR_64: usize = 8;
+    const O_SIZE_64: usize = 16;
+    const O_WRITE_64: usize = 24;
+    const O_READ_64: usize = 32;
+    const O_FLAGS_64: usize = 40;
 
     pub(crate) fn from(
         core: &mut Core,
         number: usize,
         memory_map: &[MemoryRegion],
-        ptr: u32,
+        ptr: u64,
         mem: &[u8],
+        is_64bit: bool,
     ) -> Result<Option<Channel>, Error> {
-        let buffer_ptr: u32 = match mem.pread_with(Self::O_BUFFER_PTR, LE) {
-            Ok(buffer_ptr) => buffer_ptr,
-            Err(_error) => return Err(Error::MemoryRead("RTT channel address".to_string())),
+        let buffer_ptr: u64 = match if is_64bit {
+            let p: Result<u64, scroll::Error> = mem.pread_with(Self::O_BUFFER_PTR_64, LE);
+            p
+        } else {
+            let p: Result<u32, scroll::Error> = mem.pread_with(Self::O_BUFFER_PTR, LE);
+            p.map(|p32| u64::from(p32))
+        } {
+            Ok(p) => p,
+            Err(_e) => return Err(super::Error::MemoryRead("RTT channel address".to_string())),
         };
 
         if buffer_ptr == 0 {
@@ -68,9 +82,16 @@ impl Channel {
             return Ok(None);
         }
 
-        let name_ptr: u32 = match mem.pread_with(Self::O_NAME, LE) {
-            Ok(name_ptr) => name_ptr,
-            Err(_error) => return Err(Error::MemoryRead("RTT channel name".to_string())),
+        // TODO ここの仕組みを直したい
+        let name_ptr: u64 = match if is_64bit {
+            let p: Result<u64, scroll::Error> = mem.pread_with(Self::O_NAME, LE);
+            p
+        } else {
+            let p: Result<u32, scroll::Error> = mem.pread_with(Self::O_NAME, LE);
+            p.map(|p32| u64::from(p32))
+        } {
+            Ok(p) => p,
+            Err(_e) => return Err(super::Error::MemoryRead("RTT channel name".to_string())),
         };
 
         let name = if name_ptr == 0 {
@@ -79,13 +100,21 @@ impl Channel {
             read_c_string(core, memory_map, name_ptr)?
         };
 
+        let size: u64 = if is_64bit {
+            mem.pread_with(Self::O_SIZE_64, LE).unwrap()
+        } else {
+            let s: u32 = mem.pread_with(Self::O_SIZE, LE).unwrap();
+            s.into()
+        };
+
         Ok(Some(Channel {
             number,
             core_id: core.id(),
             ptr,
             name,
             buffer_ptr,
-            size: mem.pread_with(Self::O_SIZE, LE).unwrap(),
+            size,
+            is_64bit,
         }))
     }
 
@@ -106,13 +135,18 @@ impl Channel {
         self.size as usize
     }
 
-    fn read_pointers(&self, core: &mut Core, dir: &'static str) -> Result<(u32, u32), Error> {
+    fn read_pointers(&self, core: &mut Core, dir: &'static str) -> Result<(u64, u64), Error> {
         self.validate_core_id(core)?;
-        let mut block = [0u32; 2];
-        core.read_32((self.ptr + Self::O_WRITE as u32).into(), block.as_mut())?;
 
-        let write: u32 = block[0];
-        let read: u32 = block[1];
+        let (write, read): (u64, u64) = if self.is_64bit {
+            let mut block = [0u64; 2];
+            core.read_64((self.ptr + Self::O_WRITE_64 as u64).into(), block.as_mut())?;
+            (block[0], block[1])
+        } else {
+            let mut block = [0u32; 2];
+            core.read_32((self.ptr + Self::O_WRITE as u64).into(), block.as_mut())?;
+            (u64::from(block[0]), u64::from(block[1]))
+        };
 
         let validate = |which, value| {
             if value >= self.size {
@@ -164,7 +198,11 @@ impl UpChannel {
     pub fn mode(&self, core: &mut Core) -> Result<ChannelMode, Error> {
         self.0.validate_core_id(core)?;
 
-        let flags = core.read_word_32((self.0.ptr + Channel::O_FLAGS as u32).into())?;
+        let flags = if self.0.is_64bit {
+            core.read_word_64((self.0.ptr + Channel::O_FLAGS_64 as u64).into())?
+        } else {
+            u64::from(core.read_word_32((self.0.ptr + Channel::O_FLAGS as u64).into())?)
+        };
 
         match flags & 0x3 {
             0 => Ok(ChannelMode::NoBlockSkip),
@@ -181,15 +219,26 @@ impl UpChannel {
     /// See [`ChannelMode`] for more information on what the modes mean.
     pub fn set_mode(&self, core: &mut Core, mode: ChannelMode) -> Result<(), Error> {
         self.0.validate_core_id(core)?;
-        let flags = core.read_word_32((self.0.ptr + Channel::O_FLAGS as u32).into())?;
+        let flags = if self.0.is_64bit {
+            core.read_word_64((self.0.ptr + Channel::O_FLAGS_64 as u64).into())?
+        } else {
+            u64::from(core.read_word_32((self.0.ptr + Channel::O_FLAGS as u64).into())?)
+        };
 
-        let new_flags = (flags & !3) | (mode as u32);
-        core.write_word_32((self.0.ptr + Channel::O_FLAGS as u32).into(), new_flags)?;
+        let new_flags = (flags & !3) | (mode as u64);
+        if self.0.is_64bit {
+            core.write_word_64((self.0.ptr + Channel::O_FLAGS_64 as u64).into(), new_flags)?
+        } else {
+            core.write_word_32(
+                (self.0.ptr + Channel::O_FLAGS as u64).into(),
+                new_flags as u32,
+            )?
+        };
 
         Ok(())
     }
 
-    fn read_core(&self, core: &mut Core, mut buf: &mut [u8]) -> Result<(u32, usize), Error> {
+    fn read_core(&self, core: &mut Core, mut buf: &mut [u8]) -> Result<(u64, usize), Error> {
         self.0.validate_core_id(core)?;
         let (write, mut read) = self.0.read_pointers(core, "up")?;
 
@@ -205,7 +254,7 @@ impl UpChannel {
             core.read((self.0.buffer_ptr + read).into(), &mut buf[..count])?;
 
             total += count;
-            read += count as u32;
+            read += count as u64;
 
             if read >= self.0.size {
                 // Wrap around to start
@@ -229,7 +278,11 @@ impl UpChannel {
 
         if total > 0 {
             // Write read pointer back to target if something was read
-            core.write_word_32((self.0.ptr + Channel::O_READ as u32).into(), read)?;
+            if self.0.is_64bit {
+                core.write_word_64((self.0.ptr + Channel::O_READ_64 as u64).into(), read)?;
+            } else {
+                core.write_word_32((self.0.ptr + Channel::O_READ as u64).into(), read as u32)?;
+            }
         }
 
         Ok(total)
@@ -246,7 +299,7 @@ impl UpChannel {
     }
 
     /// Calculates amount of contiguous data available for reading
-    fn readable_contiguous(&self, write: u32, read: u32) -> usize {
+    fn readable_contiguous(&self, write: u64, read: u64) -> usize {
         (if read > write {
             self.0.size - read
         } else {
@@ -315,7 +368,7 @@ impl DownChannel {
             core.write_8((self.0.buffer_ptr + write).into(), &buf[..count])?;
 
             total += count;
-            write += count as u32;
+            write += count as u64;
 
             if write >= self.0.size {
                 // Wrap around to start
@@ -326,13 +379,17 @@ impl DownChannel {
         }
 
         // Write write pointer back to target
-        core.write_word_32((self.0.ptr + Channel::O_WRITE as u32).into(), write)?;
+        if self.0.is_64bit {
+            core.write_word_64(self.0.ptr + Channel::O_WRITE_64 as u64, write)?;
+        } else {
+            core.write_word_32(self.0.ptr + Channel::O_WRITE as u64, write as u32)?;
+        }
 
         Ok(total)
     }
 
     /// Calculates amount of contiguous space available for writing
-    fn writable_contiguous(&self, write: u32, read: u32) -> usize {
+    fn writable_contiguous(&self, write: u64, read: u64) -> usize {
         (if read > write {
             read - write - 1
         } else if read == 0 {
@@ -361,7 +418,7 @@ impl RttChannel for DownChannel {
 fn read_c_string(
     core: &mut Core,
     memory_map: &[MemoryRegion],
-    ptr: u32,
+    ptr: u64,
 ) -> Result<Option<String>, Error> {
     // Find out which memory range contains the pointer
     let range = memory_map
@@ -371,7 +428,7 @@ fn read_c_string(
             MemoryRegion::Ram(r) => Some(&r.range),
             _ => None,
         })
-        .find(|r| r.contains(&(ptr as u64)));
+        .find(|r| r.contains(&ptr));
 
     // If the pointer is not within any valid range, return None.
     let range = match range {
@@ -381,7 +438,7 @@ fn read_c_string(
 
     // Read up to 128 bytes not going past the end of the region
     let mut bytes = vec![0u8; min(128, (range.end - ptr as u64) as usize)];
-    core.read(ptr.into(), bytes.as_mut())?;
+    core.read(ptr, bytes.as_mut())?;
 
     let return_value = bytes
         .iter()
