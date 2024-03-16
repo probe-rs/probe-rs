@@ -9,6 +9,7 @@ use crate::architecture::xtensa::communication_interface::{
 use crate::config::{ChipInfo, CoreExt, RegistryError, Target, TargetSelector};
 use crate::core::{Architecture, CombinedCoreState};
 use crate::probe::fake_probe::FakeProbe;
+use crate::probe::ProbeCreationError;
 use crate::{
     architecture::{
         arm::{
@@ -353,7 +354,9 @@ impl Session {
         // Use the first probe found.
         let probe = probes
             .first()
-            .ok_or(Error::UnableToOpenProbe("No probe was found"))?
+            .ok_or(Error::Probe(DebugProbeError::ProbeCouldNotBeCreated(
+                ProbeCreationError::NotFound,
+            )))?
             .open()?;
 
         // Attach to a chip.
@@ -547,9 +550,9 @@ impl Session {
     /// Err(e) if the custom erase sequence failed
     pub fn sequence_erase_all(&mut self) -> Result<(), Error> {
         let ArchitectureInterface::Arm(ref mut interface) = self.interface else {
-            return Err(Error::Probe(DebugProbeError::NotImplemented(
-                "Debug Erase Sequence",
-            )));
+            return Err(Error::Probe(DebugProbeError::NotImplemented {
+                function_name: "Debug Erase Sequence",
+            }));
         };
 
         let DebugSequence::Arm(ref debug_sequence) = self.target.debug_sequence else {
@@ -557,9 +560,9 @@ impl Session {
         };
 
         let Some(erase_sequence) = debug_sequence.debug_erase_sequence() else {
-            return Err(Error::Probe(DebugProbeError::NotImplemented(
-                "Debug Erase Sequence",
-            )));
+            return Err(Error::Probe(DebugProbeError::NotImplemented {
+                function_name: "Debug Erase Sequence",
+            }));
         };
 
         tracing::info!("Trying Debug Erase Sequence");

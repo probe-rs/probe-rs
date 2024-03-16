@@ -33,11 +33,10 @@ pub fn attach_to_rtt(
     let exact_rtt_region;
     let mut rtt_region = rtt_region;
 
-    if let Ok(mut file) = File::open(elf_file) {
-        if let Some(address) = RttActiveTarget::get_rtt_symbol(&mut file) {
-            exact_rtt_region = ScanRegion::Exact(address);
-            rtt_region = &exact_rtt_region;
-        }
+    let mut file = File::open(elf_file)?;
+    if let Some(address) = RttActiveTarget::get_rtt_symbol(&mut file) {
+        exact_rtt_region = ScanRegion::Exact(address);
+        rtt_region = &exact_rtt_region;
     }
 
     tracing::info!("Initializing RTT");

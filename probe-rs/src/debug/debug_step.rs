@@ -260,7 +260,10 @@ impl SteppingMode {
                             function.high_pc()
                         );
 
-                        if function.attribute(gimli::DW_AT_noreturn).is_some() {
+                        if function
+                            .attribute(debug_info, gimli::DW_AT_noreturn)
+                            .is_some()
+                        {
                             return Err(DebugError::Other(anyhow::anyhow!(
                                 "Function {:?} is marked as `noreturn`. Cannot step out of this function.",
                                 function.function_name(debug_info).as_deref().unwrap_or("<unknown>")
