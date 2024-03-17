@@ -8,7 +8,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use probe_rs::debug::{DebugInfo, DebugRegisters};
 use probe_rs::rtt::ScanRegion;
 use probe_rs::{
@@ -134,7 +134,7 @@ fn detect_run_mode(cmd: &Cmd) -> Result<Box<dyn RunMode>, anyhow::Error> {
     // - TestRunMode (runs embedded-test)
     // - SemihostingArgsRunMode (passes arguments to the target via semihosting)
 
-    Ok(NormalRunMode::new(&cmd.run_options))
+    Ok(NormalRunMode::new(cmd.run_options.clone()))
 }
 
 struct RunLoop {
@@ -151,7 +151,7 @@ struct RunLoop {
 enum ReturnReason<R> {
     /// The user pressed CTRL +C
     User,
-    /// The predicated requested a return
+    /// The predicate requested a return
     Predicate(R),
     /// Timeout elapsed
     Timeout,
@@ -163,6 +163,7 @@ impl RunLoop {
     /// Upon halt the predicate is invoked with the halt reason:
     /// * If the predicate returns `Ok(Some(r))` the run loop returns `Ok(ReturnReason::Predicate(r))`.
     /// * If the predicate returns `Ok(None)` the run loop will continue running the core.
+    /// * If the predicate returns `Err(e)` the run loop will return `Err(e)`.
     ///
     /// The function will also return on timeout with `Ok(ReturnReason::Timeout)` or if the user presses CTRL + C with `Ok(ReturnReason::User)`.
     fn run_until<F, R>(
@@ -221,23 +222,25 @@ impl RunLoop {
         let sig_id = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
 
         let mut stdout = std::io::stdout();
-        let mut halt_reason = None;
-        let mut timeouted = false;
-        while !exit.load(Ordering::Relaxed) && halt_reason.is_none() {
+        let mut return_reason = None;
+        while !exit.load(Ordering::Relaxed) && return_reason.is_none() {
             // check for halt first, poll rtt after.
             // this is important so we do one last poll after halt, so we flush all messages
             // the core printed before halting, such as a panic message.
             match core.status()? {
                 probe_rs::CoreStatus::Halted(reason) => match predicate(reason, core) {
-                    Ok(Some(r)) => halt_reason = Some(Ok(r)),
-                    Err(e) => halt_reason = Some(Err(e)),
+                    Ok(Some(r)) => return_reason = Some(Ok(ReturnReason::Predicate(r))),
+                    Err(e) => return_reason = Some(Err(e)),
                     Ok(None) => core.run()?,
                 },
                 probe_rs::CoreStatus::Running
-                | probe_rs::CoreStatus::LockedUp
                 | probe_rs::CoreStatus::Sleeping
                 | probe_rs::CoreStatus::Unknown => {
                     // Carry on
+                }
+
+                probe_rs::CoreStatus::LockedUp => {
+                    return Err(anyhow!("The core is locked up."));
                 }
             }
 
@@ -245,7 +248,8 @@ impl RunLoop {
 
             match timeout {
                 Some(timeout) if start.elapsed() >= timeout => {
-                    timeouted = true;
+                    core.halt(Duration::from_secs(1))?;
+                    return_reason = Some(Ok(ReturnReason::Timeout));
                     break;
                 }
                 _ => {}
@@ -263,25 +267,18 @@ impl RunLoop {
             }
         }
 
-        let result = match halt_reason {
+        let return_reason = match return_reason {
             None => {
+                // manually halted with Control+C. Stop the core.
                 core.halt(Duration::from_secs(1))?;
-                if timeouted {
-                    Ok(ReturnReason::Timeout)
-                } else {
-                    // manually halted with Control+C. Stop the core.
-                    Ok(ReturnReason::User)
-                }
+                Ok(ReturnReason::User)
             }
-            Some(reason) => match reason {
-                Ok(r) => Ok(ReturnReason::Predicate(r)),
-                Err(e) => Err(e),
-            },
+            Some(r) => r,
         };
 
         if self.always_print_stacktrace
-            || result.is_err()
-            || matches!(result, Ok(ReturnReason::Timeout))
+            || return_reason.is_err()
+            || matches!(return_reason, Ok(ReturnReason::Timeout))
         {
             print_stacktrace(core, self.path.as_path())?;
         }
@@ -289,7 +286,7 @@ impl RunLoop {
         signal_hook::low_level::unregister(sig_id);
         signal_hook::flag::register_conditional_default(signal::SIGINT, exit)?;
 
-        result
+        return_reason
     }
 }
 

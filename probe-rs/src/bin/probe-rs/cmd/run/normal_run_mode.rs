@@ -19,10 +19,8 @@ pub struct NormalRunMode {
 }
 
 impl NormalRunMode {
-    pub fn new(run_options: &NormalRunOptions) -> Box<Self> {
-        Box::new(NormalRunMode {
-            run_options: run_options.clone(),
-        })
+    pub fn new(run_options: NormalRunOptions) -> Box<Self> {
+        Box::new(NormalRunMode { run_options })
     }
 }
 impl RunMode for NormalRunMode {
