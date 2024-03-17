@@ -71,7 +71,7 @@ impl Channel {
             p
         } else {
             let p: Result<u32, scroll::Error> = mem.pread_with(Self::O_BUFFER_PTR, LE);
-            p.map(|p32| u64::from(p32))
+            p.map(u64::from)
         } {
             Ok(p) => p,
             Err(_e) => return Err(super::Error::MemoryRead("RTT channel address".to_string())),
@@ -88,7 +88,7 @@ impl Channel {
             p
         } else {
             let p: Result<u32, scroll::Error> = mem.pread_with(Self::O_NAME, LE);
-            p.map(|p32| u64::from(p32))
+            p.map(u64::from)
         } {
             Ok(p) => p,
             Err(_e) => return Err(super::Error::MemoryRead("RTT channel name".to_string())),
@@ -140,11 +140,11 @@ impl Channel {
 
         let (write, read): (u64, u64) = if self.is_64bit {
             let mut block = [0u64; 2];
-            core.read_64((self.ptr + Self::O_WRITE_64 as u64).into(), block.as_mut())?;
+            core.read_64(self.ptr + Self::O_WRITE_64 as u64, block.as_mut())?;
             (block[0], block[1])
         } else {
             let mut block = [0u32; 2];
-            core.read_32((self.ptr + Self::O_WRITE as u64).into(), block.as_mut())?;
+            core.read_32(self.ptr + Self::O_WRITE as u64, block.as_mut())?;
             (u64::from(block[0]), u64::from(block[1]))
         };
 
@@ -199,9 +199,9 @@ impl UpChannel {
         self.0.validate_core_id(core)?;
 
         let flags = if self.0.is_64bit {
-            core.read_word_64((self.0.ptr + Channel::O_FLAGS_64 as u64).into())?
+            core.read_word_64(self.0.ptr + Channel::O_FLAGS_64 as u64)?
         } else {
-            u64::from(core.read_word_32((self.0.ptr + Channel::O_FLAGS as u64).into())?)
+            u64::from(core.read_word_32(self.0.ptr + Channel::O_FLAGS as u64)?)
         };
 
         match flags & 0x3 {
@@ -220,19 +220,16 @@ impl UpChannel {
     pub fn set_mode(&self, core: &mut Core, mode: ChannelMode) -> Result<(), Error> {
         self.0.validate_core_id(core)?;
         let flags = if self.0.is_64bit {
-            core.read_word_64((self.0.ptr + Channel::O_FLAGS_64 as u64).into())?
+            core.read_word_64(self.0.ptr + Channel::O_FLAGS_64 as u64)?
         } else {
-            u64::from(core.read_word_32((self.0.ptr + Channel::O_FLAGS as u64).into())?)
+            u64::from(core.read_word_32(self.0.ptr + Channel::O_FLAGS as u64)?)
         };
 
         let new_flags = (flags & !3) | (mode as u64);
         if self.0.is_64bit {
-            core.write_word_64((self.0.ptr + Channel::O_FLAGS_64 as u64).into(), new_flags)?
+            core.write_word_64(self.0.ptr + Channel::O_FLAGS_64 as u64, new_flags)?
         } else {
-            core.write_word_32(
-                (self.0.ptr + Channel::O_FLAGS as u64).into(),
-                new_flags as u32,
-            )?
+            core.write_word_32(self.0.ptr + Channel::O_FLAGS as u64, new_flags as u32)?
         };
 
         Ok(())
@@ -251,7 +248,7 @@ impl UpChannel {
                 break;
             }
 
-            core.read((self.0.buffer_ptr + read).into(), &mut buf[..count])?;
+            core.read(self.0.buffer_ptr + read, &mut buf[..count])?;
 
             total += count;
             read += count as u64;
@@ -279,9 +276,9 @@ impl UpChannel {
         if total > 0 {
             // Write read pointer back to target if something was read
             if self.0.is_64bit {
-                core.write_word_64((self.0.ptr + Channel::O_READ_64 as u64).into(), read)?;
+                core.write_word_64(self.0.ptr + Channel::O_READ_64 as u64, read)?;
             } else {
-                core.write_word_32((self.0.ptr + Channel::O_READ as u64).into(), read as u32)?;
+                core.write_word_32(self.0.ptr + Channel::O_READ as u64, read as u32)?;
             }
         }
 
@@ -365,7 +362,7 @@ impl DownChannel {
                 break;
             }
 
-            core.write_8((self.0.buffer_ptr + write).into(), &buf[..count])?;
+            core.write_8(self.0.buffer_ptr + write, &buf[..count])?;
 
             total += count;
             write += count as u64;
@@ -437,7 +434,7 @@ fn read_c_string(
     };
 
     // Read up to 128 bytes not going past the end of the region
-    let mut bytes = vec![0u8; min(128, (range.end - ptr as u64) as usize)];
+    let mut bytes = vec![0u8; min(128, (range.end - ptr) as usize)];
     core.read(ptr, bytes.as_mut())?;
 
     let return_value = bytes

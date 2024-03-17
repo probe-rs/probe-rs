@@ -316,8 +316,8 @@ impl Rtt {
                 tracing::debug!("Scanning region: {:?}", region);
 
                 vec![Range {
-                    start: region.start as u64,
-                    end: region.end as u64,
+                    start: region.start,
+                    end: region.end,
                 }]
             }
         };
