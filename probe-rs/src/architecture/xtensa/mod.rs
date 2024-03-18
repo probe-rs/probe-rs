@@ -6,12 +6,16 @@ use probe_rs_target::{Architecture, CoreType, InstructionSet};
 
 use crate::{
     architecture::xtensa::{
-        arch::{Register, SpecialRegister},
+        arch::{instruction::Instruction, Register, SpecialRegister},
         communication_interface::{DebugCause, IBreakEn},
         registers::{FP, PC, RA, SP, XTENSA_CORE_REGSISTERS},
     },
-    core::registers::{CoreRegisters, RegisterId, RegisterValue},
-    CoreInformation, CoreInterface, CoreRegister, CoreStatus, Error, MemoryInterface,
+    core::{
+        registers::{CoreRegisters, RegisterId, RegisterValue},
+        BreakpointCause,
+    },
+    semihosting::decode_semihosting_syscall,
+    CoreInformation, CoreInterface, CoreRegister, CoreStatus, Error, HaltReason, MemoryInterface,
 };
 
 use self::communication_interface::XtensaCommunicationInterface;
@@ -100,6 +104,55 @@ impl<'probe> Xtensa<'probe> {
         }
 
         Ok(())
+    }
+
+    /// Check if the current breakpoint is a semihosting call
+    // OpenOCD implementation: https://github.com/espressif/openocd-esp32/blob/93dd01511fd13d4a9fb322cd9b600c337becef9e/src/target/espressif/esp_xtensa_semihosting.c#L42-L103
+    fn check_for_semihosting(
+        old_reason: HaltReason,
+        core: &mut dyn CoreInterface,
+    ) -> Result<HaltReason, Error> {
+        let mut reason = old_reason;
+        let pc: u32 = core.read_core_reg(core.program_counter().id)?.try_into()?;
+
+        let mut actual_instructions = [0u32; 1];
+        core.read_32((pc) as u64, &mut actual_instructions)?;
+        let actual_instructions = actual_instructions[0].to_le_bytes();
+
+        tracing::debug!(
+            "Semihosting check pc={pc:#x} instructions={0:#08x} {1:#08x} {2:#08x} {3:#08x}",
+            actual_instructions[0],
+            actual_instructions[1],
+            actual_instructions[2],
+            actual_instructions[3],
+        );
+
+        let mut expected_instruction = vec![];
+        Instruction::Break(1, 14).encode_into_vec(&mut expected_instruction);
+        let expected_instruction: [u8; 3] = [
+            expected_instruction[0],
+            expected_instruction[1],
+            expected_instruction[2],
+        ];
+
+        tracing::debug!(
+            "Expected instructions={0:#08x} {1:#08x} {2:#08x}",
+            expected_instruction[0],
+            expected_instruction[1],
+            expected_instruction[2]
+        );
+
+        if &actual_instructions[..3] == expected_instruction.as_slice() {
+            let a2: u32 = core.read_core_reg(RegisterId::from(2))?.try_into()?;
+            let a3: u32 = core.read_core_reg(RegisterId::from(3))?.try_into()?;
+
+            tracing::info!("Semihosting found pc={pc:#x} a2={a2:#x} a3={a3:#x}");
+
+            reason = HaltReason::Breakpoint(BreakpointCause::Semihosting(
+                decode_semihosting_syscall(core, a2, a3)?,
+            ));
+        }
+        Ok(reason)
     }
 }
 
@@ -204,7 +257,16 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     fn status(&mut self) -> Result<CoreStatus, Error> {
         let status = if self.core_halted()? {
             let debug_cause = self.interface.read_register::<DebugCause>()?;
-            CoreStatus::Halted(debug_cause.halt_reason())
+            let reason = if debug_cause.halt_reason()
+                == HaltReason::Breakpoint(BreakpointCause::Software)
+                && (debug_cause.break_instruction() || debug_cause.break_n_instruction())
+            {
+                // Check if the breakpoint is a semihosting call
+                Xtensa::check_for_semihosting(debug_cause.halt_reason(), self)?
+            } else {
+                debug_cause.halt_reason()
+            };
+            CoreStatus::Halted(reason)
         } else {
             CoreStatus::Running
         };
