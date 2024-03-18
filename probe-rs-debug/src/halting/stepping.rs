@@ -265,7 +265,6 @@ fn get_step_over_location(
     program_counter: u64,
 ) -> Result<VerifiedBreakpoint, DebugError> {
     let current_halt_location = VerifiedBreakpoint::for_address(debug_info, program_counter)?;
-    let file_path = current_halt_location.source_location.path.clone();
 
     let mut candidate_haltpoints: Vec<Instruction> = Vec::new();
     let Some(sequence) =
@@ -286,7 +285,7 @@ fn get_step_over_location(
     candidate_haltpoints.extend(sequence.blocks.iter().flat_map(|block| {
         block.instructions.iter().filter(|instruction| {
             instruction.role.is_halt_location()
-                && instruction.address >= current_halt_location.address
+                && instruction.address > current_halt_location.address
         })
     }));
     // Ensure we limit the stepping range to something sensible.
@@ -294,8 +293,25 @@ fn get_step_over_location(
     let terminating_address = sequence.last_halt_instruction.unwrap_or(return_address);
 
     if candidate_haltpoints.is_empty() {
-        // We've run out of valid lines in the current sequence, so can just step to the last statement in the sequence..
-        VerifiedBreakpoint::for_address(debug_info, terminating_address)
+        // We've run out of valid lines in the current sequence, so can just step to the last statement in the sequence.
+        let candidate_haltpoint = VerifiedBreakpoint::for_address(debug_info, terminating_address)?;
+        if program_counter == candidate_haltpoint.address {
+            // We are already at the last statement in the sequence, so we have to attempt a step to the next sequence.
+            sequence
+                .haltpoint_for_next_block(program_counter)
+                .ok_or_else(|| DebugError::WarnAndContinue {
+                    message: "No valid halt location found in the current sequence.".to_string(),
+                })
+            //     program_counter = core.step()?.pc;
+            //     if let ControlFlow::Break(debug_error) = validate_core_status_after_step(core) {
+            //         return Err(debug_error);
+            //     }
+            //     VerifiedBreakpoint::for_address(debug_info, terminating_address)
+            // } else {
+            //     Ok(candidate_haltpoint)
+        } else {
+            Ok(candidate_haltpoint)
+        }
     } else {
         // Now step the target until we hit one of the candidate haltpoints, or some eror occurs.
         let (_, next_line_address) =
