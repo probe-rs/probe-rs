@@ -77,7 +77,7 @@ impl UnitInfo {
                 die.ranges.push(gimli_range.begin..gimli_range.end);
             }
 
-            if !die.range_contains(address) {
+            if !die.range_contains(address) || die.low_pc().unwrap_or(0) == 0 {
                 continue;
             }
 
@@ -140,7 +140,10 @@ impl UnitInfo {
                 die_ranges.push(gimli_range.begin..gimli_range.end);
             }
 
-            if !die_ranges.iter().any(|range| range.contains(&address)) {
+            if !die_ranges
+                .iter()
+                .any(|range| range.contains(&address) && range.start != 0)
+            {
                 continue;
             }
 

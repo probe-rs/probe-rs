@@ -1,0 +1,1 @@
+`UnitInfo::get_function_dies()` sometimes retrieved the wrong function die, because of insufficient range filtering.
