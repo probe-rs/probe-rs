@@ -42,6 +42,8 @@ pub enum CoreType {
     Armv8m,
     /// RISC-V
     Riscv,
+    /// Xtensa - TODO: may need to split into NX, LX6 and LX7
+    Xtensa,
 }
 
 impl CoreType {
@@ -61,6 +63,8 @@ pub enum Architecture {
     Arm,
     /// A RISC-V core.
     Riscv,
+    /// An Xtensa core.
+    Xtensa,
 }
 
 impl CoreType {
@@ -68,6 +72,7 @@ impl CoreType {
     pub fn architecture(&self) -> Architecture {
         match self {
             CoreType::Riscv => Architecture::Riscv,
+            CoreType::Xtensa => Architecture::Xtensa,
             _ => Architecture::Arm,
         }
     }
@@ -86,6 +91,8 @@ pub enum InstructionSet {
     RV32,
     /// RISC-V 32-bit compressed instruction sets (RV32C) - covers all ISA variants that allow compressed 16-bit instructions.
     RV32C,
+    /// Xtensa instruction set
+    Xtensa,
 }
 
 impl InstructionSet {
@@ -100,10 +107,12 @@ impl InstructionSet {
             InstructionSet::A64 => 4,
             InstructionSet::RV32 => 4,
             InstructionSet::RV32C => 2,
+            InstructionSet::Xtensa => 2,
         }
     }
     /// Get the maximum instruction size in bytes. All supported architectures have a maximum instruction size of 4 bytes.
     pub fn get_maximum_instruction_size(&self) -> u8 {
+        // TODO: Xtensa may have wide instructions
         4
     }
 }
@@ -165,7 +174,7 @@ impl ChipFamily {
             }
 
             // Check that there is at least one core.
-            if let Some(core) = variant.cores.get(0) {
+            if let Some(core) = variant.cores.first() {
                 // Make sure that the core types (architectures) are not mixed.
                 let architecture = core.core_type.architecture();
                 if variant
@@ -219,6 +228,14 @@ impl ChipFamily {
                         if core.core_type != CoreType::Riscv {
                             return Err(format!(
                                 "Riscv options don't match core type {:?} on core {}",
+                                core.core_type, core.name
+                            ));
+                        }
+                    }
+                    CoreAccessOptions::Xtensa(_) => {
+                        if core.core_type != CoreType::Xtensa {
+                            return Err(format!(
+                                "Xtensa options don't match core type {:?} on core {}",
                                 core.core_type, core.name
                             ));
                         }

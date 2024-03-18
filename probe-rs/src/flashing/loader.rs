@@ -12,6 +12,7 @@ use super::{
     extract_from_elf, BinOptions, DownloadOptions, FileDownloadError, FlashError, Flasher,
     IdfOptions,
 };
+use crate::config::DebugSequence;
 use crate::memory::MemoryInterface;
 use crate::session::Session;
 use crate::Target;
@@ -121,20 +122,58 @@ impl FlashLoader {
     /// Loads an esp-idf application into the loader by converting the main application to the esp-idf bootloader format,
     /// appending it to the loader along with the bootloader and partition table.
     ///
-    /// This does not create and flash loader instructions yet.
+    /// This does not create any flash loader instructions yet.
     pub fn load_idf_data<T: Read>(
         &mut self,
         session: &mut Session,
         file: &mut T,
         options: IdfOptions,
     ) -> Result<(), FileDownloadError> {
-        let target = session.target();
-        let chip = espflash::targets::Chip::from_str(&target.name)
+        let target = session.target().clone();
+        let target_name = target
+            .name
+            .split_once('-')
+            .map(|(name, _)| name)
+            .unwrap_or(target.name.as_str());
+        let chip = espflash::targets::Chip::from_str(target_name)
             .map_err(|_| FileDownloadError::IdfUnsupported(target.name.clone()))?
             .into_target();
 
         let mut buf = Vec::new();
         file.read_to_end(&mut buf)?;
+
+        let flash_size_result = session.halted_access(|sess| {
+            // Figure out flash size from the memory map. We need a different bootloader for each size.
+            Ok(match target.debug_sequence.clone() {
+                DebugSequence::Riscv(sequence) => {
+                    sequence.detect_flash_size(sess.get_riscv_interface()?)
+                }
+                DebugSequence::Xtensa(sequence) => {
+                    sequence.detect_flash_size(sess.get_xtensa_interface()?)
+                }
+                DebugSequence::Arm(_) => panic!("There are no ARM ESP targets."),
+            })
+        })?;
+
+        let flash_size = match flash_size_result {
+            Ok(size) => size,
+            Err(err) => return Err(FileDownloadError::FlashSizeDetection(err)),
+        };
+
+        let flash_size = match flash_size {
+            Some(0x40000) => Some(espflash::flasher::FlashSize::_256Kb),
+            Some(0x80000) => Some(espflash::flasher::FlashSize::_512Kb),
+            Some(0x100000) => Some(espflash::flasher::FlashSize::_1Mb),
+            Some(0x200000) => Some(espflash::flasher::FlashSize::_2Mb),
+            Some(0x400000) => Some(espflash::flasher::FlashSize::_4Mb),
+            Some(0x800000) => Some(espflash::flasher::FlashSize::_8Mb),
+            Some(0x1000000) => Some(espflash::flasher::FlashSize::_16Mb),
+            Some(0x2000000) => Some(espflash::flasher::FlashSize::_32Mb),
+            Some(0x4000000) => Some(espflash::flasher::FlashSize::_64Mb),
+            Some(0x8000000) => Some(espflash::flasher::FlashSize::_128Mb),
+            Some(0x10000000) => Some(espflash::flasher::FlashSize::_256Mb),
+            _ => None,
+        };
 
         let firmware = espflash::elf::ElfFirmwareImage::try_from(&buf[..])?;
         let image = chip.get_flash_image(
@@ -144,7 +183,7 @@ impl FlashLoader {
             None,
             None,
             None,
-            None,
+            flash_size,
             None,
         )?;
         let parts: Vec<_> = image.flash_segments().collect();
@@ -157,31 +196,30 @@ impl FlashLoader {
     }
 
     /// Reads the HEX data segments and adds them as loadable data blocks to the loader.
-    /// This does not create and flash loader instructions yet.
-    pub fn load_hex_data<T: Read + Seek>(&mut self, file: &mut T) -> Result<(), FileDownloadError> {
+    /// This does not create any flash loader instructions yet.
+    pub fn load_hex_data<T: Read>(&mut self, file: &mut T) -> Result<(), FileDownloadError> {
         let mut base_address = 0;
 
         let mut data = String::new();
         file.read_to_string(&mut data)?;
 
         for record in ihex::Reader::new(&data) {
-            let record = record?;
-            use Record::*;
-            match record {
-                Data { offset, value } => {
+            match record? {
+                Record::Data { offset, value } => {
                     let offset = base_address + offset as u64;
                     self.add_data(offset, &value)?;
                 }
-                EndOfFile => (),
-                ExtendedSegmentAddress(address) => {
+                Record::ExtendedSegmentAddress(address) => {
                     base_address = (address as u64) * 16;
                 }
-                StartSegmentAddress { .. } => (),
-                ExtendedLinearAddress(address) => {
+                Record::ExtendedLinearAddress(address) => {
                     base_address = (address as u64) << 16;
                 }
-                StartLinearAddress(_) => (),
-            };
+
+                Record::EndOfFile
+                | Record::StartSegmentAddress { .. }
+                | Record::StartLinearAddress(_) => {}
+            }
         }
         Ok(())
     }
@@ -255,14 +293,12 @@ impl FlashLoader {
     /// Writes all the stored data chunks to flash.
     ///
     /// Requires a session with an attached target that has a known flash algorithm.
-    ///
-    /// If `do_chip_erase` is `true` the entire flash will be erased.
     pub fn commit(
         &self,
         session: &mut Session,
         options: DownloadOptions,
     ) -> Result<(), FlashError> {
-        tracing::debug!("committing FlashLoader!");
+        tracing::debug!("Committing FlashLoader!");
 
         tracing::debug!("Contents of builder:");
         for (&address, data) in &self.builder.data {
@@ -508,6 +544,7 @@ impl FlashLoader {
 
         match algorithms.len() {
             0 => Err(FlashError::NoFlashLoaderAlgorithmAttached {
+                range: region.range.clone(),
                 name: target.name.clone(),
             }),
             1 => Ok(algorithms[0]),

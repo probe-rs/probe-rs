@@ -1,9 +1,11 @@
-use crate::MemoryInterface;
+use std::ops::Range;
+
+use crate::{debug::stack_frame::StackFrameInfo, MemoryInterface};
 
 use super::{
     debug_info, extract_file,
     unit_info::{ExpressionResult, UnitInfo},
-    ColumnType, DebugError, DebugRegisters, SourceLocation, VariableLocation,
+    ColumnType, DebugError, DebugInfo, SourceLocation, VariableLocation,
 };
 
 pub(crate) type Die<'abbrev, 'unit> =
@@ -11,35 +13,49 @@ pub(crate) type Die<'abbrev, 'unit> =
 
 /// Reference to a DIE for a function
 #[derive(Clone)]
-pub(crate) struct FunctionDie<'abbrev, 'unit, 'unit_info> {
-    pub(crate) unit_info: &'unit_info UnitInfo,
-
+pub(crate) struct FunctionDie<'abbrev, 'unit> {
+    /// A reference to the compilation unit this function belongs to.
+    pub(crate) unit_info: &'unit UnitInfo,
+    /// The DIE (Debugging Information Entry) for the function.
     pub(crate) function_die: Die<'abbrev, 'unit>,
-
+    /// The specification DIE for the function, if it has one.
+    /// This can apply to both inlined and regular function definitions.
+    /// this will contain separately declared attributes.
+    /// See DWARF spec, 2.13.2.
+    pub(crate) specification_die: Option<Die<'abbrev, 'unit>>,
     /// Only present for inlined functions, where this is a reference
     /// to the declaration of the function.
     pub(crate) abstract_die: Option<Die<'abbrev, 'unit>>,
-    /// The address of the first instruction in this function.
-    pub(crate) low_pc: u64,
-    /// The address of the first instruction after this function.
-    pub(crate) high_pc: u64,
+    /// The address ranges for which this function is valid.
+    pub(crate) ranges: Vec<Range<u64>>,
 }
 
-impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info> FunctionDie<'abbrev, 'unit, 'unit_info> {
+impl<'abbrev, 'unit> FunctionDie<'abbrev, 'unit> {
     /// Create a new function DIE reference.
-    pub(crate) fn new(die: Die<'abbrev, 'unit>, unit_info: &'unit_info UnitInfo) -> Option<Self> {
+    pub(crate) fn new(
+        die: Die<'abbrev, 'unit>,
+        unit_info: &'unit UnitInfo,
+        debug_info: &'abbrev DebugInfo,
+    ) -> Option<Self>
+    where
+        'abbrev: 'unit,
+        'unit: 'abbrev,
+    {
         let tag = die.tag();
 
         let gimli::DW_TAG_subprogram = tag else {
             // We only need DIEs for functions, so we can ignore all other DIEs.
             return None;
         };
+        // Find the specification definition
+        let specification_die =
+            debug_info.resolve_die_reference(gimli::DW_AT_specification, &die, unit_info);
         Some(Self {
             unit_info,
             function_die: die,
+            specification_die,
             abstract_die: None,
-            low_pc: 0,
-            high_pc: 0,
+            ranges: Vec::new(),
         })
     }
 
@@ -47,7 +63,8 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info> FunctionDie<'abbrev, 'u
     pub(crate) fn new_inlined(
         concrete_die: Die<'abbrev, 'unit>,
         abstract_die: Die<'abbrev, 'unit>,
-        unit_info: &'unit_info UnitInfo,
+        specification_die: Option<Die<'abbrev, 'unit>>,
+        unit_info: &'unit UnitInfo,
     ) -> Option<Self> {
         let tag = concrete_die.tag();
 
@@ -58,10 +75,29 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info> FunctionDie<'abbrev, 'u
         Some(Self {
             unit_info,
             function_die: concrete_die,
+            specification_die,
             abstract_die: Some(abstract_die),
-            low_pc: 0,
-            high_pc: 0,
+            ranges: Vec::new(),
         })
+    }
+
+    /// Test whether the given address is contained in the address ranges of this function.
+    /// Use this, instead of checking for values between `low_pc()` and `high_pc()`, because
+    /// the address ranges can be disjointed.
+    pub(crate) fn range_contains(&self, address: u64) -> bool {
+        self.ranges.iter().any(|range| range.contains(&address))
+    }
+
+    /// Returns the lowest valid address for which this function DIE is valid.
+    /// Please use `range_contains()` to check whether an address is contained in the range.
+    pub(crate) fn low_pc(&self) -> Option<u64> {
+        self.ranges.first().map(|range| range.start)
+    }
+
+    /// Returns the highest valid address for which this function DIE is valid.
+    /// Please use `range_contains()` to check whether an address is contained in the range.
+    pub(crate) fn high_pc(&self) -> Option<u64> {
+        self.ranges.last().map(|range| range.end)
     }
 
     /// Returns whether this is an inlined function DIE reference.
@@ -71,7 +107,7 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info> FunctionDie<'abbrev, 'u
 
     /// Returns the function name described by the die.
     pub(crate) fn function_name(&self, debug_info: &super::DebugInfo) -> Option<String> {
-        let Some(fn_name_attr) = self.attribute(gimli::DW_AT_name) else {
+        let Some(fn_name_attr) = self.attribute(debug_info, gimli::DW_AT_name) else {
             tracing::debug!("DW_AT_name attribute not found, unable to retrieve function name");
             return None;
         };
@@ -102,16 +138,16 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info> FunctionDie<'abbrev, 'u
             return None;
         }
 
-        let file_name_attr = self.attribute(gimli::DW_AT_call_file)?;
+        let file_name_attr = self.attribute(debug_info, gimli::DW_AT_call_file)?;
 
         let (directory, file) =
             extract_file(debug_info, &self.unit_info.unit, file_name_attr.value())?;
         let line = self
-            .attribute(gimli::DW_AT_call_line)
+            .attribute(debug_info, gimli::DW_AT_call_line)
             .and_then(|line| line.udata_value());
 
         let column =
-            self.attribute(gimli::DW_AT_call_column)
+            self.attribute(debug_info, gimli::DW_AT_call_column)
                 .map(|column| match column.udata_value() {
                     None => ColumnType::LeftEdge,
                     Some(c) => ColumnType::Column(c),
@@ -121,54 +157,35 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info> FunctionDie<'abbrev, 'u
             column,
             file: Some(file),
             directory: Some(directory),
-            low_pc: Some(self.low_pc as u32),
-            high_pc: Some(self.high_pc as u32),
         })
     }
 
-    /// Resolve an attribute by looking through both the origin or abstract die entries.
+    /// Resolve an attribute by looking through both the specification and die, or abstract specification and die, entries.
     pub(crate) fn attribute(
         &self,
+        debug_info: &super::DebugInfo,
         attribute_name: gimli::DwAt,
     ) -> Option<debug_info::GimliAttribute> {
-        let attribute = self
-            .function_die
-            .attr(attribute_name)
-            .map_or(None, |attribute| attribute);
+        let attribute =
+            collapsed_attribute(&self.function_die, &self.specification_die, attribute_name);
 
         if attribute.is_some() {
             return attribute;
         }
 
         // For inlined function, the *abstract instance* has to be checked if we cannot find the
-        // attribute on the *concrete instance*.
-        if self.is_inline() {
-            if let Some(origin) = self.abstract_die.as_ref() {
-                // Try to get the attribute directly
-                match origin
-                    .attr(attribute_name)
-                    .map_or(None, |attribute| attribute)
-                {
-                    Some(attribute) => return Some(attribute),
-                    None => {
-                        let specification_attr =
-                            origin.attr(gimli::DW_AT_specification).ok().flatten()?;
+        // attribute on the *concrete instance*. The abstract instance my also be a reference to a specification.
+        if let Some(abstract_die) = &self.abstract_die {
+            let inlined_specification_die = debug_info.resolve_die_reference(
+                gimli::DW_AT_specification,
+                abstract_die,
+                self.unit_info,
+            );
+            let inline_attribute =
+                collapsed_attribute(abstract_die, &inlined_specification_die, attribute_name);
 
-                        match specification_attr.value() {
-                            gimli::AttributeValue::UnitRef(unit_ref) => {
-                                if let Ok(specification) = self.unit_info.unit.entry(unit_ref) {
-                                    return specification
-                                        .attr(attribute_name)
-                                        .map_or(None, |attribute| attribute);
-                                }
-                            }
-                            other_value => tracing::warn!(
-                                "Unsupported DW_AT_speficiation value: {:?}",
-                                other_value
-                            ),
-                        }
-                    }
-                }
+            if inline_attribute.is_some() {
+                return inline_attribute;
             }
         }
 
@@ -180,18 +197,38 @@ impl<'debugunit, 'abbrev, 'unit: 'debugunit, 'unit_info> FunctionDie<'abbrev, 'u
         &self,
         debug_info: &super::DebugInfo,
         memory: &mut impl MemoryInterface,
-        stackframe_registers: &DebugRegisters,
+        frame_info: StackFrameInfo,
     ) -> Result<Option<u64>, DebugError> {
         match self.unit_info.extract_location(
             debug_info,
             &self.function_die,
             &VariableLocation::Unknown,
             memory,
-            stackframe_registers,
-            None,
+            frame_info,
         )? {
             ExpressionResult::Location(VariableLocation::Address(address)) => Ok(Some(address)),
             _ => Ok(None),
         }
     }
+}
+
+// Try to retrieve the attribute from the specification or the function DIE.
+fn collapsed_attribute(
+    function_die: &Die,
+    specification_die: &Option<Die>,
+    attribute_name: gimli::DwAt,
+) -> Option<gimli::Attribute<gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>>> {
+    let attribute = specification_die
+        .as_ref()
+        .and_then(|specification_die| {
+            specification_die
+                .attr(attribute_name)
+                .map_or(None, |attribute| attribute)
+        })
+        .or_else(|| {
+            function_die
+                .attr(attribute_name)
+                .map_or(None, |attribute| attribute)
+        });
+    attribute
 }

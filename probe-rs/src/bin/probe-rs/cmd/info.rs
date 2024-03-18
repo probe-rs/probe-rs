@@ -1,7 +1,6 @@
-use std::error::Error;
 use std::fmt::Write;
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use probe_rs::{
     architecture::{
         arm::{
@@ -14,8 +13,10 @@ use probe_rs::{
             ApAddress, ApInformation, ArmProbeInterface, DpAddress, MemoryApInformation, Register,
         },
         riscv::communication_interface::RiscvCommunicationInterface,
+        xtensa::communication_interface::XtensaCommunicationInterface,
     },
-    Lister, MemoryMappedRegister, Probe, WireProtocol,
+    probe::{list::Lister, Probe, WireProtocol},
+    MemoryMappedRegister,
 };
 use termtree::Tree;
 
@@ -25,6 +26,23 @@ use crate::util::common_options::ProbeOptions;
 pub struct Cmd {
     #[clap(flatten)]
     common: ProbeOptions,
+    /// SWD Multidrop target selection value
+    ///
+    /// If provided, this value is written into the debug port TARGETSEL register
+    /// when connecting. This is required for targets using SWD multidrop
+    #[arg(long, value_parser = parse_hex)]
+    target_sel: Option<u32>,
+}
+
+// Clippy doesn't like `from_str_radix` with radix 10, but I prefer the symmetry`
+// with the hex case.
+#[allow(clippy::from_str_radix_10)]
+fn parse_hex(src: &str) -> Result<u32, std::num::ParseIntError> {
+    if src.starts_with("0x") {
+        u32::from_str_radix(src.trim_start_matches("0x"), 16)
+    } else {
+        u32::from_str_radix(src, 10)
+    }
 }
 
 impl Cmd {
@@ -42,8 +60,12 @@ impl Cmd {
             println!("Probing target via {protocol}");
             println!();
 
-            let (new_probe, result) =
-                try_show_info(probe, protocol, probe_options.connect_under_reset());
+            let (new_probe, result) = try_show_info(
+                probe,
+                protocol,
+                probe_options.connect_under_reset(),
+                self.target_sel,
+            );
 
             probe = new_probe;
 
@@ -64,6 +86,7 @@ fn try_show_info(
     mut probe: Probe,
     protocol: WireProtocol,
     connect_under_reset: bool,
+    target_sel: Option<u32>,
 ) -> (Probe, Result<()>) {
     if let Err(e) = probe.select_protocol(protocol) {
         return (probe, Err(e.into()));
@@ -79,73 +102,98 @@ fn try_show_info(
         return (probe, Err(e.into()));
     }
 
+    let dp = target_sel.map(DpAddress::Multidrop).unwrap_or_default();
+
     let mut probe = probe;
 
     if probe.has_arm_interface() {
+        tracing::debug!("Trying to show ARM chip information");
         match probe.try_into_arm_interface() {
             Ok(interface) => {
-                match interface.initialize(DefaultArmSequence::create()) {
+                match interface.initialize(DefaultArmSequence::create(), dp) {
                     Ok(mut interface) => {
-                        if let Err(e) = show_arm_info(&mut *interface) {
+                        if let Err(e) = show_arm_info(&mut *interface, dp) {
                             // Log error?
-                            println!("Error showing ARM chip information:");
-                            println!("{e:?}")
+                            println!("Error showing ARM chip information: {:?}", anyhow!(e));
                         }
 
                         probe = interface.close();
                     }
                     Err((interface, e)) => {
-                        println!("Error showing ARM chip information: {e}");
+                        println!("Error showing ARM chip information: {:?}", anyhow!(e));
 
                         probe = interface.close();
                     }
                 }
             }
-            Err((interface_probe, _e)) => {
+            Err((interface_probe, e)) => {
+                println!("Error showing ARM chip information: {:?}", anyhow!(e));
                 probe = interface_probe;
             }
         }
     } else {
-        println!(
-            "No DAP interface was found on the connected probe. Thus, ARM info cannot be printed."
-        );
+        println!("No DAP interface was found on the connected probe. ARM-specific information cannot be printed.");
     }
 
-    if protocol == WireProtocol::Jtag {
-        if probe.has_riscv_interface() {
-            match probe.try_into_riscv_interface() {
-                Ok(mut interface) => {
-                    if let Err(e) = show_riscv_info(&mut interface) {
-                        log::warn!("Error showing RISC-V chip information: {}", e);
-                    }
-
-                    probe = interface.close();
+    // This check is a bit weird, but `try_into_riscv_interface` will try to switch the protocol to JTAG.
+    // If the current protocol we want to use is SWD, we have avoid this.
+    if probe.has_riscv_interface() && protocol == WireProtocol::Jtag {
+        tracing::debug!("Trying to show RISC-V chip information");
+        match probe.try_into_riscv_interface() {
+            Ok(mut interface) => {
+                if let Err(e) = show_riscv_info(&mut interface) {
+                    println!("Error showing RISC-V chip information: {:?}", anyhow!(e));
                 }
-                Err((interface_probe, e)) => {
-                    let mut source = Some(&e as &dyn Error);
 
-                    while let Some(parent) = source {
-                        log::error!("Error: {}", parent);
-                        source = parent.source();
-                    }
-
-                    probe = interface_probe;
-                }
+                probe = interface.close();
             }
-        } else {
-            println!(
-            "Unable to debug RISC-V targets using the current probe. RISC-V specific information cannot be printed."
-        );
+            Err((interface_probe, e)) => {
+                println!("Error while reading RISC-V info: {:?}", anyhow!(e));
+                probe = interface_probe;
+            }
         }
+    } else if protocol == WireProtocol::Swd {
+        println!(
+                "Debugging RISC-V targets over SWD is not supported. For these targets, JTAG is the only supported protocol. RISC-V specific information cannot be printed."
+            );
     } else {
-        tracing::info!("Debugging RISC-V-Targets over SWD is not supported.");
+        println!(
+                "Unable to debug RISC-V targets using the current probe. RISC-V specific information cannot be printed."
+            );
+    }
+
+    // This check is a bit weird, but `try_into_xtensa_interface` will try to switch the protocol to JTAG.
+    // If the current protocol we want to use is SWD, we have avoid this.
+    if probe.has_xtensa_interface() && protocol == WireProtocol::Jtag {
+        tracing::debug!("Trying to show Xtensa chip information");
+        match probe.try_into_xtensa_interface() {
+            Ok(mut interface) => {
+                if let Err(e) = show_xtensa_info(&mut interface) {
+                    println!("Error showing Xtensa chip information: {:?}", anyhow!(e));
+                }
+
+                probe = interface.close();
+            }
+            Err((interface_probe, e)) => {
+                println!("Error showing Xtensa chip information: {:?}", anyhow!(e));
+                probe = interface_probe;
+            }
+        }
+    } else if protocol == WireProtocol::Swd {
+        println!(
+                "Debugging Xtensa targets over SWD is not supported. For these targets, JTAG is the only supported protocol. Xtensa specific information cannot be printed."
+            );
+    } else {
+        println!(
+            "Unable to debug Xtensa targets using the current probe. Xtensa specific information cannot be printed."
+        );
     }
 
     (probe, Ok(()))
 }
 
-fn show_arm_info(interface: &mut dyn ArmProbeInterface) -> Result<()> {
-    let dp_info = interface.read_raw_dp_register(DpAddress::Default, DPIDR::ADDRESS)?;
+fn show_arm_info(interface: &mut dyn ArmProbeInterface, dp: DpAddress) -> Result<()> {
+    let dp_info = interface.read_raw_dp_register(dp, DPIDR::ADDRESS)?;
     let dp_info = DPIDR(dp_info);
 
     let mut dp_node = String::new();
@@ -159,7 +207,7 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface) -> Result<()> {
     let jep_code = jep106::JEP106Code::new(dp_info.jep_cc(), dp_info.jep_id());
 
     if dp_info.version() == 2 {
-        let target_id = interface.read_raw_dp_register(DpAddress::Default, TARGETID::ADDRESS)?;
+        let target_id = interface.read_raw_dp_register(dp, TARGETID::ADDRESS)?;
 
         let target_id = TARGETID(target_id);
 
@@ -190,7 +238,6 @@ fn show_arm_info(interface: &mut dyn ArmProbeInterface) -> Result<()> {
 
     let mut tree = Tree::new(dp_node);
 
-    let dp = DpAddress::Default;
     let num_access_ports = interface.num_access_ports(dp)?;
 
     for ap_index in 0..num_access_ports {
@@ -364,22 +411,36 @@ fn cpu_info_tree(scs: &mut Scs) -> Result<Tree<String>> {
 }
 
 fn show_riscv_info(interface: &mut RiscvCommunicationInterface) -> Result<()> {
+    if let Some(idcode) = interface.read_idcode()? {
+        print_idcode_info("RISC-V", idcode);
+    } else {
+        println!("No IDCODE info for this RISC-V chip.")
+    }
+
+    Ok(())
+}
+
+fn show_xtensa_info(interface: &mut XtensaCommunicationInterface) -> Result<()> {
     let idcode = interface.read_idcode()?;
 
+    print_idcode_info("Xtensa", idcode);
+
+    Ok(())
+}
+
+fn print_idcode_info(architecture: &str, idcode: u32) {
     let version = (idcode >> 28) & 0xf;
     let part_number = (idcode >> 12) & 0xffff;
     let manufacturer_id = (idcode >> 1) & 0x7ff;
 
     let jep_cc = (manufacturer_id >> 7) & 0xf;
-    let jep_id = manufacturer_id & 0x3f;
+    let jep_id = manufacturer_id & 0x7f;
 
     let jep_id = jep106::JEP106Code::new(jep_cc as u8, jep_id as u8);
 
-    println!("RISC-V Chip:");
-    println!("\tIDCODE: {idcode:010x}");
-    println!("\t Version:      {version}");
-    println!("\t Part:         {part_number}");
-    println!("\t Manufacturer: {manufacturer_id} ({jep_id})");
-
-    Ok(())
+    println!("{architecture} Chip:");
+    println!("  IDCODE: {idcode:010x}");
+    println!("    Version:      {version}");
+    println!("    Part:         {part_number}");
+    println!("    Manufacturer: {manufacturer_id} ({jep_id})");
 }

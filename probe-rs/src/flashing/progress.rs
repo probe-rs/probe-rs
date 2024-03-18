@@ -48,8 +48,8 @@ impl FlashProgress {
     }
 
     /// Signalize that the programming procedure started.
-    pub(super) fn started_programming(&self) {
-        self.emit(ProgressEvent::StartedProgramming);
+    pub(super) fn started_programming(&self, length: u64) {
+        self.emit(ProgressEvent::StartedProgramming { length });
     }
 
     /// Signalize that the page programming procedure has made progress.
@@ -158,7 +158,10 @@ pub enum ProgressEvent {
     /// Erasing of the flash has finished successfully.
     FinishedErasing,
     /// Programming of the flash has started.
-    StartedProgramming,
+    StartedProgramming {
+        /// The total length of the data to be programmed in bytes.
+        length: u64,
+    },
     /// A flash page has been programmed successfully.
     PageProgrammed {
         /// The size of this page in bytes.

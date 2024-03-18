@@ -1,6 +1,6 @@
 use object::{
-    elf::FileHeader32, elf::PT_LOAD, read::elf::FileHeader, read::elf::ProgramHeader, Endianness,
-    Object, ObjectSection,
+    elf::FileHeader32, elf::FileHeader64, elf::PT_LOAD, read::elf::ElfFile, read::elf::FileHeader,
+    read::elf::ProgramHeader, Endianness, Object, ObjectSection,
 };
 use probe_rs_target::MemoryRange;
 
@@ -98,10 +98,12 @@ pub enum FileDownloadError {
     /// This is most likely because of a bad linker script.
     #[error("No loadable ELF sections were found.")]
     NoLoadableSegments,
+    /// Some error returned by the flash size detection.
+    #[error("Could not determine flash size.")]
+    FlashSizeDetection(#[from] crate::Error),
 }
 
 /// Options for downloading a file onto a target chip.
-///
 ///
 /// This struct should be created using the [`DownloadOptions::default()`] function, and can be configured by setting
 /// the fields directly:
@@ -171,10 +173,7 @@ pub fn download_file_with_options<P: AsRef<Path>>(
     format: Format,
     options: DownloadOptions,
 ) -> Result<(), FileDownloadError> {
-    let mut file = match File::open(path.as_ref()) {
-        Ok(file) => file,
-        Err(e) => return Err(FileDownloadError::IO(e)),
-    };
+    let mut file = File::open(path.as_ref()).map_err(FileDownloadError::IO)?;
 
     let mut loader = session.target().flash_loader();
 
@@ -216,21 +215,12 @@ impl std::fmt::Debug for ExtractedFlashData<'_> {
     }
 }
 
-pub(super) fn extract_from_elf<'data>(
+fn extract_from_elf_inner<'data, T: FileHeader>(
     extracted_data: &mut Vec<ExtractedFlashData<'data>>,
+    elf_header: &T,
+    binary: ElfFile<'_, T>,
     elf_data: &'data [u8],
 ) -> Result<usize, FileDownloadError> {
-    let file_kind = object::FileKind::parse(elf_data)?;
-
-    match file_kind {
-        object::FileKind::Elf32 => (),
-        _ => return Err(FileDownloadError::Object("Unsupported file type")),
-    }
-
-    let elf_header = FileHeader32::<Endianness>::parse(elf_data)?;
-
-    let binary = object::read::elf::ElfFile::<FileHeader32<Endianness>>::parse(elf_data)?;
-
     let endian = elf_header.endian()?;
 
     let mut extracted_sections = 0;
@@ -303,8 +293,28 @@ pub(super) fn extract_from_elf<'data>(
             }
         }
     }
-
     Ok(extracted_sections)
+}
+
+pub(super) fn extract_from_elf<'data>(
+    extracted_data: &mut Vec<ExtractedFlashData<'data>>,
+    elf_data: &'data [u8],
+) -> Result<usize, FileDownloadError> {
+    let file_kind = object::FileKind::parse(elf_data)?;
+
+    match file_kind {
+        object::FileKind::Elf32 => {
+            let elf_header = FileHeader32::<Endianness>::parse(elf_data)?;
+            let binary = object::read::elf::ElfFile::<FileHeader32<Endianness>>::parse(elf_data)?;
+            extract_from_elf_inner(extracted_data, elf_header, binary, elf_data)
+        }
+        object::FileKind::Elf64 => {
+            let elf_header = FileHeader64::<Endianness>::parse(elf_data)?;
+            let binary = object::read::elf::ElfFile::<FileHeader64<Endianness>>::parse(elf_data)?;
+            extract_from_elf_inner(extracted_data, elf_header, binary, elf_data)
+        }
+        _ => Err(FileDownloadError::Object("Unsupported file type")),
+    }
 }
 
 #[cfg(test)]

@@ -1,1 +1,0 @@
-Add support for the esp32h2 target (#1862)

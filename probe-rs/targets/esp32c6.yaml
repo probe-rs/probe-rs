@@ -1,14 +1,13 @@
----
 name: esp32c6
 manufacturer:
   cc: 0x0C
   id: 0x12
 variants:
   - name: esp32c6
-    part: null
-    scan_chain:
-      - name: main
-        ir_len: 5
+    jtag:
+      scan_chain:
+        - name: main
+          ir_len: 5
     default_binary_format: idf
     cores:
       - name: main
@@ -36,6 +35,13 @@ variants:
         is_boot_memory: false
         cores:
           - main
+      - !Ram
+        range:
+          start: 0x50000000
+          end: 0x50003FFF
+        is_boot_memory: false
+        cores:
+          - main
     flash_algorithms:
       - esp32c6-flashloader
 flash_algorithms:
@@ -44,22 +50,24 @@ flash_algorithms:
     default: true
     cores:
       - main
-    instructions: QREGxjcFgUCDRUUGAUWF4QFFlwB//+eAoByXAH//54CgExHltwWBQAVGI4LFBrJAQQGCgDGBFwN//2cA4xAXA3//ZwBjDhN3NgABxxMFoAqCgK6GsoU2hhcDf/9nAEMPAUWCgAAAAAA=
-    load_address: 0x40810000
+    instructions: QREGxpcAAADngAADAUWyQEEBgoAXAwAAZwDjBRcDAABnAGMHFwMAAGcAwwgXAwAAZwDjHUERBsYBRYFFlwB//+eAABo3BYZAIyIFALe1hkAjqgWufVYjrMWuI64FriOgBbC3BcGquRUMwQFFskBBAYKAtwWGQIxBNwbBqjkWY5fFAEGBFwN//2cAQwwTBXDBgoA3BYZACEG3BcGquRVjFrUAFwN//2cAIwgTBXDBgoB5cQbWItQm0krQTs5SzFbKWshexrcGhkCUQq6JKoQ3BcGqkwXl/hMFcMFjmLYAMoqTdTYAEwUwwYHNslAiVJJUAlnySWJK0kpCS7JLRWGCgLe0hkADpYSvYwmFBJcAAADngIAUkUUTBUDB4+i5/ANFCgCDRRoAA0Y6AINGKgARCvEZYgbCBqIFTY1VjlGNt7WGQCOsha4jrgWuI6ClsDcFhkAjIgUAI6oFrgOlBLBRzaqEY2M1Ac6EswWVQDe7hkAjILuwBUQNSWPjqQAFSaFrNzWGQJMKRa+3CYZAkQkTtRQAkyUUAE2NJeUmwgMnS68zhetAKsRWl1AAPABOhdKF1oZKiJcAf//ngED0kkVj97QAAyVLrxMEYMEZqCqEIkUDJkuvjYwumjKVIyqrrhnA4xd1+5cAAADngAAH41EF+hMFBYATBQWGzb0TBVDB9bUTBQSDfYRhjc21QREGxjcFhkAMQTcFwaoTBuX+EwVwwWOXxQKXAAAA54AAAwVFKsQDRYEABYkBySgAlUWXAH//54CA8nXVtwWGQCOgBQCyQEEBgoBBEQbGIsQmwkrAt7SGQAOpxK8DpESvA6WEryOqBK4BzEqVtzWGQJOFRa8ihpcAf//ngMDsEaABRUqUI66ErrJAIkSSRAJJQQGCgAAA
     pc_init: 0x0
-    pc_uninit: 0x60
-    pc_program_page: 0x46
-    pc_erase_sector: 0x34
-    pc_erase_all: 0x3e
-    data_section_offset: 0x40810068
+    pc_uninit: 0x2c
+    pc_program_page: 0x24
+    pc_erase_sector: 0x14
+    pc_erase_all: 0x1c
+    data_section_offset: 0x408102a0
+    load_address: 0x40810000
+    data_load_address: 0x40850000
+    transfer_encoding: miniz
     flash_properties:
       address_range:
         start: 0x0
-        end: 0x4000000
-      page_size: 0x800
+        end: 0x1000000
+      page_size: 0x4000
       erased_byte_value: 0xff
       program_page_timeout: 1000
       erase_sector_timeout: 2000
       sectors:
-        - size: 0x1000
+        - size: 0x10000
           address: 0x0

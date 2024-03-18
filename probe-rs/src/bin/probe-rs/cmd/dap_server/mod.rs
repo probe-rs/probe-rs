@@ -10,8 +10,8 @@ mod test;
 
 use anyhow::{Context, Result};
 use probe_rs::{
-    architecture::arm::ap::AccessPortError, flashing::FileDownloadError, CoreDumpError,
-    DebugProbeError, Error, Lister,
+    architecture::arm::ap::AccessPortError, flashing::FileDownloadError, probe::list::Lister,
+    probe::DebugProbeError, CoreDumpError, Error,
 };
 use server::startup::debug;
 use std::{env::var, fs::File, io::stderr};
@@ -21,6 +21,8 @@ use tracing_subscriber::{
     fmt::format::FmtSpan, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt,
     EnvFilter, Layer,
 };
+
+use crate::util::common_options::OperationError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum DebuggerError {
@@ -44,7 +46,8 @@ pub enum DebuggerError {
     Other(#[from] anyhow::Error),
     #[error(transparent)]
     ProbeRs(#[from] Error),
-
+    #[error(transparent)]
+    OperationError(#[from] OperationError),
     /// Errors related to the handling of core dumps.
     #[error("An error with a CoreDump occured")]
     CoreDump(#[from] CoreDumpError),

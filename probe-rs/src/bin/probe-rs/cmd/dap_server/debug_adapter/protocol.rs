@@ -12,7 +12,6 @@ use std::{
     collections::{BTreeMap, HashMap},
     io::{BufRead, BufReader, Read, Write},
     str,
-    string::ToString,
 };
 
 pub trait ProtocolAdapter {
@@ -55,8 +54,7 @@ where
     fn show_message(&mut self, severity: MessageSeverity, message: impl Into<String>) -> bool {
         let msg = message.into();
 
-        tracing::debug!("show_message");
-        println!("Do log message: {msg}");
+        tracing::debug!("show_message: {msg}");
 
         let event_body = match serde_json::to_value(ShowMessageEventBody {
             severity,
@@ -473,7 +471,7 @@ fn get_content_len(header: &str) -> Option<usize> {
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod test {
-    use std::io::{self, ErrorKind, Read};
+    use std::io::{self, ErrorKind};
 
     use super::*;
 

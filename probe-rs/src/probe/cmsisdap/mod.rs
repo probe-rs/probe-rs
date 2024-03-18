@@ -1,5 +1,6 @@
-pub mod commands;
-pub mod tools;
+//! CMSIS-DAP probe implementation.
+mod commands;
+mod tools;
 
 use crate::{
     architecture::arm::{
@@ -7,17 +8,18 @@ use crate::{
         communication_interface::UninitializedArmProbe,
         dp::{Abort, Ctrl},
         swo::poll_interval_from_buf_size,
-        ArmCommunicationInterface, ArmError, DapError, DpAddress, Pins, PortType, RawDapAccess,
-        Register, SwoAccess, SwoConfig, SwoMode,
+        ArmCommunicationInterface, ArmError, DapError, Pins, PortType, RawDapAccess, Register,
+        SwoAccess, SwoConfig, SwoMode,
     },
     probe::{
         cmsisdap::commands::{
             general::info::{CapabilitiesCommand, PacketCountCommand, SWOTraceBufferSizeCommand},
             CmsisDapError,
         },
-        BatchCommand,
+        BatchCommand, DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector,
+        JtagChainItem, ProbeFactory, WireProtocol,
     },
-    CoreStatus, DebugProbe, DebugProbeError, DebugProbeSelector, WireProtocol,
+    CoreStatus,
 };
 
 use commands::{
@@ -51,16 +53,39 @@ use commands::{
     },
     CmsisDapDevice, Status,
 };
-use probe_rs_target::{get_ir_lengths, ScanChainElement};
+use probe_rs_target::ScanChainElement;
 
-use std::{result::Result, time::Duration};
+use std::{fmt::Write, time::Duration};
 
 use bitvec::prelude::*;
 
 use super::common::{extract_idcodes, extract_ir_lengths, ScanChainError};
 
+/// A factory for creating [`CmsisDap`] probes.
+#[derive(Debug)]
+pub struct CmsisDapFactory;
+
+impl std::fmt::Display for CmsisDapFactory {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("CMSIS-DAP")
+    }
+}
+
+impl ProbeFactory for CmsisDapFactory {
+    fn open(&self, selector: &DebugProbeSelector) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+        Ok(Box::new(CmsisDap::new_from_device(
+            tools::open_device_from_selector(selector)?,
+        )?))
+    }
+
+    fn list_probes(&self) -> Vec<DebugProbeInfo> {
+        tools::list_cmsisdap_devices()
+    }
+}
+
+/// A CMSIS-DAP probe.
 pub struct CmsisDap {
-    pub device: CmsisDapDevice,
+    device: CmsisDapDevice,
     _hw_version: u8,
     _jtag_version: u8,
     protocol: Option<WireProtocol>,
@@ -80,12 +105,6 @@ pub struct CmsisDap {
     batch: Vec<BatchCommand>,
 }
 
-/// Stores information about a JTAG scan chain,
-/// including IR lengths.
-struct JtagChain {
-    pub irlens: Vec<usize>,
-}
-
 impl std::fmt::Debug for CmsisDap {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         fmt.debug_struct("CmsisDap")
@@ -102,7 +121,7 @@ impl std::fmt::Debug for CmsisDap {
 }
 
 impl CmsisDap {
-    pub fn new_from_device(mut device: CmsisDapDevice) -> Result<Self, DebugProbeError> {
+    fn new_from_device(mut device: CmsisDapDevice) -> Result<Self, DebugProbeError> {
         // Discard anything left in buffer, as otherwise
         // we'll get out of sync between requests and responses.
         device.drain();
@@ -204,15 +223,20 @@ impl CmsisDap {
     ///
     /// If IR lengths for each TAP are known, provide them in `ir_lengths`.
     ///
-    /// Returns a new JTAGChain.
-    fn jtag_scan(&mut self, ir_lengths: Option<&[usize]>) -> Result<JtagChain, CmsisDapError> {
+    /// Returns a new JTAG chain.
+    fn jtag_scan(
+        &mut self,
+        ir_lengths: Option<&[usize]>,
+    ) -> Result<Vec<JtagChainItem>, CmsisDapError> {
         let (ir, dr) = self.jtag_reset_scan()?;
         let idcodes = extract_idcodes(&dr)?;
-        let irlens = extract_ir_lengths(&ir, idcodes.len(), ir_lengths)?;
+        let ir_lens = extract_ir_lengths(&ir, idcodes.len(), ir_lengths)?;
 
-        let chain = JtagChain { irlens };
-
-        Ok(chain)
+        Ok(idcodes
+            .into_iter()
+            .zip(ir_lens)
+            .map(|(idcode, irlen)| JtagChainItem { irlen, idcode })
+            .collect())
     }
 
     /// Capture the power-up scan chain values, including all IDCODEs.
@@ -373,6 +397,9 @@ impl CmsisDap {
     }
 
     fn send_swj_sequences(&mut self, request: SequenceRequest) -> Result<(), CmsisDapError> {
+        // Ensure all pending commands are processed.
+        //self.process_batch()?;
+
         commands::send_command::<SequenceRequest>(&mut self.device, request)
             .map_err(CmsisDapError::from)
             .and_then(|v| match v {
@@ -474,59 +501,46 @@ impl CmsisDap {
             tracing::debug!("{:?} of batch of {} items executed", count, batch.len());
 
             if response.last_transfer_response.protocol_error {
+                if count > 0 {
+                    tracing::debug!("Protocol error in response to command {}", batch[count - 1]);
+                }
+
                 return Err(DapError::SwdProtocol.into());
-            } else {
-                match response.last_transfer_response.ack {
-                    Ack::Ok => {
-                        tracing::trace!("Transfer status: ACK");
-                        return Ok(response.transfers[response.transfers.len() - 1].data);
-                    }
-                    Ack::NoAck => {
-                        tracing::trace!(
-                            "Transfer status for batch item {}/{}: NACK",
-                            count,
-                            batch.len()
-                        );
-                        // TODO: Try a reset?
-                        return Err(DapError::NoAcknowledge.into());
-                    }
-                    Ack::Fault => {
-                        tracing::trace!(
-                            "Transfer status for batch item {}/{}: FAULT",
-                            count,
-                            batch.len()
-                        );
+            }
 
-                        // To avoid a potential endless recursion,
-                        // call a separate function to read the ctrl register,
-                        // which doesn't use the batch API.
-                        let ctrl = self.read_ctrl_register()?;
+            match response.last_transfer_response.ack {
+                Ack::Ok => {
+                    tracing::trace!("Transfer status: ACK");
+                    return Ok(response.transfers[response.transfers.len() - 1].data);
+                }
+                Ack::NoAck => {
+                    tracing::trace!(
+                        "Transfer status for batch item {}/{}: NACK",
+                        count,
+                        batch.len()
+                    );
+                    // TODO: Try a reset?
+                    return Err(DapError::NoAcknowledge.into());
+                }
+                Ack::Fault => {
+                    tracing::trace!(
+                        "Transfer status for batch item {}/{}: FAULT",
+                        count,
+                        batch.len()
+                    );
 
-                        tracing::trace!("Ctrl/Stat register value is: {:?}", ctrl);
+                    // To avoid a potential endless recursion,
+                    // call a separate function to read the ctrl register,
+                    // which doesn't use the batch API.
+                    let ctrl = self.read_ctrl_register()?;
 
-                        if ctrl.sticky_err() {
-                            let mut abort = Abort(0);
+                    tracing::trace!("Ctrl/Stat register value is: {:?}", ctrl);
 
-                            // Clear sticky error flags.
-                            abort.set_stkerrclr(ctrl.sticky_err());
-
-                            RawDapAccess::raw_write_register(
-                                self,
-                                PortType::DebugPort,
-                                Abort::ADDRESS,
-                                abort.into(),
-                            )?;
-                        }
-
-                        tracing::trace!("draining {:?} and retries left {:?}", count, retry);
-                        batch.drain(0..count);
-                        continue;
-                    }
-                    Ack::Wait => {
-                        tracing::trace!("wait",);
-
+                    if ctrl.sticky_err() {
                         let mut abort = Abort(0);
-                        abort.set_dapabort(true);
+
+                        // Clear sticky error flags.
+                        abort.set_stkerrclr(ctrl.sticky_err());
 
                         RawDapAccess::raw_write_register(
                             self,
@@ -534,9 +548,26 @@ impl CmsisDap {
                             Abort::ADDRESS,
                             abort.into(),
                         )?;
-
-                        return Err(DapError::WaitResponse.into());
                     }
+
+                    tracing::trace!("draining {:?} and retries left {:?}", count, retry);
+                    batch.drain(0..count);
+                    continue;
+                }
+                Ack::Wait => {
+                    tracing::trace!("wait",);
+
+                    let mut abort = Abort(0);
+                    abort.set_dapabort(true);
+
+                    RawDapAccess::raw_write_register(
+                        self,
+                        PortType::DebugPort,
+                        Abort::ADDRESS,
+                        abort.into(),
+                    )?;
+
+                    return Err(DapError::WaitResponse.into());
                 }
             }
         }
@@ -700,17 +731,6 @@ impl CmsisDap {
 }
 
 impl DebugProbe for CmsisDap {
-    fn new_from_selector(
-        selector: impl Into<DebugProbeSelector>,
-    ) -> Result<Box<Self>, DebugProbeError>
-    where
-        Self: Sized,
-    {
-        Ok(Box::new(Self::new_from_device(
-            tools::open_device_from_selector(selector)?,
-        )?))
-    }
-
     fn get_name(&self) -> &str {
         "CMSIS-DAP"
     }
@@ -799,14 +819,15 @@ impl DebugProbe for CmsisDap {
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
         match protocol {
-            WireProtocol::Jtag => {
+            WireProtocol::Jtag if self.capabilities._jtag_implemented => {
                 self.protocol = Some(WireProtocol::Jtag);
                 Ok(())
             }
-            WireProtocol::Swd => {
+            WireProtocol::Swd if self.capabilities._swd_implemented => {
                 self.protocol = Some(WireProtocol::Swd);
                 Ok(())
             }
+            _ => Err(DebugProbeError::UnsupportedProtocol(protocol)),
         }
     }
 
@@ -873,59 +894,6 @@ impl RawDapAccess for CmsisDap {
         let running = status.is_running();
         commands::send_command(&mut self.device, HostStatusRequest::running(running))?;
         Ok(())
-    }
-
-    fn select_dp(&mut self, dp: DpAddress) -> Result<(), ArmError> {
-        match dp {
-            DpAddress::Default => Ok(()), // nop
-            DpAddress::Multidrop(targetsel) => {
-                for _i in 0..5 {
-                    // Flush just in case there were writes queued from before.
-                    self.process_batch()?;
-
-                    let request = SequenceRequest::new(
-                        &[
-                            0xff, 0x92, 0xf3, 0x09, 0x62, 0x95, 0x2d, 0x85, 0x86, 0xe9, 0xaf, 0xdd,
-                            0xe3, 0xa2, 0x0e, 0xbc, 0x19, 0xa0, 0xf1, 0xff, 0xff, 0xff, 0xff, 0xff,
-                            0xff, 0xff, 0xff, 0x00,
-                        ],
-                        28 * 8,
-                    )
-                    .map_err(DebugProbeError::from)?;
-
-                    // dormant-to-swd + line reset
-                    self.send_swj_sequences(request)
-                        .map_err(DebugProbeError::from)?;
-
-                    // TARGETSEL write.
-                    // The TARGETSEL write is not ACKed by design. We can't use a normal register write
-                    // because many probes don't even send the data phase when NAK.
-                    let parity = targetsel.count_ones() % 2;
-                    let data = &((parity as u64) << 45 | (targetsel as u64) << 13 | 0x1f99)
-                        .to_le_bytes()[..6];
-
-                    let request =
-                        SequenceRequest::new(data, 6 * 8).map_err(DebugProbeError::from)?;
-
-                    self.send_swj_sequences(request)
-                        .map_err(DebugProbeError::from)?;
-
-                    // "A write to the TARGETSEL register must always be followed by a read of the DPIDR register or a line reset. If the
-                    // response to the DPIDR read is incorrect, or there is no response, the host must start the sequence again."
-                    match self.raw_read_register(PortType::DebugPort, 0) {
-                        Ok(res) => {
-                            tracing::debug!("DPIDR read {:08x}", res);
-                            return Ok(());
-                        }
-                        Err(e) => {
-                            tracing::debug!("DPIDR read failed, retrying. Error: {:?}", e);
-                        }
-                    }
-                }
-                tracing::warn!("Giving up on TARGETSEL, too many retries.");
-                Err(DapError::NoAcknowledge.into())
-            }
-        }
     }
 
     /// Reads the DAP register on the specified port and address.
@@ -1033,17 +1001,20 @@ impl RawDapAccess for CmsisDap {
     }
 
     fn configure_jtag(&mut self) -> Result<(), DebugProbeError> {
-        // If the scan chain is populated, use that and skip runtime detection.
-        // We trust the user here and assume the scan chain is right. If its not,
-        // the use of the probe will fail later.
-        // If the scan chain is not populated, we need to do runtime detection.
-        let ir_lengths = if self.scan_chain.is_some() {
-            get_ir_lengths(self.scan_chain.as_ref().unwrap())
-        } else {
-            tracing::info!("No scan chain provided, doing runtime detection");
-            let chain = self.jtag_scan(None)?;
-            chain.irlens.iter().map(|len| *len as u8).collect()
-        };
+        let chain = self.jtag_scan(
+            self.scan_chain
+                .as_ref()
+                .map(|chain| {
+                    chain
+                        .iter()
+                        .filter_map(|s| s.ir_len)
+                        .map(|s| s as usize)
+                        .collect::<Vec<usize>>()
+                })
+                .as_deref(),
+        )?;
+        let ir_lengths = chain.iter().map(|item| item.irlen as u8).collect();
+
         tracing::info!("Configuring JTAG with ir lengths: {:?}", ir_lengths);
         self.send_jtag_configure(JtagConfigureRequest::new(ir_lengths)?)?;
 
@@ -1066,6 +1037,23 @@ impl RawDapAccess for CmsisDap {
         self.connect_if_needed()?;
 
         let data = bits.to_le_bytes();
+
+        if tracing::enabled!(tracing::Level::TRACE) {
+            let mut seq = String::new();
+
+            let _ = write!(&mut seq, "swj sequence:");
+
+            for i in 0..bit_len {
+                let bit = (bits >> i) & 1;
+
+                if bit == 1 {
+                    let _ = write!(&mut seq, "1");
+                } else {
+                    let _ = write!(&mut seq, "0");
+                }
+            }
+            tracing::trace!("{}", seq);
+        }
 
         self.send_swj_sequences(SequenceRequest::new(&data, bit_len)?)?;
 

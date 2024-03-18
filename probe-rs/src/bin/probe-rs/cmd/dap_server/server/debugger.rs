@@ -3,30 +3,33 @@ use super::{
     session_data::SessionData,
     startup::{get_file_timestamp, TargetSessionType},
 };
-use crate::cmd::dap_server::{
-    debug_adapter::{
-        dap::{
-            adapter::{get_arguments, DebugAdapter},
-            dap_types::{
-                Capabilities, Event, ExitedEventBody, InitializeRequestArguments, MessageSeverity,
-                Request, RttWindowOpenedArguments, TerminatedEventBody,
+use crate::{
+    cmd::dap_server::{
+        debug_adapter::{
+            dap::{
+                adapter::{get_arguments, DebugAdapter},
+                dap_types::{
+                    Capabilities, Event, ExitedEventBody, InitializeRequestArguments,
+                    MessageSeverity, Request, RttWindowOpenedArguments, TerminatedEventBody,
+                },
+                request_helpers::halt_core,
             },
-            request_helpers::halt_core,
+            protocol::ProtocolAdapter,
         },
-        protocol::ProtocolAdapter,
+        peripherals::svd_variables::SvdCache,
+        DebuggerError,
     },
-    peripherals::svd_variables::SvdCache,
-    DebuggerError,
+    util::flash::build_loader,
 };
 use anyhow::{anyhow, Context};
 use probe_rs::{
-    flashing::{download_file_with_options, DownloadOptions, FlashProgress},
-    Architecture, CoreStatus, Lister,
+    flashing::{DownloadOptions, FileDownloadError, FlashProgress, ProgressEvent},
+    probe::list::Lister,
+    Architecture, CoreStatus,
 };
 use std::{
     cell::RefCell,
     fs,
-    ops::Mul,
     path::Path,
     rc::Rc,
     thread,
@@ -623,7 +626,7 @@ impl Debugger {
                 let mut flash_progress = progress_state.borrow_mut();
                 let mut debug_adapter = rc_debug_adapter_clone.borrow_mut();
                 match event {
-                    probe_rs::flashing::ProgressEvent::Initialized { flash_layout } => {
+                    ProgressEvent::Initialized { flash_layout } => {
                         flash_progress.total_page_size =
                             flash_layout.pages().iter().map(|s| s.size() as usize).sum();
 
@@ -636,110 +639,93 @@ impl Debugger {
                         flash_progress.total_fill_size =
                             flash_layout.fills().iter().map(|s| s.size() as usize).sum();
                     }
-                    probe_rs::flashing::ProgressEvent::StartedFilling => {
+                    ProgressEvent::StartedFilling => {
                         debug_adapter
-                            .update_progress(Some(0.0), Some("Reading Old Pages ..."), id)
+                            .update_progress(None, Some("Reading Old Pages"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::PageFilled { size, .. } => {
+                    ProgressEvent::PageFilled { size, .. } => {
                         flash_progress.fill_size_done += size as usize;
                         let progress = flash_progress.fill_size_done as f64
                             / flash_progress.total_fill_size as f64;
 
                         debug_adapter
-                            .update_progress(
-                                Some(progress),
-                                Some(format!("Reading Old Pages ({progress})")),
-                                id,
-                            )
+                            .update_progress(Some(progress), Some("Reading Old Pages"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::FailedFilling => {
+                    ProgressEvent::FailedFilling => {
                         debug_adapter
                             .update_progress(Some(1.0), Some("Reading Old Pages Failed!"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::FinishedFilling => {
+                    ProgressEvent::FinishedFilling => {
                         debug_adapter
                             .update_progress(Some(1.0), Some("Reading Old Pages Complete!"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::StartedErasing => {
+                    ProgressEvent::StartedErasing => {
                         debug_adapter
-                            .update_progress(Some(0.0), Some("Erasing Sectors ..."), id)
+                            .update_progress(None, Some("Erasing Sectors"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::SectorErased { size, .. } => {
+                    ProgressEvent::SectorErased { size, .. } => {
                         flash_progress.sector_size_done += size as usize;
                         let progress = flash_progress.sector_size_done as f64
                             / flash_progress.total_sector_size as f64;
                         debug_adapter
-                            .update_progress(
-                                Some(progress),
-                                Some(format!("Erasing Sectors ({progress})")),
-                                id,
-                            )
+                            .update_progress(Some(progress), Some("Erasing Sectors"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::FailedErasing => {
+                    ProgressEvent::FailedErasing => {
                         debug_adapter
                             .update_progress(Some(1.0), Some("Erasing Sectors Failed!"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::FinishedErasing => {
+                    ProgressEvent::FinishedErasing => {
                         debug_adapter
                             .update_progress(Some(1.0), Some("Erasing Sectors Complete!"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::StartedProgramming => {
+                    ProgressEvent::StartedProgramming { length } => {
+                        flash_progress.total_page_size = length as usize;
                         debug_adapter
-                            .update_progress(Some(0.0), Some("Programming Pages ..."), id)
+                            .update_progress(None, Some("Programming Pages"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::PageProgrammed { size, .. } => {
+                    ProgressEvent::PageProgrammed { size, .. } => {
                         flash_progress.page_size_done += size as usize;
                         let progress = flash_progress.page_size_done as f64
                             / flash_progress.total_page_size as f64;
                         debug_adapter
-                            .update_progress(
-                                Some(progress),
-                                Some(format!(
-                                    "Programming Pages ({:02.0}%)",
-                                    progress.mul(100_f64)
-                                )),
-                                id,
-                            )
+                            .update_progress(Some(progress), Some("Programming Pages"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::FailedProgramming => {
+                    ProgressEvent::FailedProgramming => {
                         debug_adapter
                             .update_progress(Some(1.0), Some("Flashing Pages Failed!"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::FinishedProgramming => {
+                    ProgressEvent::FinishedProgramming => {
                         debug_adapter
                             .update_progress(Some(1.0), Some("Flashing Pages Complete!"), id)
                             .ok();
                     }
-                    probe_rs::flashing::ProgressEvent::DiagnosticMessage { .. } => (),
+                    ProgressEvent::DiagnosticMessage { .. } => (),
                 }
             })
         });
 
         download_options.progress = flash_progress;
-        let format = self
-            .config
-            .flashing_config
-            .format_options
-            .clone()
-            .into_format(session_data.session.target())?;
 
-        let flash_result = download_file_with_options(
+        let loader = build_loader(
             &mut session_data.session,
             path_to_elf,
-            format,
-            download_options,
-        );
+            self.config.flashing_config.format_options.clone(),
+        )?;
+
+        let flash_result = loader
+            .commit(&mut session_data.session, download_options)
+            .map_err(FileDownloadError::Flash);
 
         debug_adapter = match Rc::try_unwrap(rc_debug_adapter) {
             Ok(debug_adapter) => debug_adapter.into_inner(),
@@ -912,29 +898,60 @@ mod test {
 
     use core::panic;
     use std::collections::{BTreeMap, HashMap, VecDeque};
+    use std::fmt::Display;
     use std::path::PathBuf;
 
     use probe_rs::architecture::arm::ApAddress;
-    use probe_rs::{DebugProbeInfo, FakeProbe};
-    use probe_rs::{Lister, ProbeOperation};
+    use probe_rs::probe::{
+        DebugProbe, DebugProbeError, DebugProbeInfo, DebugProbeSelector, ProbeFactory,
+    };
+    use probe_rs::{
+        integration::{FakeProbe, Operation},
+        probe::list::Lister,
+    };
     use serde_json::json;
     use time::UtcOffset;
 
-    use crate::cmd::dap_server::debug_adapter::dap::dap_types::{
-        DisconnectArguments, ErrorResponseBody, Message, Response, Thread, ThreadsResponseBody,
-    };
-    use crate::cmd::dap_server::server::configuration::{ConsoleLog, CoreConfig, FlashingConfig};
     use crate::cmd::dap_server::{
         debug_adapter::{
             dap::{
                 adapter::DebugAdapter,
-                dap_types::{Capabilities, InitializeRequestArguments, Request},
+                dap_types::{
+                    Capabilities, DisconnectArguments, ErrorResponseBody,
+                    InitializeRequestArguments, Message, Request, Response, Thread,
+                    ThreadsResponseBody,
+                },
             },
             protocol::ProtocolAdapter,
         },
-        server::{configuration::SessionConfig, debugger::DebugSessionStatus},
+        server::{
+            configuration::{ConsoleLog, CoreConfig, FlashingConfig, SessionConfig},
+            debugger::DebugSessionStatus,
+        },
         test::TestLister,
     };
+
+    #[derive(Debug)]
+    struct MockProbeFactory;
+
+    impl Display for MockProbeFactory {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str("Mocked Probe")
+        }
+    }
+
+    impl ProbeFactory for MockProbeFactory {
+        fn open(
+            &self,
+            _selector: &DebugProbeSelector,
+        ) -> Result<Box<dyn DebugProbe>, DebugProbeError> {
+            todo!()
+        }
+
+        fn list_probes(&self) -> Vec<DebugProbeInfo> {
+            todo!()
+        }
+    }
 
     /// Helper function to get the expected capabilities for the debugger
     ///
@@ -1265,13 +1282,12 @@ mod test {
                     url_label: Some("Documentation".to_string()),
                     variables: Some(BTreeMap::from([(
                         "response_message".to_string(),
-                        "No probes found. Please check your USB connections.".to_string(),
+                        "No connected probes were found.".to_string(),
                     )])),
                 }),
             });
 
-        protocol_adapter
-            .expect_output_event("No probes found. Please check your USB connections.\n");
+        protocol_adapter.expect_output_event("No connected probes were found.\n");
 
         let debug_adapter = DebugAdapter::new(protocol_adapter);
 
@@ -1340,14 +1356,14 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            probe_rs::DebugProbeType::CmsisDap,
+            &MockProbeFactory,
             None,
         );
 
         let fake_probe = FakeProbe::with_mocked_core();
 
         // Indicate that the core is unlocked
-        fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
             ap: ApAddress::with_default_dp(1),
             address: 0xC,
             result: 1,
@@ -1418,14 +1434,14 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            probe_rs::DebugProbeType::CmsisDap,
+            &MockProbeFactory,
             None,
         );
 
         let fake_probe = FakeProbe::with_mocked_core();
 
         // Indicate that the core is unlocked
-        fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
             ap: ApAddress::with_default_dp(1),
             address: 0xC,
             result: 1,
@@ -1474,14 +1490,14 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            probe_rs::DebugProbeType::CmsisDap,
+            &MockProbeFactory,
             None,
         );
 
         let fake_probe = FakeProbe::with_mocked_core();
 
         // Indicate that the core is unlocked
-        fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
             ap: ApAddress::with_default_dp(1),
             address: 0xC,
             result: 1,
@@ -1548,14 +1564,14 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            probe_rs::DebugProbeType::CmsisDap,
+            &MockProbeFactory,
             None,
         );
 
         let fake_probe = FakeProbe::with_mocked_core();
 
         // Indicate that the core is unlocked
-        fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
             ap: ApAddress::with_default_dp(1),
             address: 0xC,
             result: 1,
@@ -1622,14 +1638,14 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            probe_rs::DebugProbeType::CmsisDap,
+            &MockProbeFactory,
             None,
         );
 
         let fake_probe = FakeProbe::with_mocked_core();
 
         // Indicate that the core is unlocked
-        fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
             ap: ApAddress::with_default_dp(1),
             address: 0xC,
             result: 1,
@@ -1714,14 +1730,14 @@ mod test {
             0x12,
             0x23,
             Some("mock_serial".to_owned()),
-            probe_rs::DebugProbeType::CmsisDap,
+            &MockProbeFactory,
             None,
         );
 
         let fake_probe = FakeProbe::with_mocked_core();
 
         // Indicate that the core is unlocked
-        fake_probe.expect_operation(ProbeOperation::ReadRawApRegister {
+        fake_probe.expect_operation(Operation::ReadRawApRegister {
             ap: ApAddress::with_default_dp(1),
             address: 0xC,
             result: 1,

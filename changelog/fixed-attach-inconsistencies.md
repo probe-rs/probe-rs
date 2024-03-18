@@ -1,1 +1,0 @@
-Fixed cases where probe attachment were inconsistent.

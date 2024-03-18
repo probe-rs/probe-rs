@@ -8,23 +8,19 @@ use std::ffi::OsStr;
 use std::fs;
 use std::path::Path;
 use std::str::FromStr;
-use std::{ffi::OsString, fs::File, path::PathBuf};
+use std::{ffi::OsString, path::PathBuf};
 
 use anyhow::{Context, Result};
 use clap::Parser;
 use itertools::Itertools;
 use probe_rs::flashing::{BinOptions, Format, IdfOptions};
-use probe_rs::{Lister, Target};
+use probe_rs::{probe::list::Lister, Target};
 use serde::Serialize;
 use serde::{de::Error, Deserialize, Deserializer};
 use serde_json::Value;
 use time::{OffsetDateTime, UtcOffset};
-use tracing::metadata::LevelFilter;
-use tracing_subscriber::{
-    fmt::format::FmtSpan, prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt,
-    EnvFilter, Layer,
-};
 
+use crate::util::logging::setup_logging;
 use crate::util::parse_u32;
 use crate::util::parse_u64;
 
@@ -40,9 +36,12 @@ const MAX_LOG_FILES: usize = 20;
 struct Cli {
     /// Location for log file
     ///
-    /// If no location is specified, the log file will be stored in a default directory.
+    /// If no location is specified, the behaviour depends on `--log-to-folder`.
     #[clap(long, global = true)]
     log_file: Option<PathBuf>,
+    /// Enable logging to the default folder. This option is ignored if `--log-file` is specified.
+    #[clap(long, global = true)]
+    log_to_folder: bool,
     #[clap(subcommand)]
     subcommand: Subcommand,
 }
@@ -111,8 +110,9 @@ pub struct FormatOptions {
     /// If a target has a preferred format, we use that.
     /// Finally, if neither of the above cases are true, we default to ELF.
     #[clap(value_enum, ignore_case = true, long)]
-    #[serde(deserialize_with = "format_from_str")]
-    format: Option<Format>,
+    // TODO: remove this alias in the next release after 0.24 and release of https://github.com/probe-rs/vscode/pull/86
+    #[serde(deserialize_with = "format_from_str", alias = "format")]
+    binary_format: Option<Format>,
     /// The address in memory where the binary will be put at. This is only considered when `bin` is selected as the format.
     #[clap(long, value_parser = parse_u64)]
     pub base_address: Option<u64>,
@@ -132,10 +132,12 @@ impl FormatOptions {
     /// If a target has a preferred format, we use that.
     /// Finally, if neither of the above cases are true, we default to [`Format::default()`].
     pub fn into_format(self, target: &Target) -> anyhow::Result<Format> {
-        let format = self.format.unwrap_or_else(|| match target.default_format {
-            probe_rs_target::BinaryFormat::Idf => Format::Idf(Default::default()),
-            probe_rs_target::BinaryFormat::Raw => Default::default(),
-        });
+        let format = self
+            .binary_format
+            .unwrap_or_else(|| match target.default_format {
+                probe_rs_target::BinaryFormat::Idf => Format::Idf(Default::default()),
+                probe_rs_target::BinaryFormat::Raw => Default::default(),
+            });
         Ok(match format {
             Format::Bin(_) => Format::Bin(BinOptions {
                 base_address: self.base_address,
@@ -243,18 +245,31 @@ fn multicall_check(args: &[OsString], want: &str) -> Option<Vec<OsString>> {
 }
 
 fn main() -> Result<()> {
+    // Determine the local offset as early as possible to avoid potential
+    // issues with multiple threads and getting the offset.
+    // FIXME: we should probably let the user know if we can't determine the offset. However,
+    //        at this point we don't have a logger yet.
+    let utc_offset = UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC);
+
     let args: Vec<_> = std::env::args_os().collect();
     if let Some(args) = multicall_check(&args, "cargo-flash") {
         cmd::cargo_flash::main(args);
         return Ok(());
     }
     if let Some(args) = multicall_check(&args, "cargo-embed") {
-        cmd::cargo_embed::main(args);
+        cmd::cargo_embed::main(args, utc_offset);
         return Ok(());
     }
 
-    let utc_offset = UtcOffset::current_local_offset()
-        .context("Failed to determine local time for timestamps")?;
+    if let Some(format_arg_pos) = args.iter().position(|arg| arg == "--format") {
+        if let Some(format_arg) = args.get(format_arg_pos + 1) {
+            if let Some(format_arg) = format_arg.to_str() {
+                if Format::from_str(format_arg).is_ok() {
+                    anyhow::bail!("--format has been renamed to --binary-format. Please use --binary-format {0} instead of --format {0}", format_arg);
+                }
+            }
+        }
+    }
 
     // Parse the commandline options.
     let matches = Cli::parse_from(args);
@@ -269,8 +284,8 @@ fn main() -> Result<()> {
     }
 
     let log_path = if let Some(location) = matches.log_file {
-        location
-    } else {
+        Some(location)
+    } else if matches.log_to_folder {
         let location =
             default_logfile_location().context("Unable to determine default log file location.")?;
         prune_logs(
@@ -278,35 +293,14 @@ fn main() -> Result<()> {
                 .parent()
                 .expect("A file parent directory. Please report this as a bug."),
         )?;
-        location
+        Some(location)
+    } else {
+        None
     };
 
-    let log_file = File::create(&log_path)?;
+    let _logger_guard = setup_logging(log_path.as_deref(), None);
 
-    let file_subscriber = tracing_subscriber::fmt::layer()
-        .json()
-        .with_file(true)
-        .with_line_number(true)
-        .with_span_events(FmtSpan::FULL)
-        .with_writer(log_file);
-
-    let stdout_subscriber = tracing_subscriber::fmt::layer()
-        .compact()
-        .without_time()
-        .with_filter(
-            EnvFilter::builder()
-                .with_default_directive(LevelFilter::ERROR.into())
-                .from_env_lossy(),
-        );
-
-    tracing_subscriber::registry()
-        .with(stdout_subscriber)
-        .with(file_subscriber)
-        .init();
-
-    tracing::info!("Writing log to {:?}", log_path);
-
-    let result = match matches.subcommand {
+    match matches.subcommand {
         Subcommand::DapServer { .. } => unreachable!(), // handled above.
         Subcommand::List(cmd) => cmd.run(&lister),
         Subcommand::Info(cmd) => cmd.run(&lister),
@@ -324,9 +318,5 @@ fn main() -> Result<()> {
         Subcommand::Profile(cmd) => cmd.run(&lister),
         Subcommand::Read(cmd) => cmd.run(&lister),
         Subcommand::Write(cmd) => cmd.run(&lister),
-    };
-
-    tracing::info!("Wrote log to {:?}", log_path);
-
-    result
+    }
 }

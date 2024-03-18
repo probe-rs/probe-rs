@@ -1,4 +1,4 @@
-use serde::{self, ser::SerializeStruct, Serializer};
+use serde::{ser::SerializeStruct, Serializer};
 use std::ops::Range;
 
 pub fn serialize<S>(memory_range: &Range<u64>, serializer: S) -> Result<S::Ok, S::Error>

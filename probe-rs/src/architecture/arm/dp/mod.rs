@@ -9,7 +9,7 @@ use super::{
 use bitfield::bitfield;
 use jep106::JEP106Code;
 
-use crate::DebugProbeError;
+use crate::probe::DebugProbeError;
 use std::fmt::Display;
 
 /// An error occurred when interacting with the debug port.
@@ -68,6 +68,7 @@ pub trait DpAccess {
 }
 
 impl<T: DapAccess> DpAccess for T {
+    #[tracing::instrument(skip(self))]
     fn read_dp_register<R: DpRegister>(&mut self, dp: DpAddress) -> Result<R, ArmError> {
         tracing::debug!("Reading DP register {}", R::NAME);
         let result = self.read_raw_dp_register(dp, R::ADDRESS)?;
@@ -75,6 +76,7 @@ impl<T: DapAccess> DpAccess for T {
         Ok(result.try_into()?)
     }
 
+    #[tracing::instrument(skip(self))]
     fn write_dp_register<R: DpRegister>(
         &mut self,
         dp: DpAddress,
@@ -152,6 +154,15 @@ bitfield! {
     ///
     /// After a powerup reset, this bit is `0b0`.
     pub c_dbg_rst_req, set_c_dbg_rst_req: 26;
+    /// Error mode. Indicates the reset behavior of the CTRL/STAT.STICKYERR field.
+    ///
+    /// If true, CTRL/STAT.STICKYERR is cleared when a FAULT response is output.
+    ///
+    /// After a powerup reset, the value of this field is false.
+    ///
+    /// This bit only exists on DPv3 (see ADIv6 B2.2.3), it is RES0 on previous DP versions. Its
+    /// value should therefore be ignored and written as 0.
+    pub errmode, set_errmode: 24;
     /// Transaction counter. See The transaction counter on page B1-43. After a powerup reset, the value of this field is UNKNOWN.
     ///
     /// It is IMPLEMENTATION DEFINED whether this field is implemented.
@@ -383,7 +394,8 @@ bitfield! {
     ///
     /// `0x0`: Reserved. Implementations of DPv0 do not implement DPIDR.\
     /// `0x1`: DPv1 is implemented.\
-    /// `0x2`: DPv2 is implemented.
+    /// `0x2`: DPv2 is implemented.\
+    /// `0x3`: DPv3 is implemented.
     ///
     /// All remaining values are reserved.
     pub u8, version, _: 15, 12;
@@ -426,6 +438,46 @@ impl DpRegister for DPIDR {
 impl Register for DPIDR {
     const ADDRESS: u8 = 0x0;
     const NAME: &'static str = "DPIDR";
+}
+
+bitfield! {
+    /// DPIDR1, Debug Port Identification register (see ADI v6 B2.2.7)
+    ///
+    /// DPIDR1 provides information about the Debug Port.
+    #[derive(Clone)]
+    pub struct DPIDR1(u32);
+    impl Debug;
+    /// Error reporting mode support.
+    ///
+    /// If true, CTRL/STAT.ERRMODE is implemented.
+    pub errmode, _: 7;
+    /// Address size.
+    ///
+    /// This field selects the size of the addresses in SELECT, SELECT1, BASEPTR0 and BASEPTR1.
+    /// Possible values are 12, 20, 32, 40, 48 and 52 bits.
+    pub u8, asize, _: 6, 0;
+}
+impl TryFrom<u32> for DPIDR1 {
+    type Error = RegisterParseError;
+
+    fn try_from(raw: u32) -> Result<Self, Self::Error> {
+        Ok(Self(raw))
+    }
+}
+
+impl From<DPIDR1> for u32 {
+    fn from(raw: DPIDR1) -> Self {
+        raw.0
+    }
+}
+
+impl DpRegister for DPIDR1 {
+    const VERSION: DebugPortVersion = DebugPortVersion::DPv3;
+}
+
+impl Register for DPIDR1 {
+    const ADDRESS: u8 = 0x10;
+    const NAME: &'static str = "DPIDR1";
 }
 
 bitfield! {
@@ -480,6 +532,72 @@ impl DpRegister for TARGETID {
 impl Register for TARGETID {
     const ADDRESS: u8 = 0x24;
     const NAME: &'static str = "TARGETID";
+}
+
+bitfield! {
+    /// BASEPTR0, Initial system address for the first component in the system (see ADI v6.0 B2.2.2)
+    #[derive(Clone)]
+    pub struct BASEPTR0(u32);
+    impl Debug;
+    /// Pointer least significant bits (bits [31:12] of the full address).
+    pub u32, ptr, _: 31, 12;
+    /// True if `ptr` specifies a valid base address.
+    pub valid, _: 0;
+}
+
+impl TryFrom<u32> for BASEPTR0 {
+    type Error = RegisterParseError;
+
+    fn try_from(raw: u32) -> Result<Self, Self::Error> {
+        Ok(Self(raw))
+    }
+}
+
+impl From<BASEPTR0> for u32 {
+    fn from(raw: BASEPTR0) -> Self {
+        raw.0
+    }
+}
+
+impl DpRegister for BASEPTR0 {
+    const VERSION: DebugPortVersion = DebugPortVersion::DPv3;
+}
+
+impl Register for BASEPTR0 {
+    const ADDRESS: u8 = 0x20;
+    const NAME: &'static str = "BASEPTR0";
+}
+
+bitfield! {
+    /// BASEPTR1, Initial system address for the first component in the system (see ADI v6.0 B2.2.2)
+    #[derive(Clone)]
+    pub struct BASEPTR1(u32);
+    impl Debug;
+    /// Pointer most significant bits (bits [63:32] of the full address).
+    pub u32, ptr, _: 31, 0;
+}
+
+impl TryFrom<u32> for BASEPTR1 {
+    type Error = RegisterParseError;
+
+    fn try_from(raw: u32) -> Result<Self, Self::Error> {
+        Ok(Self(raw))
+    }
+}
+
+impl From<BASEPTR1> for u32 {
+    fn from(raw: BASEPTR1) -> Self {
+        raw.0
+    }
+}
+
+impl DpRegister for BASEPTR1 {
+    const VERSION: DebugPortVersion = DebugPortVersion::DPv3;
+}
+
+impl Register for BASEPTR1 {
+    const ADDRESS: u8 = 0x30;
+    const NAME: &'static str = "BASEPTR1";
 }
 
 /// The ID of a debug port. Can be used to detect and select devices in a multidrop setup.
@@ -581,6 +699,8 @@ pub enum DebugPortVersion {
     DPv1,
     /// Version 2 (**very** rare (only known example is the RP2040))
     DPv2,
+    /// Version 3 (on ADIv6 devices)
+    DPv3,
     /// Some unsupported value was encountered!
     Unsupported(u8),
 }
@@ -593,6 +713,7 @@ impl From<DebugPortVersion> for u8 {
             DPv0 => 0,
             DPv1 => 1,
             DPv2 => 2,
+            DPv3 => 3,
             Unsupported(val) => val,
         }
     }
@@ -615,6 +736,7 @@ impl Display for DebugPortVersion {
             DPv0 => write!(f, "DPv0"),
             DPv1 => write!(f, "DPv1"),
             DPv2 => write!(f, "DPv2"),
+            DPv3 => write!(f, "DPv3"),
             Unsupported(version) => write!(f, "<unsupported Debugport Version {version}>"),
         }
     }
@@ -626,6 +748,7 @@ impl From<u8> for DebugPortVersion {
             0 => DebugPortVersion::DPv0,
             1 => DebugPortVersion::DPv1,
             2 => DebugPortVersion::DPv2,
+            3 => DebugPortVersion::DPv3,
             value => DebugPortVersion::Unsupported(value),
         }
     }

@@ -1,37 +1,17 @@
 use crate::{
-    architecture::{
-        arm::{
-            core::registers::{
-                aarch32::{
-                    AARCH32_CORE_REGSISTERS, AARCH32_WITH_FP_16_CORE_REGSISTERS,
-                    AARCH32_WITH_FP_32_CORE_REGSISTERS,
-                },
-                aarch64::AARCH64_CORE_REGSISTERS,
-                cortex_m::{CORTEX_M_CORE_REGISTERS, CORTEX_M_WITH_FP_CORE_REGISTERS},
-            },
-            sequences::ArmDebugSequence,
-        },
-        riscv::registers::RISCV_CORE_REGSISTERS,
-    },
-    debug::{DebugRegister, DebugRegisters},
-    error, CoreType, Error, InstructionSet, MemoryInterface, Target,
+    architecture::arm::sequences::ArmDebugSequence, config::DebugSequence, debug::DebugRegisters,
+    error::Error, CoreType, InstructionSet, MemoryInterface, Target,
 };
 use anyhow::anyhow;
 pub use probe_rs_target::{Architecture, CoreAccessOptions};
-use probe_rs_target::{ArmCoreAccessOptions, MemoryRange, RiscvCoreAccessOptions};
-use scroll::Pread;
-use std::{
-    collections::HashMap,
-    fs::OpenOptions,
-    mem::size_of_val,
-    ops::Range,
-    path::{Path, PathBuf},
-    sync::Arc,
-    time::Duration,
+use probe_rs_target::{
+    ArmCoreAccessOptions, MemoryRegion, RiscvCoreAccessOptions, XtensaCoreAccessOptions,
 };
+use std::{collections::HashMap, ops::Range, sync::Arc, time::Duration};
 
 pub mod core_state;
 pub mod core_status;
+pub(crate) mod dump;
 pub mod memory_mapped_registers;
 pub mod registers;
 
@@ -39,6 +19,8 @@ pub use core_state::*;
 pub use core_status::*;
 pub use memory_mapped_registers::MemoryMappedRegister;
 pub use registers::*;
+
+use self::dump::CoreDump;
 
 /// An struct for storing the current state of a core.
 #[derive(Debug, Clone)]
@@ -49,71 +31,68 @@ pub struct CoreInformation {
 
 /// A generic interface to control a MCU core.
 pub trait CoreInterface: MemoryInterface {
-    /// Numerical ID of the core. Can be used as an argument to `Session::core()`.
-    fn id(&self) -> usize;
-
     /// Wait until the core is halted. If the core does not halt on its own,
-    /// a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) error will be returned.
-    fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), error::Error>;
+    /// a [`DebugProbeError::Timeout`](crate::probe::DebugProbeError::Timeout) error will be returned.
+    fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error>;
 
     /// Check if the core is halted. If the core does not halt on its own,
-    /// a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) error will be returned.
-    fn core_halted(&mut self) -> Result<bool, error::Error>;
+    /// a [`DebugProbeError::Timeout`](crate::probe::DebugProbeError::Timeout) error will be returned.
+    fn core_halted(&mut self) -> Result<bool, Error>;
 
     /// Returns the current status of the core.
-    fn status(&mut self) -> Result<CoreStatus, error::Error>;
+    fn status(&mut self) -> Result<CoreStatus, Error>;
 
     /// Try to halt the core. This function ensures the core is actually halted, and
-    /// returns a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) otherwise.
-    fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error>;
+    /// returns a [`DebugProbeError::Timeout`](crate::probe::DebugProbeError::Timeout) otherwise.
+    fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error>;
 
     /// Continue to execute instructions.
-    fn run(&mut self) -> Result<(), error::Error>;
+    fn run(&mut self) -> Result<(), Error>;
 
     /// Reset the core, and then continue to execute instructions. If the core
     /// should be halted after reset, use the [`reset_and_halt`] function.
     ///
     /// [`reset_and_halt`]: Core::reset_and_halt
-    fn reset(&mut self) -> Result<(), error::Error>;
+    fn reset(&mut self) -> Result<(), Error>;
 
     /// Reset the core, and then immediately halt. To continue execution after
     /// reset, use the [`reset`] function.
     ///
     /// [`reset`]: Core::reset
-    fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error>;
+    fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error>;
 
     /// Steps one instruction and then enters halted state again.
-    fn step(&mut self) -> Result<CoreInformation, error::Error>;
+    fn step(&mut self) -> Result<CoreInformation, Error>;
 
     /// Read the value of a core register.
     fn read_core_reg(
         &mut self,
         address: registers::RegisterId,
-    ) -> Result<registers::RegisterValue, error::Error>;
+    ) -> Result<registers::RegisterValue, Error>;
 
     /// Write the value of a core register.
     fn write_core_reg(
         &mut self,
         address: registers::RegisterId,
         value: registers::RegisterValue,
-    ) -> Result<(), error::Error>;
+    ) -> Result<(), Error>;
 
     /// Returns all the available breakpoint units of the core.
-    fn available_breakpoint_units(&mut self) -> Result<u32, error::Error>;
+    fn available_breakpoint_units(&mut self) -> Result<u32, Error>;
 
     /// Read the hardware breakpoints from FpComp registers, and adds them to the Result Vector.
     /// A value of None in any position of the Vector indicates that the position is unset/available.
     /// We intentionally return all breakpoints, irrespective of whether they are enabled or not.
-    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, error::Error>;
+    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error>;
 
     /// Enables breakpoints on this core. If a breakpoint is set, it will halt as soon as it is hit.
-    fn enable_breakpoints(&mut self, state: bool) -> Result<(), error::Error>;
+    fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error>;
 
     /// Sets a breakpoint at `addr`. It does so by using unit `bp_unit_index`.
-    fn set_hw_breakpoint(&mut self, unit_index: usize, addr: u64) -> Result<(), error::Error>;
+    fn set_hw_breakpoint(&mut self, unit_index: usize, addr: u64) -> Result<(), Error>;
 
     /// Clears the breakpoint configured in unit `unit_index`.
-    fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), error::Error>;
+    fn clear_hw_breakpoint(&mut self, unit_index: usize) -> Result<(), Error>;
 
     /// Returns a list of all the registers of this core.
     fn registers(&self) -> &'static registers::CoreRegisters;
@@ -134,8 +113,8 @@ pub trait CoreInterface: MemoryInterface {
     fn hw_breakpoints_enabled(&self) -> bool;
 
     /// Configure the target to ensure software breakpoints will enter Debug Mode.
-    fn debug_on_sw_breakpoint(&mut self, _enabled: bool) -> Result<(), error::Error> {
-        // This default will have override methods for architectures that require special behavior, e.g. RISV-V.
+    fn debug_on_sw_breakpoint(&mut self, _enabled: bool) -> Result<(), Error> {
+        // This default will have override methods for architectures that require special behavior, e.g. RISC-V.
         Ok(())
     }
 
@@ -148,17 +127,17 @@ pub trait CoreInterface: MemoryInterface {
     /// Determine the instruction set the core is operating in
     /// This must be queried while halted as this is a runtime
     /// decision for some core types
-    fn instruction_set(&mut self) -> Result<InstructionSet, error::Error>;
+    fn instruction_set(&mut self) -> Result<InstructionSet, Error>;
 
     /// Determine if an FPU is present.
     /// This must be queried while halted as this is a runtime
     /// decision for some core types.
-    fn fpu_support(&mut self) -> Result<bool, error::Error>;
+    fn fpu_support(&mut self) -> Result<bool, Error>;
 
     /// Determine the number of floating point registers.
     /// This must be queried while halted as this is a runtime
     /// decision for some core types.
-    fn floating_point_register_count(&mut self) -> Result<usize, crate::error::Error>;
+    fn floating_point_register_count(&mut self) -> Result<usize, Error>;
 
     /// Set the reset catch setting.
     ///
@@ -191,256 +170,6 @@ pub trait CoreInterface: MemoryInterface {
     }
 }
 
-/// A snapshot representation of a core state.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CoreDump {
-    /// The registers we dumped from the core.
-    pub registers: HashMap<RegisterId, RegisterValue>,
-    /// The memory we dumped from the core.
-    pub data: Vec<(Range<u64>, Vec<u8>)>,
-    /// The instruction set of the dumped core.
-    pub instruction_set: InstructionSet,
-    /// Whether or not the target supports native 64 bit support (64bit architectures)
-    pub supports_native_64bit_access: bool,
-    /// The type of core we have at hand.
-    pub core_type: CoreType,
-    /// Whether this core supports floating point.
-    pub fpu_support: bool,
-    /// The number of floating point registers.
-    pub floating_point_register_count: Option<usize>,
-}
-
-impl CoreDump {
-    /// Store the dumped core to a file.
-    pub fn store(&self, path: &Path) -> Result<(), CoreDumpError> {
-        let mut file = OpenOptions::new()
-            .create(true)
-            .write(true)
-            .open(path)
-            .map_err(|e| {
-                CoreDumpError::CoreDumpFileWrite(e, dunce::canonicalize(path).unwrap_or_default())
-            })?;
-        rmp_serde::encode::write_named(&mut file, self).map_err(CoreDumpError::EncodingCoreDump)?;
-        Ok(())
-    }
-
-    /// Load the dumped core from a file.
-    pub fn load(path: &Path) -> Result<Self, CoreDumpError> {
-        let file = OpenOptions::new().read(true).open(path).map_err(|e| {
-            CoreDumpError::CoreDumpFileRead(e, dunce::canonicalize(path).unwrap_or_default())
-        })?;
-        rmp_serde::from_read(&file).map_err(CoreDumpError::DecodingCoreDump)
-    }
-
-    /// Load the dumped core from a file.
-    pub fn load_raw(data: &[u8]) -> Result<Self, CoreDumpError> {
-        rmp_serde::from_slice(data).map_err(CoreDumpError::DecodingCoreDump)
-    }
-
-    /// Read all registers defined in [`crate::core::CoreRegisters`] from the given core.
-    pub fn debug_registers(&self) -> DebugRegisters {
-        let reg_list = match self.core_type {
-            CoreType::Armv6m => &CORTEX_M_CORE_REGISTERS,
-            CoreType::Armv7a => match self.floating_point_register_count {
-                Some(16) => &AARCH32_WITH_FP_16_CORE_REGSISTERS,
-                Some(32) => &AARCH32_WITH_FP_32_CORE_REGSISTERS,
-                _ => &AARCH32_CORE_REGSISTERS,
-            },
-            CoreType::Armv7m => {
-                if self.fpu_support {
-                    &CORTEX_M_WITH_FP_CORE_REGISTERS
-                } else {
-                    &CORTEX_M_CORE_REGISTERS
-                }
-            }
-            CoreType::Armv7em => {
-                if self.fpu_support {
-                    &CORTEX_M_WITH_FP_CORE_REGISTERS
-                } else {
-                    &CORTEX_M_CORE_REGISTERS
-                }
-            }
-            // TODO: This can be wrong if the CPU is 32 bit. For lack of better design at the time of writing this code
-            // this differentiation has been omitted.
-            CoreType::Armv8a => &AARCH64_CORE_REGSISTERS,
-            CoreType::Armv8m => {
-                if self.fpu_support {
-                    &CORTEX_M_WITH_FP_CORE_REGISTERS
-                } else {
-                    &CORTEX_M_CORE_REGISTERS
-                }
-            }
-            CoreType::Riscv => &RISCV_CORE_REGSISTERS,
-        };
-
-        let mut debug_registers = Vec::<DebugRegister>::new();
-        for (dwarf_id, core_register) in reg_list.core_registers().enumerate() {
-            // Check to ensure the register type is compatible with u64.
-            if matches!(core_register.data_type(), RegisterDataType::UnsignedInteger(size_in_bits) if size_in_bits <= 64)
-            {
-                debug_registers.push(DebugRegister {
-                    core_register,
-                    // The DWARF register ID is only valid for the first 32 registers.
-                    dwarf_id: if dwarf_id < 32 {
-                        Some(dwarf_id as u16)
-                    } else {
-                        None
-                    },
-                    value: match self.registers.get(&core_register.id()) {
-                        Some(register_value) => Some(*register_value),
-                        None => {
-                            tracing::warn!("Failed to read value for register {:?}", core_register);
-                            None
-                        }
-                    },
-                });
-            } else {
-                tracing::trace!(
-                    "Unwind will use the default rule for this register : {:?}",
-                    core_register
-                );
-            }
-        }
-        DebugRegisters(debug_registers)
-    }
-
-    /// Returns the type of the core.
-    pub fn core_type(&self) -> CoreType {
-        self.core_type
-    }
-
-    /// Returns the currently active instruction-set
-    pub fn instruction_set(&self) -> InstructionSet {
-        self.instruction_set
-    }
-
-    /// Retrieve a memory range that contains the requested address and size, from the coredump.
-    fn get_memory_from_coredump(
-        &self,
-        address: u64,
-        size_in_bytes: u64,
-    ) -> Result<(u64, &Vec<u8>), crate::Error> {
-        for (range, memory) in &self.data {
-            if range.contains_range(&(address..(address + size_in_bytes))) {
-                return Ok((range.start, memory));
-            }
-        }
-        // If we get here, then no range with the requested memory address and size was found.
-        Err(crate::Error::Other(anyhow!("The coredump does not include the memory for address {address:#x} of size {size_in_bytes:#x}")))
-    }
-
-    /// Read the requested memory range from the coredump, and return the data in the requested buffer.
-    /// The word-size of the read is determined by the size of the items in the `data` buffer.
-    fn read_memory_range<'a, T>(
-        &'a self,
-        address: u64,
-        data: &'a mut [T],
-    ) -> Result<(), crate::Error>
-    where
-        <T as scroll::ctx::TryFromCtx<'a, scroll::Endian>>::Error:
-            std::convert::From<scroll::Error>,
-        <T as scroll::ctx::TryFromCtx<'a, scroll::Endian>>::Error: std::fmt::Display,
-        T: scroll::ctx::TryFromCtx<'a, scroll::Endian>,
-    {
-        let (memory_offset, memory) =
-            self.get_memory_from_coredump(address, (size_of_val(data)) as u64)?;
-        for (n, data) in data.iter_mut().enumerate() {
-            *data = memory
-                .pread_with::<T>((address - memory_offset) as usize + n * 4, scroll::LE)
-                .map_err(|e| anyhow!("{e}"))?;
-        }
-        Ok(())
-    }
-}
-
-impl MemoryInterface for CoreDump {
-    fn supports_native_64bit_access(&mut self) -> bool {
-        self.supports_native_64bit_access
-    }
-
-    fn read_word_64(&mut self, address: u64) -> Result<u64, crate::Error> {
-        let mut data = [0u64; 1];
-        self.read_memory_range(address, &mut data)?;
-        Ok(data[0])
-    }
-
-    fn read_word_32(&mut self, address: u64) -> Result<u32, crate::Error> {
-        let mut data = [0u32; 1];
-        self.read_memory_range(address, &mut data)?;
-        Ok(data[0])
-    }
-
-    fn read_word_8(&mut self, address: u64) -> Result<u8, crate::Error> {
-        let mut data = [0u8; 1];
-        self.read_memory_range(address, &mut data)?;
-        Ok(data[0])
-    }
-
-    fn read_64(&mut self, address: u64, data: &mut [u64]) -> Result<(), crate::Error> {
-        self.read_memory_range(address, data)?;
-        Ok(())
-    }
-
-    fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), crate::Error> {
-        self.read_memory_range(address, data)?;
-        Ok(())
-    }
-
-    fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), crate::Error> {
-        self.read_memory_range(address, data)?;
-        Ok(())
-    }
-
-    fn write_word_64(&mut self, _address: u64, _data: u64) -> Result<(), crate::Error> {
-        todo!()
-    }
-
-    fn write_word_32(&mut self, _address: u64, _data: u32) -> Result<(), crate::Error> {
-        todo!()
-    }
-
-    fn write_word_8(&mut self, _address: u64, _data: u8) -> Result<(), crate::Error> {
-        todo!()
-    }
-
-    fn write_64(&mut self, _address: u64, _data: &[u64]) -> Result<(), crate::Error> {
-        todo!()
-    }
-
-    fn write_32(&mut self, _address: u64, _data: &[u32]) -> Result<(), crate::Error> {
-        todo!()
-    }
-
-    fn write_8(&mut self, _address: u64, _data: &[u8]) -> Result<(), crate::Error> {
-        todo!()
-    }
-
-    fn supports_8bit_transfers(&self) -> Result<bool, crate::Error> {
-        todo!()
-    }
-
-    fn flush(&mut self) -> Result<(), crate::Error> {
-        todo!()
-    }
-}
-
-/// The overarching error type which contains all possible errors as variants.
-#[derive(thiserror::Error, Debug)]
-pub enum CoreDumpError {
-    /// Opening the file for writing the core dump failed.
-    #[error("Opening {1} for writing the core dump failed.")]
-    CoreDumpFileWrite(std::io::Error, PathBuf),
-    /// Opening the file for reading the core dump failed.
-    #[error("Opening {1} for reading the core dump failed.")]
-    CoreDumpFileRead(std::io::Error, PathBuf),
-    /// Encoding the coredump MessagePack failed.
-    #[error("Encoding the coredump MessagePack failed.")]
-    EncodingCoreDump(rmp_serde::encode::Error),
-    /// Decoding the coredump MessagePack failed.
-    #[error("Decoding the coredump MessagePack failed.")]
-    DecodingCoreDump(rmp_serde::decode::Error),
-}
-
 impl<'probe> MemoryInterface for Core<'probe> {
     fn supports_native_64bit_access(&mut self) -> bool {
         self.inner.supports_native_64bit_access()
@@ -454,6 +183,10 @@ impl<'probe> MemoryInterface for Core<'probe> {
         self.inner.read_word_32(address)
     }
 
+    fn read_word_16(&mut self, address: u64) -> Result<u16, Error> {
+        self.inner.read_word_16(address)
+    }
+
     fn read_word_8(&mut self, address: u64) -> Result<u8, Error> {
         self.inner.read_word_8(address)
     }
@@ -464,6 +197,10 @@ impl<'probe> MemoryInterface for Core<'probe> {
 
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), Error> {
         self.inner.read_32(address, data)
+    }
+
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), Error> {
+        self.inner.read_16(address, data)
     }
 
     fn read_8(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
@@ -482,6 +219,10 @@ impl<'probe> MemoryInterface for Core<'probe> {
         self.inner.write_word_32(addr, data)
     }
 
+    fn write_word_16(&mut self, addr: u64, data: u16) -> Result<(), Error> {
+        self.inner.write_word_16(addr, data)
+    }
+
     fn write_word_8(&mut self, addr: u64, data: u8) -> Result<(), Error> {
         self.inner.write_word_8(addr, data)
     }
@@ -494,6 +235,10 @@ impl<'probe> MemoryInterface for Core<'probe> {
         self.inner.write_32(addr, data)
     }
 
+    fn write_16(&mut self, addr: u64, data: &[u16]) -> Result<(), Error> {
+        self.inner.write_16(addr, data)
+    }
+
     fn write_8(&mut self, addr: u64, data: &[u8]) -> Result<(), Error> {
         self.inner.write_8(addr, data)
     }
@@ -502,7 +247,7 @@ impl<'probe> MemoryInterface for Core<'probe> {
         self.inner.write(addr, data)
     }
 
-    fn supports_8bit_transfers(&self) -> Result<bool, error::Error> {
+    fn supports_8bit_transfers(&self) -> Result<bool, Error> {
         self.inner.supports_8bit_transfers()
     }
 
@@ -574,9 +319,7 @@ impl ExceptionInterface for UnimplementedExceptionHandler {
         // For architectures where the exception handling has not been implemented in probe-rs,
         // this will result in maintaining the current `unwind` behavior, i.e. unwinding will stop
         // when the first frame is reached that was called from an exception handler.
-        Err(Error::NotImplemented(
-            "Unwinding of exception frames has not yet been implemented for this architecture.",
-        ))
+        Err(Error::NotImplemented("unwinding of exception frames"))
     }
 
     fn calling_frame_registers(
@@ -584,9 +327,7 @@ impl ExceptionInterface for UnimplementedExceptionHandler {
         _memory: &mut dyn MemoryInterface,
         _stackframe_registers: &crate::debug::DebugRegisters,
     ) -> Result<crate::debug::DebugRegisters, crate::Error> {
-        Err(Error::NotImplemented(
-            "Not implemented for this architecture.",
-        ))
+        Err(Error::NotImplemented("calling frame registers"))
     }
 
     fn raw_exception(
@@ -603,9 +344,7 @@ impl ExceptionInterface for UnimplementedExceptionHandler {
         _raw_exception: u32,
         _memory: &mut dyn MemoryInterface,
     ) -> Result<String, crate::Error> {
-        Err(Error::NotImplemented(
-            "Not implemented for this architecture.",
-        ))
+        Err(Error::NotImplemented("exception description"))
     }
 }
 
@@ -621,7 +360,7 @@ pub fn exception_handler_for_core(core_type: CoreType) -> Box<dyn ExceptionInter
         CoreType::Armv8m => Box::new(
             crate::architecture::arm::core::exception_handling::armv8m::ArmV8MExceptionHandler,
         ),
-        CoreType::Armv7a | CoreType::Armv8a | CoreType::Riscv => {
+        CoreType::Armv7a | CoreType::Armv8a | CoreType::Riscv | CoreType::Xtensa => {
             Box::new(UnimplementedExceptionHandler)
         }
     }
@@ -634,6 +373,10 @@ pub fn exception_handler_for_core(core_type: CoreType) -> Box<dyn ExceptionInter
 /// As soon as you did your atomic task (e.g. halt the core, read the core state and all other debug relevant info) you should drop this object,
 /// to allow potential other shareholders of the session struct to grab a core handle too.
 pub struct Core<'probe> {
+    id: usize,
+    name: &'probe str,
+    memory_regions: &'probe [MemoryRegion],
+
     inner: Box<dyn CoreInterface + 'probe>,
 }
 
@@ -644,10 +387,25 @@ impl<'probe> Core<'probe> {
     }
 
     /// Create a new [`Core`].
-    pub(crate) fn new(core: impl CoreInterface + 'probe) -> Core<'probe> {
+    pub(crate) fn new(
+        id: usize,
+        name: &'probe str,
+        memory_regions: &'probe [MemoryRegion],
+        core: impl CoreInterface + 'probe,
+    ) -> Core<'probe> {
         Self {
+            id,
+            name,
+            memory_regions,
             inner: Box::new(core),
         }
+    }
+
+    /// Return the memory regions associated with this core.
+    pub fn memory_regions(&self) -> impl Iterator<Item = &MemoryRegion> {
+        self.memory_regions
+            .iter()
+            .filter(|r| r.cores().iter().any(|m| m == self.name))
     }
 
     /// Creates a new [`CoreState`]
@@ -661,11 +419,10 @@ impl<'probe> Core<'probe> {
 
         match options {
             CoreAccessOptions::Arm(options) => {
-                let sequence = match &target.debug_sequence {
-                    crate::config::DebugSequence::Arm(seq) => seq.clone(),
-                    crate::config::DebugSequence::Riscv(_) => panic!(
+                let DebugSequence::Arm(sequence) = target.debug_sequence.clone() else {
+                    panic!(
                         "Mismatch between sequence and core kind. This is a bug, please report it."
-                    ),
+                    );
                 };
 
                 let core_state = CoreState::new(ResolvedCoreOptions::Arm { sequence, options });
@@ -684,37 +441,45 @@ impl<'probe> Core<'probe> {
                     specific_state,
                 }
             }
+            CoreAccessOptions::Xtensa(options) => {
+                let core_state = CoreState::new(ResolvedCoreOptions::Xtensa { options });
+                CombinedCoreState {
+                    id,
+                    core_state,
+                    specific_state,
+                }
+            }
         }
     }
 
     /// Returns the ID of this core.
     pub fn id(&self) -> usize {
-        self.inner.id()
+        self.id
     }
 
     /// Wait until the core is halted. If the core does not halt on its own,
-    /// a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) error will be returned.
+    /// a [`DebugProbeError::Timeout`](crate::probe::DebugProbeError::Timeout) error will be returned.
     #[tracing::instrument(skip(self))]
-    pub fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), error::Error> {
+    pub fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
         self.inner.wait_for_core_halted(timeout)
     }
 
     /// Check if the core is halted. If the core does not halt on its own,
-    /// a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) error will be returned.
-    pub fn core_halted(&mut self) -> Result<bool, error::Error> {
+    /// a [`DebugProbeError::Timeout`](crate::probe::DebugProbeError::Timeout) error will be returned.
+    pub fn core_halted(&mut self) -> Result<bool, Error> {
         self.inner.core_halted()
     }
 
     /// Try to halt the core. This function ensures the core is actually halted, and
-    /// returns a [`DebugProbeError::Timeout`](crate::DebugProbeError::Timeout) otherwise.
+    /// returns a [`DebugProbeError::Timeout`](crate::probe::DebugProbeError::Timeout) otherwise.
     #[tracing::instrument(skip(self))]
-    pub fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
+    pub fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         self.inner.halt(timeout)
     }
 
     /// Continue to execute instructions.
     #[tracing::instrument(skip(self))]
-    pub fn run(&mut self) -> Result<(), error::Error> {
+    pub fn run(&mut self) -> Result<(), Error> {
         self.inner.run()
     }
 
@@ -723,7 +488,7 @@ impl<'probe> Core<'probe> {
     ///
     /// [`reset_and_halt`]: Core::reset_and_halt
     #[tracing::instrument(skip(self))]
-    pub fn reset(&mut self) -> Result<(), error::Error> {
+    pub fn reset(&mut self) -> Result<(), Error> {
         self.inner.reset()
     }
 
@@ -732,19 +497,19 @@ impl<'probe> Core<'probe> {
     ///
     /// [`reset`]: Core::reset
     #[tracing::instrument(skip(self))]
-    pub fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
+    pub fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         self.inner.reset_and_halt(timeout)
     }
 
     /// Steps one instruction and then enters halted state again.
     #[tracing::instrument(skip(self))]
-    pub fn step(&mut self) -> Result<CoreInformation, error::Error> {
+    pub fn step(&mut self) -> Result<CoreInformation, Error> {
         self.inner.step()
     }
 
     /// Returns the current status of the core.
     #[tracing::instrument(skip(self))]
-    pub fn status(&mut self) -> Result<CoreStatus, error::Error> {
+    pub fn status(&mut self) -> Result<CoreStatus, Error> {
         self.inner.status()
     }
 
@@ -757,7 +522,7 @@ impl<'probe> Core<'probe> {
     /// length registers.
     ///
     /// To add support to convert to a custom type implement [`TryInto<CustomType>`]
-    /// for [RegisterValue]].
+    /// for [RegisterValue].
     ///
     /// # Errors
     ///
@@ -766,7 +531,7 @@ impl<'probe> Core<'probe> {
     pub fn read_core_reg<T>(
         &mut self,
         address: impl Into<registers::RegisterId>,
-    ) -> Result<T, error::Error>
+    ) -> Result<T, Error>
     where
         registers::RegisterValue: TryInto<T>,
         Result<T, <registers::RegisterValue as TryInto<T>>::Error>: RegisterValueResultExt<T>,
@@ -790,7 +555,7 @@ impl<'probe> Core<'probe> {
         &mut self,
         address: impl Into<registers::RegisterId>,
         value: T,
-    ) -> Result<(), error::Error>
+    ) -> Result<(), Error>
     where
         T: Into<registers::RegisterValue>,
     {
@@ -800,18 +565,18 @@ impl<'probe> Core<'probe> {
     }
 
     /// Returns all the available breakpoint units of the core.
-    pub fn available_breakpoint_units(&mut self) -> Result<u32, error::Error> {
+    pub fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
         self.inner.available_breakpoint_units()
     }
 
     /// Enables breakpoints on this core. If a breakpoint is set, it will halt as soon as it is hit.
-    fn enable_breakpoints(&mut self, state: bool) -> Result<(), error::Error> {
+    fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error> {
         self.inner.enable_breakpoints(state)
     }
 
     /// Configure the debug module to ensure software breakpoints will enter Debug Mode.
     #[tracing::instrument(skip(self))]
-    pub fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), error::Error> {
+    pub fn debug_on_sw_breakpoint(&mut self, enabled: bool) -> Result<(), Error> {
         self.inner.debug_on_sw_breakpoint(enabled)
     }
 
@@ -841,7 +606,7 @@ impl<'probe> Core<'probe> {
     }
 
     /// Find the index of the next available HW breakpoint comparator.
-    fn find_free_breakpoint_comparator_index(&mut self) -> Result<usize, error::Error> {
+    fn find_free_breakpoint_comparator_index(&mut self) -> Result<usize, Error> {
         let mut next_available_hw_breakpoint = 0;
         for breakpoint in self.inner.hw_breakpoints()? {
             if breakpoint.is_none() {
@@ -850,9 +615,7 @@ impl<'probe> Core<'probe> {
                 next_available_hw_breakpoint += 1;
             }
         }
-        Err(error::Error::Other(anyhow!(
-            "No available hardware breakpoints"
-        )))
+        Err(Error::Other(anyhow!("No available hardware breakpoints")))
     }
 
     /// Set a hardware breakpoint
@@ -862,7 +625,7 @@ impl<'probe> Core<'probe> {
     /// The amount of hardware breakpoints which are supported is chip specific,
     /// and can be queried using the `get_available_breakpoint_units` function.
     #[tracing::instrument(skip(self))]
-    pub fn set_hw_breakpoint(&mut self, address: u64) -> Result<(), error::Error> {
+    pub fn set_hw_breakpoint(&mut self, address: u64) -> Result<(), Error> {
         if !self.inner.hw_breakpoints_enabled() {
             self.enable_breakpoints(true)?;
         }
@@ -894,7 +657,7 @@ impl<'probe> Core<'probe> {
     ///
     /// This function will try to clear a hardware breakpoint at `address` if there exists a breakpoint at that address.
     #[tracing::instrument(skip(self))]
-    pub fn clear_hw_breakpoint(&mut self, address: u64) -> Result<(), error::Error> {
+    pub fn clear_hw_breakpoint(&mut self, address: u64) -> Result<(), Error> {
         let bp_position = self
             .inner
             .hw_breakpoints()?
@@ -912,7 +675,7 @@ impl<'probe> Core<'probe> {
                 self.inner.clear_hw_breakpoint(bp_position)?;
                 Ok(())
             }
-            None => Err(error::Error::Other(anyhow!(
+            None => Err(Error::Other(anyhow!(
                 "No breakpoint found at address {:#010x}",
                 address
             ))),
@@ -925,7 +688,7 @@ impl<'probe> Core<'probe> {
     /// regardless if they are set by probe-rs, AND regardless if they are enabled or not.
     /// Also used as a helper function in [`Session::drop`](crate::session::Session).
     #[tracing::instrument(skip(self))]
-    pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), error::Error> {
+    pub fn clear_all_hw_breakpoints(&mut self) -> Result<(), Error> {
         for breakpoint in (self.inner.hw_breakpoints()?).into_iter().flatten() {
             self.clear_hw_breakpoint(breakpoint)?
         }
@@ -945,20 +708,20 @@ impl<'probe> Core<'probe> {
     /// Determine the instruction set the core is operating in
     /// This must be queried while halted as this is a runtime
     /// decision for some core types
-    pub fn instruction_set(&mut self) -> Result<InstructionSet, error::Error> {
+    pub fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
         self.inner.instruction_set()
     }
 
     /// Determine if an FPU is present.
     /// This must be queried while halted as this is a runtime
     /// decision for some core types.
-    pub fn fpu_support(&mut self) -> Result<bool, error::Error> {
+    pub fn fpu_support(&mut self) -> Result<bool, Error> {
         self.inner.fpu_support()
     }
 
     /// Determine the number of floating point registers.
     /// This must be queried while halted as this is a runtime decision for some core types.
-    pub fn floating_point_register_count(&mut self) -> Result<usize, error::Error> {
+    pub fn floating_point_register_count(&mut self) -> Result<usize, Error> {
         self.inner.floating_point_register_count()
     }
 
@@ -1001,7 +764,7 @@ impl<'probe> Core<'probe> {
         let mut data = Vec::new();
         for range in ranges {
             let mut values = vec![0; (range.end - range.start) as usize];
-            self.read_8(range.start, &mut values)?;
+            self.read(range.start, &mut values)?;
             data.push((range, values));
         }
 
@@ -1018,46 +781,42 @@ impl<'probe> Core<'probe> {
 }
 
 impl<'probe> CoreInterface for Core<'probe> {
-    fn id(&self) -> usize {
-        self.id()
-    }
-
-    fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), error::Error> {
+    fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), Error> {
         self.wait_for_core_halted(timeout)
     }
 
-    fn core_halted(&mut self) -> Result<bool, error::Error> {
+    fn core_halted(&mut self) -> Result<bool, Error> {
         self.core_halted()
     }
 
-    fn status(&mut self) -> Result<CoreStatus, error::Error> {
+    fn status(&mut self) -> Result<CoreStatus, Error> {
         self.status()
     }
 
-    fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
+    fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         self.halt(timeout)
     }
 
-    fn run(&mut self) -> Result<(), error::Error> {
+    fn run(&mut self) -> Result<(), Error> {
         self.run()
     }
 
-    fn reset(&mut self) -> Result<(), error::Error> {
+    fn reset(&mut self) -> Result<(), Error> {
         self.reset()
     }
 
-    fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, error::Error> {
+    fn reset_and_halt(&mut self, timeout: Duration) -> Result<CoreInformation, Error> {
         self.reset_and_halt(timeout)
     }
 
-    fn step(&mut self) -> Result<CoreInformation, error::Error> {
+    fn step(&mut self) -> Result<CoreInformation, Error> {
         self.step()
     }
 
     fn read_core_reg(
         &mut self,
         address: registers::RegisterId,
-    ) -> Result<registers::RegisterValue, error::Error> {
+    ) -> Result<registers::RegisterValue, Error> {
         self.read_core_reg(address)
     }
 
@@ -1065,27 +824,27 @@ impl<'probe> CoreInterface for Core<'probe> {
         &mut self,
         address: registers::RegisterId,
         value: registers::RegisterValue,
-    ) -> Result<(), error::Error> {
+    ) -> Result<(), Error> {
         self.write_core_reg(address, value)
     }
 
-    fn available_breakpoint_units(&mut self) -> Result<u32, error::Error> {
+    fn available_breakpoint_units(&mut self) -> Result<u32, Error> {
         self.available_breakpoint_units()
     }
 
-    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, error::Error> {
+    fn hw_breakpoints(&mut self) -> Result<Vec<Option<u64>>, Error> {
         todo!()
     }
 
-    fn enable_breakpoints(&mut self, state: bool) -> Result<(), error::Error> {
+    fn enable_breakpoints(&mut self, state: bool) -> Result<(), Error> {
         self.enable_breakpoints(state)
     }
 
-    fn set_hw_breakpoint(&mut self, _unit_index: usize, addr: u64) -> Result<(), error::Error> {
+    fn set_hw_breakpoint(&mut self, _unit_index: usize, addr: u64) -> Result<(), Error> {
         self.set_hw_breakpoint(addr)
     }
 
-    fn clear_hw_breakpoint(&mut self, _unit_index: usize) -> Result<(), error::Error> {
+    fn clear_hw_breakpoint(&mut self, _unit_index: usize) -> Result<(), Error> {
         self.clear_all_hw_breakpoints()
     }
 
@@ -1121,11 +880,11 @@ impl<'probe> CoreInterface for Core<'probe> {
         self.core_type()
     }
 
-    fn instruction_set(&mut self) -> Result<InstructionSet, error::Error> {
+    fn instruction_set(&mut self) -> Result<InstructionSet, Error> {
         self.instruction_set()
     }
 
-    fn fpu_support(&mut self) -> Result<bool, error::Error> {
+    fn fpu_support(&mut self) -> Result<bool, Error> {
         self.fpu_support()
     }
 
@@ -1154,6 +913,9 @@ pub enum ResolvedCoreOptions {
     Riscv {
         options: RiscvCoreAccessOptions,
     },
+    Xtensa {
+        options: XtensaCoreAccessOptions,
+    },
 }
 
 impl std::fmt::Debug for ResolvedCoreOptions {
@@ -1165,6 +927,7 @@ impl std::fmt::Debug for ResolvedCoreOptions {
                 .field("options", options)
                 .finish(),
             Self::Riscv { options } => f.debug_struct("Riscv").field("options", options).finish(),
+            Self::Xtensa { options } => f.debug_struct("Xtensa").field("options", options).finish(),
         }
     }
 }

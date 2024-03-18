@@ -24,10 +24,10 @@ jobs:
         with:
           fetch-depth: 0 # This is a workaround for cargo-release, see https://github.com/crate-ci/cargo-release/issues/625
 
-      - name: Install libusb and libftdi (linux)
+      - name: Install libudev (linux)
         run: |
           sudo apt update
-          sudo apt install -y libusb-1.0-0-dev libftdi1-dev libudev-dev
+          sudo apt install -y libudev-dev
 
       - uses: chainguard-dev/actions/setup-gitsign@main
 

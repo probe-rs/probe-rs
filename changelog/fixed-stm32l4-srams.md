@@ -1,1 +1,0 @@
-Added missing SRAM entries for STM32L4 microcontrollers.

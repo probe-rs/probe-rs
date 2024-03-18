@@ -73,7 +73,7 @@ pub fn build_artifact(work_dir: &Path, args: &[String]) -> Result<Artifact, Arti
 
     let cargo_executable = std::env::var("CARGO").unwrap_or_else(|_| "cargo".to_owned());
 
-    log::debug!(
+    tracing::debug!(
         "Running '{}' in directory {}",
         cargo_executable,
         work_dir.display()

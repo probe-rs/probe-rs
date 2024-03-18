@@ -10,7 +10,9 @@ use probe_rs::{
     flashing::FlashAlgorithm,
     Architecture, CoreType,
 };
-use probe_rs_target::{ArmCoreAccessOptions, CoreAccessOptions, RiscvCoreAccessOptions};
+use probe_rs_target::{
+    ArmCoreAccessOptions, CoreAccessOptions, RiscvCoreAccessOptions, XtensaCoreAccessOptions,
+};
 use std::{
     fs::{self},
     io::Read,
@@ -157,11 +159,12 @@ where
         family.variants.push(Chip {
             name: device_name,
             part: None,
+            svd: None,
             cores,
             memory_map,
             flash_algorithms: flash_algorithm_names,
             rtt_scan_ranges: None,
-            scan_chain: None, // TODO, parse from sdf
+            jtag: None, // TODO, parse scan chain from sdf
             default_binary_format: None,
         });
     }
@@ -185,7 +188,10 @@ fn create_core(processor: &Processor) -> Result<ProbeCore> {
                 debug_base: None,
                 cti_base: None,
             }),
-            Architecture::Riscv => CoreAccessOptions::Riscv(RiscvCoreAccessOptions {}),
+            Architecture::Riscv => {
+                CoreAccessOptions::Riscv(RiscvCoreAccessOptions { hart_id: None })
+            }
+            Architecture::Xtensa => CoreAccessOptions::Xtensa(XtensaCoreAccessOptions {}),
         },
     })
 }
@@ -198,6 +204,8 @@ fn core_to_probe_core(value: &Core) -> Result<CoreType, Error> {
         Core::CortexM3 => CoreType::Armv7m,
         Core::CortexM23 => CoreType::Armv8m,
         Core::CortexM33 => CoreType::Armv8m,
+        Core::CortexM55 => CoreType::Armv8m,
+        Core::CortexM85 => CoreType::Armv8m,
         Core::CortexM7 => CoreType::Armv7em,
         Core::StarMC1 => CoreType::Armv8m,
         c => {

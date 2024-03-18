@@ -90,6 +90,9 @@ pub enum FlashError {
         /// The address where the algorithm was supposed to be loaded to.
         address: u64,
     },
+    /// Failed to configure a valid stack size for the flash algorithm.
+    #[error("Failed to configure a stack for the flash algorithm.")]
+    InvalidFlashAlgorithmStackSize,
     /// The given page size is not valid. Only page sizes multiples of 4 bytes are allowed.
     #[error("Invalid page size {size:08X?}. Must be a multiple of 4 bytes.")]
     InvalidPageSize {
@@ -100,10 +103,12 @@ pub enum FlashError {
     // TODO: 1 Add information about flash (name, address)
     // TODO: 2 Add source of target definition (built-in, yaml)
     /// No flash algorithm was linked to this target.
-    #[error("Trying to write flash, but no suitable (default) flash loader algorithm is linked to the given target: {name} .")]
+    #[error("Trying to write to flash region 0x{:X}..0x{:X}, but no suitable (default) flash loader algorithm is linked to the given target: {name}.", .range.start, .range.end)]
     NoFlashLoaderAlgorithmAttached {
         /// The name of the chip.
         name: String,
+        /// The memory region that was tried to be written.
+        range: Range<u64>,
     },
     /// More than one matching flash algorithm was found for the given memory range and all of them is marked as default.
     #[error("Trying to write flash, but found more than one suitable flash loader algorithim marked as default for {region:?}.")]

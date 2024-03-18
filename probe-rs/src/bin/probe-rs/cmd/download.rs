@@ -1,13 +1,10 @@
-use std::fs::File;
 use std::path::Path;
 
-use anyhow::Context;
-use probe_rs::flashing::FileDownloadError;
-use probe_rs::flashing::Format;
-use probe_rs::Lister;
+use probe_rs::probe::list::Lister;
 
 use crate::util::common_options::BinaryDownloadOptions;
 use crate::util::common_options::ProbeOptions;
+use crate::util::flash::build_loader;
 use crate::util::flash::run_flash_download;
 use crate::FormatOptions;
 
@@ -34,22 +31,7 @@ impl Cmd {
     pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
         let (mut session, probe_options) = self.probe_options.simple_attach(lister)?;
 
-        let mut file = match File::open(&self.path) {
-            Ok(file) => file,
-            Err(e) => return Err(FileDownloadError::IO(e)).context("Failed to open binary file."),
-        };
-
-        let mut loader = session.target().flash_loader();
-
-        let format = self.format_options.into_format(session.target())?;
-        match format {
-            Format::Bin(options) => loader.load_bin_data(&mut file, options),
-            Format::Elf => loader.load_elf_data(&mut file),
-            Format::Hex => loader.load_hex_data(&mut file),
-            Format::Idf(options) => loader.load_idf_data(&mut session, &mut file, options),
-            Format::Uf2 => loader.load_uf2_data(&mut file),
-        }?;
-
+        let loader = build_loader(&mut session, &self.path, self.format_options)?;
         run_flash_download(
             &mut session,
             Path::new(&self.path),

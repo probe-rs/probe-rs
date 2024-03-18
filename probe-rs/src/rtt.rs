@@ -12,7 +12,8 @@
 //!
 //! ```no_run
 //! use std::sync::{Arc, Mutex};
-//! use probe_rs::{Probe, Permissions, Lister};
+//! use probe_rs::probe::{list::Lister, Probe};
+//! use probe_rs::Permissions;
 //! use probe_rs::rtt::Rtt;
 //!
 //! // First obtain a probe-rs session (see probe-rs documentation for details)
@@ -20,7 +21,7 @@
 //!
 //! let probes = lister.list_all();
 //!
-//! let probe = probes[0].open(&lister)?;
+//! let probe = probes[0].open()?;
 //! let mut session = probe.attach("somechip", Permissions::default())?;
 //! let memory_map = session.target().memory_map.clone();
 //! // Select a core.
@@ -48,9 +49,6 @@
 mod channel;
 pub use channel::*;
 
-mod syscall;
-pub use syscall::*;
-
 pub mod channels;
 pub use channels::Channels;
 
@@ -71,7 +69,7 @@ use std::ops::Range;
 /// 1. **Scenario: Ideal configuration** The host RTT interface is created AFTER the target program has successfully executing the RTT
 /// initialization, by calling an api such as [rtt:target](https://github.com/mvirkkunen/rtt-target)`::rtt_init_print!()`
 ///     * At this point, both the RTT Control Block and the RTT Channel configurations are present in the target memory, and
-/// this RTT interface can be expected to work as expected.  
+/// this RTT interface can be expected to work as expected.
 ///
 /// 2. **Scenario: Failure to detect RTT Control Block** The target has been configured correctly, BUT the host creates this interface BEFORE
 /// the target program has initialized RTT.
@@ -91,8 +89,12 @@ use std::ops::Range;
 #[derive(Debug)]
 pub struct Rtt {
     ptr: u32,
-    up_channels: Channels<UpChannel>,
-    down_channels: Channels<DownChannel>,
+
+    /// The detected up (target to host) channels.
+    pub up_channels: Channels<UpChannel>,
+
+    /// The detected down (host to target) channels.
+    pub down_channels: Channels<DownChannel>,
 }
 
 // Rtt must follow this data layout when reading/writing memory in order to be compatible with the
@@ -139,7 +141,7 @@ impl Rtt {
         };
 
         // Validate that the control block starts with the ID bytes
-        let rtt_id = &mem[Self::O_ID..(Self::O_ID + Self::RTT_ID.len())];
+        let rtt_id = &mem[Self::O_ID..][..Self::RTT_ID.len()];
         if rtt_id != Self::RTT_ID {
             tracing::trace!(
                 "Expected control block to start with RTT ID: {:?}\n. Got instead: {:?}",
@@ -154,7 +156,7 @@ impl Rtt {
             .pread_with::<u32>(Self::O_MAX_DOWN_CHANNELS, LE)
             .unwrap() as usize;
 
-        // *Very* conservative sanity check, most people
+        // *Very* conservative sanity check, most people only use a handful of RTT channels
         if max_up_channels > 255 || max_down_channels > 255 {
             return Err(Error::ControlBlockCorrupted(format!(
                 "Nonsensical array sizes at {ptr:08x}: max_up_channels={max_up_channels} max_down_channels={max_down_channels}"
@@ -181,9 +183,8 @@ impl Rtt {
         let mut up_channels = BTreeMap::new();
         let mut down_channels = BTreeMap::new();
 
+        let mut offset = Self::O_CHANNEL_ARRAYS;
         for i in 0..max_up_channels {
-            let offset = Self::O_CHANNEL_ARRAYS + i * Channel::SIZE;
-
             if let Some(chan) =
                 Channel::from(core, i, memory_map, ptr + offset as u32, &mem[offset..])?
             {
@@ -191,12 +192,10 @@ impl Rtt {
             } else {
                 tracing::warn!("Buffer for up channel {} not initialized", i);
             }
+            offset += Channel::SIZE;
         }
 
         for i in 0..max_down_channels {
-            let offset =
-                Self::O_CHANNEL_ARRAYS + (max_up_channels * Channel::SIZE) + i * Channel::SIZE;
-
             if let Some(chan) =
                 Channel::from(core, i, memory_map, ptr + offset as u32, &mem[offset..])?
             {
@@ -204,6 +203,7 @@ impl Rtt {
             } else {
                 tracing::warn!("Buffer for down channel {} not initialized", i);
             }
+            offset += Channel::SIZE;
         }
 
         Ok(Some(Rtt {
@@ -336,12 +336,12 @@ impl Rtt {
         self.ptr
     }
 
-    /// Gets the detected up channels.
+    /// Gets a mutable reference to the detected up channels.
     pub fn up_channels(&mut self) -> &mut Channels<UpChannel> {
         &mut self.up_channels
     }
 
-    /// Gets the detected down channels.
+    /// Gets a mutable reference to the detected down channels.
     pub fn down_channels(&mut self) -> &mut Channels<DownChannel> {
         &mut self.down_channels
     }
@@ -374,35 +374,46 @@ pub enum ScanRegion {
 }
 
 /// Error type for RTT operations.
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, docsplay::Display)]
 pub enum Error {
-    /// RTT control block not found in target memory. Make sure RTT is initialized on the target.
-    #[error(
-        "RTT control block not found in target memory.\n\
-        - Make sure RTT is initialized on the target, AND that there are NO target breakpoints before RTT initalization.\n\
-        - For VSCode and probe-rs-debugger users, using `halt_after_reset:true` in your `launch.json` file will prevent RTT \n\
-        \tinitialization from happening on time.\n\
-        - Depending on the target, sleep modes can interfere with RTT."
-    )]
+    /// RTT control block not found in target memory.
+    /// - Make sure RTT is initialized on the target, AND that there are NO target breakpoints before RTT initalization.
+    /// - For VSCode and probe-rs-debugger users, using `halt_after_reset:true` in your `launch.json` file will prevent RTT
+    ///   initialization from happening on time.
+    /// - Depending on the target, sleep modes can interfere with RTT.
     ControlBlockNotFound,
 
-    /// Multiple control blocks found in target memory. The data contains the control block addresses (up to 5).
-    #[error("Multiple control blocks found in target memory.")]
+    /// Multiple control blocks found in target memory: {display_list(_0)}.
     MultipleControlBlocksFound(Vec<u32>),
 
-    /// The control block has been corrupted. The data contains a detailed error.
-    #[error("Control block corrupted: {0}")]
+    /// The control block has been corrupted. {0}
     ControlBlockCorrupted(String),
 
-    /// Attempted an RTT read/write operation against a Core number that is different from the Core number against which RTT was initialized
-    #[error("Incorrect Core number specified for this operation. Expected {0}, and found {1}")]
+    /// Attempted an RTT operation against a Core number that is different from the Core number against which RTT was initialized. Expected {0}, found {1}
     IncorrectCoreSpecified(usize, usize),
 
-    /// Wraps errors propagated up from probe-rs.
-    #[error("Error communicating with probe: {0}")]
+    /// Error communicating with probe: {0}
     Probe(#[from] crate::Error),
 
-    /// Wraps errors propagated up from reading memory on the target.
-    #[error("Unexpected error while reading {0} from target memory. Please report this as a bug.")]
+    /// Unexpected error while reading {0} from target memory. Please report this as a bug.
     MemoryRead(String),
+}
+
+fn display_list(list: &[u32]) -> String {
+    list.iter()
+        .map(|x| format!("{:#x}", x))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+#[cfg(test)]
+mod test {
+    #[test]
+    fn test_how_control_block_list_looks() {
+        let error = super::Error::MultipleControlBlocksFound(vec![0x2000, 0x3000]);
+        assert_eq!(
+            error.to_string(),
+            "Multiple control blocks found in target memory: 0x2000, 0x3000."
+        );
+    }
 }

@@ -25,18 +25,18 @@ jobs:
             aarch64-unknown-linux-gnu
 
       - name: Install cross 
-        uses: taiki-e/install-action@v2.21.26
+        uses: taiki-e/install-action@v2.28.4
         with:
           tool: cross
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@v2.7.1
+        uses: Swatinem/rust-cache@v2.7.3
       
       - name: Build smoke-tester
         run:
           cross build --release --target aarch64-unknown-linux-gnu -p smoke_tester
       
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: smoke_tester
           path: target/aarch64-unknown-linux-gnu/release/smoke_tester
@@ -47,7 +47,7 @@ jobs:
     needs: build
 
     steps:
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: smoke_tester
 
@@ -55,6 +55,3 @@ jobs:
         run:  |
           chmod +x smoke_tester
           ./smoke_tester --dut-definitions $SMOKE_TESTER_CONFIG --markdown-summary $GITHUB_STEP_SUMMARY
-
-      
-

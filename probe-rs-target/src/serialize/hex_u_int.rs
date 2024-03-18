@@ -1,5 +1,5 @@
 use super::serialize_u_int::SerializeUnsignedInt;
-use serde::{self, Serializer};
+use serde::Serializer;
 
 pub(crate) fn serialize<T, S>(memory_address: &T, serializer: S) -> Result<S::Ok, S::Error>
 where

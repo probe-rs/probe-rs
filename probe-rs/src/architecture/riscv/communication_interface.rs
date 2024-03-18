@@ -4,34 +4,28 @@
 //! Debug Module, as described in the RISC-V debug
 //! specification v0.13.2 .
 
-use super::{
-    dtm::{DmiOperation, DmiOperationStatus, Dtm},
-    registers, Dmcontrol, Dmstatus,
-};
+use crate::architecture::riscv::dtm::dtm_access::DtmAccess;
+use crate::probe::{DebugProbe, Probe};
 use crate::{
-    architecture::riscv::*,
-    core::RegisterId,
-    memory::valid_32bit_address,
-    memory_mapped_bitfield_register,
-    probe::{DeferredResultIndex, DeferredResultSet, JTAGAccess},
-    DebugProbeError, Error as ProbeRsError, MemoryInterface, MemoryMappedRegister, Probe,
+    architecture::riscv::*, memory_mapped_bitfield_register, probe::DeferredResultIndex,
+    Error as ProbeRsError,
 };
-use std::{
-    collections::HashMap,
-    time::{Duration, Instant},
-};
+use std::collections::HashMap;
 
 /// Some error occurred when working with the RISC-V core.
 #[derive(thiserror::Error, Debug)]
 pub enum RiscvError {
-    /// An error during read/write of the DMI register happened.
-    #[error("Error during read/write to the DMI register: {0:?}")]
-    DmiTransfer(DmiOperationStatus),
+    /// An error occurred during transport
+    #[error("Error during transport")]
+    DtmOperationFailed,
+    /// DMI operation is in progress
+    #[error("Transport operation in progress")]
+    DtmOperationInProcess,
     /// An error with operating the debug probe occurred.
     #[error("Debug Probe Error")]
     DebugProbe(#[from] DebugProbeError),
-    /// A timeout occurred during JTAG register access.
-    #[error("Timeout during JTAG register access.")]
+    /// A timeout occurred during DMI access.
+    #[error("Timeout during DMI access.")]
     Timeout,
     /// An error occurred during the execution of an abstract command.
     #[error("Error occurred during execution of an abstract command: {0:?}")]
@@ -69,13 +63,18 @@ pub enum RiscvError {
     /// The target does not support halt after reset.
     #[error("The target does not support halt after reset.")]
     ResetHaltRequestNotSupported,
+    /// The result index of a batched command is not available.
+    #[error("The requested data is not available due to a previous error.")]
+    BatchedResultNotAvailable,
+    /// The hart is unavailable
+    #[error("The requested hart is unavailable.")]
+    HartUnavailable,
 }
 
 impl From<RiscvError> for ProbeRsError {
     fn from(err: RiscvError) -> Self {
         match err {
             RiscvError::DebugProbe(e) => e.into(),
-            RiscvError::Timeout => ProbeRsError::Timeout,
             other => ProbeRsError::Riscv(other),
         }
     }
@@ -174,6 +173,36 @@ impl CoreRegisterAbstractCmdSupport {
     }
 }
 
+#[derive(Debug)]
+struct ScratchState {
+    stack: Vec<(bool, u32)>,
+    should_save: bool,
+}
+
+impl Default for ScratchState {
+    fn default() -> Self {
+        Self {
+            stack: vec![],
+            should_save: true,
+        }
+    }
+}
+
+impl ScratchState {
+    fn push(&mut self, value: u32) {
+        self.stack.push((self.should_save, value));
+        self.should_save = false;
+    }
+
+    fn pop(&mut self) -> Option<u32> {
+        let (should_save, value) = self.stack.pop()?;
+
+        self.should_save = should_save;
+
+        Some(value)
+    }
+}
+
 /// A state to carry all the state data across multiple core switches in a session.
 #[derive(Debug)]
 pub struct RiscvCommunicationInterfaceState {
@@ -211,6 +240,9 @@ pub struct RiscvCommunicationInterfaceState {
     /// describes, if the given register can be read / written with an
     /// abstract command
     abstract_cmd_register_info: HashMap<RegisterId, CoreRegisterAbstractCmdSupport>,
+
+    s0: ScratchState,
+    s1: ScratchState,
 }
 
 /// Timeout for RISC-V operations.
@@ -251,6 +283,9 @@ impl RiscvCommunicationInterfaceState {
             memory_access_info: HashMap::new(),
 
             abstract_cmd_register_info: HashMap::new(),
+
+            s0: ScratchState::default(),
+            s1: ScratchState::default(),
         }
     }
 
@@ -275,23 +310,57 @@ impl Default for RiscvCommunicationInterfaceState {
 pub struct RiscvCommunicationInterface {
     /// The Debug Transport Module (DTM) is used to
     /// communicate with the Debug Module on the target chip.
-    dtm: Dtm,
+    dtm: Box<dyn DtmAccess>,
     state: RiscvCommunicationInterfaceState,
+    enabled_harts: u32,
+    last_selected_hart: u32,
 }
 
 impl RiscvCommunicationInterface {
     /// Creates a new RISC-V communication interface with a given probe driver.
-    pub fn new(probe: Box<dyn JTAGAccess>) -> Result<Self, (Box<dyn JTAGAccess>, RiscvError)> {
+    pub fn new(dtm_access: Box<dyn DtmAccess>) -> Result<Self, (Box<dyn DtmAccess>, RiscvError)> {
         let state = RiscvCommunicationInterfaceState::new();
-        let dtm = Dtm::new(probe)?;
 
-        let mut s = Self { dtm, state };
+        let mut s = Self {
+            dtm: dtm_access,
+            state,
+            enabled_harts: 0,
+            last_selected_hart: 0,
+        };
 
         if let Err(err) = s.enter_debug_mode() {
-            return Err((s.dtm.probe, err));
+            return Err((s.dtm, err));
         }
 
         Ok(s)
+    }
+
+    /// Select current hart
+    pub fn select_hart(&mut self, hart: u32) -> Result<(), RiscvError> {
+        if self.enabled_harts & (1 << hart) == 0 {
+            return Err(RiscvError::HartUnavailable);
+        }
+
+        if self.last_selected_hart == hart {
+            return Ok(());
+        }
+
+        let mut control: Dmcontrol = self.read_dm_register()?;
+        control.set_dmactive(true);
+        control.set_hartsel(hart);
+        self.write_dm_register(control)?;
+        self.last_selected_hart = hart;
+        Ok(())
+    }
+
+    /// Check if the given hart is enabled
+    pub fn hart_enabled(&self, hart: u32) -> bool {
+        self.enabled_harts & (1 << hart) != 0
+    }
+
+    /// Assert the target reset
+    pub fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
+        self.dtm.target_reset_assert()
     }
 
     /// Deassert the target reset.
@@ -299,18 +368,64 @@ impl RiscvCommunicationInterface {
         self.dtm.target_reset_deassert()
     }
 
-    /// Read the targets IDCODE.
-    pub fn read_idcode(&mut self) -> Result<u32, DebugProbeError> {
+    /// Read the targets idcode used as hint for chip detection
+    pub fn read_idcode(&mut self) -> Result<Option<u32>, DebugProbeError> {
         self.dtm.read_idcode()
     }
 
-    fn enter_debug_mode(&mut self) -> Result<(), RiscvError> {
-        // We need a jtag interface
+    /// Mark S0 to be saved on the next `save_s0` call.
+    #[allow(unused)]
+    fn should_save_s0(&mut self, should_save: bool) {
+        self.state.s0.should_save = should_save;
+    }
 
+    fn save_s0(&mut self) -> Result<bool, RiscvError> {
+        let s0 = self.abstract_cmd_register_read(&registers::S0)?;
+
+        self.state.s0.push(s0);
+
+        Ok(true)
+    }
+
+    fn restore_s0(&mut self, saved: bool) -> Result<(), RiscvError> {
+        if saved {
+            let s0 = self.state.s0.pop().unwrap();
+
+            self.abstract_cmd_register_write(&registers::S0, s0)?;
+        }
+
+        Ok(())
+    }
+
+    /// Mark S0 to be saved on the next `save_s0` call.
+    #[allow(unused)]
+    fn should_save_s1(&mut self, should_save: bool) {
+        self.state.s1.should_save = should_save;
+    }
+
+    fn save_s1(&mut self) -> Result<bool, RiscvError> {
+        let s1 = self.abstract_cmd_register_read(&registers::S1)?;
+
+        self.state.s1.push(s1);
+
+        Ok(true)
+    }
+
+    fn restore_s1(&mut self, saved: bool) -> Result<(), RiscvError> {
+        if saved {
+            let s1 = self.state.s1.pop().unwrap();
+
+            self.abstract_cmd_register_write(&registers::S1, s1)?;
+        }
+
+        Ok(())
+    }
+
+    fn enter_debug_mode(&mut self) -> Result<(), RiscvError> {
         tracing::debug!("Building RISC-V interface");
 
         // Reset error bits from previous connections
-        self.dtm.reset()?;
+        self.dtm.clear_error_state()?;
 
         // read the  version of the debug module
         let status: Dmstatus = self.read_dm_register()?;
@@ -366,6 +481,7 @@ impl RiscvCommunicationInterface {
 
         // Hart 0 exists on every chip
         let mut num_harts = 1;
+        self.enabled_harts = 1;
 
         // Check if anynonexistent is avaliable.
         // Some chips that have only one hart do not implement anynonexistent and allnonexistent.
@@ -394,6 +510,10 @@ impl RiscvCommunicationInterface {
                     break;
                 }
 
+                if !status.allunavail() {
+                    self.enabled_harts |= 1 << num_harts;
+                }
+
                 num_harts += 1;
             }
         } else {
@@ -404,10 +524,10 @@ impl RiscvCommunicationInterface {
 
         self.state.num_harts = num_harts;
 
-        // Select hart 0 again
+        // Select hart 0 again - assuming all harts are same in regards of discovered features
         let mut control = Dmcontrol(0);
-        control.set_hartsel(0);
         control.set_dmactive(true);
+        control.set_hartsel(0);
 
         self.write_dm_register(control)?;
 
@@ -494,6 +614,72 @@ impl RiscvCommunicationInterface {
         Ok(())
     }
 
+    pub(crate) fn halt(&mut self, timeout: Duration) -> Result<CoreInformation, RiscvError> {
+        // write 1 to the haltreq register, which is part
+        // of the dmcontrol register
+
+        let mut dmcontrol: Dmcontrol = self.read_dm_register()?;
+        tracing::debug!(
+            "Before requesting halt, the Dmcontrol register value was: {:?}",
+            dmcontrol
+        );
+
+        dmcontrol.set_dmactive(true);
+        dmcontrol.set_haltreq(true);
+
+        self.write_dm_register(dmcontrol)?;
+
+        self.wait_for_core_halted(timeout)?;
+
+        // clear the halt request
+        dmcontrol.set_haltreq(false);
+
+        self.write_dm_register(dmcontrol)?;
+
+        let pc: u64 = self
+            .read_csr(super::registers::PC.id().0)
+            .map(|v| v.into())?;
+
+        Ok(CoreInformation { pc })
+    }
+
+    pub(crate) fn wait_for_core_halted(&mut self, timeout: Duration) -> Result<(), RiscvError> {
+        let start = Instant::now();
+
+        while start.elapsed() < timeout {
+            let dmstatus: Dmstatus = self.read_dm_register()?;
+
+            tracing::trace!("{:?}", dmstatus);
+
+            if dmstatus.allhalted() {
+                return Ok(());
+            }
+        }
+
+        Err(RiscvError::Timeout)
+    }
+
+    pub(super) fn read_csr(&mut self, address: u16) -> Result<u32, RiscvError> {
+        // We need to use the "Access Register Command",
+        // which has cmdtype 0
+
+        // write needs to be clear
+        // transfer has to be set
+
+        tracing::debug!("Reading CSR {:#x}", address);
+
+        // always try to read register with abstract command, fallback to program buffer,
+        // if not supported
+        match self.abstract_cmd_register_read(address) {
+            Err(RiscvError::AbstractCommand(AbstractCommandErrorKind::NotSupported)) => {
+                tracing::debug!("Could not read core register {:#x} with abstract command, falling back to program buffer", address);
+                self.read_csr_progbuf(address)
+            }
+            other => other,
+        }
+    }
+
+    /// Schedules a DM register read, flushes the queue and returns the result.
     pub(super) fn read_dm_register<R: MemoryMappedRegister<u32>>(
         &mut self,
     ) -> Result<R, RiscvError> {
@@ -515,17 +701,14 @@ impl RiscvCommunicationInterface {
         Ok(register_value)
     }
 
-    /// Read from a DM register
+    /// Schedules a DM register read, flushes the queue and returns the untyped result.
     ///
     /// Use the [`read_dm_register`] function if possible.
     fn read_dm_register_untyped(&mut self, address: u64) -> Result<u32, RiscvError> {
-        // Prepare the read by sending a read request with the register address
-        self.dtm
-            .dmi_register_access_with_timeout(address, 0, DmiOperation::Read, RISCV_TIMEOUT)?;
+        let read_idx = self.schedule_read_dm_register_untyped(address)?;
+        let register_value = self.dtm.read_deferred_result(read_idx)?.into_u32();
 
-        // Read back the response from the previous request.
-        self.dtm
-            .dmi_register_access_with_timeout(0, 0, DmiOperation::NoOp, RISCV_TIMEOUT)
+        Ok(register_value)
     }
 
     pub(super) fn write_dm_register<R: MemoryMappedRegister<u32>>(
@@ -548,12 +731,7 @@ impl RiscvCommunicationInterface {
     ///
     /// Use the [`write_dm_register`] function if possible.
     fn write_dm_register_untyped(&mut self, address: u64, value: u32) -> Result<(), RiscvError> {
-        self.dtm.dmi_register_access_with_timeout(
-            address,
-            value,
-            DmiOperation::Write,
-            RISCV_TIMEOUT,
-        )?;
+        self.dtm.write_with_timeout(address, value, RISCV_TIMEOUT)?;
 
         Ok(())
     }
@@ -630,18 +808,13 @@ impl RiscvCommunicationInterface {
 
         let data_idx = self.schedule_read_large_dtm_register::<V, Sbdata>()?;
 
-        let sbcs_idx = self.schedule_read_dm_register::<Sbcs>()?;
-
-        let result = self.execute()?;
-
         // Check that the read was succesful
-        let sbcs = result[sbcs_idx].as_u32();
-        let sbcs = Sbcs(sbcs);
+        let sbcs = self.read_dm_register::<Sbcs>()?;
 
         if sbcs.sberror() != 0 {
             Err(RiscvError::SystemBusAccess)
         } else {
-            let data = V::from_register_value(result[data_idx].as_u32());
+            let data = V::from_register_value(self.dtm.read_deferred_result(data_idx)?.into_u32());
 
             Ok(data)
         }
@@ -682,19 +855,14 @@ impl RiscvCommunicationInterface {
         // Read last value
         read_results.push(self.schedule_read_large_dtm_register::<V, Sbdata>()?);
 
-        let sbcs_result = self.schedule_read_dm_register::<Sbcs>()?;
-
-        let result = self.execute()?;
+        let sbcs = self.read_dm_register::<Sbcs>()?;
 
         for (out_index, idx) in read_results.into_iter().enumerate() {
-            data[out_index] = V::from_register_value(result[idx].as_u32());
+            data[out_index] =
+                V::from_register_value(self.dtm.read_deferred_result(idx)?.into_u32());
         }
 
         // Check that the read was succesful
-        let sbcs = result[sbcs_result].as_u32();
-
-        let sbcs = Sbcs(sbcs);
-
         if sbcs.sberror() != 0 {
             Err(RiscvError::SystemBusAccess)
         } else {
@@ -711,9 +879,9 @@ impl RiscvCommunicationInterface {
         // assemble
         //  lb s1, 0(s0)
 
-        let s0 = self.abstract_cmd_register_read(&registers::S0)?;
+        let s0 = self.save_s0()?;
 
-        let lw_command: u32 = assembly::lw(0, 8, V::WIDTH as u8, 8);
+        let lw_command = assembly::lw(0, 8, V::WIDTH as u8, 8);
 
         self.schedule_setup_program_buffer(&[lw_command])?;
 
@@ -736,22 +904,18 @@ impl RiscvCommunicationInterface {
 
         let abstractcs_idx = self.schedule_read_dm_register::<Abstractcs>()?;
 
-        let results = self.execute()?;
+        // Read back s0
+        let value = self.abstract_cmd_register_read(&registers::S0)?;
 
-        let abstractcs = results[abstractcs_idx].as_u32();
-        let abstractcs = Abstractcs::from(abstractcs);
-
+        let abstractcs = Abstractcs(self.dtm.read_deferred_result(abstractcs_idx)?.into_u32());
         if abstractcs.cmderr() != 0 {
             return Err(RiscvError::AbstractCommand(
                 AbstractCommandErrorKind::parse(abstractcs.cmderr() as u8),
             ));
         }
 
-        // Read back s0
-        let value = self.abstract_cmd_register_read(&registers::S0)?;
-
         // Restore s0 register
-        self.abstract_cmd_register_write(&registers::S0, s0)?;
+        self.restore_s0(s0)?;
 
         Ok(V::from_register_value(value))
     }
@@ -762,15 +926,15 @@ impl RiscvCommunicationInterface {
         data: &mut [V],
     ) -> Result<(), RiscvError> {
         // Backup registers s0 and s1
-        let s0 = self.abstract_cmd_register_read(&registers::S0)?;
-        let s1 = self.abstract_cmd_register_read(&registers::S1)?;
+        let s0 = self.save_s0()?;
+        let s1 = self.save_s1()?;
 
         // Load a word from address in register 8 (S0), with offset 0, into register 9 (S9)
         let lw_command: u32 = assembly::lw(0, 8, V::WIDTH as u8, 9);
 
         self.schedule_setup_program_buffer(&[
             lw_command,
-            assembly::addi(8, 8, V::WIDTH.byte_width() as u16),
+            assembly::addi(8, 8, V::WIDTH.byte_width() as i16),
         ])?;
 
         self.schedule_write_dm_register(Data0(address))?;
@@ -813,17 +977,16 @@ impl RiscvCommunicationInterface {
             result_idxs.push((out_idx, value_idx));
         }
 
-        let results = self.execute()?;
+        // Specifically read the last value first. The result is that this last read is still
+        // part of the command queue we just assembled.
+        let last_value = self.abstract_cmd_register_read(&registers::S1)?;
+        data[data.len() - 1] = V::from_register_value(last_value);
 
         for (out_idx, value_idx) in result_idxs {
-            let value = Data0::from(results[value_idx].as_u32());
+            let value = Data0::from(self.dtm.read_deferred_result(value_idx)?.into_u32());
 
             data[out_idx] = V::from_register_value(value.0);
         }
-
-        let last_value = self.abstract_cmd_register_read(&registers::S1)?;
-
-        data[data.len() - 1] = V::from_register_value(last_value);
 
         let status: Abstractcs = self.read_dm_register()?;
 
@@ -833,8 +996,8 @@ impl RiscvCommunicationInterface {
             ));
         }
 
-        self.abstract_cmd_register_write(&registers::S0, s0)?;
-        self.abstract_cmd_register_write(&registers::S1, s1)?;
+        self.restore_s0(s0)?;
+        self.restore_s1(s1)?;
 
         Ok(())
     }
@@ -860,14 +1023,7 @@ impl RiscvCommunicationInterface {
         }
 
         // Check that the write was succesful
-        let ok_index = self.schedule_read_dm_register::<Sbcs>()?;
-
-        let result = self.execute()?;
-
-        // Check that the write was succesful
-        let sbcs = result[ok_index].as_u32();
-
-        let sbcs = Sbcs(sbcs);
+        let sbcs = self.read_dm_register::<Sbcs>()?;
 
         if sbcs.sberror() != 0 {
             Err(RiscvError::SystemBusAccess)
@@ -890,8 +1046,8 @@ impl RiscvCommunicationInterface {
         );
 
         // Backup registers s0 and s1
-        let s0 = self.abstract_cmd_register_read(&registers::S0)?;
-        let s1 = self.abstract_cmd_register_read(&registers::S1)?;
+        let s0 = self.save_s0()?;
+        let s1 = self.save_s1()?;
 
         let sw_command = assembly::sw(0, 8, V::WIDTH as u32, 9);
 
@@ -918,9 +1074,7 @@ impl RiscvCommunicationInterface {
 
         self.schedule_write_dm_register(command)?;
 
-        let status_idx = self.schedule_read_dm_register::<Abstractcs>()?;
-        let result = self.execute()?;
-        let status = Abstractcs::from(result[status_idx].as_u32());
+        let status = self.read_dm_register::<Abstractcs>()?;
 
         if status.cmderr() != 0 {
             let error = AbstractCommandErrorKind::parse(status.cmderr() as u8);
@@ -934,10 +1088,8 @@ impl RiscvCommunicationInterface {
             return Err(RiscvError::AbstractCommand(error));
         }
 
-        // Restore register s0 and s1
-
-        self.abstract_cmd_register_write(&registers::S0, s0)?;
-        self.abstract_cmd_register_write(&registers::S1, s1)?;
+        self.restore_s0(s0)?;
+        self.restore_s1(s1)?;
 
         Ok(())
     }
@@ -949,15 +1101,15 @@ impl RiscvCommunicationInterface {
         address: u32,
         data: &[V],
     ) -> Result<(), RiscvError> {
-        let s0 = self.abstract_cmd_register_read(&registers::S0)?;
-        let s1 = self.abstract_cmd_register_read(&registers::S1)?;
+        let s0 = self.save_s0()?;
+        let s1 = self.save_s1()?;
 
         // Setup program buffer for multiple writes
         // Store value from register s9 into memory,
         // then increase the address for next write.
         self.schedule_setup_program_buffer(&[
             assembly::sw(0, 8, V::WIDTH as u32, 9),
-            assembly::addi(8, 8, V::WIDTH.byte_width() as u16),
+            assembly::addi(8, 8, V::WIDTH.byte_width() as i16),
         ])?;
 
         // write address into s0
@@ -984,9 +1136,7 @@ impl RiscvCommunicationInterface {
         }
 
         // Errors are sticky, so we can just check at the end if everything worked.
-        let status_idx = self.schedule_read_dm_register::<Abstractcs>()?;
-        let result = self.execute()?;
-        let status = Abstractcs::from(result[status_idx].as_u32());
+        let status = self.read_dm_register::<Abstractcs>()?;
 
         if status.cmderr() != 0 {
             let error = AbstractCommandErrorKind::parse(status.cmderr() as u8);
@@ -1002,8 +1152,8 @@ impl RiscvCommunicationInterface {
 
         // Restore register s0 and s1
 
-        self.abstract_cmd_register_write(&registers::S0, s0)?;
-        self.abstract_cmd_register_write(&registers::S1, s1)?;
+        self.restore_s0(s0)?;
+        self.restore_s1(s1)?;
 
         Ok(())
     }
@@ -1014,11 +1164,11 @@ impl RiscvCommunicationInterface {
         // resumereq    = 0
         // ackhavereset = 0
 
-        let mut dmcontrol = Dmcontrol(0);
+        let mut dmcontrol: Dmcontrol = self.read_dm_register()?;
+        dmcontrol.set_dmactive(true);
         dmcontrol.set_haltreq(false);
         dmcontrol.set_resumereq(false);
         dmcontrol.set_ackhavereset(false);
-        dmcontrol.set_dmactive(true);
         self.schedule_write_dm_register(dmcontrol)?;
 
         // Clear any previous command errors.
@@ -1028,19 +1178,16 @@ impl RiscvCommunicationInterface {
         self.schedule_write_dm_register(abstractcs_clear)?;
         self.schedule_write_dm_register(Command(command))?;
 
-        // Poll busy flag in abstractcs.
-        let abstractcs_idx = self.schedule_read_dm_register::<Abstractcs>()?;
-
-        // Execute batched up commands. This includes the first poll of the busy flag.
-        let results = self.execute()?;
-
-        let abstractcs = results[abstractcs_idx].as_u32();
-        let mut abstractcs = Abstractcs::from(abstractcs);
-
         let start_time = Instant::now();
 
-        while abstractcs.busy() {
-            abstractcs = self.read_dm_register()?;
+        // Poll busy flag in abstractcs.
+        let mut abstractcs;
+        loop {
+            abstractcs = self.read_dm_register::<Abstractcs>()?;
+
+            if !abstractcs.busy() {
+                break;
+            }
 
             if start_time.elapsed() > RISCV_TIMEOUT {
                 return Err(RiscvError::Timeout);
@@ -1176,7 +1323,7 @@ impl RiscvCommunicationInterface {
             return Err(RiscvError::UnsupportedCsrAddress(address));
         }
 
-        let s0 = self.abstract_cmd_register_read(&registers::S0)?;
+        let s0 = self.save_s0()?;
 
         // Read csr value into register 8 (s0)
         let csrr_cmd = assembly::csrr(8, address);
@@ -1193,7 +1340,7 @@ impl RiscvCommunicationInterface {
         let reg_value = self.abstract_cmd_register_read(&registers::S0)?;
 
         // restore original value in s0
-        self.abstract_cmd_register_write(&registers::S0, s0)?;
+        self.restore_s0(s0)?;
 
         Ok(reg_value)
     }
@@ -1208,7 +1355,7 @@ impl RiscvCommunicationInterface {
         }
 
         // Backup register s0
-        let s0 = self.abstract_cmd_register_read(&registers::S0)?;
+        let s0 = self.save_s0()?;
 
         // Write value into s0
         self.abstract_cmd_register_write(&registers::S0, value)?;
@@ -1225,7 +1372,7 @@ impl RiscvCommunicationInterface {
 
         // command: transfer, regno = 0x1008
         // restore original value in s0
-        self.abstract_cmd_register_write(&registers::S0, s0)?;
+        self.restore_s0(s0)?;
 
         Ok(())
     }
@@ -1298,14 +1445,19 @@ impl RiscvCommunicationInterface {
 
     /// Destruct the interface and return the stored probe driver.
     pub fn close(self) -> Probe {
-        Probe::from_attached_probe(self.dtm.probe.into_probe())
+        self.dtm.close()
     }
 
-    pub(super) fn execute(&mut self) -> Result<DeferredResultSet, RiscvError> {
+    /// Destruct the interface and return boxed DebugProbe
+    pub fn into_probe(self: Box<Self>) -> Box<dyn DebugProbe> {
+        self.dtm.into_probe()
+    }
+
+    pub(crate) fn execute(&mut self) -> Result<(), RiscvError> {
         self.dtm.execute()
     }
 
-    pub(super) fn schedule_write_dm_register<R: MemoryMappedRegister<u32>>(
+    pub(crate) fn schedule_write_dm_register<R: MemoryMappedRegister<u32>>(
         &mut self,
         register: R,
     ) -> Result<(), RiscvError> {
@@ -1329,9 +1481,8 @@ impl RiscvCommunicationInterface {
         &mut self,
         address: u64,
         value: u32,
-    ) -> Result<DeferredResultIndex, RiscvError> {
-        self.dtm
-            .schedule_dmi_register_access(address, value, DmiOperation::Write)
+    ) -> Result<Option<DeferredResultIndex>, RiscvError> {
+        self.dtm.schedule_write(address, value)
     }
 
     pub(super) fn schedule_read_dm_register<R: MemoryMappedRegister<u32>>(
@@ -1354,12 +1505,7 @@ impl RiscvCommunicationInterface {
         address: u64,
     ) -> Result<DeferredResultIndex, RiscvError> {
         // Prepare the read by sending a read request with the register address
-        self.dtm
-            .schedule_dmi_register_access(address, 0, DmiOperation::Read)?;
-
-        // Read back the response from the previous request.
-        self.dtm
-            .schedule_dmi_register_access(0, 0, DmiOperation::NoOp)
+        self.dtm.schedule_read(address)
     }
 
     fn schedule_read_large_dtm_register<V, R>(&mut self) -> Result<DeferredResultIndex, RiscvError>
@@ -1373,7 +1519,7 @@ impl RiscvCommunicationInterface {
     fn schedule_write_large_dtm_register<V, R>(
         &mut self,
         value: V,
-    ) -> Result<DeferredResultIndex, RiscvError>
+    ) -> Result<Option<DeferredResultIndex>, RiscvError>
     where
         V: RiscvValue,
         R: LargeRegister,
@@ -1433,19 +1579,6 @@ impl RiscvValue32 for u32 {
 pub(crate) trait RiscvValue: std::fmt::Debug + Copy + Sized {
     const WIDTH: RiscvBusAccess;
 
-    fn read_from_register<R>(
-        interface: &mut RiscvCommunicationInterface,
-    ) -> Result<Self, RiscvError>
-    where
-        R: LargeRegister;
-
-    fn write_to_register<R>(
-        interface: &mut RiscvCommunicationInterface,
-        value: Self,
-    ) -> Result<(), RiscvError>
-    where
-        R: LargeRegister;
-
     fn schedule_read_from_register<R>(
         interface: &mut RiscvCommunicationInterface,
     ) -> Result<DeferredResultIndex, RiscvError>
@@ -1455,34 +1588,13 @@ pub(crate) trait RiscvValue: std::fmt::Debug + Copy + Sized {
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
         value: Self,
-    ) -> Result<DeferredResultIndex, RiscvError>
+    ) -> Result<Option<DeferredResultIndex>, RiscvError>
     where
         R: LargeRegister;
 }
 
 impl RiscvValue for u8 {
     const WIDTH: RiscvBusAccess = RiscvBusAccess::A8;
-
-    fn read_from_register<R>(
-        interface: &mut RiscvCommunicationInterface,
-    ) -> Result<Self, RiscvError>
-    where
-        R: LargeRegister,
-    {
-        interface
-            .read_dm_register_untyped(R::R0_ADDRESS as u64)
-            .map(|v| v as u8)
-    }
-
-    fn write_to_register<R>(
-        interface: &mut RiscvCommunicationInterface,
-        value: Self,
-    ) -> Result<(), RiscvError>
-    where
-        R: LargeRegister,
-    {
-        interface.write_dm_register_untyped(R::R0_ADDRESS as u64, value as u32)
-    }
 
     fn schedule_read_from_register<R>(
         interface: &mut RiscvCommunicationInterface,
@@ -1496,7 +1608,7 @@ impl RiscvValue for u8 {
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
         value: Self,
-    ) -> Result<DeferredResultIndex, RiscvError>
+    ) -> Result<Option<DeferredResultIndex>, RiscvError>
     where
         R: LargeRegister,
     {
@@ -1506,26 +1618,6 @@ impl RiscvValue for u8 {
 
 impl RiscvValue for u16 {
     const WIDTH: RiscvBusAccess = RiscvBusAccess::A16;
-    fn read_from_register<R>(
-        interface: &mut RiscvCommunicationInterface,
-    ) -> Result<Self, RiscvError>
-    where
-        R: LargeRegister,
-    {
-        interface
-            .read_dm_register_untyped(R::R0_ADDRESS as u64)
-            .map(|v| v as u16)
-    }
-
-    fn write_to_register<R>(
-        interface: &mut RiscvCommunicationInterface,
-        value: Self,
-    ) -> Result<(), RiscvError>
-    where
-        R: LargeRegister,
-    {
-        interface.write_dm_register_untyped(R::R0_ADDRESS as u64, value as u32)
-    }
 
     fn schedule_read_from_register<R>(
         interface: &mut RiscvCommunicationInterface,
@@ -1539,7 +1631,7 @@ impl RiscvValue for u16 {
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
         value: Self,
-    ) -> Result<DeferredResultIndex, RiscvError>
+    ) -> Result<Option<DeferredResultIndex>, RiscvError>
     where
         R: LargeRegister,
     {
@@ -1549,24 +1641,6 @@ impl RiscvValue for u16 {
 
 impl RiscvValue for u32 {
     const WIDTH: RiscvBusAccess = RiscvBusAccess::A32;
-    fn read_from_register<R>(
-        interface: &mut RiscvCommunicationInterface,
-    ) -> Result<Self, RiscvError>
-    where
-        R: LargeRegister,
-    {
-        interface.read_dm_register_untyped(R::R0_ADDRESS as u64)
-    }
-
-    fn write_to_register<R>(
-        interface: &mut RiscvCommunicationInterface,
-        value: Self,
-    ) -> Result<(), RiscvError>
-    where
-        R: LargeRegister,
-    {
-        interface.write_dm_register_untyped(R::R0_ADDRESS as u64, value)
-    }
 
     fn schedule_read_from_register<R>(
         interface: &mut RiscvCommunicationInterface,
@@ -1579,7 +1653,7 @@ impl RiscvValue for u32 {
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
         value: Self,
-    ) -> Result<DeferredResultIndex, RiscvError>
+    ) -> Result<Option<DeferredResultIndex>, RiscvError>
     where
         R: LargeRegister,
     {
@@ -1589,37 +1663,6 @@ impl RiscvValue for u32 {
 
 impl RiscvValue for u64 {
     const WIDTH: RiscvBusAccess = RiscvBusAccess::A64;
-
-    fn read_from_register<R>(
-        interface: &mut RiscvCommunicationInterface,
-    ) -> Result<Self, RiscvError>
-    where
-        R: LargeRegister,
-    {
-        // R0 has to be read last, side effects are triggerd by reads from
-        // this register.
-        let upper_bits = interface.read_dm_register_untyped(R::R1_ADDRESS as u64)?;
-        let lower_bits = interface.read_dm_register_untyped(R::R0_ADDRESS as u64)?;
-
-        Ok((upper_bits as u64) << 32 | lower_bits as u64)
-    }
-
-    fn write_to_register<R>(
-        interface: &mut RiscvCommunicationInterface,
-        value: Self,
-    ) -> Result<(), RiscvError>
-    where
-        R: LargeRegister,
-    {
-        let upper_bits = (value >> 32) as u32;
-        let lower_bits = (value & 0xffff_ffff) as u32;
-
-        // R0 has to be written last, side effects are triggerd by writes from
-        // this register.
-
-        interface.write_dm_register_untyped(R::R1_ADDRESS as u64, upper_bits)?;
-        interface.write_dm_register_untyped(R::R0_ADDRESS as u64, lower_bits)
-    }
 
     fn schedule_read_from_register<R>(
         interface: &mut RiscvCommunicationInterface,
@@ -1634,7 +1677,7 @@ impl RiscvValue for u64 {
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
         value: Self,
-    ) -> Result<DeferredResultIndex, RiscvError>
+    ) -> Result<Option<DeferredResultIndex>, RiscvError>
     where
         R: LargeRegister,
     {
@@ -1652,46 +1695,6 @@ impl RiscvValue for u64 {
 impl RiscvValue for u128 {
     const WIDTH: RiscvBusAccess = RiscvBusAccess::A128;
 
-    fn read_from_register<R>(
-        interface: &mut RiscvCommunicationInterface,
-    ) -> Result<Self, RiscvError>
-    where
-        R: LargeRegister,
-    {
-        // R0 has to be read last, side effects are triggerd by reads from
-        // this register.
-        let bits_3 = interface.read_dm_register_untyped(R::R3_ADDRESS as u64)?;
-        let bits_2 = interface.read_dm_register_untyped(R::R2_ADDRESS as u64)?;
-        let bits_1 = interface.read_dm_register_untyped(R::R1_ADDRESS as u64)?;
-        let bits_0 = interface.read_dm_register_untyped(R::R0_ADDRESS as u64)?;
-
-        Ok((bits_3 as u128) << 96
-            | (bits_2 as u128) << 64
-            | (bits_1 as u128) << 32
-            | bits_0 as u128)
-    }
-
-    fn write_to_register<R>(
-        interface: &mut RiscvCommunicationInterface,
-        value: Self,
-    ) -> Result<(), RiscvError>
-    where
-        R: LargeRegister,
-    {
-        let bits_3 = (value >> 96) as u32;
-        let bits_2 = (value >> 64) as u32;
-        let bits_1 = (value >> 32) as u32;
-        let bits_0 = (value & 0xffff_ffff) as u32;
-
-        // R0 has to be written last, side effects are triggerd by writes from
-        // this register.
-
-        interface.write_dm_register_untyped(R::R3_ADDRESS as u64, bits_3)?;
-        interface.write_dm_register_untyped(R::R2_ADDRESS as u64, bits_2)?;
-        interface.write_dm_register_untyped(R::R1_ADDRESS as u64, bits_1)?;
-        interface.write_dm_register_untyped(R::R0_ADDRESS as u64, bits_0)
-    }
-
     fn schedule_read_from_register<R>(
         interface: &mut RiscvCommunicationInterface,
     ) -> Result<DeferredResultIndex, RiscvError>
@@ -1707,7 +1710,7 @@ impl RiscvValue for u128 {
     fn schedule_write_to_register<R>(
         interface: &mut RiscvCommunicationInterface,
         value: Self,
-    ) -> Result<DeferredResultIndex, RiscvError>
+    ) -> Result<Option<DeferredResultIndex>, RiscvError>
     where
         R: LargeRegister,
     {
@@ -1741,6 +1744,13 @@ impl MemoryInterface for RiscvCommunicationInterface {
 
     fn read_word_32(&mut self, address: u64) -> Result<u32, crate::Error> {
         let address = valid_32bit_address(address)?;
+        tracing::debug!("read_word_32 from {:#08x}", address);
+        self.read_word(address)
+    }
+
+    fn read_word_16(&mut self, address: u64) -> Result<u16, crate::Error> {
+        let address = valid_32bit_address(address)?;
+        tracing::debug!("read_word_16 from {:#08x}", address);
         self.read_word(address)
     }
 
@@ -1764,6 +1774,12 @@ impl MemoryInterface for RiscvCommunicationInterface {
     fn read_32(&mut self, address: u64, data: &mut [u32]) -> Result<(), crate::Error> {
         let address = valid_32bit_address(address)?;
         tracing::debug!("read_32 from {:#08x}", address);
+        self.read_multiple(address, data)
+    }
+
+    fn read_16(&mut self, address: u64, data: &mut [u16]) -> Result<(), crate::Error> {
+        let address = valid_32bit_address(address)?;
+        tracing::debug!("read_16 from {:#08x}", address);
         self.read_multiple(address, data)
     }
 
@@ -1793,6 +1809,11 @@ impl MemoryInterface for RiscvCommunicationInterface {
         self.write_word(address, data)
     }
 
+    fn write_word_16(&mut self, address: u64, data: u16) -> Result<(), crate::Error> {
+        let address = valid_32bit_address(address)?;
+        self.write_word(address, data)
+    }
+
     fn write_word_8(&mut self, address: u64, data: u8) -> Result<(), crate::Error> {
         let address = valid_32bit_address(address)?;
         self.write_word(address, data)
@@ -1812,6 +1833,13 @@ impl MemoryInterface for RiscvCommunicationInterface {
     fn write_32(&mut self, address: u64, data: &[u32]) -> Result<(), crate::Error> {
         let address = valid_32bit_address(address)?;
         tracing::debug!("write_32 to {:#08x}", address);
+
+        self.write_multiple(address, data)
+    }
+
+    fn write_16(&mut self, address: u64, data: &[u16]) -> Result<(), crate::Error> {
+        let address = valid_32bit_address(address)?;
+        tracing::debug!("write_16 to {:#08x}", address);
 
         self.write_multiple(address, data)
     }

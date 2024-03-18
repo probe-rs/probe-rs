@@ -22,6 +22,16 @@ pub enum BinaryFormat {
     Idf,
 }
 
+/// Configuration for JTAG probes.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Jtag {
+    /// Describes the scan chain
+    ///
+    /// ref: `<https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/sdf_pg.html#sdf_element_scanchain>`
+    #[serde(default)]
+    pub scan_chain: Option<Vec<ScanChainElement>>,
+}
+
 /// A single chip variant.
 ///
 /// This describes an exact chip variant, including the cores, flash and memory size. For example,
@@ -35,6 +45,8 @@ pub struct Chip {
     /// The `PART` register of the chip.
     /// This value can be determined via the `cli info` command.
     pub part: Option<u16>,
+    /// An URL to the SVD file for this chip.
+    pub svd: Option<String>,
     /// The cores available on the chip.
     #[serde(default)]
     pub cores: Vec<Core>,
@@ -64,11 +76,9 @@ pub struct Chip {
     /// executable image that includes the `_SEGGER_RTT` symbol pointing
     /// to the exact address of the RTT header.
     pub rtt_scan_ranges: Option<Vec<std::ops::Range<u64>>>,
-    /// Describes the scan chain
-    ///
-    /// ref: `<https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/sdf_pg.html#sdf_element_scanchain>`
+    /// JTAG-specific options
     #[serde(default)]
-    pub scan_chain: Option<Vec<ScanChainElement>>,
+    pub jtag: Option<Jtag>,
     /// The default binary format for this chip
     pub default_binary_format: Option<BinaryFormat>,
 }
@@ -81,6 +91,7 @@ impl Chip {
         Chip {
             name: name.to_string(),
             part: None,
+            svd: None,
             cores: vec![Core {
                 name: "main".to_string(),
                 core_type,
@@ -89,7 +100,7 @@ impl Chip {
             memory_map: vec![],
             flash_algorithms: vec![],
             rtt_scan_ranges: None,
-            scan_chain: Some(vec![]),
+            jtag: None,
             default_binary_format: Some(BinaryFormat::Raw),
         }
     }
@@ -113,10 +124,12 @@ pub struct Core {
 /// The data required to access a core
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CoreAccessOptions {
-    /// Arm specific options
+    /// ARM specific options
     Arm(ArmCoreAccessOptions),
-    /// Riscv specific options
+    /// RISC-V specific options
     Riscv(RiscvCoreAccessOptions),
+    /// Xtensa specific options
+    Xtensa(XtensaCoreAccessOptions),
 }
 
 /// The data required to access an ARM core
@@ -138,17 +151,11 @@ pub struct ArmCoreAccessOptions {
 
 /// The data required to access a Risc-V core
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RiscvCoreAccessOptions {}
-
-/// Helper function that interates the scan chain and returns a vector of all of
-/// the ir_lengths of the scan chain elements.
-/// If an element does not contain an ir_length, the default value of 4 is used.
-/// The first element of the vector is the first element of the scan chain.
-pub fn get_ir_lengths(scan_chain: &Vec<ScanChainElement>) -> Vec<u8> {
-    let mut ir_lengths = Vec::new();
-    for element in scan_chain {
-        let ir_len = element.ir_len.unwrap_or(4);
-        ir_lengths.push(ir_len);
-    }
-    ir_lengths
+pub struct RiscvCoreAccessOptions {
+    /// The hart id
+    pub hart_id: Option<u32>,
 }
+
+/// The data required to access an Xtensa core
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct XtensaCoreAccessOptions {}

@@ -1,30 +1,37 @@
 use super::{
-    Core, MemoryRegion, RawFlashAlgorithm, RegistryError, ScanChainElement, TargetDescriptionSource,
-};
-use crate::architecture::arm::{
-    ap::MemoryAp,
     sequences::{
         atsam::AtSAM,
         efm32xg2::EFM32xG2,
+        esp32::ESP32,
+        esp32c2::ESP32C2,
+        esp32c3::ESP32C3,
+        esp32c6::ESP32C6,
+        esp32h2::ESP32H2,
+        esp32s2::ESP32S2,
+        esp32s3::ESP32S3,
         infineon::XMC4000,
         nrf52::Nrf52,
         nrf53::Nrf5340,
         nrf91::Nrf9160,
-        nxp_armv7m::{LPC55Sxx, MIMXRT10xx, MIMXRT11xx},
-        nxp_armv8m::MIMXRT5xxS,
+        nxp_armv7m::{MIMXRT10xx, MIMXRT11xx},
+        nxp_armv8m::{LPC55Sxx, MIMXRT5xxS},
         stm32_armv6::{Stm32Armv6, Stm32Armv6Family},
         stm32_armv7::Stm32Armv7,
         stm32h7::Stm32h7,
-        ArmDebugSequence, DefaultArmSequence,
     },
-    ApAddress, DpAddress,
+    Core, MemoryRegion, RawFlashAlgorithm, RegistryError, TargetDescriptionSource,
 };
-use crate::architecture::riscv::sequences::{
-    esp32c2::ESP32C2, esp32c3::ESP32C3, esp32c6h2::ESP32C6H2, DefaultRiscvSequence,
-    RiscvDebugSequence,
+use crate::architecture::{
+    arm::{
+        ap::MemoryAp,
+        sequences::{ArmDebugSequence, DefaultArmSequence},
+        ApAddress, DpAddress,
+    },
+    riscv::sequences::{DefaultRiscvSequence, RiscvDebugSequence},
+    xtensa::sequences::{DefaultXtensaSequence, XtensaDebugSequence},
 };
 use crate::flashing::FlashLoader;
-use probe_rs_target::{Architecture, BinaryFormat, ChipFamily, MemoryRange};
+use probe_rs_target::{Architecture, BinaryFormat, ChipFamily, Jtag, MemoryRange};
 use std::sync::Arc;
 
 /// This describes a complete target with a fixed chip model and variant.
@@ -52,7 +59,7 @@ pub struct Target {
     /// The scan chain can be parsed from the CMSIS-SDF file, or specified
     /// manually in the target.yaml file. It is used by some probes to determine
     /// the number devices in the scan chain and their ir lengths.
-    pub scan_chain: Option<Vec<ScanChainElement>>,
+    pub jtag: Option<Jtag>,
     /// The default executable format for the target.
     pub default_format: BinaryFormat,
 }
@@ -130,12 +137,20 @@ impl Target {
             || chip.name.starts_with("EFR32ZG2")
         {
             DebugSequence::Arm(EFM32xG2::create())
-        } else if chip.name.starts_with("esp32c2") {
-            DebugSequence::Riscv(ESP32C2::create())
-        } else if chip.name.starts_with("esp32c3") {
-            DebugSequence::Riscv(ESP32C3::create())
-        } else if chip.name.starts_with("esp32c6") || chip.name.starts_with("esp32h2") {
-            DebugSequence::Riscv(ESP32C6H2::create())
+        } else if chip.name.starts_with("esp32-") {
+            DebugSequence::Xtensa(ESP32::create(chip))
+        } else if chip.name.eq_ignore_ascii_case("esp32s2") {
+            DebugSequence::Xtensa(ESP32S2::create(chip))
+        } else if chip.name.eq_ignore_ascii_case("esp32s3") {
+            DebugSequence::Xtensa(ESP32S3::create(chip))
+        } else if chip.name.eq_ignore_ascii_case("esp32c2") {
+            DebugSequence::Riscv(ESP32C2::create(chip))
+        } else if chip.name.eq_ignore_ascii_case("esp32c3") {
+            DebugSequence::Riscv(ESP32C3::create(chip))
+        } else if chip.name.eq_ignore_ascii_case("esp32c6") {
+            DebugSequence::Riscv(ESP32C6::create(chip))
+        } else if chip.name.eq_ignore_ascii_case("esp32h2") {
+            DebugSequence::Riscv(ESP32H2::create(chip))
         } else if chip.name.starts_with("nRF5340") {
             DebugSequence::Arm(Nrf5340::create())
         } else if chip.name.starts_with("nRF52") {
@@ -177,6 +192,7 @@ impl Target {
             match chip.cores[0].core_type.architecture() {
                 Architecture::Arm => DebugSequence::Arm(DefaultArmSequence::create()),
                 Architecture::Riscv => DebugSequence::Riscv(DefaultRiscvSequence::create()),
+                Architecture::Xtensa => DebugSequence::Xtensa(DefaultXtensaSequence::create()),
             }
         };
 
@@ -221,7 +237,7 @@ impl Target {
             memory_map: chip.memory_map.clone(),
             debug_sequence,
             rtt_scan_regions,
-            scan_chain: chip.scan_chain.clone(),
+            jtag: chip.jtag.clone(),
             default_format: chip.default_binary_format.clone().unwrap_or_default(),
         })
     }
@@ -262,7 +278,7 @@ impl Target {
         FlashLoader::new(self.memory_map.clone(), self.source.clone())
     }
 
-    /// Gets a [RawFlashAlgorithm] by name.
+    /// Returns a [RawFlashAlgorithm] by name.
     pub(crate) fn flash_algorithm_by_name(&self, name: &str) -> Option<&RawFlashAlgorithm> {
         self.flash_algorithms.iter().find(|a| a.name == name)
     }
@@ -316,6 +332,15 @@ impl From<String> for TargetSelector {
     }
 }
 
+impl From<Option<&str>> for TargetSelector {
+    fn from(value: Option<&str>) -> Self {
+        match value {
+            Some(identifier) => identifier.into(),
+            None => TargetSelector::Auto,
+        }
+    }
+}
+
 impl From<()> for TargetSelector {
     fn from(_value: ()) -> Self {
         TargetSelector::Auto
@@ -330,14 +355,14 @@ impl From<Target> for TargetSelector {
 
 /// This is the type to denote a general debug sequence.
 /// It can differentiate between ARM and RISC-V for now.
-/// Currently, only the ARM variant does something sensible;
-/// RISC-V will be ignored when encountered.
 #[derive(Clone, Debug)]
 pub enum DebugSequence {
     /// An ARM debug sequence.
     Arm(Arc<dyn ArmDebugSequence>),
     /// A RISC-V debug sequence.
     Riscv(Arc<dyn RiscvDebugSequence>),
+    /// An Xtensa debug sequence.
+    Xtensa(Arc<dyn XtensaDebugSequence>),
 }
 
 pub(crate) trait CoreExt {
@@ -357,6 +382,7 @@ impl CoreExt for Core {
                 ap: options.ap,
             })),
             probe_rs_target::CoreAccessOptions::Riscv(_) => None,
+            probe_rs_target::CoreAccessOptions::Xtensa(_) => None,
         }
     }
 }

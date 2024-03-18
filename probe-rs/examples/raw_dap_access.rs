@@ -1,7 +1,7 @@
 use anyhow::Result;
 use probe_rs::{
     architecture::arm::{sequences::DefaultArmSequence, ApAddress, DpAddress},
-    Lister,
+    probe::list::Lister,
 };
 
 fn main() -> Result<()> {
@@ -13,13 +13,13 @@ fn main() -> Result<()> {
     let probes = lister.list_all();
 
     // Use the first probe found.
-    let mut probe = probes[0].open(&lister)?;
+    let mut probe = probes[0].open()?;
 
     probe.attach_to_unspecified()?;
     let iface = probe.try_into_arm_interface().unwrap();
 
     let mut iface = iface
-        .initialize(DefaultArmSequence::create())
+        .initialize(DefaultArmSequence::create(), DpAddress::Default)
         .map_err(|(_interface, e)| e)?;
 
     // This is an example on how to do a "recover" operation (erase+unlock a locked chip)

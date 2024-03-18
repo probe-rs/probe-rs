@@ -1,7 +1,7 @@
 //! Provides ITM tracing capabilities.
 
 use probe_rs::architecture::arm::{component::TraceSink, swo::SwoConfig};
-use probe_rs::Lister;
+use probe_rs::probe::list::Lister;
 
 use crate::util::common_options::ProbeOptions;
 use crate::CoreOptions;

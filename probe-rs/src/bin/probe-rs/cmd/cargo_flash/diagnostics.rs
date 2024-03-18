@@ -289,7 +289,7 @@ fn generate_flash_error_hints(
                     // Check if the chip specification was unique
                     let matching_chips = probe_rs::config::search_chips(target_spec).unwrap();
 
-                    log::info!(
+                    tracing::info!(
                         "Searching for all chips for spec '{}', found {}",
                         target_spec,
                         matching_chips.len()

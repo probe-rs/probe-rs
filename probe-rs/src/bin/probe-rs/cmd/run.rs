@@ -1,4 +1,3 @@
-use std::fs::File;
 use std::io::Write;
 use std::ops::Range;
 use std::path::Path;
@@ -6,20 +5,20 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use probe_rs::debug::{DebugInfo, DebugRegisters};
-use probe_rs::flashing::{FileDownloadError, Format};
+use probe_rs::rtt::ScanRegion;
 use probe_rs::{
-    exception_handler_for_core, BreakpointCause, Core, CoreInterface, Error, HaltReason, Lister,
-    SemihostingCommand, VectorCatchCondition,
+    exception_handler_for_core, probe::list::Lister, BreakpointCause, Core, CoreInterface, Error,
+    HaltReason, SemihostingCommand, UnknownCommandDetails, VectorCatchCondition,
 };
 use probe_rs_target::MemoryRegion;
 use signal_hook::consts::signal;
 use time::UtcOffset;
 
 use crate::util::common_options::{BinaryDownloadOptions, ProbeOptions};
-use crate::util::flash::run_flash_download;
-use crate::util::rtt::{self, RttConfig};
+use crate::util::flash::{build_loader, run_flash_download};
+use crate::util::rtt::{self, ChannelDataCallbacks, RttActiveTarget, RttConfig};
 use crate::FormatOptions;
 
 const RTT_RETRIES: usize = 10;
@@ -76,24 +75,7 @@ impl Cmd {
         let path = Path::new(&self.path);
 
         if run_download {
-            let mut file = match File::open(&self.path) {
-                Ok(file) => file,
-                Err(e) => {
-                    return Err(FileDownloadError::IO(e)).context("Failed to open binary file.")
-                }
-            };
-
-            let mut loader = session.target().flash_loader();
-
-            let format = self.format_options.into_format(session.target())?;
-            match format {
-                Format::Bin(options) => loader.load_bin_data(&mut file, options),
-                Format::Elf => loader.load_elf_data(&mut file),
-                Format::Hex => loader.load_hex_data(&mut file),
-                Format::Idf(options) => loader.load_idf_data(&mut session, &mut file, options),
-                Format::Uf2 => loader.load_uf2_data(&mut file),
-            }?;
-
+            let loader = build_loader(&mut session, path, self.format_options)?;
             run_flash_download(
                 &mut session,
                 path,
@@ -130,7 +112,10 @@ impl Cmd {
                 }
             }
         }
-        core.run()?;
+
+        if core.core_halted()? {
+            core.run()?;
+        }
 
         run_loop(
             &mut core,
@@ -162,7 +147,10 @@ fn run_loop(
     no_location: bool,
     log_format: Option<&str>,
 ) -> Result<(), anyhow::Error> {
-    let mut rtt_config = rtt::RttConfig::default();
+    let mut rtt_config = rtt::RttConfig {
+        log_format: log_format.map(String::from),
+        ..Default::default()
+    };
     rtt_config.channels.push(rtt::RttChannelConfig {
         channel_number: Some(0),
         show_location: !no_location,
@@ -174,9 +162,8 @@ fn run_loop(
         memory_map,
         rtt_scan_regions,
         path,
-        rtt_config,
+        &rtt_config,
         timestamp_offset,
-        log_format,
     );
 
     let exit = Arc::new(AtomicBool::new(false));
@@ -190,9 +177,18 @@ fn run_loop(
         // the core printed before halting, such as a panic message.
         match core.status()? {
             probe_rs::CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
-                SemihostingCommand::Unknown { operation },
+                SemihostingCommand::Unknown(UnknownCommandDetails {
+                    operation,
+                    parameter,
+                }),
             ))) => {
-                tracing::error!("Target wanted to run semihosting operation {:#x}, but probe-rs does not support this operation yet. Continuing...", operation);
+                tracing::warn!("Target wanted to run semihosting operation {:#x} with parameter {:#x}, but probe-rs does not support this operation yet. Continuing...", operation, parameter);
+                core.run()?;
+            }
+            probe_rs::CoreStatus::Halted(HaltReason::Breakpoint(BreakpointCause::Semihosting(
+                SemihostingCommand::GetCommandLine(_),
+            ))) => {
+                tracing::warn!("Target wanted to run semihosting operation SYS_GET_CMDLINE, but probe-rs does not support this operation yet. Continuing...");
                 core.run()?;
             }
             probe_rs::CoreStatus::Halted(r) => halt_reason = Some(r),
@@ -229,10 +225,8 @@ fn run_loop(
                 SemihostingCommand::ExitSuccess,
             )) => Ok(()),
             HaltReason::Breakpoint(BreakpointCause::Semihosting(
-                SemihostingCommand::ExitError { code },
-            )) => Err(anyhow!(
-                "Semihosting indicates exit with failure code: {code:#08x} ({code})"
-            )),
+                SemihostingCommand::ExitError(details),
+            )) => Err(anyhow!("Semihosting indicates exit with {}", details)),
             _ => Err(anyhow!("CPU halted unexpectedly.")),
         },
     };
@@ -250,7 +244,7 @@ fn run_loop(
 /// Prints the stacktrace of the current execution state.
 fn print_stacktrace(core: &mut impl CoreInterface, path: &Path) -> Result<(), anyhow::Error> {
     let Some(debug_info) = DebugInfo::from_file(path).ok() else {
-        log::error!("No debug info found.");
+        tracing::error!("No debug info found.");
         return Ok(());
     };
     let initial_registers = DebugRegisters::from_core(core);
@@ -314,13 +308,35 @@ fn poll_rtt(
 ) -> Result<bool, anyhow::Error> {
     let mut had_data = false;
     if let Some(rtta) = rtta {
-        for (_ch, data) in rtta.poll_rtt_fallible(core)? {
-            if !data.is_empty() {
-                had_data = true;
-            }
-            stdout.write_all(data.as_bytes())?;
+        struct StdOutCollector<'a> {
+            stdout: &'a mut std::io::Stdout,
+            had_data: bool,
         }
-    };
+
+        impl ChannelDataCallbacks for StdOutCollector<'_> {
+            fn on_string_data(
+                &mut self,
+                _channel: usize,
+                data: String,
+            ) -> Result<(), anyhow::Error> {
+                if data.is_empty() {
+                    return Ok(());
+                }
+                self.had_data = true;
+                self.stdout.write_all(data.as_bytes())?;
+                Ok(())
+            }
+        }
+
+        let mut out = StdOutCollector {
+            stdout,
+            had_data: false,
+        };
+
+        rtta.poll_rtt_fallible(core, &mut out)?;
+        had_data = out.had_data;
+    }
+
     Ok(had_data)
 }
 
@@ -330,27 +346,25 @@ fn attach_to_rtt(
     memory_map: &[MemoryRegion],
     scan_regions: &[Range<u64>],
     path: &Path,
-    rtt_config: RttConfig,
+    rtt_config: &RttConfig,
     timestamp_offset: UtcOffset,
-    log_format: Option<&str>,
 ) -> Option<rtt::RttActiveTarget> {
+    let scan_regions = ScanRegion::Ranges(scan_regions.to_vec());
     for _ in 0..RTT_RETRIES {
-        match rtt::attach_to_rtt(
-            core,
-            memory_map,
-            scan_regions,
-            path,
-            &rtt_config,
-            timestamp_offset,
-            log_format,
-        ) {
-            Ok(target_rtt) => return Some(target_rtt),
-            Err(error) => {
-                log::debug!("{:?} RTT attach error", error);
+        match rtt::attach_to_rtt(core, memory_map, &scan_regions, path) {
+            Ok(Some(target_rtt)) => {
+                let app = RttActiveTarget::new(target_rtt, path, rtt_config, timestamp_offset);
+
+                match app {
+                    Ok(app) => return Some(app),
+                    Err(error) => tracing::debug!("{:?} RTT attach error", error),
+                }
             }
+            Ok(None) => return None,
+            Err(error) => tracing::debug!("{:?} RTT attach error", error),
         }
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
-    log::error!("Failed to attach to RTT continuing...");
+    tracing::error!("Failed to attach to RTT, continuing...");
     None
 }

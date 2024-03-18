@@ -1,1 +1,0 @@
-Add scan chain support for the esp32* targets and the espusbjtag driver.

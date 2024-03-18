@@ -6,11 +6,11 @@
 use anyhow::{bail, ensure, Context, Result};
 use probe_rs::{
     config::{get_target_by_name, search_chips},
-    DebugProbeSelector, Lister, Probe, Target,
+    probe::{list::Lister, DebugProbeSelector, Probe},
+    Target,
 };
 use serde::Deserialize;
 use std::{
-    convert::TryInto,
     ffi::OsStr,
     path::{Path, PathBuf},
 };
@@ -19,7 +19,7 @@ use std::{
 struct RawDutDefinition {
     chip: String,
     /// Selector for the debug probe to be used.
-    /// See [probe_rs::DebugProbeSelector].
+    /// See [probe_rs::probe::DebugProbeSelector].
     probe_selector: String,
 
     flash_test_binary: Option<String>,
@@ -50,14 +50,14 @@ pub struct DutDefinition {
     pub chip: Target,
 
     /// Selector for the debug probe to be used.
-    /// See [probe_rs::DebugProbeSelector].
+    /// See [probe_rs::probe::DebugProbeSelector].
     ///
     /// If not set, any detected probe will be used.
     /// If multiple probes are found, an error is returned.
     pub probe_selector: Option<DebugProbeSelector>,
 
     /// Path to a binary which can be used to test
-    /// flashing for the DUT.     
+    /// flashing for the DUT.
     pub flash_test_binary: Option<PathBuf>,
 
     /// Source of the DUT definition.
@@ -159,11 +159,11 @@ impl DutDefinition {
                 ensure!(!probes.is_empty(), "No probes detected!");
 
                 ensure!(
-            probes.len() < 2,
-            "Multiple probes detected. Specify which probe to use using the '--probe' argument."
-        );
+                    probes.len() < 2,
+                    "Multiple probes detected. Specify which probe to use using the '--probe' argument."
+                );
 
-                let probe = probes[0].open(&lister)?;
+                let probe = probes[0].open()?;
 
                 Ok(probe)
             }
@@ -199,16 +199,23 @@ fn lookup_unique_target(chip: &str) -> Result<Target> {
     );
 
     if targets.len() > 1 {
-        eprintln!(
-            "For tests, chip definition must be exact. Chip name {} matches multiple chips:",
-            &chip
-        );
+        let target_string = String::from(chip).to_ascii_uppercase();
+        if targets.contains(&target_string) {
+            // Multiple chips returned, but one was an exact match so we're using it
+            let target = get_target_by_name(target_string)?;
+            return Ok(target);
+        } else {
+            eprintln!(
+                "For tests, chip definition must be exact. Chip name {} matches multiple chips:",
+                &chip
+            );
 
-        for target in &targets {
-            eprintln!("\t{target}");
+            for target in &targets {
+                eprintln!("\t{target}");
+            }
+
+            bail!("Chip definition does not match exactly.");
         }
-
-        bail!("Chip definition does not match exactly.");
     }
 
     let target = get_target_by_name(&targets[0])?;

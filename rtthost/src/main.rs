@@ -1,6 +1,6 @@
 use probe_rs::rtt::{Channels, Rtt, RttChannel, ScanRegion};
-use probe_rs::{config::TargetSelector, DebugProbeInfo};
-use probe_rs::{Lister, Permissions};
+use probe_rs::{config::TargetSelector, probe::DebugProbeInfo};
+use probe_rs::{probe::list::Lister, Permissions};
 
 use anyhow::{bail, Result};
 use clap::Parser;
@@ -130,18 +130,14 @@ fn main() -> Result<()> {
         bail!("Probe {probe_number} does not exist.");
     }
 
-    let probe = match probes[probe_number].open(&lister) {
+    let probe = match probes[probe_number].open() {
         Ok(probe) => probe,
         Err(err) => {
             bail!("Error opening probe: {err}");
         }
     };
 
-    let target_selector = opts
-        .chip
-        .clone()
-        .map(TargetSelector::Unspecified)
-        .unwrap_or(TargetSelector::Auto);
+    let target_selector = TargetSelector::from(opts.chip.as_deref());
 
     let mut session = match probe.attach(target_selector, Permissions::default()) {
         Ok(session) => session,

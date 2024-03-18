@@ -27,7 +27,7 @@ Frame:
   column: Some(Column(12))
  frame_base:      Some(20003f50)
 Frame:
- function:        <unknown function @ 0x0000019c>
+ function:        delay<nrf51_pac::TIMER0, nrf_hal_common::timer::OneShot>
  source_location:
   directory: /Users/yatekii/.cargo/registry/src/index.crates.io-6f17d22bba15001f/nrf-hal-common-0.14.1/src
   file: Some("timer.rs")
@@ -79,4 +79,3 @@ Frame:
  source_location:
 None
  frame_base:      None
-

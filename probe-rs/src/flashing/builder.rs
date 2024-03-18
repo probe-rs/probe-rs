@@ -9,8 +9,8 @@ use super::{FlashAlgorithm, FlashError, FlashVisualizer};
 /// The description of a page in flash.
 #[derive(Clone, PartialEq, Eq)]
 pub struct FlashPage {
-    address: u64,
-    data: Vec<u8>,
+    pub(super) address: u64,
+    pub(super) data: Vec<u8>,
 }
 
 impl Debug for FlashPage {
@@ -372,7 +372,7 @@ impl FlashBuilder {
 
 #[cfg(test)]
 mod tests {
-    use probe_rs_target::{FlashProperties, NvmRegion, SectorDescription};
+    use probe_rs_target::{FlashProperties, SectorDescription};
 
     use super::*;
 

@@ -59,7 +59,7 @@ impl Events {
         }
     }
 
-    pub fn next(&self, timeout: Duration) -> Result<KeyEvent, mpsc::RecvTimeoutError> {
-        self.rx.recv_timeout(timeout)
+    pub fn next(&self) -> Result<KeyEvent, mpsc::TryRecvError> {
+        self.rx.try_recv()
     }
 }
