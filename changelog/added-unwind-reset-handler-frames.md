@@ -1,1 +1,0 @@
-For Armv[6,7,8]m, the stacktrace will now correctly unwind the `reset handler` frames that invoke the `fn main()` or `fn main_trampoline()`.

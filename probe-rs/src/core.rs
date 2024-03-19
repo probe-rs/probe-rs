@@ -317,9 +317,9 @@ impl ExceptionInterface for UnimplementedExceptionHandler {
         _stackframe_registers: &DebugRegisters,
     ) -> Result<Option<ExceptionInfo>, Error> {
         // For architectures where the exception handling has not been implemented in probe-rs,
-        // this will result in maintaining the current `unwind` behavior, i.e. unwinding will stop
-        // when the first frame is reached that was called from an exception handler.
-        Err(Error::NotImplemented("unwinding of exception frames"))
+        // this will result in maintaining the current `unwind` behavior, i.e. unwinding will include up
+        // to the first frame that was called from an exception handler.
+        Ok(None)
     }
 
     fn calling_frame_registers(
