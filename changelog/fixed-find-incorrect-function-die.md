@@ -1,1 +1,1 @@
-`UnitInfo::get_function_dies()` sometimes retrieved the wrong function die, because of insufficient range filtering.
+Debug: During a stack unwind, incorrect processing of function identiers, sometimes displayed incorrect function names and associated variable definitions in the stack.
