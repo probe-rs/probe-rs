@@ -12,7 +12,6 @@ use std::time::{Duration, Instant};
 use anyhow::{anyhow, Result};
 use probe_rs::debug::{DebugInfo, DebugRegisters};
 use probe_rs::rtt::ScanRegion;
-use probe_rs::Session;
 use probe_rs::{
     exception_handler_for_core, probe::list::Lister, Core, CoreInterface, Error, HaltReason,
     Session, VectorCatchCondition,
