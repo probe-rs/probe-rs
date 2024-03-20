@@ -22,6 +22,20 @@ variants:
         is_boot_memory: true
         cores:
           - main
+      - !Nvm # External instruction bus
+        range:
+          start: 0x400C2000
+          end: 0x40C00000
+        is_alias: true
+        cores:
+          - main
+      - !Nvm # External Data Bus
+        range:
+          start: 0x3F400000
+          end: 0x3FC00000
+        is_alias: true
+        cores:
+          - main
       - !Ram # SRAM2, Data bus
         range:
           start: 0x3FFAE000

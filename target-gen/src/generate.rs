@@ -544,10 +544,11 @@ pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> V
                     existing_region.cores.extend_from_slice(&cores);
                 } else {
                     mem_map.push(MemoryRegion::Nvm(NvmRegion {
-                    name: Some(region.name.clone()),
-                    range: region.memory_start..region.memory_end,
-                    is_boot_memory: region.is_boot_memory,
-                    cores,
+                        name: Some(region.name.clone()),
+                        range: region.memory_start..region.memory_end,
+                        is_boot_memory: region.is_boot_memory,
+                        cores,
+                        is_alias: false,
                     }));
                 }
             },
