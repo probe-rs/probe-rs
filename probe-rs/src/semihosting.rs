@@ -80,7 +80,18 @@ impl GetCommandLineRequest {
         self.0.write(core, &buf)?;
 
         //TODO: abstract this:
-        core.write_core_reg(crate::RegisterId::from(2), RegisterValue::U32(0u32))?; // signal to target: status = success
+        match core.architecture() {
+            probe_rs_target::Architecture::Xtensa => {
+                core.write_core_reg(crate::RegisterId::from(2), RegisterValue::U32(0u32))?;
+                // signal to target: status = success
+            }
+            // RISC-V and ARM
+            _ => {
+                let reg = core.registers().get_argument_register(0).unwrap();
+                core.write_core_reg(reg.into(), RegisterValue::U32(0u32))?; // signal to target: status = success
+            }
+        }
+
         Ok(())
     }
 }
