@@ -54,32 +54,20 @@ impl UnitInfo {
         )))
     }
     /// Get the DIEs for the function containing the given address.
-    ///
-    /// If `find_inlined` is `false`, then the result will contain a single [`FunctionDie`]
-    /// If `find_inlined` is `true`, then the result will contain a  [`Vec<FunctionDie>`], where the innermost (deepest in the stack) function die is the last entry in the Vec.
+    /// - The first entry in the vector will be the outermost function containing the address.
+    /// - If the address is inlined, the innermost function will be the last entry in the vector.
     pub(crate) fn get_function_dies<'debug_info>(
         &'debug_info self,
         debug_info: &'debug_info super::DebugInfo,
         address: u64,
-        find_inlined: bool,
     ) -> Result<Vec<FunctionDie>, DebugError> {
         tracing::trace!("Searching Function DIE for address {:#x}", address);
 
         let mut entries_cursor = self.unit.entries();
         while let Ok(Some((_depth, current))) = entries_cursor.next_dfs() {
-            let Some(mut die) = FunctionDie::new(current.clone(), self, debug_info) else {
-                // We only want to process DIEs that are functions.
+            let Some(die) = FunctionDie::new(current.clone(), self, debug_info, address)? else {
                 continue;
             };
-
-            let mut gimli_ranges = debug_info.dwarf.die_ranges(&self.unit, current)?;
-            while let Ok(Some(gimli_range)) = gimli_ranges.next() {
-                die.ranges.push(gimli_range.begin..gimli_range.end);
-            }
-
-            if !die.range_contains(address) || die.low_pc().unwrap_or(0) == 0 {
-                continue;
-            }
 
             let mut functions = vec![die];
             tracing::debug!(
@@ -87,20 +75,16 @@ impl UnitInfo {
                 functions[0].function_name(debug_info)
             );
 
-            if find_inlined {
-                tracing::debug!("Checking for inlined functions");
+            tracing::debug!("Checking for inlined functions");
+            let inlined_functions =
+                self.find_inlined_functions(debug_info, address, current.offset())?;
+            tracing::debug!(
+                "{} inlined functions for address {}",
+                inlined_functions.len(),
+                address
+            );
 
-                let inlined_functions =
-                    self.find_inlined_functions(debug_info, address, current.offset())?;
-
-                tracing::debug!(
-                    "{} inlined functions for address {}",
-                    inlined_functions.len(),
-                    address
-                );
-
-                functions.extend(inlined_functions.into_iter());
-            }
+            functions.extend(inlined_functions.into_iter());
             return Ok(functions);
         }
         Ok(vec![])
@@ -119,63 +103,16 @@ impl UnitInfo {
             return Ok(vec![]);
         };
 
-        let mut current_depth = 0;
-        let mut abort_depth = 0;
         let mut functions = Vec::new();
 
-        while let Ok(Some((depth, current))) = cursor.next_dfs() {
-            current_depth += depth;
-            if current_depth < abort_depth {
-                break;
-            }
-
-            // Skip anything that is not an inlined subroutine.
-            if current.tag() != gimli::DW_TAG_inlined_subroutine {
+        while let Ok(Some((_depth, current))) = cursor.next_dfs() {
+            // We only want children of the DIE at the given offset (the non-inlined function DIE)
+            if current.offset() == offset {
                 continue;
             }
 
-            let mut gimli_ranges = debug_info.dwarf.die_ranges(&self.unit, current)?;
-            let mut die_ranges = Vec::new();
-            while let Ok(Some(gimli_range)) = gimli_ranges.next() {
-                die_ranges.push(gimli_range.begin..gimli_range.end);
-            }
-
-            if !die_ranges
-                .iter()
-                .any(|range| range.contains(&address) && range.start != 0)
-            {
-                continue;
-            }
-
-            // Check if we are actually in an inlined function
-
-            // We don't have to search further up in the tree, if there are multiple inlined functions,
-            // they will be children of the current function.
-            abort_depth = current_depth;
-
-            // Find the abstract definition.
-            let Some(abstract_origin) =
-                debug_info.resolve_die_reference(gimli::DW_AT_abstract_origin, current, self)
-            else {
-                tracing::warn!("No abstract origin for inlined function, skipping.");
-                return Ok(vec![]);
-            };
-
-            // Find the specification definition for the abstract origin.
-            let specification_die = debug_info.resolve_die_reference(
-                gimli::DW_AT_specification,
-                &abstract_origin,
-                self,
-            );
-
-            let Some(die) =
-                FunctionDie::new_inlined(current.clone(), abstract_origin, specification_die, self)
-                    .map(|mut inlined_function_die| {
-                        inlined_function_die.ranges = die_ranges;
-                        inlined_function_die
-                    })
-            else {
-                // The `new_inlined` function will never be None, because we have already checked for the tag.
+            // Keep the current DIE only if it is an inlined function
+            let Some(die) = FunctionDie::new(current.clone(), self, debug_info, address)? else {
                 continue;
             };
 

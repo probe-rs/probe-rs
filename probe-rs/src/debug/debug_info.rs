@@ -355,7 +355,7 @@ impl DebugInfo {
 
         let mut functions = None;
         for unit_info in &self.unit_infos {
-            let function_dies = unit_info.get_function_dies(self, address, true)?;
+            let function_dies = unit_info.get_function_dies(self, address)?;
 
             if !function_dies.is_empty() {
                 functions = Some((unit_info, function_dies));
