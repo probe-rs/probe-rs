@@ -71,21 +71,29 @@ impl core::fmt::Display for ProfileMethod {
 
 impl ProfileCmd {
     pub fn run(self, lister: &Lister) -> anyhow::Result<()> {
-        let (mut session, probe_options) = self.run.probe_options.simple_attach(lister)?;
+        let (mut session, probe_options) = self
+            .run
+            .shared_options
+            .probe_options
+            .simple_attach(lister)?;
 
-        let loader = build_loader(&mut session, &self.run.path, self.run.format_options)?;
+        let loader = build_loader(
+            &mut session,
+            &self.run.shared_options.path,
+            self.run.shared_options.format_options,
+        )?;
 
-        let bytes = std::fs::read(&self.run.path)?;
+        let bytes = std::fs::read(&self.run.shared_options.path)?;
         let symbols = Symbols::try_from(&bytes)?;
 
         if self.flash {
             run_flash_download(
                 &mut session,
-                Path::new(&self.run.path),
-                &self.run.download_options,
+                Path::new(&self.run.shared_options.path),
+                &self.run.shared_options.download_options,
                 &probe_options,
                 loader,
-                self.run.chip_erase,
+                self.run.shared_options.chip_erase,
             )?;
         }
 

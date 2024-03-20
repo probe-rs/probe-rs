@@ -3,7 +3,7 @@ use normal_run_mode::*;
 
 use std::io::Write;
 use std::ops::Range;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -28,41 +28,40 @@ const RTT_RETRIES: usize = 10;
 
 #[derive(clap::Parser)]
 pub struct Cmd {
-    /// The path to the ELF file to flash and run
-    pub(crate) path: String,
-
     /// Options only used when in normal run mode
     #[clap(flatten)]
     pub(crate) run_options: NormalRunOptions,
 
-    // ---- General Options ahead ----
+    /// Options shared by all run modes
     #[clap(flatten)]
-    pub(crate) common_options: CommonOptions,
+    pub(crate) shared_options: SharedOptions,
+}
+
+#[derive(Debug, clap::Parser)]
+pub struct SharedOptions {
+    #[clap(flatten)]
+    pub(crate) probe_options: ProbeOptions,
 
     #[clap(flatten)]
     pub(crate) download_options: BinaryDownloadOptions,
 
-    #[clap(flatten)]
-    pub(crate) format_options: FormatOptions,
+    /// The path to the ELF file to flash and run
+    pub(crate) path: String,
+
+    /// Always print the stacktrace on ctrl + c.
+    #[clap(long)]
+    pub(crate) always_print_stacktrace: bool,
 
     /// Whether to erase the entire chip before downloading
     #[clap(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub(crate) chip_erase: bool,
 
-    #[clap(flatten)]
-    pub(crate) probe_options: ProbeOptions,
-}
-
-// Options used for all run modes
-#[derive(Debug, clap::Parser)]
-pub struct CommonOptions {
-    /// Always print the stacktrace on ctrl + c.
-    #[clap(long)]
-    pub(crate) always_print_stacktrace: bool,
-
     /// Suppress filename and line number information from the rtt log
     #[clap(long)]
     pub(crate) no_location: bool,
+
+    #[clap(flatten)]
+    pub(crate) format_options: FormatOptions,
 
     /// The default format string to use for decoding defmt logs.
     #[clap(long)]
@@ -82,18 +81,19 @@ impl Cmd {
     ) -> Result<()> {
         let run_mode = detect_run_mode(&self)?;
 
-        let (mut session, probe_options) = self.probe_options.simple_attach(lister)?;
-        let path = PathBuf::from(&self.path);
+        let (mut session, probe_options) =
+            self.shared_options.probe_options.simple_attach(lister)?;
 
         if run_download {
-            let loader = build_loader(&mut session, &path, self.format_options)?;
+            let path = Path::new(&self.shared_options.path);
+            let loader = build_loader(&mut session, path, self.shared_options.format_options)?;
             run_flash_download(
                 &mut session,
-                &path,
-                &self.download_options,
+                path,
+                &self.shared_options.download_options,
                 &probe_options,
                 loader,
-                self.chip_erase,
+                self.shared_options.chip_erase,
             )?;
             // reset the core to leave it in a consistent state after flashing
             session
@@ -102,7 +102,7 @@ impl Cmd {
         }
 
         let memory_map = session.target().memory_map.clone();
-        let rtt_scan_regions = match self.common_options.rtt_scan_memory {
+        let rtt_scan_regions = match self.shared_options.rtt_scan_memory {
             true => session.target().rtt_scan_regions.clone(),
             false => Vec::new(),
         };
@@ -112,11 +112,11 @@ impl Cmd {
             RunLoop {
                 memory_map,
                 rtt_scan_regions,
-                path,
                 timestamp_offset,
-                always_print_stacktrace: self.common_options.always_print_stacktrace,
-                no_location: self.common_options.no_location,
-                log_format: self.common_options.log_format,
+                path: self.shared_options.path,
+                always_print_stacktrace: self.shared_options.always_print_stacktrace,
+                no_location: self.shared_options.no_location,
+                log_format: self.shared_options.log_format,
             },
         )?;
 
@@ -140,7 +140,7 @@ fn detect_run_mode(cmd: &Cmd) -> Result<Box<dyn RunMode>, anyhow::Error> {
 struct RunLoop {
     memory_map: Vec<MemoryRegion>,
     rtt_scan_regions: Vec<Range<u64>>,
-    path: PathBuf,
+    path: String,
     timestamp_offset: UtcOffset,
     always_print_stacktrace: bool,
     no_location: bool,
@@ -213,7 +213,7 @@ impl RunLoop {
             core,
             self.memory_map.as_slice(),
             self.rtt_scan_regions.as_slice(),
-            self.path.as_path(),
+            Path::new(&self.path),
             &rtt_config,
             self.timestamp_offset,
         );
@@ -280,7 +280,7 @@ impl RunLoop {
             || return_reason.is_err()
             || matches!(return_reason, Ok(ReturnReason::Timeout))
         {
-            print_stacktrace(core, self.path.as_path())?;
+            print_stacktrace(core, Path::new(&self.path))?;
         }
 
         signal_hook::low_level::unregister(sig_id);
