@@ -1,15 +1,20 @@
 mod normal_run_mode;
-use normal_run_mode::*;
 
-use std::io::Write;
+use normal_run_mode::*;
+use std::fs::File;
+mod test_run_mode;
+use test_run_mode::*;
+
+use std::io::{Read, Write};
 use std::ops::Range;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use probe_rs::debug::{DebugInfo, DebugRegisters};
+use probe_rs::flashing::FileDownloadError;
 use probe_rs::rtt::ScanRegion;
 use probe_rs::{
     exception_handler_for_core, probe::list::Lister, Core, CoreInterface, Error, HaltReason,
@@ -32,6 +37,10 @@ pub struct Cmd {
     #[clap(flatten)]
     pub(crate) run_options: NormalRunOptions,
 
+    /// Options only used when in test mode
+    #[clap(flatten)]
+    pub(crate) test_options: TestOptions,
+
     /// Options shared by all run modes
     #[clap(flatten)]
     pub(crate) shared_options: SharedOptions,
@@ -45,7 +54,13 @@ pub struct SharedOptions {
     #[clap(flatten)]
     pub(crate) download_options: BinaryDownloadOptions,
 
-    /// The path to the ELF file to flash and run
+    ///The path to the ELF file to flash and run.
+    #[clap(
+        index = 1,
+        help = "The path to the ELF file to flash and run.\n\
+    If the binary uses `embedded-test` each test will be executed in turn. See `TEST OPTIONS` for more configuration options exclusive to this mode.\n\
+    If the binary does not use `embedded-test` the binary will be flashed and run normally. See `RUN OPTIONS` for more configuration options exclusive to this mode."
+    )]
     pub(crate) path: String,
 
     /// Always print the stacktrace on ctrl + c.
@@ -129,12 +144,44 @@ trait RunMode {
 }
 
 fn detect_run_mode(cmd: &Cmd) -> Result<Box<dyn RunMode>, anyhow::Error> {
-    // We'll add more run modes here as we add support for them.
-    // Possible run modes:
-    // - TestRunMode (runs embedded-test)
-    // - SemihostingArgsRunMode (passes arguments to the target via semihosting)
+    let elf_contains_test = {
+        let mut file = match File::open(cmd.shared_options.path.as_str()) {
+            Ok(file) => file,
+            Err(e) => return Err(FileDownloadError::IO(e)).context("Failed to open binary file."),
+        };
+        let mut buffer = Vec::new();
+        file.read_to_end(&mut buffer)?;
+        match goblin::elf::Elf::parse(buffer.as_slice()) {
+            Ok(elf) if elf.syms.is_empty() => {
+                tracing::info!("No Debug Symbols in ELF.");
+                false
+            }
+            Ok(elf) => elf
+                .syms
+                .iter()
+                .any(|sym| elf.strtab.get_at(sym.st_name) == Some("EMBEDDED_TEST_VERSION")),
+            Err(_) => {
+                tracing::info!("Failed to parse ELF file");
+                false
+            }
+        }
+    };
 
-    Ok(NormalRunMode::new(cmd.run_options.clone()))
+    if elf_contains_test {
+        // We tolerate the run options, even in test mode so that you can set `probe-rs run --catch-hardfault` as cargo runner (used for both unit tests and normal binaries)
+        tracing::info!("Detected embedded-test in ELF file. Running as test");
+        Ok(TestRunMode::new(&cmd.test_options))
+    } else {
+        let test_args_specified = cmd.test_options.list
+            || cmd.test_options.exact
+            || cmd.test_options.format.is_some()
+            || !cmd.test_options.filter.is_empty();
+        if test_args_specified {
+            return Err(anyhow!("No embedded-test detected in ELF file, but CLI invoked with Arguments exclusive to test mode"));
+        }
+        tracing::info!("No embedded-test in ELF file. Running as normal");
+        Ok(NormalRunMode::new(cmd.run_options.clone()))
+    }
 }
 
 struct RunLoop {
