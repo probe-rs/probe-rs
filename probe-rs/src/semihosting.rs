@@ -1,4 +1,4 @@
-use crate::{CoreInterface, Error};
+use crate::{CoreInterface, Error, RegisterValue};
 use anyhow::{bail, Result};
 
 /// Indicates the operation the target would like the debugger to perform.
@@ -59,8 +59,7 @@ pub struct UnknownCommandDetails {
 
 impl UnknownCommandDetails {
     /// Returns the buffer pointed-to by the parameter of the semihosting operation
-    #[allow(dead_code)] // TODO: remove once embedded-test uses this
-    pub(crate) fn get_buffer(&self, core: &mut dyn CoreInterface) -> Result<Buffer> {
+    pub fn get_buffer(&self, core: &mut dyn CoreInterface) -> Result<Buffer> {
         Buffer::from_block_at(core, self.parameter)
     }
 }
@@ -72,21 +71,40 @@ pub struct GetCommandLineRequest(Buffer);
 impl GetCommandLineRequest {
     /// Writes the command line to the target. You have to continue the core manually afterwards.
     pub fn write_command_line_to_target(
-        &mut self,
+        &self,
         core: &mut dyn CoreInterface,
         cmdline: &str,
     ) -> Result<()> {
         let mut buf = cmdline.to_owned().into_bytes();
         buf.push(0);
-        self.0.write(core, &buf)
+        self.0.write(core, &buf)?;
+
+        // signal to target: status = success
+        write_semihosting_return_value(core, 0)?;
+
+        Ok(())
     }
+}
+
+fn write_semihosting_return_value(core: &mut dyn CoreInterface, value: u32) -> Result<()> {
+    // different register depending on architecture (and semihosting spec)
+    match core.architecture() {
+        probe_rs_target::Architecture::Xtensa => {
+            core.write_core_reg(crate::RegisterId::from(2), RegisterValue::U32(value))?;
+        }
+        probe_rs_target::Architecture::Riscv | probe_rs_target::Architecture::Arm => {
+            let reg = core.registers().get_argument_register(0).unwrap();
+            core.write_core_reg(reg.into(), RegisterValue::U32(value))?;
+        }
+    }
+    Ok(())
 }
 
 // When using some semihosting commands, the target usually allocates a buffer for the host to read/write to.
 // The targets just gives us an address pointing to two u32 values, the address of the buffer and
 // the length of the buffer.
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
-pub(crate) struct Buffer {
+pub struct Buffer {
     buffer_location: u32, // The address where the buffer address and length are stored
     address: u32,         // The start of the buffer
     len: u32,             // The length of the buffer
@@ -94,7 +112,7 @@ pub(crate) struct Buffer {
 
 impl Buffer {
     /// Constructs a new buffer, reading the address and length from the target.
-    pub(crate) fn from_block_at(core: &mut dyn CoreInterface, block_addr: u32) -> Result<Self> {
+    pub fn from_block_at(core: &mut dyn CoreInterface, block_addr: u32) -> Result<Self> {
         let mut block: [u32; 2] = [0, 0];
         core.read_32(block_addr as u64, &mut block)?;
         Ok(Self {
@@ -105,8 +123,7 @@ impl Buffer {
     }
 
     /// Reads the buffer contents from the target.
-    #[allow(dead_code)] // TODO: remove once embedded-test uses this
-    pub(crate) fn read(&mut self, core: &mut dyn CoreInterface) -> Result<Vec<u8>> {
+    pub fn read(&self, core: &mut dyn CoreInterface) -> Result<Vec<u8>> {
         let mut buf = vec![0u8; self.len as usize];
         core.read(self.address as u64, &mut buf[..])?;
         Ok(buf)
@@ -114,7 +131,7 @@ impl Buffer {
 
     /// Writes the passed buffer to the target buffer.
     /// The buffer must end with \0. Length written to target will not include \0.
-    pub(crate) fn write(&mut self, core: &mut dyn CoreInterface, buf: &[u8]) -> Result<()> {
+    pub fn write(&self, core: &mut dyn CoreInterface, buf: &[u8]) -> Result<()> {
         if buf.len() > self.len as usize {
             bail!("buffer not large enough")
         }
