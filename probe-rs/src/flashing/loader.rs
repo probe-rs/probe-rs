@@ -251,7 +251,7 @@ impl FlashLoader {
             };
 
             tracing::info!(
-                "    {} at {:08X?} ({} byte{})",
+                "    {} at {:#010X} ({} byte{})",
                 source,
                 section.address,
                 section.data.len(),
@@ -303,7 +303,7 @@ impl FlashLoader {
         tracing::debug!("Contents of builder:");
         for (&address, data) in &self.builder.data {
             tracing::debug!(
-                "    data: {:08x}-{:08x} ({} bytes)",
+                "    data: {:#010X}..{:#010X} ({} bytes)",
                 address,
                 address + data.len() as u64,
                 data.len()
@@ -315,7 +315,7 @@ impl FlashLoader {
             let Range { start, end } = algorithm.flash_properties.address_range;
 
             tracing::debug!(
-                "    algo {}: {:08x}-{:08x} ({} bytes)",
+                "    algo {}: {:#010X}..{:#010X} ({} bytes)",
                 algorithm.name,
                 start,
                 end,
@@ -343,8 +343,16 @@ impl FlashLoader {
         tracing::debug!("Regions:");
         for region in &self.memory_map {
             if let MemoryRegion::Nvm(region) = region {
+                if region.is_alias {
+                    tracing::debug!(
+                        "Skipping alias memory region {:#010X}..{:#010X}",
+                        region.range.start,
+                        region.range.end
+                    );
+                    continue;
+                }
                 tracing::debug!(
-                    "    region: {:08x}-{:08x} ({} bytes)",
+                    "    region: {:#010X}..{:#010X} ({} bytes)",
                     region.range.start,
                     region.range.end,
                     region.range.end - region.range.start
@@ -425,7 +433,7 @@ impl FlashLoader {
 
             for region in regions {
                 tracing::debug!(
-                    "    programming region: {:08x}-{:08x} ({} bytes)",
+                    "    programming region: {:#010X}..{:#010X} ({} bytes)",
                     region.range.start,
                     region.range.end,
                     region.range.end - region.range.start
@@ -448,7 +456,7 @@ impl FlashLoader {
         for region in &self.memory_map {
             if let MemoryRegion::Ram(region) = region {
                 tracing::debug!(
-                    "    region: {:08x}-{:08x} ({} bytes)",
+                    "    region: {:#010X}..{:#010X} ({} bytes)",
                     region.range.start,
                     region.range.end,
                     region.range.end - region.range.start
@@ -470,7 +478,7 @@ impl FlashLoader {
                 for (address, data) in self.builder.data_in_range(&region.range) {
                     some = true;
                     tracing::debug!(
-                        "     -- writing: {:08x}-{:08x} ({} bytes)",
+                        "     -- writing: {:#010X}..{:#010X} ({} bytes)",
                         address,
                         address + data.len() as u64,
                         data.len()
@@ -489,7 +497,7 @@ impl FlashLoader {
             tracing::debug!("Verifying!");
             for (&address, data) in &self.builder.data {
                 tracing::debug!(
-                    "    data: {:08x}-{:08x} ({} bytes)",
+                    "    data: {:#010X}..{:#010X} ({} bytes)",
                     address,
                     address + data.len() as u64,
                     data.len()

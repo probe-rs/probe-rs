@@ -11,7 +11,7 @@ variants:
     cores:
       - name: lp
         type: riscv
-        core_access_options: 
+        core_access_options:
           !Riscv
             hart_id: 1
     memory_map:
@@ -26,21 +26,19 @@ variants:
         range: # External Flash on Instruction/Data Bus
           start: 0x42000000
           end: 0x42FFFFFF
-        is_boot_memory: false
+        is_alias: true
         cores:
           - lp
       - !Ram
         range:
           start: 0x40800000
           end: 0x4087FFFF
-        is_boot_memory: false
         cores:
           - lp
       - !Ram
         range:
           start: 0x50000000
           end: 0x50003FFF
-        is_boot_memory: false
         cores:
           - lp
     flash_algorithms: []
