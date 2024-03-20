@@ -115,9 +115,8 @@ impl<'probe> Xtensa<'probe> {
         let mut reason = old_reason;
         let pc: u32 = core.read_core_reg(core.program_counter().id)?.try_into()?;
 
-        let mut actual_instructions = [0u32; 1];
-        core.read_32((pc) as u64, &mut actual_instructions)?;
-        let actual_instructions = actual_instructions[0].to_le_bytes();
+        let mut actual_instructions = [0u8; 3];
+        core.read_8((pc) as u64, &mut actual_instructions)?;
 
         tracing::debug!(
             "Semihosting check pc={pc:#x} instructions={0:#08x} {1:#08x} {2:#08x}",
