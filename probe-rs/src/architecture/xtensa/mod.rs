@@ -120,11 +120,10 @@ impl<'probe> Xtensa<'probe> {
         let actual_instructions = actual_instructions[0].to_le_bytes();
 
         tracing::debug!(
-            "Semihosting check pc={pc:#x} instructions={0:#08x} {1:#08x} {2:#08x} {3:#08x}",
+            "Semihosting check pc={pc:#x} instructions={0:#08x} {1:#08x} {2:#08x}",
             actual_instructions[0],
             actual_instructions[1],
             actual_instructions[2],
-            actual_instructions[3],
         );
 
         let mut expected_instruction = vec![];
@@ -261,6 +260,8 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
                 == HaltReason::Breakpoint(BreakpointCause::Software)
                 && (debug_cause.break_instruction() || debug_cause.break_n_instruction())
             {
+                // The chip initiated this halt, therefore we need to update pc_written state
+                self.state.pc_written = false;
                 // Check if the breakpoint is a semihosting call
                 Xtensa::check_for_semihosting(debug_cause.halt_reason(), self)?
             } else {
