@@ -17,6 +17,7 @@ pub mod esp32s3;
 
 // ARM devices
 pub mod atsam;
+pub mod cc13xx_cc26xx;
 pub mod efm32xg2;
 pub mod infineon;
 pub mod nrf52;
