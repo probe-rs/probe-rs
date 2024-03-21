@@ -97,14 +97,17 @@ impl Cmd {
 
         let (mut session, probe_options) =
             self.shared_options.probe_options.simple_attach(lister)?;
-        let path = Path::new(&self.shared_options.path);
-        let core_id = rtt::get_target_core_id(&mut session, path);
+        let core_id = rtt::get_target_core_id(&mut session, &self.shared_options.path);
 
         if run_download {
-            let loader = build_loader(&mut session, path, self.shared_options.format_options)?;
+            let loader = build_loader(
+                &mut session,
+                &self.shared_options.path,
+                self.shared_options.format_options,
+            )?;
             run_flash_download(
                 &mut session,
-                path,
+                &self.shared_options.path,
                 &self.shared_options.download_options,
                 &probe_options,
                 loader,

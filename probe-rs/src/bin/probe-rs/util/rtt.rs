@@ -18,7 +18,7 @@ use std::{
 use time::{macros::format_description, OffsetDateTime, UtcOffset};
 
 /// Infer the target core from the RTT symbol. Useful for multi-core targets.
-pub fn get_target_core_id(session: &mut Session, elf_file: &Path) -> usize {
+pub fn get_target_core_id(session: &mut Session, elf_file: impl AsRef<Path>) -> usize {
     let maybe_core_id = || {
         let mut file = File::open(elf_file).ok()?;
         let address = RttActiveTarget::get_rtt_symbol(&mut file)?;
