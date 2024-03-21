@@ -3,7 +3,7 @@ use defmt_decoder::log::format::{Formatter, FormatterConfig, FormatterFormat};
 use defmt_decoder::DecodeError;
 pub use probe_rs::rtt::ChannelMode;
 use probe_rs::rtt::{DownChannel, Error, Rtt, ScanRegion, UpChannel};
-use probe_rs::Core;
+use probe_rs::{Core, Session};
 use probe_rs_target::MemoryRegion;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -16,6 +16,37 @@ use std::{
     path::Path,
 };
 use time::{macros::format_description, OffsetDateTime, UtcOffset};
+
+/// Infer the target core from the RTT symbol. Useful for multi-core targets.
+pub fn get_target_core_id(session: &mut Session, elf_file: &Path) -> usize {
+    let maybe_core_id = || {
+        let mut file = File::open(elf_file).ok()?;
+        let address = RttActiveTarget::get_rtt_symbol(&mut file)?;
+
+        tracing::debug!("RTT symbol found at 0x{:08x}", address);
+
+        let target_memory = session
+            .target()
+            .memory_map
+            .iter()
+            .filter_map(MemoryRegion::as_ram_region)
+            .find(|region| region.range.contains(&address))?;
+
+        tracing::debug!("RTT symbol is in RAM region {:?}", target_memory.name);
+
+        let core_name = target_memory.cores.first()?;
+        let core_id = session
+            .target()
+            .cores
+            .iter()
+            .position(|core| core.name == *core_name)?;
+
+        tracing::debug!("RTT symbol is in core {}", core_id);
+
+        Some(core_id)
+    };
+    maybe_core_id().unwrap_or(0)
+}
 
 /// Try to find the RTT control block in the ELF file and attach to it.
 ///

@@ -86,37 +86,6 @@ pub struct SharedOptions {
     pub(crate) rtt_scan_memory: bool,
 }
 
-// For multi-core targets, it infers the target core from the RTT symbol.
-fn get_target_core_id(session: &mut Session, elf_file: &Path) -> usize {
-    let maybe_core_id = || {
-        let mut file = File::open(elf_file).ok()?;
-        let address = RttActiveTarget::get_rtt_symbol(&mut file)?;
-
-        tracing::debug!("RTT symbol found at 0x{:08x}", address);
-
-        let target_memory = session
-            .target()
-            .memory_map
-            .iter()
-            .filter_map(MemoryRegion::as_ram_region)
-            .find(|region| region.range.contains(&address))?;
-
-        tracing::debug!("RTT symbol is in RAM region {:?}", target_memory.name);
-
-        let core_name = target_memory.cores.first()?;
-        let core_id = session
-            .target()
-            .cores
-            .iter()
-            .position(|core| core.name == *core_name)?;
-
-        tracing::debug!("RTT symbol is in core {}", core_id);
-
-        Some(core_id)
-    };
-    maybe_core_id().unwrap_or(0)
-}
-
 impl Cmd {
     pub fn run(
         self,
@@ -129,7 +98,7 @@ impl Cmd {
         let (mut session, probe_options) =
             self.shared_options.probe_options.simple_attach(lister)?;
         let path = Path::new(&self.shared_options.path);
-        let core_id = get_target_core_id(&mut session, path);
+        let core_id = rtt::get_target_core_id(&mut session, path);
 
         if run_download {
             let loader = build_loader(&mut session, path, self.shared_options.format_options)?;
