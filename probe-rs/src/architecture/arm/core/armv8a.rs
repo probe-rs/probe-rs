@@ -662,6 +662,34 @@ impl<'probe> Armv8a<'probe> {
         })
     }
 
+    fn read_cpu_memory_aarch64_bytes(
+        &mut self,
+        address: u64,
+        data: &mut [u8],
+    ) -> Result<(), Error> {
+        self.with_core_halted(|armv8a| {
+            // Save x0, x1
+            armv8a.prepare_for_clobber(0)?;
+            armv8a.prepare_for_clobber(1)?;
+
+            // Load x0 with the address to read from
+            armv8a.set_reg_value(0, address)?;
+
+            for d in data {
+                // Read data to w1 - LDRB w1, [x0], #1
+                let instruction = aarch64::build_ldrb(1, 0, 1);
+
+                armv8a.execute_instruction(instruction)?;
+
+                // MSR DBGDTRTX_EL0, X1
+                let instruction = aarch64::build_msr(2, 3, 0, 5, 0, 1);
+                *d = armv8a.execute_instruction_with_result_32(instruction)? as u8;
+            }
+
+            Ok(())
+        })
+    }
+
     fn read_cpu_memory_aarch64_32(&mut self, address: u64) -> Result<u32, Error> {
         self.with_core_halted(|armv8a| {
             // Save x0, x1
@@ -721,6 +749,27 @@ impl<'probe> Armv8a<'probe> {
         })
     }
 
+    fn write_cpu_memory_aarch64_bytes(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
+        self.with_core_halted(|armv8a| {
+            // Save r0, r1
+            armv8a.prepare_for_clobber(0)?;
+            armv8a.prepare_for_clobber(1)?;
+
+            // Load x0 with the address to write to
+            armv8a.set_reg_value(0, address)?;
+
+            for d in data {
+                armv8a.set_reg_value(1, u64::from(*d))?;
+
+                // Write data to memory - STRB w1, [r0], #1
+                let instruction = aarch64::build_strb(1, 0, 4);
+
+                armv8a.execute_instruction(instruction)?;
+            }
+            Ok(())
+        })
+    }
+
     fn write_cpu_memory_aarch64_32(&mut self, address: u64, data: u32) -> Result<(), Error> {
         self.with_core_halted(|armv8a| {
             // Save x0, x1
@@ -772,9 +821,9 @@ impl<'probe> Armv8a<'probe> {
             let mut address = address;
 
             // write unaligned part
-            for byte in prefix {
-                armv8a.write_word_8(address, *byte)?;
-                address += 1;
+            if !prefix.is_empty() {
+                armv8a.write_cpu_memory_aarch64_bytes(address, prefix)?;
+                address += u64::try_from(prefix.len()).unwrap();
             }
 
             // write aligned part
@@ -782,9 +831,8 @@ impl<'probe> Armv8a<'probe> {
             address += u64::try_from(aligned.len()).unwrap();
 
             // write unaligned part
-            for byte in suffix {
-                armv8a.write_word_8(address, *byte)?;
-                address += 1;
+            if !suffix.is_empty() {
+                armv8a.write_cpu_memory_aarch64_bytes(address, suffix)?;
             }
             Ok(())
         })
@@ -884,9 +932,9 @@ impl<'probe> Armv8a<'probe> {
             let mut address = address;
 
             // read unaligned part
-            for byte in prefix {
-                *byte = armv8a.read_word_8(address)?;
-                address += 1;
+            if !prefix.is_empty() {
+                armv8a.read_cpu_memory_aarch64_bytes(address, prefix)?;
+                address += u64::try_from(prefix.len()).unwrap();
             }
 
             // read aligned part
@@ -894,9 +942,8 @@ impl<'probe> Armv8a<'probe> {
             address += u64::try_from(aligned.len()).unwrap();
 
             // read unaligned part
-            for byte in suffix {
-                *byte = armv8a.read_word_8(address)?;
-                address += 1;
+            if !suffix.is_empty() {
+                armv8a.read_cpu_memory_aarch64_bytes(address, suffix)?;
             }
 
             Ok(())
