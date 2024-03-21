@@ -625,6 +625,21 @@ impl<'probe> Armv8a<'probe> {
         result
     }
 
+    fn with_memory_access_mode<F, R>(&mut self, f: F) -> Result<R, Error>
+    where
+        F: FnOnce(&mut Self) -> Result<R, Error>,
+    {
+        // enable memory access(MA) mode
+        self.set_memory_access_mode(true)?;
+
+        let result = f(self);
+
+        // disable memory access(MA) mode
+        self.set_memory_access_mode(false)?;
+
+        result
+    }
+
     fn read_cpu_memory_aarch32_32(&mut self, address: u64) -> Result<u32, Error> {
         let address = valid_32bit_address(address)?;
 
@@ -809,18 +824,15 @@ impl<'probe> Armv8a<'probe> {
         // Load r0 with the address to write to
         self.set_reg_value(0, address)?;
 
-        // enable memory access(MA) mode
-        self.set_memory_access_mode(true)?;
-
-        for d in data.chunks(4) {
-            let word = u32::from_le_bytes([d[0], d[1], d[2], d[3]]);
-            // memory write loop
-            let dbgdtr_rx_address = Dbgdtrrx::get_mmio_address_from_base(self.base_address)?;
-            self.memory.write_word_32(dbgdtr_rx_address, word)?;
-        }
-
-        // disable memory access(MA) mode
-        self.set_memory_access_mode(false)?;
+        self.with_memory_access_mode(|armv8a| {
+            for d in data.chunks(4) {
+                let word = u32::from_le_bytes([d[0], d[1], d[2], d[3]]);
+                // memory write loop
+                let dbgdtr_rx_address = Dbgdtrrx::get_mmio_address_from_base(armv8a.base_address)?;
+                armv8a.memory.write_word_32(dbgdtr_rx_address, word)?;
+            }
+            Ok(())
+        })?;
 
         // error check
         let edscr_address = Edscr::get_mmio_address_from_base(self.base_address)?;
@@ -908,23 +920,20 @@ impl<'probe> Armv8a<'probe> {
         let edscr_address = Edscr::get_mmio_address_from_base(self.base_address)?;
         while !{ Edscr(self.memory.read_word_32(edscr_address)?) }.txfull() {}
 
-        // enable memory access(MA) mode
-        self.set_memory_access_mode(true)?;
-
         let dbgdtr_tx_address = Dbgdtrtx::get_mmio_address_from_base(self.base_address)?;
-        // discard firtst 32bit
-        let _ = self.memory.read_word_32(dbgdtr_tx_address)?;
-
         let (data, last) = data.split_at_mut(data.len() - std::mem::size_of::<u32>());
 
-        for d in data.chunks_mut(4) {
-            // memory read loop
-            let tmp = self.memory.read_word_32(dbgdtr_tx_address)?.to_le_bytes();
-            d.copy_from_slice(&tmp);
-        }
+        self.with_memory_access_mode(|armv8a| {
+            // discard firtst 32bit
+            let _ = armv8a.memory.read_word_32(dbgdtr_tx_address)?;
+            for d in data.chunks_mut(4) {
+                // memory read loop
+                let tmp = armv8a.memory.read_word_32(dbgdtr_tx_address)?.to_le_bytes();
+                d.copy_from_slice(&tmp);
+            }
 
-        // disable memory access(MA) mode
-        self.set_memory_access_mode(false)?;
+            Ok(())
+        })?;
 
         // read last 32bit
         let l = self.memory.read_word_32(dbgdtr_tx_address)?.to_le_bytes();
