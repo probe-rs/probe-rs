@@ -248,7 +248,7 @@ impl SteppingMode {
             }
             SteppingMode::OutOfStatement => {
                 if let Ok(function_dies) =
-                    program_unit.get_function_dies(debug_info, program_counter, true)
+                    program_unit.get_function_dies(debug_info, program_counter)
                 {
                     // We want the first qualifying (PC is in range) function from the back of this list,
                     // to access the 'innermost' functions first.
