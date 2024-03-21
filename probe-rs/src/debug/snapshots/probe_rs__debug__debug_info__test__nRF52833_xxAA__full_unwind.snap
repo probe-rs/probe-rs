@@ -4542,7 +4542,7 @@ expression: stack_frames
       type_name: Unknown
       value: "<unknown>"
   canonical_frame_address: 536887296
-- function_name: "encrypt_block : ERROR: UNWIND: Tried to unwind `RegisterRule` at CFA = None."
+- function_name: "<unknown function @ 0x0000013c> : ERROR: UNWIND: Tried to unwind `RegisterRule` at CFA = None."
   source_location: ~
   registers:
     - core_register:
@@ -4733,36 +4733,7 @@ expression: stack_frames
       value: ~
   pc:
     U32: 316
-  frame_base: 0
+  frame_base: ~
   is_inlined: false
-  local_variables:
-    Child Variables:
-      name: LocalScopeRoot
-      type_name: Unknown
-      value: "<unknown> {\n\tself: &mut nrf_hal_common::ecb::Ecb = &mut nrf_hal_common::ecb::Ecb @ 0x200040C8,\n\tblock: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >,\n\tkey: <unknown> = < <value optimized away by compiler, out of scope, or dropped> >}"
-      children:
-        - name:
-            Named: self
-          type_name:
-            Pointer: "&mut nrf_hal_common::ecb::Ecb"
-          value: "&mut nrf_hal_common::ecb::Ecb @ 0x200040C8"
-          children:
-            - name:
-                Named: "*self"
-              type_name:
-                Struct: Ecb
-              value: "Ecb {\n\tregs: <unknown> = < Failed to read referenced variable address from memory location 0x200040C8 : The coredump does not include the memory for address 0x200040c8 of size 0x4. >}"
-              children:
-                - name:
-                    Named: regs
-                  type_name: Unknown
-                  value: "< Failed to read referenced variable address from memory location 0x200040C8 : The coredump does not include the memory for address 0x200040c8 of size 0x4. >"
-        - name:
-            Named: block
-          type_name: Unknown
-          value: "< <value optimized away by compiler, out of scope, or dropped> >"
-        - name:
-            Named: key
-          type_name: Unknown
-          value: "< <value optimized away by compiler, out of scope, or dropped> >"
+  local_variables: ~
   canonical_frame_address: ~
