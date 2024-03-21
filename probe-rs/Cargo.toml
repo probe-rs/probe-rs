@@ -97,7 +97,7 @@ kmp = { version = "0.1", optional = true }
 once_cell = "1"
 miniz_oxide = "0.7"
 num-traits = "0.2"
-object = { version = "0.33", default-features = false, features = [
+object = { version = "0.34", default-features = false, features = [
     "elf",
     "read_core",
     "std",
