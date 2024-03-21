@@ -104,12 +104,9 @@ where
 
                 // If the algo specifies `RAMstart` and/or `RAMsize` fields, then use them.
                 // - See https://open-cmsis-pack.github.io/Open-CMSIS-Pack-Spec/main/html/pdsc_family_pg.html#element_algorithm for more information.
-                algo.load_address = flash_algorithm.ram_start.map(|ram_start| ram_start + FlashAlgorithm::get_max_algorithm_header_size());
-                if let Some(stack_size) = flash_algorithm.ram_size {
-                     algo.stack_size = Some(stack_size.try_into().map_err(|data_conversion_error|
-                        anyhow!("Algorithm requires a stack size of  '{:?}' : {data_conversion_error:?}", flash_algorithm.ram_size)
-                    )?);
-                }
+                algo.load_address = flash_algorithm
+                    .ram_start
+                    .map(|ram_start| ram_start + FlashAlgorithm::get_max_algorithm_header_size());
 
                 // We add this algo directly to the algos of the family if it's not already added.
                 // Make sure we never add an algo twice to save file size.
@@ -529,10 +526,10 @@ pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> V
                     existing_region.cores.extend_from_slice(&cores);
                 } else {
                     mem_map.push(MemoryRegion::Ram(RamRegion {
-                    name: Some(region.name.clone()),
-                    range: region.memory_start..region.memory_end,
-                    is_boot_memory: region.is_boot_memory,
-                    cores,
+                        name: Some(region.name.clone()),
+                        range: region.memory_start..region.memory_end,
+                        is_boot_memory: region.is_boot_memory,
+                        cores,
                     }));
                 }
             },
@@ -560,9 +557,9 @@ pub(crate) fn get_mem_map(device: &Device, cores: &[probe_rs_target::Core]) -> V
                     existing_region.cores.extend_from_slice(&cores);
                 } else {
                     mem_map.push(MemoryRegion::Generic(GenericRegion {
-                    name: Some(region.name.clone()),
-                    range: region.memory_start..region.memory_end,
-                    cores,
+                        name: Some(region.name.clone()),
+                        range: region.memory_start..region.memory_end,
+                        cores,
                     }));
                 }
             },

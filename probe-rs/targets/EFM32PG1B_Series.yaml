@@ -300,4 +300,3 @@ flash_algorithms:
     sectors:
     - size: 0x800
       address: 0x0
-  stack_size: 4096
