@@ -826,6 +826,13 @@ impl<'probe> Armv8a<'probe> {
         let edscr_address = Edscr::get_mmio_address_from_base(self.base_address)?;
         if Edscr(self.memory.read_word_32(edscr_address)?).err() {
             // under-run or abort
+
+            // clear error flag
+            let edrcr_address = Edrcr::get_mmio_address_from_base(self.base_address)?;
+            let mut edrcr = Edrcr(0);
+            edrcr.set_cse(true);
+            self.memory.write_word_32(edrcr_address, edrcr.into())?;
+
             return Err(Error::Arm(ArmError::Armv8a(Armv8aError::DataAbort)));
         }
 
@@ -927,6 +934,12 @@ impl<'probe> Armv8a<'probe> {
         let address = Edscr::get_mmio_address_from_base(self.base_address)?;
         let edscr = Edscr(self.memory.read_word_32(address)?);
         if edscr.err() {
+            // clear error flag
+            let edrcr_address = Edrcr::get_mmio_address_from_base(self.base_address)?;
+            let mut edrcr = Edrcr(0);
+            edrcr.set_cse(true);
+            self.memory.write_word_32(edrcr_address, edrcr.into())?;
+
             Err(Error::Arm(ArmError::Armv8a(Armv8aError::DataAbort)))
         } else {
             Ok(())
