@@ -103,7 +103,7 @@ pub enum FlashError {
     // TODO: 1 Add information about flash (name, address)
     // TODO: 2 Add source of target definition (built-in, yaml)
     /// No flash algorithm was linked to this target.
-    #[error("Trying to write to flash region 0x{:X}..0x{:X}, but no suitable (default) flash loader algorithm is linked to the given target: {name}.", .range.start, .range.end)]
+    #[error("Trying to write to flash region {:#010X}..{:#010X}, but no suitable (default) flash loader algorithm is linked to the given target: {name}.", .range.start, .range.end)]
     NoFlashLoaderAlgorithmAttached {
         /// The name of the chip.
         name: String,

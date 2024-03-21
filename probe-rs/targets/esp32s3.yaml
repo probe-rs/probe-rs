@@ -51,12 +51,14 @@ variants:
         range:
           start: 0x42000000
           end: 0x44000000
+        is_alias: true
         cores:
           - cpu0
       - !Nvm # External Data Bus
         range:
           start: 0x3C000000
           end: 0x3E000000
+        is_alias: true
         cores:
           - cpu0
     flash_algorithms:

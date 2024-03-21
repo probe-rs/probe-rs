@@ -1,25 +1,28 @@
 use super::{
-    function_die::FunctionDie, get_object_reference, unit_info::UnitInfo, variable::*, DebugError,
-    DebugRegisters, StackFrame, VariableCache,
+    function_die::{Die, FunctionDie},
+    get_object_reference,
+    unit_info::UnitInfo,
+    variable::*,
+    DebugError, DebugRegisters, StackFrame, VariableCache,
 };
-use crate::core::UnwindRule;
-use crate::debug::stack_frame::StackFrameInfo;
-use crate::debug::unit_info::RangeExt;
-use crate::debug::{SourceLocation, VerifiedBreakpoint};
 use crate::{
-    core::{ExceptionInterface, RegisterRole, RegisterValue},
-    debug::registers,
+    core::{ExceptionInterface, RegisterRole, RegisterValue, UnwindRule},
+    debug::{
+        registers, stack_frame::StackFrameInfo, unit_info::RangeExt, SourceLocation,
+        VerifiedBreakpoint,
+    },
     MemoryInterface,
 };
 use anyhow::anyhow;
-use gimli::{BaseAddresses, DebugFrame, UnwindContext, UnwindSection, UnwindTableRow};
+use gimli::{
+    BaseAddresses, DebugFrame, DebugInfoOffset, UnwindContext, UnwindSection, UnwindTableRow,
+};
 use object::read::{Object, ObjectSection};
 use probe_rs_target::InstructionSet;
-use typed_path::{TypedPath, TypedPathBuf};
-
 use std::{
     borrow, cmp::Ordering, num::NonZeroU64, ops::ControlFlow, path::Path, rc::Rc, str::from_utf8,
 };
+use typed_path::{TypedPath, TypedPathBuf};
 
 pub(crate) type GimliReader = gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>;
 
@@ -100,38 +103,6 @@ impl DebugInfo {
             debug_line_section,
             unit_infos,
         })
-    }
-
-    /// Get the name of the function at the given address.
-    ///
-    /// If no function is found, `None` will be returned.
-    ///
-    /// ## Inlined functions
-    /// Multiple nested inline functions could exist at the given address.
-    /// This function will currently return the innermost function in that case.
-    // TODO: This function takes a memory interface. This seems odd, but gimli sometimes needs to read memory to resolve.
-    // Maybe this can be factored out if we can be sure that memory is never read for this use case.
-    // Until we have more tests we cannot be sure though and it should stay like this.
-    pub fn function_name(
-        &self,
-        address: u64,
-        find_inlined: bool,
-    ) -> Result<Option<String>, DebugError> {
-        for unit_info in &self.unit_infos {
-            let mut functions = unit_info.get_function_dies(self, address, find_inlined)?;
-
-            // Use the last functions from the list, this is the function which most closely
-            // corresponds to the PC in case of multiple inlined functions.
-            if let Some(die_cursor_state) = functions.pop() {
-                let function_name = die_cursor_state.function_name(self);
-
-                if function_name.is_some() {
-                    return Ok(function_name);
-                }
-            }
-        }
-
-        Ok(None)
     }
 
     /// Try get the [`SourceLocation`] for a given address.
@@ -384,7 +355,7 @@ impl DebugInfo {
 
         let mut functions = None;
         for unit_info in &self.unit_infos {
-            let function_dies = unit_info.get_function_dies(self, address, true)?;
+            let function_dies = unit_info.get_function_dies(self, address)?;
 
             if !function_dies.is_empty() {
                 functions = Some((unit_info, function_dies));
@@ -966,6 +937,55 @@ impl DebugInfo {
         Err(DebugError::WarnAndContinue {
             message: format!("No debug information available for the instruction at {address:#010x}. Please consider using instruction level stepping.")
         })
+    }
+
+    /// Get the DIE at the given offset into the debug info section.
+    pub(crate) fn get_die_at_offset(&self, offset: DebugInfoOffset) -> Result<Die, DebugError> {
+        for unit_info in &self.unit_infos {
+            if let Some(unit_offset) = offset.to_unit_offset(&unit_info.unit.header) {
+                return unit_info.unit.entry(unit_offset).map_err(|error| {
+                    DebugError::Other(anyhow::anyhow!(
+                        "Error reading DIE at debug info offset {:#x} : {}",
+                        offset.0,
+                        error
+                    ))
+                });
+            }
+        }
+
+        Err(DebugError::Other(anyhow::anyhow!(
+            "DIE at debug info offset {:#010x} not found",
+            offset.0
+        )))
+    }
+
+    /// Look up the DIE reference for the given attribute, if it exists.
+    pub(crate) fn resolve_die_reference<'abbrev, 'unit>(
+        &'abbrev self,
+        attribute: gimli::DwAt,
+        die: &Die<'abbrev, 'unit>,
+        unit_info: &'unit UnitInfo,
+    ) -> Option<Die<'abbrev, 'unit>>
+    where
+        'abbrev: 'unit,
+        'unit: 'abbrev,
+    {
+        die.attr(attribute)
+            .ok()
+            .flatten()
+            .and_then(move |specification_attr| match specification_attr.value() {
+                gimli::AttributeValue::UnitRef(unit_ref) => unit_info.unit.entry(unit_ref).ok(),
+                gimli::AttributeValue::DebugInfoRef(debug_info_ref) => {
+                    self.get_die_at_offset(debug_info_ref).ok()
+                }
+                other_value => {
+                    tracing::warn!(
+                        "Unsupported {:?} value: {other_value:?}",
+                        attribute.static_string(),
+                    );
+                    None
+                }
+            })
     }
 }
 

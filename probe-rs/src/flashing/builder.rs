@@ -399,6 +399,7 @@ mod tests {
             is_boot_memory: true,
             range: 0..1 << 16,
             cores: vec!["main".into()],
+            is_alias: false,
         };
 
         (region, flash_algorithm)
@@ -427,6 +428,7 @@ mod tests {
             is_boot_memory: true,
             range: 0..1 << 16,
             cores: vec!["main".into()],
+            is_alias: false,
         };
 
         (region, flash_algorithm)
