@@ -96,25 +96,45 @@ impl UnitInfo {
         &'abbrev self,
         debug_info: &'abbrev DebugInfo,
         address: u64,
-        offset: UnitOffset,
+        parent_offset: UnitOffset,
     ) -> Result<Vec<FunctionDie<'abbrev, '_>>, DebugError> {
         // If we don't have any entries at our unit offset, return an empty vector.
-        let Ok(mut cursor) = self.unit.entries_at_offset(offset) else {
+        // This cursor starts at, and includes the entries for the non-inlined function at 'parent_offset'.
+        let Ok(mut cursor) = self.unit.entries_at_offset(parent_offset) else {
             return Ok(vec![]);
         };
 
+        let mut current_depth = 0;
+        // The abort depth is used to control navigation of `cursor.next_dfs()` tree that contains
+        // the inlined functions for the current address.  It is set to the current depth when a
+        // qualifying inlined function is found, and prevents the cursor from searching back up the
+        // tree, for sibling branches.
+        // This is a performance optimization only, and will not affect the correctness of the result.
+        let mut abort_depth = 0;
         let mut functions = Vec::new();
 
-        while let Ok(Some((_depth, current))) = cursor.next_dfs() {
-            // We only want children of the DIE at the given offset (the non-inlined function DIE)
-            if current.offset() == offset {
+        while let Ok(Some((depth, current))) = cursor.next_dfs() {
+            current_depth += depth;
+
+            if current.offset() == parent_offset {
+                // We only want children of the non-inlined function DIE at the given `parent_offset`.
                 continue;
+            }
+
+            if current_depth < abort_depth {
+                // We have found all the inlined functions for the current address
+                // so we can abort the search, before it starts searching other branches of the tree.
+                break;
             }
 
             // Keep the current DIE only if it is an inlined function
             let Some(die) = FunctionDie::new(current.clone(), self, debug_info, address)? else {
                 continue;
             };
+
+            // Everytime we find a qualifying inlined-function, we set the abort depth
+            // to ensure the `cursor.next_dfs()` will be prevented from reversing the depth traversal to search for peers.
+            abort_depth = current_depth;
 
             functions.push(die);
         }
