@@ -774,6 +774,7 @@ impl<'probe> Armv8a<'probe> {
 
             // write aligned part
             armv8a.write_cpu_memory_aarch64_fast_inner(address, aligned)?;
+            address += u64::try_from(aligned.len()).unwrap();
 
             // write unaligned part
             for byte in tail {
@@ -861,6 +862,7 @@ impl<'probe> Armv8a<'probe> {
 
             // read aligned part
             armv8a.read_cpu_memory_aarch64_fast_inner(address, aligned)?;
+            address += u64::try_from(aligned.len()).unwrap();
 
             // read unaligned part
             for byte in tail {
