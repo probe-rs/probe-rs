@@ -812,15 +812,9 @@ impl<'probe> Armv8a<'probe> {
         // enable memory access(MA) mode
         self.set_memory_access_mode(true)?;
 
-        for (i, d) in data.chunks(4).enumerate() {
+        for d in data.chunks(4) {
             let word = u32::from_le_bytes([d[0], d[1], d[2], d[3]]);
             // memory write loop
-            tracing::debug!(
-                "writing {:#016x} ({} / {} bytes)",
-                address + u64::try_from(i * 4).unwrap(),
-                i * 4,
-                data.len()
-            );
             let dbgdtr_rx_address = Dbgdtrrx::get_mmio_address_from_base(self.base_address)?;
             self.memory.write_word_32(dbgdtr_rx_address, word)?;
         }
@@ -892,8 +886,6 @@ impl<'probe> Armv8a<'probe> {
             });
         }
 
-        let data_len = data.len();
-
         // Save x0
         self.prepare_for_clobber(0)?;
 
@@ -918,14 +910,8 @@ impl<'probe> Armv8a<'probe> {
 
         let (data, last) = data.split_at_mut(data.len() - std::mem::size_of::<u32>());
 
-        for (i, d) in data.chunks_mut(4).enumerate() {
+        for d in data.chunks_mut(4) {
             // memory read loop
-            tracing::debug!(
-                "reading {:#016x} ({} / {} bytes)",
-                address + u64::try_from(i * 4).unwrap(),
-                i * 4,
-                data_len
-            );
             let tmp = self.memory.read_word_32(dbgdtr_tx_address)?.to_le_bytes();
             d.copy_from_slice(&tmp);
         }
