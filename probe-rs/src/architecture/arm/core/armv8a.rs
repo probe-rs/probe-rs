@@ -768,21 +768,11 @@ impl<'probe> Armv8a<'probe> {
 
     fn write_cpu_memory_aarch64_fast(&mut self, address: u64, data: &[u8]) -> Result<(), Error> {
         self.with_core_halted(|armv8a| {
-            // rounding up
-            let word_aligned_address = (address + 3) & (!0x03u64);
-            let unaligned_head_size = usize::try_from(word_aligned_address - address).unwrap();
-            let unaligned_tail_size =
-                usize::try_from((address + u64::try_from(data.len()).unwrap()) % 4).unwrap();
-            let word_aligned_size = data.len() - (unaligned_head_size + unaligned_tail_size);
-
-            // take out 32-bit aligned part
-            let (head, rest) = data.split_at(unaligned_head_size);
-            let (aligned, tail) = rest.split_at(word_aligned_size);
-
+            let (prefix, aligned, suffix) = armv8a.aligned_to_32(address, data);
             let mut address = address;
 
             // write unaligned part
-            for byte in head {
+            for byte in prefix {
                 armv8a.write_word_8(address, *byte)?;
                 address += 1;
             }
@@ -792,7 +782,7 @@ impl<'probe> Armv8a<'probe> {
             address += u64::try_from(aligned.len()).unwrap();
 
             // write unaligned part
-            for byte in tail {
+            for byte in suffix {
                 armv8a.write_word_8(address, *byte)?;
                 address += 1;
             }
@@ -811,7 +801,7 @@ impl<'probe> Armv8a<'probe> {
         if data.is_empty() {
             return Ok(());
         }
-        if data.len() % 4 != 0 {
+        if data.len() % 4 != 0 || address % 4 != 0 {
             return Err(Error::MemoryNotAligned {
                 address,
                 alignment: 4,
@@ -851,24 +841,50 @@ impl<'probe> Armv8a<'probe> {
         Ok(())
     }
 
+    fn aligned_to_32_split_offset(&self, address: u64, data: &[u8]) -> (usize, usize) {
+        // rounding up
+        let word_aligned_address = (address + 3) & (!0x03u64);
+        let unaligned_prefix_size = usize::try_from(word_aligned_address - address).unwrap();
+        let unaligned_suffix_size =
+            usize::try_from((address + u64::try_from(data.len()).unwrap()) % 4).unwrap();
+        let word_aligned_size = data.len() - (unaligned_prefix_size + unaligned_suffix_size);
+
+        (unaligned_prefix_size, word_aligned_size)
+    }
+
+    fn aligned_to_32_mut<'a>(
+        &self,
+        address: u64,
+        data: &'a mut [u8],
+    ) -> (&'a mut [u8], &'a mut [u8], &'a mut [u8]) {
+        // take out 32-bit aligned part
+        let (unaligned_prefix_size, word_aligned_size) =
+            self.aligned_to_32_split_offset(address, data);
+
+        // take out 32-bit aligned part
+        let (prefix, rest) = data.split_at_mut(unaligned_prefix_size);
+        let (aligned, suffix) = rest.split_at_mut(word_aligned_size);
+        (prefix, aligned, suffix)
+    }
+
+    fn aligned_to_32<'a>(&self, address: u64, data: &'a [u8]) -> (&'a [u8], &'a [u8], &'a [u8]) {
+        // take out 32-bit aligned part
+        let (unaligned_prefix_size, word_aligned_size) =
+            self.aligned_to_32_split_offset(address, data);
+
+        // take out 32-bit aligned part
+        let (prefix, rest) = data.split_at(unaligned_prefix_size);
+        let (aligned, suffix) = rest.split_at(word_aligned_size);
+        (prefix, aligned, suffix)
+    }
+
     fn read_cpu_memory_aarch64_fast(&mut self, address: u64, data: &mut [u8]) -> Result<(), Error> {
         self.with_core_halted(|armv8a| {
-            // take out 32-bit aligned part
-            // rounding up
-            let word_aligned_address = (address + 3) & (!0x03u64);
-            let unaligned_head_size = usize::try_from(word_aligned_address - address).unwrap();
-            let unaligned_tail_size =
-                usize::try_from((address + u64::try_from(data.len()).unwrap()) % 4).unwrap();
-            let word_aligned_size = data.len() - (unaligned_head_size + unaligned_tail_size);
-
-            // take out 32-bit aligned part
-            let (head, rest) = data.split_at_mut(unaligned_head_size);
-            let (aligned, tail) = rest.split_at_mut(word_aligned_size);
-
+            let (prefix, aligned, suffix) = armv8a.aligned_to_32_mut(address, data);
             let mut address = address;
 
             // read unaligned part
-            for byte in head {
+            for byte in prefix {
                 *byte = armv8a.read_word_8(address)?;
                 address += 1;
             }
@@ -878,7 +894,7 @@ impl<'probe> Armv8a<'probe> {
             address += u64::try_from(aligned.len()).unwrap();
 
             // read unaligned part
-            for byte in tail {
+            for byte in suffix {
                 *byte = armv8a.read_word_8(address)?;
                 address += 1;
             }
@@ -898,7 +914,7 @@ impl<'probe> Armv8a<'probe> {
         if data.is_empty() {
             return Ok(());
         }
-        if data.len() % 4 != 0 {
+        if data.len() % 4 != 0 || address % 4 != 0 {
             return Err(Error::MemoryNotAligned {
                 address,
                 alignment: 4,
