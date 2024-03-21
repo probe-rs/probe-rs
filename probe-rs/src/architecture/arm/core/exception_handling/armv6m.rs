@@ -45,6 +45,29 @@ impl From<u32> for ExceptionReason {
     }
 }
 
+impl ExceptionReason {
+    /// Expands the exception reason, by providing additional information about the exception from the
+    /// HFSR and CFSR registers.
+    pub(crate) fn expanded_description(
+        &self,
+        _memory: &mut dyn MemoryInterface,
+    ) -> Result<String, Error> {
+        match self {
+            ExceptionReason::ThreadMode => Ok("No active exception.".to_string()),
+            ExceptionReason::Reset => Ok("Reset.".to_string()),
+            ExceptionReason::NonMaskableInterrupt => Ok("Non maskable interrupt.".to_string()),
+            ExceptionReason::HardFault => Ok("HardFault.".to_string()),
+            ExceptionReason::SVCall => Ok("Supervisor call.".to_string()),
+            ExceptionReason::PendSV => Ok("Pending Supervisor call.".to_string()),
+            ExceptionReason::SysTick => Ok("Systick.".to_string()),
+            ExceptionReason::ExternalInterrupt(exti) => Ok(format!("External interrupt #{exti}.")),
+            ExceptionReason::Reserved => {
+                Ok("Reserved by the ISA, and not usable by software.".to_string())
+            }
+        }
+    }
+}
+
 /// Exception handling for cores based on the ARMv6-M architecture.
 pub struct ArmV6MExceptionHandler {}
 
@@ -75,13 +98,13 @@ impl ExceptionInterface for ArmV6MExceptionHandler {
     fn exception_description(
         &self,
         raw_exception: u32,
-        _memory_interface: &mut dyn MemoryInterface,
+        memory_interface: &mut dyn MemoryInterface,
     ) -> Result<String, Error> {
         // TODO: Some ARMv6-M cores (e.g. the Cortex-M0) do not have HFSR and CFGR registers, so we cannot
         //       determine the cause of the hard fault. We should add a check for this, and return a more
         //       helpful error message in this case (I'm not sure this is possible).
         //       Until then, this will return a generic error message for all hard faults on this architecture.
-        Ok(format!("{:?}", ExceptionReason::from(raw_exception)))
+        ExceptionReason::from(raw_exception).expanded_description(memory_interface)
     }
 }
 

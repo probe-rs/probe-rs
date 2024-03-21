@@ -538,9 +538,11 @@ impl DebugInfo {
         let mut unwind_registers = initial_registers;
 
         // Unwind [StackFrame]'s for as long as we can unwind a valid PC value.
-        'unwind: while let Some(frame_pc_register_value) = unwind_registers
-            .get_program_counter()
-            .and_then(|pc| pc.value)
+        'unwind: while let Some(frame_pc_register_value) =
+            unwind_registers.get_program_counter().and_then(|pc| {
+                pc.value
+                    .and_then(|value| if value.is_zero() { None } else { Some(value) })
+            })
         {
             // PART 0: The first step is to determine the exception context for the current PC.
             // - If we are at an exception hanlder frame, we need to overwrite the unwind registers with the exception context.
@@ -787,7 +789,7 @@ impl DebugInfo {
 
                     let exception_frame = StackFrame {
                         id: get_object_reference(),
-                        function_name: details.description.clone(),
+                        function_name: format!("<Handler frame>: {}", details.description),
                         source_location: None,
                         registers: unwind_registers.clone(),
                         pc: match unwind_registers.get_address_size_bytes() {
