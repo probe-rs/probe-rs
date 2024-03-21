@@ -1,3 +1,5 @@
+use espflash::flasher::{FlashData, FlashSettings};
+use espflash::targets::XtalFrequency;
 use ihex::Record;
 use probe_rs_target::{
     MemoryRange, MemoryRegion, NvmRegion, RawFlashAlgorithm, TargetDescriptionSource,
@@ -129,22 +131,28 @@ impl FlashLoader {
         file: &mut T,
         options: IdfOptions,
     ) -> Result<(), FileDownloadError> {
-        let target = session.target().clone();
+        let target = session.target();
         let target_name = target
             .name
             .split_once('-')
             .map(|(name, _)| name)
             .unwrap_or(target.name.as_str());
         let chip = espflash::targets::Chip::from_str(target_name)
-            .map_err(|_| FileDownloadError::IdfUnsupported(target.name.clone()))?
+            .map_err(|_| FileDownloadError::IdfUnsupported(target.name.to_string()))?
             .into_target();
 
-        let mut buf = Vec::new();
-        file.read_to_end(&mut buf)?;
+        // FIXME: Short-term hack until we can auto-detect the crystal frequency. ESP32 and ESP32-C2
+        // have 26MHz and 40MHz options, ESP32-H2 is 32MHz, the rest is 40MHz. We need to specify
+        // the frequency because different options require different bootloader images.
+        let xtal_frequency = if target_name.eq_ignore_ascii_case("esp32h2") {
+            XtalFrequency::_32Mhz
+        } else {
+            XtalFrequency::_40Mhz
+        };
 
         let flash_size_result = session.halted_access(|sess| {
             // Figure out flash size from the memory map. We need a different bootloader for each size.
-            Ok(match target.debug_sequence.clone() {
+            Ok(match sess.target().debug_sequence.clone() {
                 DebugSequence::Riscv(sequence) => {
                     sequence.detect_flash_size(sess.get_riscv_interface()?)
                 }
@@ -175,20 +183,28 @@ impl FlashLoader {
             _ => None,
         };
 
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf)?;
         let firmware = espflash::elf::ElfFirmwareImage::try_from(&buf[..])?;
-        let image = chip.get_flash_image(
-            &firmware,
-            options.bootloader,
-            options.partition_table,
-            None,
-            None,
-            None,
-            flash_size,
-            None,
-        )?;
-        let parts: Vec<_> = image.flash_segments().collect();
 
-        for data in parts {
+        let flash_data = FlashData::new(
+            options.bootloader.as_deref(),
+            options.partition_table.as_deref(),
+            None,
+            None,
+            {
+                let mut settings = FlashSettings::default();
+
+                settings.size = flash_size;
+
+                settings
+            },
+            0,
+        )?;
+
+        let image = chip.get_flash_image(&firmware, flash_data, None, xtal_frequency)?;
+
+        for data in image.flash_segments() {
             self.add_data(data.addr.into(), &data.data)?;
         }
 
