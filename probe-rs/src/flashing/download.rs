@@ -224,10 +224,8 @@ fn extract_from_elf_inner<'data, T: FileHeader>(
     elf_header: &T,
     binary: ElfFile<'_, T>,
     elf_data: &'data [u8],
-) -> Result<usize, FileDownloadError> {
+) -> Result<(), FileDownloadError> {
     let endian = elf_header.endian()?;
-
-    let mut extracted_sections = 0;
 
     for segment in elf_header.program_headers(elf_header.endian()?, elf_data)? {
         // Get the physical address of the segment. The data will be programmed to that location.
@@ -292,18 +290,16 @@ fn extract_from_elf_inner<'data, T: FileHeader>(
                     address: p_paddr as u32,
                     data: section_data,
                 });
-
-                extracted_sections += 1;
             }
         }
     }
-    Ok(extracted_sections)
+    Ok(())
 }
 
 pub(super) fn extract_from_elf<'data>(
     extracted_data: &mut Vec<ExtractedFlashData<'data>>,
     elf_data: &'data [u8],
-) -> Result<usize, FileDownloadError> {
+) -> Result<(), FileDownloadError> {
     let file_kind = object::FileKind::parse(elf_data)?;
 
     match file_kind {

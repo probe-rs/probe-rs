@@ -82,17 +82,7 @@ impl FlashLoader {
         memory_map: &[MemoryRegion],
         address: u64,
     ) -> Option<&MemoryRegion> {
-        for region in memory_map {
-            let r = match region {
-                MemoryRegion::Ram(r) => r.range.clone(),
-                MemoryRegion::Nvm(r) => r.range.clone(),
-                MemoryRegion::Generic(r) => r.range.clone(),
-            };
-            if r.contains(&address) {
-                return Some(region);
-            }
-        }
-        None
+        memory_map.iter().find(|region| region.contains(address))
     }
 
     /// Reads the data from the binary file and adds it to the loader without splitting it into flash instructions yet.
@@ -163,12 +153,7 @@ impl FlashLoader {
             })
         })?;
 
-        let flash_size = match flash_size_result {
-            Ok(size) => size,
-            Err(err) => return Err(FileDownloadError::FlashSizeDetection(err)),
-        };
-
-        let flash_size = match flash_size {
+        let flash_size = match flash_size_result.map_err(FileDownloadError::FlashSizeDetection)? {
             Some(0x40000) => Some(espflash::flasher::FlashSize::_256Kb),
             Some(0x80000) => Some(espflash::flasher::FlashSize::_512Kb),
             Some(0x100000) => Some(espflash::flasher::FlashSize::_1Mb),
@@ -247,23 +232,20 @@ impl FlashLoader {
         file.read_to_end(&mut elf_buffer)?;
 
         let mut extracted_data = Vec::new();
+        extract_from_elf(&mut extracted_data, &elf_buffer)?;
 
-        let num_sections = extract_from_elf(&mut extracted_data, &elf_buffer)?;
-
-        if num_sections == 0 {
+        if extracted_data.is_empty() {
             tracing::warn!("No loadable segments were found in the ELF file.");
             return Err(FileDownloadError::NoLoadableSegments);
         }
 
-        tracing::info!("Found {} loadable sections:", num_sections);
+        tracing::info!("Found {} loadable sections:", extracted_data.len());
 
         for section in &extracted_data {
-            let source = if section.section_names.is_empty() {
-                "Unknown".to_string()
-            } else if section.section_names.len() == 1 {
-                section.section_names[0].to_owned()
-            } else {
-                "Multiple sections".to_owned()
+            let source = match section.section_names.len() {
+                0 => "Unknown",
+                1 => section.section_names[0].as_str(),
+                _ => "Multiple sections",
             };
 
             tracing::info!(
@@ -357,46 +339,44 @@ impl FlashLoader {
         // chip erase once per algorithm, not once per region. Otherwise subsequent chip erases will
         // erase previous regions' flashed contents.
         tracing::debug!("Regions:");
-        for region in &self.memory_map {
-            if let MemoryRegion::Nvm(region) = region {
-                if region.is_alias {
-                    tracing::debug!(
-                        "Skipping alias memory region {:#010X}..{:#010X}",
-                        region.range.start,
-                        region.range.end
-                    );
-                    continue;
-                }
+        for region in self.memory_map.iter().filter_map(MemoryRegion::nvm_region) {
+            if region.is_alias {
                 tracing::debug!(
-                    "    region: {:#010X}..{:#010X} ({} bytes)",
+                    "Skipping alias memory region {:#010X}..{:#010X}",
                     region.range.start,
-                    region.range.end,
-                    region.range.end - region.range.start
+                    region.range.end
                 );
-
-                // If we have no data in this region, ignore it.
-                // This avoids uselessly initializing and deinitializing its flash algorithm.
-                if !self.builder.has_data_in_range(&region.range) {
-                    tracing::debug!("     -- empty, ignoring!");
-                    continue;
-                }
-
-                let algo = Self::get_flash_algorithm_for_region(region, session.target())?;
-
-                let entry = algos
-                    .entry((
-                        algo.name.clone(),
-                        region
-                            .cores
-                            .first()
-                            .ok_or_else(|| FlashError::NoNvmCoreAccess(region.clone()))?
-                            .clone(),
-                    ))
-                    .or_default();
-                entry.push(region.clone());
-
-                tracing::debug!("     -- using algorithm: {}", algo.name);
+                continue;
             }
+            tracing::debug!(
+                "    region: {:#010X}..{:#010X} ({} bytes)",
+                region.range.start,
+                region.range.end,
+                region.range.end - region.range.start
+            );
+
+            // If we have no data in this region, ignore it.
+            // This avoids uselessly initializing and deinitializing its flash algorithm.
+            if !self.builder.has_data_in_range(&region.range) {
+                tracing::debug!("     -- empty, ignoring!");
+                continue;
+            }
+
+            let algo = Self::get_flash_algorithm_for_region(region, session.target())?;
+
+            let entry = algos
+                .entry((
+                    algo.name.clone(),
+                    region
+                        .cores
+                        .first()
+                        .ok_or_else(|| FlashError::NoNvmCoreAccess(region.clone()))?
+                        .clone(),
+                ))
+                .or_default();
+            entry.push(region.clone());
+
+            tracing::debug!("     -- using algorithm: {}", algo.name);
         }
 
         if options.dry_run {
@@ -469,43 +449,41 @@ impl FlashLoader {
         tracing::debug!("committing RAM!");
 
         // Commit RAM last, because NVM flashing overwrites RAM
-        for region in &self.memory_map {
-            if let MemoryRegion::Ram(region) = region {
+        for region in self.memory_map.iter().filter_map(MemoryRegion::ram_region) {
+            tracing::debug!(
+                "    region: {:#010X}..{:#010X} ({} bytes)",
+                region.range.start,
+                region.range.end,
+                region.range.end - region.range.start
+            );
+
+            let region_core_index = session
+                .target()
+                .core_index_by_name(
+                    region
+                        .cores
+                        .first()
+                        .ok_or_else(|| FlashError::NoRamCoreAccess(region.clone()))?,
+                )
+                .unwrap();
+            // Attach to memory and core.
+            let mut core = session.core(region_core_index).map_err(FlashError::Core)?;
+
+            let mut some = false;
+            for (address, data) in self.builder.data_in_range(&region.range) {
+                some = true;
                 tracing::debug!(
-                    "    region: {:#010X}..{:#010X} ({} bytes)",
-                    region.range.start,
-                    region.range.end,
-                    region.range.end - region.range.start
+                    "     -- writing: {:#010X}..{:#010X} ({} bytes)",
+                    address,
+                    address + data.len() as u64,
+                    data.len()
                 );
+                // Write data to memory.
+                core.write_8(address, data).map_err(FlashError::Core)?;
+            }
 
-                let region_core_index = session
-                    .target()
-                    .core_index_by_name(
-                        region
-                            .cores
-                            .first()
-                            .ok_or_else(|| FlashError::NoRamCoreAccess(region.clone()))?,
-                    )
-                    .unwrap();
-                // Attach to memory and core.
-                let mut core = session.core(region_core_index).map_err(FlashError::Core)?;
-
-                let mut some = false;
-                for (address, data) in self.builder.data_in_range(&region.range) {
-                    some = true;
-                    tracing::debug!(
-                        "     -- writing: {:#010X}..{:#010X} ({} bytes)",
-                        address,
-                        address + data.len() as u64,
-                        data.len()
-                    );
-                    // Write data to memory.
-                    core.write_8(address, data).map_err(FlashError::Core)?;
-                }
-
-                if !some {
-                    tracing::debug!("     -- empty.")
-                }
+            if !some {
+                tracing::debug!("     -- empty.")
             }
         }
 
@@ -523,13 +501,7 @@ impl FlashLoader {
                     .target()
                     .get_memory_region_by_address(address)
                     .unwrap();
-                let core_name = match associated_region {
-                    MemoryRegion::Ram(r) => &r.cores,
-                    MemoryRegion::Generic(r) => &r.cores,
-                    MemoryRegion::Nvm(r) => &r.cores,
-                }
-                .first()
-                .unwrap();
+                let core_name = associated_region.cores().first().unwrap();
                 let core_index = session.target().core_index_by_name(core_name).unwrap();
                 let mut core = session.core(core_index).map_err(FlashError::Core)?;
 

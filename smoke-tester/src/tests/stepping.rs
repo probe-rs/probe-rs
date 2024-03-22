@@ -20,10 +20,7 @@ fn test_stepping(_tracker: &TestTracker, core: &mut Core) -> Result<(), probe_rs
         return Ok(());
     }
 
-    let ram_region = core.memory_regions().find_map(|region| match region {
-        MemoryRegion::Ram(ram) => Some(ram),
-        _ => None,
-    });
+    let ram_region = core.memory_regions().find_map(MemoryRegion::ram_region);
 
     let ram_region = if let Some(ram_region) = ram_region {
         ram_region.clone()
