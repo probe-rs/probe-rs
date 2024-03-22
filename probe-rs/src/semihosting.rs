@@ -87,16 +87,9 @@ impl GetCommandLineRequest {
 }
 
 fn write_semihosting_return_value(core: &mut dyn CoreInterface, value: u32) -> Result<()> {
-    // different register depending on architecture (and semihosting spec)
-    match core.architecture() {
-        probe_rs_target::Architecture::Xtensa => {
-            core.write_core_reg(crate::RegisterId::from(2), RegisterValue::U32(value))?;
-        }
-        probe_rs_target::Architecture::Riscv | probe_rs_target::Architecture::Arm => {
-            let reg = core.registers().get_argument_register(0).unwrap();
-            core.write_core_reg(reg.into(), RegisterValue::U32(value))?;
-        }
-    }
+    let reg = core.registers().get_argument_register(0).unwrap();
+    core.write_core_reg(reg.into(), RegisterValue::U32(value))?;
+
     Ok(())
 }
 
