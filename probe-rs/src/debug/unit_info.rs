@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use super::{
     debug_info::*, extract_byte_size, extract_file, extract_line, function_die::FunctionDie,
     variable::*, DebugError, DebugRegisters, EndianReader, VariableCache,
@@ -772,18 +774,19 @@ impl UnitInfo {
     fn extract_array_range(
         &self,
         array_parent_node: UnitOffset,
-    ) -> Result<Option<std::ops::Range<u64>>, DebugError> {
+    ) -> Result<Vec<Range<u64>>, DebugError> {
         let mut tree = self.unit.entries_tree(Some(array_parent_node))?;
 
         let root = tree.root()?;
 
         let mut children = root.children();
 
+        let mut ranges = vec![];
         while let Some(child) = children.next()? {
             match child.entry().tag() {
                 gimli::DW_TAG_subrange_type => {
                     if let Some(range) = self.extract_array_range_attribute(child.entry())? {
-                        return Ok(Some(range));
+                        ranges.push(range);
                     }
                 }
                 other => tracing::debug!(
@@ -793,7 +796,7 @@ impl UnitInfo {
             }
         }
 
-        Ok(None)
+        Ok(ranges)
     }
 
     /// Extract the array range values
@@ -802,7 +805,7 @@ impl UnitInfo {
     fn extract_array_range_attribute(
         &self,
         entry: &gimli::DebuggingInformationEntry<GimliReader>,
-    ) -> Result<Option<std::ops::Range<u64>>, DebugError> {
+    ) -> Result<Option<Range<u64>>, DebugError> {
         let mut variable_attributes = entry.attrs();
 
         let mut lower_bound = None;
@@ -1125,7 +1128,7 @@ impl UnitInfo {
 
                 // First: extract sub range
                 match self.extract_array_range(node.offset()) {
-                    Ok(Some(subrange)) => {
+                    Ok(subranges) => {
                         match node.attr_value(gimli::DW_AT_type) {
                             Ok(Some(gimli::AttributeValue::UnitRef(unit_ref))) => {
                                 // The memory location of array members build on top of the memory location of the child_variable.
@@ -1138,6 +1141,9 @@ impl UnitInfo {
                                     frame_info,
                                 )?;
                                 // Now we can explode the array members.
+
+                                // TODO: while we now get all the subranges (dimensions) of a multi-dimensional array, we do not yet process them.
+                                let subrange = subranges.first().unwrap().clone();
 
                                 if subrange.is_empty() {
                                     // Gracefully handle the case where the array is empty.
@@ -1174,10 +1180,10 @@ impl UnitInfo {
                             }
                             Ok(Some(other_attribute_value)) => {
                                 child_variable.set_value(VariableValue::Error(
-                                            format!(
-                                                "Unimplemented: Attribute Value for DW_AT_type {other_attribute_value:?}"
-                                            ),
-                                        ));
+                                    format!(
+                                        "Unimplemented: Attribute Value for DW_AT_type {other_attribute_value:?}"
+                                    ),
+                                ));
                             }
                             Ok(None) => {
                                 child_variable.set_value(self.language.process_tag_with_no_type(
@@ -1191,11 +1197,6 @@ impl UnitInfo {
                                 )));
                             }
                         }
-                    }
-                    Ok(None) => {
-                        child_variable.set_value(VariableValue::Error(
-                            "Unable to retrieve array range information".to_string(),
-                        ));
                     }
                     Err(error) => child_variable.set_value(VariableValue::Error(format!(
                         "Error: Failed to extract array range: {error:?}"
