@@ -316,7 +316,7 @@ impl Registry {
                     identified_chips.extend(chips)
                 }
 
-                if identified_chips.len() > 1 {
+                if identified_chips.len() != 1 {
                     tracing::debug!(
                         "Found {} matching chips for information {:?}, unable to determine chip",
                         identified_chips.len(),
@@ -324,6 +324,7 @@ impl Registry {
                     );
                     return Err(RegistryError::ChipAutodetectFailed);
                 }
+
                 identified_chips[0]
             }
         };
