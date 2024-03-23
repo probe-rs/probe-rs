@@ -198,7 +198,10 @@ impl Target {
 
         tracing::info!("Using sequence {:?}", debug_sequence);
 
-        let ram_regions = chip.memory_map.iter().filter_map(MemoryRegion::as_ram_region);
+        let ram_regions = chip
+            .memory_map
+            .iter()
+            .filter_map(MemoryRegion::as_ram_region);
         let rtt_scan_regions = match &chip.rtt_scan_ranges {
             Some(ranges) => {
                 // The custom ranges must all be enclosed by exactly one of
