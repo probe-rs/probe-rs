@@ -338,7 +338,7 @@ impl FlashLoader {
         // chip erase once per algorithm, not once per region. Otherwise subsequent chip erases will
         // erase previous regions' flashed contents.
         tracing::debug!("Regions:");
-        for region in self.memory_map.iter().filter_map(MemoryRegion::nvm_region) {
+        for region in self.memory_map.iter().filter_map(MemoryRegion::as_nvm_region) {
             if region.is_alias {
                 tracing::debug!(
                     "Skipping alias memory region {:#010X}..{:#010X}",
@@ -448,7 +448,7 @@ impl FlashLoader {
         tracing::debug!("committing RAM!");
 
         // Commit RAM last, because NVM flashing overwrites RAM
-        for region in self.memory_map.iter().filter_map(MemoryRegion::ram_region) {
+        for region in self.memory_map.iter().filter_map(MemoryRegion::as_ram_region) {
             tracing::debug!(
                 "    region: {:#010X}..{:#010X} ({} bytes)",
                 region.range.start,

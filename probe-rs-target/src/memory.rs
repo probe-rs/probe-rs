@@ -163,7 +163,7 @@ pub enum MemoryRegion {
 
 impl MemoryRegion {
     /// Returns the RAM region if this is a RAM region, otherwise None.
-    pub fn ram_region(&self) -> Option<&RamRegion> {
+    pub fn as_ram_region(&self) -> Option<&RamRegion> {
         match self {
             MemoryRegion::Ram(region) => Some(region),
             _ => None,
@@ -171,7 +171,7 @@ impl MemoryRegion {
     }
 
     /// Returns the NVM region if this is a NVM region, otherwise None.
-    pub fn nvm_region(&self) -> Option<&NvmRegion> {
+    pub fn as_nvm_region(&self) -> Option<&NvmRegion> {
         match self {
             MemoryRegion::Nvm(region) => Some(region),
             _ => None,

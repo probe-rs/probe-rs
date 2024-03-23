@@ -242,7 +242,7 @@ impl Rtt {
 
                 memory_map
                     .iter()
-                    .filter_map(MemoryRegion::ram_region)
+                    .filter_map(MemoryRegion::as_ram_region)
                     .map(|r| r.range.clone())
                     .collect()
             }

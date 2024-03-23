@@ -85,7 +85,7 @@ fn get_target_core_id(session: &mut Session, elf_file: &Path) -> usize {
             .target()
             .memory_map
             .iter()
-            .filter_map(MemoryRegion::ram_region)
+            .filter_map(MemoryRegion::as_ram_region)
             .find(|region| region.range.contains(&address))?;
 
         tracing::debug!("RTT symbol is in RAM region {:?}", target_memory.name);

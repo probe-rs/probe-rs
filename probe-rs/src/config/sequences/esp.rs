@@ -32,7 +32,7 @@ impl EspFlashSizeDetector {
     pub fn stack_pointer(chip: &Chip) -> u32 {
         chip.memory_map
             .iter()
-            .find_map(MemoryRegion::ram_region)
+            .find_map(MemoryRegion::as_ram_region)
             .map(|ram| ram.range.start as u32 + 0x1_0000)
             .unwrap()
     }
