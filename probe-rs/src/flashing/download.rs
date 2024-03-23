@@ -220,13 +220,13 @@ impl std::fmt::Debug for ExtractedFlashData<'_> {
 }
 
 fn extract_from_elf_inner<'data, T: FileHeader>(
-    extracted_data: &mut Vec<ExtractedFlashData<'data>>,
     elf_header: &T,
     binary: ElfFile<'_, T>,
     elf_data: &'data [u8],
-) -> Result<(), FileDownloadError> {
+) -> Result<Vec<ExtractedFlashData<'data>>, FileDownloadError> {
     let endian = elf_header.endian()?;
 
+    let mut extracted_data = Vec::new();
     for segment in elf_header.program_headers(elf_header.endian()?, elf_data)? {
         // Get the physical address of the segment. The data will be programmed to that location.
         let p_paddr: u64 = segment.p_paddr(endian).into();
@@ -293,25 +293,25 @@ fn extract_from_elf_inner<'data, T: FileHeader>(
             }
         }
     }
-    Ok(())
+
+    Ok(extracted_data)
 }
 
 pub(super) fn extract_from_elf<'data>(
-    extracted_data: &mut Vec<ExtractedFlashData<'data>>,
     elf_data: &'data [u8],
-) -> Result<(), FileDownloadError> {
+) -> Result<Vec<ExtractedFlashData<'data>>, FileDownloadError> {
     let file_kind = object::FileKind::parse(elf_data)?;
 
     match file_kind {
         object::FileKind::Elf32 => {
             let elf_header = FileHeader32::<Endianness>::parse(elf_data)?;
             let binary = object::read::elf::ElfFile::<FileHeader32<Endianness>>::parse(elf_data)?;
-            extract_from_elf_inner(extracted_data, elf_header, binary, elf_data)
+            extract_from_elf_inner(elf_header, binary, elf_data)
         }
         object::FileKind::Elf64 => {
             let elf_header = FileHeader64::<Endianness>::parse(elf_data)?;
             let binary = object::read::elf::ElfFile::<FileHeader64<Endianness>>::parse(elf_data)?;
-            extract_from_elf_inner(extracted_data, elf_header, binary, elf_data)
+            extract_from_elf_inner(elf_header, binary, elf_data)
         }
         _ => Err(FileDownloadError::Object("Unsupported file type")),
     }
