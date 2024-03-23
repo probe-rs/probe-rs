@@ -251,7 +251,7 @@ fn extract_from_elf_inner<'data, T: FileHeader>(
 
             let (segment_offset, segment_filesize) = segment.file_range(endian);
 
-            let sector: core::ops::Range<u64> = segment_offset..segment_offset + segment_filesize;
+            let sector = segment_offset..segment_offset + segment_filesize;
 
             for section in binary.sections() {
                 let (section_offset, section_filesize) = match section.file_range() {
