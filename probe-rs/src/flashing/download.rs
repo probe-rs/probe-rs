@@ -297,9 +297,9 @@ fn extract_from_elf_inner<'data, T: FileHeader>(
     Ok(extracted_data)
 }
 
-pub(super) fn extract_from_elf<'data>(
-    elf_data: &'data [u8],
-) -> Result<Vec<ExtractedFlashData<'data>>, FileDownloadError> {
+pub(super) fn extract_from_elf(
+    elf_data: &[u8],
+) -> Result<Vec<ExtractedFlashData<'_>>, FileDownloadError> {
     let file_kind = object::FileKind::parse(elf_data)?;
 
     match file_kind {
