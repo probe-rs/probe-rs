@@ -24,6 +24,7 @@ use jep106::JEP106Code;
 use std::{
     collections::{hash_map, HashMap},
     fmt::Debug,
+    ops::DerefMut,
     sync::Arc,
     time::Duration,
 };
@@ -145,16 +146,20 @@ pub struct Uninitialized {
 pub struct Initialized {
     /// Currently selected debug port. For targets without multidrop,
     /// this will always be the single, default debug port in the system.
-    pub(crate) current_dp: Option<DpAddress>,
+    pub(crate) current_dp: DpAddress,
     dps: HashMap<DpAddress, DpState>,
     use_overrun_detect: bool,
     sequence: Arc<dyn ArmDebugSequence>,
 }
 
 impl Initialized {
-    pub fn new(sequence: Arc<dyn ArmDebugSequence>, use_overrun_detect: bool) -> Self {
+    pub fn new(
+        sequence: Arc<dyn ArmDebugSequence>,
+        current_dp: DpAddress,
+        use_overrun_detect: bool,
+    ) -> Self {
         Self {
-            current_dp: None,
+            current_dp,
             dps: HashMap::new(),
             use_overrun_detect,
             sequence,
@@ -368,9 +373,7 @@ impl ArmProbeInterface for ArmCommunicationInterface<Initialized> {
     }
 
     fn current_debug_port(&self) -> DpAddress {
-        self.state
-            .current_dp
-            .expect("A DpAddress is selected. This is a bug, please report it.")
+        self.state.current_dp
     }
 }
 
@@ -405,11 +408,25 @@ impl UninitializedArmProbe for ArmCommunicationInterface<Uninitialized> {
         sequence: Arc<dyn ArmDebugSequence>,
         dp: DpAddress,
     ) -> Result<Box<dyn ArmProbeInterface>, (Box<dyn UninitializedArmProbe>, ProbeRsError)> {
+        let setup_sequence = sequence.clone();
+
         let use_overrun_detect = self.state.use_overrun_detect;
         let mut initialized_interface = ArmCommunicationInterface {
             probe: self.probe,
-            state: Initialized::new(sequence, use_overrun_detect),
+            state: Initialized::new(sequence, dp, use_overrun_detect),
         };
+
+        if let Err(err) =
+            setup_sequence.debug_port_setup(initialized_interface.probe.deref_mut(), dp)
+        {
+            return Err((
+                Box::new(ArmCommunicationInterface::new(
+                    initialized_interface.probe,
+                    use_overrun_detect,
+                )),
+                ProbeRsError::Arm(err),
+            ));
+        }
 
         match initialized_interface.select_dp(dp) {
             Ok(_) => Ok(Box::new(initialized_interface) as Box<_>),
@@ -464,12 +481,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
     }
 
     fn select_dp(&mut self, dp: DpAddress) -> Result<&mut DpState, ArmError> {
-        if self
-            .state
-            .current_dp
-            .map(|current| current != dp)
-            .unwrap_or(true)
-        {
+        if self.state.current_dp != dp {
             tracing::debug!("Selecting DP {:x?}", dp);
 
             self.probe.raw_flush()?;
@@ -482,7 +494,7 @@ impl<'interface> ArmCommunicationInterface<Initialized> {
                 self.state.sequence.debug_port_setup(&mut *self.probe, dp)?;
             }
 
-            self.state.current_dp = Some(dp);
+            self.state.current_dp = dp;
         }
 
         // If we don't have  a state for this DP, this means that we haven't run the necessary init sequence yet.
