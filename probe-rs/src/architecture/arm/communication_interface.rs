@@ -24,7 +24,6 @@ use jep106::JEP106Code;
 use std::{
     collections::{hash_map, HashMap},
     fmt::Debug,
-    ops::DerefMut,
     sync::Arc,
     time::Duration,
 };
@@ -442,8 +441,6 @@ impl UninitializedArmProbe for ArmCommunicationInterface<Uninitialized> {
         sequence: Arc<dyn ArmDebugSequence>,
         dp: DpAddress,
     ) -> Result<Box<dyn ArmProbeInterface>, (Box<dyn UninitializedArmProbe>, ProbeRsError)> {
-        let setup_sequence = sequence.clone();
-
         let use_overrun_detect = self.state.use_overrun_detect;
         let setup_result = tracing::debug_span!("debug_port_setup")
             .in_scope(|| sequence.debug_port_setup(&mut *self.probe_mut(), dp));
@@ -452,20 +449,22 @@ impl UninitializedArmProbe for ArmCommunicationInterface<Uninitialized> {
             return Err((self as Box<_>, e.into()));
         }
 
+        let probe = self.probe.take();
+
         let mut initialized_interface = ArmCommunicationInterface {
             probe,
-            state: Initialized::new(sequence, use_overrun_detect, dp),
+            state: Initialized::new(sequence, dp, use_overrun_detect),
         };
 
         match initialized_interface.select_dp(dp) {
             Ok(_) => Ok(Box::new(initialized_interface) as Box<_>),
-            Err(err) => Err((
-                Box::new(ArmCommunicationInterface::new(
-                    initialized_interface.probe,
-                    use_overrun_detect,
-                )) as Box<_>,
-                ProbeRsError::Arm(err),
-            )),
+            Err(err) => {
+                let probe = initialized_interface.probe.take().unwrap();
+                Err((
+                    Box::new(ArmCommunicationInterface::new(probe, use_overrun_detect)) as Box<_>,
+                    ProbeRsError::Arm(err),
+                ))
+            }
         }
     }
 
