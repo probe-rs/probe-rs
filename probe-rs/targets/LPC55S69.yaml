@@ -373,7 +373,6 @@ flash_algorithms:
       sectors:
         - size: 0x200
           address: 0x0
-    stack_size: 4096
   - name: lpc55xx_s_640
     description: LPC55xx S IAP 630kB Flash
     default: true
@@ -396,4 +395,3 @@ flash_algorithms:
       sectors:
         - size: 0x200
           address: 0x0
-    stack_size: 4096

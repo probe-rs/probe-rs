@@ -460,7 +460,7 @@ impl UninitializedArmProbe for FakeArmInterface<Uninitialized> {
 
         let interface = FakeArmInterface::<Initialized> {
             probe: self.probe,
-            state: Initialized::new(sequence, false, dp),
+            state: Initialized::new(sequence, dp, false),
         };
 
         Ok(Box::new(interface))

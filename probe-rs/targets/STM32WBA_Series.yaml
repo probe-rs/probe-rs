@@ -158,7 +158,6 @@ flash_algorithms:
     sectors:
     - size: 0x2000
       address: 0x0
-  stack_size: 32768
 - name: stm32wbax_512k_0c00
   description: STM32WBAxx 512K Secure Flash
   default: true
@@ -181,7 +180,6 @@ flash_algorithms:
     sectors:
     - size: 0x2000
       address: 0x0
-  stack_size: 32768
 - name: stm32wbax_1m_0800
   description: STM32WBAxx 1M NSecure Flash
   default: true
@@ -204,7 +202,6 @@ flash_algorithms:
     sectors:
     - size: 0x2000
       address: 0x0
-  stack_size: 32768
 - name: stm32wbax_1m_0c00
   description: STM32WBAxx 1M Secure Flash
   default: true
@@ -227,4 +224,3 @@ flash_algorithms:
     sectors:
     - size: 0x2000
       address: 0x0
-  stack_size: 32768
