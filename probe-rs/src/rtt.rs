@@ -242,13 +242,8 @@ impl Rtt {
 
                 memory_map
                     .iter()
-                    .filter_map(|r| match r {
-                        MemoryRegion::Ram(r) => Some(Range {
-                            start: r.range.start,
-                            end: r.range.end,
-                        }),
-                        _ => None,
-                    })
+                    .filter_map(MemoryRegion::as_ram_region)
+                    .map(|r| r.range.clone())
                     .collect()
             }
             ScanRegion::Ranges(regions) => regions.clone(),
@@ -266,11 +261,8 @@ impl Rtt {
             .into_iter()
             .filter_map(|range| {
                 let range_len = match range.end.checked_sub(range.start) {
-                    Some(v) => if v < (Self::MIN_SIZE as u64) {
-                        return None;
-                    } else {
-                        v
-                    },
+                    Some(v) if v < Self::MIN_SIZE as u64 => return None,
+                    Some(v) => v,
                     None => return None,
                 };
 
@@ -291,30 +283,20 @@ impl Rtt {
                     core.read(range.start, mem.as_mut()).ok()?;
                 }
 
-                match kmp::kmp_find(&Self::RTT_ID, mem.as_slice()) {
-                    Some(offset) => {
-                        let target_ptr = range.start + (offset as u64);
-                        let target_ptr: u32 = match target_ptr.try_into() {
-                            Ok(v) => v,
-                            Err(_) => {
-                                // FIXME: The RTT API currently supports only
-                                // 32-bit addresses, and so it can't accept
-                                // an RTT block at an address >4GiB.
-                                tracing::warn!("can't use RTT block at {:#010x}; must be at a location reachable by 32-bit addressing", target_ptr);
-                                return None;
-                            },
-                        };
+                let Some(offset) = kmp::kmp_find(&Self::RTT_ID, mem.as_slice()) else {
+                    return None;
+                };
 
-                        Rtt::from(
-                            core,
-                            memory_map,
-                            target_ptr,
-                            Some(&mem[offset..]),
-                        )
-                        .transpose()
-                    },
-                    None => None,
-                }
+                let target_ptr = range.start + (offset as u64);
+                let Ok(target_ptr) = target_ptr.try_into() else {
+                    // FIXME: The RTT API currently supports only
+                    // 32-bit addresses, and so it can't accept
+                    // an RTT block at an address >4GiB.
+                    tracing::warn!("can't use RTT block at {:#010x}; must be at a location reachable by 32-bit addressing", target_ptr);
+                    return None;
+                };
+
+                Rtt::from(core, memory_map, target_ptr, Some(&mem[offset..])).transpose()
             })
             .collect::<Result<Vec<_>, _>>()?;
 

@@ -292,42 +292,40 @@ impl Registry {
     }
 
     fn get_target_by_chip_info(&self, chip_info: ChipInfo) -> Result<Target, RegistryError> {
-        let (family, chip) = {
-            match chip_info {
-                ChipInfo::Arm(chip_info) => {
-                    // Try get the corresponding chip.
+        let (family, chip) = match chip_info {
+            ChipInfo::Arm(chip_info) => {
+                // Try get the corresponding chip.
 
-                    let families = self.families.iter().filter(|f| {
-                        f.manufacturer
-                            .map(|m| m == chip_info.manufacturer)
-                            .unwrap_or(false)
-                    });
+                let families = self.families.iter().filter(|f| {
+                    f.manufacturer
+                        .map(|m| m == chip_info.manufacturer)
+                        .unwrap_or(false)
+                });
 
-                    let mut identified_chips = Vec::new();
+                let mut identified_chips = Vec::new();
 
-                    for family in families {
-                        tracing::debug!("Checking family {}", family.name);
+                for family in families {
+                    tracing::debug!("Checking family {}", family.name);
 
-                        let chips = family
-                            .variants()
-                            .iter()
-                            .filter(|v| v.part.map(|p| p == chip_info.part).unwrap_or(false))
-                            .map(|c| (family, c));
+                    let chips = family
+                        .variants()
+                        .iter()
+                        .filter(|v| v.part.map(|p| p == chip_info.part).unwrap_or(false))
+                        .map(|c| (family, c));
 
-                        identified_chips.extend(chips)
-                    }
+                    identified_chips.extend(chips)
+                }
 
-                    if identified_chips.len() == 1 {
-                        identified_chips.pop().unwrap()
-                    } else {
-                        tracing::debug!(
+                if identified_chips.len() != 1 {
+                    tracing::debug!(
                         "Found {} matching chips for information {:?}, unable to determine chip",
                         identified_chips.len(),
                         chip_info
                     );
-                        return Err(RegistryError::ChipAutodetectFailed);
-                    }
+                    return Err(RegistryError::ChipAutodetectFailed);
                 }
+
+                identified_chips[0]
             }
         };
         self.get_target(family, chip)
