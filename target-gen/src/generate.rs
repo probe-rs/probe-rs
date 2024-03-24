@@ -18,7 +18,6 @@ use std::{
     io::Read,
     path::Path,
 };
-use tokio::runtime::Builder;
 
 pub(crate) enum Kind<'a, T>
 where
@@ -267,50 +266,43 @@ pub(crate) fn visit_file(path: &Path, families: &mut Vec<ChipFamily>) -> Result<
     handle_package(package, Kind::Archive(&mut archive), families, false)
 }
 
-pub(crate) fn visit_arm_files(
+pub(crate) async fn visit_arm_files(
     families: &mut Vec<ChipFamily>,
     filter: Option<String>,
 ) -> Result<()> {
-    let packs = crate::fetch::get_vidx()?;
-
     //TODO: The multi-threaded logging makes it very difficult to track which errors/warnings belong where - needs some rework.
-    Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-        .block_on(async move {
-            let mut stream = futures::stream::iter(packs.pdsc_index.iter().enumerate().filter_map(
-                |(i, pack)| {
-                    let only_supported_familes = if let Some(ref filter) = filter {
-                        // If we are filtering for specific filter patterns, then skip all the ones we don't want.
-                        if !pack.name.contains(filter) {
-                            return None;
-                        } else {
-                            log::info!("Found matching chip family: {}", pack.name);
-                        }
-                        // If we are filtering for specific filter patterns, then do not restrict these to the list of supported families.
-                        false
-                    } else {
-                        // If we are not filtering for specific filter patterns, then only include the supported families.
-                        true
-                    };
-                    if pack.deprecated.is_none() {
-                        // We only want to download the pack if it is not deprecated.
-                        log::info!("Working PACK {}/{} ...", i, packs.pdsc_index.len());
-                        Some(visit_arm_file(pack, only_supported_familes))
-                    } else {
-                        log::warn!("Pack {} is deprecated. Skipping ...", pack.name);
-                        None
-                    }
-                },
-            ))
-            .buffer_unordered(32);
-            while let Some(result) = stream.next().await {
-                families.extend(result);
-            }
+    let packs = crate::fetch::get_vidx().await?;
 
-            Ok(())
-        })
+    let mut stream =
+        futures::stream::iter(packs.pdsc_index.iter().enumerate().filter_map(|(i, pack)| {
+            let only_supported_familes = if let Some(ref filter) = filter {
+                // If we are filtering for specific filter patterns, then skip all the ones we don't want.
+                if !pack.name.contains(filter) {
+                    return None;
+                } else {
+                    log::info!("Found matching chip family: {}", pack.name);
+                }
+                // If we are filtering for specific filter patterns, then do not restrict these to the list of supported families.
+                false
+            } else {
+                // If we are not filtering for specific filter patterns, then only include the supported families.
+                true
+            };
+            if pack.deprecated.is_none() {
+                // We only want to download the pack if it is not deprecated.
+                log::info!("Working PACK {}/{} ...", i, packs.pdsc_index.len());
+                Some(visit_arm_file(pack, only_supported_familes))
+            } else {
+                log::warn!("Pack {} is deprecated. Skipping ...", pack.name);
+                None
+            }
+        }))
+        .buffer_unordered(32);
+    while let Some(result) = stream.next().await {
+        families.extend(result);
+    }
+
+    Ok(())
 }
 
 pub(crate) async fn visit_arm_file(
