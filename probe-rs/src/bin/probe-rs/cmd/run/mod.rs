@@ -177,9 +177,9 @@ fn detect_run_mode(cmd: &Cmd) -> Result<Box<dyn RunMode>, anyhow::Error> {
             || cmd.test_options.format.is_some()
             || !cmd.test_options.filter.is_empty();
         if test_args_specified {
-            return Err(anyhow!("No embedded-test detected in ELF file, but CLI invoked with Arguments exclusive to test mode"));
+            return Err(anyhow!("probe-rs was invoked with arguments exclusive to test mode, but the binary does not contain embedded-test"));
         }
-        tracing::info!("No embedded-test in ELF file. Running as normal");
+        tracing::debug!("No embedded-test in ELF file. Running as normal");
         Ok(NormalRunMode::new(cmd.run_options.clone()))
     }
 }

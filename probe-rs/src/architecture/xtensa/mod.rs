@@ -255,17 +255,15 @@ impl<'probe> CoreInterface for Xtensa<'probe> {
     fn status(&mut self) -> Result<CoreStatus, Error> {
         let status = if self.core_halted()? {
             let debug_cause = self.interface.read_register::<DebugCause>()?;
-            let reason = if debug_cause.halt_reason()
-                == HaltReason::Breakpoint(BreakpointCause::Software)
-                && (debug_cause.break_instruction() || debug_cause.break_n_instruction())
-            {
-                // The chip initiated this halt, therefore we need to update pc_written state
-                self.state.pc_written = false;
-                // Check if the breakpoint is a semihosting call
-                Xtensa::check_for_semihosting(debug_cause.halt_reason(), self)?
-            } else {
-                debug_cause.halt_reason()
-            };
+            let reason =
+                if debug_cause.halt_reason() == HaltReason::Breakpoint(BreakpointCause::Software) {
+                    // The chip initiated this halt, therefore we need to update pc_written state
+                    self.state.pc_written = false;
+                    // Check if the breakpoint is a semihosting call
+                    Xtensa::check_for_semihosting(debug_cause.halt_reason(), self)?
+                } else {
+                    debug_cause.halt_reason()
+                };
             CoreStatus::Halted(reason)
         } else {
             CoreStatus::Running

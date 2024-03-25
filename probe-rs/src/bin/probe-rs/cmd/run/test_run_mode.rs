@@ -2,6 +2,7 @@ use crate::cmd::run::{print_stacktrace, ReturnReason, RunLoop, RunMode};
 use anyhow::{anyhow, Result};
 use libtest_mimic::{Arguments, Failed, FormatSetting, Trial};
 use probe_rs::{BreakpointCause, Core, HaltReason, SemihostingCommand, Session};
+use serde::Deserialize;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -195,8 +196,14 @@ impl TestRunMode {
                         request.write_command_line_to_target(core, cmdline.as_str())?; //TODO: fix default retreg if this is not called
                         Ok(None) // Continue running
                     }
-                    SemihostingCommand::ExitSuccess if cmdline_requested => Ok(Some(true)),
-                    SemihostingCommand::ExitError(_) if cmdline_requested => Ok(Some(false)),
+                    SemihostingCommand::ExitSuccess if cmdline_requested => {
+                        Ok(Some(TestOutcome::Pass))
+                    }
+
+                    SemihostingCommand::ExitError(_) if cmdline_requested => {
+                        Ok(Some(TestOutcome::Panic))
+                    }
+
                     other => {
                         // Invalid sequence of semihosting calls => Abort testing altogether
                         Err(anyhow!(
@@ -225,25 +232,19 @@ impl TestRunMode {
                 // We do not mark the test as failed and instead exit the process
                 std::process::exit(1);
             }
-            Ok(ReturnReason::Predicate(exit_status)) => {
-                let should_exit_successfully = !test.should_panic;
-                if exit_status == should_exit_successfully {
+            Ok(ReturnReason::Predicate(outcome)) => {
+                if outcome == test.expected_outcome {
                     Ok(())
                 } else {
-                    if !exit_status {
+                    if outcome == TestOutcome::Panic {
                         print_stacktrace(
                             core,
                             Path::new(session_and_runloop.run_loop.path.as_str()),
                         )?;
                     }
                     Err(Failed::from(format!(
-                        "Test should have {} but it {}",
-                        if test.should_panic {
-                            "panicked"
-                        } else {
-                            "passed"
-                        },
-                        if exit_status { "passed" } else { "panicked" }
+                        "Test should {:?} but it did {:?}",
+                        test.expected_outcome, outcome
                     )))
                 }
             }
@@ -262,12 +263,34 @@ struct Tests {
     pub tests: Vec<Test>,
 }
 
+#[derive(PartialEq, Debug, Clone, Copy)]
+enum TestOutcome {
+    Panic,
+    Pass,
+}
+
 #[derive(Debug, Clone, serde::Deserialize)]
 struct Test {
     pub name: String,
-    pub should_panic: bool,
+    #[serde(
+        rename = "should_panic",
+        deserialize_with = "outcome_from_should_panic"
+    )]
+    pub expected_outcome: TestOutcome,
     pub ignored: bool,
     pub timeout: Option<u32>,
+}
+
+fn outcome_from_should_panic<'de, D>(deserializer: D) -> std::result::Result<TestOutcome, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let should_panic = bool::deserialize(deserializer)?;
+    Ok(if should_panic {
+        TestOutcome::Panic
+    } else {
+        TestOutcome::Pass
+    })
 }
 
 impl RunMode for TestRunMode {
