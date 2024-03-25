@@ -25,7 +25,7 @@ impl NormalRunMode {
 }
 impl RunMode for NormalRunMode {
     fn run(&self, mut session: Session, run_loop: RunLoop) -> anyhow::Result<()> {
-        let mut core = session.core(0)?;
+        let mut core = session.core(run_loop.core_id)?;
 
         let halt_handler = |halt_reason: HaltReason, _core: &mut Core| match halt_reason {
             HaltReason::Breakpoint(BreakpointCause::Semihosting(cmd)) => {

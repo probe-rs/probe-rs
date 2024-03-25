@@ -162,6 +162,36 @@ pub enum MemoryRegion {
 }
 
 impl MemoryRegion {
+    /// Returns the RAM region if this is a RAM region, otherwise None.
+    pub fn as_ram_region(&self) -> Option<&RamRegion> {
+        match self {
+            MemoryRegion::Ram(region) => Some(region),
+            _ => None,
+        }
+    }
+
+    /// Returns the NVM region if this is a NVM region, otherwise None.
+    pub fn as_nvm_region(&self) -> Option<&NvmRegion> {
+        match self {
+            MemoryRegion::Nvm(region) => Some(region),
+            _ => None,
+        }
+    }
+
+    /// Returns the address range of the memory region.
+    pub fn address_range(&self) -> Range<u64> {
+        match self {
+            MemoryRegion::Ram(rr) => rr.range.clone(),
+            MemoryRegion::Generic(gr) => gr.range.clone(),
+            MemoryRegion::Nvm(nr) => nr.range.clone(),
+        }
+    }
+
+    /// Returns whether the memory region contains the given address.
+    pub fn contains(&self, address: u64) -> bool {
+        self.address_range().contains(&address)
+    }
+
     /// Get the cores to which this memory region belongs.
     pub fn cores(&self) -> &[String] {
         match self {

@@ -150,26 +150,10 @@ impl FormatOptions {
             }),
             Format::Hex => Format::Hex,
             Format::Elf => Format::Elf,
-            Format::Idf(_) => {
-                let bootloader = if let Some(path) = self.idf_bootloader {
-                    Some(std::fs::read(path)?)
-                } else {
-                    None
-                };
-
-                let partition_table = if let Some(path) = self.idf_partition_table {
-                    Some(esp_idf_part::PartitionTable::try_from(std::fs::read(
-                        path,
-                    )?)?)
-                } else {
-                    None
-                };
-
-                Format::Idf(IdfOptions {
-                    bootloader,
-                    partition_table,
-                })
-            }
+            Format::Idf(_) => Format::Idf(IdfOptions {
+                bootloader: self.idf_bootloader,
+                partition_table: self.idf_partition_table,
+            }),
             Format::Uf2 => Format::Uf2,
         })
     }

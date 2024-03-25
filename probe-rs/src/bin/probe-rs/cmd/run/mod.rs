@@ -1,10 +1,9 @@
 mod normal_run_mode;
-
 use normal_run_mode::*;
-use std::fs::File;
 mod test_run_mode;
 use test_run_mode::*;
 
+use std::fs::File;
 use std::io::{Read, Write};
 use std::ops::Range;
 use std::path::Path;
@@ -54,7 +53,7 @@ pub struct SharedOptions {
     #[clap(flatten)]
     pub(crate) download_options: BinaryDownloadOptions,
 
-    ///The path to the ELF file to flash and run.
+    /// The path to the ELF file to flash and run.
     #[clap(
         index = 1,
         help = "The path to the ELF file to flash and run.\n\
@@ -87,6 +86,37 @@ pub struct SharedOptions {
     pub(crate) rtt_scan_memory: bool,
 }
 
+// For multi-core targets, it infers the target core from the RTT symbol.
+fn get_target_core_id(session: &mut Session, elf_file: &Path) -> usize {
+    let maybe_core_id = || {
+        let mut file = File::open(elf_file).ok()?;
+        let address = RttActiveTarget::get_rtt_symbol(&mut file)?;
+
+        tracing::debug!("RTT symbol found at 0x{:08x}", address);
+
+        let target_memory = session
+            .target()
+            .memory_map
+            .iter()
+            .filter_map(MemoryRegion::as_ram_region)
+            .find(|region| region.range.contains(&address))?;
+
+        tracing::debug!("RTT symbol is in RAM region {:?}", target_memory.name);
+
+        let core_name = target_memory.cores.first()?;
+        let core_id = session
+            .target()
+            .cores
+            .iter()
+            .position(|core| core.name == *core_name)?;
+
+        tracing::debug!("RTT symbol is in core {}", core_id);
+
+        Some(core_id)
+    };
+    maybe_core_id().unwrap_or(0)
+}
+
 impl Cmd {
     pub fn run(
         self,
@@ -98,9 +128,10 @@ impl Cmd {
 
         let (mut session, probe_options) =
             self.shared_options.probe_options.simple_attach(lister)?;
+        let path = Path::new(&self.shared_options.path);
+        let core_id = get_target_core_id(&mut session, path);
 
         if run_download {
-            let path = Path::new(&self.shared_options.path);
             let loader = build_loader(&mut session, path, self.shared_options.format_options)?;
             run_flash_download(
                 &mut session,
@@ -110,9 +141,10 @@ impl Cmd {
                 loader,
                 self.shared_options.chip_erase,
             )?;
+
             // reset the core to leave it in a consistent state after flashing
             session
-                .core(0)?
+                .core(core_id)?
                 .reset_and_halt(Duration::from_millis(100))?;
         }
 
@@ -125,6 +157,7 @@ impl Cmd {
         run_mode.run(
             session,
             RunLoop {
+                core_id,
                 memory_map,
                 rtt_scan_regions,
                 timestamp_offset,
@@ -185,6 +218,7 @@ fn detect_run_mode(cmd: &Cmd) -> Result<Box<dyn RunMode>, anyhow::Error> {
 }
 
 struct RunLoop {
+    core_id: usize,
     memory_map: Vec<MemoryRegion>,
     rtt_scan_regions: Vec<Range<u64>>,
     path: String,
