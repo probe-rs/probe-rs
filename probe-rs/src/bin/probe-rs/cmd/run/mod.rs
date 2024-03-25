@@ -238,6 +238,12 @@ enum ReturnReason<R> {
     Timeout,
 }
 
+/// The output stream to print RTT and Stack Traces to
+enum OutputStream {
+    Stdout,
+    Stderr,
+}
+
 impl RunLoop {
     /// Attaches to RTT and runs the core until it halts.
     ///
@@ -252,6 +258,7 @@ impl RunLoop {
         core: &mut Core,
         catch_hardfault: bool,
         catch_reset: bool,
+        output_stream: OutputStream,
         timeout: Option<Duration>,
         mut predicate: F,
     ) -> Result<ReturnReason<R>>
@@ -302,7 +309,19 @@ impl RunLoop {
         let exit = Arc::new(AtomicBool::new(false));
         let sig_id = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
 
-        let mut stdout = std::io::stdout();
+        let mut stdout;
+        let mut stderr;
+        let output_stream: &mut dyn Write = match output_stream {
+            OutputStream::Stdout => {
+                stdout = std::io::stdout();
+                &mut stdout
+            }
+            OutputStream::Stderr => {
+                stderr = std::io::stderr();
+                &mut stderr
+            }
+        };
+
         let mut return_reason = None;
         while !exit.load(Ordering::Relaxed) && return_reason.is_none() {
             // check for halt first, poll rtt after.
@@ -325,7 +344,7 @@ impl RunLoop {
                 }
             }
 
-            let had_rtt_data = poll_rtt(&mut rtta, core, &mut stdout)?;
+            let had_rtt_data = poll_rtt(&mut rtta, core, output_stream)?;
 
             match timeout {
                 Some(timeout) if start.elapsed() >= timeout => {
@@ -361,7 +380,7 @@ impl RunLoop {
             || return_reason.is_err()
             || matches!(return_reason, Ok(ReturnReason::Timeout))
         {
-            print_stacktrace(core, Path::new(&self.path))?;
+            print_stacktrace(core, Path::new(&self.path), output_stream)?;
         }
 
         signal_hook::low_level::unregister(sig_id);
@@ -372,7 +391,11 @@ impl RunLoop {
 }
 
 /// Prints the stacktrace of the current execution state.
-fn print_stacktrace(core: &mut impl CoreInterface, path: &Path) -> Result<(), anyhow::Error> {
+fn print_stacktrace<S: Write + ?Sized>(
+    core: &mut impl CoreInterface,
+    path: &Path,
+    output_stream: &mut S,
+) -> Result<(), anyhow::Error> {
     let Some(debug_info) = DebugInfo::from_file(path).ok() else {
         tracing::error!("No debug info found.");
         return Ok(());
@@ -389,41 +412,45 @@ fn print_stacktrace(core: &mut impl CoreInterface, path: &Path) -> Result<(), an
         )
         .unwrap();
     for (i, frame) in stack_frames.iter().enumerate() {
-        print!("Frame {}: {} @ {}", i, frame.function_name, frame.pc);
+        write!(
+            output_stream,
+            "Frame {}: {} @ {}",
+            i, frame.function_name, frame.pc
+        )?;
 
         if frame.is_inlined {
-            print!(" inline");
+            write!(output_stream, " inline")?;
         }
-        println!();
+        writeln!(output_stream)?;
 
         if let Some(location) = &frame.source_location {
             if location.directory.is_some() || location.file.is_some() {
-                print!("       ");
+                write!(output_stream, "       ")?;
 
                 if let Some(dir) = &location.directory {
-                    print!("{}", dir.to_path().display());
+                    write!(output_stream, "{}", dir.to_path().display())?;
                 }
 
                 if let Some(file) = &location.file {
-                    print!("/{file}");
+                    write!(output_stream, "/{file}")?;
 
                     if let Some(line) = location.line {
-                        print!(":{line}");
+                        write!(output_stream, ":{line}")?;
 
                         if let Some(col) = location.column {
                             match col {
                                 probe_rs::debug::ColumnType::LeftEdge => {
-                                    print!(":1")
+                                    write!(output_stream, ":1")?
                                 }
                                 probe_rs::debug::ColumnType::Column(c) => {
-                                    print!(":{c}")
+                                    write!(output_stream, ":{c}")?
                                 }
                             }
                         }
                     }
                 }
 
-                println!();
+                writeln!(output_stream)?;
             }
         }
     }
@@ -431,19 +458,19 @@ fn print_stacktrace(core: &mut impl CoreInterface, path: &Path) -> Result<(), an
 }
 
 /// Poll RTT and print the received buffer.
-fn poll_rtt(
+fn poll_rtt<S: Write + ?Sized>(
     rtta: &mut Option<rtt::RttActiveTarget>,
     core: &mut Core<'_>,
-    stdout: &mut std::io::Stdout,
+    out_stream: &mut S,
 ) -> Result<bool, anyhow::Error> {
     let mut had_data = false;
     if let Some(rtta) = rtta {
-        struct StdOutCollector<'a> {
-            stdout: &'a mut std::io::Stdout,
+        struct OutCollector<'a, O: Write + ?Sized> {
+            out_stream: &'a mut O,
             had_data: bool,
         }
 
-        impl ChannelDataCallbacks for StdOutCollector<'_> {
+        impl<O: Write + ?Sized> ChannelDataCallbacks for OutCollector<'_, O> {
             fn on_string_data(
                 &mut self,
                 _channel: usize,
@@ -453,13 +480,13 @@ fn poll_rtt(
                     return Ok(());
                 }
                 self.had_data = true;
-                self.stdout.write_all(data.as_bytes())?;
+                self.out_stream.write_all(data.as_bytes())?;
                 Ok(())
             }
         }
 
-        let mut out = StdOutCollector {
-            stdout,
+        let mut out = OutCollector {
+            out_stream,
             had_data: false,
         };
 

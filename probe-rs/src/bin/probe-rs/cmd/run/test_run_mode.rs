@@ -1,4 +1,4 @@
-use crate::cmd::run::{print_stacktrace, ReturnReason, RunLoop, RunMode};
+use crate::cmd::run::{print_stacktrace, OutputStream, ReturnReason, RunLoop, RunMode};
 use anyhow::{anyhow, Result};
 use libtest_mimic::{Arguments, Failed, FormatSetting, Trial};
 use probe_rs::{BreakpointCause, Core, HaltReason, SemihostingCommand, Session};
@@ -158,6 +158,7 @@ impl TestRunMode {
             &mut core,
             true,
             true,
+            OutputStream::Stderr,
             Some(Duration::from_secs(5)),
             halt_handler,
         )? {
@@ -220,10 +221,14 @@ impl TestRunMode {
             }
         };
 
-        match session_and_runloop
-            .run_loop
-            .run_until(core, true, true, Some(timeout), halt_handler)
-        {
+        match session_and_runloop.run_loop.run_until(
+            core,
+            true,
+            true,
+            OutputStream::Stderr,
+            Some(timeout),
+            halt_handler,
+        ) {
             Ok(ReturnReason::Timeout) => {
                 Err(Failed::from(format!("Test timed out after {:?}", timeout)))
             }
@@ -240,6 +245,7 @@ impl TestRunMode {
                         print_stacktrace(
                             core,
                             Path::new(session_and_runloop.run_loop.path.as_str()),
+                            &mut std::io::stderr(),
                         )?;
                     }
                     Err(Failed::from(format!(
