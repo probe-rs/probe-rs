@@ -123,7 +123,7 @@ impl TestRunMode {
                     SemihostingCommand::GetCommandLine(request) if !cmdline_requested => {
                         tracing::info!("target asked for cmdline. send 'list'");
                         cmdline_requested = true;
-                        request.write_command_line_to_target(core, "list")?; //TODO: fix default retreg if this is not called
+                        request.write_command_line_to_target(core, "list")?;
                         Ok(None) // Continue running
                     }
                     SemihostingCommand::Unknown(details)
@@ -133,7 +133,7 @@ impl TestRunMode {
                         let buf = details.get_buffer(core)?;
                         let buf = buf.read(core)?;
                         let list: Tests = serde_json::from_slice(&buf[..])?;
-                        //TODO: write return reg=0 ?!
+                        details.write_status(core, 0)?; // Signal status=success back to the target
                         tracing::info!("got list of tests from target: {:?}", list);
                         if list.version != 1 {
                             Err(anyhow!(
@@ -193,7 +193,7 @@ impl TestRunMode {
                         let cmdline = format!("run {}", test.name);
                         tracing::info!("target asked for cmdline. send '{}'", cmdline.as_str());
                         cmdline_requested = true;
-                        request.write_command_line_to_target(core, cmdline.as_str())?; //TODO: fix default retreg if this is not called
+                        request.write_command_line_to_target(core, cmdline.as_str())?;
                         Ok(None) // Continue running
                     }
                     SemihostingCommand::ExitSuccess if cmdline_requested => {

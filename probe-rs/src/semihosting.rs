@@ -62,6 +62,11 @@ impl UnknownCommandDetails {
     pub fn get_buffer(&self, core: &mut dyn CoreInterface) -> Result<Buffer> {
         Buffer::from_block_at(core, self.parameter)
     }
+
+    /// Writes the status of the semihosting operation to the return register of the target
+    pub fn write_status(&self, core: &mut dyn CoreInterface, status: u32) -> Result<()> {
+        write_status(core, status)
+    }
 }
 
 /// A request to read the command line arguments from the target
@@ -80,13 +85,13 @@ impl GetCommandLineRequest {
         self.0.write(core, &buf)?;
 
         // signal to target: status = success
-        write_semihosting_return_value(core, 0)?;
+        write_status(core, 0)?;
 
         Ok(())
     }
 }
 
-fn write_semihosting_return_value(core: &mut dyn CoreInterface, value: u32) -> Result<()> {
+fn write_status(core: &mut dyn CoreInterface, value: u32) -> Result<()> {
     let reg = core.registers().get_argument_register(0).unwrap();
     core.write_core_reg(reg.into(), RegisterValue::U32(value))?;
 
@@ -183,11 +188,21 @@ pub fn decode_semihosting_syscall(
             }
         }
 
-        (SYS_GET_CMDLINE, block_address) => SemihostingCommand::GetCommandLine(
-            GetCommandLineRequest(Buffer::from_block_at(core, block_address)?),
-        ),
+        (SYS_GET_CMDLINE, block_address) => {
+            // signal to target: status = failure, in case the application does not answer this request
+            // 255 or -1 is the error value for SYS_GET_CMDLINE
+            write_status(core, 255)?;
 
+            SemihostingCommand::GetCommandLine(GetCommandLineRequest(Buffer::from_block_at(
+                core,
+                block_address,
+            )?))
+        }
         _ => {
+            // signal to target: status = failure, in case the application does not answer this request
+            // It is not guaranteed that a value of 255 will be treated as an error by the target, but it is a common value to indicate an error.
+            write_status(core, 255)?;
+
             tracing::debug!(
                 "Unknown semihosting operation={operation:04x} parameter={parameter:04x}"
             );
