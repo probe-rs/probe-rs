@@ -38,8 +38,6 @@ jobs:
         # Only install on Ubuntu
         if: (matrix.os == 'ubuntu-latest') || (matrix.os == 'ubuntu-20.04')
 
-      - uses: ./.github/actions/setup
-
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v2.7.3
 
@@ -76,9 +74,8 @@ jobs:
         # Only install on Ubuntu
         if: matrix.os == 'ubuntu-latest'
 
-      - uses: ./.github/actions/setup
-        with:
-          targets: thumbv7m-none-eabi
+      - name: "Install thumbv7m-none-eabi target for tests"
+        run: rustup target add thumbv7m-none-eabi
       
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@v2.7.3
