@@ -137,7 +137,7 @@ impl<'probe> Xtensa<'probe> {
             expected_instruction[2]
         );
 
-        if &actual_instructions[..3] == &expected_instruction.as_slice()[..3] {
+        if actual_instructions[..3] == expected_instruction.as_slice()[..3] {
             match self.state.semihosting_command {
                 None => {
                     // We only want to decode the semihosting command once, since answering it might change some of the registers
