@@ -153,7 +153,7 @@ fn detect_run_mode(cmd: &Cmd) -> Result<Box<dyn RunMode>, anyhow::Error> {
         file.read_to_end(&mut buffer)?;
         match goblin::elf::Elf::parse(buffer.as_slice()) {
             Ok(elf) if elf.syms.is_empty() => {
-                tracing::info!("No Debug Symbols in ELF.");
+                tracing::debug!("No Symbols in ELF");
                 false
             }
             Ok(elf) => elf
@@ -161,7 +161,7 @@ fn detect_run_mode(cmd: &Cmd) -> Result<Box<dyn RunMode>, anyhow::Error> {
                 .iter()
                 .any(|sym| elf.strtab.get_at(sym.st_name) == Some("EMBEDDED_TEST_VERSION")),
             Err(_) => {
-                tracing::info!("Failed to parse ELF file");
+                tracing::debug!("Failed to parse ELF file");
                 false
             }
         }
