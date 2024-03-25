@@ -202,6 +202,14 @@ impl FlashAlgorithm {
         }
     }
 
+    fn required_stack_alignment(architecture: Architecture) -> u64 {
+        match architecture {
+            Architecture::Arm => 8,
+            Architecture::Riscv => 16,
+            Architecture::Xtensa => 16,
+        }
+    }
+
     /// Constructs a complete flash algorithm, tailored to the flash and RAM sizes given.
     pub fn assemble_from_raw(
         raw: &RawFlashAlgorithm,
@@ -282,7 +290,10 @@ impl FlashAlgorithm {
 
         let code_start = addr_load + header_size;
         let code_size_bytes = (instructions.len() * size_of::<u32>()) as u64;
-        let code_end = code_start + code_size_bytes;
+
+        let stack_align = Self::required_stack_alignment(target.architecture());
+        // Round up to align the stack (possibly placed immediately after the code blob).
+        let code_end = (code_start + code_size_bytes).next_multiple_of(stack_align);
 
         let buffer_page_size = raw.flash_properties.page_size as u64;
 
@@ -337,12 +348,12 @@ impl FlashAlgorithm {
                 // - The stack fits between the code and the data.
                 // - The data is in a different region, so we can place
                 //   the stack at the end of the code region.
-                code_end
+                code_end // already a multiple of stack_align
             } else {
                 // The data and the stack are in the same region. There is not enough space
                 // for the stack below the data. Place the stack after the data.
                 let page_count = if double_buffering { 2 } else { 1 };
-                data_load_addr + page_count * buffer_page_size
+                (data_load_addr + page_count * buffer_page_size).next_multiple_of(stack_align)
             };
 
         // Now we can place the stack.
