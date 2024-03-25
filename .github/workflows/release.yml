@@ -118,6 +118,9 @@ jobs:
           pattern: artifacts-*
           path: target/distrib/
           merge-multiple: true
+      - name: Run apt update
+        if: runner.os == 'Linux'
+        run: sudo apt-get update
       - name: Install dependencies
         run: |
           ${{ matrix.packages_install }}
