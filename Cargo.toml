@@ -48,7 +48,7 @@ targets = [
     "x86_64-pc-windows-msvc",
 ]
 # Enable this to test the APT fix
-allow-dirty = true
+allow-dirty = ["ci"]
 # Build only the required packages, and individually
 precise-builds = true
 # The archive format to use for non-windows builds (defaults .tar.xz)
