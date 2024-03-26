@@ -1,16 +1,19 @@
 mod normal_run_mode;
 use normal_run_mode::*;
+mod test_run_mode;
+use test_run_mode::*;
 
 use std::fs::File;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::ops::Range;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Context, Result};
 use probe_rs::debug::{DebugInfo, DebugRegisters};
+use probe_rs::flashing::FileDownloadError;
 use probe_rs::rtt::ScanRegion;
 use probe_rs::{
     exception_handler_for_core, probe::list::Lister, Core, CoreInterface, Error, HaltReason,
@@ -33,6 +36,10 @@ pub struct Cmd {
     #[clap(flatten)]
     pub(crate) run_options: NormalRunOptions,
 
+    /// Options only used when in test mode
+    #[clap(flatten)]
+    pub(crate) test_options: TestOptions,
+
     /// Options shared by all run modes
     #[clap(flatten)]
     pub(crate) shared_options: SharedOptions,
@@ -46,7 +53,13 @@ pub struct SharedOptions {
     #[clap(flatten)]
     pub(crate) download_options: BinaryDownloadOptions,
 
-    /// The path to the ELF file to flash and run
+    /// The path to the ELF file to flash and run.
+    #[clap(
+        index = 1,
+        help = "The path to the ELF file to flash and run.\n\
+    If the binary uses `embedded-test` each test will be executed in turn. See `TEST OPTIONS` for more configuration options exclusive to this mode.\n\
+    If the binary does not use `embedded-test` the binary will be flashed and run normally. See `RUN OPTIONS` for more configuration options exclusive to this mode."
+    )]
     pub(crate) path: String,
 
     /// Always print the stacktrace on ctrl + c.
@@ -164,12 +177,44 @@ trait RunMode {
 }
 
 fn detect_run_mode(cmd: &Cmd) -> Result<Box<dyn RunMode>, anyhow::Error> {
-    // We'll add more run modes here as we add support for them.
-    // Possible run modes:
-    // - TestRunMode (runs embedded-test)
-    // - SemihostingArgsRunMode (passes arguments to the target via semihosting)
+    let elf_contains_test = {
+        let mut file = match File::open(cmd.shared_options.path.as_str()) {
+            Ok(file) => file,
+            Err(e) => return Err(FileDownloadError::IO(e)).context("Failed to open binary file."),
+        };
+        let mut buffer = Vec::new();
+        file.read_to_end(&mut buffer)?;
+        match goblin::elf::Elf::parse(buffer.as_slice()) {
+            Ok(elf) if elf.syms.is_empty() => {
+                tracing::debug!("No Symbols in ELF");
+                false
+            }
+            Ok(elf) => elf
+                .syms
+                .iter()
+                .any(|sym| elf.strtab.get_at(sym.st_name) == Some("EMBEDDED_TEST_VERSION")),
+            Err(_) => {
+                tracing::debug!("Failed to parse ELF file");
+                false
+            }
+        }
+    };
 
-    Ok(NormalRunMode::new(cmd.run_options.clone()))
+    if elf_contains_test {
+        // We tolerate the run options, even in test mode so that you can set `probe-rs run --catch-hardfault` as cargo runner (used for both unit tests and normal binaries)
+        tracing::info!("Detected embedded-test in ELF file. Running as test");
+        Ok(TestRunMode::new(&cmd.test_options))
+    } else {
+        let test_args_specified = cmd.test_options.list
+            || cmd.test_options.exact
+            || cmd.test_options.format.is_some()
+            || !cmd.test_options.filter.is_empty();
+        if test_args_specified {
+            return Err(anyhow!("probe-rs was invoked with arguments exclusive to test mode, but the binary does not contain embedded-test"));
+        }
+        tracing::debug!("No embedded-test in ELF file. Running as normal");
+        Ok(NormalRunMode::new(cmd.run_options.clone()))
+    }
 }
 
 struct RunLoop {
@@ -193,6 +238,12 @@ enum ReturnReason<R> {
     Timeout,
 }
 
+/// The output stream to print RTT and Stack Traces to
+enum OutputStream {
+    Stdout,
+    Stderr,
+}
+
 impl RunLoop {
     /// Attaches to RTT and runs the core until it halts.
     ///
@@ -207,6 +258,7 @@ impl RunLoop {
         core: &mut Core,
         catch_hardfault: bool,
         catch_reset: bool,
+        output_stream: OutputStream,
         timeout: Option<Duration>,
         mut predicate: F,
     ) -> Result<ReturnReason<R>>
@@ -257,7 +309,19 @@ impl RunLoop {
         let exit = Arc::new(AtomicBool::new(false));
         let sig_id = signal_hook::flag::register(signal::SIGINT, exit.clone())?;
 
-        let mut stdout = std::io::stdout();
+        let mut stdout;
+        let mut stderr;
+        let output_stream: &mut dyn Write = match output_stream {
+            OutputStream::Stdout => {
+                stdout = std::io::stdout();
+                &mut stdout
+            }
+            OutputStream::Stderr => {
+                stderr = std::io::stderr();
+                &mut stderr
+            }
+        };
+
         let mut return_reason = None;
         while !exit.load(Ordering::Relaxed) && return_reason.is_none() {
             // check for halt first, poll rtt after.
@@ -280,7 +344,7 @@ impl RunLoop {
                 }
             }
 
-            let had_rtt_data = poll_rtt(&mut rtta, core, &mut stdout)?;
+            let had_rtt_data = poll_rtt(&mut rtta, core, output_stream)?;
 
             match timeout {
                 Some(timeout) if start.elapsed() >= timeout => {
@@ -316,7 +380,7 @@ impl RunLoop {
             || return_reason.is_err()
             || matches!(return_reason, Ok(ReturnReason::Timeout))
         {
-            print_stacktrace(core, Path::new(&self.path))?;
+            print_stacktrace(core, Path::new(&self.path), output_stream)?;
         }
 
         signal_hook::low_level::unregister(sig_id);
@@ -327,7 +391,11 @@ impl RunLoop {
 }
 
 /// Prints the stacktrace of the current execution state.
-fn print_stacktrace(core: &mut impl CoreInterface, path: &Path) -> Result<(), anyhow::Error> {
+fn print_stacktrace<S: Write + ?Sized>(
+    core: &mut impl CoreInterface,
+    path: &Path,
+    output_stream: &mut S,
+) -> Result<(), anyhow::Error> {
     let Some(debug_info) = DebugInfo::from_file(path).ok() else {
         tracing::error!("No debug info found.");
         return Ok(());
@@ -344,41 +412,45 @@ fn print_stacktrace(core: &mut impl CoreInterface, path: &Path) -> Result<(), an
         )
         .unwrap();
     for (i, frame) in stack_frames.iter().enumerate() {
-        print!("Frame {}: {} @ {}", i, frame.function_name, frame.pc);
+        write!(
+            output_stream,
+            "Frame {}: {} @ {}",
+            i, frame.function_name, frame.pc
+        )?;
 
         if frame.is_inlined {
-            print!(" inline");
+            write!(output_stream, " inline")?;
         }
-        println!();
+        writeln!(output_stream)?;
 
         if let Some(location) = &frame.source_location {
             if location.directory.is_some() || location.file.is_some() {
-                print!("       ");
+                write!(output_stream, "       ")?;
 
                 if let Some(dir) = &location.directory {
-                    print!("{}", dir.to_path().display());
+                    write!(output_stream, "{}", dir.to_path().display())?;
                 }
 
                 if let Some(file) = &location.file {
-                    print!("/{file}");
+                    write!(output_stream, "/{file}")?;
 
                     if let Some(line) = location.line {
-                        print!(":{line}");
+                        write!(output_stream, ":{line}")?;
 
                         if let Some(col) = location.column {
                             match col {
                                 probe_rs::debug::ColumnType::LeftEdge => {
-                                    print!(":1")
+                                    write!(output_stream, ":1")?
                                 }
                                 probe_rs::debug::ColumnType::Column(c) => {
-                                    print!(":{c}")
+                                    write!(output_stream, ":{c}")?
                                 }
                             }
                         }
                     }
                 }
 
-                println!();
+                writeln!(output_stream)?;
             }
         }
     }
@@ -386,19 +458,19 @@ fn print_stacktrace(core: &mut impl CoreInterface, path: &Path) -> Result<(), an
 }
 
 /// Poll RTT and print the received buffer.
-fn poll_rtt(
+fn poll_rtt<S: Write + ?Sized>(
     rtta: &mut Option<rtt::RttActiveTarget>,
     core: &mut Core<'_>,
-    stdout: &mut std::io::Stdout,
+    out_stream: &mut S,
 ) -> Result<bool, anyhow::Error> {
     let mut had_data = false;
     if let Some(rtta) = rtta {
-        struct StdOutCollector<'a> {
-            stdout: &'a mut std::io::Stdout,
+        struct OutCollector<'a, O: Write + ?Sized> {
+            out_stream: &'a mut O,
             had_data: bool,
         }
 
-        impl ChannelDataCallbacks for StdOutCollector<'_> {
+        impl<O: Write + ?Sized> ChannelDataCallbacks for OutCollector<'_, O> {
             fn on_string_data(
                 &mut self,
                 _channel: usize,
@@ -408,13 +480,13 @@ fn poll_rtt(
                     return Ok(());
                 }
                 self.had_data = true;
-                self.stdout.write_all(data.as_bytes())?;
+                self.out_stream.write_all(data.as_bytes())?;
                 Ok(())
             }
         }
 
-        let mut out = StdOutCollector {
-            stdout,
+        let mut out = OutCollector {
+            out_stream,
             had_data: false,
         };
 

@@ -1,4 +1,4 @@
-use crate::cmd::run::{RunLoop, RunMode};
+use crate::cmd::run::{OutputStream, RunLoop, RunMode};
 use anyhow::anyhow;
 use probe_rs::{BreakpointCause, Core, HaltReason, SemihostingCommand, Session};
 
@@ -53,6 +53,7 @@ impl RunMode for NormalRunMode {
             &mut core,
             self.run_options.catch_hardfault,
             self.run_options.catch_reset,
+            OutputStream::Stdout,
             None,
             halt_handler,
         )?;
