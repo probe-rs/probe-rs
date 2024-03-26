@@ -8,7 +8,10 @@ use crate::{
     debug::{language, stack_frame::StackFrameInfo},
     MemoryInterface,
 };
-use gimli::{AttributeValue, DebugInfoOffset, EvaluationResult, Location, UnitOffset};
+use gimli::{
+    AttributeValue, DebugInfoOffset, DebuggingInformationEntry, EvaluationResult, Location,
+    UnitOffset,
+};
 
 /// The result of `UnitInfo::evaluate_expression()` can be the value of a variable, or a memory location.
 pub(crate) enum ExpressionResult {
@@ -1145,34 +1148,46 @@ impl UnitInfo {
                                 // TODO: while we now get all the subranges (dimensions) of a multi-dimensional array, we do not yet process them.
                                 let subrange = subranges.first().unwrap().clone();
 
-                                let explode_range = if subrange.is_empty() {
-                                    // Gracefully handle the case where the array is empty.
-                                    // - Resolve a 'dummy' child, to determine the type of child_variable.
-                                    0..1
-                                } else {
-                                    subrange.clone()
-                                };
-
-                                // - Next, process this DW_TAG_array_type's DW_AT_type full tree.
-                                // - We have to do this repeatedly, for every array member in the range.
-                                for array_member_index in explode_range {
-                                    self.expand_array_member(
+                                if let Ok(array_member_type_node) = self.unit.entry(unit_ref) {
+                                    // First, try to determine the item type
+                                    let (member_ty, byte_size) = self.extract_array_member_type(
                                         debug_info,
-                                        unit_ref,
+                                        &array_member_type_node,
                                         cache,
                                         child_variable,
                                         memory,
-                                        subrange.clone(),
-                                        array_member_index,
                                         frame_info,
                                     )?;
-                                }
 
-                                if subrange.is_empty() {
-                                    // - Delete the dummy child that was created above.
-                                    cache
-                                        .remove_cache_entry_children(child_variable.variable_key)?;
-                                }
+                                    let item_count = subrange.clone().count();
+
+                                    // Once we know the type of the first member, we can set the array type.
+                                    child_variable.type_name = VariableType::Array {
+                                        count: item_count,
+                                        item_type_name: Box::new(member_ty),
+                                    };
+                                    // Once we know the byte_size of the first member, we can set the array byte_size.
+                                    if let Some(item_byte_size) = byte_size {
+                                        child_variable.byte_size =
+                                            Some(item_byte_size * item_count as u64);
+                                    }
+
+                                    if item_count > 0 {
+                                        // - Next, process this DW_TAG_array_type's DW_AT_type full tree.
+                                        // - We have to do this repeatedly, for every array member in the range.
+                                        for array_member_index in subrange {
+                                            self.expand_array_member(
+                                                debug_info,
+                                                &array_member_type_node,
+                                                cache,
+                                                child_variable,
+                                                memory,
+                                                array_member_index,
+                                                frame_info,
+                                            )?;
+                                        }
+                                    }
+                                };
                             }
                             Ok(Some(other_attribute_value)) => {
                                 child_variable.set_value(VariableValue::Error(
@@ -1338,62 +1353,89 @@ impl UnitInfo {
         Ok(())
     }
 
-    /// Create child variable entries to represent array members and their values.
+    /// Extract array member type info.
     #[allow(clippy::too_many_arguments)]
-    fn expand_array_member(
+    fn extract_array_member_type(
         &self,
         debug_info: &DebugInfo,
-        unit_ref: UnitOffset,
+        array_member_type_node: &DebuggingInformationEntry<GimliReader>,
         cache: &mut VariableCache,
-        child_variable: &mut Variable,
+        array_variable: &mut Variable,
         memory: &mut dyn MemoryInterface,
-        subrange_bounds: std::ops::Range<u64>,
-        array_member_index: u64,
         frame_info: StackFrameInfo<'_>,
-    ) -> Result<(), DebugError> {
-        let Ok(array_member_type_node) = self.unit.entry(unit_ref) else {
-            return Ok(());
-        };
+    ) -> Result<(VariableType, Option<u64>), DebugError> {
         let mut array_member_variable =
-            cache.create_variable(child_variable.variable_key, Some(self))?;
-        array_member_variable.member_index = Some(array_member_index as i64);
-        // Override the calculated member name with a more 'array-like' name.
-        array_member_variable.name = VariableName::Named(format!("__{array_member_index}"));
-        array_member_variable.source_location = child_variable.source_location.clone();
+            cache.create_variable(array_variable.variable_key, Some(self))?;
+        array_member_variable.member_index = Some(0);
+        array_member_variable.source_location = array_variable.source_location.clone();
         self.process_memory_location(
             debug_info,
-            &array_member_type_node,
-            child_variable,
+            array_member_type_node,
+            array_variable,
             &mut array_member_variable,
             memory,
             frame_info,
         )?;
         self.extract_type(
             debug_info,
-            &array_member_type_node,
-            child_variable,
+            array_member_type_node,
+            array_variable,
             &mut array_member_variable,
             memory,
             cache,
             frame_info,
         )?;
-        if array_member_index == subrange_bounds.start {
-            // Once we know the type of the first member, we can set the array type.
-            child_variable.type_name = VariableType::Array {
-                count: subrange_bounds.end as usize,
-                item_type_name: Box::new(array_member_variable.type_name.clone()),
-            };
-            // Once we know the byte_size of the first member, we can set the array byte_size.
-            if let Some(array_member_byte_size) = array_member_variable.byte_size {
-                child_variable.byte_size =
-                    Some(array_member_byte_size * subrange_bounds.count() as u64);
-            }
-        }
-        self.handle_memory_location_special_cases(
-            unit_ref,
+
+        cache.remove_cache_entry(array_member_variable.variable_key)?;
+
+        Ok((
+            array_member_variable.type_name,
+            array_member_variable.byte_size,
+        ))
+    }
+
+    /// Create child variable entries to represent array members and their values.
+    #[allow(clippy::too_many_arguments)]
+    fn expand_array_member(
+        &self,
+        debug_info: &DebugInfo,
+        array_member_type_node: &DebuggingInformationEntry<GimliReader>,
+        cache: &mut VariableCache,
+        array_variable: &mut Variable,
+        memory: &mut dyn MemoryInterface,
+        member_index: u64,
+        frame_info: StackFrameInfo<'_>,
+    ) -> Result<(), DebugError> {
+        let mut array_member_variable =
+            cache.create_variable(array_variable.variable_key, Some(self))?;
+        array_member_variable.member_index = Some(member_index as i64);
+        // Override the calculated member name with a more 'array-like' name.
+        array_member_variable.name = VariableName::Named(format!("__{member_index}"));
+        array_member_variable.source_location = array_variable.source_location.clone();
+
+        // TODO: if possible, these should be copied from the first member. Can we just pipe in the dummy member we used in `extract_array_member_type` and clone that?
+        self.process_memory_location(
+            debug_info,
+            array_member_type_node,
+            array_variable,
             &mut array_member_variable,
-            child_variable,
             memory,
+            frame_info,
+        )?;
+        self.extract_type(
+            debug_info,
+            array_member_type_node,
+            array_variable,
+            &mut array_member_variable,
+            memory,
+            cache,
+            frame_info,
+        )?;
+
+        self.adjust_array_member_location(
+            &mut array_member_variable,
+            array_variable,
+            member_index as i64,
         );
         array_member_variable.extract_value(memory, cache);
         cache.update_variable(&array_member_variable)?;
@@ -1788,18 +1830,14 @@ impl UnitInfo {
         }
     }
 
-    /// A helper function, to handle memory_location for special cases, such as array members, pointers, and intermediate nodes.
-    /// Normally, the memory_location is calculated before the type is calculated,
-    ///     but special cases require the type related info of the variable to correctly compute the memory_location.
-    fn handle_memory_location_special_cases(
+    fn adjust_array_member_location(
         &self,
-        unit_ref: UnitOffset,
         child_variable: &mut Variable,
         parent_variable: &Variable,
-        memory: &mut dyn MemoryInterface,
+        child_member_index: i64,
     ) {
-        let location = if let Some(child_member_index) = child_variable.member_index {
-            // If this variable is a member of an array type, and needs special handling to calculate the `memory_location`.
+        // If this variable is a member of an array type, and needs special handling to calculate the `memory_location`.
+        child_variable.memory_location =
             if let VariableLocation::Address(address) = parent_variable.memory_location {
                 if let Some(byte_size) = child_variable.byte_size {
                     let Some(location) = address.checked_add(child_member_index as u64 * byte_size)
@@ -1819,10 +1857,31 @@ impl UnitInfo {
                 }
             } else {
                 VariableLocation::Unavailable
-            }
-        } else if child_variable.memory_location == VariableLocation::Unknown {
+            };
+    }
+
+    /// A helper function, to handle memory_location for special cases, such as array members, pointers, and intermediate nodes.
+    /// Normally, the memory_location is calculated before the type is calculated,
+    ///     but special cases require the type related info of the variable to correctly compute the memory_location.
+    fn handle_memory_location_special_cases(
+        &self,
+        unit_ref: UnitOffset,
+        child_variable: &mut Variable,
+        parent_variable: &Variable,
+        memory: &mut dyn MemoryInterface,
+    ) {
+        if let Some(child_member_index) = child_variable.member_index {
+            self.adjust_array_member_location(child_variable, parent_variable, child_member_index);
+            return;
+        }
+
+        if child_variable.memory_location == VariableLocation::Unknown {
             // Non-array members can inherit their memory location from their parent, but only if the parent has a valid memory location.
-            if self.is_pointer(child_variable, parent_variable, unit_ref) {
+            child_variable.memory_location = if self.is_pointer(
+                child_variable,
+                parent_variable,
+                unit_ref,
+            ) {
                 match &parent_variable.memory_location {
                     VariableLocation::Address(address) => {
                         // Now, retrieve the location by reading the adddress pointed to by the parent variable.
@@ -1844,12 +1903,8 @@ impl UnitInfo {
                 // If the parent variable is not a pointer, or it is a pointer to the actual data location
                 // (not the address of the data location) then it can inherit it's memory location from it's parent.
                 parent_variable.memory_location.clone()
-            }
-        } else {
-            return;
-        };
-
-        child_variable.memory_location = location;
+            };
+        }
     }
 
     /// Returns `true` if the variable is a pointer, `false` otherwise.
