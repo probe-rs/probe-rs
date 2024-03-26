@@ -1,7 +1,7 @@
 use super::{
     canonical_path_eq,
     unit_info::{self, UnitInfo},
-    ColumnType, DebugError, DebugInfo,
+    ColumnType, DebugError, DebugInfo, GimliReader,
 };
 use gimli::LineSequence;
 use std::{
@@ -41,7 +41,7 @@ impl VerifiedBreakpoint {
                 "Found valid breakpoint for address: {:#010x} : {verified_breakpoint:?}",
                 &address
             );
-            return verified_breakpoint;
+            return Ok(verified_breakpoint);
         }
         // If we get here, we have not found a valid breakpoint location.
         let message = format!("Could not identify a valid breakpoint for address: {address:#010x}. Please consider using instruction level stepping.");
@@ -66,70 +66,91 @@ impl VerifiedBreakpoint {
     ///   4b. Failing an exact match, a match on file/line only.
     ///   4c. Failing that, a match on file only, where the line number is the "next" available instruction,
     ///       on the next available line of the specified file.
-    #[allow(dead_code)] // temporary, while this PR is a WIP
     pub(crate) fn for_source_location(
         debug_info: &DebugInfo,
         path: &TypedPathBuf,
         line: u64,
         column: Option<u64>,
     ) -> Result<Self, DebugError> {
-        for program_unit in debug_info.unit_infos.as_slice() {
+        for program_unit in &debug_info.unit_infos {
             let Some(ref line_program) = program_unit.unit.line_program else {
                 // Not all compilation units need to have debug line information, so we skip those.
                 continue;
             };
-            // Keep track of the matching file index to avoid having to lookup and match the full path
-            // for every row in the program line sequence.
-            let mut matching_file_index = None;
-            if line_program
-                .header()
-                .file_names()
-                .iter()
-                .enumerate()
-                .any(|(file_index, _)| {
+
+            let mut num_files = line_program.header().file_names().len();
+
+            // For DWARF version 5, the current compilation file is included in the file names, with index 0.
+            //
+            // For earlier versions, the current compilation file is not included in the file names, but index 0 still refers to it.
+            // To get the correct number of files, we have to add 1 here.
+            if program_unit.unit.header.version() <= 4 {
+                num_files += 1;
+            }
+
+            // There can be multiple file indices which match, due to the inclusion of the current compilation file with index 0.
+            //
+            // At least for DWARF 4 there are cases where the current compilation file is also included in the file names with
+            // a non-zero index.
+            let matching_file_indices: Vec<_> = (0..num_files)
+                .filter_map(|file_index| {
+                    let file_index = file_index as u64;
+
                     debug_info
-                        .get_path(&program_unit.unit, file_index as u64)
-                        .map(|combined_path: TypedPathBuf| {
+                        .get_path(&program_unit.unit, file_index)
+                        .and_then(|combined_path: TypedPathBuf| {
                             if canonical_path_eq(path, &combined_path) {
-                                matching_file_index = Some(file_index as u64);
-                                true
+                                tracing::debug!(
+                                    "Found matching file index: {file_index} for path: {path}",
+                                    file_index = file_index,
+                                    path = path.to_path().display()
+                                );
+                                Some(file_index)
                             } else {
-                                false
+                                None
                             }
                         })
-                        .unwrap_or(false)
                 })
-            {
-                let Ok((complete_line_program, line_sequences)) = line_program.clone().sequences()
-                else {
-                    continue;
-                };
-                for line_sequence in line_sequences {
-                    let instruction_sequence = InstructionSequence::from_line_sequence(
-                        debug_info,
-                        program_unit,
-                        complete_line_program.clone(),
-                        &line_sequence,
-                    );
+                .collect();
 
+            if matching_file_indices.is_empty() {
+                continue;
+            }
+
+            let Ok((complete_line_program, line_sequences)) = line_program.clone().sequences()
+            else {
+                tracing::debug!("Failed to get line sequences for line program");
+                continue;
+            };
+
+            for line_sequence in line_sequences {
+                let instruction_sequence = InstructionSequence::from_line_sequence(
+                    debug_info,
+                    program_unit,
+                    &complete_line_program,
+                    &line_sequence,
+                );
+
+                for matching_file_index in &matching_file_indices {
                     // Cycle through various degrees of matching, to find the most relevant source location.
                     if let Some(verified_breakpoint) = match_file_line_column(
                         &instruction_sequence,
-                        matching_file_index,
+                        *matching_file_index,
                         line,
                         column,
                         debug_info,
                         program_unit,
-                    )
-                    .or_else(|| {
-                        match_file_line_first_available_column(
-                            &instruction_sequence,
-                            matching_file_index,
-                            line,
-                            debug_info,
-                            program_unit,
-                        )
-                    }) {
+                    ) {
+                        return Ok(verified_breakpoint);
+                    }
+
+                    if let Some(verified_breakpoint) = match_file_line_first_available_column(
+                        &instruction_sequence,
+                        *matching_file_index,
+                        line,
+                        debug_info,
+                        program_unit,
+                    ) {
                         return Ok(verified_breakpoint);
                     }
                 }
@@ -145,99 +166,88 @@ fn match_address(
     instruction_sequence: &InstructionSequence<'_>,
     address: u64,
     debug_info: &DebugInfo,
-) -> Option<Result<VerifiedBreakpoint, DebugError>> {
+) -> Option<VerifiedBreakpoint> {
     if instruction_sequence.address_range.contains(&address) {
-        if let Some(valid_breakpoint) = instruction_sequence
-            .instructions
-            .iter()
-            .find(|instruction_location| {
-                instruction_location.instruction_type == InstructionType::HaltLocation
-                    && instruction_location.address >= address
-            })
-            .and_then(|instruction_location| {
-                SourceLocation::from_instruction_location(
-                    debug_info,
-                    instruction_sequence.program_unit,
-                    instruction_location,
-                )
-                .map(|source_location| VerifiedBreakpoint {
-                    address: instruction_location.address,
-                    source_location,
-                })
-            })
-        {
-            return Some(Ok(valid_breakpoint));
-        }
+        let instruction_location =
+            instruction_sequence
+                .instructions
+                .iter()
+                .find(|instruction_location| {
+                    instruction_location.instruction_type == InstructionType::HaltLocation
+                        && instruction_location.address >= address
+                })?;
+
+        let source_location = SourceLocation::from_instruction_location(
+            debug_info,
+            instruction_sequence.program_unit,
+            instruction_location,
+        )?;
+
+        Some(VerifiedBreakpoint {
+            address: instruction_location.address,
+            source_location,
+        })
+    } else {
+        None
     }
-    None
 }
 
 /// Find the valid halt instruction location that matches the file, line and column.
 fn match_file_line_column(
     instruction_sequence: &InstructionSequence<'_>,
-    matching_file_index: Option<u64>,
+    matching_file_index: u64,
     line: u64,
     column: Option<u64>,
     debug_info: &DebugInfo,
     program_unit: &UnitInfo,
 ) -> Option<VerifiedBreakpoint> {
-    if let Some(instruction_location) =
+    let instruction_location =
         instruction_sequence
             .instructions
             .iter()
             .find(|instruction_location| {
                 instruction_location.instruction_type == InstructionType::HaltLocation
-                    && matching_file_index == Some(instruction_location.file_index)
+                    && matching_file_index == instruction_location.file_index
                     && NonZeroU64::new(line) == instruction_location.line
                     && column
                         .map(ColumnType::Column)
                         .map_or(false, |col| col == instruction_location.column)
-            })
-    {
-        if let Some(source_location) = SourceLocation::from_instruction_location(
-            debug_info,
-            program_unit,
-            instruction_location,
-        ) {
-            return Some(VerifiedBreakpoint {
-                address: instruction_location.address,
-                source_location,
-            });
-        }
-    }
-    None
+            })?;
+
+    let source_location =
+        SourceLocation::from_instruction_location(debug_info, program_unit, instruction_location)?;
+
+    Some(VerifiedBreakpoint {
+        address: instruction_location.address,
+        source_location,
+    })
 }
 
 /// Find the first valid halt instruction location that matches the file and line, ignoring column.
 fn match_file_line_first_available_column(
     instruction_sequence: &InstructionSequence<'_>,
-    matching_file_index: Option<u64>,
+    matching_file_index: u64,
     line: u64,
     debug_info: &DebugInfo,
     program_unit: &UnitInfo,
 ) -> Option<VerifiedBreakpoint> {
-    if let Some(instruction_location) =
+    let instruction_location =
         instruction_sequence
             .instructions
             .iter()
             .find(|instruction_location| {
                 instruction_location.instruction_type == InstructionType::HaltLocation
-                    && matching_file_index == Some(instruction_location.file_index)
+                    && matching_file_index == instruction_location.file_index
                     && NonZeroU64::new(line) == instruction_location.line
-            })
-    {
-        if let Some(source_location) = SourceLocation::from_instruction_location(
-            debug_info,
-            program_unit,
-            instruction_location,
-        ) {
-            return Some(VerifiedBreakpoint {
-                address: instruction_location.address,
-                source_location,
-            });
-        }
-    }
-    None
+            })?;
+
+    let source_location =
+        SourceLocation::from_instruction_location(debug_info, program_unit, instruction_location)?;
+
+    Some(VerifiedBreakpoint {
+        address: instruction_location.address,
+        source_location,
+    })
 }
 
 fn serialize_typed_path<S>(path: &Option<TypedPathBuf>, serializer: S) -> Result<S::Ok, S::Error>
@@ -370,7 +380,7 @@ impl<'debug_info> InstructionSequence<'debug_info> {
         let instruction_sequence = Self::from_line_sequence(
             debug_info,
             program_unit,
-            complete_line_program,
+            &complete_line_program,
             line_sequence,
         );
 
@@ -391,11 +401,8 @@ impl<'debug_info> InstructionSequence<'debug_info> {
     fn from_line_sequence(
         debug_info: &'debug_info DebugInfo,
         program_unit: &'debug_info UnitInfo,
-        complete_line_program: gimli::CompleteLineProgram<
-            gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>,
-            usize,
-        >,
-        line_sequence: &LineSequence<gimli::EndianReader<gimli::LittleEndian, std::rc::Rc<[u8]>>>,
+        complete_line_program: &gimli::CompleteLineProgram<GimliReader>,
+        line_sequence: &LineSequence<GimliReader>,
     ) -> Self {
         let program_language = program_unit.get_language();
         let mut sequence_rows = complete_line_program.resume_from(line_sequence);
