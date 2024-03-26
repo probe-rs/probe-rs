@@ -1,3 +1,6 @@
+//! Core module.
+//! This module contains the core abstraction for interacting with a core on a target.
+
 use crate::{
     architecture::arm::sequences::ArmDebugSequence, config::DebugSequence, debug::DebugRegisters,
     error::Error, CoreType, InstructionSet, MemoryInterface, Target,
@@ -390,7 +393,7 @@ impl<'probe> Core<'probe> {
     }
 
     /// Creates a new [`CoreState`]
-    pub(crate) fn create_state(
+    pub fn create_state(
         id: usize,
         options: CoreAccessOptions,
         target: &Target,
@@ -886,15 +889,23 @@ impl<'probe> CoreInterface for Core<'probe> {
     }
 }
 
+/// A struct containing details on how to access a core.
 pub enum ResolvedCoreOptions {
+    /// ARM core access.
     Arm {
+        /// ARM core debug sequence.
         sequence: Arc<dyn ArmDebugSequence>,
+        /// ARM core access options.
         options: ArmCoreAccessOptions,
     },
+    /// RISC-V core access.
     Riscv {
+        /// RISC-V core access options.
         options: RiscvCoreAccessOptions,
     },
+    /// Xtensa core access.
     Xtensa {
+        /// Xtensa core access options.
         options: XtensaCoreAccessOptions,
     },
 }

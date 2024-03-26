@@ -1,3 +1,5 @@
+//! Module defining core status, halt reason, breakpoint causes and vector catch condition.
+
 use crate::SemihostingCommand;
 
 /// The status of the core.

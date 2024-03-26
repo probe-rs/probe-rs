@@ -1,3 +1,5 @@
+//! High-level caching of core states.
+
 use crate::{
     architecture::{
         arm::{
@@ -14,24 +16,30 @@ use crate::{
 use super::ResolvedCoreOptions;
 
 #[derive(Debug)]
-pub(crate) struct CombinedCoreState {
-    pub(crate) core_state: CoreState,
 
-    pub(crate) specific_state: SpecificCoreState,
-
-    pub(crate) id: usize,
+/// Combination of core access options and specific core state.
+pub struct CombinedCoreState {
+    /// Core state containing the core access options.
+    pub core_state: CoreState,
+    /// Specific core state containing the architecture specific state.
+    pub specific_state: SpecificCoreState,
+    /// The core ID.
+    pub id: usize,
 }
 
 impl CombinedCoreState {
+    /// Get the core ID.
     pub fn id(&self) -> usize {
         self.id
     }
 
+    /// Get the core type.
     pub fn core_type(&self) -> CoreType {
         self.specific_state.core_type()
     }
 
-    pub(crate) fn attach_arm<'probe>(
+    /// Prepare temporary core object to access the ARM core.
+    pub fn attach_arm<'probe>(
         &'probe mut self,
         target: &'probe Target,
         arm_interface: &'probe mut Box<dyn ArmProbeInterface>,
@@ -150,7 +158,8 @@ impl CombinedCoreState {
         Ok(())
     }
 
-    pub(crate) fn attach_riscv<'probe>(
+    /// Prepare temporary core object to access the RISC-V core.
+    pub fn attach_riscv<'probe>(
         &'probe mut self,
         target: &'probe Target,
         interface: &'probe mut RiscvCommunicationInterface,
@@ -184,7 +193,8 @@ impl CombinedCoreState {
         ))
     }
 
-    pub(crate) fn attach_xtensa<'probe>(
+    /// Prepare temporary core object to access the XTENSA core.
+    pub fn attach_xtensa<'probe>(
         &'probe mut self,
         target: &'probe Target,
         interface: &'probe mut XtensaCommunicationInterface,
