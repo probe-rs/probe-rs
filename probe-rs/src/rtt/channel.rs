@@ -79,14 +79,22 @@ impl Channel {
             read_c_string(core, memory_map, name_ptr)?
         };
 
-        Ok(Some(Channel {
+        let chan = Channel {
             number,
             core_id: core.id(),
             ptr,
             name,
             buffer_ptr,
             size: mem.pread_with(Self::O_SIZE, LE).unwrap(),
-        }))
+        };
+
+        // TODO remove hard code
+        // We call read_pointers to validate that the channel is valid
+        // it's possible that the channel is not fully initialized
+        chan.read_pointers(core, "up")?;
+        chan.read_pointers(core, "down")?;
+
+        Ok(Some(chan))
     }
 
     /// Validate that the Core id of a request is the same as the Core id against which the Channel was created.
