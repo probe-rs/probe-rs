@@ -91,11 +91,15 @@ impl ArchitectureInterface {
         target: &'probe Target,
         combined_state: &'probe mut CombinedCoreState,
     ) -> Result<Core<'probe>, Error> {
-        match self {
+        tracing::info!("ArchitectureInterface::attach0");
+        let r = match self {
             ArchitectureInterface::Arm(iface) => combined_state.attach_arm(target, iface),
             ArchitectureInterface::Riscv(iface) => combined_state.attach_riscv(target, iface),
             ArchitectureInterface::Xtensa(iface) => combined_state.attach_xtensa(target, iface),
-        }
+        };
+        tracing::info!("ArchitectureInterface::attach1");
+
+        r
     }
 }
 
@@ -286,11 +290,15 @@ impl Session {
             }
         }
 
+        tracing::info!("attaching to target");
+
         probe.attach_to_unspecified()?;
 
         let interface = probe
             .try_into_riscv_interface()
             .map_err(|(_probe, err)| err)?;
+
+        tracing::info!("creating session");
 
         let mut session = Session {
             target,
@@ -299,7 +307,9 @@ impl Session {
             configured_trace_sink: None,
         };
 
-        session.halted_access(|sess| sequence_handle.on_connect(sess.get_riscv_interface()?))?;
+        tracing::info!("running on_connect");
+
+        session.halted_access(|sess| sequence_handle.on_connect(sess))?;
 
         Ok(session)
     }
@@ -335,7 +345,7 @@ impl Session {
             configured_trace_sink: None,
         };
 
-        session.halted_access(|sess| sequence_handle.on_connect(sess.get_xtensa_interface()?))?;
+        session.halted_access(|sess| sequence_handle.on_connect(sess))?;
 
         Ok(session)
     }
@@ -377,7 +387,9 @@ impl Session {
     ) -> Result<R, Error> {
         let mut resume_state = vec![];
         for (core, _) in self.list_cores() {
+            tracing::info!("Getting core: {:?}", core);
             let mut c = self.core(core)?;
+            tracing::info!("Got core");
             tracing::info!("Core status: {:?}", c.status()?);
             if !c.core_halted()? {
                 tracing::info!("Halting core...");

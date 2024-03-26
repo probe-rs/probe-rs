@@ -53,6 +53,17 @@ impl JtagDtm {
             ));
         }
 
+        {
+            let mut dtmcs = Dtmcs(0);
+            dtmcs.set_dmihardreset(true);
+            let Dtmcs(reg_value) = dtmcs;
+
+            let bytes = reg_value.to_le_bytes();
+
+            probe
+                .write_register(DTMCS_ADDRESS, &bytes, DTMCS_WIDTH).unwrap(); // TODO
+        }
+
         // Setup the number of idle cycles between JTAG accesses
         probe.set_idle_cycles(idle_cycles as u8);
 
