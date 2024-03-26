@@ -1145,37 +1145,33 @@ impl UnitInfo {
                                 // TODO: while we now get all the subranges (dimensions) of a multi-dimensional array, we do not yet process them.
                                 let subrange = subranges.first().unwrap().clone();
 
-                                if subrange.is_empty() {
+                                let explode_range = if subrange.is_empty() {
                                     // Gracefully handle the case where the array is empty.
                                     // - Resolve a 'dummy' child, to determine the type of child_variable.
+                                    0..1
+                                } else {
+                                    subrange.clone()
+                                };
+
+                                // - Next, process this DW_TAG_array_type's DW_AT_type full tree.
+                                // - We have to do this repeatedly, for every array member in the range.
+                                for array_member_index in explode_range {
                                     self.expand_array_member(
                                         debug_info,
                                         unit_ref,
                                         cache,
                                         child_variable,
                                         memory,
-                                        subrange,
-                                        0,
+                                        subrange.clone(),
+                                        array_member_index,
                                         frame_info,
                                     )?;
+                                }
+
+                                if subrange.is_empty() {
                                     // - Delete the dummy child that was created above.
                                     cache
                                         .remove_cache_entry_children(child_variable.variable_key)?;
-                                } else {
-                                    // - Next, process this DW_TAG_array_type's DW_AT_type full tree.
-                                    // - We have to do this repeatedly, for every array member in the range.
-                                    for array_member_index in subrange.clone() {
-                                        self.expand_array_member(
-                                            debug_info,
-                                            unit_ref,
-                                            cache,
-                                            child_variable,
-                                            memory,
-                                            subrange.clone(),
-                                            array_member_index,
-                                            frame_info,
-                                        )?;
-                                    }
                                 }
                             }
                             Ok(Some(other_attribute_value)) => {
