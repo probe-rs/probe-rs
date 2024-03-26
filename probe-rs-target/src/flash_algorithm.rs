@@ -56,6 +56,9 @@ pub struct RawFlashAlgorithm {
     /// Address of the `EraseSector()` entry point.
     #[serde(serialize_with = "hex_u_int")]
     pub pc_erase_sector: u64,
+    /// Address of the `EraseRange()` entry point. Optional.
+    #[serde(serialize_with = "hex_option")]
+    pub pc_erase_range: Option<u64>,
     /// Address of the `EraseAll()` entry point. Optional.
     #[serde(serialize_with = "hex_option")]
     pub pc_erase_all: Option<u64>,
