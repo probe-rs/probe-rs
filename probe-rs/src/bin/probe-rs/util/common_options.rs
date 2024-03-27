@@ -83,20 +83,24 @@ pub struct FlashOptions {
 /// Common options when flashing a target device.
 #[derive(Debug, clap::Parser)]
 pub struct BinaryDownloadOptions {
-    #[arg(long)]
+    #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub disable_progressbars: bool,
     /// Use this flag to disable double-buffering when downloading flash data. If
     /// download fails during programming with timeout errors, try this option.
-    #[arg(long)]
+    #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub disable_double_buffering: bool,
     /// Enable this flag to restore all bytes erased in the sector erase but not overwritten by any page.
-    #[arg(long)]
+    #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub restore_unwritten: bool,
     /// Requests the flash builder to output the layout into the given file in SVG format.
-    #[arg(value_name = "filename", long = "flash-layout")]
+    #[arg(
+        value_name = "filename",
+        long = "flash-layout",
+        help_heading = "DOWNLOAD CONFIGURATION"
+    )]
     pub flash_layout_output_path: Option<String>,
     /// After flashing, read back all the flashed data to verify it has been written correctly.
-    #[arg(long)]
+    #[arg(long, help_heading = "DOWNLOAD CONFIGURATION")]
     pub verify: bool,
 }
 
@@ -126,12 +130,13 @@ pub struct ReadWriteOptions {
 /// Common options and logic when interfacing with a [Probe].
 #[derive(clap::Parser, Debug)]
 pub struct ProbeOptions {
-    #[arg(long, env = "PROBE_RS_CHIP")]
+    #[arg(long, env = "PROBE_RS_CHIP", help_heading = "PROBE CONFIGURATION")]
     pub chip: Option<String>,
     #[arg(
         value_name = "chip description file path",
         long,
-        env = "PROBE_RS_CHIP_DESCRIPTION_PATH"
+        env = "PROBE_RS_CHIP_DESCRIPTION_PATH",
+        help_heading = "PROBE CONFIGURATION"
     )]
     pub chip_description_path: Option<PathBuf>,
 
@@ -150,13 +155,21 @@ pub struct ProbeOptions {
     pub speed: Option<u32>,
     /// Use this flag to assert the nreset & ntrst pins during attaching the probe to
     /// the chip.
-    #[arg(long, env = "PROBE_RS_CONNECT_UNDER_RESET")]
+    #[arg(
+        long,
+        env = "PROBE_RS_CONNECT_UNDER_RESET",
+        help_heading = "PROBE CONFIGURATION"
+    )]
     pub connect_under_reset: bool,
-    #[arg(long, env = "PROBE_RS_DRY_RUN")]
+    #[arg(long, env = "PROBE_RS_DRY_RUN", help_heading = "PROBE CONFIGURATION")]
     pub dry_run: bool,
     /// Use this flag to allow all memory, including security keys and 3rd party
     /// firmware, to be erased even when it has read-only protection.
-    #[arg(long, env = "PROBE_RS_ALLOW_ERASE_ALL")]
+    #[arg(
+        long,
+        env = "PROBE_RS_ALLOW_ERASE_ALL",
+        help_heading = "PROBE CONFIGURATION"
+    )]
     pub allow_erase_all: bool,
 }
 

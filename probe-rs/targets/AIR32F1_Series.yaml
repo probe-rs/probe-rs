@@ -150,7 +150,6 @@ flash_algorithms:
     sectors:
     - size: 0x400
       address: 0x0
-  stack_size: 32768
   transfer_encoding: raw
 - name: air32f103cct6
   description: Air32F103CCT6
@@ -174,7 +173,6 @@ flash_algorithms:
     sectors:
     - size: 0x800
       address: 0x0
-  stack_size: 32768
   transfer_encoding: raw
 - name: air32f10x_1024
   description: Air32F103CGU6
@@ -198,7 +196,6 @@ flash_algorithms:
     sectors:
     - size: 0x1000
       address: 0x0
-  stack_size: 32768
   transfer_encoding: raw
 - name: air32f103vet6
   description: Air32F103VET6
@@ -222,5 +219,4 @@ flash_algorithms:
     sectors:
     - size: 0x800
       address: 0x0
-  stack_size: 32768
   transfer_encoding: raw

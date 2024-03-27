@@ -4162,8 +4162,8 @@ flash_algorithms:
     data_section_offset: 0x174
     flash_properties:
       address_range:
-        start: 0x200000
-        end: 0x210000
+        start: 0x8000000
+        end: 0x8010000
       page_size: 0x400
       erased_byte_value: 0xff
       program_page_timeout: 0x64

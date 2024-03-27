@@ -535,6 +535,42 @@ impl Register for TARGETID {
 }
 
 bitfield! {
+    /// DLPIDR, Data Link Protocol Identification register (see ADI v5.2 B2.2.4)
+    ///
+    /// DLPIDR provides protocol version information.
+    #[derive(Clone)]
+    pub struct DLPIDR(u32);
+    impl Debug;
+    /// IMPLEMENTATION DEFINED. Instance number for this device.
+    pub u8, tinstance, _: 31, 28;
+    /// Implemented SWD protocol version
+    pub u8, protsvn, _: 3, 0;
+}
+
+impl TryFrom<u32> for DLPIDR {
+    type Error = RegisterParseError;
+
+    fn try_from(raw: u32) -> Result<Self, Self::Error> {
+        Ok(Self(raw))
+    }
+}
+
+impl From<DLPIDR> for u32 {
+    fn from(raw: DLPIDR) -> Self {
+        raw.0
+    }
+}
+
+impl DpRegister for DLPIDR {
+    const VERSION: DebugPortVersion = DebugPortVersion::DPv2;
+}
+
+impl Register for DLPIDR {
+    const ADDRESS: u8 = 0x34;
+    const NAME: &'static str = "DLPIDR";
+}
+
+bitfield! {
     /// BASEPTR0, Initial system address for the first component in the system (see ADI v6.0 B2.2.2)
     #[derive(Clone)]
     pub struct BASEPTR0(u32);

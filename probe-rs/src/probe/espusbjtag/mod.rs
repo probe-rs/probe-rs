@@ -134,7 +134,9 @@ impl DebugProbe for EspUsbJtag {
     }
 
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::NotImplemented("target_reset"))
+        Err(DebugProbeError::NotImplemented {
+            function_name: "target_reset",
+        })
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
@@ -197,7 +199,12 @@ impl DebugProbe for EspUsbJtag {
     ) -> Result<Box<dyn UninitializedArmProbe + 'probe>, (Box<dyn DebugProbe>, DebugProbeError)>
     {
         // This probe cannot debug ARM targets.
-        Err((self, DebugProbeError::InterfaceNotAvailable("SWD/ARM")))
+        Err((
+            self,
+            DebugProbeError::InterfaceNotAvailable {
+                interface_name: "SWD/ARM",
+            },
+        ))
     }
 
     fn get_target_voltage(&mut self) -> Result<Option<f32>, DebugProbeError> {

@@ -25,21 +25,19 @@ variants:
         range: # External Flash on Instruction/Data Bus
           start: 0x42000000
           end: 0x42FFFFFF
-        is_boot_memory: false
+        is_alias: true
         cores:
           - main
       - !Ram
         range:
           start: 0x40800000
           end: 0x4087FFFF
-        is_boot_memory: false
         cores:
           - main
       - !Ram
         range:
           start: 0x50000000
           end: 0x50003FFF
-        is_boot_memory: false
         cores:
           - main
     flash_algorithms:

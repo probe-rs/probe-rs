@@ -110,7 +110,8 @@ pub fn parse_u64(input: &str) -> Result<u64, ParseIntError> {
     parse_int::parse(input)
 }
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     tracing_subscriber::fmt()
         .compact()
         .with_env_filter(
@@ -143,7 +144,7 @@ fn main() -> Result<()> {
             output_dir,
             pack_filter: chip_family,
             list,
-        } => cmd_arm(output_dir, chip_family, list)?,
+        } => cmd_arm(output_dir, chip_family, list).await?,
         TargetGen::Test {
             target_artifact,
             template_path,
@@ -220,9 +221,9 @@ fn cmd_pack(input: &Path, out_dir: &Path) -> Result<()> {
 
 /// Handle the arm subcommand.
 /// Generated target descriptions will be placed in `out_dir`.
-fn cmd_arm(out_dir: Option<PathBuf>, chip_family: Option<String>, list: bool) -> Result<()> {
+async fn cmd_arm(out_dir: Option<PathBuf>, chip_family: Option<String>, list: bool) -> Result<()> {
     if list {
-        let mut packs = crate::fetch::get_vidx()?;
+        let mut packs = crate::fetch::get_vidx().await?;
         println!("Available ARM CMSIS Pack files:");
         packs.pdsc_index.sort_by(|a, b| a.name.cmp(&b.name));
         for pack in packs.pdsc_index.iter() {
@@ -247,7 +248,7 @@ fn cmd_arm(out_dir: Option<PathBuf>, chip_family: Option<String>, list: bool) ->
 
     let mut families = Vec::<ChipFamily>::new();
 
-    generate::visit_arm_files(&mut families, chip_family)?;
+    generate::visit_arm_files(&mut families, chip_family).await?;
 
     let mut generated_files = Vec::with_capacity(families.len());
 

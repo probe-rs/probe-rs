@@ -345,21 +345,21 @@ impl DebugProbe for FtdiProbe {
     fn target_reset(&mut self) -> Result<(), DebugProbeError> {
         // TODO we could add this by using a GPIO. However, different probes may connect
         // different pins (if any) to the reset line, so we would need to make this configurable.
-        Err(DebugProbeError::NotImplemented(
-            "target_reset is not implemented for FTDI probes",
-        ))
+        Err(DebugProbeError::NotImplemented {
+            function_name: "target_reset",
+        })
     }
 
     fn target_reset_assert(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::NotImplemented(
-            "target_reset_assert is not implemented for FTDI probes",
-        ))
+        Err(DebugProbeError::NotImplemented {
+            function_name: "target_reset_assert",
+        })
     }
 
     fn target_reset_deassert(&mut self) -> Result<(), DebugProbeError> {
-        Err(DebugProbeError::NotImplemented(
-            "target_reset_deassert is not implemented for FTDI probes",
-        ))
+        Err(DebugProbeError::NotImplemented {
+            function_name: "target_reset_deassert",
+        })
     }
 
     fn select_protocol(&mut self, protocol: WireProtocol) -> Result<(), DebugProbeError> {
@@ -453,9 +453,9 @@ impl RawProtocolIo for FtdiProbe {
         D: IntoIterator<Item = bool>,
         S: IntoIterator<Item = bool>,
     {
-        Err(DebugProbeError::NotImplemented(
-            "swd_io is not implemented for FTDI probes",
-        ))
+        Err(DebugProbeError::NotImplemented {
+            function_name: "swd_io",
+        })
     }
 
     fn swj_pins(
@@ -464,7 +464,9 @@ impl RawProtocolIo for FtdiProbe {
         _pin_select: u32,
         _pin_wait: u32,
     ) -> Result<u32, DebugProbeError> {
-        Err(DebugProbeError::CommandNotSupportedByProbe("swj_pins"))
+        Err(DebugProbeError::CommandNotSupportedByProbe {
+            command_name: "swj_pins",
+        })
     }
 
     fn swd_settings(&self) -> &SwdSettings {

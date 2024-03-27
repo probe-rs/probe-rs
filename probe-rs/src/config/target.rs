@@ -198,34 +198,27 @@ impl Target {
 
         tracing::info!("Using sequence {:?}", debug_sequence);
 
+        let ram_regions = chip
+            .memory_map
+            .iter()
+            .filter_map(MemoryRegion::as_ram_region);
         let rtt_scan_regions = match &chip.rtt_scan_ranges {
             Some(ranges) => {
                 // The custom ranges must all be enclosed by exactly one of
                 // the defined RAM regions.
                 for rng in ranges {
-                    let region = chip.memory_map.iter().find(|region| {
-                        if let MemoryRegion::Ram(region) = region {
-                            region.range.contains_range(rng)
-                        } else {
-                            false
-                        }
-                    });
-                    if region.is_none() {
+                    if !ram_regions
+                        .clone()
+                        .any(|region| region.range.contains_range(rng))
+                    {
                         return Err(RegistryError::InvalidRttScanRange(rng.clone()));
                     }
                 }
                 ranges.clone()
             }
             None => {
-                // By default we use all of the RAM ranges from the
-                // memory map.
-                chip.memory_map
-                    .iter()
-                    .filter_map(|region| match region {
-                        MemoryRegion::Ram(region) => Some(region.range.clone()),
-                        _ => None,
-                    })
-                    .collect()
+                // By default we use all of the RAM ranges from the memory map.
+                ram_regions.map(|region| region.range.clone()).collect()
             }
         };
 
@@ -290,12 +283,9 @@ impl Target {
 
     /// Gets the first found [MemoryRegion] that contains the given address
     pub(crate) fn get_memory_region_by_address(&self, address: u64) -> Option<&MemoryRegion> {
-        self.memory_map.iter().find(|region| match region {
-            MemoryRegion::Ram(rr) if rr.range.contains(&address) => true,
-            MemoryRegion::Generic(gr) if gr.range.contains(&address) => true,
-            MemoryRegion::Nvm(nr) if nr.range.contains(&address) => true,
-            _ => false,
-        })
+        self.memory_map
+            .iter()
+            .find(|region| region.contains(address))
     }
 }
 

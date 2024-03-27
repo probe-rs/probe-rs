@@ -15,8 +15,6 @@ pub enum Error {
     Riscv(#[source] RiscvError),
     /// An Xtensa specific error occurred.
     Xtensa(#[source] XtensaError),
-    /// The probe could not be opened: {0}.
-    UnableToOpenProbe(&'static str),
     /// Core {0} does not exist
     CoreNotFound(usize),
     /// Unable to load specification for chip

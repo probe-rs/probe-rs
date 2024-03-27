@@ -37,12 +37,14 @@ variants:
         range:
           start: 0x42000000
           end: 0x42400000
+        is_alias: true
         cores:
           - main
       - !Nvm # External Data Bus (see Table 3.2 - External Memory Address Mapping of TRM)
         range:
           start: 0x3c000000
           end: 0x3c400000
+        is_alias: true
         cores:
           - main
     flash_algorithms:

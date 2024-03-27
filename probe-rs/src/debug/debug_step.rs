@@ -248,7 +248,7 @@ impl SteppingMode {
             }
             SteppingMode::OutOfStatement => {
                 if let Ok(function_dies) =
-                    program_unit.get_function_dies(debug_info, program_counter, true)
+                    program_unit.get_function_dies(debug_info, program_counter)
                 {
                     // We want the first qualifying (PC is in range) function from the back of this list,
                     // to access the 'innermost' functions first.
@@ -260,7 +260,10 @@ impl SteppingMode {
                             function.high_pc()
                         );
 
-                        if function.attribute(gimli::DW_AT_noreturn).is_some() {
+                        if function
+                            .attribute(debug_info, gimli::DW_AT_noreturn)
+                            .is_some()
+                        {
                             return Err(DebugError::Other(anyhow::anyhow!(
                                 "Function {:?} is marked as `noreturn`. Cannot step out of this function.",
                                 function.function_name(debug_info).as_deref().unwrap_or("<unknown>")

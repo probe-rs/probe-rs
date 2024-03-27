@@ -96,6 +96,7 @@ pub fn cmd_elf(
                         range: 0..0x2000,
                         cores: vec!["main".to_owned()],
                         name: None,
+                        is_alias: false,
                     }),
                     MemoryRegion::Ram(RamRegion {
                         is_boot_memory: true,

@@ -369,9 +369,9 @@ impl ArmDebugSequence for XMC4000 {
 
         loop {
             match interface.swj_pins(pin_output.0 as u32, pin_select.0 as u32, 0) {
-                Err(DebugProbeError::CommandNotSupportedByProbe("swj_pins"))
-                    if pin_select.swdio_tms() =>
-                {
+                Err(DebugProbeError::CommandNotSupportedByProbe {
+                    command_name: "swj_pins",
+                }) if pin_select.swdio_tms() => {
                     // J-Link probes return this error when we try to set pins besides nRST
                     // Settle for resetting, but warn the user that HWCON is uncontrolled
                     tracing::debug!("swj_pins(nRST|TCK|TMS) unsupported by probe; falling back to swj_pins(nRST)");

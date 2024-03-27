@@ -1,0 +1,1 @@
+Fixed flashing certain STM32F750 variants

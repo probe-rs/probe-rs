@@ -1,0 +1,1 @@
+`target-gen` no longer generates `stack_size` for flash algorithms

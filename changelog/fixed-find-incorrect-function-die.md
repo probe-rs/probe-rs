@@ -1,0 +1,1 @@
+Debug: During a stack unwind, incorrect processing of function identifiers, sometimes displayed incorrect function names and associated variable definitions in the stack.
