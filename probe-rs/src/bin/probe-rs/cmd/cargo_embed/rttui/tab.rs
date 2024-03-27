@@ -119,7 +119,7 @@ impl Tab {
         Ok(())
     }
 
-    pub fn update_messages(&mut self, width: usize, up_channels: &BTreeMap<usize, UpChannel<'_>>) {
+    pub fn update_messages(&mut self, width: usize, up_channels: &BTreeMap<usize, UpChannel>) {
         let up_channel = up_channels
             .get(&self.up_channel)
             .expect("up channel disappeared");
