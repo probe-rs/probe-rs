@@ -1,3 +1,5 @@
+//! Module defining the [`MemoryMappedRegister`] trait and a macro for creating memory mapped registers with bitfield access.
+
 /// A memory mapped register, for instance ARM debug registers (DHCSR, etc).
 pub trait MemoryMappedRegister<T>: Clone + From<T> + Into<T> + Sized + std::fmt::Debug {
     /// The register's address in the target memory.
