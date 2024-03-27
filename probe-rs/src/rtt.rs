@@ -342,7 +342,7 @@ impl Rtt {
                 {
                     core.read(range.start, mem.as_mut()).ok()?;
                 }
-              
+
                 let offset = kmp::kmp_find(&Self::RTT_ID, mem.as_slice())?;
 
                 let target_ptr = range.start + (offset as u64);
