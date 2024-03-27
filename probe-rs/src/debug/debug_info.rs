@@ -105,38 +105,6 @@ impl DebugInfo {
         })
     }
 
-    /// Get the name of the function at the given address.
-    ///
-    /// If no function is found, `None` will be returned.
-    ///
-    /// ## Inlined functions
-    /// Multiple nested inline functions could exist at the given address.
-    /// This function will currently return the innermost function in that case.
-    // TODO: This function takes a memory interface. This seems odd, but gimli sometimes needs to read memory to resolve.
-    // Maybe this can be factored out if we can be sure that memory is never read for this use case.
-    // Until we have more tests we cannot be sure though and it should stay like this.
-    pub fn function_name(
-        &self,
-        address: u64,
-        find_inlined: bool,
-    ) -> Result<Option<String>, DebugError> {
-        for unit_info in &self.unit_infos {
-            let mut functions = unit_info.get_function_dies(self, address, find_inlined)?;
-
-            // Use the last functions from the list, this is the function which most closely
-            // corresponds to the PC in case of multiple inlined functions.
-            if let Some(die_cursor_state) = functions.pop() {
-                let function_name = die_cursor_state.function_name(self);
-
-                if function_name.is_some() {
-                    return Ok(function_name);
-                }
-            }
-        }
-
-        Ok(None)
-    }
-
     /// Try get the [`SourceLocation`] for a given address.
     pub fn get_source_location(&self, address: u64) -> Option<SourceLocation> {
         for unit_info in &self.unit_infos {
@@ -387,7 +355,7 @@ impl DebugInfo {
 
         let mut functions = None;
         for unit_info in &self.unit_infos {
-            let function_dies = unit_info.get_function_dies(self, address, true)?;
+            let function_dies = unit_info.get_function_dies(self, address)?;
 
             if !function_dies.is_empty() {
                 functions = Some((unit_info, function_dies));
@@ -595,7 +563,7 @@ impl DebugInfo {
                     None
                 }
                 Err(e) => {
-                    tracing::warn!("UNWIND: Error while checking for exception context. The stack trace will not include the calling frames. : {}", e);
+                    tracing::debug!("UNWIND: Error while checking for exception context. The stack trace will not include the calling frames. : {}", e);
                     None
                 }
             };

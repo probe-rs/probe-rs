@@ -214,7 +214,14 @@ where
     let idr_result: Result<IDR, _> = debug_port.read_ap_register(access_port);
 
     match idr_result {
-        Ok(idr) => u32::from(idr) != 0,
+        Ok(idr) => {
+            let is_valid = u32::from(idr) != 0;
+
+            if !is_valid {
+                tracing::debug!("AP {} is not valid, IDR = 0", access_port.ap_address().ap);
+            }
+            is_valid
+        }
         Err(e) => {
             tracing::debug!(
                 "Error reading IDR register from AP {}: {}",

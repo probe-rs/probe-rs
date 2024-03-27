@@ -39,7 +39,7 @@ pub fn attach_to_rtt(
         rtt_region = &exact_rtt_region;
     }
 
-    tracing::info!("Initializing RTT");
+    tracing::debug!("Initializing RTT");
 
     if let ScanRegion::Ranges(rngs) = &rtt_region {
         if rngs.is_empty() {

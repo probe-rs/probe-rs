@@ -32,13 +32,8 @@ impl EspFlashSizeDetector {
     pub fn stack_pointer(chip: &Chip) -> u32 {
         chip.memory_map
             .iter()
-            .find_map(|m| {
-                if let MemoryRegion::Ram(ram) = m {
-                    Some(ram.range.start as u32 + 0x1_0000)
-                } else {
-                    None
-                }
-            })
+            .find_map(MemoryRegion::as_ram_region)
+            .map(|ram| ram.range.start as u32 + 0x1_0000)
             .unwrap()
     }
 
@@ -313,41 +308,17 @@ fn decode_flash_size(value: u32) -> Option<usize> {
         capacity
     );
 
-    const KB: usize = 1024;
-    const MB: usize = 1024 * KB;
+    match espflash::flasher::FlashSize::from_detected(capacity) {
+        Ok(capacity) => {
+            let capacity = capacity.size() as usize;
 
-    // TODO: replace with `espflash::flasher::FlashSize::from_detected` when
-    // https://github.com/esp-rs/espflash/pull/530 gets released.
-    let capacity = match (manufacturer, memory_type, capacity) {
-        (_, _, 0x12) => 256 * KB,
-        (_, _, 0x13) => 512 * KB,
-        (_, _, 0x14) => MB,
-        (_, _, 0x15) => 2 * MB,
-        (_, _, 0x16) => 4 * MB,
-        (_, _, 0x17) => 8 * MB,
-        (_, _, 0x18) => 16 * MB,
-        (_, _, 0x19) => 32 * MB,
-        (_, _, 0x1A) => 64 * MB,
-        (_, _, 0x1B) => 128 * MB,
-        (_, _, 0x1C) => 256 * MB,
-        (_, _, 0x20) => 64 * MB,
-        (_, _, 0x21) => 128 * MB,
-        (_, _, 0x22) => 256 * MB,
-        (_, _, 0x32) => 256 * KB,
-        (_, _, 0x33) => 512 * KB,
-        (_, _, 0x34) => MB,
-        (_, _, 0x35) => 2 * MB,
-        (_, _, 0x36) => 4 * MB,
-        (_, _, 0x37) => 8 * MB,
-        (_, _, 0x38) => 16 * MB,
-        (_, _, 0x39) => 32 * MB,
-        (_, _, 0x3A) => 64 * MB,
+            tracing::info!("Detected flash capacity: {:x}", capacity);
+
+            Some(capacity)
+        }
         _ => {
             tracing::warn!("Unknown flash capacity byte: {:x}", capacity);
-            return None;
+            None
         }
-    };
-    tracing::info!("Detected flash capacity: {:x}", capacity);
-
-    Some(capacity)
+    }
 }

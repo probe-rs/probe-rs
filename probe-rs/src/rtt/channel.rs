@@ -428,9 +428,8 @@ fn read_c_string(
         .find(|r| r.contains(&ptr));
 
     // If the pointer is not within any valid range, return None.
-    let range = match range {
-        Some(r) => r,
-        None => return Ok(None),
+    let Some(range) = range else {
+        return Ok(None);
     };
 
     // Read up to 128 bytes not going past the end of the region
