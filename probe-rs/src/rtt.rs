@@ -321,7 +321,7 @@ impl Rtt {
             .into_iter()
             .filter_map(|range| {
                 let range_len = match range.end.checked_sub(range.start) {
-                    Some(v) if v < if v < (if is_64bit {Self::MIN_SIZE_64} else {Self::MIN_SIZE} as u64) => return None,
+                    Some(v) if v < (if is_64bit {Self::MIN_SIZE_64} else {Self::MIN_SIZE} as u64) => return None,
                     Some(v) => v,
                     None => return None,
                 };
