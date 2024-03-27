@@ -4,6 +4,7 @@ use crate::{
     Error, MemoryInterface, RegisterValue,
 };
 use bitfield::bitfield;
+use num_traits::Zero;
 
 /// Registers which are stored on the stack when an exception occurs.
 ///
@@ -70,9 +71,12 @@ pub(crate) fn exception_details(
     if ExcReturn(frame_return_address).is_exception_flag() == 0xF {
         // This is an exception frame.
 
+        let raw_exception = exception_interface.raw_exception(stackframe_registers)?;
+
         Ok(Some(ExceptionInfo {
+            raw_exception,
             description: exception_interface
-                .exception_description(memory_interface, stackframe_registers)?,
+                .exception_description(raw_exception, memory_interface)?,
             calling_frame_registers: exception_interface
                 .calling_frame_registers(memory_interface, stackframe_registers)?,
         }))
@@ -80,6 +84,34 @@ pub(crate) fn exception_details(
         // This is a normal function return.
         Ok(None)
     }
+}
+
+pub(crate) fn raw_exception(
+    stackframe_registers: &crate::debug::DebugRegisters,
+) -> Result<u32, Error> {
+    // Load the provided xPSR register as a bitfield.
+    let mut exception_number = Xpsr(
+        stackframe_registers
+            .get_register_value_by_role(&crate::core::RegisterRole::ProcessorStatus)?
+            as u32,
+    )
+    .exception_number();
+    if exception_number.is_zero()
+        && stackframe_registers
+            .get_register_value_by_role(&crate::core::RegisterRole::ReturnAddress)?
+            == 0xFFFF_FFFF
+    {
+        // Although the exception number is 0, for the purposes of unwind, this treated as a reset exception.
+        // Based on the sections, "The special-purpose program status registers, xPSR"
+        // and "Reset Behaviour" in the ARMv7-m Architecture Reference Manual,
+        // - "On reset, the processor is in Thread mode and ...
+        //   - ... the Exception Number field of the IPSR is cleared to 0. As a result, the value 1, the exception number for reset,
+        //    is a transitory value, that software cannot see as a valid IPSR Exception Number."
+        //   - The LR register value is set to 0xFFFFFFFF (The reset value)
+        exception_number = 1;
+    }
+
+    Ok(exception_number)
 }
 
 /// The calling frame registers are a predefined set of registers that are stored on the stack when an exception occurs.

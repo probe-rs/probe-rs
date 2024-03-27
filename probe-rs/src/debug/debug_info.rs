@@ -538,9 +538,11 @@ impl DebugInfo {
         let mut unwind_registers = initial_registers;
 
         // Unwind [StackFrame]'s for as long as we can unwind a valid PC value.
-        'unwind: while let Some(frame_pc_register_value) = unwind_registers
-            .get_program_counter()
-            .and_then(|pc| pc.value)
+        'unwind: while let Some(frame_pc_register_value) =
+            unwind_registers.get_program_counter().and_then(|pc| {
+                pc.value
+                    .and_then(|value| if value.is_zero() { None } else { Some(value) })
+            })
         {
             // PART 0: The first step is to determine the exception context for the current PC.
             // - If we are at an exception hanlder frame, we need to overwrite the unwind registers with the exception context.
@@ -560,7 +562,19 @@ impl DebugInfo {
                     tracing::trace!(
                         "UNWIND: No exception context found. Stack unwind will continue."
                     );
-                    None
+                    // Check LR values to determine if we can continue unwinding.
+                    if unwind_registers
+                        .get_return_address()
+                        .map(|lr| lr.is_zero() || lr.is_max_value())
+                        .unwrap_or(true)
+                    {
+                        tracing::trace!(
+                            "UNWIND: Stack unwind complete - Reached the 'Reset' value of the LR register."
+                        );
+                        break;
+                    } else {
+                        None
+                    }
                 }
                 Err(e) => {
                     tracing::debug!("UNWIND: Error while checking for exception context. The stack trace will not include the calling frames. : {}", e);
@@ -661,24 +675,7 @@ impl DebugInfo {
                 }
             };
 
-            // Part 1-b: Check LR values to determine if we can continue unwinding.
-            let Some(check_return_address) = unwind_registers.get_return_address() else {
-                // If the debug info rules result in a None return address, we cannot continue unwinding.
-                stack_frames.push(return_frame);
-                tracing::trace!("UNWIND: Stack unwind complete - LR register value is 'None.");
-                break;
-            };
-
-            if check_return_address.is_max_value() || check_return_address.is_zero() {
-                // When we encounter the starting (after reset) return address, we've reached the bottom of the stack, so no more unwinding after this.
-                stack_frames.push(return_frame);
-                tracing::trace!(
-                    "UNWIND: Stack unwind complete - Reached the 'Reset' value of the LR register."
-                );
-                break;
-            }
-
-            // Part 1-c: If the target current frame is an exception handler, we need to update the `unwind_registers` to match the frame that invoked the exception handler.
+            // Part 1-b: If the target current frame is an exception handler, we need to update the `unwind_registers` to match the frame that invoked the exception handler.
             if let Some(exception_info) = exception_info {
                 tracing::trace!(
                     "UNWIND: Stack unwind reached an exception handler {}",
@@ -784,46 +781,35 @@ impl DebugInfo {
 
             stack_frames.push(return_frame);
 
-            // Check if we unwound over an exception handler
-            if let Some(value) = unwind_registers.get_program_counter().and_then(|s| s.value) {
-                let value: u32 = value.try_into().unwrap();
+            // Check if we unwound over an exception handler, i.e. nested exception handlers.
+            match exception_handler.exception_details(memory, &unwind_registers) {
+                Ok(Some(details)) => {
+                    unwind_registers = details.calling_frame_registers;
+                    let address = frame_pc;
 
-                if (value >> 28) & 0xf == 0xf {
-                    let ra = unwind_registers
-                        .get_register_mut_by_role(&RegisterRole::ReturnAddress)
-                        .unwrap();
-                    ra.value = Some(RegisterValue::U32(value));
+                    let exception_frame = StackFrame {
+                        id: get_object_reference(),
+                        function_name: format!("<Handler frame>: {}", details.description),
+                        source_location: None,
+                        registers: unwind_registers.clone(),
+                        pc: match unwind_registers.get_address_size_bytes() {
+                            4 => RegisterValue::U32(address as u32),
+                            8 => RegisterValue::U64(address),
+                            _ => RegisterValue::from(address),
+                        },
+                        frame_base: None,
+                        is_inlined: false,
+                        local_variables: None,
+                        canonical_frame_address: None,
+                    };
 
-                    match exception_handler.exception_details(memory, &unwind_registers) {
-                        Ok(Some(details)) => {
-                            unwind_registers = details.calling_frame_registers;
-                            let address = frame_pc;
-
-                            let exception_frame = StackFrame {
-                                id: get_object_reference(),
-                                function_name: details.description.clone(),
-                                source_location: None,
-                                registers: unwind_registers.clone(),
-                                pc: match unwind_registers.get_address_size_bytes() {
-                                    4 => RegisterValue::U32(address as u32),
-                                    8 => RegisterValue::U64(address),
-                                    _ => RegisterValue::from(address),
-                                },
-                                frame_base: None,
-                                is_inlined: false,
-                                local_variables: None,
-                                canonical_frame_address: None,
-                            };
-
-                            stack_frames.push(exception_frame);
-                        }
-                        // We are not in an exception handler, so we can continue unwinding.
-                        Ok(None) => {}
-                        Err(e) => {
-                            tracing::error!("Error while checking for exception context: {}", e);
-                            break 'unwind;
-                        }
-                    }
+                    stack_frames.push(exception_frame);
+                }
+                // We are not in an exception handler, so we can continue unwinding.
+                Ok(None) => {}
+                Err(e) => {
+                    tracing::error!("Error while checking for exception context: {}", e);
+                    break 'unwind;
                 }
             }
         }
@@ -1137,8 +1123,6 @@ fn unwind_register(
                     .register_has_role(RegisterRole::ReturnAddress) =>
                 {
                     // This value is can only be used to determine the Undefined PC value. We have no way of inferring the previous frames LR until we have the PC.
-                    register_rule_string = "LR=Unknown (dwarf Undefined)".to_string();
-                    *unwound_return_address = lr.value;
                     None
                 }
                 pc if pc
@@ -1146,6 +1130,7 @@ fn unwind_register(
                     .register_has_role(RegisterRole::ProgramCounter) =>
                 {
                     // NOTE: PC = Value of the unwound LR, i.e. the first instruction after the one that called this function.
+                    // If both the LR and PC registers have undefined rules, this will prevent the unwind from continuing.
                     register_rule_string = "PC=(unwound LR) (dwarf Undefined)".to_string();
                     unwound_return_address.and_then(|return_address| {
                         unwind_program_counter_register(
@@ -1337,7 +1322,7 @@ fn add_to_address(address: u64, offset: i64, address_size_in_bytes: usize) -> u6
 mod test {
     use crate::{
         architecture::arm::core::{
-            exception_handling::{ArmV6MExceptionHandler, ArmV7MExceptionHandler},
+            exception_handling::{armv6m::ArmV6MExceptionHandler, armv7m::ArmV7MExceptionHandler},
             registers::cortex_m::CORTEX_M_CORE_REGISTERS,
         },
         core::exception_handler_for_core,
