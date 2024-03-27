@@ -119,7 +119,7 @@ impl Tab {
         Ok(())
     }
 
-    pub fn update_messages(&mut self, width: usize, up_channels: &BTreeMap<usize, UpChannel<'_>>) {
+    pub fn update_messages(&mut self, width: usize, up_channels: &BTreeMap<usize, UpChannel>) {
         let up_channel = up_channels
             .get(&self.up_channel)
             .expect("up channel disappeared");
@@ -134,13 +134,40 @@ impl Tab {
         let old_message_count = self.messages.len();
         match &up_channel.data {
             ChannelData::Strings { messages, .. } => {
+                // We strip ANSI sequences because they interfere with text wrapping.
+                //  - It's not obvious how we could tell defmt_parser to not emit ANSI sequences.
+                //  - Calling textwrap on a string with ANSI sequences may break a sequence into
+                // multiple lines, which is incorrect.
+                //  - We can only interpret the sequences by emitting ratatui span styles, but at
+                // that point we can no longer wrap the text using textwrap.
+                //  - Leaving sequences in the output intact is just a bad experience.
+                fn text_block(output: ansi_parser::Output) -> Option<&str> {
+                    match output {
+                        ansi_parser::Output::TextBlock(text) => Some(text),
+                        _ => None,
+                    }
+                }
+                fn strip_ansi(s: impl AsRef<str>) -> String {
+                    use ansi_parser::AnsiParser;
+                    s.as_ref()
+                        .ansi_parse()
+                        .filter_map(text_block)
+                        .collect::<String>()
+                }
+
                 let new = messages
                     .iter()
                     .skip(self.last_processed)
-                    .flat_map(|m| textwrap::wrap(m, width));
+                    .map(strip_ansi)
+                    .flat_map(|m| {
+                        textwrap::wrap(&m, width)
+                            .into_iter()
+                            .map(|cow| cow.to_string())
+                            .collect::<Vec<_>>()
+                    });
                 self.last_processed = messages.len();
 
-                self.messages.extend(new.map(String::from));
+                self.messages.extend(new);
             }
             ChannelData::Binary { data } => {
                 let mut string = self.messages.pop().unwrap_or_default();
