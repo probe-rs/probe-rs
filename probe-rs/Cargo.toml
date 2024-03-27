@@ -183,6 +183,7 @@ tracing-appender = { version = "0.2", optional = true }
 ratatui = { version = "0.26.1", default-features = false, features = [
     "crossterm",
 ], optional = true }
+ansi-parser = "0.8.0"
 
 [build-dependencies]
 bincode = "1"
