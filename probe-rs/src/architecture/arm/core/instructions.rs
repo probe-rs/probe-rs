@@ -254,6 +254,16 @@ pub(crate) mod aarch64 {
         ret
     }
 
+    pub(crate) fn build_ldrb(reg_target: u16, reg_source: u16, imm: u16) -> u32 {
+        let mut ret = 0b0011_1000_0100_0000_0000_0100_0000_0000;
+
+        ret |= (imm as u32) << 12;
+        ret |= (reg_source as u32) << 5;
+        ret |= reg_target as u32;
+
+        ret
+    }
+
     pub(crate) fn build_mrs(op0: u8, op1: u8, crn: u8, crm: u8, op2: u8, reg: u16) -> u32 {
         let mut ret = 0b1101_0101_0011_0000_0000_0000_0000_0000;
 
@@ -292,6 +302,16 @@ pub(crate) mod aarch64 {
 
     pub(crate) fn build_strw(reg_target: u16, reg_source: u16, imm: u16) -> u32 {
         let mut ret = 0b1011_1000_0000_0000_0000_0100_0000_0000;
+
+        ret |= (imm as u32) << 12;
+        ret |= (reg_source as u32) << 5;
+        ret |= reg_target as u32;
+
+        ret
+    }
+
+    pub(crate) fn build_strb(reg_target: u16, reg_source: u16, imm: u16) -> u32 {
+        let mut ret = 0b0011_1000_0000_0000_0000_0100_0000_0000;
 
         ret |= (imm as u32) << 12;
         ret |= (reg_source as u32) << 5;
