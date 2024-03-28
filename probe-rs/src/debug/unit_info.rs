@@ -1150,7 +1150,7 @@ impl UnitInfo {
 
                                 if let Ok(array_member_type_node) = self.unit.entry(unit_ref) {
                                     // First, try to determine the item type
-                                    let (member_ty, byte_size) = self.extract_array_member_type(
+                                    let prototype = self.extract_array_member_prototype(
                                         debug_info,
                                         &array_member_type_node,
                                         cache,
@@ -1164,10 +1164,10 @@ impl UnitInfo {
                                     // Once we know the type of the first member, we can set the array type.
                                     child_variable.type_name = VariableType::Array {
                                         count: item_count,
-                                        item_type_name: Box::new(member_ty),
+                                        item_type_name: Box::new(prototype.type_name),
                                     };
                                     // Once we know the byte_size of the first member, we can set the array byte_size.
-                                    if let Some(item_byte_size) = byte_size {
+                                    if let Some(item_byte_size) = prototype.byte_size {
                                         child_variable.byte_size =
                                             Some(item_byte_size * item_count as u64);
                                     }
@@ -1175,6 +1175,7 @@ impl UnitInfo {
                                     if item_count > 0 {
                                         // - Next, process this DW_TAG_array_type's DW_AT_type full tree.
                                         // - We have to do this repeatedly, for every array member in the range.
+                                        // TODO: avoid re-processing the 0th element
                                         for array_member_index in subrange {
                                             self.expand_array_member(
                                                 debug_info,
@@ -1353,17 +1354,17 @@ impl UnitInfo {
         Ok(())
     }
 
-    /// Extract array member type info.
+    /// Create a prototype that can be instantiated to create an array
     #[allow(clippy::too_many_arguments)]
-    fn extract_array_member_type(
+    fn extract_array_member_prototype(
         &self,
         debug_info: &DebugInfo,
         array_member_type_node: &DebuggingInformationEntry<GimliReader>,
         cache: &mut VariableCache,
-        array_variable: &mut Variable,
+        array_variable: &Variable,
         memory: &mut dyn MemoryInterface,
         frame_info: StackFrameInfo<'_>,
-    ) -> Result<(VariableType, Option<u64>), DebugError> {
+    ) -> Result<Variable, DebugError> {
         let mut array_member_variable =
             cache.create_variable(array_variable.variable_key, Some(self))?;
         array_member_variable.member_index = Some(0);
@@ -1388,10 +1389,7 @@ impl UnitInfo {
 
         cache.remove_cache_entry(array_member_variable.variable_key)?;
 
-        Ok((
-            array_member_variable.type_name,
-            array_member_variable.byte_size,
-        ))
+        Ok(array_member_variable)
     }
 
     /// Create child variable entries to represent array members and their values.
@@ -1413,15 +1411,12 @@ impl UnitInfo {
         array_member_variable.name = VariableName::Named(format!("__{member_index}"));
         array_member_variable.source_location = array_variable.source_location.clone();
 
-        // TODO: if possible, these should be copied from the first member. Can we just pipe in the dummy member we used in `extract_array_member_type` and clone that?
-        self.process_memory_location(
-            debug_info,
-            array_member_type_node,
-            array_variable,
+        self.adjust_array_member_location(
             &mut array_member_variable,
-            memory,
-            frame_info,
-        )?;
+            array_variable,
+            member_index as i64,
+        );
+        // We need to process every array member to resolve enums in them, for example.
         self.extract_type(
             debug_info,
             array_member_type_node,
@@ -1432,11 +1427,6 @@ impl UnitInfo {
             frame_info,
         )?;
 
-        self.adjust_array_member_location(
-            &mut array_member_variable,
-            array_variable,
-            member_index as i64,
-        );
         array_member_variable.extract_value(memory, cache);
         cache.update_variable(&array_member_variable)?;
 
