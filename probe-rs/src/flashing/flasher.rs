@@ -722,7 +722,7 @@ impl<'probe, O: Operation> ActiveFlasher<'probe, O> {
                 let rtt = match crate::rtt::Rtt::attach_region(
                     &mut self.core,
                     &self.memory_map,
-                    &crate::rtt::ScanRegion::Exact(rtt_address as u32),
+                    &crate::rtt::ScanRegion::Exact(rtt_address),
                 ) {
                     Ok(rtt) => Some(rtt),
                     Err(error) => {
